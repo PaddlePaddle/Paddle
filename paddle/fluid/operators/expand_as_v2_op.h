@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 6
 // 1. BOOST_PP_REPEAT macro represents a fast horizontal repetition construct.
@@ -115,7 +116,7 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
       }
     }
     auto* out0 = context.Output<Tensor>("Out");
-    Eigen::DSizes<int, Rank> bcast_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       bcast_dims[i] = repeat_times[i];
     }
@@ -129,7 +130,8 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
     auto y = EigenTensor<T, Rank>::From(*out0, out_dims);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    y.device(place) = x.broadcast(bcast_dims);
+    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                 bcast_dims);
   }
 };
 
@@ -205,20 +207,19 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
-    Eigen::DSizes<int, Dims * 2> reshape_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<int, Dims> reduce_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(
-        *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims)
-            .sum(reduce_dims)
-            .reshape(x_grad.dimensions());
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

@@ -805,6 +805,7 @@ void BindImperative(py::module *m_ptr) {
          Bump the version whenever the Tensor is modified through an inplace operation.
             )DOC")
       .def("numpy",
+
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =
                  self.MutableVar()->Get<framework::LoDTensor>();
@@ -1003,18 +1004,6 @@ void BindImperative(py::module *m_ptr) {
               print(x.stop_gradient) # True
               print(x.grad)          # None
        )DOC")
-      .def("_run_backward",
-           [](imperative::VarBase &self, const imperative::Tracer &tracer,
-              bool retain_graph) {
-             // TODO(jiabin): when we impl more backward execution we can
-             // select them
-             auto *engine = tracer.GetEngine();
-             engine->Init(&self, retain_graph);
-             VLOG(3) << "Start backward";
-             engine->Execute();
-             VLOG(3) << "Finish backward";
-           },
-           py::call_guard<py::gil_scoped_release>())
       .def("_grad_name", &imperative::VarBase::GradVarName)
       .def("_grad_value",
            [](imperative::VarBase &self) {
@@ -1043,6 +1032,10 @@ void BindImperative(py::module *m_ptr) {
              return std::shared_ptr<imperative::VarBase>(nullptr);
            },
            py::return_value_policy::copy)
+      .def("_set_grad_ivar",
+           [](imperative::VarBase &self, imperative::VarBase &grad) {
+             self.SetGradVarBase(grad);
+           })
       .def("_is_sparse",
            [](imperative::VarBase &self) {
              return self.Var().IsType<framework::SelectedRows>();
@@ -1282,6 +1275,16 @@ void BindImperative(py::module *m_ptr) {
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::CUDAPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
+      .def("_copy_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::Place &place, bool blocking) {
              auto new_var = self->NewVarBase(place, blocking);
              if (!blocking) {
                IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
@@ -1549,6 +1552,19 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
+  m.def(
+      "dygraph_run_backward",
+      [](const std::vector<std::shared_ptr<imperative::VarBase>> &tensors,
+         const std::vector<std::shared_ptr<imperative::VarBase>> &grad_tensors,
+         bool retain_graph, const imperative::Tracer &tracer) {
+        auto *engine = tracer.GetEngine();
+        engine->Init(tensors, grad_tensors, retain_graph);
+        VLOG(3) << "Start backward";
+        engine->Execute();
+        VLOG(3) << "Finish backward";
+      },
+      py::call_guard<py::gil_scoped_release>());
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::ParallelContext,
@@ -1578,7 +1594,10 @@ void BindImperative(py::module *m_ptr) {
       m, "NCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::CUDAPlace &>())
-      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
+      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::NCCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -1587,7 +1606,10 @@ void BindImperative(py::module *m_ptr) {
       m, "BKCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::XPUPlace &>())
-      .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); });
+      .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::BKCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
 #endif
 }
 

@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/errors.h"
 
 #define MAX_RANK_SUPPORTED 6
@@ -113,19 +114,21 @@ class MeshgridKernel : public framework::OpKernel<T> {
       reshape_ins_tensor.Resize(out_dims_reshape);
       framework::DDim out_dims = framework::make_ddim(shape);
 
-      Eigen::DSizes<int, Rank> bcast_dims;
+      Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
       for (int64_t j = 0; j < size; j++) {
         bcast_dims[j] = shape[j];
       }
       bcast_dims[i] = 1;
 
       outs[i]->Resize(out_dims);
-      auto x = framework::EigenTensor<T, Rank>::From(reshape_ins_tensor);
+      auto x = framework::EigenTensor<T, Rank>::From(
+          static_cast<const framework::Tensor>(reshape_ins_tensor));
       outs[i]->mutable_data<T>(context.GetPlace());
       auto y = framework::EigenTensor<T, Rank>::From(*outs[i]);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      y.device(place) = x.broadcast(bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                   bcast_dims);
     }
   }
 };
@@ -176,21 +179,20 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
         }
       }
 
-      Eigen::DSizes<int, Rank> reduce_dims;
+      Eigen::DSizes<Eigen::DenseIndex, Rank> reduce_dims;
       for (int k = 0; k < n; k++) {
         reduce_dims[k] = reduce_dims_vec[k];
       }
 
-      Eigen::DSizes<int, Rank * 2> reshape_dims;
+      Eigen::DSizes<Eigen::DenseIndex, Rank * 2> reshape_dims;
       for (int k = 0; k < n * 2; k++) {
         reshape_dims[k] = reshape_dims_vec[k];
       }
 
-      auto tensor_reduce_tmp =
-          out_grad_tmp.reshape(reshape_dims).sum(reduce_dims);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      in_grad.device(place) = tensor_reduce_tmp.reshape(in_grad.dimensions());
+      EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Rank>::Eval(
+          place, in_grad, out_grad_tmp, reduce_dims, reshape_dims);
     }
   }
 };

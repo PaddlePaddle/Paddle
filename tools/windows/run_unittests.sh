@@ -16,6 +16,7 @@ set -e
 set +x
 NIGHTLY_MODE=$1
 PRECISION_TEST=$2
+WITH_GPU=$3
 
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
@@ -35,6 +36,14 @@ if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); th
 else
     disable_ut_quickly=''
 fi
+
+# check added ut
+set +e
+cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+set -e
+
 
 # /*==================Fixed Disabled Windows unittests==============================*/
 # TODO: fix these unittest that is bound to fail
@@ -204,47 +213,37 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_strided_slice_op$|\
 ^test_transpose_op$"
 
-export FLAGS_call_stack_level=2
-export FLAGS_fraction_of_gpu_memory_to_use=0.92
-export CUDA_VISIBLE_DEVICES=0
+if [ ${WITH_GPU:-OFF} == "ON" ];then
+    export FLAGS_call_stack_level=2
+    export FLAGS_fraction_of_gpu_memory_to_use=0.92
+    export CUDA_VISIBLE_DEVICES=0
 
-UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
-num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
-echo "Windows 1 card TestCases count is $num"
-if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-    python ${PADDLE_ROOT}/tools/get_pr_ut.py
-    if [[ -f "ut_list" ]]; then
-        echo "PREC length: "`wc -l ut_list`
-        precision_cases=`cat ut_list`
-    fi
-fi
-
-set +e
-if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-    UT_list_prec=''
-    re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
-    for case in $UT_list; do
-        flag=$(echo $case|grep -oE $re)
-        if [ -n "$flag" ];then
-            if [ -z "$UT_list_prec" ];then
-                UT_list_prec=$case
-            else
-                UT_list_prec=$UT_list_prec'\n'$case
-            fi
-        else
-            echo $case "won't run in PRECISION_TEST mode."
+    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
+    echo "Windows 1 card TestCases count is $num"
+    if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+        python ${PADDLE_ROOT}/tools/get_pr_ut.py
+        if [[ -f "ut_list" ]]; then
+            echo "PREC length: "`wc -l ut_list`
+            precision_cases=`cat ut_list`
         fi
-    done
-    UT_list=$UT_list_prec
+    fi
+
+    set +e
+    if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
+        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "$UT_list" "$precision_cases" )
+        UT_list_prec=$(echo "${UT_list_res}" | grep -v 'PRECISION_TEST')
+        UT_list_prec_info=$(echo "${UT_list_res}" | grep 'PRECISION_TEST')
+        UT_list=$UT_list_prec
+    fi
+    set -e
+
+    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+    cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
+    tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
+    two_parallel_job=$(echo $output | cut -d ";" -f 3)
+    non_parallel_job=$(echo $output | cut -d ";" -f 4)
 fi
-set -e
-
-output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
-cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
-tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
-two_parallel_job=$(echo $output | cut -d ";" -f 3)
-non_parallel_job=$(echo $output | cut -d ";" -f 4)
-
 
 failed_test_lists=''
 tmp_dir=`mktemp -d`
@@ -264,7 +263,13 @@ function collect_failed_tests() {
     set -e
 }
 
-function run_unittest() {
+function run_unittest_cpu() {
+    tmpfile=$tmp_dir/$RANDOM
+    (ctest -E "${disable_ut_quickly}" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
+    wait;
+}
+
+function run_unittest_gpu() {
     test_case=$1
     parallel_job=$2
     parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
@@ -283,7 +288,11 @@ function run_unittest() {
 }
 
 function unittests_retry(){
-    parallel_job=1
+    if [ "${WITH_GPU:-OFF}" == "ON" ];then
+        parallel_job=1
+    else
+        parallel_job=4
+    fi
     is_retry_execuate=0
     wintest_error=1
     retry_time=3
@@ -334,7 +343,7 @@ function unittests_retry(){
 
 function show_ut_retry_result() {
     if [[ "$is_retry_execuate" != "0" ]];then
-        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -o '[^ ].*$'`
+        failed_test_lists_ult=`echo "${failed_test_lists}"`
         echo "========================================="
         echo "There are more than 10 failed unit tests, so no unit test retry!!!"
         echo "========================================="
@@ -363,10 +372,25 @@ function show_ut_retry_result() {
 }
 
 set +e
-run_unittest $cpu_parallel_job 12
-run_unittest $tetrad_parallel_job 4
-run_unittest $two_parallel_job 2
-run_unittest $non_parallel_job
+
+if [ "${WITH_GPU:-OFF}" == "ON" ];then
+    if [ -f "$PADDLE_ROOT/added_ut" ];then
+        added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+        ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+        if [ "$added_ut_error" != 0 ];then
+            echo "========================================"
+            echo "Added UT should pass three additional executions"
+            echo "========================================"
+            exit 8;
+        fi
+    fi
+    run_unittest_gpu $cpu_parallel_job 12
+    run_unittest_gpu $tetrad_parallel_job 4
+    run_unittest_gpu $two_parallel_job 2
+    run_unittest_gpu $non_parallel_job
+else
+    run_unittest_cpu
+fi
 collect_failed_tests
 set -e
 rm -f $tmp_dir/*

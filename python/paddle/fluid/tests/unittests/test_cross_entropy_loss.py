@@ -191,12 +191,16 @@ def cross_entropy_soft_2d(softmax,
 
 
 class CrossEntropyLoss(unittest.TestCase):
+    def setUp(self):
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
 
     ###test for deprecated softmax_with_cross_entropy
     def test_softmax_with_cross_entropy(self):
         self.numeric_stable_mode = False
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.axis = -1
         self.ignore_index = -100  #should not be changed
         self.N = 4
@@ -248,7 +252,8 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_soft_1d(self):
         self.numeric_stable_mode = False
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.axis = -1
         self.ignore_index = -100  #should not be changed
         self.N = 4
@@ -296,9 +301,9 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[self.N, self.C], dtype='float64')
+                name='input', shape=[self.N, self.C], dtype=self.dtype)
             label = fluid.data(
-                name='label', shape=[self.N, self.C], dtype='float64')
+                name='label', shape=[self.N, self.C], dtype=self.dtype)
 
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 reduction=self.reduction, soft_label=True)
@@ -321,7 +326,8 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_soft_1d_weight(self):
         self.numeric_stable_mode = False
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.axis = -1
         self.ignore_index = -100  #should not be changed
         self.N = 4
@@ -376,10 +382,10 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[self.N, self.C], dtype='float64')
+                name='input', shape=[self.N, self.C], dtype=self.dtype)
             label = fluid.data(
-                name='label', shape=[self.N, self.C], dtype='float64')
-            weight = fluid.data(name='weight', shape=[self.C], dtype='float64')
+                name='label', shape=[self.N, self.C], dtype=self.dtype)
+            weight = fluid.data(name='weight', shape=[self.C], dtype=self.dtype)
 
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=self.reduction, soft_label=True)
@@ -403,7 +409,8 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_soft_1d_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.axis = -1
         self.ignore_index = -100  #should not be changed
         self.N = 4
@@ -451,9 +458,9 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[self.N, self.C], dtype='float64')
+                name='input', shape=[self.N, self.C], dtype=self.dtype)
             label = fluid.data(
-                name='label', shape=[self.N, self.C], dtype='float64')
+                name='label', shape=[self.N, self.C], dtype=self.dtype)
 
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 reduction=self.reduction, soft_label=True)
@@ -475,7 +482,8 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_soft_1d_weight_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.axis = -1
         self.ignore_index = -100  #should not be changed
         self.N = 4
@@ -523,10 +531,10 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[self.N, self.C], dtype='float64')
+                name='input', shape=[self.N, self.C], dtype=self.dtype)
             label = fluid.data(
-                name='label', shape=[self.N, self.C], dtype='float64')
-            weight = fluid.data(name='weight', shape=[self.C], dtype='float64')
+                name='label', shape=[self.N, self.C], dtype=self.dtype)
+            weight = fluid.data(name='weight', shape=[self.C], dtype=self.dtype)
 
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=self.reduction, soft_label=True)
@@ -549,7 +557,8 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_soft_2d(self):
         self.numeric_stable_mode = False
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.axis = -1
         self.ignore_index = -100  #should not be changed
         self.N = 3
@@ -604,11 +613,11 @@ class CrossEntropyLoss(unittest.TestCase):
             input = fluid.data(
                 name='input',
                 shape=[self.N, self.H, self.W, self.C],
-                dtype='float64')
+                dtype=self.dtype)
             label = fluid.data(
                 name='label',
                 shape=[self.N, self.H, self.W, self.C],
-                dtype='float64')
+                dtype=self.dtype)
 
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 reduction=self.reduction, soft_label=True)
@@ -631,7 +640,8 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_soft_2d_weight_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = 'float32' if fluid.core.is_compiled_with_rocm(
+        ) else 'float64'
         self.axis = -1
         self.ignore_index = -100  #should not be changed
         self.N = 3
@@ -685,12 +695,12 @@ class CrossEntropyLoss(unittest.TestCase):
             input = fluid.data(
                 name='input',
                 shape=[self.N, self.H, self.W, self.C],
-                dtype='float64')
+                dtype=self.dtype)
             label = fluid.data(
                 name='label',
                 shape=[self.N, self.H, self.W, self.C],
-                dtype='float64')
-            weight = fluid.data(name='weight', shape=[self.C], dtype='float64')
+                dtype=self.dtype)
+            weight = fluid.data(name='weight', shape=[self.C], dtype=self.dtype)
 
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=self.reduction, soft_label=True)
@@ -713,7 +723,7 @@ class CrossEntropyLoss(unittest.TestCase):
     ###soft_label test end
 
     def test_cross_entropy_loss_1d_with_mean_ignore(self):
-        input_np = np.random.random([2, 4]).astype(np.float64)
+        input_np = np.random.random([2, 4]).astype(self.dtype)
         label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
         paddle.enable_static()
         prog = fluid.Program()
@@ -721,7 +731,7 @@ class CrossEntropyLoss(unittest.TestCase):
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[2, 4], dtype='float64')
+            input = fluid.data(name='input', shape=[2, 4], dtype=self.dtype)
             label = fluid.data(name='label', shape=[2], dtype='int64')
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(ignore_index=0)
             ret = cross_entropy_loss(input, label)
@@ -752,20 +762,20 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_1d_with_weight_mean_ignore(self):
         N = 100
         C = 200
-        input_np = np.random.random([N, C]).astype(np.float64)
+        input_np = np.random.random([N, C]).astype(self.dtype)
         label_np = np.random.randint(0, C, size=(N)).astype(np.int64)
-        weight_np = np.random.random([C]).astype(np.float64)
+        weight_np = np.random.random([C]).astype(self.dtype)
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[N, C], dtype='float64')
+            input = fluid.data(name='input', shape=[N, C], dtype=self.dtype)
             label = fluid.data(name='label', shape=[N], dtype='int64')
             weight = fluid.data(
                 name='weight', shape=[C],
-                dtype='float64')  #weight for each class
+                dtype=self.dtype)  #weight for each class
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, ignore_index=0)
             ret = cross_entropy_loss(input, label)
@@ -798,20 +808,20 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_1d_with_weight_mean(self):
-        input_np = np.random.random([2, 4]).astype(np.float64)
+        input_np = np.random.random([2, 4]).astype(self.dtype)
         label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
-        weight_np = np.random.random([4]).astype(np.float64)  #shape:C
+        weight_np = np.random.random([4]).astype(self.dtype)  #shape:C
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[2, 4], dtype='float64')
+            input = fluid.data(name='input', shape=[2, 4], dtype=self.dtype)
             label = fluid.data(name='label', shape=[2], dtype='int64')
             weight = fluid.data(
                 name='weight', shape=[4],
-                dtype='float64')  #weight for each class
+                dtype=self.dtype)  #weight for each class
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight)
             ret = cross_entropy_loss(input, label)
 
@@ -842,18 +852,18 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_1d_with_weight_sum(self):
-        input_np = np.random.random([100, 200]).astype(np.float64)  #N,C
+        input_np = np.random.random([100, 200]).astype(self.dtype)  #N,C
         label_np = np.random.randint(0, 100, size=(100)).astype(np.int64)  #N,1
-        weight_np = np.random.random([200]).astype(np.float64)  #C
+        weight_np = np.random.random([200]).astype(self.dtype)  #C
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[100, 200], dtype='float64')
+            input = fluid.data(name='input', shape=[100, 200], dtype=self.dtype)
             label = fluid.data(name='label', shape=[100], dtype='int64')
-            weight = fluid.data(name='weight', shape=[200], dtype='float64')
+            weight = fluid.data(name='weight', shape=[200], dtype=self.dtype)
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction='sum')
             ret = cross_entropy_loss(input, label)
@@ -882,9 +892,9 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_1d_with_weight_none(self):
-        input_np = np.random.random([100, 200]).astype(np.float64)  #N,C
+        input_np = np.random.random([100, 200]).astype(self.dtype)  #N,C
         label_np = np.random.randint(0, 100, size=(100)).astype(np.int64)  #N,1
-        weight_np = np.random.random([200]).astype(np.float64)  #C
+        weight_np = np.random.random([200]).astype(self.dtype)  #C
 
         paddle.enable_static()
         prog = fluid.Program()
@@ -892,9 +902,9 @@ class CrossEntropyLoss(unittest.TestCase):
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[100, 200], dtype='float64')
+            input = fluid.data(name='input', shape=[100, 200], dtype=self.dtype)
             label = fluid.data(name='label', shape=[100], dtype='int64')
-            weight = fluid.data(name='weight', shape=[200], dtype='float64')
+            weight = fluid.data(name='weight', shape=[200], dtype=self.dtype)
 
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction='none')
@@ -926,18 +936,18 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_1d_with_weight_none_func(self):
-        input_np = np.random.random([100, 200]).astype(np.float64)  #N,C
+        input_np = np.random.random([100, 200]).astype(self.dtype)  #N,C
         label_np = np.random.randint(0, 100, size=(100)).astype(np.int64)  #N
-        weight_np = np.random.random([200]).astype(np.float64)  #C
+        weight_np = np.random.random([200]).astype(self.dtype)  #C
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[100, 200], dtype='float64')
+            input = fluid.data(name='input', shape=[100, 200], dtype=self.dtype)
             label = fluid.data(name='label', shape=[100], dtype='int64')
-            weight = fluid.data(name='weight', shape=[200], dtype='float64')
+            weight = fluid.data(name='weight', shape=[200], dtype=self.dtype)
             ret = paddle.nn.functional.cross_entropy(
                 input, label, weight=weight, reduction='none')
 
@@ -967,18 +977,18 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_1d_mean(self):
-        input_np = np.random.random([100, 200]).astype(np.float64)  #N,C
+        input_np = np.random.random([100, 200]).astype(self.dtype)  #N,C
         label_np = np.random.randint(0, 100, size=(100)).astype(np.int64)  #N,1
-        weight_np = np.random.random([200]).astype(np.float64)  #C
+        weight_np = np.random.random([200]).astype(self.dtype)  #C
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[100, 200], dtype='float64')
+            input = fluid.data(name='input', shape=[100, 200], dtype=self.dtype)
             label = fluid.data(name='label', shape=[100], dtype='int64')
-            weight = fluid.data(name='weight', shape=[100], dtype='float64')
+            weight = fluid.data(name='weight', shape=[100], dtype=self.dtype)
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss()
             ret = cross_entropy_loss(input, label)
             exe = fluid.Executor(place)
@@ -1000,7 +1010,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_1d_sum(self):
-        input_np = np.random.random([100, 200]).astype(np.float64)  #N,C
+        input_np = np.random.random([100, 200]).astype(self.dtype)  #N,C
         label_np = np.random.randint(0, 100, size=(100)).astype(np.int64)  #N,1
         paddle.enable_static()
         prog = fluid.Program()
@@ -1008,7 +1018,7 @@ class CrossEntropyLoss(unittest.TestCase):
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[100, 200], dtype='float64')
+            input = fluid.data(name='input', shape=[100, 200], dtype=self.dtype)
             label = fluid.data(name='label', shape=[100], dtype='int64')
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 reduction='sum')
@@ -1033,7 +1043,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_1d_none(self):
-        input_np = np.random.random([100, 200]).astype(np.float64)  #N,C
+        input_np = np.random.random([100, 200]).astype(self.dtype)  #N,C
         label_np = np.random.randint(0, 100, size=(100)).astype(np.int64)  #N,1
         paddle.enable_static()
         prog = fluid.Program()
@@ -1041,7 +1051,7 @@ class CrossEntropyLoss(unittest.TestCase):
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[100, 200], dtype='float64')
+            input = fluid.data(name='input', shape=[100, 200], dtype=self.dtype)
             label = fluid.data(name='label', shape=[100], dtype='int64')
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 reduction='none')
@@ -1068,10 +1078,10 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_2d_with_weight_none(self):
-        input_np = np.random.random(size=(2, 2, 2, 3)).astype(np.float64)  #NHWC
+        input_np = np.random.random(size=(2, 2, 2, 3)).astype(self.dtype)  #NHWC
         label_np = np.random.randint(
             0, 3, size=(2, 2, 2)).astype(np.int64)  #NHW1
-        weight_np = np.random.random(size=(3, )).astype(np.float64)  #C
+        weight_np = np.random.random(size=(3, )).astype(self.dtype)  #C
 
         paddle.enable_static()
         prog = fluid.Program()
@@ -1080,9 +1090,9 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[2, 2, 2, 3], dtype='float64')
+                name='input', shape=[2, 2, 2, 3], dtype=self.dtype)
             label = fluid.data(name='label', shape=[2, 2, 2], dtype='int64')
-            weight = fluid.data(name='weight', shape=[3], dtype='float64')
+            weight = fluid.data(name='weight', shape=[3], dtype=self.dtype)
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction='none')
             ret = cross_entropy_loss(input, label)
@@ -1113,10 +1123,10 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_2d_with_weight_mean(self):
-        input_np = np.random.random(size=(2, 2, 2, 3)).astype(np.float64)  #NHWC
+        input_np = np.random.random(size=(2, 2, 2, 3)).astype(self.dtype)  #NHWC
         label_np = np.random.randint(
             0, 3, size=(2, 2, 2)).astype(np.int64)  #NHW
-        weight_np = np.random.random(size=(3, )).astype(np.float64)  #C
+        weight_np = np.random.random(size=(3, )).astype(self.dtype)  #C
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -1124,9 +1134,9 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[2, 2, 2, 3], dtype='float64')
+                name='input', shape=[2, 2, 2, 3], dtype=self.dtype)
             label = fluid.data(name='label', shape=[2, 2, 2], dtype='int64')
-            weight = fluid.data(name='weight', shape=[3], dtype='float64')
+            weight = fluid.data(name='weight', shape=[3], dtype=self.dtype)
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction='mean')
             ret = cross_entropy_loss(input, label)
@@ -1155,10 +1165,10 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_2d_with_weight_sum(self):
-        input_np = np.random.random(size=(2, 2, 2, 3)).astype(np.float64)  #NHWC
+        input_np = np.random.random(size=(2, 2, 2, 3)).astype(self.dtype)  #NHWC
         label_np = np.random.randint(
             0, 3, size=(2, 2, 2)).astype(np.int64)  #NHW
-        weight_np = np.random.random(size=(3, )).astype(np.float64)  #C
+        weight_np = np.random.random(size=(3, )).astype(self.dtype)  #C
         paddle.enable_static()
 
         prog = fluid.Program()
@@ -1167,9 +1177,9 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[2, 2, 2, 3], dtype='float64')
+                name='input', shape=[2, 2, 2, 3], dtype=self.dtype)
             label = fluid.data(name='label', shape=[2, 2, 2], dtype='int64')
-            weight = fluid.data(name='weight', shape=[3], dtype='float64')
+            weight = fluid.data(name='weight', shape=[3], dtype=self.dtype)
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction='sum')
             ret = cross_entropy_loss(input, label)
@@ -1198,7 +1208,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_2d_none(self):
-        input_np = np.random.random(size=(2, 2, 2, 3)).astype(np.float64)  #NHWC
+        input_np = np.random.random(size=(2, 2, 2, 3)).astype(self.dtype)  #NHWC
         label_np = np.random.randint(
             0, 3, size=(2, 2, 2)).astype(np.int64)  #NHW
         paddle.enable_static()
@@ -1208,7 +1218,7 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[2, 2, 2, 3], dtype='float64')
+                name='input', shape=[2, 2, 2, 3], dtype=self.dtype)
             label = fluid.data(name='label', shape=[2, 2, 2], dtype='int64')
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 reduction='none')
@@ -1237,7 +1247,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_2d_mean(self):
-        input_np = np.random.random(size=(2, 2, 2, 3)).astype(np.float64)  #NHWC
+        input_np = np.random.random(size=(2, 2, 2, 3)).astype(self.dtype)  #NHWC
         label_np = np.random.randint(
             0, 3, size=(2, 2, 2)).astype(np.int64)  #NHW
         paddle.enable_static()
@@ -1247,7 +1257,7 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[2, 2, 2, 3], dtype='float64')
+                name='input', shape=[2, 2, 2, 3], dtype=self.dtype)
             label = fluid.data(name='label', shape=[2, 2, 2], dtype='int64')
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 reduction='mean')
@@ -1276,7 +1286,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_2d_sum(self):
-        input_np = np.random.random(size=(2, 2, 2, 3)).astype(np.float64)  #NHWC
+        input_np = np.random.random(size=(2, 2, 2, 3)).astype(self.dtype)  #NHWC
         label_np = np.random.randint(
             0, 3, size=(2, 2, 2)).astype(np.int64)  #NHW
         paddle.enable_static()
@@ -1286,7 +1296,7 @@ class CrossEntropyLoss(unittest.TestCase):
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(
-                name='input', shape=[2, 2, 2, 3], dtype='float64')
+                name='input', shape=[2, 2, 2, 3], dtype=self.dtype)
             label = fluid.data(name='label', shape=[2, 2, 2], dtype='int64')
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 reduction='sum')

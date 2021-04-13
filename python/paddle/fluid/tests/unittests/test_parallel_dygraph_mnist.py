@@ -73,6 +73,7 @@ class TestParallelDygraphMnistAccGrad(TestDistBase):
         self._dygraph = True
         self._use_fleet_api = True
         self._accumulate_gradient = True
+        self._find_unused_parameters = False
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
