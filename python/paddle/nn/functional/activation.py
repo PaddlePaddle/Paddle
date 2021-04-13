@@ -1308,16 +1308,17 @@ def glu(x, axis=-1, name=None):
     Examples:
         .. code-block:: python
         
-        import paddle
-        from paddle.nn import functional as F
-
-        x = paddle.to_tensor(
-            [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
-             [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
-        )
-        print(F.glu(x).numpy())
-        # array([[-0.15216254, -0.9004892 ],
-        #        [-1.0577879 , -0.46985325]], dtype=float32)
+          import paddle
+          from paddle.nn import functional as F
+  
+          x = paddle.to_tensor(
+              [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
+               [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+          )
+          print(F.glu(x).numpy())
+          # array([[-0.15216254, -0.9004892 ],
+          #        [-1.0577879 , -0.46985325]], dtype=float32)
+        
     """
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              "glu")
