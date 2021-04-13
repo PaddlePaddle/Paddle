@@ -103,15 +103,6 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
   auto new_dim = framework::make_ddim(shape);
-  if (tensor->numel() != framework::product(new_dim)) {
-    LOG(WARNING) << "Custom Op: Calling reshape to a new shape which is bigger "
-                    "or smaller"
-                 << "than original shape will not change your tensor's memory "
-                    "Please call"
-                 << "paddle::Tensor::mutable_data<T>() after to reallocate "
-                    "your tensor's size."
-                 << std::endl;
-  }
   tensor->Resize(new_dim);
 }
 
