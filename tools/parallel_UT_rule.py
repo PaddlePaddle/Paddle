@@ -482,6 +482,7 @@ TETRAD_PARALLEL_JOB = [
 # It run 2 job each time, If it failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, 
 # just remove it from this list.
 TWO_PARALLEL_JOB = [
+    'convert_model2dot_ernie',
     'im2col_test',
     'test_elementwise_add_grad_grad',
     'test_logical_op',
