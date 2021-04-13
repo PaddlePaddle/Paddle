@@ -13,13 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-// #include <hccl/hccl.h>
-// #include <hccl/hccl_types.h>
+#include <hccl/hccl.h>
+#include <hccl/hccl_types.h>
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/port.h"
-#include "paddle/fluid/platform/dynload/hcom.h"
+// #include "paddle/fluid/platform/dynload/hcom.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+
+#define HCOM_GROUP_PREFIX "HCOM_GROUP_"
 
 namespace paddle {
 namespace platform {
@@ -43,27 +45,14 @@ extern void* hccl_dso_handle;
   extern DynLoad__##__name __name
 
 #define HCCL_RAND_ROUTINE_EACH(__macro)         \
-  __macro(hcom_init);                           \
-  __macro(hcom_destroy);                        \
-  __macro(hcom_bind_model);                     \
-  __macro(hcom_unbind_model);                   \
-  __macro(hcom_send);                           \
-  __macro(hcom_receive);                        \
-  __macro(hcom_broadcast);                      \
-  __macro(hcom_all_gather);                     \
-  __macro(hcom_all_reduce);                     \
-  __macro(hcom_reduce_scatter);                 \
-  __macro(hcom_create_group);                   \
-  __macro(hcom_destroy_group);                  \
-  __macro(hcom_get_rank_id);                    \
-  __macro(hcom_get_local_rank_id);              \
-  __macro(hcom_get_local_rank_size);            \
-  __macro(hcom_get_split_strategy);             \
-  __macro(hcom_set_split_strategy_by_size);     \
-  __macro(hcom_set_split_strategy_by_index);    \
-  __macro(hcom_get_group_rank_from_world_rank); \
-  __macro(hcom_get_world_rank_from_group_rank); 
-
+  __macro(HcclReduceScatter);                   \
+  __macro(HcclCommDestroy);                     \
+  __macro(HcclAllReduce);                       \
+  __macro(HcclCommInitRootInfo);                \
+  __macro(HcclGetRootInfo);                     \
+  __macro(HcclBroadcast);                       \
+  __macro(HcclCommInitClusterInfo);             \
+  __macro(HcclAllGather);
 
 HCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HCCL_WRAP)
 

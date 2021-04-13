@@ -31,20 +31,19 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
-    hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype = platform::ToHCCLDataType(in->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     auto place = ctx.GetPlace();
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
-    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
     out->mutable_data<T>(out_dims, place);
 
-    int64_t send_numel = in->numel();
+    uint64_t send_numel = in->numel();
     void *send_buff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
     void *recv_buff = reinterpret_cast<void*>(out->data<T>());
 
@@ -59,12 +58,11 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
     VLOG(3) << "begin hccl allgather, parameter is: "
       << ", group is " << group
       << ", ring_id is " << ring_id
-      << ", nranks is " << nranks
-      << ", tag is " << tag;
+      << ", nranks is " << nranks;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_gather(
-        tag.c_str(), send_buff, recv_buff, (u64)send_numel, dtype,
-        group.c_str(), (void*)stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
+        send_buff, recv_buff, send_numel, dtype,
+        comm->comm(), (void*)stream));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

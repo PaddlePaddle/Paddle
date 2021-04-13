@@ -28,31 +28,37 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto x = ctx.Input<framework::LoDTensor>("X");
+    void *ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
-    hcclDataType_t dtype = platform::ToHCCLDataType(x->type());
+    HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
-    auto place = ctx.GetPlace();
     int ring_id = ctx.Attr<int>("ring_id");
-    auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
+    auto place = ctx.GetPlace();
+    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
-    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
-    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    int destRank = ctx.Attr<int>("peer");
-    int srTag = ctx.Attr<int>("srTag");
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_send(
-        tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), (u64)numel, dtype, destRank,
-          srTag, group.c_str(), stream));
+    int nranks = comm->nranks();
+    int rank = comm->rank();
 
-      VLOG(3) << "Dest rank:" << destRank << " Invoke hcom send. Sent "
-              << x->numel();
+    PADDLE_ENFORCE_EQ(nranks, 2,
+                  platform::errors::InvalidArgument(
+                      "The nranks must be 2, but (%d)",
+                       nranks));
+
+    int root = rank;
+
+    VLOG(3) << "begin hccl send, parameter is: "<< "root " << root
+      << ", comm: " << comm->comm() << ", stream: " << stream;
+
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(ptr, numel,
+                                  dtype, (uint32_t)root, comm->comm(), stream));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

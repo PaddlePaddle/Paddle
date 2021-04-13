@@ -30,7 +30,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     void *ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
-    hcclDataType_t dtype = platform::ToHCCLDataType(x->type());
+    HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
     auto out = ctx.Output<framework::LoDTensor>("Out");
 
@@ -48,14 +48,12 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 
     int root = ctx.Attr<int>("root");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
 
     VLOG(3) << "begin hccl broadcast, parameter is: "<< "root " << root
-      << ", group is " << group
-      << ", tag is " << tag;
+      << ", group is " << group << ", comm: " << comm->comm() << ", stream: " << stream;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                  dtype, (uint32_t)root, group.c_str(), (void*)stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(ptr, numel,
+                                  dtype, (uint32_t)root, comm->comm(), stream));
 
     VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
             << framework::product(out->dims());

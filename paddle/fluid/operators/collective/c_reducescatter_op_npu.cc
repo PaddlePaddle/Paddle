@@ -35,7 +35,6 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
-    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
 
     auto out_dims = in->dims();
     PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
@@ -47,11 +46,11 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
 
-    int64_t recv_numel = in->numel() / nranks;
+    uint64_t recv_numel = in->numel() / nranks;
 
     void* inputPtr = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
     void* outputPtr = reinterpret_cast<void*>(out->data<T>());
-    hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype = platform::ToHCCLDataType(in->type());
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -63,12 +62,11 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
     VLOG(3) << "begin hccl reduce scatter, parameter is: "
       << "recv_numel: " << recv_numel
       << "dtype: " << dtype
-      << "hccl_red_type: " << HCCL_REP_OP_SUM
-      << ", group is: " << group
-      << ", tag is " << tag;
+      << "hccl_red_type: " << HCCL_REDUCE_SUM
+      << ", group is: " << group;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_reduce_scatter(
-        tag.c_str(), inputPtr, outputPtr, (u64)recv_numel, dtype, HCCL_REP_OP_SUM, group.c_str(), (void*)stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclReduceScatter(
+        inputPtr, outputPtr, recv_numel, dtype, HCCL_REDUCE_SUM, comm->comm(), (void*)stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));

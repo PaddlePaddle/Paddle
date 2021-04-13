@@ -74,11 +74,11 @@ def _get_ascend_rankfile(rank_table_file_path):
         node_ips.append(server['server_id'])
         device_list = server['device']
         device_count = len(device_list)
-            
+
     return node_ips, device_count
 
-def get_cloud_cluster(rank_table_file=None, 
-                    device_mode=DeviceMode.ASCEND_NPU, 
+def get_cloud_cluster(rank_table_file=None,
+                    device_mode=DeviceMode.ASCEND_NPU,
                     start_port=6070):
     """
     Args:
@@ -86,7 +86,7 @@ def get_cloud_cluster(rank_table_file=None,
     device_mode: DeviceMode(Int)
     start_port: the start port of current runtime env
     """
-    if rank_table_file: 
+    if rank_table_file:
         # multi trainers
         node_ips, device_count = _get_ascend_rankfile(rank_table_file)
         if len(node_ips) == 1:
@@ -106,7 +106,7 @@ def get_cloud_cluster(rank_table_file=None,
         node_ips = ["127.0.0.1"]
         node_ip = node_ips[0]
         device_count = 1
-        
+
     devices_per_proc = [str(x) for x in range(device_count)]
     free_ports = [
         x for x in range(start_port, start_port + len(devices_per_proc))

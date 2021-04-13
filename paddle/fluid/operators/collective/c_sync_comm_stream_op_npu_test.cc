@@ -41,7 +41,7 @@ namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
 USE_NO_KERNEL_OP(c_sync_comm_stream);
-USE_NO_KERNEL_OP(c_comm_init_hcom);
+USE_NO_KERNEL_OP(c_comm_init_hccl);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {

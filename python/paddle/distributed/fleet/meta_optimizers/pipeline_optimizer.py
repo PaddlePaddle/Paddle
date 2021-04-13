@@ -108,19 +108,32 @@ class PipelineHelper(object):
                     OP_ROLE_KEY: OpRole.Forward,
                 })
         elif core.is_compiled_with_npu():
-            endpoint_to_index_map = {
-                e: idx for idx, e in enumerate(endpoints)
-            }
+            if rank == 0 and wait_port:
+                wait_server_ready(other_endpoints)
+            hccl_id_var = block.create_var(
+                name=unique_name.generate('hccl_id'),
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
+            endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
             block.append_op(
-                type='c_comm_init_hcom',
+                type='c_gen_hccl_id',
                 inputs={},
+                outputs={'Out': hccl_id_var},
+                attrs={
+                    'rank': rank,
+                    'endpoint': current_endpoint,
+                    'other_endpoints': other_endpoints,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+            block.append_op(
+                type='c_comm_init_hccl',
+                inputs={'X': hccl_id_var},
                 outputs={},
                 attrs={
-                    'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
                     'device_id': int(os.getenv("FLAGS_selected_npus")),
-                    'rank_ids': [endpoint_to_index_map[e] for e in endpoints],
+                    'rank_ids': nranks,
                     OP_ROLE_KEY: OpRole.Forward
                 })
 
