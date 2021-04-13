@@ -108,6 +108,10 @@ class VarBase {
 
   void ClearGradVarBase() { grad_var_ = nullptr; }
 
+  void SetGradVarBase(VarBase& grad_var) {
+    MutableGradVarBase()->CopyFrom(grad_var, true);
+  }
+
   const std::shared_ptr<VarBase>& MutableGradVarBase() {
     if (grad_var_ == nullptr) {
       if (auto grad_var_wrapper = var_->GetGradVar()) {

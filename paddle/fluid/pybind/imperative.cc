@@ -1032,6 +1032,10 @@ void BindImperative(py::module *m_ptr) {
              return std::shared_ptr<imperative::VarBase>(nullptr);
            },
            py::return_value_policy::copy)
+      .def("_set_grad_ivar",
+           [](imperative::VarBase &self, imperative::VarBase &grad) {
+             self.SetGradVarBase(grad);
+           })
       .def("_is_sparse",
            [](imperative::VarBase &self) {
              return self.Var().IsType<framework::SelectedRows>();
@@ -1271,6 +1275,16 @@ void BindImperative(py::module *m_ptr) {
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::CUDAPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
+      .def("_copy_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::Place &place, bool blocking) {
              auto new_var = self->NewVarBase(place, blocking);
              if (!blocking) {
                IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
