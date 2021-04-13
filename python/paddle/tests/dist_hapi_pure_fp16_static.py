@@ -34,13 +34,16 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
     def test_amp_training_purefp16(self):
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
+        data = np.random.random(size=(4, 1, 28, 28)).astype(np.float32)
+        label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+
         paddle.enable_static()
         device = paddle.set_device('gpu')
         net = LeNet()
         amp_level = "O2"
         inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
-        label = InputSpec([None, 1], "int64", "y")
-        model = Model(net, inputs, label)
+        labels = InputSpec([None, 1], "int64", "y")
+        model = Model(net, inputs, labels)
         optim = paddle.optimizer.Adam(
             learning_rate=0.001,
             parameters=model.parameters(),
@@ -50,6 +53,7 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
             optimizer=optim,
             loss=CrossEntropyLoss(reduction="sum"),
             amp_configs=amp_configs)
+        loss, = model.train_batch([data], [label])
 
 
 if __name__ == '__main__':

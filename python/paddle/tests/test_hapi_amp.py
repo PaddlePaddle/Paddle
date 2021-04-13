@@ -32,16 +32,20 @@ from paddle.vision.models import LeNet
                  'CPU testing is not supported')
 class TestDistTraningUsingAMP(unittest.TestCase):
     def test_amp_training(self):
+        if not fluid.is_compiled_with_cuda():
+            self.skipTest('module not tested when ONLY_CPU compling')
+        data = np.random.random(size=(4, 1, 28, 28)).astype(np.float32)
+        label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+        amp_level = "O1"
         for dynamic in [True, False]:
-            amp_level = "O1"
             if not fluid.is_compiled_with_cuda():
                 self.skipTest('module not tested when ONLY_CPU compling')
             paddle.enable_static() if not dynamic else None
             device = paddle.set_device('gpu')
             net = LeNet()
             inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
-            label = InputSpec([None, 1], "int64", "y")
-            model = Model(net, inputs, label)
+            labels = InputSpec([None, 1], "int64", "y")
+            model = Model(net, inputs, labels)
             optim = paddle.optimizer.Adam(
                 learning_rate=0.001, parameters=model.parameters())
             amp_configs = {"level": amp_level}
@@ -49,6 +53,7 @@ class TestDistTraningUsingAMP(unittest.TestCase):
                 optimizer=optim,
                 loss=CrossEntropyLoss(reduction="sum"),
                 amp_configs=amp_configs)
+            loss, = model.train_batch([data], [label])
 
     def test_check_input_error(self):
         paddle.disable_static()
@@ -64,6 +69,10 @@ class TestDistTraningUsingAMP(unittest.TestCase):
                 "level": "O1",
                 "use_fp16_guard": True
             },
+            {
+                "custom_white_list": {"matmul"},
+                "init_loss_scaling": 1.0
+            },
             "O3",
         ]
         if not fluid.is_compiled_with_cuda():
@@ -75,9 +84,9 @@ class TestDistTraningUsingAMP(unittest.TestCase):
             learning_rate=0.001, parameters=model.parameters())
         loss = CrossEntropyLoss(reduction="sum")
         with self.assertRaises(ValueError):
-            for i in range(len(amp_configs_list)):
+            for amp_configs in amp_configs_list:
                 model.prepare(
-                    optimizer=optim, loss=loss, amp_configs=amp_configs_list[i])
+                    optimizer=optim, loss=loss, amp_configs=amp_configs)
         model.prepare(optimizer=optim, loss=loss, amp_configs="O2")
 
 

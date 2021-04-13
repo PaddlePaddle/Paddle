@@ -1334,6 +1334,17 @@ class Model(object):
         return self._adapter.parameters()
 
     def _prepare_amp(self, amp_configs):
+        def _check_pure_fp16_configs():
+            # pure float16 training has some restricts now
+            if self._adapter._amp_level == "O2":
+                if in_dygraph_mode():
+                    warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
+                        "and it will be supported in future version.")
+                else:
+                    # grad clip is not supported in pure fp16 training now
+                    assert self._optimizer._grad_clip is None, \
+                        "Grad clip is not supported in pure float16 training now, and it will be supported in future version."
+
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
 
@@ -1346,6 +1357,7 @@ class Model(object):
                 raise ValueError(
                     "The level of amp_configs should be 'O0', 'O1' or 'O2'.")
             self._adapter._amp_level = amp_configs
+            _check_pure_fp16_configs()
             return
         else:
             if 'level' not in amp_configs:
@@ -1355,18 +1367,8 @@ class Model(object):
                     "amp_configs['level'] should be 'O0', 'O1' or 'O2'.")
             else:
                 self._adapter._amp_level = amp_configs['level']
-
-        # pure float16 training has some restricts now
-        if self._adapter._amp_level == "O2":
-            if in_dygraph_mode():
-                warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
-                    "and it will be supported in future version.")
-            else:
-                # grad clip is not supported in pure fp16 training now
-                assert self._optimizer._grad_clip is None, \
-                    "Grad clip is not supported in pure float16 training now, and it will be supported in future version."
-
         amp_config_key_set = set(amp_configs.keys()) - {'level'}
+        _check_pure_fp16_configs()
 
         # construct amp_custom_lists
         if self._adapter._amp_level != 'O0' and amp_config_key_set:
@@ -1400,7 +1402,6 @@ class Model(object):
                     'use_fp16_guard'] if 'use_fp16_guard' in amp_config_key_set else True
                 amp_config_key_set -= {'use_fp16_guard', 'use_pure_fp16'}
 
-            amp_config_key_set &= accepted_param_set
             return amp_config_key_set
 
         amp_configs_set = _check_amp_configs(amp_config_key_set)
