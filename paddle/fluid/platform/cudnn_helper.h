@@ -132,6 +132,22 @@ template <typename T>
 class CudnnDataType;
 
 template <>
+class CudnnDataType<bfloat16> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_HALF;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+
+template <>
 class CudnnDataType<float16> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_HALF;

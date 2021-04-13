@@ -32,6 +32,7 @@ using bfloat16 = paddle::platform::bfloat16;
 using complex64 = paddle::platform::complex64;
 using complex128 = paddle::platform::complex128;
 
+template struct SetConstant<platform::CUDADeviceContext, bfloat16>;
 template struct SetConstant<platform::CUDADeviceContext, platform::float16>;
 template struct SetConstant<platform::CUDADeviceContext, float>;
 template struct SetConstant<platform::CUDADeviceContext, double>;
