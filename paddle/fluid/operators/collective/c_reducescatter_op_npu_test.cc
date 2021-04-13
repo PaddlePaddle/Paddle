@@ -183,8 +183,7 @@ TEST(c_reducescatter, NPU) {
   HcclRootInfo hccl_id;
 
   // only support one device, if more than one device, use first default
-  auto* ctx = p::DeviceContextPool::Instance().Get(
-      p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
+  p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
   PrepareUniqueId(&scope, ctx, &hccl_id);
   Prepare(&scope, ctx, &hccl_id);

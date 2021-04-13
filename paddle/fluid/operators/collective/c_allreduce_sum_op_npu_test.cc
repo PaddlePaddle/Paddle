@@ -182,13 +182,14 @@ TEST(c_allreduce_sum, NPU) {
   HcclRootInfo hccl_id;
 
   // only support one device, if more than one device, use first default
-  auto* ctx = p::DeviceContextPool::Instance().Get(
-      p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
+  // auto* ctx = p::DeviceContextPool::Instance().Get(
+      // p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
+  p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
   PrepareUniqueId(&scope, ctx, &hccl_id);
   Prepare(&scope, ctx, &hccl_id);
   for(int i = 0; i < 1; i ++){
     VLOG(2) << "iter num: " << i;
-    TestHCCLAllReduceOp(&scope, *ctx, i);
+    TestHCCLAllReduceOp(&scope, ctx, i);
   }
 }
