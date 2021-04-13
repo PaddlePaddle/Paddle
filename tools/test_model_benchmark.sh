@@ -61,5 +61,3 @@ function run_model_benchmark {
 compile_install_paddle
 prepare_data
 run_model_benchmark
-
-
