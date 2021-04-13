@@ -29,15 +29,11 @@ import paddle.distributed.fleet as fleet
 
 
 class TestCommunicator(unittest.TestCase):
-    def net(self):
-        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-
-        cost = fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = fluid.layers.mean(cost)
-        return avg_cost
-
     def test_communicator_ps_gpu(self):
+        with open("test_communicator_ps_gpu.txt", "w") as f:
+            data = "1 0.6 1 0.7\n"
+            f.write(data)
+
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["POD_IP"] = "127.0.0.1"
@@ -53,7 +49,12 @@ class TestCommunicator(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker()
 
         fleet.init(role)
-        avg_cost = self.net()
+        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        slots_vars = [x, y]
+
+        cost = fluid.layers.square_error_cost(input=x, label=y)
+        avg_cost = fluid.layers.mean(cost)
 
         optimizer = fluid.optimizer.Adam(0.01)
 
@@ -63,14 +64,33 @@ class TestCommunicator(unittest.TestCase):
             "launch_barrier": False,
             "use_ps_gpu": 1,
         }
-
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
+        dataset.set_filelist(["test_communicator_ps_gpu.txt"])
+        dataset.load_into_memory()
+
         os.environ["TEST_MODE"] = "1"
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(startup_program)
+        main_program._fleet_opt = {"stat_var_names": [x.name]}
         fleet.init_worker()
+
+        try:
+            exe.train_from_dataset(main_program, dataset)
+        except ImportError as e:
+            pass
+        except Exception as e:
+            self.assertTrue(False)
+
         time.sleep(10)
         fleet.stop_worker()
+        os.remove("./test_communicator_ps_gpu.txt")
 
 
 if __name__ == '__main__':
