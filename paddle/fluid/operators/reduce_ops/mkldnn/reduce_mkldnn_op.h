@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -30,8 +31,8 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    const auto* input = ctx.Input<LoDTensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<LoDTensor>("X");
+    auto* output = ctx.Output<LoDTensor>("Out");
 
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -118,6 +119,64 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     }
 
     return output_dims;
+  }
+};
+
+template <typename T>
+class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
+ public:
+  void RunKernel(const framework::ExecutionContext& ctx,
+                 dnnl::algorithm reduction_type) const {
+    //only for reduce sum for now
+    auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& onednn_engine = dev_ctx.GetEngine();
+
+    auto dims = ctx.Attr<std::vector<int>>("dim");
+    auto* input_x = ctx.Input<LoDTensor>("X");
+    auto* input_dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    output_dx->mutable_data<T>(ctx.GetPlace());
+    output_dx->set_format(getPlainFormatTag(output_dx));
+    output_dx->set_layout(input_dy->layout());
+
+    platform::BinaryReductionGradMKLDNNHandler<T> handler(dnnl::algorithm::binary_add, dev_ctx, onednn_engine,
+                 ctx.GetPlace(), output_dx, input_dy, 0.0f, 1.0f,
+                 ctx.InputName(framework::GradVarName("Out")));
+
+    const auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
+    const auto src_dy_memory = handler.AcquireSecondSrcMemory(input_dy);
+
+    const auto binary_prim = handler.AcquireForwardPrimitive();
+
+    const std::unordered_map<int, dnnl::memory> args = {
+        {DNNL_ARG_SRC_0, *src_dx_memory},
+        {DNNL_ARG_SRC_1, *src_dy_memory},
+        {DNNL_ARG_DST, *src_dx_memory}};
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+    binary_prim->execute(astream, args);
+    astream.wait();
+  }
+protected:
+  mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const{
+    switch(tensor->dims().size()){
+      case 1:
+        return mkldnn::memory::format_tag::a;
+      case 2:
+        return mkldnn::memory::format_tag::ab;
+      case 3:
+        return mkldnn::memory::format_tag::abc;
+      case 4:
+        return mkldnn::memory::format_tag::abcd;
+      case 5:
+        return mkldnn::memory::format_tag::abcde;
+      default:
+        platform::errors::InvalidArgument("Tensor dims must be in range <1, 5>");
+    }      
   }
 };
 

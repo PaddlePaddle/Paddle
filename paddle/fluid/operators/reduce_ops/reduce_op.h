@@ -495,7 +495,12 @@ class ReduceOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    if (ctx.Input<paddle::framework::LoDTensor>("X")->dims().size() > 5)
+    auto input_dims = framework::vectorize(
+        ctx.Input<paddle::framework::LoDTensor>("X")->dims());
+    auto output_dims = framework::vectorize(
+        ctx.Output<paddle::framework::Tensor>("Out")->dims());
+
+    if (input_dims.size() > 5)
       return framework::OpKernelType(input_data_type, ctx.GetPlace());
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -559,15 +564,37 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, framework::GradVarName("Out"));
+
+    auto CanMKLDNNReduceGradBeUsed = [&]() {
+      auto dx_dims = ctx.Input<Tensor>("X")->dims();
+      auto dy_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
+
+      // Subtensor must be on rightmost part of the bigger tensor
+      for(size_t i = 0; i < dy_dims.size() ; ++i){
+        if(dx_dims[dx_dims.size() - dy_dims.size() + i] != dy_dims[i]){
+          return false;
+        }
+      }
+      return true;
+    };
+    
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) && CanMKLDNNReduceGradBeUsed()) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     int in_dtype = ctx.Attr<int>("in_dtype");
     if (in_dtype >= 0) {
       return framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(in_dtype),
           ctx.GetPlace());
     }
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -606,6 +633,9 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<int>("input_format",
+                  "(int, default -1) Input memory format")
+        .SetDefault(-1);
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 
