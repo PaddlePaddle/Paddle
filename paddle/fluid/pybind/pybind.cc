@@ -166,17 +166,6 @@ bool SupportsBfloat16() {
 #endif
 }
 
-bool SupportsBfloat16FastPerformance() {
-#ifndef PADDLE_WITH_MKLDNN
-  return false;
-#else
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_bf16))
-    return true;
-  else
-    return false;
-#endif
-}
-
 // According to the input `place` and `dtype`, this function returns a tuple
 // consists of three sets:
 // 1) All operators registered in the Paddle framework.
@@ -1814,7 +1803,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("supports_bfloat16", SupportsBfloat16);
-  m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("op_supported_infos", OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
