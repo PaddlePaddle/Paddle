@@ -24,6 +24,7 @@ from paddle.nn.functional import affine_grid, grid_sample
 from paddle.nn.functional import pad as paddle_pad
 
 import sys
+import collections
 
 if sys.version_info < (3, 3):
     Sequence = collections.Sequence
@@ -524,7 +525,7 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         raise TypeError('Got inappropriate size arg: {}'.format(size))
 
     if isinstance(size, int):
-        w, h = img.size
+        w, h = _get_image_size(img, data_format)
         if (w <= h and w == size) or (h <= w and h == size):
             return img
         if w < h:
