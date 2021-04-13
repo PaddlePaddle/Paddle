@@ -42,7 +42,7 @@ class GraphIndex(Index):
     def get_item_of_path(self, path):
         if isinstance(path, list):
             assert len(path) > 0
-            assert isinstance(path[0], int)
+            # assert isinstance(path[0], int)
             return self._graph.get_item_of_path(path)
         elif isinstance(path, int):
             return self._graph.get_item_of_path([path])
