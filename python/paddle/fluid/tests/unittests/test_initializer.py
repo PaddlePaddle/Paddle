@@ -130,9 +130,9 @@ class TestUniformInitializer(unittest.TestCase):
                 name="param2",
                 initializer=initializer.UniformInitializer(seed=456))
         init_op = block.ops[1]
-        self.assertEqual(init_op.attr("seed"), 123)
+        self.assertEqual(init_op.attr("seed"), 456)
         init_op1 = block.ops[0]
-        self.assertEqual(init_op1.attr("seed"), 456)
+        self.assertEqual(init_op1.attr("seed"), 123)
 
     def test_uniform_initializer(self, dtype="float32"):
         """Test uniform initializer with supplied attributes
@@ -547,12 +547,12 @@ class TestSetGlobalInitializer(unittest.TestCase):
         block = startup_prog.global_block()
         self.assertEqual(len(block.ops), 2)
 
-        # init bias is the first op, and weight is the second
-        bias_init_op = block.ops[0]
+        # init weight is the first op, and bias is the second
+        bias_init_op = block.ops[1]
         self.assertEqual(bias_init_op.type, 'fill_constant')
         self.assertAlmostEqual(bias_init_op.attr('value'), 0.0, delta=DELTA)
 
-        param_init_op = block.ops[1]
+        param_init_op = block.ops[0]
         self.assertEqual(param_init_op.type, 'uniform_random')
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
@@ -577,14 +577,14 @@ class TestSetGlobalInitializer(unittest.TestCase):
         block = startup_prog.global_block()
         self.assertEqual(len(block.ops), 2)
 
-        # init bias is the first op, and weight is the second
-        bias_init_op = block.ops[0]
+        # init weight is the first op, and bias is the second
+        bias_init_op = block.ops[1]
         self.assertEqual(bias_init_op.type, 'gaussian_random')
         self.assertAlmostEqual(bias_init_op.attr('mean'), 0.0, delta=DELTA)
         self.assertAlmostEqual(bias_init_op.attr('std'), 2.0, delta=DELTA)
         self.assertEqual(bias_init_op.attr('seed'), 0)
 
-        param_init_op = block.ops[1]
+        param_init_op = block.ops[0]
         self.assertEqual(param_init_op.type, 'uniform_random')
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)

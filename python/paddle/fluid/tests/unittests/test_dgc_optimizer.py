@@ -119,8 +119,8 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
         init_ops_count = 5 if name == "momentum" else 9
         init_ops = init_program.global_block().ops
         self.assertEqual(len(init_ops), init_ops_count)
-        self.assertEqual(init_ops[0].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
+        self.assertEqual(init_ops[-1].type, "fill_constant")
+        self.assertAlmostEqual(init_ops[-1].attr('value'), learning_rate)
 
         # check dgc op regularization coeff
         train_ops = program.global_block().ops
