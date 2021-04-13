@@ -265,7 +265,9 @@ class PostTrainingQuantization(object):
             'range_abs_max', 'moving_average_abs_max', 'abs_max'
         ]
         self._support_weight_quantize_type = ['abs_max', 'channel_wise_abs_max']
-        self._support_algo_type = ['KL', 'hist', 'avg', 'mse', 'abs_max', 'min_max']
+        self._support_algo_type = [
+            'KL', 'hist', 'avg', 'mse', 'abs_max', 'min_max'
+        ]
         self._dynamic_quantize_op_type = ['lstm']
         self._support_quantize_op_type = \
             list(set(QuantizationTransformPass._supported_quantizable_op_type +
@@ -389,11 +391,8 @@ class PostTrainingQuantization(object):
             batch_id += 1
             if self._batch_nums and batch_id >= self._batch_nums:
                 break
-        
         _logger.info("Finish sampling stage, all batch: " + str(batch_id))
-
         self._reset_activation_persistable()
-        
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:
                 self._quantized_threshold[var_name] = \
@@ -573,8 +572,6 @@ class PostTrainingQuantization(object):
                             abs_max_value.append(
                                 float(np.max(np.abs(var_tensor[i]))))
                 self._quantized_threshold[var_name] = abs_max_value
-        
-        #Search for the best threshold for activations
         _logger.info("MSE searching stage ...")
         for var_name in self._quantized_act_var_name:
             var_tensor = _load_variable_data(self._scope, var_name)
@@ -586,13 +583,15 @@ class PostTrainingQuantization(object):
             while s <= 1.0:
                 scale = s * abs_max_value
                 s += 0.02
-                bins = 2 ** (self._activation_bits -1) - 1 
-                quant_dequant_var = np.round(np.clip(var_tensor, 0.0, scale) / scale * bins) / bins * scale
-                mse_loss = ((var_tensor - quant_dequant_var) ** 2).mean()
+                bins = 2**(self._activation_bits - 1) - 1
+                quant_dequant_var = np.round(
+                    np.clip(var_tensor, 0.0, scale) / scale *
+                    bins) / bins * scale
+                mse_loss = ((var_tensor - quant_dequant_var)**2).mean()
                 if mse_loss <= self._best_mse_loss[var_name]:
                     self._best_mse_loss[var_name] = mse_loss
                     self._quantized_threshold[var_name] = scale
-    
+
     def _sample_avg(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
@@ -611,7 +610,7 @@ class PostTrainingQuantization(object):
                             abs_max_value.append(
                                 float(np.max(np.abs(var_tensor[i]))))
                 self._quantized_threshold[var_name] = abs_max_value
-        
+
         for var_name in self._quantized_act_var_name:
             var_tensor = _load_variable_data(self._scope, var_name)
             abs_max_value = float(np.max(np.abs(var_tensor)))
@@ -621,8 +620,8 @@ class PostTrainingQuantization(object):
             np.abs(var_tensor.reshape(var_tensor.shape[0], -1)), axis=(1))))
             self._quantized_var_avg[var_name].append(abs_avg_value)
             continue
-            
-    def _sample_abs_max(self):        
+
+    def _sample_abs_max(self):
         if self._quantized_threshold == {}:
             for var_name in self._quantized_weight_var_name:
                 var_tensor = _load_variable_data(self._scope, var_name)
@@ -640,7 +639,7 @@ class PostTrainingQuantization(object):
                             abs_max_value.append(
                                 float(np.max(np.abs(var_tensor[i]))))
                 self._quantized_threshold[var_name] = abs_max_value
-        
+
         for var_name in self._quantized_act_var_name:
             var_tensor = _load_variable_data(self._scope, var_name)
             abs_max_value = float(np.max(np.abs(var_tensor)))
@@ -856,18 +855,16 @@ class PostTrainingQuantization(object):
                 out_var_name + " is not the output of the op"
             if self._algo == "KL":
                 # For compatibility, we save output threshold by two methods.
-                save_info(op_node, out_var_name,
-                          self._quantized_var_threshold, "out_threshold",
-                          "post_kl")
+                save_info(op_node, out_var_name, self._quantized_var_threshold,
+                          "out_threshold", "post_kl")
                 save_info(
                     op_node, out_var_name, self._quantized_var_threshold,
                     argname_index[0] + str(argname_index[1]) + "_threshold",
                     "post_kl")
             elif self._algo == "hist":
                 # For compatibility, we save output threshold by two methods.
-                save_info(op_node, out_var_name,
-                          self._quantized_var_threshold, "out_threshold",
-                          "post_hist")
+                save_info(op_node, out_var_name, self._quantized_var_threshold,
+                          "out_threshold", "post_hist")
                 save_info(
                     op_node, out_var_name, self._quantized_var_threshold,
                     argname_index[0] + str(argname_index[1]) + "_threshold",
@@ -926,7 +923,7 @@ class PostTrainingQuantization(object):
         '''
         Using the hist method to get the scaling factor.
         '''
-        threshold_rate = self._hist_percent 
+        threshold_rate = self._hist_percent
         hist = hist / float(sum(hist))
         hist_sum = 0
         hist_index = 0
@@ -942,7 +939,7 @@ class PostTrainingQuantization(object):
         '''
         Using the KL-divergenc method to get the more precise scaling factor.
         '''
-        num_quantized_bins = 2 ** (self._activation_bits - 1) - 1
+        num_quantized_bins = 2**(self._activation_bits - 1) - 1
         ending_iter = self._histogram_bins - 1
         starting_iter = int(ending_iter * 0.7)
         bin_width = hist_edeges[1] - hist_edeges[0]

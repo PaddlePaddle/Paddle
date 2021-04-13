@@ -1372,6 +1372,7 @@ class QuantizationFreezePass(object):
     def _quant(self, x, scale, num_bits, quant_axis):
         assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
         bnt = (1 << (num_bits - 1)) - 1
+
         def _clip(x, scale):
             x[x > scale] = scale
             x[x < -scale] = -scale
@@ -1412,9 +1413,12 @@ class QuantizationFreezePass(object):
                 for i, s in enumerate(scale_v):
                     x_dequant[:, i] = x_quant[:, i] * s / bnt
                 quant_bias = x - x_dequant
-                mean_bias = np.array([quant_bias[:, i].mean() for i in range(quant_bias.shape[1])])
+                mean_bias = np.array([
+                    quant_bias[:, i].mean() for i in range(quant_bias.shape[1])
+                ])
                 std_orig = np.array([x[:, i].std() for i in range(x.shape[1])])
-                std_quant = np.array([x_dequant[:, i].std() for i in range(x_dequant.shape[1])])
+                std_quant = np.array(
+                    [x_dequant[:, i].std() for i in range(x_dequant.shape[1])])
                 std_bias = std_orig / (std_quant + eps)
         else:
             x_dequant = x_quant * scale_v / bnt
@@ -1425,7 +1429,8 @@ class QuantizationFreezePass(object):
             mean_bias = np.resize(mean_bias, x.shape)
 
         x_dequant = (mean_bias + x_dequant) * std_bias
-        quantized_param_v = self._quant(x_dequant, scale_v, self._weight_bits, quant_axis)
+        quantized_param_v = self._quant(x_dequant, scale_v, self._weight_bits,
+                                        quant_axis)
         return quantized_param_v
 
 

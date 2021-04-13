@@ -327,6 +327,7 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
                       is_full_quantize, is_use_cache_file, is_optimize_model,
                       diff_threshold)
 
+
 class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
     def test_post_training_avg_mobilenetv1(self):
         model = "MobileNet-V1"
@@ -347,6 +348,7 @@ class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
         self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
                       is_full_quantize, is_use_cache_file, is_optimize_model,
                       diff_threshold)
+
 
 class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
     def test_post_training_hist_mobilenetv1(self):
@@ -369,26 +371,6 @@ class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
                       is_full_quantize, is_use_cache_file, is_optimize_model,
                       diff_threshold)
 
-class TestPostTrainingmseForMobilenetv1(TestPostTrainingQuantization):
-    def test_post_training_mse_mobilenetv1(self):
-        model = "MobileNet-V1"
-        algo = "mse"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
-        ]
-        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        quantizable_op_type = [
-            "conv2d",
-            "depthwise_conv2d",
-            "mul",
-        ]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = True
-        diff_threshold = 0.025
-        self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file, is_optimize_model,
-                      diff_threshold)
 
 class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
     def test_post_training_abs_max_mobilenetv1(self):
