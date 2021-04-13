@@ -77,5 +77,16 @@ class TRTDynamicShapeOutOfBound2Test(TRTDynamicShapeTest):
                 self.check_output_with_option(use_gpu)
 
 
+class TRTDynamicShapeOutOfBound3Test(TRTDynamicShapeTest):
+    def set_feeds(self):
+        return {"data": np.random.random([1, 3, 4, 16]).astype("float32"), }
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            with self.assertRaises(Exception):
+                self.check_output_with_option(use_gpu)
+
+
 if __name__ == "__main__":
     unittest.main()
