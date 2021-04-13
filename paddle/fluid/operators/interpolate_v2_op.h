@@ -1024,9 +1024,9 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
       PADDLE_ENFORCE_EQ(
           scale_w > 0, true,
           platform::errors::InvalidArgument(
-          "The input 'scale_w' Tensor's value in Operator(interpolate) "
-          "should be greater than 0, but received value is %d.",
-          scale_w));
+              "The input 'scale_w' Tensor's value in Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
       PADDLE_ENFORCE_EQ(
           scale_h > 0, true,
           platform::errors::InvalidArgument(
@@ -1050,7 +1050,7 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
             platform::errors::InvalidArgument(
                 "The input 'scale_w' Tensor's value in Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
-               scale_w));
+                scale_w));
         PADDLE_ENFORCE_EQ(
             scale_h > 0, true,
             platform::errors::InvalidArgument(
