@@ -38,11 +38,13 @@ else
 fi
 
 # check added ut
-set +e
-cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
-bash $PADDLE_ROOT/tools/check_added_ut_win.sh
-rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
-set -e
+if [ ${WITH_GPU:-OFF} == "ON" ];then
+    set +e
+    cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+    bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+    rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+    set -e
+fi
 
 
 # /*==================Fixed Disabled Windows unittests==============================*/
