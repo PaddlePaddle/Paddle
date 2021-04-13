@@ -187,23 +187,29 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
 PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
   PD_Predictor* predictor = new PD_Predictor;
   predictor->predictor = paddle::CreatePaddlePredictor(config->config);
+  predictor->in_names = predictor->predictor->GetInputNames();
+  predictor->out_names = predictor->predictor->GetOutputNames();
   return predictor;
 }
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
   if (predictor) {
     predictor->predictor = nullptr;
+    predictor->in_names.clear();
+    predictor->in_names.shrink_to_fit();
+    predictor->out_names.clear();
+    predictor->out_names.shrink_to_fit();
     delete predictor;
     predictor = nullptr;
   }
 }
 
 int PD_GetInputNum(const PD_Predictor* predictor) {
-  return static_cast<int>(predictor->predictor->GetInputNames().size());
+  return static_cast<int>(predictor->in_names.size());
 }
 
 int PD_GetOutputNum(const PD_Predictor* predictor) {
-  return static_cast<int>(predictor->predictor->GetOutputNames().size());
+  return static_cast<int>(predictor->out_names.size());
 }
 
 const char* PD_GetInputName(const PD_Predictor* predictor, int n) {
