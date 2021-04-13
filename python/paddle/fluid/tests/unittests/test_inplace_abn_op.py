@@ -27,7 +27,7 @@ import paddle.fluid.unique_name as unique_name
 
 class TestInplaceANBOpTraining(unittest.TestCase):
     def setUp(self):
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.N = 4
         self.C = 5
         self.H = 7
@@ -144,8 +144,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             fetch_outs.append(bn_fetches)
             fetch_names.append(fetch_name)
 
-        for bn_val, inplace_abn_val, name1, name2 in zip(*(fetch_outs +
-                                                           fetch_names)):
+        for bn_val, inplace_abn_val, name1, name2 in zip(*(
+                fetch_outs + fetch_names)):
             self.assertTrue(
                 np.allclose(
                     bn_val, inplace_abn_val, atol=1e-2),
