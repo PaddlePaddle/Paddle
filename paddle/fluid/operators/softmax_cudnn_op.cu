@@ -410,7 +410,7 @@ __global__ void KeLoopDimSoftmaxBackward(T* __restrict__ dx,
 }
 
 template <typename T, int VECSIZE>
-inline void LaunchLoopDimSoftmaxBackwardKernel(const cudaStream_t& stream,
+inline void LaunchLoopDimSoftmaxBackwardKernel(const gpuStream_t& stream,
                                                T* dx_data, const T* out_data,
                                                const T* dout_data, const int N,
                                                const int dim, const int D) {
@@ -424,7 +424,7 @@ inline void LaunchLoopDimSoftmaxBackwardKernel(const cudaStream_t& stream,
 }
 
 template <typename T>
-inline void LaunchLoopDimSoftmaxBackward(const cudaStream_t& stream, T* dx_data,
+inline void LaunchLoopDimSoftmaxBackward(const gpuStream_t& stream, T* dx_data,
                                          const T* out_data, const T* dout_data,
                                          const int N, const int dim,
                                          const int D, const int sm_count) {
@@ -524,7 +524,7 @@ __global__ void KeSpandDimDSoftmaxForward(T* __restrict__ dst,
   }
 }
 template <typename T, int VECSIZE>
-inline void LaunchSpandDimDSoftmaxForwardKernel(const cudaStream_t& stream,
+inline void LaunchSpandDimDSoftmaxForwardKernel(const gpuStream_t& stream,
                                                 const T* in_data, T* out_data,
                                                 const int N, const int dim,
                                                 const int D) {
@@ -547,7 +547,7 @@ inline void LaunchSpandDimDSoftmaxForwardKernel(const cudaStream_t& stream,
       out_data, in_data, N, dim, D);
 }
 template <typename T>
-inline void LaunchSpandDimDSoftmaxForward(const cudaStream_t& stream,
+inline void LaunchSpandDimDSoftmaxForward(const gpuStream_t& stream,
                                           const T* in_data, T* out_data,
                                           const int N, const int dim,
                                           const int D) {
@@ -629,7 +629,7 @@ __global__ void KeSpandDimDSoftmaxBackward(T* __restrict__ dx,
 }
 
 template <typename T, int VECSIZE>
-inline void LaunchSpandDimDSoftmaxBackwardKernel(const cudaStream_t& stream,
+inline void LaunchSpandDimDSoftmaxBackwardKernel(const gpuStream_t& stream,
                                                  T* dx_data, const T* out_data,
                                                  const T* dout_data,
                                                  const int N, const int dim,
@@ -655,7 +655,7 @@ inline void LaunchSpandDimDSoftmaxBackwardKernel(const cudaStream_t& stream,
 }
 
 template <typename T>
-inline void LaunchSpandDimDSoftmaxBackward(const cudaStream_t& stream,
+inline void LaunchSpandDimDSoftmaxBackward(const gpuStream_t& stream,
                                            T* dx_data, const T* out_data,
                                            const T* dout_data, const int N,
                                            const int dim, const int D) {
