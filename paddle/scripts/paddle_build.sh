@@ -1830,6 +1830,10 @@ function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
 }
 
+function test_model_benchmark() {
+    bash ${PADDLE_ROOT}/tools/test_model_benchmark.sh
+}
+
 function summary_check_problems() {
     set +x
     local check_style_code=$1
@@ -2023,6 +2027,9 @@ function main() {
         ;;
       test_op_benchmark)
         test_op_benchmark
+        ;;
+      test_model_benchmark)
+        test_model_benchmark
         ;;
       *)
         print_usage
