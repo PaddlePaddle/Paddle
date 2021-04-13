@@ -868,8 +868,8 @@ class BatchNorm3D(_BatchNormBase):
         \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
         \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
 
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
@@ -967,8 +967,8 @@ class SyncBatchNorm(_BatchNormBase):
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    When model in training mode, the :math:`\\mu_{\\beta}` 
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
+    When model in training mode, the :math:`\mu_{\beta}` 
+    and :math:`\sigma_{\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
     Calculated as follows:
 
     ..  math::
