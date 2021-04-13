@@ -246,10 +246,10 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
     if (param_var->IsType<framework::LoDTensor>()) {
       detail::sgd_op_invoke_dense_param_kernel<T>(ctx);
     } else if (param_var->IsType<framework::SelectedRows>()) {
-      PADDLE_ENFORCE(grad_var->IsType<framework::SelectedRows>(),
-                     platform::errors::InvalidArgument(
-                         "When param is SelectedRows, gradient should also "
-                         "be SelectedRows"));
+      PADDLE_ENFORCE_EQ(grad_var->IsType<framework::SelectedRows>(), true,
+                        platform::errors::InvalidArgument(
+                            "When param is SelectedRows, gradient should also "
+                            "be SelectedRows"));
       const auto &param = param_var->Get<framework::SelectedRows>();
       auto *param_out = ctx.Output<framework::SelectedRows>("ParamOut");
       const auto &grad = grad_var->Get<framework::SelectedRows>();
