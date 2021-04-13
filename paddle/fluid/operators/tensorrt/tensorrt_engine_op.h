@@ -76,18 +76,19 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
           model_input_shape_str, runtime_input_shape_str));
 }
 
-static void RuntimeDynamicShapeCheck(std::string x,
-                                     std::vector<int64_t> runtime_input_shape,
-                                     std::vector<int> min_input_shape,
-                                     std::vector<int> max_input_shape) {
+static void RuntimeDynamicShapeCheck(
+    const std::string &x, const std::vector<int64_t> &runtime_input_shape,
+    const std::vector<int> &min_input_shape,
+    const std::vector<int> &max_input_shape) {
   PADDLE_ENFORCE_EQ(runtime_input_shape.size(), min_input_shape.size(),
                     platform::errors::InvalidArgument(
                         "TRT engine runtime input dims size(%d) inconsistent "
                         "with the dynamic shape size(%d)",
                         runtime_input_shape.size(), min_input_shape.size()));
-  auto is_input_shape_valid = [&](std::vector<int64_t> runtime_input_shape,
-                                  std::vector<int> min_input_shape,
-                                  std::vector<int> max_input_shape) -> bool {
+  auto is_input_shape_valid = [&](
+      const std::vector<int64_t> &runtime_input_shape,
+      const std::vector<int> &min_input_shape,
+      const std::vector<int> &max_input_shape) -> bool {
     for (size_t i = 0; i < runtime_input_shape.size(); i++) {
       if (runtime_input_shape[i] <= max_input_shape[i] &&
           runtime_input_shape[i] >= min_input_shape[i]) {
