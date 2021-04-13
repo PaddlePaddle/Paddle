@@ -147,6 +147,16 @@ class CollectiveHelper(object):
                 type='c_gen_bkcl_id',
                 inputs={},
                 outputs={'Out': comm_id_var},
+        elif core.is_compiled_with_npu():
+            hccl_id_var = block.create_var(
+                name=unique_name.generate('hccl_id'),
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
+            endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
+            block.append_op(
+                type='c_gen_hccl_id',
+                inputs={},
+                outputs={'Out': hccl_id_var},
                 attrs={
                     'rank': rank,
                     'endpoint': current_endpoint,
@@ -154,13 +164,14 @@ class CollectiveHelper(object):
                     OP_ROLE_KEY: OpRole.Forward
                 })
             block.append_op(
-                type='c_comm_init',
-                inputs={'X': comm_id_var},
+                type='c_comm_init_hccl',
+                inputs={'X': hccl_id_var},
                 outputs={},
                 attrs={
-                    'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'device_id': int(os.getenv("FLAGS_selected_npus")),
+                    'rank_ids': nranks,
                     OP_ROLE_KEY: OpRole.Forward
                 })
         else:

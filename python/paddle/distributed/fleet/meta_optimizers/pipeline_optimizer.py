@@ -19,7 +19,147 @@ from paddle.fluid import core, unique_name
 from ..base.private_helper_function import wait_server_ready
 from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_loss_grad_op, is_backward_op, is_optimizer_op
+from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
+
+
+def _get_node_num(endpoints):
+    ss = set()
+    for ep in endpoints:
+        ip = ep.split(":")[0].strip()
+        if ip not in ss:
+            ss.add(ip)
+    return len(ss)
+
+
+class PipelineHelper(object):
+    def __init__(self, role_maker, wait_port='6174'):
+        self.wait_port = wait_port
+        self.role_maker = role_maker
+
+    def update_startup_program(self,
+                               startup_program=None,
+                               inner_parallelism=None):
+        self.startup_program = startup_program
+
+        nranks = self.role_maker._worker_num()
+        rank = self.role_maker._worker_index()
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[rank]
+        node_num = _get_node_num(endpoints)
+        assert nranks % node_num == 0
+
+        # Create ring 0 for all gpus in the same pipeline
+        if inner_parallelism > 1:
+            pipeline_rank = rank % inner_parallelism
+            pipeline_id = rank // inner_parallelism
+            start_index = pipeline_id * inner_parallelism
+            pipeline_endpoints = endpoints[start_index:start_index +
+                                           inner_parallelism]
+            self._init_communicator(self.startup_program, current_endpoint,
+                                    pipeline_endpoints, pipeline_rank, 0,
+                                    self.wait_port)
+
+        pipeline_num = len(endpoints) // inner_parallelism
+        if pipeline_num == 1: return
+        # Create rings for gpus with the same pipeline id for data parallel
+        eps = []
+        pipeline_rank = rank % inner_parallelism
+        ring_id = pipeline_rank + 1
+        for i in range(pipeline_num):
+            eps.append(endpoints[i * inner_parallelism + pipeline_rank])
+        # rank in a ring of gpus with the same pipeline id for data parallel
+        dp_rank = rank // inner_parallelism
+        self._init_communicator(self.startup_program, current_endpoint, eps,
+                                dp_rank, ring_id, self.wait_port)
+        self._broadcast_params(ring_id)
+
+    def _init_communicator(self, program, current_endpoint, endpoints, rank,
+                           ring_id, wait_port):
+        nranks = len(endpoints)
+        other_endpoints = endpoints[:]
+        other_endpoints.remove(current_endpoint)
+        block = program.global_block()
+        if core.is_compiled_with_cuda():
+            if rank == 0 and wait_port:
+                wait_server_ready(other_endpoints)
+            nccl_id_var = block.create_var(
+                name=unique_name.generate('nccl_id'),
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
+            block.append_op(
+                type='c_gen_nccl_id',
+                inputs={},
+                outputs={'Out': nccl_id_var},
+                attrs={
+                    'rank': rank,
+                    'endpoint': current_endpoint,
+                    'other_endpoints': other_endpoints,
+                    OP_ROLE_KEY: OpRole.Forward,
+                })
+            block.append_op(
+                type='c_comm_init',
+                inputs={'X': nccl_id_var},
+                outputs={},
+                attrs={
+                    'nranks': nranks,
+                    'rank': rank,
+                    'ring_id': ring_id,
+                    OP_ROLE_KEY: OpRole.Forward,
+                })
+        elif core.is_compiled_with_npu():
+            if rank == 0 and wait_port:
+                wait_server_ready(other_endpoints)
+            hccl_id_var = block.create_var(
+                name=unique_name.generate('hccl_id'),
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
+            endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
+            block.append_op(
+                type='c_gen_hccl_id',
+                inputs={},
+                outputs={'Out': hccl_id_var},
+                attrs={
+                    'rank': rank,
+                    'endpoint': current_endpoint,
+                    'other_endpoints': other_endpoints,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+            block.append_op(
+                type='c_comm_init_hccl',
+                inputs={'X': hccl_id_var},
+                outputs={},
+                attrs={
+                    'rank': rank,
+                    'ring_id': ring_id,
+                    'device_id': int(os.getenv("FLAGS_selected_npus")),
+                    'rank_ids': nranks,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+
+    def _broadcast_params(self, ring_id):
+        block = self.startup_program.global_block()
+        for var_name in block.vars:
+            if "nccl_id" in var_name: continue
+            param = block.var(var_name)
+            if not param.persistable:
+                continue
+
+            block.append_op(
+                type='c_broadcast',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': 0,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+
+        block.append_op(
+            type='c_sync_comm_stream',
+            inputs={'X': param},
+            outputs={'Out': param},
+            attrs={'ring_id': ring_id,
+                   OP_ROLE_KEY: OpRole.Forward})
 
 
 class PipelineOptimizer(MetaOptimizerBase):

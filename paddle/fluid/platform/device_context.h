@@ -188,11 +188,28 @@ class NPUDeviceContext : public DeviceContext {
   /*! \brief  Return npu stream in the device context. */
   aclrtStream stream() const;
 
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return stream_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return stream_->WaitCallback(); }
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+  /*! \brief  Return hccl communicators. */
+  HcclComm hccl_comm() const { return hccl_comm_; }
+
+  /*! \brief  Set hccl communicators. */
+  void set_hccl_comm(HcclComm comm) { hccl_comm_ = comm; }
+#endif
+
  private:
   NPUPlace place_;
   aclrtContext context_;
-#ifdef PADDLE_WITH_ASCEND_HCCL
-  HCCLContext_t hccl_context_;
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  // HCCLContext_t hccl_context_;
+  HcclComm hccl_comm_{nullptr};
 #endif
 
   // Need to be the same with other DeviceContext,
