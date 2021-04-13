@@ -653,6 +653,12 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     auto dW = ctx.Output<Tensor>("DFilter");
     auto dX = ctx.Output<Tensor>("DInput");
 
+    LOG(WARNING) << "X: " << *X;
+    LOG(WARNING) << "W: " << *W;
+    LOG(WARNING) << "dO: " << *dO;
+    LOG(WARNING) << "ddX: " << *ddX;
+    LOG(WARNING) << "ddW: " << *ddW;
+
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
       math::SetConstant<platform::CUDADeviceContext, T> set_zero;
@@ -1214,6 +1220,10 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
             ctx, &transformed_dX_channel, dX);
       }
     }
+
+    LOG(WARNING) << "ddO: " << *ddO;
+    LOG(WARNING) << "dW: " << *dW;
+    LOG(WARNING) << "dX: " << *dX;
   }
 };
 
