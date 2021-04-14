@@ -51,14 +51,6 @@ using Tensor = framework::Tensor;
         dx_data, mul_grad.data<T>(), out->data<T>(), N, dim, dim); \
     break;
 
-static inline int SizeOutAxis(const int axis, DDim dims) {
-  int size = 1;
-  for (int i = axis + 1; i < dims.size(); i++) {
-    size *= dims[i];
-  }
-  return size;
-}
-
 int log2_ceil(int value) {
   int log2_value = 0;
   while ((1 << log2_value) < value) ++log2_value;
