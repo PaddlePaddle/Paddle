@@ -238,7 +238,6 @@ function cmake_base() {
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
-        -DWITH_RCCL=${WITH_RCCL:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -276,7 +275,6 @@ EOF
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
-        -DWITH_RCCL=${WITH_RCCL:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -1830,6 +1828,10 @@ function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
 }
 
+function test_model_benchmark() {
+    bash ${PADDLE_ROOT}/tools/test_model_benchmark.sh
+}
+
 function summary_check_problems() {
     set +x
     local check_style_code=$1
@@ -2023,6 +2025,9 @@ function main() {
         ;;
       test_op_benchmark)
         test_op_benchmark
+        ;;
+      test_model_benchmark)
+        test_model_benchmark
         ;;
       *)
         print_usage
