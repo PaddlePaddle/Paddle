@@ -19,7 +19,6 @@ import paddle.fluid as fluid
 import paddle
 
 
-@skip_check_grad_ci(reason="not implemented")
 class TestReduceSumDefaultONEDNNOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -32,8 +31,12 @@ class TestReduceSumDefaultONEDNNOp(OpTest):
         self.check_output()
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum4DONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceDefaultWithGradONEDNNOp(TestReduceSumDefaultONEDNNOp):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestReduceSum4DONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -44,34 +47,19 @@ class TestReduceSum4DONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
 class TestReduceSum4DReduceAllWithoutReduceAllAttributeONEDNNOp(
-        TestReduceSumDefaultONEDNNOp):
+        TestReduceDefaultWithGradONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
-        self.inputs = {'X': np.random.random((5, 10, 5, 5)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 10, 5, 6)).astype("float32")}
         self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1, 2, 3]}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsONEDNNOp(
-        TestReduceSumDefaultONEDNNOp):
-    def setUp(self):
-        self.op_type = "reduce_sum"
-        self.use_mkldnn = True
-        self.inputs = {'X': np.random.random((5, 10, 5, 5)).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [-1, -2, -3, -4]}
-        self.outputs = {
-            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
-        }
-
-
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum5DKeepDimsONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceSum5DKeepDimsONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -83,8 +71,7 @@ class TestReduceSum5DKeepDimsONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum5DReduceAllKeepDimsONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceSum5DReduceAllKeepDimsONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -95,8 +82,7 @@ class TestReduceSum5DReduceAllKeepDimsONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceSum4DReduceAllONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -154,8 +140,7 @@ class TestReduceMin3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceMean3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceMean3DONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -166,8 +151,7 @@ class TestReduceMean3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceMean4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceMean4DReduceAllONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -177,16 +161,6 @@ class TestReduceMean4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
             'Out':
             self.inputs['X'].sum() / np.asarray(self.inputs['X'].shape).prod()
         }
-
-
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceMeanNoReduce1DOp(TestReduceSumDefaultONEDNNOp):
-    def setUp(self):
-        self.op_type = "reduce_mean"
-        self.use_mkldnn = True
-        self.inputs = {'X': np.random.random((1)).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': self.inputs['X']}
 
 
 if __name__ == '__main__':

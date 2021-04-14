@@ -569,6 +569,9 @@ class ReduceGradOp : public framework::OperatorWithKernel {
 
     auto CanMKLDNNReduceGradBeUsed = [&]() {
       auto dx_dims = ctx.Input<Tensor>("X")->dims();
+      if (ctx.Attr<bool>("reduce_all") || (ctx.Attr<std::vector<int>>("dim").size() == dx_dims.size()))
+        return true;
+
       auto dy_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
 
       // Subtensor must be on rightmost part of the bigger tensor

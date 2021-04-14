@@ -126,7 +126,7 @@ template <typename T>
 class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void RunKernel(const framework::ExecutionContext& ctx,
-                 dnnl::algorithm reduction_type) const {
+                 dnnl::algorithm binary_type, float scale_x, float scale_y) const {
     //only for reduce sum for now
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
@@ -139,15 +139,18 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     output_dx->mutable_data<T>(ctx.GetPlace());
+    
     output_dx->set_format(getPlainFormatTag(output_dx));
     output_dx->set_layout(input_dy->layout());
 
-    platform::BinaryReductionGradMKLDNNHandler<T> handler(dnnl::algorithm::binary_add, dev_ctx, onednn_engine,
-                 ctx.GetPlace(), output_dx, input_dy, 0.0f, 1.0f,
+    platform::BinaryReductionGradMKLDNNHandler<T> handler(binary_type, dev_ctx, onednn_engine,
+                 ctx.GetPlace(), output_dx, input_dy, scale_x, scale_y,
                  ctx.InputName(framework::GradVarName("Out")));
 
-    const auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
+    auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
     const auto src_dy_memory = handler.AcquireSecondSrcMemory(input_dy);
+
+    memset(output_dx->data<T>(), 0, src_dx_memory->get_desc().get_size());
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
