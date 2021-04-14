@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding
-
+os.environ['FLAGS_infcheck_adamoptimizer'] = "True"
 paddle.enable_static()
 
 

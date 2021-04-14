@@ -20,7 +20,7 @@ import paddle.distributed.fleet as fleet
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 from paddle.distributed.fleet.meta_optimizers import DGCOptimizer
 import paddle.distributed.fleet.base.role_maker as role_maker
-
+os.environ['FLAGS_infcheck_adamoptimizer'] = "True"
 paddle.enable_static()
 
 
@@ -141,7 +141,6 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
 
         strategy = fleet._final_strategy()
-
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
             op.output('Out')[0] for op in avg_cost.block.ops if op.type == 'mul'
