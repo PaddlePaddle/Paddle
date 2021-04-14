@@ -33,7 +33,7 @@ from paddle.fluid import core
 from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _pickle_loads_mac
 from paddle.fluid.io import _legacy_save as _legacy_static_save
 
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, _current_expected_place
+from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, _current_expected_place, Program
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -235,11 +235,6 @@ def _pickle_save(obj, f, protocol):
         raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
                          format(protocol))
 
-    if not isinstance(obj, (core.LoDTensor, core.VarBase)):
-        raise NotImplementedError(
-            "Support 'paddle.Tensor' or 'paddle.core.LoDTensor', but received {}.".
-            format(type(obj)))
-
     def reudce_varbase(self):
         data = self.numpy()
         name = self.name
@@ -287,11 +282,40 @@ def _pickle_save(obj, f, protocol):
             pickler.dump(obj)
 
 
-def _use_legacy(obj):
-    # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
-    if not isinstance(obj, dict):
+def _contain_x(obj, condition_func):
+    if isinstance(obj, core.SelectedRows):
+        raise NotImplementedError(
+            "`paddle.save` do not support saving 'SelectedRows'.")
+
+    if condition_func(obj):
+        return True
+    elif type(obj) in (dict, collections.OrderedDict, list, tuple):
+        if type(obj) in (dict, collections.OrderedDict):
+            keys = list(obj.keys())
+        else:
+            keys = range(len(obj))
+        flag = False
+        for key in keys:
+            flag |= _contain_x(obj[key], condition_func)
+        return flag
+    else:
         return False
-    return True
+
+
+def _is_state_dict(obj):
+    if isinstance(obj, dict):
+
+        def condition(obj):
+            return isinstance(obj, (core.Layer, Program, core.VarBase,
+                                    core.LoDTensor))
+
+        for key, value in obj.items():
+            if not isinstance(value, (core.VarBase, core.LoDTensor)):
+                if _contain_x(obj, condition):
+                    return False
+        return True
+
+    return False
 
 
 def _transformed_from_varbase(obj):
@@ -346,6 +370,64 @@ def _ndarray_to_tensor(obj, return_numpy):
         return paddle.to_tensor(obj)
     else:
         return _to_LodTensor(obj)
+
+
+def _parsed_as_state_dict(obj):
+    if isinstance(obj, dict):
+
+        def condition(obj):
+            return isinstance(obj, (core.Layer, Program, core.VarBase,
+                                    core.LoDTensor))
+
+        for key, value in obj.items():
+            if not isinstance(value, (core.VarBase, core.LoDTensor)):
+                if _contain_x(obj, condition):
+                    return False
+        return True
+
+    return False
+
+
+def _parse_every_tensor(obj, condition_func, convert_func):
+    if condition_func(obj):
+        return convert_func(obj)
+    elif type(obj) in (dict, collections.OrderedDict, list):
+        if type(obj) == list:
+            keys = range(len(obj))
+        else:
+            keys = list(obj.keys())
+        for key in keys:
+            if condition_func(obj[key]):
+                obj[key] = convert_func(obj[key])
+            else:
+                obj[key] = _parse_every_tensor(obj[key], condition_func,
+                                               convert_func)
+        return obj
+    elif type(obj) == tuple:
+        return tuple(
+            _parse_every_tensor(list(obj), condition_func, convert_func))
+    else:
+        if isinstance(obj, collections.Iterable) and not isinstance(obj, (
+                str, np.ndarray, core.VarBase, core.LoDTensor)):
+            raise NotImplementedError(
+                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".
+                format(type(obj)))
+        return obj
+
+
+def _parse_load_result(obj, return_numpy):
+    def tuple_to_tensor(obj):
+        return _tuple_to_tensor(obj, return_numpy=return_numpy)
+
+    def ndarray_to_tensor(obj):
+        return _ndarray_to_tensor(obj, return_numpy=return_numpy)
+
+    if _contain_x(obj, _transformed_from_varbase):
+        return _parse_every_tensor(obj, _transformed_from_varbase,
+                                   tuple_to_tensor)
+    else:
+        return _parse_every_tensor(obj, _transformed_from_lodtensor,
+                                   ndarray_to_tensor)
 
 
 def _save_lod_tensor(tensor, file_name):
@@ -498,13 +580,12 @@ def save(obj, path, protocol=2, **configs):
                 "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
             )
 
-        if _use_legacy(obj):
+        if _is_state_dict(obj):
             if in_dygraph_mode():
                 _legacy_save(obj, path, protocol)
             else:
                 _legacy_static_save(obj, path, protocol)
         else:
-            # save single variable
             with open(path, 'wb') as f:
                 _pickle_save(obj, f, protocol)
 
@@ -686,8 +767,7 @@ def load(path, **configs):
 
                 # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
                 if isinstance(load_result, dict):
-                    if isinstance(load_result, dict):
-                        load_result = _pack_loaded_dict(load_result)
+                    load_result = _pack_loaded_dict(load_result)
                     # paddle2.0: paddle.save/load
                     if "StructuredToParameterName@@" in load_result:
 
@@ -699,23 +779,12 @@ def load(path, **configs):
                             del load_result["StructuredToParameterName@@"]
                     else:
                         # paddle2.1 static.save/load
-                        for key in load_result:
-                            load_result[key] = _ndarray_to_tensor(
-                                load_result[key], config.return_numpy)
+                        load_result = _parse_load_result(load_result,
+                                                         config.return_numpy)
 
                 else:
-                    # TODO(weixin): support complex objects such as layer.
-                    # If `obj` is any object, the judgment condition should be more precise.
-                    if _transformed_from_lodtensor(load_result):
-                        load_result = _ndarray_to_tensor(load_result,
-                                                         config.return_numpy)
-                    elif _transformed_from_varbase(load_result):
-                        load_result = _tuple_to_tensor(load_result,
-                                                       config.return_numpy)
-                    else:
-                        raise NotImplementedError(
-                            'Only support tensor and state_dict, but received {}.'.
-                            format(type(load_result)))
+                    load_result = _parse_load_result(load_result,
+                                                     config.return_numpy)
 
         except exception_type as msg_pickle:
             try:
