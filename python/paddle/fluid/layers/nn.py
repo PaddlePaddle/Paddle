@@ -1524,6 +1524,10 @@ def conv2d(input,
             not use_cudnn):
         l_type = 'depthwise_conv2d'
 
+    if (num_channels == groups and num_filters % num_channels == 0 and
+            core.is_compiled_with_rocm()):
+        l_type = 'depthwise_conv2d'
+
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
@@ -10328,7 +10332,8 @@ def expand(x, expand_times, name=None):
     inputs = {"X": [x]}
     attrs = {}
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'expand')
     check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
         raise ValueError(

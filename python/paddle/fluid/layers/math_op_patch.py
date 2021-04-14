@@ -22,6 +22,7 @@ from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
 
 _supported_int_dtype_ = [
+    core.VarDesc.VarType.BOOL,
     core.VarDesc.VarType.UINT8,
     core.VarDesc.VarType.INT8,
     core.VarDesc.VarType.INT16,
