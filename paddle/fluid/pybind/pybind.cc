@@ -510,8 +510,8 @@ PYBIND11_MODULE(core_noavx, m) {
       SerializeToStream(fout, tensor, paddle::platform::CPUDeviceContext());
     } else if (platform::is_gpu_place(tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      SerializeToStream(fout, tensor,
-                        paddle::platform::CUDADeviceContext(tensor.place()));
+      SerializeToStream(fout, tensor, paddle::platform::CUDADeviceContext(
+                                          paddle::platform::CUDAPlace()));
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported when not compiled with CUDA"));
@@ -519,7 +519,7 @@ PYBIND11_MODULE(core_noavx, m) {
     } else if (platform::is_xpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_XPU
       SerializeToStream(fout, tensor,
-                        paddle::platform::XPUDeviceContext(tensor.place()));
+          paddle::platform::XPUDeviceContext(paddle::platform::XPUPlace());
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
@@ -531,7 +531,8 @@ PYBIND11_MODULE(core_noavx, m) {
           "Please recompile or reinstall Paddle with CUDA support."));
 #else
       SerializeToStream(fout, tensor,
-              paddle::platform::CUDAPinnedDeviceContext(tensor.place()));
+         paddle::platform::CUDAPinnedDeviceContext(
+           paddle::platform::CUDAPinnedPlace())));
 #endif
     } else {
       platform::errors::Unimplemented(
@@ -566,8 +567,8 @@ PYBIND11_MODULE(core_noavx, m) {
       SerializeToStream(fout, tensor, paddle::platform::CPUDeviceContext());
     } else if (platform::is_gpu_place(tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      SerializeToStream(fout, tensor,
-                        paddle::platform::CUDADeviceContext(tensor.place()));
+      SerializeToStream(fout, tensor, paddle::platform::CUDADeviceContext(
+                                          paddle::platform::CUDAPlace()));
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported when not compiled with CUDA"));
@@ -579,12 +580,13 @@ PYBIND11_MODULE(core_noavx, m) {
           "Please recompile or reinstall Paddle with CUDA support."));
 #else
       SerializeToStream(fout, tensor,
-                  paddle::platform::CUDAPinnedDeviceContext(tensor.place()));
+        paddle::platform::CUDAPinnedDeviceContext(
+          paddle::platform::CUDAPinnedPlace()));
 #endif
     } else if (platform::is_xpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_XPU
-      SerializeToStream(fout, tensor,
-                        paddle::platform::XPUDeviceContext(tensor.place()));
+      SerializeToStream(fout, tensor, paddle::platform::XPUDeviceContext(
+                                          paddle::platform::XPUPlace()));
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
