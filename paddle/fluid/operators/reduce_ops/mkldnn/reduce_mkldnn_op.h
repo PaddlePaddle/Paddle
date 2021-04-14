@@ -132,7 +132,6 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto dims = ctx.Attr<std::vector<int>>("dim");
-    auto* input_x = ctx.Input<LoDTensor>("X");
     auto* input_dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -181,6 +180,7 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
       default:
         platform::errors::InvalidArgument(
             "Tensor dims must be in range <1, 5>");
+        return mkldnn:memory:format_tag::a;
     }
   }
 };
