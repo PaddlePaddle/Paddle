@@ -618,5 +618,47 @@ class TestUniformInitializerDygraph(unittest.TestCase):
         paddle.enable_static()
 
 
+class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
+    def test_order(self):
+        paddle.set_device('cpu')
+        SEED = 123
+        weight_attr = paddle.framework.ParamAttr(
+            name="linear_weight",
+            learning_rate=1.0,
+            trainable=False,
+            regularizer=None,
+            initializer=paddle.nn.initializer.TruncatedNormal(
+                mean=0.0, std=2.0))
+        bias_attr = paddle.framework.ParamAttr(
+            name="linear_bias",
+            learning_rate=1.0,
+            trainable=False,
+            regularizer=None,
+            initializer=paddle.nn.initializer.TruncatedNormal(
+                mean=0.0, std=2.0))
+
+        def run_dynamic_graph():
+            paddle.seed(SEED)
+            linear = paddle.nn.Linear(
+                1, 1, weight_attr=weight_attr, bias_attr=bias_attr)
+            return linear.weight.numpy(), linear.bias.numpy()
+
+        def run_static_graph():
+            paddle.enable_static()
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            paddle.seed(SEED)
+            linear = paddle.nn.Linear(
+                1, 1, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = exe.run(paddle.static.default_startup_program(),
+                          fetch_list=['linear_weight', 'linear_bias'])
+            return res[0], res[1]
+
+        dynamic_res = run_dynamic_graph()
+        static_res = run_dynamic_graph()
+
+        self.assertTrue(np.array_equal(dynamic_res[0], static_res[0]))
+        self.assertTrue(np.array_equal(dynamic_res[1], static_res[1]))
+
+
 if __name__ == '__main__':
     unittest.main()
