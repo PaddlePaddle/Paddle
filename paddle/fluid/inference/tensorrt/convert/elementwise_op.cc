@@ -43,25 +43,6 @@ class ElementwiseWeightOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     VLOG(3) << "Convert a fluid elementwise op to TensorRT IScaleLayer";
 
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("X").size(), 1,
-        platform::errors::InvalidArgument(
-            "The input op's Input(\"X\").size() "
-            "should equal to 1, but received Input(\"X\").size() = %u.",
-            op_desc.Input("X").size()));
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("Y").size(), 1,
-        platform::errors::InvalidArgument(
-            "The input op's Input(\"Y\").size() "
-            "should equal to 1, but received Input(\"Y\").size() = %u.",
-            op_desc.Input("Y").size()));  // Y is a weight
-    PADDLE_ENFORCE_EQ(
-        op_desc.Output("Out").size(), 1,
-        platform::errors::InvalidArgument(
-            "The input op's Output(\"Out\").size() "
-            "should equal to 1, but reveceid Output(\"Out\").size() = %u.",
-            op_desc.Output("Out").size()));
-
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     PADDLE_ENFORCE_NOT_NULL(
@@ -192,25 +173,6 @@ class ElementwiseTensorOpConverter : public OpConverter {
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
-
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("X").size(), 1,
-        platform::errors::InvalidArgument(
-            "The input op's Input(\"X\").size() "
-            "should equal to 1, but received Input(\"X\").size() = %u.",
-            op_desc.Input("X").size()));
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("Y").size(), 1,
-        platform::errors::InvalidArgument(
-            "The input op's Input(\"Y\").size() "
-            "should equal to 1, but received Input(\"Y\").size() = %u.",
-            op_desc.Input("Y").size()));  // Y is a weight
-    PADDLE_ENFORCE_EQ(
-        op_desc.Output("Out").size(), 1,
-        platform::errors::InvalidArgument(
-            "The input op's Output(\"Out\").size() "
-            "should equal to 1, but received Output(\"Out\").size() = %u.",
-            op_desc.Output("Out").size()));
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Y = engine_->GetITensor(op_desc.Input("Y").front());

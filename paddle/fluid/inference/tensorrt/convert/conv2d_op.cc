@@ -36,18 +36,6 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 input, but got %d input.",
-                        op_desc.Input("Input").size()));
-  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 filter, but got %d filter.",
-                        op_desc.Input("Filter").size()));
-  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 output, but got %d output.",
-                        op_desc.Output("Output").size()));
 
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
   std::string filter_var_name = op_desc.Input("Filter").front();
