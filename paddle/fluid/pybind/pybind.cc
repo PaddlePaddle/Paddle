@@ -267,11 +267,6 @@ bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
 #endif
-
-#ifdef PADDLE_WITH_GRPC
-  return false;
-#endif
-
   return true;
 }
 
