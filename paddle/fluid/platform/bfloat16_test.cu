@@ -16,6 +16,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <iostream>
 
+#ifdef PADDLE_CUDA_BF16
 using bf16 = __nv_bfloat16;
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
@@ -109,7 +110,6 @@ using bf16 = __nv_bfloat16;
     cudaFree(d_out);                                         \
   }
 
-#ifdef PADDLE_CUDA_BF16
 namespace paddle {
 namespace platform {
 

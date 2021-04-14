@@ -204,9 +204,10 @@ struct PADDLE_ALIGN(2) bfloat16 {
 };
 
 // Arithmetic & Comparison operators on CUDA11 & Ampere-arch GPU
-#if defined(__CUDACC__) && CUDA_VERSION >= 11000 && __CUDA__ARCH__ >= 800
-DEVICE inline nv_bfloat16 operator+(const nv_bfloat16& a,
-                                    const nv_bfloat16& b) {
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && \
+    __CUDA__ARCH__ >= 800
+DEVICE inline __nv_bfloat16 operator+(const __nv_bfloat16& a,
+                                      const __nv_bfloat16& b) {
   return __hadd(a, b);
 }
 
