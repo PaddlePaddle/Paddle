@@ -29,6 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/npu_info.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -245,6 +247,68 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
 
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+void* NPUAllocator::Alloc(size_t* index, size_t size) {
+  if (size <= 0) return nullptr;
+
+  void* p;
+  auto result = platform::RecordedNPUMalloc(&p, size, npu_id_);
+
+  if (result == ACL_ERROR_NONE) {
+    *index = 0;
+    npu_alloc_size_ += size;
+    return p;
+  } else {
+    size_t avail, total, actual_avail, actual_total;
+    bool is_limited = platform::RecordedNPUMemGetInfo(
+        &avail, &total, &actual_avail, &actual_total, npu_id_);
+
+    std::string err_msg;
+    if (is_limited) {
+      auto limit_size = (total >> 20);
+      err_msg = string::Sprintf(
+          "\n   3) Set environment variable `FLAGS_gpu_memory_limit_mb` to a "
+          "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
+          "maximum GPU memory usage is limited to %d MB.\n"
+          "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
+          limit_size, limit_size);
+    }
+
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+        "\n\nOut of memory error on NPU %d. "
+        "Cannot allocate %s memory on NPU %d, "
+        "available memory is only %s.\n\n"
+        "Please check whether there is any other process using NPU %d.\n"
+        "1. If yes, please stop them, or start PaddlePaddle on another NPU.\n"
+        "2. If no, please try one of the following suggestions:\n"
+        "   1) Decrease the batch size of your model.\n"
+        "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "
+        "please set it to a higher value but less than 1.0.\n"
+        "      The command is "
+        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
+        npu_id_, string::HumanReadableSize(size), npu_id_,
+        string::HumanReadableSize(avail), npu_id_,
+        FLAGS_fraction_of_gpu_memory_to_use, err_msg));
+  }
+}
+
+void NPUAllocator::Free(void* p, size_t size, size_t index) {
+  VLOG(4) << "Free " << p << " size " << size;
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_GE(npu_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated gpu memory (%d)",
+                        size, npu_alloc_size_));
+  npu_alloc_size_ -= size;
+
+  platform::RecordedNPUFree(p, size, npu_id_);
+}
+
+bool NPUAllocator::UseGpu() const { return true; }
 #endif
 
 }  // namespace detail

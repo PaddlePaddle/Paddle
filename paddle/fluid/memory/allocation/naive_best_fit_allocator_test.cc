@@ -61,6 +61,22 @@ TEST(NaiveBestFitAllocatorTest, CudaPinnedAlloc) {
 }
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+TEST(NaiveBestFitAllocatorTest, NpuAlloc) {
+  NaiveBestFitAllocator alloc{platform::NPUPlace(0)};
+  {
+    size_t size = (1 << 20);
+    auto allocation = alloc.Allocate(size);
+  }
+  sleep(10);
+  alloc.Release(platform::NPUPlace(0));
+
+  size_t size = (1 << 20);
+  auto allocation = alloc.Allocate(size);
+  alloc.Release(platform::NPUPlace(0));
+}
+#endif
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
