@@ -35,6 +35,11 @@ static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
   std::unique_ptr<std::function<void()>> func(
       reinterpret_cast<std::function<void()> *>(user_data));
   (*func)();
+#if PADDLE_WITH_ASCEND_CL
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtUnSubscribeReport(
+      static_cast<uint64_t>(stream_->GetCallbackThreadId()), stream_));
+  stream_->SetCallbackExecuteFlag(true);
+#endif
 }
 
 template <typename Stream>
