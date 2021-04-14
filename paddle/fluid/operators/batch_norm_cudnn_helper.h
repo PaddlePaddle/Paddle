@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_CUDA
-
 #include "paddle/fluid/platform/cudnn_helper.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
@@ -151,11 +150,11 @@ class BatchNormWrapper {
 
   void TrainBackward(const platform::CUDADeviceContext &ctx, const Tensor &x,
                      const Tensor &d_y, const Tensor &scale,
-                     const Tensor &saved_mean, const Tensor &save_variance,
+                     const Tensor &saved_mean, const Tensor &saved_variance,
                      const Tensor &reserve_space, Tensor *d_x, Tensor *d_scale,
                      Tensor *d_bias) {
 #if CUDNN_VERSION_MIN(7, 4, 1)
-    TrainBackwardEx(ctx, x, d_y, scale, saved_mean, save_variance,
+    TrainBackwardEx(ctx, x, d_y, scale, saved_mean, saved_variance,
                     reserve_space, d_x, d_scale, d_bias);
 #else
     PADDLE_ENFORCE_CUDA_SUCCESS(

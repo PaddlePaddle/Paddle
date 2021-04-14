@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_HIP
-
 #include "paddle/fluid/platform/miopen_helper.h"
 
 namespace paddle {
@@ -129,7 +128,7 @@ class BatchNormWrapper {
 
   void TrainBackward(const platform::CUDADeviceContext &ctx, const Tensor &x,
                      const Tensor &d_y, const Tensor &scale,
-                     const Tensor &saved_mean, const Tensor &save_variance,
+                     const Tensor &saved_mean, const Tensor &saved_variance,
                      const Tensor &reserve_space, Tensor *d_x, Tensor *d_scale,
                      Tensor *d_bias) {
     const auto *saved_mean_ptr = saved_mean.data<BatchNormParamType<T>>();
@@ -158,5 +157,4 @@ class BatchNormWrapper {
 
 }  // namespace operators
 }  // namespace paddle
-#endif  // PADDLE_WITH_CUDA
 #endif  // PADDLE_WITH_HIP
