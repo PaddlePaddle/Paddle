@@ -22,6 +22,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 namespace paddle {
 namespace platform {
@@ -114,6 +115,37 @@ class MemEvent {
   Place place_;
   int64_t thread_id_;
   std::string annotation_;
+};
+
+// todo:  cudaEvent or gpuEvent
+class CudaEvent {
+ public:
+  CudaEvent() {}
+
+  void Record(paddle::platform::stream::CUDAStream& stream) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+  }
+
+  bool Query() {
+    cudaError_t err = cudaEventQuery(event_);
+    if (err == cudaSuccess) {
+      return true;
+    }
+    if (err == cudaErrorNotReady) {
+      return false;
+    }
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    return false;
+  }
+
+  void Synchronize() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventSynchronize(event_));
+  }
+  cudaEvent_t GetRawCudaEvent() { return event_; }
+
+ private:
+  cudaEvent_t event_;
 };
 
 }  // namespace platform

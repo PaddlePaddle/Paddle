@@ -45,6 +45,7 @@ import paddle.device
 import paddle.regularizer
 import paddle.incubate
 import paddle.autograd
+import paddle.devices
 
 # TODO: define alias in tensor and framework directory
 

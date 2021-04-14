@@ -1287,28 +1287,22 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly("shape",
-                             [](imperative::VarBase &self) {
-                               if (self.Var().IsType<framework::LoDTensor>()) {
-                                 return framework::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::LoDTensor>()
-                                         .dims());
-                               } else if (self.Var()
-                                              .IsType<
-                                                  framework::SelectedRows>()) {
-                                 return framework::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::SelectedRows>()
-                                         .value()
-                                         .dims());
-                               } else {
-                                 VLOG(2) << "It is meaningless to get shape of "
-                                            "variable type "
-                                         << GetTypeName(self);
-                                 return std::vector<int>();
-                               }
-                             })
+      .def_property_readonly(
+          "shape",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::LoDTensor>().dims());
+            } else if (self.Var().IsType<framework::SelectedRows>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::SelectedRows>().value().dims());
+            } else {
+              VLOG(2) << "It is meaningless to get shape of "
+                         "variable type "
+                      << GetTypeName(self);
+              return std::vector<int>();
+            }
+          })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.
@@ -1596,6 +1590,34 @@ void BindImperative(py::module *m_ptr) {
       .def("init_with_ring_id",
            &imperative::BKCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  py::class_<paddle::platform::stream::CUDAStream>(m, "CUDAStream")
+      .def("wait_event",
+           [](paddle::platform::stream::CUDAStream &self,
+              paddle::platform::CudaEvent &event) {
+             self.WaitEvent(event.GetRawCudaEvent());
+           })
+      .def("query",
+           [](paddle::platform::stream::CUDAStream &self) {
+             return self.Query();
+           })
+      .def("synchronize", [](paddle::platform::stream::CUDAStream &self) {
+        self.Synchronize();
+
+      });
+
+  py::class_<paddle::platform::CudaEvent>(m, "CUDAEvent")
+      .def("record",
+           [](paddle::platform::CudaEvent &self,
+              paddle::platform::stream::CUDAStream &stream) {
+             self.Record(stream);
+           })
+      .def("query",
+           [](paddle::platform::CudaEvent &self) { return self.Query(); })
+      .def("synchronize",
+           [](paddle::platform::CudaEvent &self) { self.Synchronize(); });
 #endif
 }
 

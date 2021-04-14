@@ -93,6 +93,23 @@ class CUDAStream final {
 #endif
   void Destroy();
 
+  bool Query() const {
+    cudaError_t err = cudaStreamQuery(stream_);
+    if (err == cudaSuccess) {
+      return true;
+    }
+    if (err == cudaErrorNotReady) {
+      return false;
+    }
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+    return false;
+  }
+
+  void Synchronize() const {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
+  }
+
  private:
   Place place_;
 #ifdef PADDLE_WITH_HIP

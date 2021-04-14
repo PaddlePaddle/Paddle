@@ -218,6 +218,7 @@ packages=['paddle',
           'paddle.tensor',
           'paddle.onnx',
           'paddle.autograd',
+          'paddle.devices',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
