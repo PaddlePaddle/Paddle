@@ -35,10 +35,10 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
     const ProgramDesc &program, u_int64_t start_op_index,
     u_int64_t end_op_index) {
   VLOG(3) << "block in program:" << program_.Size();
-  PADDLE_ENFORCE_GT(end_op_index, start_op_index,
+  PADDLE_ENFORCE_GE(end_op_index, start_op_index,
                     platform::errors::InvalidArgument(
-                        "Required end_op_index > start_op_index, but received "
-                        "end_op_index: %d <= start_op_index: %d",
+                        "Required end_op_index >= start_op_index, but received "
+                        "end_op_index: %d < start_op_index: %d",
                         end_op_index, start_op_index));
 
   std::unordered_map<std::string, VarDesc *> all_vars;

@@ -92,7 +92,12 @@ class ParallelExecutor {
 
   void RunWithoutFetch(const std::vector<std::string> &skip_eager_vars);
 
+  void ReSetOpScopeMapOfGraphs(
+      const std::unordered_map<Scope *, Scope *> &scope_map);
+
   const ir::Graph &Graph() const;
+  // TODO(Aurelius84): It should not be a member function of PE
+  void PrepareLocalExeScopes(Scope *scope);
 
  private:
   // broadcast the parameters from the 0th device.
@@ -129,7 +134,7 @@ class ParallelExecutor {
       const ExecutionStrategy &exec_strategy,
       std::vector<ir::Graph *> *async_graphs, ir::Graph *graph);
 
-  void ReSetOpScopeMaOfGraphs(
+  void ReSetOpScopeMapOfGraphs(
       const std::vector<ir::Graph *> &final_graphs,
       const std::unordered_map<Scope *, Scope *> &scope_map);
 
@@ -138,6 +143,9 @@ class ParallelExecutor {
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
+  // TODO(Aurelius84): We should consider how to initialize variables once we
+  // change the scope.
+  std::vector<VariableInfo> var_infos_;
 };
 }  // namespace framework
 }  // namespace paddle

@@ -690,7 +690,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   // Step 11. Set scope_map of op from each graph
-  ReSetOpScopeMaOfGraphs(final_graphs, scope_map);
+  ReSetOpScopeMapOfGraphs(final_graphs, scope_map);
 
   // Step 12. Set ReaderOpDeviceInfo for each graph
   SetReaderOpDeviceInfoOfGraphs(final_graphs);
@@ -702,9 +702,6 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place, Scope *scope,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate({place}, scope)) {
   // Step1. Initialize necessary info of member_ with strategy.
-  // TODO(Aurelius84): It seems that we can construct exec_strategy,
-  // build_strategy Manually
-  // here according place info.
   VLOG(1) << "Step 1: InitExecutorPrivateMemberInfo";
   InitExecutorPrivateMemberInfo(exec_strategy, build_strategy,
                                 /*device_count*/ 1, graph);
@@ -723,24 +720,13 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place, Scope *scope,
       CompileGraphWithBuildStrategy(graph, &graphs, /*loss_var_name*/ "");
 
   // Step 4: Apply memory optimization pass
-  // TODO(Aurelius84): This contains the following passes:
-  //  - reference_count_pass
-  //  - inplace_addto_op_pass
-  //  - buffer_shared_inplace_pass
-  //  - buffer_shared_cross_op_memory_reuse_pass
-
-  // However if we only run partial program, some variables may not used now but
-  // used in backward program, so they should not regarded as garbage and should
-  // be
-  // kept temporarily.
   VLOG(1) << "Step 4: ApplyMemoryOptimizePass";
   graph = member_->ApplyMemoryOptimizePass(graph);
 
   // Step 5. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   VLOG(1) << "Step 5: CreateVariableInfos";
-  std::vector<details::VariableInfo> var_infos;
-  CreateVariableInfos(&var_infos, graph);
+  CreateVariableInfos(&var_infos_, graph);
 
   // Step 6. Create local execution scopes
   // TODO(Aurelius84): We can create scope_map dicrectly with {scope: scope}
@@ -753,16 +739,33 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place, Scope *scope,
   std::vector<ir::Graph *> final_graphs =
       CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
-  VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
-  if (!member_->build_strategy_.async_mode_) {
-    member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-        std::move(var_infos), member_->places_, std::move(member_->executor_)));
-  }
+  // TODO(Aurelus84): In Dy2Stat, Scope is created and passed from Python
+  // every time, it is managed by RunProgramOp. Considering a better way
+  // to decrease the overhead of frequently destructuring Scope.
+
+  // VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
+  // if (!member_->build_strategy_.async_mode_) {
+  //   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
+  //       exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+  //       std::move(var_infos), member_->places_,
+  //       std::move(member_->executor_)));
+  // }
 
   // Step 8. Set scope_map of op from each graph
-  VLOG(1) << "Step 8: ReSetOpScopeMaOfGraphs";
-  ReSetOpScopeMaOfGraphs(final_graphs, scope_map);
+  VLOG(1) << "Step 8: ReSetOpScopeMapOfGraphs";
+  ReSetOpScopeMapOfGraphs(final_graphs, scope_map);
+}
+
+void ParallelExecutor::PrepareLocalExeScopes(Scope *scope) {
+  for (auto &info : var_infos_) {
+    auto var = scope->FindVar(info.name_);
+    if (var != nullptr) {
+      VLOG(2) << info.name_
+              << " has been initialized beforehand in global scope, skipped";
+      continue;
+    }
+    InitializeVariable(scope->Var(info.name_), info.type_);
+  }
 }
 
 void ParallelExecutor::BCastParamsToDevices(
@@ -1518,7 +1521,7 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
   return final_graphs;
 }
 
-void ParallelExecutor::ReSetOpScopeMaOfGraphs(
+void ParallelExecutor::ReSetOpScopeMapOfGraphs(
     const std::vector<ir::Graph *> &final_graphs,
     const std::unordered_map<Scope *, Scope *> &scope_map) {
   PADDLE_ENFORCE_GE(
@@ -1538,6 +1541,21 @@ void ParallelExecutor::ReSetOpScopeMaOfGraphs(
       op->SetLocalExecScopes(scope_map);
     }
   }
+}
+
+void ParallelExecutor::ReSetOpScopeMapOfGraphs(
+    const std::unordered_map<Scope *, Scope *> &scope_map) {
+  auto inner_graph = const_cast<ir::Graph *>(&Graph());
+  std::vector<ir::Graph *> graphs = {inner_graph};
+  ReSetOpScopeMapOfGraphs(graphs, scope_map);
+  // TODO(Aurelius84): Shall we reset scope infos of memeber_ (need remove
+  // this?)
+  // member_->local_scopes_.clear();
+  // member_->local_exec_scopes_.clear();
+  // for(auto &scopes : scope_map){
+  //   member_->local_scopes_.emplace_back(scopes.second);
+  //   member_->local_exec_scopes_.emplace_back(scopes.second);
+  // }
 }
 
 void ParallelExecutor::SetReaderOpDeviceInfoOfGraphs(

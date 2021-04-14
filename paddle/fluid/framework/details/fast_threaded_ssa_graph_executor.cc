@@ -226,6 +226,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
+  VLOG(3) << "Enter RunOpAsync with op: " << op->Node()->Op()->Type();
   this->pool_.enqueue([=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);
@@ -251,15 +252,22 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           RunOpAsync(op_deps, post_op, complete_q);
         }
       }
-
+      VLOG(3) << "start to run op: " << op_to_run->Name();
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
-
       auto &outputs = op_to_run->Outputs();
+      VLOG(3) << "post process for op: " << op_to_run->Name()
+              << " outputs.size: " << outputs.size();
       op_to_run = nullptr;
       for (auto &output : outputs) {
+        VLOG(3) << "before for output, ptr_addredd: " << output
+                << " graph ptr: " << graph_;
+        VLOG(3) << "pending op size of " << output << " : "
+                << output->PendingOps().size();
         for (auto &pending_op : output->PendingOps()) {
+          VLOG(3) << "DINE :" << pending_op;
+          VLOG(3) << "after DINE pending op is " << pending_op->Name();
           std::atomic<int> &deps = op_deps->at(pending_op);
           if (deps.fetch_sub(1) != 1) continue;
 
@@ -279,6 +287,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           }
         }
       }
+      VLOG(3) << "ending...... op_to_run: " << op_to_run;
 
       if (op_to_run != nullptr) {
         op_queue.push_front(op_to_run);

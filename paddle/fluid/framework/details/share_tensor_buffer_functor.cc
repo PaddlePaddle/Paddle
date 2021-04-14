@@ -40,6 +40,7 @@ static inline const Tensor &GetTensorFromVar(const Variable *var) {
   if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>();
   } else {
+    VLOG(3) << "not support " << var->Type();
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Variable must be type of LoDTensor."));
   }
@@ -49,6 +50,7 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else {
+    VLOG(3) << "not support " << var->Type();
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Variable must be type of LoDTensor."));
   }
@@ -100,6 +102,7 @@ void ShareTensorBufferFunctor::AddReuseVarPair(
 }
 
 void ShareTensorBufferFunctor::CallOnce() {
+  in_out_vars_.clear();
   PADDLE_ENFORCE(in_out_vars_.empty(),
                  platform::errors::InvalidArgument(
                      "The input-output variable pairs to be "
@@ -126,19 +129,24 @@ void ShareTensorBufferFunctor::CallOnce() {
 }
 
 void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
-  if (!exec_scope_) {
-    PADDLE_ENFORCE_NOT_NULL(exec_scope,
-                            platform::errors::InvalidArgument(
-                                "The given execution scope should not be NULL "
-                                "if the cached scope is NULL."));
-    exec_scope_ = exec_scope;
-    CallOnce();
-  } else {
-    PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,
-                      platform::errors::InvalidArgument(
-                          "The given execution scope and the cached execution "
-                          "scope should be the same."));
-  }
+  // if (!exec_scope_ || exec_scope_ != exec_scope) {
+  //   PADDLE_ENFORCE_NOT_NULL(exec_scope,
+  //                           platform::errors::InvalidArgument(
+  //                               "The given execution scope should not be NULL
+  //                               "
+  //                               "if the cached scope is NULL."));
+  exec_scope_ = exec_scope;
+  CallOnce();
+  // } else {
+  //   // TOOD(Aurelius84): remove this.
+  //   VLOG(3)<< "not run call once, exec_scope_: " << exec_scope_ <<"
+  //   exec_scope: " << exec_scope;
+  //   PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,
+  //                     platform::errors::InvalidArgument(
+  //                         "The given execution scope and the cached execution
+  //                         "
+  //                         "scope should be the same."));
+  // }
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     const auto &in_tensor = GetTensorFromVar(in_out_vars_[i].first);

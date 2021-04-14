@@ -84,6 +84,7 @@ class Graph {
                  u_int64_t end_op_index);
 
   virtual ~Graph() {
+    VLOG(3) << "deleting graph: " << this;
     for (auto &attr : attrs_) {
       attr_dels_[attr.first]();
     }
