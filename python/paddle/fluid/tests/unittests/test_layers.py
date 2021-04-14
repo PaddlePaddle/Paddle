@@ -3745,6 +3745,7 @@ class TestSubLayerCount(unittest.TestCase):
         with fluid.dygraph.guard():
             mySuperlayer = MySuperLayer()
             self.assertTrue(len(mySuperlayer.sublayers()) == 3)
+            self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)
 
 
 if __name__ == '__main__':
