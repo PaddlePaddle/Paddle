@@ -191,7 +191,7 @@ if(WITH_PYTHON)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
-  add_custom_target(fleet_proto_init ALL DEPENDS index_dataset_py_proto  
+  add_custom_target(fleet_proto_init ALL  
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py 
   )
@@ -218,7 +218,7 @@ if(WITH_PYTHON)
 endif()
 
 if (WITH_PSCORE)
-  add_custom_command(TARGET fleet_proto_init POST_BUILD
+  add_custom_target(index_dataset_proto_init ALL DEPENDS fleet_proto_init index_dataset_py_proto
     COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
     COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto.")
 endif(WITH_PSCORE)
