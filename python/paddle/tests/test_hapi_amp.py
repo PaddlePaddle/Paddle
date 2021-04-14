@@ -41,7 +41,7 @@ class TestDistTraningUsingAMP(unittest.TestCase):
             if not fluid.is_compiled_with_cuda():
                 self.skipTest('module not tested when ONLY_CPU compling')
             paddle.enable_static() if not dynamic else None
-            device = paddle.set_device('gpu')
+            paddle.set_device('gpu')
             net = LeNet()
             inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
             labels = InputSpec([None, 1], "int64", "y")
@@ -53,9 +53,9 @@ class TestDistTraningUsingAMP(unittest.TestCase):
                 optimizer=optim,
                 loss=CrossEntropyLoss(reduction="sum"),
                 amp_configs=amp_configs)
-            loss, = model.train_batch([data], [label])
+            model.train_batch([data], [label])
 
-    def test_check_input_error(self):
+    def test_dynamic_check_input(self):
         paddle.disable_static()
         amp_configs_list = [
             {
@@ -69,15 +69,11 @@ class TestDistTraningUsingAMP(unittest.TestCase):
                 "level": "O1",
                 "use_fp16_guard": True
             },
-            {
-                "custom_white_list": {"matmul"},
-                "init_loss_scaling": 1.0
-            },
             "O3",
         ]
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
-        device = paddle.set_device('gpu')
+        paddle.set_device('gpu')
         net = LeNet()
         model = Model(net)
         optim = paddle.optimizer.Adam(
@@ -88,6 +84,31 @@ class TestDistTraningUsingAMP(unittest.TestCase):
                 model.prepare(
                     optimizer=optim, loss=loss, amp_configs=amp_configs)
         model.prepare(optimizer=optim, loss=loss, amp_configs="O2")
+        model.prepare(
+            optimizer=optim,
+            loss=loss,
+            amp_configs={
+                "custom_white_list": {"matmul"},
+                "init_loss_scaling": 1.0
+            })
+
+    def test_static_check_input(self):
+        paddle.enable_static()
+        amp_configs = {"level": "O2", "use_pure_fp16": True}
+        if not fluid.is_compiled_with_cuda():
+            self.skipTest('module not tested when ONLY_CPU compling')
+        paddle.set_device('gpu')
+
+        net = LeNet()
+        inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
+        labels = InputSpec([None, 1], "int64", "y")
+        model = Model(net, inputs, labels)
+
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=model.parameters())
+        loss = CrossEntropyLoss(reduction="sum")
+        with self.assertRaises(ValueError):
+            model.prepare(optimizer=optim, loss=loss, amp_configs=amp_configs)
 
 
 if __name__ == '__main__':

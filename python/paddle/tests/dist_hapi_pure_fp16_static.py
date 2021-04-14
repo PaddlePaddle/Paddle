@@ -1,4 +1,4 @@
-# copyright (c) 2020 paddlepaddle authors. all rights reserved.
+# copyright (c) 2021 paddlepaddle authors. all rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
         label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
 
         paddle.enable_static()
-        device = paddle.set_device('gpu')
+        paddle.set_device('gpu')
         net = LeNet()
         amp_level = "O2"
         inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
@@ -53,7 +53,7 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
             optimizer=optim,
             loss=CrossEntropyLoss(reduction="sum"),
             amp_configs=amp_configs)
-        loss, = model.train_batch([data], [label])
+        model.train_batch([data], [label])
 
 
 if __name__ == '__main__':

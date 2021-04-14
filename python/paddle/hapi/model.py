@@ -41,8 +41,6 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTra
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers import collective
-from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
-from paddle.fluid.incubate.fleet.base import role_maker
 
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.fluid.executor import scope_guard, Executor
@@ -50,6 +48,8 @@ from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
+from paddle.distributed.fleet.base import role_maker
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -555,9 +555,7 @@ class StaticGraphAdapter(object):
                 if self._nranks > 1:
                     role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                     fleet.init(role)
-                    dist_strategy = DistributedStrategy()
-                    dist_strategy.mode = "collective"
-                    dist_strategy.collective_mode = "grad_allreduce"
+                    dist_strategy = fleet.DistributedStrategy()
                     if self._amp_level != 'O0':
                         dist_strategy.amp = True
                         dist_strategy.amp_configs = self._amp_configs.copy()
@@ -621,7 +619,7 @@ class StaticGraphAdapter(object):
                 self._executor.run(startup_prog)
 
         if self._amp_level == "O2" and mode == 'train' and core.is_compiled_with_cuda(
-        ) and self._nranks <= 1:
+        ):
             self.model._optimizer.amp_init(place)
 
         if self._nranks < 2:
@@ -1368,6 +1366,15 @@ class Model(object):
             else:
                 self._adapter._amp_level = amp_configs['level']
         amp_config_key_set = set(amp_configs.keys()) - {'level'}
+        if not amp_config_key_set or self._adapter._amp_level == 'O0':
+            return
+
+        if 'use_pure_fp16' in amp_configs:
+            raise ValueError(
+                "''use_pure_fp16' is an invalid parameter, "
+                "the level of mixed precision training only depends on 'O1' or 'O2'."
+            )
+
         _check_pure_fp16_configs()
 
         # construct amp_custom_lists
@@ -1383,9 +1390,13 @@ class Model(object):
 
         def _check_amp_configs(amp_config_key_set):
             accepted_param_set = {
-                'init_loss_scaling', 'incr_ratio', 'decr_ratio',
-                'incr_every_n_steps', 'decr_every_n_nan_or_inf',
-                'use_dynamic_loss_scaling', 'use_fp16_guard', 'use_pure_fp16'
+                'init_loss_scaling',
+                'incr_ratio',
+                'decr_ratio',
+                'incr_every_n_steps',
+                'decr_every_n_nan_or_inf',
+                'use_dynamic_loss_scaling',
+                'use_fp16_guard',
             }
             if amp_config_key_set - accepted_param_set:
                 raise ValueError(
@@ -1393,14 +1404,12 @@ class Model(object):
                     "but {} could not be recognized.".format(
                         tuple(amp_config_key_set - accepted_param_set)))
 
-            if amp_config_key_set & {'use_fp16_guard', 'use_pure_fp16'}:
+            if 'use_fp16_guard' in amp_config_key_set:
                 if in_dygraph_mode():
                     raise ValueError(
-                        "'use_pure_fp16' or 'use_fp16_guard' is supported in dygraph only."
-                    )
-                self._adapter._use_fp16_guard = amp_configs[
-                    'use_fp16_guard'] if 'use_fp16_guard' in amp_config_key_set else True
-                amp_config_key_set -= {'use_fp16_guard', 'use_pure_fp16'}
+                        "'use_fp16_guard' is supported in static mode only.")
+                self._adapter._use_fp16_guard = amp_configs['use_fp16_guard']
+                amp_config_key_set.remove('use_fp16_guard')
 
             return amp_config_key_set
 
@@ -1426,20 +1435,20 @@ class Model(object):
             amp_configs (str|dict|None): AMP configurations. If AMP or pure
                 float16 training is used, the key 'level' of 'amp_configs'
                 should be set to 'O1' or 'O2' respectively. Otherwise, the
-                value of 'level' defaults to 'O0', which means training without
-                using AMP or pure float training. In addition to 'level',
-                users could pass in more parameters consistent with mixed
-                precision API. The supported keys are: 'init_loss_scaling',
-                'incr_ratio', 'decr_ratio', 'incr_every_n_steps',
-                'decr_every_n_nan_or_inf', 'use_dynamic_loss_scaling',
-                'custom_white_list', 'custom_black_list', and
-                'custom_black_varnames', 'use_pure_fp16' or 'use_fp16_guard'
-                is only supported in static mode. Users could refer to mixed
-                precision API documentations :ref:`api_paddle_amp_auto_cast`
-                and :ref:`api_paddle_amp_GradScaler` for details. For
-                convenience, 'amp_configs' could be set to 'O1' or 'O2' if no
-                more parameters are needed. 'amp_configs' could be None if
-                default parameters are chosen or AMP is not used.Default: None.
+                value of 'level' defaults to 'O0', which means float32
+                training. In addition to 'level', users could pass in more
+                parameters consistent with mixed precision API. The supported
+                keys are: 'init_loss_scaling', 'incr_ratio', 'decr_ratio',
+                'incr_every_n_steps', 'decr_every_n_nan_or_inf',
+                'use_dynamic_loss_scaling', 'custom_white_list',
+                'custom_black_list', and 'custom_black_varnames'or
+                'use_fp16_guard' is only supported in static mode. Users could
+                refer to mixed precision API documentations
+                 :ref:`api_paddle_amp_auto_cast` and
+                 :ref:`api_paddle_amp_GradScaler` for details. For convenience,
+                'amp_configs' could be set to 'O1' or 'O2' if no more
+                parameters are needed. 'amp_configs' could be None in float32
+                training. Default: None.
         Returns:
             None
         """
