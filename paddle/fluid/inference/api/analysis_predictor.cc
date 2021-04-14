@@ -537,6 +537,13 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
   }
 
+  if (config_.dlnne_enabled()) {
+    LOG(INFO) << "Dlnne subgraph is enabled";
+    argument_.SetUseDlnne(true);
+    argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
+    
+  }
+
   if (config_.lite_engine_enabled()) {
     argument_.SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());

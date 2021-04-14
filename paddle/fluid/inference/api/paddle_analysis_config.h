@@ -360,6 +360,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
 
+  void EnableDlnne(int min_subgraph_size = 3);
+  bool dlnne_enabled() const { return use_dlnne_; }
+
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
   ///
@@ -626,6 +629,10 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> optim_input_shape_{};
   std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
+
+  // dlnne related.
+  bool use_dlnne_{false};
+  int dlnne_min_subgraph_size_{3};
 
   // memory reuse related.
   bool enable_memory_optim_{false};

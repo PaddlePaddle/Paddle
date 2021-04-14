@@ -260,6 +260,22 @@ bool PD_TensorrtEngineEnabled(const PD_AnalysisConfig* config) {
   return config->config.tensorrt_engine_enabled();
 }
 
+void PD_EnableDlnne(PD_AnalysisConfig* config, int min_subgraph_size) {
+  PADDLE_ENFORCE_NOT_NULL(
+      config,
+      paddle::platform::errors::InvalidArgument(
+          "The pointer of analysis configuration shouldn't be nullptr"));
+  config->config.EnableDlnne(min_subgraph_size);
+}
+
+bool PD_DlnneEnabled(const PD_AnalysisConfig* config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      config,
+      paddle::platform::errors::InvalidArgument(
+          "The pointer of analysis configuration shouldn't be nullptr"));
+  return config->config.dlnne_enabled();
+}
+
 void PD_SwitchIrDebug(PD_AnalysisConfig* config, bool x) {
   PADDLE_ENFORCE_NOT_NULL(
       config,

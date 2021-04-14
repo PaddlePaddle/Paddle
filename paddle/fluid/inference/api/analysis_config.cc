@@ -26,6 +26,7 @@ namespace paddle {
 struct MkldnnQuantizerConfig;
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
+extern const std::vector<std::string> kDlnneSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
@@ -134,6 +135,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_oss_);
+  //Dlnne related
+  CP_MEMBER(use_dlnne_);
+  CP_MEMBER(dlnne_min_subgraph_size_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -211,6 +215,21 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
       pass_builder_->DeletePass(ps);
     }
   }
+  if(use_dlnne_){
+    auto all_passes = kDlnneSubgraphPasses;
+    auto other_passes = other.pass_builder()->AllPasses();
+    // We should sort them, because the user may call the SwitchIrDebug
+    // interface, which will change the pass.
+    std::sort(all_passes.begin(), all_passes.end());
+    std::sort(other_passes.begin(), other_passes.end());
+    std::vector<std::string> deleted_passes;
+    std::set_difference(all_passes.begin(), all_passes.end(),
+                        other_passes.begin(), other_passes.end(),
+                        std::inserter(deleted_passes, deleted_passes.begin()));
+    for (auto ps : deleted_passes) {
+      pass_builder_->DeletePass(ps);
+    }
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
@@ -261,10 +280,10 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
   if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
-    LOG(INFO) << "Hardware support for BFLOAT16"
-              << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
-                      ? " is enabled"
-                      : " is disabled. Simulation will be used");
+    // LOG(INFO) << "Hardware support for BFLOAT16"
+    //           << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
+    //                   ? " is enabled"
+    //                   : " is disabled. Simulation will be used");
   } else {
     LOG(INFO) << "CPU does not support BFLOAT16 calculations";
     use_mkldnn_bfloat16_ = false;
@@ -308,6 +327,13 @@ void AnalysisConfig::EnableTensorRtEngine(
       << "To use TensorRT engine, please compile inference lib with GPU first.";
 #endif
 }
+
+void AnalysisConfig::EnableDlnne(int min_subgraph_size){
+  use_dlnne_=true;
+  dlnne_min_subgraph_size_ = min_subgraph_size;
+  Update();
+}
+
 
 void AnalysisConfig::SetTRTDynamicShapeInfo(
     std::map<std::string, std::vector<int>> min_input_shape,
@@ -383,6 +409,14 @@ void AnalysisConfig::Update() {
       pass_builder()->AppendPass(pass);
     }
   }
+  LOG(INFO)<<"use_dlnne_:"<<use_dlnne_<<std::endl;
+  if (use_dlnne_) {
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kDlnneSubgraphPasses) {
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
   if (use_gpu() && use_cudnn_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!enable_ir_optim_) {
@@ -478,6 +512,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_workspace_size_;
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
+
+  ss << use_dlnne_;
+  ss << dlnne_min_subgraph_size_;
 
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
