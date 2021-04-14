@@ -114,7 +114,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "roi_align",
       "affine_channel",
-      "multiclass_nms",
       "nearest_interp",
       "anchor_generator",
   };

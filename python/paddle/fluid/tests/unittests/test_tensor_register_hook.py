@@ -178,8 +178,9 @@ class TestTensorRegisterHook(unittest.TestCase):
         # register hook and removed
         run_double_hook_for_leaf_var(lambda grad: grad * 2, removed=True)
 
-    def test_hook_for_accumulated_grad(self):
-        def run_double_hook_for_accumulated_grad(double_hook, removed=False):
+    def test_hook_for_accumulated_grad_interior_var(self):
+        def run_double_hook_for_accumulated_grad_interior_var(double_hook,
+                                                              removed=False):
             for device in self.devices:
                 paddle.set_device(device)
 
@@ -227,9 +228,50 @@ class TestTensorRegisterHook(unittest.TestCase):
                                    if not removed else base_grad))
 
         # register hook
-        run_double_hook_for_accumulated_grad(lambda grad: grad * 2)
+        run_double_hook_for_accumulated_grad_interior_var(lambda grad: grad * 2)
         # register hook and removed
-        run_double_hook_for_accumulated_grad(
+        run_double_hook_for_accumulated_grad_interior_var(
+            lambda grad: grad * 2, removed=True)
+
+    def test_hook_for_accumulated_grad_leaf_var(self):
+        def run_double_hook_for_accumulated_grad_leaf_var(double_hook,
+                                                          removed=False):
+            for device in self.devices:
+                paddle.set_device(device)
+
+                x = paddle.to_tensor([0., 1., 2., 4.])
+                x.stop_gradient = False
+
+                helper = x.register_hook(double_hook)
+
+                y = paddle.to_tensor([4., 5., 6., 7.])
+                z = paddle.to_tensor([1., 2., 3., 4.])
+                y.stop_gradient = False
+                z.stop_gradient = False
+
+                o1 = x + y
+                o2 = x + z
+                o1.stop_gradient = False
+                o2.stop_gradient = False
+
+                o = o1.matmul(o2)
+
+                # remove hook before backward
+                if removed:
+                    helper.remove()
+
+                o.backward()
+
+                base_grad = np.array([5., 9., 13., 19.])
+                # x.grad is changed by x.hook
+                self.assertTrue(
+                    np.array_equal(x.grad, base_grad * 2
+                                   if not removed else base_grad))
+
+        # register hook
+        run_double_hook_for_accumulated_grad_leaf_var(lambda grad: grad * 2)
+        # register hook and removed
+        run_double_hook_for_accumulated_grad_leaf_var(
             lambda grad: grad * 2, removed=True)
 
     def test_hook_in_model(self):
@@ -407,6 +449,55 @@ class TestTensorRegisterHook(unittest.TestCase):
 
             with self.assertRaises(RuntimeError):
                 x.register_hook(lambda grad: grad * 2)
+
+
+HOOK_INIT_VALUE = 10
+HOOK_IS_CALLED = False
+
+
+def global_void_hook():
+    global HOOK_INIT_VALUE
+    global HOOK_IS_CALLED
+    HOOK_INIT_VALUE *= 2
+    HOOK_IS_CALLED = True
+
+
+class TestTensorRegisterBackwardHook(unittest.TestCase):
+    def setUp(self):
+        self.devices = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.devices.append("gpu")
+
+    def test_register_backward_hook(self):
+        global HOOK_INIT_VALUE
+        global HOOK_IS_CALLED
+        for device in self.devices:
+            x = paddle.to_tensor(5., stop_gradient=False)
+            x._register_backward_hook(global_void_hook)
+            for i in range(5):
+                y = paddle.pow(x, 4.0)
+                y.backward()
+
+            self.assertEqual(HOOK_INIT_VALUE, 320)
+            self.assertTrue(HOOK_IS_CALLED)
+
+            # reset initial value
+            HOOK_INIT_VALUE = 10
+            HOOK_IS_CALLED = False
+
+    def test_register_backward_hook_for_interior_var(self):
+        x = paddle.to_tensor(5., stop_gradient=False)
+        y = paddle.pow(x, 4.0)
+
+        with self.assertRaises(ValueError):
+            y._register_backward_hook(global_void_hook)
+
+    def test_register_backward_hook_for_var_without_gradient(self):
+        x = paddle.to_tensor(5.)
+        y = paddle.pow(x, 4.0)
+
+        with self.assertRaises(ValueError):
+            x._register_backward_hook(global_void_hook)
 
 
 if __name__ == '__main__':
