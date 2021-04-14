@@ -497,7 +497,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     }
   }
 
-  auto callback = [scope, local_scope, keep_kids]() {
+  platform::Place place = place_;
+  auto callback = [scope, local_scope, keep_kids, place]() {
     if (local_scope != scope) {
       VLOG(4) << "Delete scope: " << local_scope;
       scope->DeleteScope(local_scope);
@@ -517,6 +518,15 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       }
       VLOG(4) << "Keep kids: " << scope;
     }
+#if PADDLE_WITH_ASCEND_CL
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto stream =
+        static_cast<platform::NPUDeviceContext*>(dev_ctx)->NPUstream();
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtUnSubscribeReport(
+        static_cast<uint64_t>(stream->GetCallbackThreadId()),
+        stream->raw_stream()));
+    stream->SetCallbackExecuteFlag(true);
+#endif
   };
 
   if (gc) {

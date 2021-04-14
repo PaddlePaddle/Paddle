@@ -25,7 +25,7 @@ paddle.enable_static()
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestNpuPlaceError(unittest.TestCase):
+class TestNpuCallback(unittest.TestCase):
     def test_static(self):
         # NPU is not supported in ParallelExecutor
         prog = paddle.static.Program()
@@ -38,13 +38,13 @@ class TestNpuPlaceError(unittest.TestCase):
 
             t = fluid.LoDTensor()
             if True:
-                data = np.ones(1024, 1024)
+                data = np.ones([1024, 1024])
                 t.set(data, paddle.NPUPlace(0))
 
             copy_data = np.array(t)
-            self.assertTrue(np.equal(copy_data, np.ones(1024, 1024)))
+            self.assertTrue(np.equal(copy_data, np.ones([1024, 1024])).all())
 
-        x_np = np.random.random(4096, 4096).astype('float32')
+        x_np = np.random.random([4096, 4096]).astype('float32')
         compiled_prog = paddle.static.CompiledProgram(prog)
         place = paddle.NPUPlace(0)
         exe = paddle.static.Executor(place)

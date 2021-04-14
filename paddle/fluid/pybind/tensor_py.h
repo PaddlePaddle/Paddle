@@ -294,11 +294,8 @@ void SetTensorFromPyArrayT(
     auto dst = self->mutable_data<T>(place);
     // platform::NPUMemcpySync(dst, array.data(), array.nbytes(),
     //                         ACL_MEMCPY_HOST_TO_DEVICE);
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &ctx = *pool.Get(place);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto stream = static_cast<platform::NPUDeviceContext *>(dev_ctx)->stream();
     platform::NPUMemcpyAsync(dst, array.data(), array.nbytes(),
                              ACL_MEMCPY_HOST_TO_DEVICE, stream);
 // ctx.Wait();

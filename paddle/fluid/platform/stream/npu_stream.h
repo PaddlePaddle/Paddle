@@ -17,7 +17,6 @@ limitations under the License. */
 #include <cstdint>
 #include <memory>
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/place.h"
@@ -50,9 +49,9 @@ class NPUStream final {
     callback_manager_->AddCallback(callback);
   }
 
-  void ProcessCallback(void* arg) const {
-    aclrtContext context = nullptr;
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context, place_.device));
+  static void ProcessCallback(void* arg) const {
+    // aclrtContext context = nullptr;
+    // PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context, place_.device));
     while (true) {
       // timeout value is 100ms
       (void)aclrtProcessReport(1000);
@@ -60,14 +59,14 @@ class NPUStream final {
         return;
       }
     }
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyContext(context));
+    // PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyContext(context));
   }
 
   // bool GetCallbackExecuteFlag() const {
   //   return is_callback_exec_;
   // }
 
-  void SetCallbackExecuteFlag(bool callback_flag) const {
+  void SetCallbackExecuteFlag(bool callback_flag) {
     is_callback_exec_ = callback_flag;
   }
 
