@@ -7,6 +7,10 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator)
 
+if (WITH_PSCORE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
+  set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
+endif()
 if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
@@ -105,7 +109,7 @@ if(WITH_PYTHON)
   set(tmp_impl_file ${impl_file}.tmp)
 
   if(WIN32)
-      if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
       set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
     else()
       set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")

@@ -320,9 +320,11 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
     push_g_vec.push_back(tensor->data<float>() + i * dim);
   }
 
+  bool training = true;
+
   auto status = _worker_ptr->pull_sparse(
       (float **)push_g_vec.data(), table_id,  // NOLINT
-      sparse_push_keys.data(), sparse_push_keys.size());
+      sparse_push_keys.data(), sparse_push_keys.size(), training);
   status.wait();
   return;
 }
