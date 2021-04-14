@@ -233,10 +233,11 @@ inline void TensorFromVector(const std::vector<bool>& src,
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
     //  1. vector -> npu pinned tensor
-    Tensor npu_pinned_tensor(dst->type());
     platform::NPUPinnedPlace npu_pinned_place;
+    Tensor npu_pinned_tensor;
+    npu_pinned_tensor.Resize(dst->dims());
     auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data<T>(dst->dims(), npu_pinned_place);
+        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->type());
     memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
 
     //  2. copy npu pinned tensor -> npu tensor

@@ -332,7 +332,8 @@ void Copy<platform::NPUPinnedPlace, platform::NPUPlace>(
     platform::NPUPinnedPlace dst_place, void* dst, platform::NPUPlace src_place,
     const void* src, size_t num, aclrtStream stream) {
   if (UNLIKELY(num == 0)) return;
-  platform::SetNPUDeviceId(dst_place.device);
+
+  platform::SetNPUDeviceId(src_place.device);
 
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by thream(" << stream << ")";
