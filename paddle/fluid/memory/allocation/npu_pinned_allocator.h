@@ -12,29 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
+#pragma once
+#include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-bool NPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
+class NPUPinnedAllocator : public Allocator {
+ public:
+  bool IsAllocThreadSafe() const override;
 
-void NPUPinnedAllocator::FreeImpl(Allocation *allocation) {
-  // TODO(liym27): Process events
-  void *ptr = allocation->ptr();
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtFreeHost(ptr));
-  delete allocation;
-  return;
-}
+ protected:
+  void FreeImpl(Allocation* allocation) override;
+  Allocation* AllocateImpl(size_t size) override;
+};
 
-Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
-  // TODO(liym27): Process events and free host
-  void *ptr;
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMallocHost(&ptr, size));
-
-  return new Allocation(p, size, platform::NPUPinnedPlace());
-}
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

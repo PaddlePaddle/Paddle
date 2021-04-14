@@ -42,6 +42,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
+#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #include "paddle/fluid/platform/npu_info.h"
 
 DEFINE_int64(

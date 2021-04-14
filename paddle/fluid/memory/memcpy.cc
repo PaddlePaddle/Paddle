@@ -337,13 +337,6 @@ void Copy<platform::NPUPinnedPlace, platform::NPUPlace>(
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by thream(" << stream << ")";
 
-  //  if (stream) {
-  //    platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned");
-  //    platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
-  //  } else {
-  //    platform::RecordEvent record_event("GpuMemcpySync:GPU->CUDAPinned");
-  //    platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
-  //  }
   if (stream) {
     platform::RecordEvent record_event("NpuMemcpyAsync:NPU->NPUPinned");
     platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST, stream);
