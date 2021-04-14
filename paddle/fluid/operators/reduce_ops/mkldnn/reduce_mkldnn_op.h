@@ -175,12 +175,8 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
         return mkldnn::memory::format_tag::abc;
       case 4:
         return mkldnn::memory::format_tag::abcd;
-      case 5:
-        return mkldnn::memory::format_tag::abcde;
       default:
-        platform::errors::InvalidArgument(
-            "Tensor dims must be in range <1, 5>");
-        return mkldnn::memory::format_tag::a;
+        return mkldnn::memory::format_tag::abcde;
     }
   }
 };

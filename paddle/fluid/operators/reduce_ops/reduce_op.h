@@ -569,6 +569,8 @@ class ReduceGradOp : public framework::OperatorWithKernel {
           ((int)ctx.Attr<std::vector<int>>("dim").size() == dx_dims.size()))
         return true;
 
+      if(dx_dims.size() > 5) return false; // max 5D tensor is supported
+
       auto dy_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
 
       // Subtensor must be on rightmost part of the bigger tensor
