@@ -608,6 +608,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_fusion_gru_bf16_mkldnn_op',
     'test_fusion_gru_mkldnn_op',
     'test_fusion_lstm_mkldnn_op',
+    'test_fusion_lstm_int8_mkldnn_op',
     'test_fusion_lstm_bf16_mkldnn_op',
     'test_gaussian_random_mkldnn_op',
     'test_lrn_mkldnn_op',
@@ -702,4 +703,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_generate_proposals_v2_op',
     'test_lamb_op_xpu',
     'test_model_cast_to_bf16',
+    'test_sgd_op_bf16',
 ]

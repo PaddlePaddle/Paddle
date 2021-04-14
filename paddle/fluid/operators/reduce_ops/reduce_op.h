@@ -495,12 +495,7 @@ class ReduceOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    auto input_dims = framework::vectorize(
-        ctx.Input<paddle::framework::LoDTensor>("X")->dims());
-    auto output_dims = framework::vectorize(
-        ctx.Output<paddle::framework::Tensor>("Out")->dims());
-
-    if (input_dims.size() > 5)
+    if (ctx.Input<paddle::framework::LoDTensor>("X")->dims().size() > 5)
       return framework::OpKernelType(input_data_type, ctx.GetPlace());
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -636,9 +631,6 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<int>("input_format",
-                  "(int, default -1) Input memory format")
-        .SetDefault(-1);
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 

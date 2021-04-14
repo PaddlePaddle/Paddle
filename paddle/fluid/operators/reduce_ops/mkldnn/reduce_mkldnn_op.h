@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -31,8 +30,8 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* input = ctx.Input<LoDTensor>("X");
-    auto* output = ctx.Output<LoDTensor>("Out");
+    const auto* input = ctx.Input<LoDTensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
 
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");

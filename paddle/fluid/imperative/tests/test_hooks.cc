@@ -37,6 +37,30 @@ namespace imperative {
 using vb_vector = std::vector<std::shared_ptr<imperative::VarBase>>;
 using var_pair = std::pair<std::string, vb_vector>;
 
+std::shared_ptr<imperative::VariableWrapper> DoubleHook(
+    const std::shared_ptr<imperative::VariableWrapper>& var) {
+  // 1. create out var
+  auto out_var = std::make_shared<imperative::VariableWrapper>(var->Name());
+  out_var->SetType(var->Type());
+  out_var->SetDataType(var->DataType());
+  out_var->SetForwardDataType(var->ForwardDataType());
+  out_var->InnerSetOverridedStopGradient(var->InnerOverridedStopGradient());
+
+  // 2. get input and output var's tensor
+  auto* out_tensor = out_var->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto& tensor = var->Var().Get<framework::LoDTensor>();
+  out_tensor->Resize(tensor.dims());
+
+  // 3. double calc
+  auto* data = tensor.data<float>();
+  auto* out_data = out_tensor->mutable_data<float>(platform::CPUPlace());
+  for (int64_t i = 0; i < out_tensor->numel(); ++i) {
+    out_data[i] = data[i] * 2.0;
+  }
+
+  return out_var;
+}
+
 TEST(TestHooks, TestGradVarLeafBackwardHook) {
   // 1. prepare
   Tracer tracer;
@@ -73,17 +97,14 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
 
-  // add GradAccumulatorPostHook
-  auto x_var_wrapper = x->SharedVar();
-  x_var_wrapper->AddGradVarLeafBackwardHook(
-      std::unique_ptr<LambdaGradAccumulatorPostHook>(
-          new LambdaGradAccumulatorPostHook([=](VariableWrapper* grad) {
-            auto* grad_tensor =
-                grad->MutableVar()->GetMutable<framework::LoDTensor>();
-            for (int i = 0; i < grad_tensor->numel(); ++i) {
-              grad_tensor->mutable_data<float>(place)[i] *= 2.0;
-            }
-          })));
+  // add VariableWrapper hook
+  x->GradVarBase()->AddVariableWrapperHook(
+      std::make_shared<imperative::CppVariableWrapperHook>(DoubleHook));
+
+  // add Void hook
+  int64_t hook_value = 0;
+  x->GradVarBase()->AddVoidHook(
+      std::make_shared<std::function<void()>>([&]() { hook_value = 10; }));
 
   // 2. forward
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
@@ -93,16 +114,21 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   ASSERT_EQ(out->GradVarBase()->GradOpNum(), 1UL);
 
   // 3. backward
+  std::vector<std::shared_ptr<imperative::VarBase>> tensors{out};
+  std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
   BasicEngine engine;
-  engine.Init(out.get());
+  engine.Init(tensors, grad_tensors);
   engine.Execute();
 
+  // verify VariableWrapper hook result
   framework::LoDTensor x_grad;
   framework::TensorCopySync(x->GradVar().Get<framework::LoDTensor>(), place,
                             &x_grad);
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 8.0);
   }
+  // verify Void hook result
+  ASSERT_EQ(hook_value, 10);
 
   framework::LoDTensor y_grad;
   framework::TensorCopySync(y->GradVar().Get<framework::LoDTensor>(), place,
@@ -151,17 +177,14 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   memory::Copy(place, mutable_z, place, src_data.data(),
                sizeof(float) * src_data.size());
 
-  // add GradAccumulatorPostHook
-  auto x_var_wrapper = x->SharedVar();
-  x_var_wrapper->AddGradVarLeafBackwardHook(
-      std::unique_ptr<LambdaGradAccumulatorPostHook>(
-          new LambdaGradAccumulatorPostHook([=](VariableWrapper* grad) {
-            auto* grad_tensor =
-                grad->MutableVar()->GetMutable<framework::LoDTensor>();
-            for (int i = 0; i < grad_tensor->numel(); ++i) {
-              grad_tensor->mutable_data<float>(place)[i] *= 2.0;
-            }
-          })));
+  // add VariableWrapper hook
+  x->GradVarBase()->AddVariableWrapperHook(
+      std::make_shared<imperative::CppVariableWrapperHook>(DoubleHook));
+
+  // add Void hook
+  int64_t hook_value = 0;
+  x->GradVarBase()->AddVoidHook(
+      std::make_shared<std::function<void()>>([&]() { hook_value = 100; }));
 
   // 2. forward
   var_pair x_pair = var_pair("X", vb_vector(1, x));
@@ -193,16 +216,21 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   ASSERT_EQ(out->GradVarBase()->GradOpNum(), 1UL);
 
   // 3. backward
+  std::vector<std::shared_ptr<imperative::VarBase>> tensors{out};
+  std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
   BasicEngine engine;
-  engine.Init(out.get());
+  engine.Init(tensors, grad_tensors);
   engine.Execute();
 
+  // verify VariableWrapper hook result
   framework::LoDTensor x_grad;
   framework::TensorCopySync(x->GradVar().Get<framework::LoDTensor>(), place,
                             &x_grad);
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 16.0);
   }
+  // verify Void hook result
+  ASSERT_EQ(hook_value, 100);
 
   framework::LoDTensor y_grad;
   framework::TensorCopySync(y->GradVar().Get<framework::LoDTensor>(), place,

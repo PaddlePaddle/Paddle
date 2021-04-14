@@ -87,10 +87,12 @@ inline std::vector<int64_t> CalculateBroadcastedDims(const Tensor* x,
   const auto src_tz = framework::vectorize(x->dims());
   const auto dst_tz = framework::vectorize(y->dims());
 
-  int j = 0;
+  size_t j = 0;
   std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
-  for (size_t i = 0; i < src_tz.size(); ++i)
+  for (size_t i = 0; i < src_tz.size(); ++i) {
     dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+    if (j == dst_tz.size()) break;
+  }
 
   return dst_tz_ex;
 }

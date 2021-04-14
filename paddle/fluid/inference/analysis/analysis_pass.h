@@ -18,7 +18,6 @@ limitations under the License. */
 #include <iosfwd>
 #include <string>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/inference/analysis/helper.h"
