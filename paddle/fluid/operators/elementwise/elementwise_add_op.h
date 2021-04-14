@@ -18,8 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_tmp.cu.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef __NVCC__
 #include <cuda.h>
@@ -64,17 +66,34 @@ template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<framework::LoDTensor>("X");
-    auto *y = ctx.Input<framework::LoDTensor>("Y");
-    auto *z = ctx.Output<framework::LoDTensor>("Out");
-    z->mutable_data<T>(ctx.GetPlace());
-    auto dims_equal = x->dims() == y->dims();
-    if (dims_equal) {
-      SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
-      same_dims_add(ctx, x, y, z);
-    } else {
-      default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+    auto *in_x = ctx.Input<framework::LoDTensor>("X");
+    auto *in_y = ctx.Input<framework::LoDTensor>("Y");
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    // out->mutable_data<T>(ctx.GetPlace());
+    // auto dims_equal = x->dims() == y->dims();
+
+    const std::vector<framework::Tensor *> ins;
+    ins.emplace_back(in_x);
+    bool no_broadcast = in_x->dims() == out->dims();
+
+    if (in_y) {
+      ins.emplace_back(in_y);
+      no_broadcast &= in_y->dims() == out->dims();
     }
+
+    if (no_broadcast || (ins.size() == 1)) {
+      // SameDimsElemwise<DeviceContext, T>(
+      //     ctx, &ins, out_tensor);
+    } else {
+      BroadcastElementwise<DeviceContext, T>(ctx, &ins, out);
+    }
+
+    // if (dims_equal) {
+    //   SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
+    //   same_dims_add(ctx, x, y, z);
+    // } else {
+    //   default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+    // }
   }
 };
 
