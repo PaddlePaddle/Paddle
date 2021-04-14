@@ -76,13 +76,13 @@ class LayerWiseSampler : public IndexSampler {
       }
       layer_counts_sum_ += layer_sample_num + 1;
       layer_counts_.push_back(layer_sample_num);
-      VLOG(1) << "[INFO] level " << cur_layer
+      VLOG(3) << "[INFO] level " << cur_layer
               << " sample_layer_counts.push_back: " << layer_sample_num;
       cur_layer += 1;
       i += 1;
     }
     reverse(layer_counts_.begin(), layer_counts_.end());
-    VLOG(1) << "sample counts sum: " << layer_counts_sum_;
+    VLOG(3) << "sample counts sum: " << layer_counts_sum_;
   }
   std::vector<std::vector<uint64_t>> sample(
       const std::vector<std::vector<uint64_t>>& user_inputs,

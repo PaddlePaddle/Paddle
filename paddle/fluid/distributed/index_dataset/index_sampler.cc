@@ -85,6 +85,9 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
       idx += layer_counts_[j];
     }
   }
+  for (size_t i = 0; i < sampler_vec.size(); i++) {
+    delete sampler_vec[i];
+  }
   return outputs;
 }
 

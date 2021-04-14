@@ -191,36 +191,24 @@ if(WITH_PYTHON)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
+  add_custom_target(fleet_proto_init ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
+  )
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init)
   if (NOT WIN32)
-    if (WITH_PSCORE)
-      add_custom_command(TARGET framework_py_proto POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-        COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
-        COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
-        COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-        COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-        COMMENT "Copy generated python proto into directory paddle/fluid/proto."
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    else()
-      add_custom_command(TARGET framework_py_proto POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-        COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
-        COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
-        COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-        COMMENT "Copy generated python proto into directory paddle/fluid/proto."
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    endif()
+    add_custom_command(TARGET framework_py_proto POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+      COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMENT "Copy generated python proto into directory paddle/fluid/proto."
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   else(NOT WIN32)
     string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
     string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
           COMMAND copy /Y *.py ${proto_dstpath}
 	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -228,6 +216,12 @@ if(WITH_PYTHON)
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif(NOT WIN32)
 endif()
+
+if (WITH_PSCORE)
+  add_custom_command(TARGET fleet_proto_init POST_BUILD
+    COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto.")
+endif(WITH_PSCORE)
 
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 

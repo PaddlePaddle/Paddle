@@ -29,10 +29,18 @@ std::shared_ptr<IndexWrapper> IndexWrapper::s_instance_(nullptr);
 int TreeIndex::Load(const std::string filename) {
   int err_no;
   auto fp = paddle::framework::fs_open_read(filename, &err_no, "");
-  CHECK(fp != nullptr);
+  PADDLE_ENFORCE_NE(
+      fp, nullptr,
+      platform::errors::InvalidArgument(
+          "Open file %s failed. Please check whether the file exists.",
+          filename));
 
   int num = 0;
   max_id_ = 0;
+  fake_node_.set_id(0);
+  fake_node_.set_is_leaf(false);
+  fake_node_.set_probability(0.0);
+  max_code_ = 0;
   size_t ret = fread(&num, sizeof(num), 1, fp.get());
   while (ret == 1 && num > 0) {
     std::string content(num, '\0');
@@ -60,6 +68,9 @@ int TreeIndex::Load(const std::string filename) {
       auto code = boost::lexical_cast<uint64_t>(item.key());
       IndexNode node;
       node.ParseFromString(item.value());
+      PADDLE_ENFORCE_NE(node.id(), 0,
+                        platform::errors::InvalidArgument(
+                            "Node'id should not be equel to zero."));
       if (node.is_leaf()) {
         id_codes_map_[node.id()] = code;
       }
@@ -67,10 +78,14 @@ int TreeIndex::Load(const std::string filename) {
       if (node.id() > max_id_) {
         max_id_ = node.id();
       }
+      if (code > max_code_) {
+        max_code_ = code;
+      }
     }
     ret = fread(&num, sizeof(num), 1, fp.get());
   }
   total_nodes_num_ = data_.size();
+  max_code_ += 1;
   return 0;
 }
 
@@ -78,10 +93,11 @@ std::vector<IndexNode> TreeIndex::GetNodes(const std::vector<uint64_t>& codes) {
   std::vector<IndexNode> nodes;
   nodes.reserve(codes.size());
   for (size_t i = 0; i < codes.size(); i++) {
-    PADDLE_ENFORCE_EQ(CheckIsValid(codes[i]), true,
-                      paddle::platform::errors::InvalidArgument(
-                          "codes[%d] = %d is in valid.", i, codes[i]));
-    nodes.push_back(data_.at(codes[i]));
+    if (CheckIsValid(codes[i])) {
+      nodes.push_back(data_.at(codes[i]));
+    } else {
+      nodes.push_back(fake_node_);
+    }
   }
   return nodes;
 }
@@ -108,17 +124,18 @@ std::vector<uint64_t> TreeIndex::GetAncestorCodes(
 
   int cur_level;
   for (size_t i = 0; i < ids.size(); i++) {
-    PADDLE_ENFORCE_NE(id_codes_map_.find(ids[i]), id_codes_map_.end(),
-                      paddle::platform::errors::InvalidArgument(
-                          "ids[%d] = %d doesn't exist in Tree.", i, ids[i]));
-    auto code = id_codes_map_.at(ids[i]);
-    cur_level = meta_.height() - 1;
+    if (id_codes_map_.find(ids[i]) == id_codes_map_.end()) {
+      res.push_back(max_code_);
+    } else {
+      auto code = id_codes_map_.at(ids[i]);
+      cur_level = meta_.height() - 1;
 
-    while (level >= 0 && cur_level > level) {
-      code = (code - 1) / meta_.branch();
-      cur_level--;
+      while (level >= 0 && cur_level > level) {
+        code = (code - 1) / meta_.branch();
+        cur_level--;
+      }
+      res.push_back(code);
     }
-    res.push_back(code);
   }
   return res;
 }

@@ -61,6 +61,8 @@ class TreeIndex : public Index {
   uint64_t total_nodes_num_;
   TreeMeta meta_;
   uint64_t max_id_;
+  uint64_t max_code_;
+  IndexNode fake_node_;
 };
 
 using TreePtr = std::shared_ptr<TreeIndex>;
