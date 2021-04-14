@@ -638,10 +638,12 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 mean=0.0, std=2.0))
 
         def run_dynamic_graph():
+            paddle.disable_static()
             paddle.seed(SEED)
             linear = paddle.nn.Linear(
                 1, 1, weight_attr=weight_attr, bias_attr=bias_attr)
             return linear.weight.numpy(), linear.bias.numpy()
+            paddle.enable_static()
 
         def run_static_graph():
             paddle.enable_static()
@@ -654,7 +656,7 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
             return res[0], res[1]
 
         dynamic_res = run_dynamic_graph()
-        static_res = run_dynamic_graph()
+        static_res = run_static_graph()
 
         self.assertTrue(np.array_equal(dynamic_res[0], static_res[0]))
         self.assertTrue(np.array_equal(dynamic_res[1], static_res[1]))

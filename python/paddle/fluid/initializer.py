@@ -152,7 +152,6 @@ class ConstantInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        # Initialization Ops should be prepended and not appended
         op = block.append_op(
             type="fill_constant",
             outputs={"Out": out_var},
@@ -241,7 +240,6 @@ class UniformInitializer(Initializer):
         check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
                                  "uniform_random")
 
-        # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -332,7 +330,7 @@ class NormalInitializer(Initializer):
 
         check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
                                  "guassian_random")
-        # Initialization Ops should be prepended and not appended
+
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -416,7 +414,7 @@ class TruncatedNormalInitializer(Initializer):
 
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        # Initialization Ops should be prepended and not appended
+
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -913,7 +911,6 @@ class NumpyArrayInitializer(Initializer):
             out_dtype = var.dtype
             np_value = self._value
 
-        # Initialization Ops should be prepended and not appended
         if out_dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in np_value.flat]
