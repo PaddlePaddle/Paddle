@@ -1071,7 +1071,7 @@ def sequence_unpad(x, length, name=None):
 
             # pad data
             x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
-            pad_value = paddle.assign(input=numpy.array([0.0], dtype=numpy.float32))
+            pad_value = paddle.assign(numpy.array([0.0], dtype=numpy.float32))
             pad_data, len = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
             
             # unpad data
