@@ -52,7 +52,7 @@ class TestReduceSum4DReduceAllWithoutReduceAllAttributeONEDNNOp(
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
-        self.inputs = {'X': np.random.random((5, 10, 5, 6)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 10, 5, 7)).astype("float32")}
         self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1, 2, 3]}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
