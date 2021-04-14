@@ -1592,28 +1592,28 @@ void BindImperative(py::module *m_ptr) {
            &imperative::BKCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
-  m.def("PyLayer_apply",
+  m.def("pylayer_apply",
         [](const platform::CPUPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
-          return imperative::PyLayer_apply(place, cls, args, kwargs);
+          return imperative::PyLayerApply(place, cls, args, kwargs);
         });
 
-  m.def("PyLayer_apply",
+  m.def("pylayer_apply",
         [](const platform::CUDAPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
-          return imperative::PyLayer_apply(place, cls, args, kwargs);
+          return imperative::PyLayerApply(place, cls, args, kwargs);
         });
 
-  m.def("PyLayer_apply",
+  m.def("pylayer_apply",
         [](const platform::XPUPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
-          return imperative::PyLayer_apply(place, cls, args, kwargs);
+          return imperative::PyLayerApply(place, cls, args, kwargs);
         });
 
-  m.def("PyLayer_apply",
+  m.def("pylayer_apply",
         [](const platform::CUDAPinnedPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
-          return imperative::PyLayer_apply(place, cls, args, kwargs);
+          return imperative::PyLayerApply(place, cls, args, kwargs);
         });
 }
 

@@ -279,6 +279,25 @@ class TestPyLayer(unittest.TestCase):
                 z = z[0] + z[1]
                 z.mean().backward()
 
+    def test_pylayer_inplace(self):
+        class cus_tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x.mean()
+
+            @staticmethod
+            def backward(ctx, dy):
+                return dy
+
+        for i in range(2):
+            data = paddle.ones([2, 3], dtype="float64") / (i + 1)
+            data.stop_gradient = False
+            data = paddle.nn.functional.relu(data)
+            z = paddle.tanh(data)
+            z = cus_tanh.apply(data)
+            z.backward()
+            self.assertTrue(data.grad is not None)
+
 
 if __name__ == '__main__':
     unittest.main()

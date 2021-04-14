@@ -45,11 +45,11 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map,
-    const std::shared_ptr<operators::PyLayerContext>& PyLayerContext) {
+    const std::shared_ptr<operators::PyLayerContext>& py_context) {
   operators::PyLayerGradOpMaker<paddle::imperative::OpBase> maker(
       type, ins, outs, attrs, inplace_map);
 
-  maker.GetMutablePyLayerContext() = PyLayerContext;
+  maker.SetPyLayerContext(py_context);
   auto grad_node = maker();
   if (grad_node && !grad_node->empty()) {
     for (auto& grad_op : *grad_node) {
@@ -63,16 +63,15 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
-py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
-                         const py::args args, const py::kwargs kwargs) {
+py::object PyLayerApply(const platform::Place& place, const py::object& cls,
+                        const py::args args, const py::kwargs kwargs) {
   auto bk_function = cls.attr("_backward_function");
-  auto contex = bk_function();
+  auto context = bk_function();
   auto forward = cls.attr("forward");
 
-  auto result_forward = forward(contex, *args, **kwargs);
-
+  auto result_forward = forward(context, *args, **kwargs);
   std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
-      std::make_shared<operators::PyLayerContext>(contex);
+      std::make_shared<operators::PyLayerContext>(context.release().ptr());
   // make inputs to varbase
   std::vector<std::shared_ptr<imperative::VarBase>> input_vars;
   // process args,`input_vars` only collect `imperative::VarBase`
@@ -143,7 +142,25 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
   NameVarBaseMap outs = {{"Out", output_vars}};
 
   if (RequiredGrad(ins, outs)) {
-    CreateGradOpNode("py_layer", ins, outs, {{}}, place, {}, py_layer_ctx);
+    std::map<std::string, std::string> inplace_map{};
+    bool if_inplace = false;
+    for (auto temp_ins : input_vars) {
+      if (if_inplace) {
+        break;
+      }
+      for (auto temp_outs : output_vars) {
+        if (temp_ins->Name() == temp_outs->Name()) {
+          if_inplace = true;
+          break;
+        }
+      }
+    }
+    if (if_inplace) {
+      inplace_map["X"] = "Out";
+    }
+
+    CreateGradOpNode("py_layer", ins, outs, {{}}, place, inplace_map,
+                     py_layer_ctx);
   } else {
     VLOG(3) << "No Grad to track for Op: py_layer_op";
   }

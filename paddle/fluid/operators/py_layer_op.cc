@@ -31,7 +31,6 @@ void RunPyObject(py::object *py_object,
   py::tuple inputs(ins.size());
   for (size_t i = 0; i < ins.size(); i++) {
     auto in_var = ins[i];
-
     if (in_var != nullptr) {
       auto name = paddle::string::Sprintf("generator_custom_py_layer_%d@GRAD",
                                           static_cast<int>(i));
@@ -63,7 +62,8 @@ void RunPyObject(py::object *py_object,
     for (size_t i = 0; i < result_tuple.size(); i++) {
       if (Py_None != result_tuple[i].ptr()) {
         try {
-          auto result_var = result_tuple[i].cast<imperative::VarBase *>();
+          auto result_var =
+              result_tuple[i].cast<std::shared_ptr<imperative::VarBase>>();
           *(*outs)[i] = result_var->Var();
         } catch (py::cast_error &) {
           PADDLE_THROW(platform::errors::Unimplemented(
@@ -77,7 +77,8 @@ void RunPyObject(py::object *py_object,
   } else {
     if (Py_None != py_result.ptr()) {
       try {
-        auto result_var = py_result.cast<imperative::VarBase *>();
+        auto result_var =
+            py_result.cast<std::shared_ptr<imperative::VarBase>>();
         *((*outs)[0]) = result_var->Var();
       } catch (py::cast_error &) {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -98,7 +99,7 @@ void PyLayerGradOpMaker<paddle::imperative::OpBase>::Apply(
 
   if (py_layer_op_const) {
     auto py_layer_op = const_cast<PyLayerOp *>(py_layer_op_const);
-    py_layer_op->GetMutablePyLayerContext() = py_context;
+    py_layer_op->SetPyLayerContext(py_context_);
 
   } else {
     PADDLE_THROW(platform::errors::Fatal(
@@ -134,8 +135,8 @@ class PyLayerOpKernel : public framework::OpKernel<T> {
     auto &op_ = ctx.GetOp();
     auto pylayer_op = dynamic_cast<const PyLayerOp *>(&op_);
     if (pylayer_op) {
-      auto py_layer_context = pylayer_op->GetMutablePyLayerContext();
-      py::object bk_ctx(py::handle(py_layer_context->GetMatableCtx()), true);
+      auto py_layer_context = pylayer_op->GetPyLayerContext();
+      py::object bk_ctx(py::handle(py_layer_context->GetMutableCtx()), true);
       auto &input_vars = ctx.MultiInputVar("X");
       auto output_vars = ctx.MultiOutputVar("Out");
       RunPyObject(&bk_ctx, input_vars, &output_vars);

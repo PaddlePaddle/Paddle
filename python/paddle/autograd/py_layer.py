@@ -171,7 +171,7 @@ class CPyLayer(object):
         """
         place = paddle.fluid.framework._current_expected_place()
         with paddle.fluid.dygraph.no_grad():
-            return core.PyLayer_apply(place, cls, *args, **kwargs)
+            return core.pylayer_apply(place, cls, *args, **kwargs)
 
 
 class PyLayerBackward(PyLayerContext):

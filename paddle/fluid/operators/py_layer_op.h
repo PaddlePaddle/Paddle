@@ -27,19 +27,17 @@ namespace py = ::pybind11;
 
 class PyLayerContext {
  public:
-  explicit PyLayerContext(const py::handle& handle) : context(handle.ptr()) {
-    Py_INCREF(context);
+  explicit PyLayerContext(PyObject* context) : context_(context) {
+    Py_INCREF(context_);
   }
-  ~PyLayerContext() { Py_DECREF(context); }
+
   PyLayerContext() = delete;
 
-  PyObject* GetMatableCtx() { return context; }
+  PyObject* GetMutableCtx() { return context_; }
 
  private:
-  PyObject* context;
+  PyObject* context_;
 };
-
-using CtxPtr = std::shared_ptr<PyLayerContext>;
 
 class PyLayerOp : public framework::OperatorWithKernel {
  public:
@@ -57,11 +55,15 @@ class PyLayerOp : public framework::OperatorWithKernel {
   }
 
  public:
-  CtxPtr& GetMutablePyLayerContext() { return py_context; }
-  const CtxPtr& GetMutablePyLayerContext() const { return py_context; }
+  void SetPyLayerContext(const std::shared_ptr<PyLayerContext>& py_context) {
+    py_context_ = py_context;
+  }
+  const std::shared_ptr<PyLayerContext>& GetPyLayerContext() const {
+    return py_context_;
+  }
 
  private:
-  CtxPtr py_context;
+  std::shared_ptr<PyLayerContext> py_context_;
 };
 
 template <typename T>
@@ -91,10 +93,12 @@ class PyLayerGradOpMaker<paddle::imperative::OpBase>
   void Apply(GradOpPtr<paddle::imperative::OpBase> grad_op) const override;
 
  public:
-  CtxPtr& GetMutablePyLayerContext() { return py_context; }
+  void SetPyLayerContext(const std::shared_ptr<PyLayerContext>& py_context) {
+    py_context_ = py_context;
+  }
 
  private:
-  CtxPtr py_context;
+  std::shared_ptr<PyLayerContext> py_context_;
 };
 
 }  // namespace operators
