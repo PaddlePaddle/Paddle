@@ -597,7 +597,6 @@ def load(path, **configs):
             by default.            
             (3) return_numpy(bool): If specified as True, return tensor as numpy.ndarray, otherwise return tensor as paddle.Tensor. 
             Default False.
-            
 
     Returns:
         Object(Object): a target object can be used in paddle
