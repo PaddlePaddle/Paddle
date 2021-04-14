@@ -23,32 +23,34 @@ namespace imperative {
 
 class VariableWrapper;
 
-/** [ Const VariableWrapper Hook: Pre hook functor of OpBase ]
+/** [ VariableWrapper Hook ]
  *
- * @brief This hook functor is executed before the grad OpBase is executed,
- *        taking the input of the current grad OpBase as input, and
- *        executing python hooks (user-defined) or C++ hooks (developer-defined)
- *        to achieve the purpose of custom operations on the interior VarBase
- *        gradient.
+ * @brief This hook functor is executed before the grad OpBase is executed or
+ *        after gradient accumulation completed in current batch.
+ *        1. For interior var, VariableWrapper Hook take the input of the
+ *        current grad OpBase as input.
+ *        2. For leaf var, VariableWrapper Hook take the inner_var_ of
+ *        GradientAccumulator as input.
  *
- * @note  This hook functor will not change the input gradient VarBase.
+ * @note  This hook functor will not change the input gradient VariableWrapper,
+ *        but if you copy the input VariableWrapper and change the value of
+ *        Variable in VariableWrapper, the value of input will also be changed,
+ *        because they shared same PlaceHolder.
  *
- * @note  [Why need to be OpBase `PreHook`, why not `PostHook`?]
+ * @note  [ Why need to be OpBase `PreHook`, why not `PostHook`? ]
  *
- *        1. We expect If set OpBase post hook, when the op executed end, the
+ *        We expect If set OpBase post hook, when the op executed end, the
  *        op's output gradient may not be the final state, because it may need
  *        other op's gradient output to accumulated to it. But before op can
  *        be executed, the gradient output must have been accumulated to final
  *        value.
- *        2. We don’t want the hook to change its input Tensor value, so now
- *        we can't call all hooks in GradAccumulator.
  *
- * @note  [Why only can be used for interior VarBase?]
+ * @note  [ Why Leaf gradient is special? ]
  *
  *        Because the leaf VarBase's GradVarBase has no GradOpNode, so leaf
  *        GradVarBase has no next OpBase to executed, so if need to deal with
- *        the leaf GradVarBase, cannot use this hook functor. For this case, we
- *        deal with by other inplace hook method.
+ *        the leaf GradVarBase, we should call hooks after gradient accumulation
+ *        completed.
  */
 class VariableWrapperHook {
  public:
@@ -57,34 +59,22 @@ class VariableWrapperHook {
       const std::shared_ptr<VariableWrapper>& var) = 0;
 };
 
-/** [ Inplace VariableWrapper Hook: Post hook functor of GradAccumulator ]
- *
- * @brief This hook functor is the Hook that operates on the current
- *        gradientafter the GradientAccumulator has accumulated the gradient.
- *        Leaf GradVarBase has no next OpBase, if we want to register hook
- *        for it, we also need to wait until the leaf GradVarBase accumulation
- *        is completed, so we can add post hook to GradientAccumulator.
- *
- * @note  This hook functor will change the grad VarBase value.
- *
- * @note  Only allow leaf VarBase hold call this hook functor.
- */
-class InplaceVariableWrapperHook {
+class CppVariableWrapperHook : public VariableWrapperHook {
  public:
-  virtual ~InplaceVariableWrapperHook() = default;
-  virtual void operator()(VariableWrapper* var) = 0;
-};
-
-class LambdaInplaceVariableWrapperHook : public InplaceVariableWrapperHook {
- public:
-  explicit LambdaInplaceVariableWrapperHook(
-      std::function<void(VariableWrapper*)>&& fn)
+  explicit CppVariableWrapperHook(
+      std::function<std::shared_ptr<VariableWrapper>(
+          const std::shared_ptr<VariableWrapper>&)>&& fn)
       : fn_(std::move(fn)) {}
 
-  void operator()(VariableWrapper* var) override { fn_(var); }
+  std::shared_ptr<VariableWrapper> operator()(
+      const std::shared_ptr<VariableWrapper>& var) override {
+    return fn_(var);
+  }
 
  private:
-  std::function<void(VariableWrapper*)> fn_;
+  std::function<std::shared_ptr<VariableWrapper>(
+      const std::shared_ptr<VariableWrapper>&)>
+      fn_;
 };
 
 }  // namespace imperative
