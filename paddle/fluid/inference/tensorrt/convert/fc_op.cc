@@ -108,7 +108,10 @@ class FcOpConverter : public OpConverter {
                          TensorRTEngine::Weight& bias) {
       nvinfer1::ILayer* fc_layer = nullptr;
       if (enable_int8) {
-        CHECK(op_desc.HasAttr("out_threshold"));
+        PADDLE_ENFORCE_EQ(
+            op_desc.HasAttr("out_threshold"), true,
+            platform::errors::InvalidArgument(
+                "must have out threshold in fc layers in int8 mode"));
         float out_scale =
             BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         nvinfer1::DimsHW nv_ksize(1, 1);
@@ -240,13 +243,24 @@ class FcOpConverter : public OpConverter {
                 "dims equals to 4, the last dim of input must be 1, but got %d",
                 input_d[3]));
       }
-      for (int i = 0; i < 3; i++) {
-        if (i < input_dims) {
-          reshape_dim3[i] = input_d[i];
-        } else {
-          reshape_dim3[i] = 1;
+      if (enable_int8) {
+        reshape_dim3[0] = 1;
+        for (int i = 0; i < 3; i++) {
+          reshape_dim3[0] *= input_d[i];
+          if (i > 0) {
+            reshape_dim3[i] = 1;
+          }
+        }
+      } else {
+        for (int i = 0; i < 3; i++) {
+          if (i < input_dims) {
+            reshape_dim3[i] = input_d[i];
+          } else {
+            reshape_dim3[i] = 1;
+          }
         }
       }
+
       nvinfer1::Dims3 reshape_dim(reshape_dim3[0], reshape_dim3[1],
                                   reshape_dim3[2]);
       auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
@@ -260,11 +274,25 @@ class FcOpConverter : public OpConverter {
                         platform::errors::InvalidArgument(
                             "Invalid dimensions. When x_num_col_dims equals to "
                             "2, input_dims should not be 1"));
-      for (int i = 0; i < 4; i++) {
-        if (i < input_dims) {
-          reshape_dim4[i] = input_d[i];
-        } else {
-          reshape_dim4[i] = 1;
+
+      if (enable_int8) {
+        for (int i = 0; i < 4; i++) {
+          if (i == 0) {
+            reshape_dim4[i] = input_d[i];
+          } else {
+            reshape_dim4[i] = 1;
+            if (i < input_dims) {
+              reshape_dim4[1] *= input_d[i];
+            }
+          }
+        }
+      } else {
+        for (int i = 0; i < 4; i++) {
+          if (i < input_dims) {
+            reshape_dim4[i] = input_d[i];
+          } else {
+            reshape_dim4[i] = 1;
+          }
         }
       }
       nvinfer1::Dims4 reshape_dim(reshape_dim4[0], reshape_dim4[1],

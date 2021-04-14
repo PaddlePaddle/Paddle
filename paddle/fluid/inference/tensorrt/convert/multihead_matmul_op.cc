@@ -45,7 +45,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
     float in_scale = 0.;
 
     if (enable_int8) {
-      CHECK(op_desc.HasAttr("Input_scale"));
+      PADDLE_ENFORCE_EQ(
+          op_desc.HasAttr("Input_scale"), true,
+          platform::errors::InvalidArgument(
+              "must have input scale in multihead layers in int8 mode"));
       in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
       auto weight_scale =
           BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
@@ -143,7 +146,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
         }
 
         if (enable_int8) {
-          CHECK(op_desc.HasAttr("out_threshold"));
+          PADDLE_ENFORCE_EQ(
+              op_desc.HasAttr("out_threshold"), true,
+              platform::errors::InvalidArgument(
+                  "must have out threshold in multihead layers in int8 mode"));
           float out_scale =
               BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
