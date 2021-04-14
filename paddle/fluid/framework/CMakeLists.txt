@@ -191,9 +191,9 @@ if(WITH_PYTHON)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
-  add_custom_target(fleet_proto_init ALL
+  add_custom_target(fleet_proto_init ALL DEPENDS index_dataset_py_proto  
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py 
   )
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
   add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init)
