@@ -13,13 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <algorithm>
-#include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef __NVCC__
 #include <cuda.h>
@@ -179,7 +175,8 @@ __global__ void ScalarKernel(const T *__restrict__ in0,
                              Functor func) {
   auto data = ElementwiseDataWrapper<N, 1, T>(out, in0, in1);
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  ScalarKernelImpl(data, size, func, tid, 1);
+  int remain = tid < size ? 1 : 0;
+  ScalarKernelImpl(data, size, func, tid, remain);
 }
 
 template <ElementwiseType N, typename T, typename Functor>
@@ -215,7 +212,8 @@ void LaunchElementwiseCudaKernel(const framework::ExecutionContext &ctx,
                                                             func);
       break;
     default:
-      PADDLE_THROW("Unsupported vectorized size!");
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Unsupported vectorized size!"));
       break;
   }
 }
