@@ -222,10 +222,10 @@ void GroupTestDtypeConvert() {
 
 void TestInitilized() {
   paddle::Tensor test_tensor(paddle::PlaceType::kCPU);
-  CHECK(test_tensor.IsInitialized() == false);
+  CHECK(test_tensor.is_initialized() == false);
   test_tensor.reshape({1, 1});
   test_tensor.mutable_data<float>();
-  CHECK(test_tensor.IsInitialized() == true);
+  CHECK(test_tensor.is_initialized() == true);
   float* tensor_data = test_tensor.data<float>();
   for (int i = 0; i < test_tensor.size(); i++) {
     tensor_data[i] = 0.5;

@@ -384,7 +384,7 @@ int64_t Tensor::size() const {
   return tensor->numel();
 }
 
-bool Tensor::IsInitialized() const {
+bool Tensor::is_initialized() const {
   GET_CASTED_TENSOR;
   if (tensor->IsInitialized()) {
     return true;

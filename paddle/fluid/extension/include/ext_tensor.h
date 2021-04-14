@@ -114,7 +114,7 @@ class PD_DLL_DECL Tensor {
   Tensor cast(const DataType& target_type) const;
 
   /// \brief Check Tensor is initialized
-  bool IsInitialized() const;
+  bool is_initialized() const;
 
 #ifdef PADDLE_WITH_CUDA
   /// \bref Get current stream of Tensor
