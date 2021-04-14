@@ -56,7 +56,7 @@ RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-a
 # Install Python3.7
 RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
     tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.7.0 --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
 
 # Install Python3.8
@@ -65,16 +65,11 @@ RUN wget -q https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tgz && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
 
-# Install Python3.5
-RUN wget -q https://www.python.org/ftp/python/3.5.1/Python-3.5.1.tgz && \
-    tar -xzf Python-3.5.1.tgz && cd Python-3.5.1 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.5.1 --enable-shared > /dev/null && \
-    make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
-ENV PATH=/usr/local/python3.5.1/include:${PATH}
-ENV PATH=/usr/local/python3.5.1/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/python3.5.1/lib:${LD_LIBRARY_PATH}
-ENV CPLUS_INCLUDE_PATH=/usr/local/python3.5.1/include/python3.5:$CPLUS_INCLUDE_PATH
-RUN ln -sf /usr/local/python3.5.1/bin/python3.5 /usr/local/bin/python3 && ln -sf /usr/local/python3.5.1/bin/python3.5 /usr/bin/python3
+ENV PATH=/usr/local/python3.7.0/include:${PATH}
+ENV PATH=/usr/local/python3.7.0/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/python3.7.0/lib:${LD_LIBRARY_PATH}
+ENV CPLUS_INCLUDE_PATH=/usr/local/python3.7.0/include/python3.7:$CPLUS_INCLUDE_PATH
+RUN ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python3 && ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/bin/python3
 
 RUN rm -r /root/python_build
 
@@ -102,14 +97,14 @@ WORKDIR pip-20.0.1
 RUN python setup.py install && \
   python3.8 setup.py install && \
   python3.7 setup.py install && \
-  python3.6 setup.py install && \
-  python3 setup.py install 
+  python3.6 setup.py install
 
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-20.0.1.tar.gz && \
     rm -r Python-$version setuptools-40.6.2 pip-20.0.1
 
 # Install Go and glide
+WORKDIR /home
 RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
@@ -143,10 +138,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
-    pip3 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
+RUN pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.6 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
@@ -155,37 +147,31 @@ RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.8 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.8 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip3.8 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip3 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.6 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+RUN pip3.6 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.6 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip3.7 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip3.8 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.8 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip --no-cache-dir install 'ipykernel==4.6.0'
+    pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 #For docstring checker
-RUN pip3 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.6 --no-cache-dir install pylint pytest astroid isort && \
+RUN pip3.6 --no-cache-dir install pylint pytest astroid isort && \
     pip3.7 --no-cache-dir install pylint pytest astroid isort && \
     pip3.8 --no-cache-dir install pylint pytest astroid isort && \
-    pip --no-cache-dir install pylint pytest astroid isort LinkChecker
+    pip --no-cache-dir install pylint pytest astroid isort
 
-RUN pip3 --no-cache-dir install coverage && \
-    pip3.6 --no-cache-dir install coverage && \
+RUN pip3.6 --no-cache-dir install coverage && \
     pip3.7 --no-cache-dir install coverage && \
     pip3.8 --no-cache-dir install coverage && \
     pip --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
-RUN pip3 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.6 --no-cache-dir install -r /root/requirements.txt && \
+RUN pip3.6 --no-cache-dir install -r /root/requirements.txt && \
     pip3.7 --no-cache-dir install -r /root/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
     pip --no-cache-dir install -r /root/requirements.txt
@@ -193,7 +179,9 @@ RUN pip3 --no-cache-dir install -r /root/requirements.txt && \
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && \
-    pip3 --no-cache-dir install certifi urllib3[secure] && \
+    pip3.6 install --upgrade pip && \ 
+    pip3.7 install --upgrade pip && \ 
+    pip3.8 install --upgrade pip && \ 
     pip3.6 --no-cache-dir install certifi urllib3[secure] && \
     pip3.7 --no-cache-dir install certifi urllib3[secure] && \
     pip3.8 --no-cache-dir install certifi urllib3[secure] && \

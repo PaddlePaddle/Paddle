@@ -25,7 +25,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 6
-
+// 1. BOOST_PP_REPEAT macro represents a fast horizontal repetition construct.
+//    Usage: BOOST_PP_REPEAT(count, macro, data).
+//    This macro expands to the sequence:
+//    macro(z, 0, data) macro(z, 1, data) ... macro(z, count - 1, data).
+// 2. As for our case, count = MAX_RANK_SUPPORTED(which is 6).
+//    So the range of n is 0-5(which is count-1).
+//    We want to generate case 1-6 instead of case 0-5.
+//    So we need to change n to n + 1.
 #define EXPAND_AS_TEMPLATE(z, n, data) \
   case n + 1: {                        \
     ExpandAs<n + 1>(context);          \
@@ -33,10 +40,10 @@ limitations under the License. */
   }
 #define REP_EXPAND_AS_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_AS_TEMPLATE, ~)
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
-#define EXPAND_AS_GRAD_CASE(n)                                       \
-  case n: {                                                          \
-    ExpandAsBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
-    break;                                                           \
+#define EXPAND_AS_GRAD_CASE(n)                                           \
+  case n + 1: {                                                          \
+    ExpandAsBackward<n + 1>(context, reshape_dims_vec, reduce_dims_vec); \
+    break;                                                               \
   }
 #define EXPAND_AS_GRAD_TEMPLATE(z, n, data) \
   BOOST_PP_IF(COND(n), EXPAND_AS_GRAD_CASE(n), )
@@ -145,6 +152,18 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
                             out0);
     } else {
+      PADDLE_ENFORCE_GE(dims, 1,
+                        platform::errors::InvalidArgument(
+                            "The rank of the input 'Out@GRAD' for "
+                            "expand_as_grad op must be greater than or "
+                            "equal to 1, but the value received is %d.",
+                            dims));
+      PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
+                        platform::errors::InvalidArgument(
+                            "The rank of the input 'Out@GRAD' for "
+                            "expand_as_grad op must be less than or equal "
+                            "to %d, but the value received is %d.",
+                            MAX_RANK_SUPPORTED, dims));
       switch (dims) {
         REP_EXPAND_AS_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
         default:
