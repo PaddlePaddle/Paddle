@@ -112,7 +112,6 @@ template <ElementwiseType N, int VecSize, typename T, typename Functor>
 __device__ void VectorizedKernelImpl(ElementwiseDataWrapper<N, VecSize, T> data,
                                      int size, Functor func, int tid) {
   using VecType = AlignedVector<T, VecSize>;
-  const int in_num = static_cast<int>(N);
   VecType ins_vec[N];
   VecType out_vec;
   T *ins_ptr[N];
@@ -144,7 +143,6 @@ __device__ void VectorizedKernelImpl(ElementwiseDataWrapper<N, VecSize, T> data,
 template <ElementwiseType N, typename T, typename Functor>
 __device__ void ScalarKernelImpl(ElementwiseDataWrapper<N, 1, T> data, int size,
                                  Functor func, int start, int remain) {
-  const int in_num = static_cast<int>(N);
   T ins[N];
   T out;
 
