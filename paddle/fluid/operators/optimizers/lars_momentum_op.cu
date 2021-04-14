@@ -24,18 +24,23 @@ using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
 template <typename T, typename MT>
 __global__ void MomentumLarsKernel(const T* p, const T* g, const MT* v,
-                                   const MultiPrecisionType<MT>* learning_rate,
+                                   const MultiPrecisionType<T>* learning_rate,
                                    const MT mu, const int64_t num,
                                    const MT lars_coeff,
-                                   const MT lars_weight_decay, const MT* p_norm,
-                                   const MT* g_norm, T* p_out, MT* v_out,
-                                   const MT epsilon, const MT* master_p,
-                                   MT* master_p_out) {
+                                   const MT lars_weight_decay,
+                                   const MultiPrecisionType<T>* p_norm,
+                                   const MultiPrecisionType<T>* g_norm,
+                                   T* p_out, MT* v_out, const MT epsilon,
+                                   const MT* master_p, MT* master_p_out) {
   const MT lr = static_cast<MT>(learning_rate[0]);
   MT local_lr = lr;
-  if (lars_weight_decay > 0 && p_norm[0] > 0 && g_norm[0] > 0) {
-    local_lr = lr * lars_coeff * p_norm[0] /
-               (g_norm[0] + lars_weight_decay * p_norm[0] + epsilon);
+  const MT p_n = static_cast<MT>(p_norm[0]);
+  const MT g_n = static_cast<MT>(g_norm[0]);
+
+  if (lars_weight_decay > static_cast<MT>(0) && p_n > static_cast<MT>(0) &&
+      g_n > static_cast<MT>(0)) {
+    local_lr =
+        lr * lars_coeff * p_n / (g_n + lars_weight_decay * p_n + epsilon);
   }
 
   CUDA_KERNEL_LOOP(i, num) {
@@ -119,24 +124,24 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     framework::Tensor p_norm_t, g_norm_t;
     p_norm_t.Resize({1});
     g_norm_t.Resize({1});
-    auto* p_norm_data = p_norm_t.mutable_data<MT>(ctx.GetPlace());
-    auto* g_norm_data = g_norm_t.mutable_data<MT>(ctx.GetPlace());
-    auto ep_norm = framework::EigenScalar<MT>::From(p_norm_t);
-    auto eg_norm = framework::EigenScalar<MT>::From(g_norm_t);
+    auto* p_norm_data = p_norm_t.mutable_data<MPDType>(ctx.GetPlace());
+    auto* g_norm_data = g_norm_t.mutable_data<MPDType>(ctx.GetPlace());
+    auto ep_norm = framework::EigenScalar<MPDType>::From(p_norm_t);
+    auto eg_norm = framework::EigenScalar<MPDType>::From(g_norm_t);
 
     auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
-    if (multi_precision) {
-      ep_norm.device(*place) = eigen_p.cast<MT>().square().sum().sqrt();
-      eg_norm.device(*place) = eigen_g.cast<MT>().square().sum().sqrt();
-    } else {
-      ep_norm.device(*place) = eigen_p.square().sum().sqrt();
-      eg_norm.device(*place) = eigen_g.square().sum().sqrt();
-    }
+    // eigen unsupport fp16 l2-norm
+    ep_norm.device(*place) =
+        eigen_p.template cast<MPDType>().square().sum().sqrt();
+    eg_norm.device(*place) =
+        eigen_g.template cast<MPDType>().square().sum().sqrt();
 
-    MomentumLarsKernel<<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+    MomentumLarsKernel<
+        T, MT><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
         p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay,
-        p_norm_data, g_norm_data, p_out, v_out, epsilon);
+        p_norm_data, g_norm_data, p_out, v_out, epsilon, master_p,
+        master_p_out);
   }
 };
 
