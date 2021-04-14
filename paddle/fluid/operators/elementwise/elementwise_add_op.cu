@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
@@ -24,53 +25,15 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct SameDimsElemwiseAdd<
-    platform::CUDADeviceContext, T,
-    typename std::enable_if<!std::is_same<T, platform::float16>::value &&
-                            !std::is_same<T, float>::value>::type> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    AddRangeFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-                                                              x->numel());
-    for_range(functor);
-  }
-};
-
-template <typename T>
-struct SameDimsElemwiseAdd<
-    platform::CUDADeviceContext, T,
-    typename std::enable_if<std::is_same<T, platform::float16>::value ||
-                            std::is_same<T, float>::value>::type> {
+struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
     auto size = x->numel();
-    int vec_size = sizeof(float4) / sizeof(T);
-    dim3 grid_size =
-        dim3(((size + vec_size - 1) / vec_size + PADDLE_CUDA_THREAD_SIZE - 1) /
-                 PADDLE_CUDA_THREAD_SIZE,
-             1);
-    dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
-    if (std::is_same<T, float>::value) {
-      SameDimsElemwiseAddCUDAKernel<<<
-          grid_size, block_size, 0,
-          ctx.template device_context<platform::CUDADeviceContext>()
-              .stream()>>>(x->data<float>(), y->data<float>(), z->data<float>(),
-                           size);
-    } else {
-      const half* x2 =
-          reinterpret_cast<const half*>(x->data<platform::float16>());
-      const half* y2 =
-          reinterpret_cast<const half*>(y->data<platform::float16>());
-      half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
-      SameDimsElemwiseAddCUDAKernel<<<
-          grid_size, block_size, 0,
-          ctx.template device_context<platform::CUDADeviceContext>()
-              .stream()>>>(x2, y2, z2, size);
-    }
+    std::vector<const T*> ins = {x->data<T>(), y->data<T>()};
+    std::vector<T*> outs = {z->data<T>()};
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary>(ctx, ins, outs, size,
+                                                          CudaAddFunctor<T>());
   }
 };
 

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -39,10 +39,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T, class Enable = void>
-struct MyAddFunctor {
-  inline HOSTDEVICE void operator()(T args[]) const {
-    args[0] = args[1] + args[2];
-  }
+struct CudaAddFunctor {
+  inline HOSTDEVICE T operator()(T args[]) const { return args[0] + args[1]; }
 };
 
 template <typename DeviceContext, typename T>
@@ -77,27 +75,9 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     auto dims_equal = x->dims() == y->dims();
-    bool is_cuda =
-        std::is_same<DeviceContext, platform::CUDADeviceContext>::value;
     if (dims_equal) {
-      if (is_cuda) {
-#ifdef PADDLE_WITH_CUDA
-#ifdef __NVCC__
-        // enter same_dims_launch_kernel
-        // output_num default 1
-        // for binary op, input_num is 2
-        // for unary op, input_num is 1
-        auto size = x->numel();
-        auto data =
-            SameDimsData<T, BINARY>(z->data<T>(), x->data<T>(), y->data<T>());
-        same_dims_launch_kernel<T, MyAddFunctor<T>, BINARY>(ctx, data, size,
-                                                            MyAddFunctor<T>());
-#endif
-#endif
-      } else {
-        SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
-        same_dims_add(ctx, x, y, z);
-      }
+      SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
+      same_dims_add(ctx, x, y, z);
     } else {
       default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
     }
@@ -160,11 +140,6 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
 
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
-
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
 
 template <typename T>
 inline int VectorizedSize(const T *pointer) {
