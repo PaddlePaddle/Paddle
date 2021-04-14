@@ -132,13 +132,40 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "pool2d" || op_type == "conv2d" ||
-        op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
+    if (op_type == "pool2d" || op_type == "depthwise_conv2d") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
       if (paddings.size() > 2) return false;
     }
+
+    if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
+        op_type == "conv2d_fusion") {
+      std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+
+      // conv2d and conv2d_transpose need padding check
+      if (paddings.size() > 2 && op_type != "conv2d_fusion") return false;
+
+      if (desc.Input("Input").size() != 1) {
+        VLOG(1) << "TRT Conv2d expect 1 input, but got "
+                << desc.Input("Input").size() << " input.";
+        return false;
+      }
+
+      if (desc.Input("Filter").size() != 1) {
+        VLOG(1) << "TRT Conv2d expect 1 filter, but got "
+                << desc.Input("Filter").size() << " filter.";
+        return false;
+      }
+
+      if (desc.Output("Output").size() != 1) {
+        VLOG(1) << "TRT Conv2d expect 1 output, but got "
+                << desc.Output("Output").size() << " output.";
+        return false;
+      }
+    }
+
     if (op_type == "matmul") {
       auto* block = desc.Block();
       for (auto& param_name : desc.Inputs()) {
@@ -297,6 +324,132 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
       if (spatial_scale <= 0.f) return false;
     }
+
+    if (op_type == "hard_swish") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(1) << "HardSwish op has only 1 input, but got "
+                << desc.Input("X").size();
+        return false;
+      }
+
+      if (desc.Output("Out").size() != 1) {
+        VLOG(1) << "HardSwish op has only 1 output, but got "
+                << desc.Output("Out").size();
+        return false;
+      }
+    }
+
+    if (op_type == "batch_norm") {
+      const std::vector<std::string> bn_inputs = {"X", "Bias", "Mean", "Scale",
+                                                  "Variance"};
+      auto* block = desc.Block();
+      for (int i = 0; i < bn_inputs.size(); i++) {
+        if (desc.Input(bn_inputs[i]).size() != 1) {
+          VLOG(1) << "Invalid " << bn_inputs[i]
+                  << "'s size of batch_norm TRT "
+                     "converter. Expected 1, received "
+                  << desc.Input(bn_inputs[i]).size() << ".";
+          return false;
+        }
+
+        // "Bias", "Mean", "Scale", "Variance"
+        if (i != 0) {
+          auto* var_desc = block->FindVar(desc.Input(bn_inputs[i]).front());
+          if (var_desc == nullptr) {
+            VLOG(1) << "Variable of " << bn_inputs[i]
+                    << " of batch_norm TRT converter is not found.";
+            return false;
+          }
+        }
+      }
+
+      if (desc.Output("Y").size() != 1) {
+        VLOG(1) << "Invalid output Y's size of batch_norm TRT "
+                   "converter. Expected 1, received "
+                << desc.Output("Y").size() << ".";
+        return false;
+      }
+    }
+
+    if (op_type == "split") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(1) << "Invalid input X's size of split TRT converter. "
+                   "Expected 1, received "
+                << desc.Input("X").size() << ".";
+        return false;
+      }
+      if (!desc.HasAttr("axis")) {
+        return false;
+      } else {
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis == 0) {
+          VLOG(1) << "Invalid split axis. Split on batch is not supported in "
+                     "TensorRT";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "slice") {
+      if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
+          !desc.HasAttr("ends")) {
+        return false;
+      } else {
+        std::vector<int> axes =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+        std::vector<int> starts =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
+        std::vector<int> ends =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
+        if (axes.size() != starts.size() || axes.size() != ends.size()) {
+          return false;
+        }
+        if (!with_dynamic_shape) {
+          for (size_t i = 0; i < axes.size(); i++) {
+            if (axes[i] == 0) {
+              VLOG(1) << "Invalid slice axis. Slice on batch axis is not "
+                         "supported in TensorRT";
+              return false;
+            }
+          }
+        }
+      }
+    }
+
+    if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(1) << "The input op's Input(\"X\").size() "
+                   "should equal to 1, but received Input(\"X\").size() = "
+                << desc.Input("X").size() << ".";
+        return false;
+      }
+      if (desc.Input("Y").size() != 1) {
+        VLOG(1) << "The input op's Input(\"Y\").size() "
+                   "should equal to 1, but received Input(\"Y\").size() = "
+                << desc.Input("Y").size() << ".";
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(1) << "The input op's Output(\"Out\").size() "
+                   "should equal to 1, but reveceid Output(\"Out\").size() = "
+                << desc.Output("Out").size() << ".";
+        return false;
+      }
+    }
+
+#if IS_TRT_VERSION_GE(6000)
+    if (op_type == "stack") {
+      if (!with_dynamic_shape) {
+        VLOG(1)
+            << "You are running the Ernie(Bert) model in static"
+               "shape mode, which is not supported for the time being.\n"
+               "You can use the config.SetTRTDynamicShapeInfo(...) interface"
+               " to set the shape information to run the dynamic shape "
+               "mode.";
+        return false;
+      }
+    }
+#endif
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
