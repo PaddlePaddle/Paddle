@@ -59,7 +59,8 @@ class MulNPUKernel : public framework::OpKernel<T> {
                         {{"transpose_x1", false}, {"transpose_x2", false}});
         runner.Run(stream);
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument("not suppert dims"));
+        PADDLE_THROW(
+            platform::errors::InvalidArgument("npu error: not suppert dims"));
       }
       // to do other
     } else if (x->dims().size() == 3 && y->dims().size() == 2) {
