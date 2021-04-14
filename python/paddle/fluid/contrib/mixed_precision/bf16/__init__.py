@@ -18,6 +18,8 @@ from . import amp_lists
 from .amp_lists import *
 from . import amp_utils
 from .amp_utils import *
+from . import decorator
+from .decorator import *
 
 __all__ = []
 __all__ += amp_lists.__all__

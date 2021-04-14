@@ -332,7 +332,8 @@ def fc(input,
         for i, input_x in enumerate(input):
             check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
     dtype = helper.input_dtype()
-    check_dtype(dtype, 'input', ['float16', 'float32', 'float64'], 'fc')
+    check_dtype(dtype, 'input', ['float16', 'uint16', 'float32', 'float64'],
+                'fc')
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
