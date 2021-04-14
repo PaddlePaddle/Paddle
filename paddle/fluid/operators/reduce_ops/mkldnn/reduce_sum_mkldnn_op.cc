@@ -43,4 +43,4 @@ REGISTER_OP_KERNEL(reduce_sum, MKLDNN, paddle::platform::CPUPlace,
 
 REGISTER_OP_KERNEL(reduce_sum_grad, MKLDNN, paddle::platform::CPUPlace,
                    ops::ReduceSumGradMKLDNNKernel<float>,
-                   ops::ReduceSumGradMKLDNNKernel<paddle::platform::bfloat16>);           
+                   ops::ReduceSumGradMKLDNNKernel<paddle::platform::bfloat16>);

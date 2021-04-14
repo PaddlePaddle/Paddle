@@ -631,19 +631,19 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
 };
 
 template <typename T>
-class BinaryReductionGradMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
+class BinaryReductionGradMKLDNNHandler
+    : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
   BinaryReductionGradMKLDNNHandler(const dnnl::algorithm algo,
-                      const MKLDNNDeviceContext& dev_ctx,
-                      const mkldnn::engine engine, platform::Place cpu_place,
-                      const Tensor* x, const Tensor* y,
-                      float scale_x, float scale_y,
-                      const std::string& uniq_name)
+                                   const MKLDNNDeviceContext& dev_ctx,
+                                   const mkldnn::engine engine,
+                                   platform::Place cpu_place, const Tensor* x,
+                                   const Tensor* y, float scale_x,
+                                   float scale_y, const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
-            platform::CreateKey(
-                dev_ctx, framework::vectorize(x->dims()), uniq_name)) {
-
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                uniq_name)) {
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
@@ -662,20 +662,24 @@ class BinaryReductionGradMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl
       auto src1_tz = framework::vectorize(y->dims());
       const auto src0_tz = framework::vectorize(x->dims());
 
-      // GetExpectedKernelType checks if smaller vector is a subvector with all the dims in correct order on the rightmost part of the bigger vector, f.e. a correct vector for broadcasting:
+      // GetExpectedKernelType checks if smaller vector is a subvector with all
+      // the dims in correct order on the rightmost part of the bigger vector,
+      // f.e. a correct vector for broadcasting:
       //  x = 5, 7, 3, 2, 4, 8
       //  y = 4, 8
-      for(size_t i = src1_tz.size() ; i < src0_tz.size() ; ++i){
+      for (size_t i = src1_tz.size(); i < src0_tz.size(); ++i) {
         src1_tz.insert(src1_tz.begin(), 1L);
       }
 
       const auto src0_md = dnnl::memory::desc(
           src0_tz, platform::MKLDNNGetDataType<T>(), x->format());
-      const auto src1_md = dnnl::memory::desc(
-          src1_tz, platform::MKLDNNGetDataType<T>(), x->format());//y->format());
+      const auto src1_md =
+          dnnl::memory::desc(src1_tz, platform::MKLDNNGetDataType<T>(),
+                             x->format());  // y->format());
 
-      //const auto dst_md = dnnl::memory::desc( // in reduction binary op is always inplace
-      //    output_dims, platform::MKLDNNGetDataType<T>(), x->format());  
+      // const auto dst_md = dnnl::memory::desc( // in reduction binary op is
+      // always inplace
+      //    output_dims, platform::MKLDNNGetDataType<T>(), x->format());
 
       dnnl::primitive_attr attributes;
       attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
@@ -728,7 +732,6 @@ class ReductionMKLDNNHandler
     }
   }
 };
-
 
 template <typename T>
 class ActivationMKLDNNHandler

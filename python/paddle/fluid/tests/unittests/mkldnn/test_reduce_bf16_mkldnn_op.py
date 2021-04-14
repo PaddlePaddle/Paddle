@@ -67,7 +67,7 @@ class TestReduceSumDefaultBF16ONEDNNOp(OpTest):
 
         self.grad_Out = np.atleast_1d(self.grad_Out)
 
-        self.grad_X = tmp_tensor + self.grad_Out # broadcast grad
+        self.grad_X = tmp_tensor + self.grad_Out  # broadcast grad
 
         if self.op_type == 'reduce_mean':
             self.grad_X /= prod_of_reduced_dims
@@ -84,7 +84,8 @@ class TestReduceDefaultWithGradBF16ONEDNNOp(TestReduceSumDefaultBF16ONEDNNOp):
             user_defined_grad_outputs=[convert_float_to_uint16(self.grad_Out)])
 
 
-class TestReduceSum4DReduceAllWithoutReduceAllAttributeBF16ONEDNNOp(TestReduceDefaultWithGradBF16ONEDNNOp):
+class TestReduceSum4DReduceAllWithoutReduceAllAttributeBF16ONEDNNOp(
+        TestReduceDefaultWithGradBF16ONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -95,7 +96,8 @@ class TestReduceSum4DReduceAllWithoutReduceAllAttributeBF16ONEDNNOp(TestReduceDe
         self.outputs = {'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim']))}
 
 
-class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16ONEDNNOp(TestReduceDefaultWithGradBF16ONEDNNOp):
+class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16ONEDNNOp(
+        TestReduceDefaultWithGradBF16ONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -106,7 +108,8 @@ class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16ONEDNNOp(
         self.outputs = {'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim']))}
 
 
-class TestReduceSum5DReduceAllKeepDimsBF16ONEDNNOp(TestReduceDefaultWithGradBF16ONEDNNOp):
+class TestReduceSum5DReduceAllKeepDimsBF16ONEDNNOp(
+        TestReduceDefaultWithGradBF16ONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -117,7 +120,8 @@ class TestReduceSum5DReduceAllKeepDimsBF16ONEDNNOp(TestReduceDefaultWithGradBF16
         self.outputs = {'Out': self.x_fp32.sum(keepdims=self.attrs['keep_dim'])}
 
 
-class TestReduceSum4DReduceAllBF16ONEDNNOp(TestReduceDefaultWithGradBF16ONEDNNOp):
+class TestReduceSum4DReduceAllBF16ONEDNNOp(
+        TestReduceDefaultWithGradBF16ONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -196,7 +200,10 @@ class TestReduceMean4DBF16ONEDNNOp(TestReduceDefaultWithGradBF16ONEDNNOp):
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
         self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1]}
-        self.outputs = {'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim'])) / (self.x_fp32.shape[0] * self.x_fp32.shape[1])}
+        self.outputs = {
+            'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim'])) /
+            (self.x_fp32.shape[0] * self.x_fp32.shape[1])
+        }
 
 
 if __name__ == '__main__':

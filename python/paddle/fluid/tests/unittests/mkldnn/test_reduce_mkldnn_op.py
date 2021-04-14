@@ -71,7 +71,8 @@ class TestReduceSum5DKeepDimsONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
         }
 
 
-class TestReduceSum5DReduceAllKeepDimsONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
+class TestReduceSum5DReduceAllKeepDimsONEDNNOp(
+        TestReduceDefaultWithGradONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True

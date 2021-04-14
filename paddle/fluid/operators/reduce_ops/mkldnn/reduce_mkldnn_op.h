@@ -125,8 +125,8 @@ template <typename T>
 class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void RunKernel(const framework::ExecutionContext& ctx,
-                 dnnl::algorithm binary_type, float scale_x, float scale_y) const {
-    //only for reduce sum for now
+                 dnnl::algorithm binary_type, float scale_x,
+                 float scale_y) const {
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
@@ -138,13 +138,14 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     output_dx->mutable_data<T>(ctx.GetPlace());
-    
+
     output_dx->set_format(getPlainFormatTag(output_dx));
     output_dx->set_layout(input_dy->layout());
 
-    platform::BinaryReductionGradMKLDNNHandler<T> handler(binary_type, dev_ctx, onednn_engine,
-                 ctx.GetPlace(), output_dx, input_dy, scale_x, scale_y,
-                 ctx.InputName(framework::GradVarName("Out")));
+    platform::BinaryReductionGradMKLDNNHandler<T> handler(
+        binary_type, dev_ctx, onednn_engine, ctx.GetPlace(), output_dx,
+        input_dy, scale_x, scale_y,
+        ctx.InputName(framework::GradVarName("Out")));
 
     auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
     const auto src_dy_memory = handler.AcquireSecondSrcMemory(input_dy);
@@ -163,9 +164,10 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     binary_prim->execute(astream, args);
     astream.wait();
   }
-protected:
-  mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const{
-    switch(tensor->dims().size()){
+
+ protected:
+  mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
+    switch (tensor->dims().size()) {
       case 1:
         return mkldnn::memory::format_tag::a;
       case 2:
@@ -177,8 +179,9 @@ protected:
       case 5:
         return mkldnn::memory::format_tag::abcde;
       default:
-        platform::errors::InvalidArgument("Tensor dims must be in range <1, 5>");
-    }      
+        platform::errors::InvalidArgument(
+            "Tensor dims must be in range <1, 5>");
+    }
   }
 };
 
