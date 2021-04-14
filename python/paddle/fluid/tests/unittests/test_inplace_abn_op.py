@@ -27,6 +27,7 @@ import paddle.fluid.unique_name as unique_name
 
 class TestInplaceANBOpTraining(unittest.TestCase):
     def setUp(self):
+        """This op does not support float64 with rocm """
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.N = 4
         self.C = 5
