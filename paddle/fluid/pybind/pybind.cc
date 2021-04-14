@@ -518,8 +518,8 @@ PYBIND11_MODULE(core_noavx, m) {
 #endif
     } else if (platform::is_xpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_XPU
-      SerializeToStream(fout, tensor,
-          paddle::platform::XPUDeviceContext(paddle::platform::XPUPlace());
+      SerializeToStream(fout, tensor, paddle::platform::XPUDeviceContext(
+                                          paddle::platform::XPUPlace()));
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
@@ -532,7 +532,7 @@ PYBIND11_MODULE(core_noavx, m) {
 #else
       SerializeToStream(fout, tensor,
          paddle::platform::CUDAPinnedDeviceContext(
-           paddle::platform::CUDAPinnedPlace())));
+           paddle::platform::CUDAPinnedPlace()));
 #endif
     } else {
       platform::errors::Unimplemented(
