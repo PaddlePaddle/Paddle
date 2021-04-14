@@ -19,6 +19,7 @@ RUN bash build_scripts/build.sh
 RUN bash build_scripts/install_nccl2.sh 
 RUN bash build_scripts/install_trt.sh 
 RUN rm -rf build_scripts
+RUN ln -s /usr/local/ssl/include/openssl /usr/include
 
 # git 2.17.1
 RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
@@ -47,26 +48,17 @@ RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/p
 
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 
-RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install setuptools -U && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install setuptools -U && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.5.1/bin/pip3 install setuptools -U && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install setuptools -U && \
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install setuptools -U && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.7.0/bin/pip3 install setuptools -U && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.8.0/bin/pip3 install setuptools -U
 
-RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install -r /root/requirements.txt && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install -r /root/requirements.txt && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.5.1/bin/pip3 install -r /root/requirements.txt && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install -r /root/requirements.txt && \
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install -r /root/requirements.txt && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.7.0/bin/pip3 install -r /root/requirements.txt && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.8.0/bin/pip3 install -r /root/requirements.txt && \
     go get github.com/Masterminds/glide && \
     rm -rf /root/requirements.txt
 
-RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install pre-commit 'ipython==5.3.0' && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install pre-commit 'ipython==5.3.0' && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.5.1/bin/pip3 install pre-commit 'ipython==5.3.0' && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install pre-commit 'ipython==5.3.0' && \
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install pre-commit 'ipython==5.3.0' && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.7.0/bin/pip3 install pre-commit 'ipython==5.3.0' && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.8.0/bin/pip3 install pre-commit 'ipython==5.3.0' 
 

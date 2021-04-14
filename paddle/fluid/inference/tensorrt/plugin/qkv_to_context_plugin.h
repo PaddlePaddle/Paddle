@@ -118,9 +118,9 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   float scale_;
 };
 
-class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
+class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  QkvToContextPluginV2Creator() {}
+  QkvToContextPluginDynamicCreator() {}
   const char* getPluginName() const override { return "qkv_to_context_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
@@ -155,7 +155,7 @@ class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection field_collection_;
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-REGISTER_TRT_PLUGIN_V2(QkvToContextPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(QkvToContextPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

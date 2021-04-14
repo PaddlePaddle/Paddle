@@ -258,7 +258,8 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         cast_model_to_fp16(main_prog, use_fp16_guard=False)
 
     def test_non_iterable_dataloader(self):
-        self.decorate_with_data_loader()
+        if fluid.core.is_compiled_with_cuda():
+            self.decorate_with_data_loader()
 
 
 if __name__ == '__main__':

@@ -1971,9 +1971,9 @@ class TestPow_factor_tensor(TestActivation):
             feed={"x": input},
             fetch_list=[out_1, out_2, res, out_6])
 
-        assert np.array_equal(res_1, np.power(input, 2))
-        assert np.array_equal(res_2, np.power(input, 3))
-        assert np.array_equal(res_6, np.power(input, 3))
+        assert np.allclose(res_1, np.power(input, 2))
+        assert np.allclose(res_2, np.power(input, 3))
+        assert np.allclose(res_6, np.power(input, 3))
 
     def test_error(self):
         in1 = fluid.layers.data(
