@@ -25,13 +25,6 @@ from PIL import Image
 from numpy import sin, cos, tan
 import paddle
 
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
-
 from . import functional_pil as F_pil
 from . import functional_cv2 as F_cv2
 from . import functional_tensor as F_t
@@ -619,13 +612,16 @@ def to_grayscale(img, num_output_channels=1):
             print(gray_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.to_grayscale(img, num_output_channels)
+    elif _is_tensor_image(img):
+        return F_t.to_grayscale(img, num_output_channels)
     else:
         return F_cv2.to_grayscale(img, num_output_channels)
 
