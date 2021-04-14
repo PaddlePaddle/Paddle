@@ -574,13 +574,16 @@ def rotate(img,
             print(rotated_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.rotate(img, angle, interpolation, expand, center, fill)
+    elif _is_tensor_image(img):
+        return F_t.rotate(img, angle, interpolation, expand, center, fill)
     else:
         return F_cv2.rotate(img, angle, interpolation, expand, center, fill)
 

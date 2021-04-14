@@ -397,14 +397,6 @@ class TestTransformsCV2(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             transform = transforms.BrightnessTransform('0.1', keys='a')
 
-        with self.assertRaises(ValueError):
-            trans_gray = transforms.Compose([
-                transforms.ToTensor(), transforms.Pad(1,
-                                                      padding_mode='symmetric')
-            ])
-            fake_img = self.create_image((100, 120, 3))
-            trans_gray(fake_img)
-
     def test_info(self):
         str(transforms.Compose([transforms.Resize((224, 224))]))
         str(transforms.Compose([transforms.Resize((224, 224))]))
