@@ -811,7 +811,7 @@ class DistributedStrategy(object):
             strategy = fleet.DistributedStrategy()
             strategy.sharding = True
             strategy.sharding_configs = {
-                "sharding_segment_strategy": segment_broadcast_MB,
+                "sharding_segment_strategy": "segment_broadcast_MB",
                 "segment_broadcast_MB": 32,
                 "sharding_degree": 8,
                 "sharding_degree": 2,
@@ -869,7 +869,7 @@ class DistributedStrategy(object):
         **Notes**:
             **Detailed arguments for pipeline_configs**
 
-            **micro_batch**: the number of small batches in each user defined batch
+            **micro_batch_size**: the number of small batches in each user defined batch
 
         Examples:
 
@@ -878,7 +878,7 @@ class DistributedStrategy(object):
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.pipeline = True
-            strategy.pipeline_configs = {"micro_batch": 12}
+            strategy.pipeline_configs = {"micro_batch_size": 12}
 
         """
 
