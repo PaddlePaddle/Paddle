@@ -16,6 +16,9 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -23,6 +26,9 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
+#ifdef PADDLE_WITH_ASCEND
+#include "paddle/fluid/framework/fleet/ascend_wrapper.h"
+#endif
 
 // NOTE(zhiqiu): Commonly, the inputs in auto-generated OP function are
 // determined by the OP`s proto automatically, i.e., all the inputs registered
@@ -84,7 +90,8 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"matrix_nms", {"Out", "Index", "RoisNum"}},
     {"distribute_fpn_proposals",
      {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
-    {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
+    {"moving_average_abs_max_scale",
+     {"Out", "OutScale", "OutAccum", "OutState"}},
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
@@ -118,6 +125,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"fill_constant", {"Out"}},
     {"matmul", {"Out"}},
     {"c_broadcast", {"Out"}},
+    {"c_sync_calc_stream", {"Out"}},
+    {"c_sync_comm_stream", {"Out"}},
     {"c_allreduce_sum", {"Out"}},
     {"c_allreduce_max", {"Out"}},
     {"c_allreduce_min", {"Out"}},
@@ -137,7 +146,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"check_finite_and_unscale", {"Out", "FoundInfinite"}},
     {"update_loss_scaling",
      {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
-    {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
+    {"moving_average_abs_max_scale",
+     {"Out", "OutScale", "OutAccum", "OutState"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"rnn", {"DropoutState"}},
@@ -557,6 +567,11 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
+#ifdef PADDLE_WITH_ASCEND
+  auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();
+  ascend_ptr->InitGEForUT();
+#endif
+
   std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\""};
 
   std::ofstream out(argv[1], std::ios::out);
@@ -586,5 +601,9 @@ int main(int argc, char* argv[]) {
       << "} // namespace paddle\n";
 
   out.close();
+
+#ifdef PADDLE_WITH_ASCEND
+  ge::GEFinalize();
+#endif
   return 0;
 }

@@ -27,7 +27,6 @@ limitations under the License. */
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
@@ -420,6 +419,7 @@ class ExecutionContext {
   const RuntimeContext Context() const { return ctx_; }
 
   std::string DebugString() const { return op_.DebugString(); }
+  const OperatorBase& GetOp() const { return op_; }
 
  private:
   const OperatorBase& op_;

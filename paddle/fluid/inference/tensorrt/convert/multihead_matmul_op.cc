@@ -227,7 +227,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         plugin::DynamicPluginTensorRT* plugin =
             new plugin::QkvToContextPluginDynamic(hidden_in, head_number,
                                                   head_size, scale, with_fp16);
-        layer = engine_->AddPluginV2(plugin_inputs.data(), 2, plugin);
+        layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(

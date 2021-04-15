@@ -30,8 +30,9 @@ taskkill /f /im op_function_generator.exe
 wmic process where name="op_function_generator.exe" call terminate
 taskkill /f /im python.exe  2>NUL
 
+
 rem ------initialize common variable------
-if not defined GENERATOR set GENERATOR="Visual Studio 14 2015 Win64"
+if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined BRANCH set BRANCH=develop
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
@@ -51,6 +52,8 @@ if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
 if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 if not defined LOG_LEVEL set LOG_LEVEL=normal
+if not defined PRECISION_TEST set PRECISION_TEST=OFF
+if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
@@ -80,7 +83,7 @@ git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "setup.py.in"
-    if %ERRORLEVEL% EQU 0 (
+    if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
     git branch -D last_pr
@@ -157,9 +160,11 @@ if %GENERATOR% == "Ninja" (
 
 rem ------show summary of current environment----------
 cmake --version
-nvcc --version
-where nvidia-smi
-nvidia-smi
+if "%WITH_GPU%"=="ON" (
+    nvcc --version
+    where nvidia-smi
+    nvidia-smi
+)
 python %work_dir%\tools\summary_env.py
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
 
@@ -241,7 +246,9 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
-call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
+call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+set DISTUTILS_USE_SDK=1
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -261,16 +268,16 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party_GPU/ /s/q
-        rmdir %cache_dir%\third_party/ /s/q
+        rmdir %cache_dir%\third_party_GPU /s/q
+        rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party_GPU/ /s/q
-        rmdir %cache_dir%\third_party/ /s/q
+        rmdir %cache_dir%\third_party_GPU /s/q
+        rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party_GPU/ /s/q
-        rmdir %cache_dir%\third_party/ /s/q
+        rmdir %cache_dir%\third_party_GPU /s/q
+        rmdir %cache_dir%\third_party /s/q
     )
 )
 
@@ -294,14 +301,14 @@ if "%WITH_GPU%"=="ON" (
 )
 
 :cmake_impl
-echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+echo cmake .. -G %GENERATOR% -T host=x64 -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%
 
-cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -T host=x64 -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
@@ -322,14 +329,16 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*2/3
+for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
+echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
+
 if %GENERATOR% == "Ninja" (
     ninja third_party
 ) else (
-    msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
+    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:quiet third_party.vcxproj
 )
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
@@ -352,9 +361,9 @@ if %GENERATOR% == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
-        msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     ) else (
-        msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     )
 )
 
@@ -453,26 +462,10 @@ dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
 pip install requests
-python %work_dir%\tools\get_quick_disable_lt.py > Output
-if %errorlevel%==0 (
-    set /p disable_ut_quickly=<Output
-    DEL Output
-    ) else (
-    set disable_ut_quickly=''
-)
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
-
-if "%NIGHTLY_MODE%"=="ON" (
-    set nightly_label="()"
-    ) else (
-    set nightly_label="(RUN_TYPE=NIGHTLY^|RUN_TYPE=DIST:NIGHTLY^|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
-    echo    ========================================
-    echo    "Unittests with nightly labels  are only run at night"
-    echo    ========================================
-)
 
 if "%WITH_GPU%"=="ON" (
     goto:parallel_test_base_gpu
@@ -493,7 +486,15 @@ setlocal enabledelayedexpansion
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
-%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST%
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
+-DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% >> %work_dir%\win_cmake.sh
+set FLAGS_fraction_of_gpu_memory_to_use=0.92
+
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
 goto:eof
 
@@ -502,7 +503,7 @@ echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
 
-ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
 goto:eof
 
@@ -579,7 +580,7 @@ echo     git fetch upstream $BRANCH # develop is not fetched>>  check_change_of_
 echo fi>>  check_change_of_unittest.sh
 echo git checkout -b origin_pr >>  check_change_of_unittest.sh
 echo git checkout -f $BRANCH >>  check_change_of_unittest.sh
-echo cmake .. -G %GENERATOR% -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+echo cmake .. -G %GENERATOR% -T host=x64 -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
@@ -696,7 +697,7 @@ echo    ========================================
 echo    Clean up environment  at the end ...
 echo    ========================================
 taskkill /f /im cmake.exe  2>NUL
-taskkill /f /im msbuild.exe 2>NUL
+taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im git.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL
 taskkill /f /im lib.exe 2>NUL

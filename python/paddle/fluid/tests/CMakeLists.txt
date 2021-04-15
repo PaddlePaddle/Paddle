@@ -8,10 +8,6 @@ endforeach()
 
 add_subdirectory(unittests)
 add_subdirectory(book)
-
-# TODO: support New Custom OP on Mac
-if(NOT APPLE)
-  add_subdirectory(custom_op)
-endif()
+add_subdirectory(custom_op)
 
 set_tests_properties(test_beam_search_decoder PROPERTIES TIMEOUT 120)

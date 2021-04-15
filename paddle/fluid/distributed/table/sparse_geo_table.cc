@@ -22,8 +22,17 @@ int32_t SparseGeoTable::pull_geo_param(const uint32_t trainer_id,
                                        std::vector<uint64_t>* ids) {
   geo_recorder->GetAndClear(trainer_id, ids);
   auto dim = _config.common().dims()[0];
+
+  std::vector<uint32_t> frequencies;
+  frequencies.resize(ids->size(), 1);
+
+  auto pull_value = PullSparseValue(ids->size(), dim);
+  pull_value.is_training_ = true;
+  pull_value.feasigns_ = ids->data();
+  pull_value.frequencies_ = frequencies.data();
+
   values->resize(ids->size() * dim);
-  CommonSparseTable::pull_sparse(values->data(), ids->data(), ids->size());
+  CommonSparseTable::pull_sparse(values->data(), pull_value);
   return 0;
 }
 

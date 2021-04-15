@@ -144,9 +144,9 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
   int axis_;
 };
 
-class ElementwisePluginV2Creator : public nvinfer1::IPluginCreator {
+class ElementwisePluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  ElementwisePluginV2Creator() {}
+  ElementwisePluginDynamicCreator() {}
   const char* getPluginName() const override { return "elementwise_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
@@ -182,7 +182,7 @@ class ElementwisePluginV2Creator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-REGISTER_TRT_PLUGIN_V2(ElementwisePluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(ElementwisePluginDynamicCreator);
 #endif
 
 }  // namespace plugin

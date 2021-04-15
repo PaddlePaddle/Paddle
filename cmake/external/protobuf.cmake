@@ -198,8 +198,16 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
     ENDIF()
 
+if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
+    SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
+    SET(PROTOBUF_TAG         v3.8.0)
+elseif(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
+    SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
+    SET(PROTOBUF_TAG         v3.8.0)
+else()
     SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
     SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
+endif()
 
     cache_third_party(${TARGET_NAME}
         REPOSITORY    ${PROTOBUF_REPOSITORY}
@@ -234,7 +242,11 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     )
 ENDFUNCTION()
 
-SET(PROTOBUF_VERSION 3.1.0)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
+    SET(PROTOBUF_VERSION 3.8.0)
+else()
+    SET(PROTOBUF_VERSION 3.1.0)
+endif()
 
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)

@@ -52,6 +52,9 @@ class PD_DLL_DECL Tensor {
   /// \brief Construct a Tensor on target Place for CustomOp.
   /// Generally it's only used for user to create Tensor.
   explicit Tensor(const PlaceType& place);
+  /// \brief Construct a Tensor on target Place with shape for CustomOp.
+  /// Generally it's only used for user to create Tensor.
+  Tensor(const PlaceType& place, const std::vector<int64_t>& shape);
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
   /// Reshape must be called before calling
@@ -109,6 +112,9 @@ class PD_DLL_DECL Tensor {
 
   /// \brief Cast datatype from one to another
   Tensor cast(const DataType& target_type) const;
+
+  /// \brief Check Tensor is initialized
+  bool is_initialized() const;
 
 #ifdef PADDLE_WITH_CUDA
   /// \bref Get current stream of Tensor

@@ -102,13 +102,23 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
-  tensor->Resize(framework::make_ddim(shape));
+  auto new_dim = framework::make_ddim(shape);
+  tensor->Resize(new_dim);
 }
 
 Tensor::Tensor(const PlaceType &place)
     : tensor_(std::make_shared<framework::LoDTensor>()),
       place_(place),
       stream_(StreamWrapper()) {}
+
+Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
+    : tensor_(std::make_shared<framework::LoDTensor>()),
+      place_(place),
+      stream_(StreamWrapper()) {
+  GET_CASTED_TENSOR
+  tensor->Resize(framework::make_ddim(shape));
+}
+
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   place_ = place;
@@ -372,6 +382,15 @@ Tensor Tensor::cast(const DataType &target_type) const {
 int64_t Tensor::size() const {
   GET_CASTED_TENSOR;
   return tensor->numel();
+}
+
+bool Tensor::is_initialized() const {
+  GET_CASTED_TENSOR;
+  if (tensor->IsInitialized()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 #ifdef PADDLE_WITH_CUDA

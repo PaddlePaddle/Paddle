@@ -27,24 +27,31 @@ except:
 def default_collate_fn(batch):
     """
     Default batch collating function for :code:`paddle.io.DataLoader`,
-    batch should be a list of samples, and each sample should be a list
-    of fields as follows:
-    
-    [[filed1, filed2, ...], [filed1, filed2, ...], ...]
-    
-    This default collate function zipped each filed together and stack
-    each filed as the batch field as follows:
+    get input data as a list of sample datas, each element in list
+    if the data of a sample, and sample data should composed of list,
+    dictionary, string, number, numpy array and paddle.Tensor, this
+    function will parse input data recursively and stack number,
+    numpy array and paddle.Tensor datas as batch datas. e.g. for
+    following input data:
 
-    [batch_filed1, batch_filed2, ...]
+    [{'image': np.array(shape=[3, 224, 224]), 'label': 1},
+     {'image': np.array(shape=[3, 224, 224]), 'label': 3},
+     {'image': np.array(shape=[3, 224, 224]), 'label': 4},
+     {'image': np.array(shape=[3, 224, 224]), 'label': 5},]
+    
+    
+    This default collate function zipped each number and numpy array
+    field together and stack each field as the batch field as follows:
+
+    {'image': np.array(shape=[4, 3, 224, 224]), 'label': np.array([1, 3, 4, 5])}
+
 
     Args:  
-        batch(list of list of numpy array|paddle.Tensor): the batch data, each fields
-              should be a numpy array, each sample should be a list of
-              fileds, and batch should be a list of sample.
+        batch(list of sample data): batch should be a list of sample data.
     
     Returns:
-        a list of numpy array|Paddle.Tensor: collated batch of input batch data,
-            fields data type as same as fields in each sample.
+        Batched data: batched each number, numpy array and paddle.Tensor
+                      in input data.
     """
     sample = batch[0]
     if isinstance(sample, np.ndarray):
@@ -75,6 +82,24 @@ def default_collate_fn(batch):
 
 
 def default_convert_fn(batch):
+    """
+    Default batch converting function for :code:`paddle.io.DataLoader`.
+    get input data as a list of sample datas, each element in list
+    if the data of a sample, and sample data should composed of list,
+    dictionary, string, number, numpy array and paddle.Tensor.
+
+    .. note::
+        This function is default :attr:`collate_fn` in **Distable
+        automatic batching** mode, for **Distable automatic batching**
+        mode, please ses :attr:`paddle.io.DataLoader`
+
+    Args:  
+        batch(list of sample data): batch should be a list of sample data.
+    
+    Returns:
+        Batched data: batched each number, numpy array and paddle.Tensor
+                      in input data.
+    """
     if isinstance(batch, (paddle.Tensor, np.ndarray)):
         return batch
     elif isinstance(batch, (str, bytes)):

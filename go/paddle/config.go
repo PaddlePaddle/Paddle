@@ -15,7 +15,7 @@
 package paddle
 
 // #cgo CFLAGS: -I${SRCDIR}/../paddle_c/paddle/include
-// #cgo LDFLAGS: -L${SRCDIR}/../paddle_c/paddle/lib -lpaddle_fluid_c
+// #cgo LDFLAGS: -L${SRCDIR}/../paddle_c/paddle/lib -lpaddle_inference_c
 // #include <stdbool.h>
 // #include <stdlib.h>
 // #include <paddle_c_api.h>

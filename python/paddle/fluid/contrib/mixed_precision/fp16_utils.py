@@ -116,14 +116,15 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         persistable=False,
                         stop_gradient=in_var.stop_gradient)
 
-                    block._insert_op(
+                    block._insert_op_without_sync(
                         idx,
                         type="cast",
                         inputs={"X": in_var},
                         outputs={"Out": out_var},
                         attrs={
                             "in_dtype": in_var.dtype,
-                            "out_dtype": out_var.dtype
+                            "out_dtype": out_var.dtype,
+                            "op_device": op.attr("op_device")
                         })
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
@@ -171,8 +172,11 @@ def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
             type="cast",
             inputs={"X": target_var},
             outputs={"Out": cast_var},
-            attrs={"in_dtype": target_var.dtype,
-                   "out_dtype": cast_var.dtype})
+            attrs={
+                "in_dtype": target_var.dtype,
+                "out_dtype": cast_var.dtype,
+                "op_device": op.attr("op_device")
+            })
         num_cast_ops += 1
         op_var_rename_map[block.idx][target_var.name] = cast_var.name
 
@@ -486,6 +490,7 @@ def rewrite_program(main_prog, amp_lists):
         main_prog (Program): The main program for training.
     """
     block = main_prog.global_block()
+    block._sync_with_cpp()
     ops = block.ops
     white_op_set = set()
     black_op_set = set()
@@ -574,6 +579,7 @@ def update_role_var_grad(main_prog, params_grads):
         params_grads (list): A list of params and grads.
     """
     block = main_prog.global_block()
+    block._sync_with_cpp()
     BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
     OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
     for p, g in params_grads:
@@ -581,7 +587,7 @@ def update_role_var_grad(main_prog, params_grads):
         if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
             role = op.attr('op_role')
             if role & int(BACKWARD) and op.has_attr('op_role_var'):
-                op.desc.remove_attr("op_role_var")
+                op._remove_attr("op_role_var")
             else:
                 raise ValueError("The cast op {0} must be in BACKWARD role "
                                  "and have op_role_var attr.".format(op))
@@ -606,11 +612,19 @@ def update_role_var_grad(main_prog, params_grads):
                 raise ValueError("The cast op {0}'s output should not be"
                                  "used by a non-optimize op, however, it"
                                  "is used by {1}".format(op, post_ops[0]))
+            #add new op in the python and cpp at the same time 
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-
+            new_op = framework.Operator(
+                block=block,
+                desc=new_op_desc,
+                type=None,
+                inputs=None,
+                outputs=None,
+                attrs=None)
+            block.ops.append(new_op)
             op_idx = find_op_index(block.desc, op.desc)
             if op_idx == -1:
                 raise ValueError("The op {0} is not in program".format(op))
-            block.desc._remove_op(op_idx, op_idx + 1)
-        block._sync_with_cpp()
+            block._remove_op(op_idx, sync=False)
+    block._sync_with_cpp()
