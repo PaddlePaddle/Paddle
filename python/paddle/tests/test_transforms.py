@@ -56,7 +56,10 @@ class TestTransformsCV2(unittest.TestCase):
                 'uint8'))
 
     def get_shape(self, img):
-        if self.backend == 'pil':
+        if isinstance(img, paddle.Tensor):
+            return img.shape
+
+        elif self.backend == 'pil':
             return np.array(img).shape
 
         return img.shape
