@@ -21,8 +21,64 @@ from ..base import topology as tp
 from .utils import identity_in_model_parallel, gather_in_model_parallel, reduce_in_model_parallel, scatter_in_model_parallel
 
 __all__ = [
-    'ColumnParallelLinear', 'RowParallelLinear', 'VocabParallelEmbedding'
+    'VocabParallelEmbedding', 'ColumnParallelLinear', 'RowParallelLinear'
 ]
+
+# Follow this paper to achieve the file:
+# Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter 
+# language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
+
+
+class VocabParallelEmbedding(Layer):
+    def __init__(self,
+                 num_embeddings,
+                 embedding_dim,
+                 weight_attr=None,
+                 name=None):
+        super(VocabParallelEmbedding, self).__init__()
+
+        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
+        )
+        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
+        )
+        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+
+        self.origin_num_embeddings = num_embeddings
+
+        per_part_size = (
+            num_embeddings + self.world_size - 1) // self.world_size
+        last_part_size = num_embeddings - per_part_size * (self.world_size - 1)
+        if self.rank == self.world_size - 1:
+            per_part_size = last_part_size
+        per_part_size += 1  # make the last row as the padding index
+        self.per_part_size = per_part_size
+
+        with get_rng_state_tracker().rng_state():
+            self.embedding = paddle.nn.Embedding(
+                per_part_size,
+                embedding_dim,
+                padding_idx=per_part_size - 1,
+                sparse=False,
+                weight_attr=weight_attr,
+                name=name)
+            self.embedding.weight.is_distributed = True
+
+    def forward(self, x):
+        origin_input_shape = x.shape
+        if len(origin_input_shape) == 2:
+            x = paddle.unsqueeze(x, axis=-1)
+        else:
+            assert origin_input_shape[-1] == 1, (
+                "The last dimension size of x must be 1.")
+        x_shard = paddle.shard_index(x, self.origin_num_embeddings,
+                                     self.world_size, self.rank,
+                                     self.per_part_size - 1)
+        if len(origin_input_shape) == 2:
+            x_shard = paddle.squeeze(x_shard, axis=-1)
+
+        emb_out_ = self.embedding(x_shard)
+        emb_out = reduce_in_model_parallel(emb_out_)
+        return emb_out
 
 
 class ColumnParallelLinear(Layer):
@@ -135,55 +191,3 @@ class RowParallelLinear(Layer):
         output_ = reduce_in_model_parallel(output_parallel)
         output = output_ + self.bias if self.bias is not None else output_
         return output
-
-
-class VocabParallelEmbedding(Layer):
-    def __init__(self,
-                 num_embeddings,
-                 embedding_dim,
-                 weight_attr=None,
-                 name=None):
-        super(VocabParallelEmbedding, self).__init__()
-
-        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        )
-        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        )
-        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
-
-        self.origin_num_embeddings = num_embeddings
-
-        per_part_size = (
-            num_embeddings + self.world_size - 1) // self.world_size
-        last_part_size = num_embeddings - per_part_size * (self.world_size - 1)
-        if self.rank == self.world_size - 1:
-            per_part_size = last_part_size
-        per_part_size += 1  # make the last row as the padding index
-        self.per_part_size = per_part_size
-
-        with get_rng_state_tracker().rng_state():
-            self.embedding = paddle.nn.Embedding(
-                per_part_size,
-                embedding_dim,
-                padding_idx=per_part_size - 1,
-                sparse=False,
-                weight_attr=weight_attr,
-                name=name)
-            self.embedding.weight.is_distributed = True
-
-    def forward(self, x):
-        origin_input_shape = x.shape
-        if len(origin_input_shape) == 2:
-            x = paddle.unsqueeze(x, axis=-1)
-        else:
-            assert origin_input_shape[-1] == 1, (
-                "The last dimension size of x must be 1.")
-        x_shard = paddle.shard_index(x, self.origin_num_embeddings,
-                                     self.world_size, self.rank,
-                                     self.per_part_size - 1)
-        if len(origin_input_shape) == 2:
-            x_shard = paddle.squeeze(x_shard, axis=-1)
-
-        emb_out_ = self.embedding(x_shard)
-        emb_out = reduce_in_model_parallel(emb_out_)
-        return emb_out

@@ -16,6 +16,10 @@ from paddle.autograd import PyLayer
 from ..base import topology as tp
 import paddle
 
+# Follow this paper to achieve the file:
+# Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter 
+# language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
+
 
 def mp_reduce(x):
     if tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size() == 1:
