@@ -11,7 +11,7 @@ foreach(src ${OPS})
     set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS ${COLLECTIVE_COMPILE_FLAGS})
 endforeach()
 
-register_operators(EXCLUDES c_gen_bkcl_id_op gen_bkcl_id_op c_gen_nccl_id_op gen_nccl_id_op c_gen_hccl_id_op DEPS ${COLLECTIVE_DEPS})
+register_operators(EXCLUDES c_gen_bkcl_id_op gen_bkcl_id_op c_gen_nccl_id_op gen_nccl_id_op c_gen_hccl_id_op gen_hccl_id_op DEPS ${COLLECTIVE_DEPS})
 
 if(WITH_NCCL OR WITH_RCCL)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper)
