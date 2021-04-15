@@ -17,9 +17,9 @@
 set -e
 
 echo "start test model parallel random"
-CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --log_dir=mp_log --gpus=0,1  test_dygraph_mp_random.py
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --log_dir=mp_log --gpus=0,1  hybrid_parallel_mp_random.py
 
 echo "start test model parallel layer"
-CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --log_dir=mp_log --gpus=0,1  test_dygraph_mp_layers.py
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --log_dir=mp_log --gpus=0,1  hybrid_parallel_mp_layers.py
 
 rm -rf mp_log
