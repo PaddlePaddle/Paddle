@@ -112,7 +112,7 @@ class TestBilinearInterpMKLDNNOp(OpTest):
                 scale_w = self.scale[1]
                 scale_h = self.scale[0]
 
-        if self.scale_h > 0 and self.scale_w > 0:
+        if scale_h > 0 and scale_w > 0:
             out_h = int(in_h * scale_h)
             out_w = int(in_w * scale_w)
         else:
