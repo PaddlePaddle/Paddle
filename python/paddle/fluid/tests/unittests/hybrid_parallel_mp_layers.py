@@ -212,7 +212,7 @@ class TestDistTraning(unittest.TestCase):
             optimizer_b.step()
 
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-6)
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
 
     def test_parallel_embedding(self):
         batch_size = 17
