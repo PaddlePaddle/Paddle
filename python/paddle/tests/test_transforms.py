@@ -181,9 +181,7 @@ class TestTransformsCV2(unittest.TestCase):
         self.do_transform(trans)
 
         fake_img = self.create_image((200, 150, 3))
-        fake_img = self.create_image((200, 150, 3))
-        trans_pad = transforms.Compose(
-            [transforms.ToTensor(), transforms.Pad(10, padding_mode='edge')])
+        trans_pad = transforms.Pad(10)
         fake_img_padded = trans_pad(fake_img)
         np.testing.assert_equal(self.get_shape(fake_img_padded), (220, 170, 3))
         trans_pad1 = transforms.Pad([1, 2])
@@ -200,7 +198,9 @@ class TestTransformsCV2(unittest.TestCase):
         self.do_transform(trans)
 
         fake_img = self.create_image((200, 150, 3))
-        trans_pad = transforms.Pad(10)
+        trans_pad = transforms.Compose(
+            [transforms.ToTensor(), transforms.Pad(10, padding_mode='edge')])
+
         fake_img_padded = trans_pad(fake_img)
         np.testing.assert_equal(self.get_shape(fake_img_padded), (3, 220, 170))
         trans_pad1 = transforms.Pad([1, 2])
@@ -244,8 +244,10 @@ class TestTransformsCV2(unittest.TestCase):
         ])
         self.do_transform(trans)
 
-        trans_random_crop1 = transforms.RandomCrop(224)
-        trans_random_crop2 = transforms.RandomCrop((140, 160))
+        trans_random_crop1 = transforms.Compose(
+            [transforms.ToTensor(), transforms.RandomCrop(224)])
+        trans_random_crop2 = transforms.Compose(
+            [transforms.ToTensor(), transforms.RandomCrop((140, 160))])
 
         fake_img = self.create_image((500, 400, 3))
         fake_img_crop1 = trans_random_crop1(fake_img)
@@ -255,7 +257,8 @@ class TestTransformsCV2(unittest.TestCase):
 
         np.testing.assert_equal(self.get_shape(fake_img_crop2), (3, 140, 160))
 
-        trans_random_crop_same = transforms.RandomCrop((140, 160))
+        trans_random_crop_same = transforms.Compose(
+            [transforms.ToTensor(), transforms.RandomCrop((140, 160))])
         img = trans_random_crop_same(fake_img_crop2)
 
         trans_random_crop_bigger = transforms.RandomCrop(
