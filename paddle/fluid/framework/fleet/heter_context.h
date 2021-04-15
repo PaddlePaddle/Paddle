@@ -14,15 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
 
 #include <algorithm>
 #include <map>
 #include <unordered_map>
 #include <vector>
 
+#ifdef PADDLE_WITH_PSLIB
 #include "common_value.h"  // NOLINT
+#endif
+
+#ifdef PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
+#endif
+
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -39,7 +45,12 @@ class HeterContext {
   }
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
+#ifdef PADDLE_WITH_PSLIB
   std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> value_ptr_;
+#endif
+#ifdef PADDLE_WITH_PSCORE
+  std::vector<std::vector<paddle::distributed::VALUE*>> value_ptr_;
+#endif
   std::vector<std::vector<FeatureValue>> device_values_;
   std::vector<std::vector<FeatureKey>> device_keys_;
   std::vector<std::mutex*> mutex_;
