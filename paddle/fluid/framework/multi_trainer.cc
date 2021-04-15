@@ -38,6 +38,13 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     need_merge_var_names_.push_back(
         trainer_desc.downpour_param().stat_var_names(i));
   }
+#ifdef PADDLE_WITH_HETERPS
+  for (int i = 0; i < thread_num_; ++i) {
+    int num = trainer_desc.worker_places(i);
+    platform::CUDAPlace place = platform::CUDAPlace(num);
+    places_.push_back(place);
+  }
+#endif
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -102,13 +109,42 @@ void MultiTrainer::InitDumpEnv() {
 void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                   const platform::Place& place) {
   for (int i = 0; i < thread_num_; ++i) {
+#ifdef PADDLE_WITH_HETERPS
+    workers_[i]->SetPlace(places_[i]);
+    workers_[i]->SetReaderPlace(places_[i]);
+#else
     workers_[i]->SetPlace(place);
     workers_[i]->SetReaderPlace(place);
+#endif
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
     workers_[i]->CacheProgram(main_program);
   }
+#ifdef PADDLE_WITH_HETERPS
+  for (int num = 0; num < thread_num_; ++num) {
+    auto place = places_[num];
+    Scope* scope = workers_[num]->GetThreadScope();
+    auto& block = main_program.Block(0);
+    for (auto& var : block.AllVars()) {
+      if (var->Persistable()) {
+        auto name = var->Name();
+        Variable* root_var = root_scope_->FindVar(name);
+        if (!root_var) {
+          continue;
+        }
+        if (root_var->IsType<SelectedRows>()) {
+          continue;
+        }
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        auto* ptr = scope->Var(name);
+        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+        TensorCopy(*root_tensor, place, thread_tensor);
+      }
+    }
+  }
+#endif
 }
 
 void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
@@ -138,10 +174,77 @@ void MultiTrainer::Run() {
   }
 }
 
+#ifdef PADDLE_WITH_HETERPS
+void MultiTrainer::MergeDenseParam() {
+  auto communicator = paddle::distributed::Communicator::GetInstance();
+  auto& recv_ctx = communicator->GetRecvCtxMap();
+  Scope* thread_scope = workers_[0]->GetThreadScope();
+  for (auto& iter : recv_ctx) {
+    auto& varnames = iter.second;
+    for (auto& name : varnames) {
+      Variable* root_var = root_scope_->FindVar(name);
+      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+      Variable* var = thread_scope->FindVar(name);
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      TensorCopy((*tensor), root_tensor->place(), root_tensor);
+    }
+  }
+}
+#endif
+
+template <typename T>
+void MultiTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
+  LoDTensor tmp_root;
+  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  T* tmp_root_data = tmp_root.data<T>();
+  LoDTensor tmp_tensor;
+  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  T* data = tmp_tensor.data<T>();
+  for (int i = 0; i < tmp_tensor.numel(); i++) {
+    tmp_root_data[i] += data[i];
+  }
+  TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
+}
+
 void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
+#ifdef PADDLE_WITH_HETERPS
+  for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
+    Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
+    if (root_var == nullptr) {
+      continue;
+    }
+    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+
+    for (size_t j = 0; j < places_.size(); j++) {
+      Scope* cur_thread_scope = workers_[j]->GetThreadScope();
+      Variable* thread_var =
+          cur_thread_scope->FindVar(need_merge_var_names_[i]);
+      if (thread_var == nullptr) {
+        continue;
+      }
+      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+#define MergeCallback(cpp_type, proto_type)                                    \
+  do {                                                                         \
+    if (root_tensor->type() == proto_type) {                                   \
+      if (thread_tensor->type() != proto_type) {                               \
+        VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
+                << "] " << need_merge_var_names_[i]                            \
+                << ", root tensor type=" << root_tensor->type()                \
+                << ", thread tensor type=" << thread_tensor->type();           \
+        exit(-1);                                                              \
+      }                                                                        \
+      MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
+    }                                                                          \
+  } while (0)
+      _ForEachDataType_(MergeCallback);
+    }
+  }
+  MergeDenseParam();
+
+#endif
   root_scope_->DropKids();
 }
 
