@@ -26,13 +26,6 @@ from paddle.nn.functional import pad as paddle_pad
 import sys
 import collections
 
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
-
 
 def _assert_image_tensor(img, data_format):
     if not isinstance(
@@ -521,7 +514,7 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
     _assert_image_tensor(img, data_format)
 
     if not (isinstance(size, int) or
-            (isinstance(size, Iterable) and len(size) == 2)):
+            (isinstance(size, (tuple, list)) and len(size) == 2)):
         raise TypeError('Got inappropriate size arg: {}'.format(size))
 
     if isinstance(size, int):
