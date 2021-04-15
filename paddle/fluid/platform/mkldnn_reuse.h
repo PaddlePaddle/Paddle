@@ -635,11 +635,11 @@ class BroadcastDataMKLDNNHandler
     : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
   BroadcastDataMKLDNNHandler(const dnnl::algorithm algo,
-                                   const MKLDNNDeviceContext& dev_ctx,
-                                   const mkldnn::engine engine,
-                                   platform::Place cpu_place, const Tensor* x,
-                                   const Tensor* y, float scale_x,
-                                   float scale_y, const std::string& uniq_name)
+                             const MKLDNNDeviceContext& dev_ctx,
+                             const mkldnn::engine engine,
+                             platform::Place cpu_place, const Tensor* x,
+                             const Tensor* y, float scale_x, float scale_y,
+                             const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
