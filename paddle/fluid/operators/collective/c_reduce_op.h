@@ -24,10 +24,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/bkcl_helper.h"
+#endif
+
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/reduce.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
@@ -106,6 +112,69 @@ class CReduceOpCPUKernel : public framework::OpKernel<T> {
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
+#endif
+  }
+};
+
+template <ReduceType red_type, typename T>
+class CReduceOpXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_XPU_BKCL)
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+
+    auto place = ctx.GetPlace();
+    BKCLDataType dtype = platform::ToBKCLDataType(in->type());
+    int64_t numel = in->numel();
+    const void* sendbuff = in->data<void>();
+    out->Resize(in->dims());
+    void* recvbuff = out->mutable_data<T>(place);
+
+    int rid = ctx.Attr<int>("ring_id");
+    int root = ctx.Attr<int>("root_id");
+    auto comm = platform::BKCLCommContext::Instance().Get(rid, place);
+
+    XPUStream stream = nullptr;
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
+                   ->x_context()
+                   ->xpu_stream;
+    } else {
+      stream = comm->stream();
+    }
+
+    BKCLOp bkcl_red_type = BKCL_ADD;
+    switch (red_type) {
+      case kRedSum:
+        bkcl_red_type = BKCL_ADD;
+        break;
+
+      case kRedMax:
+        bkcl_red_type = BKCL_MAX;
+        break;
+
+      case kRedMin:
+        bkcl_red_type = BKCL_MIN;
+        break;
+
+      case kRedProd:
+        bkcl_red_type = BKCL_PRODUCT;
+        break;
+
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid reduce type: %d", red_type));
+    }
+
+    PADDLE_ENFORCE_EQ(bkcl_reduce(comm->comm(), sendbuff, recvbuff, numel,
+                                  dtype, bkcl_red_type, root, stream),
+                      BKCL_SUCCESS, platform::errors::PreconditionNotMet(
+                                        "BKCL all reduce failed"));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should be compiled with XPU."));
 #endif
   }
 };
