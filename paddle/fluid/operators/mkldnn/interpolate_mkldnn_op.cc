@@ -29,32 +29,6 @@ using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
 template <typename T = float>
-class InterpolateMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::resampling_forward> {
- public:
-  InterpolateMKLDNNHandler(const dnnl::algorithm algo,
-                           const paddle::platform::MKLDNNDeviceContext& dev_ctx,
-                           const dnnl::engine engine, platform::Place cpu_place,
-                           const Tensor* x, Tensor* z,
-                           const std::string& uniq_name)
-      : platform::MKLDNNHandlerT<T, dnnl::resampling_forward>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name)) {
-    if (!this->isCached()) {
-      const auto src_x_tz = framework::vectorize(x->dims());
-      const auto dst_tz = framework::vectorize(z->dims());
-      const auto src_md = dnnl::memory::desc(
-          src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-      const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
-                                       MKLDNNMemoryFormat::any);
-      this->AcquireForwardPrimitiveDescriptor(
-          dnnl::prop_kind::forward_inference, algo, src_md, dst_md);
-    }
-  }
-};
-
-template <typename T = float>
 class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
   std::vector<int> ComputeOutputShape(
       const framework::ExecutionContext& ctx) const {
@@ -144,7 +118,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     framework::DDim dim_out = framework::make_ddim(out_dims_vec);
     z->mutable_data<T>(dim_out, ctx.GetPlace());
 
-    InterpolateMKLDNNHandler<T> handler(algo, dev_ctx, mkldnn_engine,
+    paddle::platform::InterpolateMKLDNNHandler<T> handler(algo, dev_ctx, mkldnn_engine,
                                         ctx.GetPlace(), x, z,
                                         ctx.OutputName("Out"));
 

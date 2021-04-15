@@ -720,6 +720,32 @@ class ActivationMKLDNNHandler
   }
 };
 
+template <typename T = float>
+class InterpolateMKLDNNHandler
+    : public MKLDNNHandlerT<T, dnnl::resampling_forward> {
+ public:
+  InterpolateMKLDNNHandler(const dnnl::algorithm algo,
+                           const platform::MKLDNNDeviceContext& dev_ctx,
+                           const dnnl::engine engine, platform::Place cpu_place,
+                           const Tensor* x, Tensor* z,
+                           const std::string& uniq_name)
+      : platform::MKLDNNHandlerT<T, dnnl::resampling_forward>(
+            dev_ctx, engine, cpu_place,
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                uniq_name)) {
+    if (!this->isCached()) {
+      const auto src_x_tz = framework::vectorize(x->dims());
+      const auto dst_tz = framework::vectorize(z->dims());
+      const auto src_md = dnnl::memory::desc(
+          src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+      const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
+                                       MKLDNNMemoryFormat::any);
+      this->AcquireForwardPrimitiveDescriptor(
+          dnnl::prop_kind::forward_inference, algo, src_md, dst_md);
+    }
+  }
+};
+
 template <typename T>
 class LRNMKLDNNHandler
     : public MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward> {

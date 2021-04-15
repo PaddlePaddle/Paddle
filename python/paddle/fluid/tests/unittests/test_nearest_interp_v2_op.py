@@ -340,7 +340,7 @@ class TestNearestNeighborInterpScale1(TestNearestInterpOp):
         self.out_h = 64
         self.out_w = 32
         self.scale = 2.
-        self.out_size = np.array([66, 40]).astype("int32")
+        #self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
 
 
@@ -351,7 +351,7 @@ class TestNearestNeighborInterpScale2(TestNearestInterpOp):
         self.out_h = 64
         self.out_w = 32
         self.scale = 1.5
-        self.out_size = np.array([66, 40]).astype("int32")
+        #self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
 
 
@@ -570,4 +570,6 @@ class TestNearestInterpException(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    from paddle import enable_static
+    enable_static()
     unittest.main()
