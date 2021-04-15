@@ -72,7 +72,7 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     // out->mutable_data<T>(ctx.GetPlace());
     // auto dims_equal = x->dims() == y->dims();
 
-    const std::vector<framework::Tensor *> ins;
+    std::vector<const framework::Tensor *> ins;
     ins.emplace_back(in_x);
     bool no_broadcast = in_x->dims() == out->dims();
 
