@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import copy
+from .... import core
+
 from ..fp16_lists import white_list as white_list_fp16, black_list as black_list_fp16,\
-    gray_list as gray_list_fp16, unsupported_fp16_list
+    gray_list as gray_list_fp16
 
 __all__ = ["AutoMixedPrecisionListsBF16"]
 
@@ -86,7 +88,10 @@ gray_list = {
     'lookup_table',
 }
 
-unsupported_list = unsupported_fp16_list.copy().copy()
+_, _, _sys_unsupported_bf16_list = core.op_supported_infos(
+    'CPU', core.VarDesc.VarType.BF16)
+unsupported_list = {'lookup_table',
+                    'lookup_table_v2'} | _sys_unsupported_bf16_list
 fp32_list = black_list_fp16.copy().copy()
 fp32_list |= white_list_fp16
 fp32_list |= gray_list_fp16
