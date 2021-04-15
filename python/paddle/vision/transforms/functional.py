@@ -76,14 +76,18 @@ def to_tensor(pic, data_format='CHW'):
             print(tensor.shape)
 
     """
-    if not (_is_pil_image(pic) or _is_numpy_image(pic)):
-        raise TypeError('pic should be PIL Image or ndarray. Got {}'.format(
-            type(pic)))
+    if not (_is_pil_image(pic) or _is_numpy_image(pic) or
+            _is_tensor_image(pic)):
+        raise TypeError(
+            'pic should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
+            format(type(pic)))
 
     if _is_pil_image(pic):
         return F_pil.to_tensor(pic, data_format)
-    else:
+    elif _is_numpy_image(pic):
         return F_cv2.to_tensor(pic, data_format)
+    else:
+        return pic
 
 
 def resize(img, size, interpolation='bilinear'):

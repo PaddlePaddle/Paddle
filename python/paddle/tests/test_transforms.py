@@ -181,7 +181,9 @@ class TestTransformsCV2(unittest.TestCase):
         self.do_transform(trans)
 
         fake_img = self.create_image((200, 150, 3))
-        trans_pad = transforms.Pad(10)
+        fake_img = self.create_image((200, 150, 3))
+        trans_pad = transforms.Compose(
+            [transforms.ToTensor(), transforms.Pad(10, padding_mode='edge')])
         fake_img_padded = trans_pad(fake_img)
         np.testing.assert_equal(self.get_shape(fake_img_padded), (220, 170, 3))
         trans_pad1 = transforms.Pad([1, 2])
