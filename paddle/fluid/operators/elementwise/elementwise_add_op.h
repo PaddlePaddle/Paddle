@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -37,11 +36,6 @@ namespace cub = hipcub;
 
 namespace paddle {
 namespace operators {
-
-template <typename T, class Enable = void>
-struct CudaAddFunctor {
-  inline HOSTDEVICE T operator()(T args[]) const { return args[0] + args[1]; }
-};
 
 template <typename DeviceContext, typename T>
 void default_elementwise_add(const framework::ExecutionContext &ctx,
@@ -140,6 +134,11 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
 
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
+
+template <typename T, int Size>
+struct alignas(sizeof(T) * Size) AlignedVector {
+  T val[Size];
+};
 
 template <typename T>
 inline int VectorizedSize(const T *pointer) {

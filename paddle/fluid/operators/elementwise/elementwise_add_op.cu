@@ -24,16 +24,29 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
+/*
+   input: an array;
+   return: the result of the math functor
+   1. For Unary Op, the length of input array is 1,
+      e.g. Relu: return args[0] > 0 ? args[0] : 0;
+   2. For Binary Op, the length of input array is 2,
+      e.g. Add: return args[0] + args[1];
+*/
+template <typename T>
+struct CudaAddFunctor {
+  inline HOSTDEVICE T operator()(T args[]) const { return args[0] + args[1]; }
+};
+
 template <typename T>
 struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
-    auto size = x->numel();
-    std::vector<const T*> ins = {x->data<T>(), y->data<T>()};
-    std::vector<T*> outs = {z->data<T>()};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary>(ctx, ins, outs, size,
-                                                          CudaAddFunctor<T>());
+    std::vector<const framework::Tensor*> ins = {x, y};
+    std::vector<framework::Tensor*> outs = {z};
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(
+        ctx.template device_context<platform::CUDADeviceContext>(), ins, &outs,
+        CudaAddFunctor<T>());
   }
 };
 
