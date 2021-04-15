@@ -122,6 +122,9 @@ class TestUnfoldAPI(TestUnfoldOp):
                 result = m(input)
                 self.assertTrue(np.allclose(result.numpy(), self.outputs['Y']))
 
+    def test_info(self):
+        str(paddle.nn.Unfold(**self.attrs))
+
 
 if __name__ == '__main__':
     unittest.main()
