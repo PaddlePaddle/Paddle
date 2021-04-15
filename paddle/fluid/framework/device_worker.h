@@ -562,7 +562,6 @@ class PSGPUWorker : public HogwildWorker {
   void ResetStat();
 
  protected:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   void PushGradients();
   void DumpParam();
   void CopySparseTable();

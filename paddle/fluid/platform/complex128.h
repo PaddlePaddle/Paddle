@@ -47,6 +47,10 @@
 #define HOST
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#define PADDLE_WITH_CUDA_OR_HIP_COMPLEX128
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -217,7 +221,8 @@ struct PADDLE_ALIGN(16) complex128 {
 
 HOSTDEVICE inline complex128 operator+(const complex128& a,
                                        const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(thrust::complex<double>(a.real, a.imag) +
                     thrust::complex<double>(b.real, b.imag));
 #else
@@ -227,7 +232,8 @@ HOSTDEVICE inline complex128 operator+(const complex128& a,
 
 HOSTDEVICE inline complex128 operator-(const complex128& a,
                                        const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(thrust::complex<double>(a.real, a.imag) -
                     thrust::complex<double>(b.real, b.imag));
 #else
@@ -237,7 +243,8 @@ HOSTDEVICE inline complex128 operator-(const complex128& a,
 
 HOSTDEVICE inline complex128 operator*(const complex128& a,
                                        const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(thrust::complex<double>(a.real, a.imag) *
                     thrust::complex<double>(b.real, b.imag));
 #else
@@ -248,7 +255,8 @@ HOSTDEVICE inline complex128 operator*(const complex128& a,
 
 HOSTDEVICE inline complex128 operator/(const complex128& a,
                                        const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(thrust::complex<double>(a.real, a.imag) /
                     thrust::complex<double>(b.real, b.imag));
 #else
@@ -259,7 +267,8 @@ HOSTDEVICE inline complex128 operator/(const complex128& a,
 }
 
 HOSTDEVICE inline complex128 operator-(const complex128& a) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(-thrust::complex<double>(a.real, a.imag));
 #else
   complex128 res;
@@ -271,7 +280,8 @@ HOSTDEVICE inline complex128 operator-(const complex128& a) {
 
 HOSTDEVICE inline complex128& operator+=(complex128& a,  // NOLINT
                                          const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   a = complex128(thrust::complex<double>(a.real, a.imag) +=
                  thrust::complex<double>(b.real, b.imag));
   return a;
@@ -284,7 +294,8 @@ HOSTDEVICE inline complex128& operator+=(complex128& a,  // NOLINT
 
 HOSTDEVICE inline complex128& operator-=(complex128& a,  // NOLINT
                                          const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   a = complex128(thrust::complex<double>(a.real, a.imag) -=
                  thrust::complex<double>(b.real, b.imag));
   return a;
@@ -297,7 +308,8 @@ HOSTDEVICE inline complex128& operator-=(complex128& a,  // NOLINT
 
 HOSTDEVICE inline complex128& operator*=(complex128& a,  // NOLINT
                                          const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   a = complex128(thrust::complex<double>(a.real, a.imag) *=
                  thrust::complex<double>(b.real, b.imag));
   return a;
@@ -310,7 +322,8 @@ HOSTDEVICE inline complex128& operator*=(complex128& a,  // NOLINT
 
 HOSTDEVICE inline complex128& operator/=(complex128& a,  // NOLINT
                                          const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   a = complex128(thrust::complex<double>(a.real, a.imag) /=
                  thrust::complex<double>(b.real, b.imag));
   return a;
@@ -353,7 +366,7 @@ HOSTDEVICE inline bool operator>=(const complex128& a, const complex128& b) {
 }
 
 HOSTDEVICE inline bool(isnan)(const complex128& a) {
-#if defined(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA) && defined(__CUDA_ARCH__)
   // __isnanf not supported on HIP platform
   return __isnan(a.real) || __isnan(a.imag);
 #else
@@ -362,7 +375,7 @@ HOSTDEVICE inline bool(isnan)(const complex128& a) {
 }
 
 HOSTDEVICE inline bool(isinf)(const complex128& a) {
-#if defined(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA) && defined(__CUDA_ARCH__)
   // __isinf not supported on HIP platform
   return __isinf(a.real) || __isinf(a.imag);
 #else
@@ -375,7 +388,8 @@ HOSTDEVICE inline bool(isfinite)(const complex128& a) {
 }
 
 HOSTDEVICE inline double(abs)(const complex128& a) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return thrust::abs(thrust::complex<double>(a.real, a.imag));
 #else
   return std::abs(std::complex<double>(a.real, a.imag));
@@ -383,7 +397,8 @@ HOSTDEVICE inline double(abs)(const complex128& a) {
 }
 
 HOSTDEVICE inline complex128(pow)(const complex128& a, const complex128& b) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(thrust::pow(thrust::complex<double>(a.real, a.imag),
                                 thrust::complex<double>(b.real, b.imag)));
 #else
@@ -392,7 +407,8 @@ HOSTDEVICE inline complex128(pow)(const complex128& a, const complex128& b) {
 }
 
 HOSTDEVICE inline complex128(sqrt)(const complex128& a) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(thrust::sqrt(thrust::complex<double>(a.real, a.imag)));
 #else
   return std::sqrt(std::complex<double>(a));
@@ -400,7 +416,8 @@ HOSTDEVICE inline complex128(sqrt)(const complex128& a) {
 }
 
 HOSTDEVICE inline complex128(tanh)(const complex128& a) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(thrust::tanh(thrust::complex<double>(a.real, a.imag)));
 #else
   return std::tanh(std::complex<double>(a));
@@ -408,7 +425,8 @@ HOSTDEVICE inline complex128(tanh)(const complex128& a) {
 }
 
 HOSTDEVICE inline complex128(log)(const complex128& a) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX128) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex128(thrust::log(thrust::complex<double>(a.real, a.imag)));
 #else
   return complex128(std::log(std::complex<double>(a)));
