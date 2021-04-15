@@ -45,7 +45,8 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
         import paddle.static.amp as amp
         sgd_optimizer = amp.bf16.decorate(
             sgd_optimizer,
-            amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),
+            amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
+                custom_fp32_list={'elementwise_sub', }, ),
             use_bf16_guard=True,
             use_pure_bf16=True)
     sgd_optimizer.minimize(avg_cost)
@@ -66,6 +67,9 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
 
         if use_bf16:
             sgd_optimizer.amp_init(exe.place)
+
+        with open("./fit_a_line_main_program.prototxt", 'w+') as f:
+            f.write(str(paddle.static.default_main_program()))
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
