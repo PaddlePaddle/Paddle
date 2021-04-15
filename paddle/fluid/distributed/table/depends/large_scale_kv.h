@@ -203,6 +203,7 @@ class ValueBlock {
     return value.data_;
   }
 
+
   VALUE *InitGet(const uint64_t &id, const bool with_update = true,
                  const int counter = 1) {
     if (!Has(id)) {
@@ -301,3 +302,4 @@ class ValueBlock {
 
 }  // namespace distributed
 }  // namespace paddle
+
