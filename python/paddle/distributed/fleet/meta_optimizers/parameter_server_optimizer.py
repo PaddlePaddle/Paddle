@@ -38,6 +38,23 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         return True if k_steps >= 0 else False
 
+    def get_dist_env(self):
+        trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
+        trainer_endpoints = ''
+        current_endpoint = ''
+        num_trainers = 0
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS'):
+            trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+            current_endpoint = trainer_endpoints.split(',')[trainer_id]
+            num_trainers = len(trainer_endpoints.split(','))
+
+        return {
+            'trainer_id': trainer_id,
+            'num_trainers': num_trainers,
+            'current_endpoint': current_endpoint,
+            'trainer_endpoints': trainer_endpoints
+        }
+
     def _get_distributed_strategy(self):
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
@@ -64,6 +81,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
 
+        use_ps_gpu = self.user_defined_strategy.a_sync_configs["use_ps_gpu"]
+
         if not compiled_config.is_geo_mode():
             from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
             _add_lr_decay_table_pass(
@@ -71,14 +90,28 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
 
             # for main program
-            _main = worker.delete_optimizer_pass(_main, compiled_config)
-            _main = worker.distributed_ops_pass(_main, compiled_config)
-            _main = worker.append_send_ops_pass(_main, compiled_config)
+            _main = worker.distributed_ops_pass(_main, compiled_config,
+                                                use_ps_gpu)
+            if not use_ps_gpu:
+                _main = worker.delete_optimizer_pass(_main, compiled_config)
+                _main = worker.append_send_ops_pass(_main, compiled_config)
+                _startup = worker.delet_extra_optimizes_pass(_startup,
+                                                             compiled_config)
 
-            # for startup program
+                # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
-            _startup = worker.delet_extra_optimizes_pass(_startup,
-                                                         compiled_config)
+            if use_ps_gpu:
+                _main = worker.ps_gpu_pass(_main)
+                from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+                t = SingleProcessMultiThread()
+                env = self.get_dist_env()
+                t.transpile(
+                    startup_program=_startup,
+                    main_program=_main,
+                    rank=env["trainer_id"],
+                    endpoints=env["trainer_endpoints"],
+                    current_endpoint=env['current_endpoint'],
+                    wait_port=False)
 
             compiled_config.set_origin_ps_main_program(_main)
             compiled_config.set_origin_ps_startup_program(_startup)

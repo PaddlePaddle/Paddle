@@ -782,6 +782,26 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class TanhDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("tanh_grad_grad");
+    // input1: Out
+    op->SetInput("Out", this->Input("Out"));
+    // input2: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetAttrMap(this->Attrs());
+    // output: ddy
+    op->SetOutput("DOutNew", this->InputGrad("Out"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
 template <typename T>
@@ -1040,6 +1060,34 @@ namespace plat = paddle::platform;
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
+
+/* ==========================    tanh register  ============================= */
+REGISTER_OPERATOR(
+    tanh, ops::ActivationOp, ops::TanhOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::TanhGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::TanhGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    std::conditional<ops::CanInplaceAct<ops::TanhGradFunctor<float>>(),
+                     ops::ActFwdInplaceInferer, void>::type);
+REGISTER_OPERATOR(tanh_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::TanhDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::TanhDoubleGradMaker<paddle::imperative::OpBase>)
+REGISTER_OPERATOR(
+    tanh_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::TanhGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer);
+
+REGISTER_ACTIVATION_CPU_KERNEL(tanh, Tanh, TanhFunctor, TanhGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    tanh_grad_grad, ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
+                                              ops::TanhGradGradFunctor<float>>,
+    ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::TanhGradGradFunctor<double>>,
+    ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::TanhGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
 
 /* ==========================    relu register  ============================= */
 REGISTER_OPERATOR(

@@ -468,6 +468,19 @@ REGISTER_OP_CUDA_KERNEL(
                                     ops::ReluGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
+/* ===========================    tanh register  ============================ */
+REGISTER_ACTIVATION_CUDA_KERNEL(tanh, Tanh, TanhFunctor, TanhGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    tanh_grad_grad,
+    ops::TanhDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::TanhGradGradFunctor<float>>,
+    ops::TanhDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::TanhGradGradFunctor<double>>,
+    ops::TanhDoubleGradKernel<plat::CUDADeviceContext,
+                              ops::TanhGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
 /* ===========================   sqrt register  ============================= */
 REGISTER_ACTIVATION_CUDA_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
 
