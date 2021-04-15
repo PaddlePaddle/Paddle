@@ -148,8 +148,6 @@ if(WITH_ASCEND_CL)
     target_link_libraries(device_context npu_resource_pool)
 endif()
 
-nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
-
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
 if(WITH_GPU)
