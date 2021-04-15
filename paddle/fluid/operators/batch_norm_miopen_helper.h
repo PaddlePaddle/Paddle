@@ -132,7 +132,7 @@ class BatchNormWrapper {
                      const Tensor &reserve_space, Tensor *d_x, Tensor *d_scale,
                      Tensor *d_bias) {
     const auto *saved_mean_ptr = saved_mean.data<BatchNormParamType<T>>();
-    const auto *saved_var_ptr = saved_var.data<BatchNormParamType<T>>();
+    const auto *saved_var_ptr = saved_variance.data<BatchNormParamType<T>>();
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::miopenBatchNormalizationBackward(

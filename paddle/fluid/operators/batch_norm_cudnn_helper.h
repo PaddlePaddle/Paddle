@@ -256,6 +256,11 @@ class BatchNormWrapper {
 
     auto reserve_space_size = reserve_space.memory_size();
 
+    auto *d_scale_ptr =
+        d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    auto *d_bias_ptr =
+        d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnBatchNormalizationBackwardEx(
             /* handle= */ ctx.cudnn_handle(),
@@ -278,10 +283,8 @@ class BatchNormWrapper {
             /* dBnScaleBiasDesc= */ bn_param_desc_,
             /* bnScaleData= */ scale.data<BatchNormParamType<T>>(),
             /* bnBiasData= */ nullptr,
-            /* dBnScaleData= */ d_scale->mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
-            /* dBnBiasData= */ d_bias->mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
+            /* dBnScaleData= */ d_scale_ptr,
+            /* dBnBiasData= */ d_bias_ptr,
             /* epsilon= */ epsilon_,
             /* savedMean= */ saved_mean.data<BatchNormParamType<T>>(),
             /* savedInvVariance= */ saved_variance
