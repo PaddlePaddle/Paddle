@@ -622,6 +622,8 @@ class TestModelFunction(unittest.TestCase):
             paddle.enable_static()
 
     def test_dygraph_export_deploy_model_about_inputs(self):
+        self.set_seed()
+        np.random.seed(201)
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
         # without inputs
