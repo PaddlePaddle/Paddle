@@ -446,6 +446,43 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
   return 0;
 }
 
+int32_t CommonSparseTable::pull_sparse_ptr(char** pull_values,
+                                           const uint64_t* keys, size_t num) {
+  std::vector<std::vector<uint64_t>> offset_bucket;
+  offset_bucket.resize(task_pool_size_);
+
+  for (int x = 0; x < num; ++x) {
+    auto y = keys[x] % task_pool_size_;
+    offset_bucket[y].push_back(x);
+  }
+
+  std::vector<std::future<int>> tasks(task_pool_size_);
+
+  for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
+    tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
+        [this, shard_id, &keys, &offset_bucket, &pull_values]() -> int {
+          auto& block = shard_values_[shard_id];
+          auto& offsets = offset_bucket[shard_id];
+
+          for (int i = 0; i < offsets.size(); ++i) {
+            auto offset = offsets[i];
+            auto id = keys[offset];
+            auto* value = block->InitGet(id);
+            // std::copy_n(value + param_offset_, param_dim_,
+            //            pull_values + param_dim_ * offset);
+            pull_values[offset] = (char*)value;
+          }
+
+          return 0;
+        });
+  }
+
+  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
+    tasks[shard_id].wait();
+  }
+  return 0;
+}
+
 int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
                                         const float* values, size_t num) {
   rwlock_->RDLock();
@@ -499,6 +536,45 @@ int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
     _push_sparse(keys, values, num);
   }
 
+  return 0;
+}
+
+int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
+                                       const float** values, size_t num) {
+  _push_sparse(keys, values, num);
+  return 0;
+}
+
+int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
+                                        const float** values, size_t num) {
+  rwlock_->RDLock();
+  std::vector<std::vector<uint64_t>> offset_bucket;
+  offset_bucket.resize(task_pool_size_);
+
+  for (int x = 0; x < num; ++x) {
+    auto y = keys[x] % task_pool_size_;
+    offset_bucket[y].push_back(x);
+  }
+
+  std::vector<std::future<int>> tasks(task_pool_size_);
+
+  for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
+    tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
+        [this, shard_id, &keys, &values, num, &offset_bucket]() -> int {
+          auto& offsets = offset_bucket[shard_id];
+          for (size_t i = 0; i < offsets.size(); ++i) {
+            std::vector<uint64_t> tmp_off = {0};
+            optimizer_->update(keys + offsets[i], values[offsets[i]], num,
+                               tmp_off, shard_values_[shard_id].get());
+          }
+          return 0;
+        });
+  }
+
+  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
+    tasks[shard_id].wait();
+  }
+  rwlock_->UNLock();
   return 0;
 }
 

@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
+#include "paddle/fluid/imperative/py_layer_fwd.h"
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -1032,6 +1033,10 @@ void BindImperative(py::module *m_ptr) {
              return std::shared_ptr<imperative::VarBase>(nullptr);
            },
            py::return_value_policy::copy)
+      .def("_set_grad_ivar",
+           [](imperative::VarBase &self, imperative::VarBase &grad) {
+             self.SetGradVarBase(grad);
+           })
       .def("_is_sparse",
            [](imperative::VarBase &self) {
              return self.Var().IsType<framework::SelectedRows>();
@@ -1065,20 +1070,58 @@ void BindImperative(py::module *m_ptr) {
       .def("_register_grad_hook",
            [](imperative::VarBase &self, const py::handle &hook) {
              PADDLE_ENFORCE_EQ(
-                 self.HasGradVar(), true,
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
                  platform::errors::InvalidArgument(
-                     "Cannot register hook on a tensor without gradient."));
-             return self.GradVarBase()->AddHook(
+                     "Cannot register gradient hook on a Tensor that stop "
+                     "gradient or without gradient."));
+             return self.GradVarBase()->AddVariableWrapperHook(
                  std::make_shared<PyVariableWrapperHook>(hook.ptr()));
            })
       .def("_remove_grad_hook",
            [](imperative::VarBase &self, int64_t hook_id) {
              PADDLE_ENFORCE_EQ(
-                 self.HasGradVar(), true,
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
                  platform::errors::InvalidArgument(
-                     "Cannot remove hook on a tensor without gradient."));
-             return self.GradVarBase()->RemoveHook(hook_id);
+                     "Cannot remove gradient hook on a Tensor that stop "
+                     "gradient or without gradient."));
+             return self.GradVarBase()->RemoveVariableWrapperHook(hook_id);
            })
+      .def("_register_backward_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             PADDLE_ENFORCE_EQ(
+                 self.IsLeaf(), true,
+                 platform::errors::InvalidArgument(
+                     "Only can register backward hook for leaf Tensor."));
+             PADDLE_ENFORCE_EQ(
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot register backward hook on a Tensor that stop "
+                     "gradient or without gradient."));
+             auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
+             self.GradVarBase()->AddVoidHook(
+                 std::make_shared<std::function<void()>>(py_func));
+           },
+           R"DOC(
+             Registers a backward hook for current Tensor.
+
+             This hook will be called every time the gradient of current Tensor has been fully calculated.
+
+             There are two differences with `_register_grad_hook`:
+             1. This backward hook will be executed after the gradient accumulation completed across batchs,
+                but the hook registered by `_register_grad_hook` will be executed the gradient accumulation
+                completed in current batch.
+             2. This backward hook function should have the following signature:
+
+                  hook() -> None
+
+                It requires no input and no return value.
+
+             Args:
+                 hook(function): A backward hook to be registered for Tensor.gradient
+
+             Returns:
+                 None
+           )DOC")
       .def("cpu",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              if (platform::is_cpu_place(self->Place())) {
@@ -1271,6 +1314,16 @@ void BindImperative(py::module *m_ptr) {
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
               const platform::CUDAPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
+      .def("_copy_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::Place &place, bool blocking) {
              auto new_var = self->NewVarBase(place, blocking);
              if (!blocking) {
                IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
@@ -1597,6 +1650,29 @@ void BindImperative(py::module *m_ptr) {
            &imperative::BKCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
+  m.def("pylayer_apply",
+        [](const platform::CPUPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::CUDAPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::XPUPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::CUDAPinnedPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
 }
 
 }  // namespace pybind

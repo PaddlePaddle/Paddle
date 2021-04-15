@@ -124,6 +124,7 @@ message AsyncConfig {
   optional bool launch_barrier = 9 [ default = true ];
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
   optional int32 lr_decay_steps = 11 [ default = 10 ];
+  optional int32 use_ps_gpu = 12 [ default = 0 ];
 }
 
 message PipelineConfig {
