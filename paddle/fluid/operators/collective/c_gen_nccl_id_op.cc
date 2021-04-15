@@ -86,7 +86,6 @@ class CGenNCCLIdOp : public framework::OperatorBase {
 };
 
 #else
-
 class CGenNCCLIdOp : public framework::OperatorBase {
  public:
   CGenNCCLIdOp(const std::string& type,

@@ -24,7 +24,6 @@ namespace memory {
 namespace allocation {
 
 static AllocatorStrategy GetStrategyFromFlag() {
-  VLOG(3) << "FLAGS_allocator_strategy" << FLAGS_allocator_strategy;
   if (FLAGS_allocator_strategy == "naive_best_fit") {
     return AllocatorStrategy::kNaiveBestFit;
   }

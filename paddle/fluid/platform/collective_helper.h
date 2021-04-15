@@ -18,7 +18,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <atomic>
 
 #include "boost/variant.hpp"
 #include "paddle/fluid/platform/enforce.h"

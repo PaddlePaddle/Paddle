@@ -69,7 +69,6 @@ class AllocatorFacadePrivate {
         InitNaiveBestFitCUDAPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-        VLOG(3) << "npu num: " <<platform::GetNPUDeviceCount();
         for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
         }
@@ -132,7 +131,6 @@ class AllocatorFacadePrivate {
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
                                                           : allocators_)
                   : zero_size_allocators_);
-        VLOG(3) <<size;
     auto iter = allocators.find(place);
     PADDLE_ENFORCE_NE(iter, allocators.end(),
                       platform::errors::NotFound(

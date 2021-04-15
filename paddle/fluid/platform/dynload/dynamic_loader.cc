@@ -21,10 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
 
-
-
-
-
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "
               "/usr/local/cudnn/lib. If empty [default], dlopen "

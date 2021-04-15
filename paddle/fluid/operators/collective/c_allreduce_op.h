@@ -187,7 +187,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype = platform::ToHCCLDataType(in->type());
+    ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
     const void* sendbuff = in->data<void>();
     out->Resize(in->dims());
@@ -228,7 +228,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, (u64)numel, dtype, nccl_red_type, comm->comm(), stream));
+        sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
