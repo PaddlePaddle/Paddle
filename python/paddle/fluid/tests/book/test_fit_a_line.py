@@ -67,9 +67,9 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
 
         if use_bf16:
             sgd_optimizer.amp_init(exe.place)
-
-        with open("./fit_a_line_main_program.prototxt", 'w+') as f:
-            f.write(str(paddle.static.default_main_program()))
+            # with open("./fit_a_line_main_program.prototxt", 'w+') as f:
+            #     f.write(str(paddle.static.default_main_program()))
+            print(str(paddle.static.default_main_program()))
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -77,7 +77,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
                 avg_loss_value, = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[avg_cost])
-                print(avg_loss_value)
+                # print(avg_loss_value)
                 if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
                         fluid.io.save_inference_model(save_dirname, ['x'],
@@ -165,21 +165,7 @@ def main(use_cuda, is_local=True, use_bf16=False):
     infer(use_cuda, save_dirname)
 
 
-class TestFitALine(unittest.TestCase):
-    def test_cpu(self):
-        with self.program_scope_guard():
-            main(use_cuda=False)
-
-    def test_cuda(self):
-        with self.program_scope_guard():
-            main(use_cuda=True)
-
-    @unittest.skipIf(not fluid.core.supports_bfloat16(),
-                     "place does not support BF16 evaluation")
-    def test_bf16(self):
-        with self.program_scope_guard():
-            main(use_cuda=False, use_bf16=True)
-
+class TestFitALineBase(unittest.TestCase):
     @contextlib.contextmanager
     def program_scope_guard(self):
         prog = fluid.Program()
@@ -188,6 +174,24 @@ class TestFitALine(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
                 yield
+
+
+class TestFitALine(TestFitALineBase):
+    def test_cpu(self):
+        with self.program_scope_guard():
+            main(use_cuda=False)
+
+    def test_cuda(self):
+        with self.program_scope_guard():
+            main(use_cuda=True)
+
+
+@unittest.skipIf(not fluid.core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestFitALineBF16(TestFitALineBase):
+    def test_bf16(self):
+        with self.program_scope_guard():
+            main(use_cuda=False, use_bf16=True)
 
 
 if __name__ == '__main__':
