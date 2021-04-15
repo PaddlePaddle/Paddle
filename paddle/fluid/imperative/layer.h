@@ -286,5 +286,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
+void ClearNoNeedBufferInputs(OpBase* op);
+
 }  // namespace imperative
 }  // namespace paddle
