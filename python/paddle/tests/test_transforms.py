@@ -378,6 +378,22 @@ class TestTransformsCV2(unittest.TestCase):
             fake_img = self.create_image((100, 120, 3))
             F.pad(fake_img, [1.0, 2.0, 3.0])
 
+        with self.assertRaises(TypeError):
+            tensor_img = paddle.rand((3, 100, 100))
+            F.pad(tensor_img, '1')
+
+        with self.assertRaises(TypeError):
+            tensor_img = paddle.rand((3, 100, 100))
+            F.pad(tensor_img, 1, {})
+
+        with self.assertRaises(TypeError):
+            tensor_img = paddle.rand((3, 100, 100))
+            F.pad(tensor_img, 1, padding_mode=-1)
+
+        with self.assertRaises(ValueError):
+            tensor_img = paddle.rand((3, 100, 100))
+            F.pad(tensor_img, [1.0, 2.0, 3.0])
+
         with self.assertRaises(ValueError):
             transforms.RandomRotation(-2)
 
