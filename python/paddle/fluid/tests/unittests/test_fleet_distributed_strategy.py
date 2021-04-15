@@ -84,11 +84,6 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.hybrid_configs["num_model_parallel"], 2)
         self.assertEqual(strategy.hybrid_configs["num_pipeline_parallel"], 4)
 
-    def test_model_parallel_configs(self):
-        strategy = paddle.distributed.fleet.DistributedStrategy()
-        strategy.model_parallel_configs = {"global_seed": 1024}
-        self.assertEqual(strategy.model_parallel_configs["global_seed"], 1024)
-
     def test_localsgd(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.localsgd = True
