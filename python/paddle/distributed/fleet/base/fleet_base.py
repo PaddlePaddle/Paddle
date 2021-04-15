@@ -26,6 +26,7 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
+from .topology import CommunicateTopology, HybridCommunicateGroup
 
 
 def _inited_runtime_handler_(func):
@@ -233,6 +234,35 @@ class Fleet(object):
                     os.environ["FLAGS_nccl_nrings"] = str(
                         self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
+
+            # init hybrid parallel environment in dygraph
+            self._init_hybrid_parallel_env()
+
+    def _init_hybrid_parallel_env(self):
+        """initialize the hybrid environment
+        """
+        self.hybrid_configs = self._user_defined_strategy.hybrid_configs
+        self.dp_num = self.hybrid_configs["num_data_parallel"]
+        self.mp_num = self.hybrid_configs["num_model_parallel"]
+        self.pp_num = self.hybrid_configs["num_pipeline_parallel"]
+
+        if self.dp_num < 0:
+            nranks = paddle.distributed.get_world_size()
+            self.dp_num = nranks // (self.mp_num * self.pp_num)
+
+        self._topology = CommunicateTopology(
+            hybrid_group_names=["data", "model", "pipe"],
+            dims=[self.dp_num, self.mp_num, self.pp_num])
+
+        self._hcg = HybridCommunicateGroup(self._topology)
+
+    def get_hybrid_communicate_group(self):
+        assert self._hcg is not None
+        return self._hcg
+
+    def get_hybrid_parallel_topology(self):
+        assert self._topology is not None
+        return self._topology
 
     def is_first_worker(self):
         """

@@ -868,6 +868,62 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.pipeline_configs, configs)
 
     @property
+    def hybrid_configs(self):
+        """
+        Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism 
+        needs to meet the following relationships
+
+        total_number_GPUs = num_data_parallel * num_model_parallel * num_pipeline_parallel
+
+        **Note**:
+            num_data_parallel(int): set number of GPUs in a data parallel group. Default -1.
+                                    This value should be an integer greater than 0.
+                                    If it is not set, or set to -1, its value will be inferred 
+                                    based on the total number of cards.
+            num_model_parallel(int): set number of GPUs in a model parallel group. Default 1
+            num_pipeline_parallel(int): set number of GPUs in a pipeline parallel group. Default 1
+
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.hybrid_configs = {
+                "num_data_parallel": 1,
+                "num_model_parallel": 2,
+                "num_pipeline_parallel": 1}
+        """
+        return get_msg_dict(self.strategy.hybrid_configs)
+
+    @hybrid_configs.setter
+    def hybrid_configs(self, configs):
+        check_configs_key(self.strategy.hybrid_configs, configs,
+                          "hybrid_configs")
+        assign_configs_value(self.strategy.hybrid_configs, configs)
+
+    @property
+    def model_parallel_configs(self):
+        """
+        **Notes**:
+            **Detailed arguments for model_parallel_configs**
+            **global_seed**: the global seed for model parallel random
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.model_parallel_configs = {"global_seed": 1024}
+        """
+
+        return get_msg_dict(self.strategy.model_parallel_configs)
+
+    @model_parallel_configs.setter
+    def model_parallel_configs(self, configs):
+        check_configs_key(self.strategy.model_parallel_configs, configs,
+                          "model_parallel_configs")
+        assign_configs_value(self.strategy.model_parallel_configs, configs)
+
+    @property
     def localsgd(self):
         """
         Indicating whether we are using Local SGD training. Default Value: False
