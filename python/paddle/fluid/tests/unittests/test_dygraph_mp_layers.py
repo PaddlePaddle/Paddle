@@ -125,10 +125,10 @@ class TestDistTraning(unittest.TestCase):
         set_random_seed(1024)
         global_dtype = "float32"
 
-        input_size_coeff = 17
-        input_size = input_size_coeff * self.model_parallel_size
-        output_size_coeff = 13
-        output_size = output_size_coeff * self.model_parallel_size
+        input_size_per_card = 17
+        input_size = input_size_per_card * self.model_parallel_size
+        output_size_per_card = 13
+        output_size = output_size_per_card * self.model_parallel_size
         batch_size = 4
 
         model_a = ColumnLinearNet(input_size, output_size, global_dtype)
@@ -173,10 +173,10 @@ class TestDistTraning(unittest.TestCase):
         self.word_size = self.hcg.get_model_parallel_world_size()
         self.rank_id = self.hcg.get_model_parallel_rank()
 
-        input_size_coeff = 17
-        input_size = input_size_coeff * self.model_parallel_size
-        output_size_coeff = 13
-        output_size = output_size_coeff * self.model_parallel_size
+        input_size_per_card = 17
+        input_size = input_size_per_card * self.model_parallel_size
+        output_size_per_card = 13
+        output_size = output_size_per_card * self.model_parallel_size
         batch_size = 4
 
         model_a = RowLinearNet(input_size, output_size)
