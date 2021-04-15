@@ -26,16 +26,23 @@ import os
 paddle.enable_static()
 
 
-def train(use_cuda, save_dirname, is_local, use_bf16):
+def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-    y_predict = fluid.layers.fc(input=x, size=1, act=None)
     if use_bf16:
-        with paddle.static.amp.bf16_guard():
+        if not pure_bf16:
+            with paddle.static.amp.bf16_guard():
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_cost = fluid.layers.mean(cost)
+        else:
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            with paddle.static.amp.bf16_guard():
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
     else:
+        y_predict = fluid.layers.fc(input=x, size=1, act=None)
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
 
@@ -45,10 +52,9 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
         import paddle.static.amp as amp
         sgd_optimizer = amp.bf16.decorate(
             sgd_optimizer,
-            amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
-                custom_fp32_list={'elementwise_sub', }, ),
+            amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),
             use_bf16_guard=True,
-            use_pure_bf16=True)
+            use_pure_bf16=pure_bf16)
     sgd_optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 20
@@ -67,9 +73,6 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
 
         if use_bf16:
             sgd_optimizer.amp_init(exe.place)
-            # with open("./fit_a_line_main_program.prototxt", 'w+') as f:
-            #     f.write(str(paddle.static.default_main_program()))
-            print(str(paddle.static.default_main_program()))
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -151,7 +154,7 @@ def infer(use_cuda, save_dirname=None):
         print("ground truth: ", test_label)
 
 
-def main(use_cuda, is_local=True, use_bf16=False):
+def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
@@ -161,7 +164,7 @@ def main(use_cuda, is_local=True, use_bf16=False):
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, save_dirname, is_local, use_bf16)
+    train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16)
     infer(use_cuda, save_dirname)
 
 
@@ -192,6 +195,10 @@ class TestFitALineBF16(TestFitALineBase):
     def test_bf16(self):
         with self.program_scope_guard():
             main(use_cuda=False, use_bf16=True)
+
+    def test_pure_bf16(self):
+        with self.program_scope_guard():
+            main(use_cuda=False, use_bf16=True, pure_bf16=True)
 
 
 if __name__ == '__main__':
