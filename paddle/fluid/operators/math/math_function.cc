@@ -27,6 +27,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -49,7 +50,6 @@ template struct SetConstant<platform::CPUDeviceContext, platform::complex128>;
 
 #ifdef PADDLE_WITH_XPU
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
-template struct SetConstant<platform::XPUDeviceContext, platform::bfloat16>;
 template struct SetConstant<platform::XPUDeviceContext, float>;
 template struct SetConstant<platform::XPUDeviceContext, double>;
 template struct SetConstant<platform::XPUDeviceContext, uint8_t>;
