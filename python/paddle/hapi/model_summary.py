@@ -22,8 +22,6 @@ from paddle.static import InputSpec
 
 from collections import OrderedDict
 
-__all__ = ['summary']
-
 
 def summary(net, input_size, dtypes=None):
     """Prints a string summary of the network.

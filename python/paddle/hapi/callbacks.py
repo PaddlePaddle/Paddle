@@ -25,9 +25,15 @@ from paddle.utils import try_import
 
 from .progressbar import ProgressBar
 
-__all__ = [
-    'Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL', 'LRScheduler',
-    'EarlyStopping', 'ReduceLROnPlateau'
+__all__ = [ #noqa
+    'Callback',
+    'ProgBarLogger',
+    'ModelCheckpoint',
+    'VisualDL',
+    'LRScheduler',
+    'EarlyStopping',
+    'ReduceLROnPlateau',
+    'ProgressBar'
 ]
 
 

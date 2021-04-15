@@ -54,8 +54,6 @@ import paddle.distributed as dist
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
 
-__all__ = ['Model', ]
-
 _parallel_context_initialized = False
 
 
