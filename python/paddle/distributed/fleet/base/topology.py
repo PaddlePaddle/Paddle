@@ -19,6 +19,8 @@ from itertools import product
 from functools import reduce
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
+_HYBRID_PARALLEL_GROUP = None
+
 
 class CommunicateTopology(object):
     def __init__(self, hybrid_group_names, dims):
@@ -108,7 +110,9 @@ class HybridCommunicateGroup(object):
         self._model_parallel_id = self._get_model_parallel_id()
 
         assert self._check_vaild_topo(
-        ), "Here is an unreasonable topogy setting"
+        ), "Here is an unreasonable topogy setting. world_size: {}, but" \
+            "dp_num: {}, mp_num: {}, pp_num: {}".format(self.nranks, self._num_data_parallel,
+            self._num_model_parallel, self._num_pipe_parallel)
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
@@ -117,6 +121,9 @@ class HybridCommunicateGroup(object):
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
         print("model parallel group", self._mp_group)
+
+        global _HYBRID_PARALLEL_GROUP
+        _HYBRID_PARALLEL_GROUP = self
 
     def _check_vaild_topo(self):
         return self._num_data_parallel * self._num_model_parallel * self._num_pipe_parallel == self.nranks

@@ -22,10 +22,7 @@ import numpy as np
 import random
 import paddle.distributed as dist
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
 import paddle.distributed.fleet as fleet
-import paddle.fluid.generator as generator
-from paddle.autograd import PyLayer
 from paddle import framework
 
 

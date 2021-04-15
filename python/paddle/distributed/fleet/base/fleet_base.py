@@ -27,6 +27,7 @@ from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from .topology import CommunicateTopology, HybridCommunicateGroup
+from . import topology as tp
 
 
 def _inited_runtime_handler_(func):
@@ -236,7 +237,12 @@ class Fleet(object):
                 paddle.distributed.init_parallel_env()
 
             # init hybrid parallel environment in dygraph
-            self._init_hybrid_parallel_env()
+            if tp._HYBRID_PARALLEL_GROUP is None:
+                self._init_hybrid_parallel_env()
+            else:
+                warnings.warn(
+                    "The dygraph hybrid parallel environment has been initialized."
+                )
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment

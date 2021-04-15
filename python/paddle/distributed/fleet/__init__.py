@@ -73,3 +73,4 @@ get_lr = fleet.get_lr
 state_dict = fleet.state_dict
 set_state_dict = fleet.set_state_dict
 shrink = fleet.shrink
+get_hybrid_communicate_group = fleet.get_hybrid_communicate_group

@@ -17,7 +17,7 @@ from ..base import topology as tp
 import paddle
 
 
-def _reduce(x):
+def mp_reduce(x):
     if tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size() == 1:
         return x
 
@@ -27,7 +27,7 @@ def _reduce(x):
     return x
 
 
-def _split(x):
+def mp_split(x):
     world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size()
 
     if world_size == 1:
@@ -41,7 +41,7 @@ def _split(x):
     return output
 
 
-def _gather(x):
+def mp_gather(x):
     world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size()
 
     if world_size == 1:
@@ -63,13 +63,13 @@ class _IdentityInModelParallel(PyLayer):
 
     @staticmethod
     def backward(ctx, dx):
-        return _reduce(dx)
+        return mp_reduce(dx)
 
 
 class _ReduceInModelParallel(PyLayer):
     @staticmethod
     def forward(ctx, x):
-        return _reduce(x)
+        return mp_reduce(x)
 
     @staticmethod
     def backward(ctx, dx):
@@ -79,34 +79,34 @@ class _ReduceInModelParallel(PyLayer):
 class _ScatterInModelParallel(PyLayer):
     @staticmethod
     def forward(ctx, x):
-        return _split(x)
+        return mp_split(x)
 
     @staticmethod
     def backward(ctx, dx):
-        return _gather(dx)
+        return mp_gather(dx)
 
 
 class _GatherInModelParallel(PyLayer):
     @staticmethod
     def forward(ctx, x):
-        return _gather(x)
+        return mp_gather(x)
 
     @staticmethod
     def backward(ctx, dx):
-        return _split(dx)
+        return mp_split(dx)
 
 
-def identity_in_model_parallel(input_):
-    return _IdentityInModelParallel.apply(input_)
+def identity_in_model_parallel(x):
+    return _IdentityInModelParallel.apply(x)
 
 
-def reduce_in_model_parallel(input_):
-    return _ReduceInModelParallel.apply(input_)
+def reduce_in_model_parallel(x):
+    return _ReduceInModelParallel.apply(x)
 
 
-def scatter_in_model_parallel(input_):
-    return _ScatterInModelParallel.apply(input_)
+def scatter_in_model_parallel(x):
+    return _ScatterInModelParallel.apply(x)
 
 
-def gather_in_model_parallel(input_):
-    return _GatherInModelParallel.apply(input_)
+def gather_in_model_parallel(x):
+    return _GatherInModelParallel.apply(x)
