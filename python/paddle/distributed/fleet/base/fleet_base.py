@@ -26,7 +26,6 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
-from .topology import CommunicateTopology, HybridCommunicateGroup
 from . import topology as tp
 
 
@@ -256,11 +255,11 @@ class Fleet(object):
             nranks = paddle.distributed.get_world_size()
             self.dp_num = nranks // (self.mp_num * self.pp_num)
 
-        self._topology = CommunicateTopology(
+        self._topology = tp.CommunicateTopology(
             hybrid_group_names=["data", "model", "pipe"],
             dims=[self.dp_num, self.mp_num, self.pp_num])
 
-        self._hcg = HybridCommunicateGroup(self._topology)
+        self._hcg = tp.HybridCommunicateGroup(self._topology)
 
     def get_hybrid_communicate_group(self):
         assert self._hcg is not None
