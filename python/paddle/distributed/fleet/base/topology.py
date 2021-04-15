@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+import sys
 import paddle
 import collections
 import numpy as np
@@ -116,11 +118,11 @@ class HybridCommunicateGroup(object):
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
-        print("data parallel group", self._dp_group)
+        print("data parallel group", self._dp_group, file=sys.stderr)
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
-        print("model parallel group", self._mp_group)
+        print("data parallel group", self._mp_group, file=sys.stderr)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
