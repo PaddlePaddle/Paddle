@@ -91,7 +91,7 @@ void analysis::DlnneSubgraphPass::ApplyImpl(
 
   framework::ir::SubGraphFuser fuser(
       graph, teller, Get<int>("min_subgraph_size") /*min subgraph size*/,
-      "tensorrt_engine");
+      "dlnne_engine");
   fuser();
 
   std::vector<std::string> graph_param_names =
