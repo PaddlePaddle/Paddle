@@ -744,6 +744,8 @@ class DistributedStrategy(object):
         idea from [ZeRO: Memory Optimizations Toward Training Trillion Parameter Models](https://arxiv.org/abs/1910.02054).
         Model parameters and Optimizer State are sharded into different ranks allowing to fit larger model.
 
+        In Hybrid parallelism scenario, we use sharding config as uniform API to set each parallelism.
+
         Default value: False
 
         Examples:
@@ -770,29 +772,49 @@ class DistributedStrategy(object):
         Set sharding configurations. 
 
         **Note**:
-            fuse_broadcast_MB(float): size of a fused group of broadcasted parameters. 
-            This configuration will affect the communication speed in sharding training, 
-            and should be an empirical value decided by your model size and network topology.
+            sharding_segment_strategy(string): strategy used to segment the program(forward & backward operations). two strategise are 
+            available: "segment_broadcast_MB" and "segment_anchors". segment is a concept used in sharding to overlap computation and 
+            communication. Default is segment_broadcast_MB.
 
-            hybrid_dp(bool): enable hybrid data parallelism above the sharding parallelism. 
-            you are supposed to have at least double the number of gpu you have in normal sharding 
-            training to enable this feature.
+            segment_broadcast_MB(float): segment by the parameters broadcast volume. sharding will introduce parameter broadcast operations into program, and 
+            after every segment_broadcast_MB size parameter being broadcasted, the program will be cutted into one segment.
+            This configuration will affect the communication speed in sharding training, and should be an empirical value decided by your model size and network topology.
+            Only enable sharding_segment_strategy = segment_broadcast_MB. when Default is 32.0 .
 
-            sharding_group_size(int): attribute of hybrid_dp. specific the the number of gpus within
-            each sharding group; and therefore, the number of hybrid data parallelism ways will be equal
-            to (global_size / sharding_group_size).
+            segment_anchors(list): list of anchors used to segment the program, which allows a finner control of program segmentation. 
+            this strategy is experimental by now. Only enable sharding_segment_strategy = segment_anchors.
+
+            sharding_degree(int): specific the number of gpus within each sharding group; and sharding will be turn off if sharding_degree=1.  Default is 8.
+
+            gradient_merge_acc_step(int): specific the accumulation steps in gradient merge; and gradient merge will be turn off if gradient_merge_acc_step=1.  Default is 1.
+
+            optimize_offload(bool): enable the optimizer offload which will offload the moment vars to Host memory in order to saving GPU memory for fitting larger model. 
+            the moment var will be prefetch from and offloaded to Host memory during update stage. it is a stragtegy that trades off between training speed and GPU memory, and is recommened to be turn on only when gradient_merge_acc_step large, where
+            the number of time of update stage will be relatively small compared with forward&backward's.  Default is False.
+
+            mp_degree(int): [Hybrid parallelism ONLY] specific the the number of gpus within each megatron group; and megatron parallelism will turn be off if mp_degree=1.  Default is 1.
+
+            pp_degree(int): [Hybrid parallelism ONLY] specific the the number of gpus within each pipeline group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
+
+            pp_allreduce_in_optimize(bool): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
+            This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now.
+
 
         Examples:
 
           .. code-block:: python
 
+            # sharding-DP, 2 nodes with 8 gpus per node
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.sharding = True
             strategy.sharding_configs = {
-                "fuse_broadcast_MB": 32,
-                "hybrid_dp": True,
-                "sharding_group_size": 8}
+                "sharding_segment_strategy": segment_broadcast_MB,
+                "segment_broadcast_MB": 32,
+                "sharding_degree": 8,
+                "sharding_degree": 2,
+                "gradient_merge_acc_step": 4,
+                }
         """
         return get_msg_dict(self.strategy.sharding_configs)
 
