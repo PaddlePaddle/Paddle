@@ -437,24 +437,25 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
 
 // If MKLDNN build and CPU place then register suffix in DeviceContext
 inline void AttachPointerHashToMKLDNNKey(void* ptr,
-                                         const platform::Place& place) {
+                                         const platform::Place& place,
+                                         bool use_tls_cache = false) {
   if (platform::is_cpu_place(place)) {
-    // Static vars will remember first executor and its thread
-    // so both of them need to be processed by the same thread within
-    // critical section
-    static std::mutex static_vars_barrier;
-    static_vars_barrier.lock();
+    // Static var will remember first executor
     static auto first_exec = ptr;
-    static auto first_thread = ThreadIDasStr();
-    static_vars_barrier.unlock();
 
     if (first_exec != ptr) {
       paddle::platform::MKLDNNDeviceContext::tls().set_key_suffix(
           "E" + std::to_string(reinterpret_cast<uintptr_t>(ptr)));
     }
-    // For first thread
-    if (first_thread == ThreadIDasStr()) {
-      paddle::platform::MKLDNNDeviceContext::tls().disable_tid_in_key();
+
+    // For this situation oneDNN cache can be stored per thread
+    // so we do need THREAD id inside of key
+    if (use_tls_cache) {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      platform::MKLDNNDeviceContext* dev_ctx =
+          (platform::MKLDNNDeviceContext*)pool.Get(place);
+      dev_ctx->EnableCacheViaTLS();
     }
   }
 }

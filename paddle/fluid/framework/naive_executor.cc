@@ -37,7 +37,10 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 
 void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_MKLDNN
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  // For naive executor we assume inference scenario so
+  // training happens then no communication among threads
+  // happens so we can keep oneDNN cache per thread
+  platform::AttachPointerHashToMKLDNNKey(this, place_, true);
 #endif
   platform::ScopedFlushDenormal flush;
   for (auto &op : ops_) {

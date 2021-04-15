@@ -545,15 +545,12 @@ MKLDNNDeviceContextThreadLocals::Body::Body()
   cur_input_shape_str = "";
   cur_input_shape_cache_capacity = 1;
   cur_paddle_data_layout = paddle::framework::DataLayout::kNCHW;
+  p_blobmap.reset(new BlobMap());
 }
 
 // When Thread finish we clear oneDNN cache
 // This is needed when we have one executor used by many threads
-// e.g. test_analyzer_detect. Thread ID is not part of caching key
-// (for naive executor) so we need to clear cache when one thread finish
-// and other is to start inference
-// TODO(jczaja): Ideally it would be good to clear only part of cache
-// related to thread that is to be terminated
+// e.g. test_analyzer_detect. We are clearing chace when Thread terminates
 MKLDNNDeviceContextThreadLocals::Body::~Body() {
   auto cpu_place = paddle::platform::CPUPlace();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -606,14 +603,32 @@ mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 
+MKLDNNDeviceContextThreadLocals::BlobMap*
+MKLDNNDeviceContextThreadLocals::Body::get_blobmap(void) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_blobmap.get(), platform::errors::NotFound(
+                           "TLS Cache is not found in corressponding thread."));
+  return p_blobmap.get();
+}
+
 void MKLDNNDeviceContext::ResetBlobMap() {
-  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  if (!block_next_cache_clearing_) {
+  if (use_tls_cache_) {
+    // So if we have cache stored in TLS then
+    // we reset only active thread's cache
+    // For naive executor there is no blocking
+    // of cache clearing needed
     VLOG(3) << "Clearing DNNL cache.";
-    p_blobmap_->clear();
+    tls().get_blobmap()->clear();
   } else {
-    VLOG(3) << "Prevented Clearing DNNL cache.";
-    block_next_cache_clearing_ = false;
+    // For shared cache among thread we clear whole cache
+    std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
+    if (!block_next_cache_clearing_) {
+      VLOG(3) << "Clearing DNNL cache.";
+      p_blobmap_->clear();
+    } else {
+      VLOG(3) << "Prevented Clearing DNNL cache.";
+      block_next_cache_clearing_ = false;
+    }
   }
 }
 
@@ -624,28 +639,30 @@ void MKLDNNDeviceContext::BlockNextCacheClearing() {
 }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
-  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-  BlobMap* pMap = p_blobmap_.get();
-  auto map_it = pMap->find(tls().cur_mkldnn_session_id);
-  if (map_it == pMap->end()) {
-    PADDLE_THROW(platform::errors::NotFound(
-        "MKLDNNDeviceContext don't find cur_mkldnn_session_id: %d.",
-        tls().cur_mkldnn_session_id));
+  auto getshapemapsize = [](BlobMap* pmap) {
+    auto map_it = pmap->find(tls().cur_mkldnn_session_id);
+    if (map_it == pmap->end()) {
+      PADDLE_THROW(platform::errors::NotFound(
+          "MKLDNNDeviceContext don't find cur_mkldnn_session_id: %d.",
+          tls().cur_mkldnn_session_id));
+    }
+    return map_it->second->size();
+  };
+
+  if (use_tls_cache_) {
+    return getshapemapsize(tls().get_blobmap());
+  } else {
+    std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
+    return getshapemapsize(p_blobmap_.get());
   }
-  return map_it->second->size();
 }
 
-void MKLDNNDeviceContext::SetBlob(const std::string& name,
-                                  BlobPtr_t<void> data) const {
-  BlobMap* pMap = p_blobmap_.get();
+void MKLDNNDeviceContext::set_blob_in_map(BlobMap* pMap,
+                                          const std::string& name,
+                                          BlobPtr_t<void> data) const {
   BlobPtr_t<ShapeBlob> sBlob = nullptr;
   BlobPtr_t<KeyBlob> pBlob = nullptr;
-
   int sid = tls().get_cur_mkldnn_session_id();
-
-  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-
-  // Find ShapeBlob for current mkldnn session id.
   auto map_it = pMap->find(sid);
 
   if (map_it == pMap->end()) {
@@ -686,7 +703,20 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
     blob_it->second = data;  // set data to existing blob
   }
   VLOG(2) << "SetBlob: sid=" << sid << ", add blob=" << name << "\n";
-  // lock will be automatically released when out of scope
+}
+
+void MKLDNNDeviceContext::SetBlob(const std::string& name,
+                                  BlobPtr_t<void> data) const {
+  // For shared cache raise a barrier
+  // for TLS cache we do need barrier
+  if (use_tls_cache_) {
+    set_blob_in_map(tls().get_blobmap(), name, data);
+  } else {
+    // lock will be automatically released when out of scope
+    std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
+    set_blob_in_map(p_blobmap_.get(), name, data);
+  }
+
   return;
 }
 
@@ -700,17 +730,12 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) {
   return num_entries;
 }
 
-MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
-    const std::string& name) const {
-  BlobMap* pMap = p_blobmap_.get();
+MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::get_blob_from_map(
+    BlobMap* pMap, const std::string& name) const {
   BlobPtr_t<ShapeBlob> sBlob = nullptr;
   BlobPtr_t<KeyBlob> pBlob = nullptr;
-
-  int sid = tls().get_cur_mkldnn_session_id();
-
-  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
-
   // Find ShapeBlob for current mkldnn session id firstly
+  int sid = tls().get_cur_mkldnn_session_id();
   auto map_it = pMap->find(sid);
   if (map_it == pMap->end()) {
     VLOG(2) << "GetBlob: sid=" << sid << ", miss sid\n";
@@ -736,8 +761,20 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   }
 
   VLOG(2) << "GetBlob sid=" << sid << ", get blob=" << name << "\n";
-  // lock will be automatically released when out of scope
   return key_it->second;
+}
+
+MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
+    const std::string& name) const {
+  // For shared cache raise a barrier
+  // for TLS cache we do need barrier
+  if (use_tls_cache_) {
+    return get_blob_from_map(tls().get_blobmap(), name);
+  } else {
+    // lock will be automatically released when out of scope
+    std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
+    return get_blob_from_map(p_blobmap_.get(), name);
+  }
 }
 
 #endif

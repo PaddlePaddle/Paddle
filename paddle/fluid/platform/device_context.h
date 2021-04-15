@@ -635,8 +635,24 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #ifdef PADDLE_WITH_MKLDNN
 
 class MKLDNNDeviceContextThreadLocals {
-  // default mkldnn session id
+  template <class T>
+  using BlobPtr_t = std::shared_ptr<T>;
+  template <class P1, class P2>
+  using umap_value_smart_t = std::unordered_map<P1, BlobPtr_t<P2>>;
+  template <class T>
+  using umap_key_string_t = umap_value_smart_t<std::string, T>;
 
+  // Following three maps are used to cache MKLDNN primitives.
+  // There relations are:
+  // - BlobMap = Map<cur_thread_id, ShapeBlob>
+  // - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
+  // - KeyBlob  = Map<blob_name, blob>
+
+  using KeyBlob = umap_key_string_t<void>;
+  using ShapeBlob = umap_key_string_t<KeyBlob>;
+  using BlobMap = umap_value_smart_t<int, ShapeBlob>;
+
+  // default mkldnn session id
   typedef MKLDNNDeviceContextThreadLocals self;
   struct Body {
     bool said_once = false;
@@ -655,7 +671,8 @@ class MKLDNNDeviceContextThreadLocals {
     mkldnn::engine cur_engine;
     mkldnn::stream cur_stream;
     std::string key_suffix;  // Key identifying current Executor
-    bool key_attach_thread_id = true;
+    bool use_tls_cache = false;
+    std::shared_ptr<BlobMap> p_blobmap;  // TLS cache
 
     Body();
     ~Body();
@@ -670,8 +687,9 @@ class MKLDNNDeviceContextThreadLocals {
     mkldnn::stream& get_stream(void);
     void set_key_suffix(const std::string& suffix) { key_suffix = suffix; }
     const std::string& get_key_suffix(void) const { return key_suffix; }
-    void disable_tid_in_key(void) { key_attach_thread_id = false; }
-    bool is_tid_used_in_key(void) const { return key_attach_thread_id; }
+    void enable_tls_cache(void) { use_tls_cache = true; }
+    bool is_tid_used_in_key(void) const { return use_tls_cache == false; }
+    BlobMap* get_blobmap(void);
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
@@ -715,6 +733,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Remove all entries from the blob map
   void ResetBlobMap();
 
+  void EnableCacheViaTLS(void) { use_tls_cache_ = true; }
+
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
 
@@ -735,9 +755,16 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   }
 
  private:
+  BlobPtr_t<void> get_blob_from_map(BlobMap* pMap,
+                                    const std::string& name) const;
+  void set_blob_in_map(BlobMap* pMap, const std::string& name,
+                       BlobPtr_t<void> data) const;
+
+ private:
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
+  bool use_tls_cache_ = false;
 };
 #endif
 

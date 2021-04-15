@@ -235,6 +235,10 @@ class ConvMKLDNNHandlerT
             mkldnn_paddings[0], mkldnn_paddings[1]);
       }
     }
+    PADDLE_ENFORCE_NOT_NULL(
+        this->fwd_pd_,
+        platform::errors::NotFound("Conv FWD_PD %s is not found in cache.",
+                                   this->fwd_pd_));
   }
 
   mkldnn::primitive_attr CreatePostOps(
