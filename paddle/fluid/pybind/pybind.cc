@@ -456,6 +456,23 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
+template <typename T>
+void SerializeToStream(std::ostream &os, const T &tensor) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext *dev_ctx;
+  auto place = tensor.place();
+  dev_ctx = pool.Get(place);
+  SerializeToStream(os, tensor, *dev_ctx);
+}
+
+template <typename T>
+void DeserializeFromStream(std::ifstream &os, const T &tensor) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext *dev_ctx;
+  dev_ctx = pool.Get(platform::CPUPlace());
+  DeserializeFromStream(os, tensor, *dev_ctx);
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -506,38 +523,7 @@ PYBIND11_MODULE(core_noavx, m) {
     PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
                       platform::errors::Unavailable(
                           "Cannot open %s to save variables.", str_file_name));
-    if (platform::is_cpu_place(tensor.place())) {
-      SerializeToStream(fout, tensor, paddle::platform::CPUDeviceContext());
-    } else if (platform::is_gpu_place(tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      SerializeToStream(fout, tensor, paddle::platform::CUDADeviceContext(
-                                          paddle::platform::CUDAPlace()));
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "CUDAPlace is not supported when not compiled with CUDA"));
-#endif
-    } else if (platform::is_xpu_place(tensor.place())) {
-#ifdef PADDLE_WITH_XPU
-      SerializeToStream(fout, tensor, paddle::platform::XPUDeviceContext(
-                                          paddle::platform::XPUPlace()));
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "XPUPlace is not supported when not compiled with XPU"));
-#endif
-    } else if (platform::is_cuda_pinned_place(tensor.place())) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Cannot use CUDAPinnedPlace in CPU only version, "
-          "Please recompile or reinstall Paddle with CUDA support."));
-#else
-      SerializeToStream(fout, tensor,
-         paddle::platform::CUDAPinnedDeviceContext(
-           paddle::platform::CUDAPinnedPlace()));
-#endif
-    } else {
-      platform::errors::Unimplemented(
-          "Get unknown device of `tensor`, only support CPU, GPU, XPU.");
-    }
+    SerializeToStream(fout, tensor);
 
     int64_t tellp = fout.tellp();
     fout.close();
@@ -550,56 +536,26 @@ PYBIND11_MODULE(core_noavx, m) {
                       platform::errors::Unavailable(
                           "Cannot open %s to load variables.", str_file_name));
 
-    DeserializeFromStream(fin, &tensor, paddle::platform::CPUDeviceContext());
+    DeserializeFromStream(fin, &tensor);
 
     int64_t tellg = fin.tellg();
     fin.close();
     return tellg;
   });
-  m.def("_save_selected_rows", [](const SelectedRows &tensor,
-                                  const std::string &str_file_name) {
-    std::ofstream fout(str_file_name, std::ios::binary);
-    PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fout), true,
-        platform::errors::Unavailable("Cannot open %s to save SelectedRows.",
-                                      str_file_name));
-    if (platform::is_cpu_place(tensor.place())) {
-      SerializeToStream(fout, tensor, paddle::platform::CPUDeviceContext());
-    } else if (platform::is_gpu_place(tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      SerializeToStream(fout, tensor, paddle::platform::CUDADeviceContext(
-                                          paddle::platform::CUDAPlace()));
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "CUDAPlace is not supported when not compiled with CUDA"));
-#endif
-    } else if (platform::is_cuda_pinned_place(tensor.place())) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-      PADDLE_THROW(platform::errors::PermissionDenied(
-          "Cannot use CUDAPinnedPlace in CPU only version, "
-          "Please recompile or reinstall Paddle with CUDA support."));
-#else
-      SerializeToStream(fout, tensor,
-        paddle::platform::CUDAPinnedDeviceContext(
-          paddle::platform::CUDAPinnedPlace()));
-#endif
-    } else if (platform::is_xpu_place(tensor.place())) {
-#ifdef PADDLE_WITH_XPU
-      SerializeToStream(fout, tensor, paddle::platform::XPUDeviceContext(
-                                          paddle::platform::XPUPlace()));
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "XPUPlace is not supported when not compiled with XPU"));
-#endif
-    } else {
-      platform::errors::Unimplemented(
-          "Get unknown device of `tensor`, only support CPU, GPU, XPU.");
-    }
+  m.def("_save_selected_rows",
+        [](const SelectedRows &tensor, const std::string &str_file_name) {
+          std::ofstream fout(str_file_name, std::ios::binary);
+          PADDLE_ENFORCE_EQ(
+              static_cast<bool>(fout), true,
+              platform::errors::Unavailable(
+                  "Cannot open %s to save SelectedRows.", str_file_name));
 
-    int64_t tellp = fout.tellp();
-    fout.close();
-    return tellp;
-  });
+          SerializeToStream(fout, tensor);
+
+          int64_t tellp = fout.tellp();
+          fout.close();
+          return tellp;
+        });
   m.def("_load_selected_rows", [](SelectedRows &tensor,
                                   const std::string &str_file_name) {
     std::ifstream fin(str_file_name, std::ios::binary);

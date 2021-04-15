@@ -349,6 +349,8 @@ def _ndarray_to_tensor(obj, return_numpy):
 
 
 def _save_lod_tensor(tensor, file_name):
+    if not tensor._is_initialized():
+        raise ValueError("The saved tensor is not initialized.")
     _seek = core._save_lod_tensor(tensor, file_name)
     # '_seek' is the end position of this tensor in the file.
     return _seek
@@ -363,6 +365,8 @@ def _load_lod_tensor(file_name):
 
 def _save_selected_rows(selected_rows, file_name):
     # '_seek' is the end position of this SelectedRows in the file.
+    if not selected_rows.get_tensor()._is_initialized():
+        raise ValueError("The saved tensor is not initialized.")
     _seek = core._save_selected_rows(selected_rows, file_name)
     return _seek
 
