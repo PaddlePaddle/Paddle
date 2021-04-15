@@ -73,19 +73,18 @@ class InterpolateV2MKLDNNKernel : public framework::OpKernel<T> {
       if (scale_tensor != nullptr) {
         auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
         std::copy(scale_data.begin(), scale_data.end(), scales.begin());
-        while (scale_data.size() < 3)
-          scales.push_back(scale_data[0]);
+        while (scale_data.size() < 3) scales.push_back(scale_data[0]);
       } else {
         scales = ctx.Attr<std::vector<float>>("scale");
-        while (scales.size() < 3)
-          scales.push_back(scales[0]);
+        while (scales.size() < 3) scales.push_back(scales[0]);
       }
       if (scales[0] > 0.0f && scales[1] > 0.0f && scales[2] > 0.0f) {
         int j = 0;
         std::vector<int64_t> in_dhw_vec = framework::vectorize(in_dhw_dims);
-        std::transform(
-            in_dhw_vec.begin(), in_dhw_vec.end(), out_dims.begin(),
-            [&](int64_t i) -> int { return static_cast<int>(i * scales[j++]); });
+        std::transform(in_dhw_vec.begin(), in_dhw_vec.end(), out_dims.begin(),
+                       [&](int64_t i) -> int {
+                         return static_cast<int>(i * scales[j++]);
+                       });
       }
     }
 
@@ -123,9 +122,9 @@ class InterpolateV2MKLDNNKernel : public framework::OpKernel<T> {
     framework::DDim dim_out = framework::make_ddim(out_dims_vec);
     z->mutable_data<T>(dim_out, ctx.GetPlace());
 
-    paddle::platform::InterpolateMKLDNNHandler<T> handler(algo, dev_ctx, mkldnn_engine,
-                                        ctx.GetPlace(), x, z,
-                                        ctx.OutputName("Out"));
+    paddle::platform::InterpolateMKLDNNHandler<T> handler(
+        algo, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, z,
+        ctx.OutputName("Out"));
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(z);

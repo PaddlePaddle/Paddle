@@ -118,9 +118,9 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     framework::DDim dim_out = framework::make_ddim(out_dims_vec);
     z->mutable_data<T>(dim_out, ctx.GetPlace());
 
-    paddle::platform::InterpolateMKLDNNHandler<T> handler(algo, dev_ctx, mkldnn_engine,
-                                        ctx.GetPlace(), x, z,
-                                        ctx.OutputName("Out"));
+    paddle::platform::InterpolateMKLDNNHandler<T> handler(
+        algo, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, z,
+        ctx.OutputName("Out"));
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(z);
