@@ -133,6 +133,12 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
+  void operator()(const platform::NPUPinnedPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
   // there is NO blas in CUDAPinnedPlace
   void operator()(const platform::CUDAPinnedPlace& place) {
     PADDLE_THROW(platform::errors::PermissionDenied(

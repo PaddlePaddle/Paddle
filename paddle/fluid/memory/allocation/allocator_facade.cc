@@ -42,6 +42,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
+#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #include "paddle/fluid/platform/npu_info.h"
 
 DEFINE_int64(
@@ -79,10 +80,11 @@ class AllocatorFacadePrivate {
         InitNaiveBestFitCUDAPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-        VLOG(3) << "npu num: " <<platform::GetNPUDeviceCount();
+        VLOG(3) << "npu num: " << platform::GetNPUDeviceCount();
         for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
         }
+        InitNaiveBestFitNPUPinnedAllocator();
 #endif
         break;
       }
@@ -142,7 +144,7 @@ class AllocatorFacadePrivate {
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
                                                           : allocators_)
                   : zero_size_allocators_);
-        VLOG(3) <<size;
+    VLOG(3) << size;
     auto iter = allocators.find(place);
     PADDLE_ENFORCE_NE(iter, allocators.end(),
                       platform::errors::NotFound(
@@ -207,6 +209,11 @@ class AllocatorFacadePrivate {
   void InitNaiveBestFitNPUAllocator(platform::NPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
+  void InitNaiveBestFitNPUPinnedAllocator() {
+    allocators_[platform::NPUPinnedPlace()] =
+        std::make_shared<NaiveBestFitAllocator>(platform::NPUPinnedPlace());
+  }
+
 #endif
 
   class ZeroSizeAllocator : public Allocator {
