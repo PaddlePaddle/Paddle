@@ -62,7 +62,6 @@ from .backward import gradients
 from . import regularizer
 from . import average
 from . import metrics
-from . import transpiler
 from . import incubate
 from .input import embedding, one_hot
 from . import distribute_lookup_table
@@ -72,8 +71,6 @@ from .core import LoDTensor, LoDTensorArray, Scope, _Scope
 from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
 from .incubate import fleet
 from .incubate import data_generator
-from .transpiler import DistributeTranspiler, \
-    memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import profiler
@@ -98,7 +95,7 @@ enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
 
 __all__ = framework.__all__ + executor.__all__ + \
-    trainer_desc.__all__ + transpiler.__all__ + \
+    trainer_desc.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
     data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + generator.__all__ + [
         'io',
@@ -113,7 +110,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'disable_dygraph',
         'enable_imperative',
         'disable_imperative',
-        'transpiler',
         'nets',
         'optimizer',
         'learning_rate_decay',
