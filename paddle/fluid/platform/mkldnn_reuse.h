@@ -631,10 +631,10 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
 };
 
 template <typename T>
-class BinaryReductionGradMKLDNNHandler
+class BroadcastDataMKLDNNHandler
     : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
-  BinaryReductionGradMKLDNNHandler(const dnnl::algorithm algo,
+  BroadcastDataMKLDNNHandler(const dnnl::algorithm algo,
                                    const MKLDNNDeviceContext& dev_ctx,
                                    const mkldnn::engine engine,
                                    platform::Place cpu_place, const Tensor* x,
@@ -683,6 +683,13 @@ class BinaryReductionGradMKLDNNHandler
       this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
                                               src1_md, src0_md);
     }
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(framework::Tensor* input) {
+    T* input_data = input->data<T>();
+    memset(input_data, 0, this->fwd_pd_->src_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(

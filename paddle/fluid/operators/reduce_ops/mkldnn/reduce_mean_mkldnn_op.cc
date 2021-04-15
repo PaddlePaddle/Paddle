@@ -42,8 +42,7 @@ class ReduceMeanGradMKLDNNKernel : public ReduceGradMKLDNNKernel<T> {
         number_of_elements *= input_dims[reduce_dims[i]];
       }
     } else {
-      for (size_t i = 0; i < input_dims.size(); ++i)
-        number_of_elements *= input_dims[i];
+      number_of_elements = input_x->numel();
     }
 
     this->RunKernel(ctx, dnnl::algorithm::binary_add, 0.0f,

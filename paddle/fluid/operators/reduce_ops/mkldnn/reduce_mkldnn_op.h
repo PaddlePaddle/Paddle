@@ -141,7 +141,7 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     output_dx->set_format(getPlainFormatTag(output_dx));
     output_dx->set_layout(input_dy->layout());
 
-    platform::BinaryReductionGradMKLDNNHandler<T> handler(
+    platform::BroadcastDataMKLDNNHandler<T> handler(
         binary_type, dev_ctx, onednn_engine, ctx.GetPlace(), output_dx,
         input_dy, scale_x, scale_y,
         ctx.InputName(framework::GradVarName("Out")));
