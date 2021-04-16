@@ -174,6 +174,12 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "use_model_parallel",
+        "(bool default false) use this op with model parallel mode. In model "
+        "parallel mode, the backward is c_identity which returns itself for "
+        "c_allreduce_sum.")
+        .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 CAllReduce %s Operator
 

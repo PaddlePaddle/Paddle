@@ -133,6 +133,8 @@ message PipelineConfig {
   optional string schedule_mode = 3 [ default = '1F1B' ];
 }
 
+message ModelParallelConfig { optional int32 mp_degree = 1 [ default = 1 ]; }
+
 message DistributedStrategy {
   // bool options
   optional Mode mode = 1 [ default = COLLECTIVE ];
@@ -163,6 +165,7 @@ message DistributedStrategy {
   optional bool sharding = 26 [ default = false ];
   optional float last_comm_group_size_MB = 27 [ default = 1 ];
   optional bool find_unused_parameters = 28 [ default = true ];
+  optional bool model_parallel = 29 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -175,6 +178,7 @@ message DistributedStrategy {
   optional LambConfig lamb_configs = 109;
   optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
   optional ShardingConfig sharding_configs = 111;
+  optional ModelParallelConfig model_parallel_configs = 112;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }
