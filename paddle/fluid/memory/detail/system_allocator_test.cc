@@ -94,7 +94,7 @@ TEST(NPUAllocator, Alloc) {
 }
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
+#ifdef PADDLE_WITH_XPU
 TEST(XPUAllocator, Alloc) {
   paddle::memory::detail::XPUAllocator a(0);
   TestAllocator(&a, 1 << 20);
