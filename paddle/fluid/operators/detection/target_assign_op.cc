@@ -41,10 +41,10 @@ class TargetAssignOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("X");
     auto mi_dims = ctx->GetInputDim("MatchIndices");
 
-    PADDLE_ENFORCE_EQ(
-        in_dims.size(), 3,
+    PADDLE_ENFORCE(
+        in_dims.size() == 3UL || in_dims.size() == 4UL,
         platform::errors::InvalidArgument(
-            "Expected the rank of Input(X) is 3. But received %d.",
+            "Expected the rank of Input(X) is 3 or 4. But received %d.",
             in_dims.size()));
     PADDLE_ENFORCE_EQ(mi_dims.size(), 2,
                       platform::errors::InvalidArgument(
@@ -52,13 +52,13 @@ class TargetAssignOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("NegIndices")) {
       auto neg_dims = ctx->GetInputDim("NegIndices");
-      PADDLE_ENFORCE_EQ(neg_dims.size(), 2,
-                        platform::errors::InvalidArgument(
-                            "The rank of Input(NegIndices) must be 2."));
+      PADDLE_ENFORCE(neg_dims.size() == 2UL || neg_dims.size() == 3UL,
+                     platform::errors::InvalidArgument(
+                         "The rank of Input(NegIndices) must be 2 or 3."));
       PADDLE_ENFORCE_EQ(
-          neg_dims[1], 1,
+          neg_dims[neg_dims.size() - 1], 1,
           platform::errors::InvalidArgument(
-              "The last dimension of Out(NegIndices) must be 1."));
+              "The last dimension of Input(NegIndices) must be 1."));
     }
 
     auto n = mi_dims[0];
@@ -81,7 +81,9 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), This input is a 3D LoDTensor with shape [M, P, K]. "
+             "(LoDTensor or Tensor), When the input is LoDTensor, its shape "
+             "must be [M, P, K]. When the input is Tensor, its shape can be "
+             "[B, F, K] or [B, F, A, K], where M = B * F. "
              "Some elements in X will be assigned to Out based on the "
              "MatchIndices and NegIndices.");
     AddInput("MatchIndices",
@@ -89,9 +91,12 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "with shape [N, P], If MatchIndices[i][j] is -1, the j-th entity "
              "of column is not matched to any entity of row in i-th instance.");
     AddInput("NegIndices",
-             "(LoDTensor, default LoDTensor<int>), The input negative example "
-             "indices are an optional input with shape [Neg, 1], where Neg is "
-             "the total number of negative example indices.")
+             "(LoDTensor or Tensor, default LoDTensor<int>), The input "
+             "negative example indices are an optional input with shape "
+             "[Neg, 1], where Neg is the total number of negative example "
+             "indices and input is LoDTensor. When the input is Tensor, "
+             "its shape must be [B, M, 1], where Neg = B * M and it becomes "
+             "negative example mask. ")
         .AsDispensable();
     AddAttr<int>("mismatch_value",
                  "(int, default 0), Fill this value to the "
