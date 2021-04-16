@@ -104,17 +104,17 @@ class HybridCommunicateGroup(object):
         self.global_rank = paddle.distributed.get_rank()
         self._topo = topology
 
-        self._num_data_parallel = self._topo.get_dim('data')
-        self._num_model_parallel = self._topo.get_dim('model')
-        self._num_pipe_parallel = self._topo.get_dim('pipe')
+        self._dp_degree = self._topo.get_dim('data')
+        self._mp_degree = self._topo.get_dim('model')
+        self._pp_degree = self._topo.get_dim('pipe')
 
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
 
         assert self._check_vaild_topo(
         ), "Here is an unreasonable topogy setting. world_size: {}, but" \
-            "dp_num: {}, mp_num: {}, pp_num: {}".format(self.nranks, self._num_data_parallel,
-            self._num_model_parallel, self._num_pipe_parallel)
+            "dp_num: {}, mp_num: {}, pp_num: {}".format(self.nranks, self._dp_degree,
+            self._mp_degree, self._pp_degree)
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
@@ -128,7 +128,7 @@ class HybridCommunicateGroup(object):
         _HYBRID_PARALLEL_GROUP = self
 
     def _check_vaild_topo(self):
-        return self._num_data_parallel * self._num_model_parallel * self._num_pipe_parallel == self.nranks
+        return self._dp_degree * self._mp_degree * self._pp_degree == self.nranks
 
     def _set_comm_group(self, parallel_method="data"):
         parallel_group = []
@@ -160,7 +160,7 @@ class HybridCommunicateGroup(object):
         return self._data_parallel_id
 
     def get_data_parallel_world_size(self):
-        return self._num_data_parallel
+        return self._dp_degree
 
     def get_data_parallel_group(self):
         return self._dp_comm_group
@@ -176,7 +176,7 @@ class HybridCommunicateGroup(object):
         return self._model_parallel_id
 
     def get_model_parallel_world_size(self):
-        return self._num_model_parallel
+        return self._mp_degree
 
     def get_model_parallel_group(self):
         return self._mp_comm_group

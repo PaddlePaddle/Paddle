@@ -873,15 +873,15 @@ class DistributedStrategy(object):
         Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism 
         needs to meet the following relationships
 
-        total_number_GPUs = num_data_parallel * num_model_parallel * num_pipeline_parallel
+        total_number_GPUs = dp_degree * mp_degree * pp_degree
 
         **Note**:
-            num_data_parallel(int): set number of GPUs in a data parallel group. Default -1.
+            dp_degree(int): set number of GPUs in a data parallel group. Default -1.
                                     This value should be an integer greater than 0.
                                     If it is not set, or set to -1, its value will be inferred 
                                     based on the total number of cards.
-            num_model_parallel(int): set number of GPUs in a model parallel group. Default 1
-            num_pipeline_parallel(int): set number of GPUs in a pipeline parallel group. Default 1
+            mp_degree(int): set number of GPUs in a model parallel group. Default 1
+            pp_degree(int): set number of GPUs in a pipeline parallel group. Default 1
 
 
         Examples:
@@ -889,9 +889,9 @@ class DistributedStrategy(object):
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.hybrid_configs = {
-                "num_data_parallel": 1,
-                "num_model_parallel": 2,
-                "num_pipeline_parallel": 1}
+                "dp_degree": 1,
+                "mp_degree": 2,
+                "pp_degree": 1}
         """
         return get_msg_dict(self.strategy.hybrid_configs)
 
@@ -900,28 +900,6 @@ class DistributedStrategy(object):
         check_configs_key(self.strategy.hybrid_configs, configs,
                           "hybrid_configs")
         assign_configs_value(self.strategy.hybrid_configs, configs)
-
-    @property
-    def model_parallel_configs(self):
-        """
-        **Notes**:
-            **Detailed arguments for model_parallel_configs**
-            **global_seed**: the global seed for model parallel random
-
-        Examples:
-          .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.model_parallel_configs = {"global_seed": 1024}
-        """
-
-        return get_msg_dict(self.strategy.model_parallel_configs)
-
-    @model_parallel_configs.setter
-    def model_parallel_configs(self, configs):
-        check_configs_key(self.strategy.model_parallel_configs, configs,
-                          "model_parallel_configs")
-        assign_configs_value(self.strategy.model_parallel_configs, configs)
 
     @property
     def localsgd(self):

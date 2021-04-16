@@ -53,15 +53,14 @@ class VocabParallelEmbedding(Layer):
         per_part_size += 1  # make the last row as the padding index
         self.per_part_size = per_part_size
 
-        with get_rng_state_tracker().rng_state():
-            self.embedding = paddle.nn.Embedding(
-                per_part_size,
-                embedding_dim,
-                padding_idx=per_part_size - 1,
-                sparse=False,
-                weight_attr=weight_attr,
-                name=name)
-            self.embedding.weight.is_distributed = True
+        self.embedding = paddle.nn.Embedding(
+            per_part_size,
+            embedding_dim,
+            padding_idx=per_part_size - 1,
+            sparse=False,
+            weight_attr=weight_attr,
+            name=name)
+        self.embedding.weight.is_distributed = True
 
     def forward(self, x):
         origin_input_shape = x.shape
@@ -107,12 +106,11 @@ class ColumnParallelLinear(Layer):
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
 
-        with get_rng_state_tracker().rng_state():
-            self.weight = self.create_parameter(
-                shape=[in_features, self.output_size_per_partition],
-                attr=self._weight_attr,
-                dtype=self._dtype)
-            self.weight.is_distributed = True
+        self.weight = self.create_parameter(
+            shape=[in_features, self.output_size_per_partition],
+            attr=self._weight_attr,
+            dtype=self._dtype)
+        self.weight.is_distributed = True
 
         if has_bias:
             # initialize bias to zero like Megatron
@@ -165,12 +163,11 @@ class RowParallelLinear(Layer):
 
         self.input_size_per_partition = in_features // self.world_size
 
-        with get_rng_state_tracker().rng_state():
-            self.weight = self.create_parameter(
-                shape=[self.input_size_per_partition, self.out_features],
-                attr=self._weight_attr,
-                dtype=self._dtype)
-            self.weight.is_distributed = True
+        self.weight = self.create_parameter(
+            shape=[self.input_size_per_partition, self.out_features],
+            attr=self._weight_attr,
+            dtype=self._dtype)
+        self.weight.is_distributed = True
 
         if has_bias:
             self.bias = self.create_parameter(

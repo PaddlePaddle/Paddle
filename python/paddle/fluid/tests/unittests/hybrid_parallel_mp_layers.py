@@ -115,9 +115,9 @@ class TestDistTraning(unittest.TestCase):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
         strategy.hybrid_configs = {
-            "num_data_parallel": 1,
-            "num_model_parallel": self.model_parallel_size,
-            "num_pipeline_parallel": 1
+            "dp_degree": 1,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1
         }
         fleet.init(is_collective=True, strategy=strategy)
 

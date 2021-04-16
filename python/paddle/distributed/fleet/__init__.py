@@ -21,7 +21,6 @@ from .dataset import *
 from .data_generator import MultiSlotDataGenerator, MultiSlotStringDataGenerator
 from . import metrics
 from .base.topology import CommunicateTopology, HybridCommunicateGroup
-from .mpu import random, layers
 
 __all__ = [
     "DistributedStrategy", "UtilBase", "UserDefinedRoleMaker",

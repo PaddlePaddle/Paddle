@@ -247,17 +247,17 @@ class Fleet(object):
         """initialize the hybrid environment
         """
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
-        self.dp_num = self.hybrid_configs["num_data_parallel"]
-        self.mp_num = self.hybrid_configs["num_model_parallel"]
-        self.pp_num = self.hybrid_configs["num_pipeline_parallel"]
+        self.dp_num = self.hybrid_configs["dp_degree"]
+        self.mp_num = self.hybrid_configs["mp_degree"]
+        self.pp_num = self.hybrid_configs["pp_degree"]
 
         if self.dp_num < 0:
             nranks = paddle.distributed.get_world_size()
             self.dp_num = nranks // (self.mp_num * self.pp_num)
 
         self._topology = tp.CommunicateTopology(
-            hybrid_group_names=["data", "model", "pipe"],
-            dims=[self.dp_num, self.mp_num, self.pp_num])
+            hybrid_group_names=["data", "pipe", "model"],
+            dims=[self.dp_num, self.pp_num, self.mp_num])
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
 
