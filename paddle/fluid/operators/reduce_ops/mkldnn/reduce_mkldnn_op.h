@@ -149,8 +149,6 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
     const auto src_dy_memory = handler.AcquireSecondSrcMemory(input_dy);
 
-    memset(output_dx->data<T>(), 0, src_dx_memory->get_desc().get_size());
-
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
     const std::unordered_map<int, dnnl::memory> args = {
