@@ -31,13 +31,13 @@ def set_random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
     paddle.seed(seed)
-    fleet.mpu.model_parallel_random_seed(seed)
+    fleet.meta_parallel.model_parallel_random_seed(seed)
 
 
 class ColumnLinearNet(fluid.dygraph.Layer):
     def __init__(self, input_size, output_size, global_dtype):
         super(ColumnLinearNet, self).__init__()
-        self.parallel_linear = fleet.mpu.ColumnParallelLinear(
+        self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
             in_features=input_size,
             out_features=output_size,
             weight_attr=None,
@@ -53,7 +53,7 @@ class ColumnLinearNet(fluid.dygraph.Layer):
 class RowLinearNet(fluid.dygraph.Layer):
     def __init__(self, input_size, output_size):
         super(RowLinearNet, self).__init__()
-        self.parallel_linear = fleet.mpu.RowParallelLinear(
+        self.parallel_linear = fleet.meta_parallel.RowParallelLinear(
             in_features=input_size,
             out_features=output_size,
             has_bias=True,
@@ -68,8 +68,8 @@ class RowLinearNet(fluid.dygraph.Layer):
 class EmbeddingNet(fluid.dygraph.Layer):
     def __init__(self, vocab_size, hidden_size):
         super(EmbeddingNet, self).__init__()
-        self.embedding = fleet.mpu.VocabParallelEmbedding(vocab_size,
-                                                          hidden_size)
+        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(vocab_size,
+                                                                    hidden_size)
 
     def forward(self, x):
         output = self.embedding(x)
