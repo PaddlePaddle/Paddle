@@ -665,6 +665,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             << "Input [Bias] of instance_norm op converter should not be null";
         return false;
       }
+      auto scale_numel = std::accumulate(scale_var->GetShape().begin(),
+                                         scale_var->GetShape().end(), 1,
+                                         std::multiplies<int64_t>());
+      auto bias_numel = std::accumulate(bias_var->GetShape().begin(),
+                                        bias_var->GetShape().end(), 1,
+                                        std::multiplies<int64_t>());
+      if (scale_numel != bias_numel) {
+        VLOG(1)
+            << "Num of input [Scale] and [Bias] of instance_norm op converter "
+               "should be equal. Got Scale num = "
+            << scale_numel << ", but Bias num = " << bias_numel;
+        return false;
+      }
     }
 
     if (op_type == "layer_norm") {
@@ -686,6 +699,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (desc.Output("Y").size() != 1) {
         VLOG(1) << "output of layer_norm op converter should be 1, got "
                 << desc.Output("Y").size();
+        return false;
+      }
+      auto* block = desc.Block();
+      auto* Bias_v = block->FindVar(desc.Input("Bias").front());
+      auto* Scale_v = block->FindVar(desc.Input("Scale").front());
+      if (Bias_v == nullptr) {
+        VLOG(1) << "Input(Bias) of layer_norm should not be null.";
+        return false;
+      }
+      if (Scale_v == nullptr) {
+        VLOG(1) << "Input(Scale) of layer_norm should not be null.";
         return false;
       }
     }
@@ -785,6 +809,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(1) << "the skip_layernorm does not support static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "multihead_matmul") {
+      if (!with_dynamic_shape) {
+        VLOG(1) << "the multihead_matmul does not support static shape yet";
         return false;
       }
     }

@@ -48,12 +48,7 @@ class InstanceNormOpConverter : public OpConverter {
 
     auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
     auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(
-        scale_tensor->numel(), bias_tensor->numel(),
-        platform::errors::InvalidArgument(
-            "Num of input [Scale] and [Bias] of instance_norm op converter "
-            "should be equal. Got Scale num = %ld, but Bias num = %ld",
-            scale_tensor->numel(), bias_tensor->numel()));
+
     auto* scale_d = scale_tensor->data<float>();
     auto* bias_d = bias_tensor->data<float>();
 

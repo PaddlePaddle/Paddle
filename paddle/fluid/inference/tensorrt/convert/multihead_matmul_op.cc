@@ -229,13 +229,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                                   head_size, scale, with_fp16);
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 2, plugin);
       }
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the Ernie(Bert) model in static shape mode, which "
-          "is not supported for the time being.\n"
-          "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
-          "the shape information to run the dynamic shape mode."));
     }
+
     RreplenishLayerAndOutput(layer, "multihead_matmul", {output_name},
                              test_mode);
 #else

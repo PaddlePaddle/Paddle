@@ -58,7 +58,9 @@ class StackOpConverter : public OpConverter {
     plugin::StackPluginDynamic* plugin =
         new plugin::StackPluginDynamic(axis, input_num, with_fp16);
     layer = engine_->AddDynamicPlugin(inputs, input_num, plugin);
-    assert(layer != nullptr);
+    PADDLE_ENFORCE_NOT_NULL(
+        layer, platform::errors::InvalidArgument(
+                   "trt stack layer in converter could not be created."));
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "You are running the TRT Dynamic Shape mode, need to confirm that "
