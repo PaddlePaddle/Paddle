@@ -36,11 +36,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto id_names = op_desc.Input("Ids");
     auto emb_names = op_desc.Input("Embs");
-
-    PADDLE_ENFORCE_EQ(id_names.size(), emb_names.size(),
-                      platform::errors::InvalidArgument(
-                          "The id and emb size of fused EmbEltwiseLayerNormOp "
-                          "should be same "));
     int input_num = id_names.size();
 
     // Declare inputs
@@ -73,10 +68,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       int64_t emb_size = framework::product(emb_dims);
       input_embs.push_back(emb_data);
       emb_sizes.push_back(emb_size);
-      PADDLE_ENFORCE_EQ(
-          emb_dims.size(), 2,
-          platform::errors::InvalidArgument(
-              "The fused EmbEltwiseLayerNorm's emb should be 2 dims."));
       hidden = emb_dims[1];
     }
 
@@ -174,12 +165,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
                                  test_mode);
       }
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the Ernie(Bert) model in static"
-          "shape mode, which is not supported for the time being.\n"
-          "You can use the config.SetTRTDynamicShapeInfo(...) interface"
-          " to set the shape information to run the dynamic shape mode."));
     }
 
 #else

@@ -66,15 +66,6 @@ class Pool2dOpConverter : public OpConverter {
     VLOG(4)
         << "convert a fluid pool2d op to tensorrt pool2d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
-    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1UL,
-                      platform::errors::InvalidArgument(
-                          "TRT Pool2d expect 1 input, but got %d input.",
-                          op_desc.Input("X").size()));
-    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL,
-                      platform::errors::InvalidArgument(
-                          "TRT Pool2d expect 1 Output, but got %d output.",
-                          op_desc.Output("Out").size()));
-
     auto *input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     nvinfer1::Dims input_shape = input1->getDimensions();
     int input_dims = input_shape.nbDims;
@@ -110,10 +101,6 @@ class Pool2dOpConverter : public OpConverter {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
       reduce_operation = nvinfer1::ReduceOperation::kAVG;
       plugin_pool_type = plugin::PoolPlugin::PoolType::avg;
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Wrong pool op type, the trt do not support the %s pool type.",
-          pool_type));
     }
 
     nvinfer1::DimsHW nv_ksize(ksize[0], ksize[1]);

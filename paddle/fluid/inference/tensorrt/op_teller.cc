@@ -132,11 +132,38 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "pool2d" || op_type == "depthwise_conv2d") {
+    if (op_type == "depthwise_conv2d") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
       if (paddings.size() > 2) return false;
+    }
+
+    if (op_type == "pool2d") {
+      std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+      if (paddings.size() > 2) return false;
+      if (desc.Input("X").size() != 1) {
+        VLOG(1) << "TRT Pool2d expect 1 input, but got "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(1) << "TRT Pool2d has only 1 output, but got "
+                << desc.Output("Out").size();
+        return false;
+      }
+      if (!desc.HasAttr("pooling_type")) {
+        return false;
+      } else {
+        std::string pool_type =
+            BOOST_GET_CONST(std::string, desc.GetAttr("pooling_type"));
+        if (pool_type != "max" && pool_type != "avg") {
+          VLOG(1) << "Wrong pool op type, the trt do not support the "
+                  << pool_type << " pool type.";
+          return false;
+        }
+      }
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
@@ -157,6 +184,47 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(1) << "TRT Conv2d expect 1 filter, but got "
                 << desc.Input("Filter").size() << " filter.";
         return false;
+      } else {
+        auto* block = desc.Block();
+        std::string filter_var_name = desc.Input("Filter").front();
+        auto* Y_v = block->FindVar(filter_var_name);
+        if (Y_v == nullptr) {
+          VLOG(1) << "Can not find " << filter_var_name
+                  << " presistale var in scope.";
+          return false;
+        }
+        const auto shape = Y_v->GetShape();
+        if (shape.size() != 4) {
+          VLOG(1) << "The conv2d filter's dims size should be 4,"
+                     "but got "
+                  << shape.size();
+        }
+      }
+
+      if (desc.HasAttr("enable_int8")) {
+        if (op_type == "conv2d" || op_type == "conv2d_fusion") {
+          if (!desc.HasAttr("Input_scale")) {
+            VLOG(1) << "Input scale not found. TRT int8"
+                       " requires conv/deconv to have "
+                       "input quantization scales.";
+            return false;
+          }
+        }
+      }
+
+      if (op_type == "conv2d_transpose") {
+        if (!desc.HasAttr("dilations")) {
+          return false;
+        } else {
+          const std::vector<int> dilations =
+              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
+          if (dilations[0] != 1 || dilations[1] != 1) {
+            VLOG(1) << "In conv2d_transpose, Dilations must be (1, 1) for "
+                       "tensorRT, but given ("
+                    << dilations[0] << ", " << dilations[1] << ")";
+            return false;
+          }
+        }
       }
 
       if (desc.Output("Output").size() != 1) {
@@ -211,7 +279,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       }
     }
-    if (op_type == "flatten2" || op_type == "flatten") {
+    if (op_type == "flatten2") {
       // flatten doesn't support dynamic shape currently
       if (!desc.HasAttr("axis")) {
         return false;
@@ -219,6 +287,26 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (with_dynamic_shape) return false;
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
+      }
+    }
+
+    if (op_type == "flatten") {
+      // flatten doesn't support dynamic shape currently
+      if (!desc.HasAttr("axis")) {
+        return false;
+      } else {
+        if (with_dynamic_shape) return false;
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis != 1) return false;
+      }
+      auto* block = desc.Block();
+      auto* input_var = block->FindVar(desc.Input("X").front());
+      for (unsigned int i = 0; i < input_var->GetShape().size(); i++) {
+        if (input_var->GetShape()[i] <= 0) {
+          VLOG(1) << "flatten input dim should be > 0, but got "
+                  << input_var->GetShape()[i] << ".";
+          return false;
+        }
       }
     }
 
@@ -274,7 +362,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (registry == nullptr) return false;
     }
 
-    if (op_type == "fc" || op_type == "mul") {
+    if (op_type == "mul") {
       const int x_num_col_dims =
           desc.HasAttr("x_num_col_dims")
               ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
@@ -283,6 +371,66 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      : 1);
       if (x_num_col_dims != 1 && x_num_col_dims != 2) {
         return false;
+      }
+    }
+
+    if (op_type == "fc") {
+      const int x_num_col_dims =
+          desc.HasAttr("x_num_col_dims")
+              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              : (desc.HasAttr("in_num_col_dims")
+                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     : 1);
+      if (x_num_col_dims != 1 && x_num_col_dims != 2) {
+        return false;
+      }
+      auto* block = desc.Block();
+      auto input_names = desc.InputNames();
+      std::string i_name = "X";
+      std::string w_name = "Y";
+      if (input_names.size() >= 3) {
+        i_name = "Input";
+        w_name = "W";
+      }
+
+      auto* Y_v = block->FindVar(desc.Input(w_name).front());
+      if (Y_v == nullptr) {
+        VLOG(1) << "Can not find " << w_name
+                << " presistale var of fc in scope.";
+        return false;
+      }
+      if (Y_v->GetShape().size() != 2) {
+        VLOG(1) << "The fc's weight should be a matrix with 2 dims, but "
+                   "it's "
+                << Y_v->GetShape().size() << "-dimensional.";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        auto* X = block->FindVar(desc.Input(i_name).front());
+        if (x_num_col_dims > X->GetShape().size()) {
+          VLOG(1) << "Params and input dims mismatch. Paddle-TRT FC "
+                     "converter expects x_num_col_dims <= input dims";
+          return false;
+        }
+        if (x_num_col_dims == 1) {
+          if (X->GetShape().size() == 4) {
+            if (X->GetShape()[3] != 1) {
+              VLOG(1) << "Invalid Paddle-TRT FC dimensions. When "
+                         "x_num_col_dims equals to 1 and input "
+                         "dims equals to 4, the last dim of input must be 1, "
+                         "but got "
+                      << X->GetShape()[3];
+              return false;
+            }
+          }
+        } else {
+          if (X->GetShape().size() == 1) {
+            VLOG(1) << "Invalid Paddle-TRT FC dimensions. When x_num_col_dims "
+                       "equals to "
+                       "2, input_dims should not be 1";
+            return false;
+          }
+        }
       }
     }
 
@@ -301,6 +449,25 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
+
+      if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
+          !desc.HasAttr("out_w")) {
+        return false;
+      } else {
+        auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
+        auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
+        auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+        if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
+          if (out_h <= 0) {
+            VLOG(1) << "out_h must be greater than 0 if scale is not set.";
+            return false;
+          }
+          if (out_w <= 0) {
+            VLOG(1) << "out_w must be greater than 0 if scale is not set.";
+            return false;
+          }
+        }
+      }
     }
 
     if (op_type == "roi_align") {
@@ -343,7 +510,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       const std::vector<std::string> bn_inputs = {"X", "Bias", "Mean", "Scale",
                                                   "Variance"};
       auto* block = desc.Block();
-      for (int i = 0; i < bn_inputs.size(); i++) {
+      for (unsigned int i = 0; i < bn_inputs.size(); i++) {
         if (desc.Input(bn_inputs[i]).size() != 1) {
           VLOG(1) << "Invalid " << bn_inputs[i]
                   << "'s size of batch_norm TRT "
@@ -437,19 +604,190 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-#if IS_TRT_VERSION_GE(6000)
     if (op_type == "stack") {
       if (!with_dynamic_shape) {
         VLOG(1)
-            << "You are running the Ernie(Bert) model in static"
-               "shape mode, which is not supported for the time being.\n"
+            << "static shape mode is not supported for TRT stack.\n"
                "You can use the config.SetTRTDynamicShapeInfo(...) interface"
                " to set the shape information to run the dynamic shape "
                "mode.";
         return false;
       }
     }
-#endif
+
+    if (op_type == "fused_embedding_eltwise_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(1) << "fused_embedding_eltwise_layernorm should run on dynamic "
+                   "shape mode.";
+        return false;
+      }
+      if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
+        VLOG(1) << "The id and emb size of fused EmbEltwiseLayerNormOp "
+                   "should be same ";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto emb_names = desc.Input("Embs");
+      for (unsigned int i = 0; i < emb_names.size(); i++) {
+        auto* temp_var = block->FindVar(emb_names[i]);
+        const auto shape = temp_var->GetShape();
+        if (shape.size() != 2) {
+          VLOG(1) << "The fused EmbEltwiseLayerNorm's emb should be 2 dims.";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "gelu") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(1) << "gelu op has only 1 input, but got "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(1) << "gelu op has only 1 output, but got "
+                << desc.Output("Out").size();
+        return false;
+      }
+    }
+
+    if (op_type == "instance_norm") {
+      auto* block = desc.Block();
+      auto* scale_var = block->FindVar(desc.Input("Scale")[0]);
+      auto* bias_var = block->FindVar(desc.Input("Bias")[0]);
+      if (scale_var == nullptr) {
+        VLOG(1)
+            << "Input [Scale] of instance_norm op converter should not be null";
+        return false;
+      }
+      if (bias_var == nullptr) {
+        VLOG(1)
+            << "Input [Bias] of instance_norm op converter should not be null";
+        return false;
+      }
+    }
+
+    if (op_type == "layer_norm") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(1) << "input of layer_norm op converter should be 1, got "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Input("Bias").size() != 1) {
+        VLOG(1) << "Bias of layer_norm op converter should be 1, got "
+                << desc.Input("Bias").size();
+        return false;
+      }
+      if (desc.Input("Scale").size() != 1) {
+        VLOG(1) << "Scale of layer_norm op converter should be 1, got "
+                << desc.Input("Scale").size();
+        return false;
+      }
+      if (desc.Output("Y").size() != 1) {
+        VLOG(1) << "output of layer_norm op converter should be 1, got "
+                << desc.Output("Y").size();
+        return false;
+      }
+    }
+
+    if (op_type == "leaky_relu") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(1) << "Invalid number of TRT leaky_relu op converter "
+                   "inputs. Expected 1, but received "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(1) << "output of leaky_relu op converter should be 1, got "
+                << desc.Output("Out").size();
+        return false;
+      }
+    }
+
+    if (op_type == "pad") {
+      auto* block = desc.Block();
+      auto* input_var = block->FindVar(desc.Input("X")[0]);
+      if (input_var->GetShape().size() < 2) {
+        VLOG(1) << "Input X[0]'s dimension should greater than or equal to 2. "
+                   "But received %d.";
+        return false;
+      }
+      if (!desc.HasAttr("paddings") || !desc.HasAttr("pad_value")) {
+        return false;
+      } else {
+        const std::vector<int> paddings =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+        if ((input_var->GetShape().size() + 1) * 2 != paddings.size()) {
+          VLOG(1) << "Input X[0]'s dimension(nbDims for "
+                     "short) should meet the condition:"
+                     "(nbDims + 1) * 2 == pad_size. But "
+                     "received nbDims:"
+                  << input_var->GetShape().size()
+                  << ", pad_size:" << paddings.size() << ".";
+          return false;
+        }
+        const float pad_value =
+            BOOST_GET_CONST(float, desc.GetAttr("pad_value"));
+        if (pad_value != 0.0f) {
+          VLOG(1) << "The pad layer of TRT only support zero.";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "prelu") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(1) << "Invalid input X's size of prelu TRT converter. "
+                   "Expected 1, received "
+                << desc.Input("X").size() << ".";
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(1) << "Invalid output Out's size of prelu TRT converter. "
+                   "Expected 1, received "
+                << desc.Output("Out").size() << ".";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto* alpha_var = block->FindVar(desc.Input("Alpha")[0]);
+      if (alpha_var == nullptr) {
+        VLOG(1) << "Variable Alpha of prelu TRT converter is not found.";
+        return false;
+      }
+    }
+
+    if (op_type == "roi_align") {
+      if (!with_dynamic_shape) {
+        VLOG(1) << "TRT roi align plugin only accept the dynamic shape, "
+                   "because that "
+                   "the roi_align will change the batch size.";
+        return false;
+      }
+    }
+
+    if (op_type == "shuffle_channel") {
+      auto* block = desc.Block();
+      auto* alpha_var = block->FindVar(desc.Input("X")[0]);
+      if (alpha_var->GetShape().size() != 3) {
+        VLOG(1) << "ShuffleChannel TRT op converter "
+                   "input dims is invalid. The input "
+                   "dims size should be 3, but got "
+                << alpha_var->GetShape().size() << ".";
+        return false;
+      }
+      if (with_dynamic_shape) {
+        VLOG(1) << "You are running the TRT Dynamic Shape mode, "
+                   "the shuffle_channel op does not support dynamic shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "skip_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(1) << "the skip_layernorm does not support static shape yet";
+        return false;
+      }
+    }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

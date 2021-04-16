@@ -50,9 +50,6 @@ class FcOpConverter : public OpConverter {
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
-    PADDLE_ENFORCE_NOT_NULL(
-        Y_v, platform::errors::NotFound(
-                 "Can not find %s presistale var of fc in scope.", w_name));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     const int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
@@ -84,12 +81,6 @@ class FcOpConverter : public OpConverter {
       weight_data =
           engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t, false);
     }
-
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
-                      platform::errors::InvalidArgument(
-                          "The fc's weight should be a matrix with 2 dims, but "
-                          "it's %d-dimensional.",
-                          Y_t->dims().size()));  // a matrix
     size_t n_output = Y_t->dims()[1];
 
     int m = Y_t->dims()[0];
@@ -221,14 +212,6 @@ class FcOpConverter : public OpConverter {
                           "Params and input dims mismatch. Paddle-TRT FC "
                           "converter expects x_num_col_dims <= input dims"));
     if (x_num_col_dims == 1) {
-      if (input_dims == 4) {
-        PADDLE_ENFORCE_EQ(
-            input_d[3], 1,
-            platform::errors::InvalidArgument(
-                "Invalid dimensions. When x_num_col_dims equals to 1 and input "
-                "dims equals to 4, the last dim of input must be 1, but got %d",
-                input_d[3]));
-      }
       for (int i = 0; i < 3; i++) {
         if (i < input_dims) {
           reshape_dim3[i] = input_d[i];
@@ -245,10 +228,6 @@ class FcOpConverter : public OpConverter {
         engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
       }
     } else {
-      PADDLE_ENFORCE_NE(input_dims, 1,
-                        platform::errors::InvalidArgument(
-                            "Invalid dimensions. When x_num_col_dims equals to "
-                            "2, input_dims should not be 1"));
       for (int i = 0; i < 4; i++) {
         if (i < input_dims) {
           reshape_dim4[i] = input_d[i];

@@ -39,9 +39,6 @@ class FlattenOpConverter : public OpConverter {
     int dim_prod = 1;
     for (int i = 0; i < dims; i++) {
       int dim_i = input->getDimensions().d[i];
-      PADDLE_ENFORCE_GT(
-          dim_i, 0, platform::errors::InvalidArgument(
-                        "flatten input dim should be > 0, but got %d.", dim_i));
       dim_prod *= dim_i;
     }
     nvinfer1::Dims flatten_dim;

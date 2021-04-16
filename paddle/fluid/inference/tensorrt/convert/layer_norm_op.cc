@@ -25,25 +25,6 @@ class LayerNormOpConverter : public OpConverter {
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert a fluid layer_norm op to tensorrt layer_norm plugin";
     framework::OpDesc op_desc(op, nullptr);
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("X").size(), 1,
-        platform::errors::InvalidArgument(
-            "input of layer_norm op converter should be 1, got %d",
-            op_desc.Input("X").size()));
-    PADDLE_ENFORCE_EQ(op_desc.Input("Bias").size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Bias of layer_norm op converter should be 1, got %d",
-                          op_desc.Input("Bias").size()));  // Bias is a weight
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("Scale").size(), 1,
-        platform::errors::InvalidArgument(
-            "Scale of layer_norm op converter should be 1, got %d",
-            op_desc.Input("Scale").size()));  // Scale is a weight
-    PADDLE_ENFORCE_EQ(
-        op_desc.Output("Y").size(), 1,
-        platform::errors::InvalidArgument(
-            "output of layer_norm op converter should be 1, got %d",
-            op_desc.Input("Y").size()));
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());

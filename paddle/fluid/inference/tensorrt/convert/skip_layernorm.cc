@@ -92,12 +92,6 @@ class SkipLayerNormOpConverter : public OpConverter {
                                                    scale_size, eps, with_fp16);
         layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
       }
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the Ernie(Bert) model in static"
-          "shape mode, which is not supported for the time being.\n"
-          "You can use the config.SetTRTDynamicShapeInfo(...) interface"
-          " to set the shape information to run the dynamic shape mode."));
     }
 
     auto output_name = op_desc.Output("Out")[0];
