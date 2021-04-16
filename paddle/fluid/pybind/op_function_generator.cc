@@ -353,6 +353,9 @@ std::string GenerateOpFunctionsBody(
   if (input_args.back() == ',') {
     input_args.pop_back();
   }
+  // if (!input_args.empty() && input_args.back() == ',') {
+  //   input_args.pop_back();
+  // }
 
   // Generate outs initializer
   std::string outs_initializer = "{";

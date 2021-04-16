@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class CSyncCommStreamOp : public framework::OperatorWithKernel {
+class CSyncCommStreamOp : public framework::OperatorBase {
  public:
   CSyncCommStreamOp(const std::string& type,
                     const framework::VariableNameMap& inputs,

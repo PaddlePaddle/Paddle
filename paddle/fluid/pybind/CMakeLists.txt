@@ -153,9 +153,9 @@ if(WITH_PYTHON)
           )
     endif()
   else(WIN32)
-    # If there are no *.so in /usr/lib or LD_LIBRARY_PATH, 
+    # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
-    # LD_LIBRARY_PATH. This is different with Windows platformm, which search 
+    # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     add_custom_command(TARGET op_function_generator
           POST_BUILD
