@@ -60,6 +60,7 @@ _out_scale_op_list = [
     "swish",
     "softmax",
     "batch_norm",
+    "layer_norm",
     "elementwise_add",
     "pool2d",
     "reshape2",
@@ -67,6 +68,7 @@ _out_scale_op_list = [
     "concat",
     "elementwise_mul",
     "scale",
+    "slice",
     "hard_swish",
     "hard_sigmoid",
     "conv2d_transpose",
@@ -119,6 +121,7 @@ _op_real_in_out_name = {
     "swish": [["X"], ["Out"]],
     "dropout": [["X"], ["Out"]],
     "batch_norm": [["X"], ["Y"]],
+    "layer_norm": [["X"], ["Y"]],
     "sigmoid": [["X"], ["Out"]],
     "elementwise_mul": [["X", "Y"], ["Out"]],
     "scale": [["X"], ["Out"]],
@@ -1749,7 +1752,7 @@ class AddQuantDequantPass(object):
         "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
         "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
         "leaky_relu", "tanh", "swish", "scale", "transpose", "transpose2",
-        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm"
+        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm", "layer_norm"
     ]
 
     # To be compatible with PaddleSlim, not remove _activation_type for now
