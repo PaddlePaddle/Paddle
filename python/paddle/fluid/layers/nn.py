@@ -2998,6 +2998,8 @@ def inplace_abn(input,
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'inplace_abn')
     dtype = helper.input_dtype()
+    if core.is_compiled_with_rocm():
+        dtype = 'float32'
 
     input_shape = input.shape
     if data_layout == 'NCHW':
