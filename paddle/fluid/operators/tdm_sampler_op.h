@@ -192,6 +192,8 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       int neg_sample_radius_left_bound = node_id_min;
       int neg_sample_radius_right_bound = node_id_max;
       if (neg_sample_by_radius_flag) {
+        // Find the radius
+        int neg_sample_radius = neg_samples_radius_vec[layer_idx];
         PADDLE_ENFORCE_LE(
             neg_sample_radius, node_nums / 2,
             platform::errors::InvalidArgument(
@@ -209,11 +211,8 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
                 "check neg_samples_num_list.",
                 layer_idx, neg_sample_radius * 2, sample_num));
 
-        // Find the radius
-        neg_sample_radius = neg_samples_radius_vec[layer_idx];
         int left = positive_node_id - neg_sample_radius;
         int right = positive_node_id - neg_sample_radius;
-
         int left_offset = node_id_min - left;
         int right_offset = node_id_max - right;
 
@@ -235,7 +234,6 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
         // Avoid sampling to positive samples
         int sample_res = 0;
-        int positive_node_index = 0;
         do {
           sample_res = sampler_vec[layer_idx]->Sample();
         } while (positive_node_id ==
@@ -243,7 +241,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
                  find(sample_res_vec.begin(), sample_res_vec.end(),
                       sample_res) != sample_res_vec.end() ||
                  layer_data[layer_offset_lod[layer_idx] + sample_res] <
-                     neg_sample_radius_left_bound) ||
+                     neg_sample_radius_left_bound ||
                  layer_data[layer_offset_lod[layer_idx] + sample_res] >
                      neg_sample_radius_right_bound);
         sample_res_vec.push_back(sample_res);
