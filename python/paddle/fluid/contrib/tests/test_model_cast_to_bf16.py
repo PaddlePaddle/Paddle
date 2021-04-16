@@ -65,7 +65,7 @@ class TestModelCastBF16(unittest.TestCase):
                        fetch_list=fetch_list,
                        return_numpy=(not with_lod))
 
-    def test_graph_rewrite(self):
+    def _graph_common(self, _amp_fun):
         size = 3
         n = np.ones([size, size], dtype='float32') * 3.2
         nn = np.ones([size, size], dtype='float32') * -2.7
@@ -122,16 +122,27 @@ class TestModelCastBF16(unittest.TestCase):
                 self.get_static_graph_result(
                     feed={'t': n, 'tt': nn},
                     fetch_list=[ret],
-                    amp_fun=lambda prog: amp.rewrite_program_bf16(
-                        prog,
-                        amp.AutoMixedPrecisionListsBF16(
-                            custom_fp32_varnames={'elementwise_add_0.tmp_0'}),
-                        use_bf16_guard=True
-                    )
+                    amp_fun=_amp_fun
                 )
         self.assertTrue(
             static_ret_bf16, np.ones(
                 [size, size], dtype='float32') * -1.1)
+
+    def test_graph_rewrite(self):
+        self._graph_common(lambda prog: amp.rewrite_program_bf16(
+            prog,
+            amp.AutoMixedPrecisionListsBF16(
+                custom_fp32_varnames={'elementwise_add_0.tmp_0'}),
+            use_bf16_guard=True
+        ))
+
+    def test_graph_cast(self):
+        self._graph_common(lambda prog: amp.cast_model_to_bf16(
+            prog,
+            amp.AutoMixedPrecisionListsBF16(
+                custom_fp32_list={'elementwise_mul'}),
+            use_bf16_guard=True
+        ))
 
 
 if __name__ == '__main__':
