@@ -621,34 +621,6 @@ class DistributedStrategy(object):
             raise ValueError("last_comm_group_size_MB should be greater than 0")
 
     @property
-    def find_unused_parameters(self):
-        """
-        Indicating whether we are using find_unused_parameters to 
-        find unused parameters in DataParallel.
-
-        Default value: True
-
-        Examples:
-
-          .. code-block:: python
-
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.find_unused_parameters = True
-        """
-
-        return self.strategy.find_unused_parameters
-
-    @find_unused_parameters.setter
-    @is_strict_auto
-    def find_unused_parameters(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.find_unused_parameters = flag
-        else:
-            print(
-                "WARNING: find_unused_parameters should have value of bool type")
-
-    @property
     def _fuse_grad_size_in_TFLOPS(self):
         return self.strategy.fuse_grad_size_in_TFLOPS
 
@@ -866,6 +838,58 @@ class DistributedStrategy(object):
         check_configs_key(self.strategy.pipeline_configs, configs,
                           "pipeline_configs")
         assign_configs_value(self.strategy.pipeline_configs, configs)
+
+    @property
+    def model_parallel(self):
+        """
+        Indicating whether we are using model parallel parallelism for distributed training.
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.model_parallel = True
+
+        """
+        return self.strategy.model_parallel
+
+    @model_parallel.setter
+    @is_strict_auto
+    def model_parallel(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.model_parallel = flag
+        else:
+            print("WARNING: model_parallel should have value of bool type")
+
+    @property
+    def model_parallel_configs(self):
+        """
+        Set model_parallel parallelism configurations.
+
+        **Notes**:
+            **Detailed arguments for model_parallel_configs**
+            **mp_degree**: degree of model parallel
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.model_parallel = True
+            strategy.model_parallel_configs = {"mp_degree": 12}
+
+        """
+        return get_msg_dict(self.strategy.model_parallel_configs)
+
+    @model_parallel_configs.setter
+    @is_strict_auto
+    def model_parallel_configs(self, configs):
+        check_configs_key(self.strategy.model_parallel_configs, configs,
+                          "model_parallel_configs")
+        assign_configs_value(self.strategy.model_parallel_configs, configs)
 
     @property
     def localsgd(self):
