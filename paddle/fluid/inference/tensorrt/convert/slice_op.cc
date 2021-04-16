@@ -31,6 +31,12 @@ class SliceOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
 
+    if (op_desc.HasAttr("out_threshold")) {
+      float out_scale =
+          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      engine_->SetTensorDynamicRange(input, out_scale);
+    }
+
     std::vector<int> axes =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     std::vector<int> starts =
