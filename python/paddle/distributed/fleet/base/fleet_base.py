@@ -261,6 +261,8 @@ class Fleet(object):
             nranks = paddle.distributed.get_world_size()
             self.dp_degree = nranks // (self.mp_degree * self.pp_degree)
 
+        self.dp_degree = max(self.dp_degree, 1)
+
         self._topology = tp.CommunicateTopology(
             hybrid_group_names=["data", "pipe", "model"],
             dims=[self.dp_degree, self.pp_degree, self.mp_degree])
