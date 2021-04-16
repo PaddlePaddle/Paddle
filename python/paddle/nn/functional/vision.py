@@ -300,7 +300,8 @@ def grid_sample(x,
 
     cudnn_version = get_cudnn_version()
     use_cudnn = False
-    if (not core.is_compiled_with_rocm()) and (
+    is_rocm = core.is_compiled_with_rocm()
+    if (not is_rocm) and (
             cudnn_version is not None
     ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
         use_cudnn = True
