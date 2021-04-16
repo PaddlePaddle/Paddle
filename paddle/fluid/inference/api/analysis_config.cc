@@ -135,7 +135,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_oss_);
-  //Dlnne related
+  // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
   // MKLDNN related.
@@ -215,7 +215,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
       pass_builder_->DeletePass(ps);
     }
   }
-  if(use_dlnne_){
+  if (use_dlnne_) {
     auto all_passes = kDlnneSubgraphPasses;
     auto other_passes = other.pass_builder()->AllPasses();
     // We should sort them, because the user may call the SwitchIrDebug
@@ -280,10 +280,10 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
   if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
-    // LOG(INFO) << "Hardware support for BFLOAT16"
-    //           << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
-    //                   ? " is enabled"
-    //                   : " is disabled. Simulation will be used");
+    LOG(INFO) << "Hardware support for BFLOAT16"
+              << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
+                      ? " is enabled"
+                      : " is disabled. Simulation will be used");
   } else {
     LOG(INFO) << "CPU does not support BFLOAT16 calculations";
     use_mkldnn_bfloat16_ = false;
@@ -328,12 +328,11 @@ void AnalysisConfig::EnableTensorRtEngine(
 #endif
 }
 
-void AnalysisConfig::EnableDlnne(int min_subgraph_size){
-  use_dlnne_=true;
+void AnalysisConfig::EnableDlnne(int min_subgraph_size) {
+  use_dlnne_ = true;
   dlnne_min_subgraph_size_ = min_subgraph_size;
   Update();
 }
-
 
 void AnalysisConfig::SetTRTDynamicShapeInfo(
     std::map<std::string, std::vector<int>> min_input_shape,
@@ -409,7 +408,7 @@ void AnalysisConfig::Update() {
       pass_builder()->AppendPass(pass);
     }
   }
-  LOG(INFO)<<"use_dlnne_:"<<use_dlnne_<<std::endl;
+  LOG(INFO) << "use_dlnne_:" << use_dlnne_ << std::endl;
   if (use_dlnne_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kDlnneSubgraphPasses) {

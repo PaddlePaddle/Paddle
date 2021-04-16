@@ -541,7 +541,6 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Dlnne subgraph is enabled";
     argument_.SetUseDlnne(true);
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
-    
   }
 
   if (config_.lite_engine_enabled()) {

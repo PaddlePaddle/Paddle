@@ -166,10 +166,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       // run fp16.
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
-      }else if (pass_name == "dlnne_subgraph_pass") {
-       pass->Set("min_subgraph_size",
+    } else if (pass_name == "dlnne_subgraph_pass") {
+      pass->Set("min_subgraph_size",
                 new int(argument->dlnne_min_subgraph_size()));
-       pass->Set("program",
+      pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
     }
     if (pass_name == "lite_subgraph_pass") {

@@ -1,5 +1,23 @@
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
+#include <assert.h>
+#include <ctime>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -7,19 +25,14 @@
 #include <utility>
 #include <vector>
 
+#include "cuda/cuda.h"          // NOTLINT
+#include "cuda/cuda_runtime.h"  // NOTLINT
+#include "nne/dlnne.h"          // NOTLINT
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-
-#include <assert.h>
-#include <ctime>
-#include <fstream>
-#include <iostream>
-
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <dlnne.h>
 
 namespace dl {
 namespace nne {
@@ -31,8 +44,6 @@ class ExecutionContext;
 }  // namespace nne
 }  // namespace dl
 
-using namespace std;
-using namespace dl::nne;
 namespace paddle {
 namespace inference {
 class NneDeleter {
@@ -162,30 +173,6 @@ class DlnneEngineOp : public framework::OperatorBase {
   }
 
  protected:
-  void *VarBuffer2voidBuffer(paddle::framework::LoDTensor &t,
-                             int64_t &data_bytes, int32_t &dtype) const {
-    auto type = t.type();
-    data_bytes = 1;
-    void *buffer = nullptr;
-    if (type == framework::proto::VarType::FP32) {
-      buffer = static_cast<void *>(t.data<float>());
-      data_bytes = 4;
-      dtype = 0;
-    } else if (type == framework::proto::VarType::INT64) {
-      buffer = static_cast<void *>(t.data<int64_t>());
-      data_bytes = 8;
-      dtype = 1;
-    } else if (type == framework::proto::VarType::INT32) {
-      buffer = static_cast<void *>(t.data<int32_t>());
-      data_bytes = 4;
-      dtype = 2;
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "The DLNNE Engine OP only support float/int32_t/int64_t input."));
-    }
-    return buffer;
-  }
-
   void RunDlnneOnCreateEngine(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
     PADDLE_ENFORCE_EQ(
@@ -211,8 +198,28 @@ class DlnneEngineOp : public framework::OperatorBase {
       index++;
       int64_t data_bytes;
       int32_t dtype;
-      input_buffers[bind_index] =
-          this->VarBuffer2voidBuffer(t, data_bytes, dtype);
+      // input_buffers[bind_index] =
+      //     this->VarBuffer2voidBuffer(t, data_bytes, dtype);
+      auto type = t.type();
+      data_bytes = 1;
+      void *buffer = nullptr;
+      if (type == framework::proto::VarType::FP32) {
+        buffer = static_cast<void *>(t.data<float>());
+        data_bytes = 4;
+        dtype = 0;
+      } else if (type == framework::proto::VarType::INT64) {
+        buffer = static_cast<void *>(t.data<int64_t>());
+        data_bytes = 8;
+        dtype = 1;
+      } else if (type == framework::proto::VarType::INT32) {
+        buffer = static_cast<void *>(t.data<int32_t>());
+        data_bytes = 4;
+        dtype = 2;
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "The DLNNE Engine OP only support float/int32_t/int64_t input."));
+      }
+      input_buffers[bind_index] = buffer;
 
       auto t_shape = framework::vectorize<int64_t>(t.dims());
       std::vector<int64_t> runtime_input_shape(t_shape.begin(), t_shape.end());
@@ -233,7 +240,7 @@ class DlnneEngineOp : public framework::OperatorBase {
     std::vector<int32_t> output_bytes;
     for (int i = 0; i < num_outputs; i++) {
       int index = engine->GetBindingIndex(output_names[i].c_str());
-      Dims out_dim = engine->GetBindingDimensions(index);
+      dl::nne::Dims out_dim = engine->GetBindingDimensions(index);
       std::vector<int64_t> shape(out_dim.nbDims);
       for (int dim = 0; dim < out_dim.nbDims; dim++) {
         shape[dim] = (out_dim.d[dim]);
@@ -261,7 +268,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE_NOT_NULL(
           fluid_v,
           platform::errors::NotFound(
-              "Output variable %s is not found in TensorRT subgraph.", y));
+              "Output variable %s is not found in DLNNE subgraph.", y));
 
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
 
@@ -296,8 +303,7 @@ class DlnneEngineOp : public framework::OperatorBase {
         engine_input_ptr[InputIndexToBindIndex_[i]] = gpu_ptr;
 
         paddle::inference::CopyTensorCpuToDevice(
-            gpu_ptr,
-            reinterpret_cast<void *>(const_cast<void *>(cpu_input_buffers[i])),
+            gpu_ptr, reinterpret_cast<void *>(cpu_input_buffers[i]),
             total_bytes);
 
       } else {
@@ -314,7 +320,8 @@ class DlnneEngineOp : public framework::OperatorBase {
     startTime = clock();
     context->Execute(1, engine_input_ptr.data());
     endTime = clock();
-    double during_ms = (double)(endTime - startTime) / CLOCKS_PER_SEC * 1000;
+    double during_ms =
+        static_cast<double>(endTime - startTime) / CLOCKS_PER_SEC * 1000;
     LOG(INFO) << "dlNNE execute time: " << during_ms << " ms";
 
     bind_index = 0;
