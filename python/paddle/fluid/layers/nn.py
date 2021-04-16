@@ -13030,7 +13030,7 @@ def grid_sampler(x, grid, name=None):
     attrs = {'use_cudnn': False} if core.is_compiled_with_rocm() else {}
 
     helper.append_op(
-        type='grid_sampler', inputs=ipts, outputs={'Output': out}, attrs)
+        type='grid_sampler', inputs=ipts, outputs={'Output': out}, attrs=attrs)
     return out
 
 
