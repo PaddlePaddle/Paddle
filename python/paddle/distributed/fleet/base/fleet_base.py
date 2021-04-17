@@ -222,6 +222,9 @@ class Fleet(object):
 
         if paddle.fluid.framework.in_dygraph_mode():
             if self.worker_num() == 1:
+                # if worker_num is 1, should construct default topology & hcg
+                self._topology = tp.CommunicateTopology()
+                self._hcg = tp.HybridCommunicateGroup(self._topology)
                 return
             if parallel_helper._is_parallel_ctx_initialized():
                 warnings.warn(

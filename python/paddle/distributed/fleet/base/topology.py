@@ -31,7 +31,9 @@ class ParallelMode(object):
 
 
 class CommunicateTopology(object):
-    def __init__(self, hybrid_group_names, dims):
+    def __init__(self,
+                 hybrid_group_names=["data", "pipe", "model"],
+                 dims=[1, 1, 1]):
         self._parallel_names = hybrid_group_names
         self._dims = dims
         self.coordinate = collections.namedtuple('Coordinate',
