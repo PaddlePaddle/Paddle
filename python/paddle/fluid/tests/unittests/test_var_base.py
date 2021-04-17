@@ -153,11 +153,13 @@ class TestVarBase(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     paddle.to_tensor([[1], [2, 3]], place=1)
 
-        _test_place(core.CPUPlace())
-        _test_place("cpu")
+        if not core.is_compiled_with_rocm():
+            _test_place(core.CPUPlace())
+            _test_place("cpu")
         if core.is_compiled_with_cuda():
-            _test_place(core.CUDAPinnedPlace())
-            _test_place("gpu_pinned")
+            if not core.is_compiled_with_rocm():
+                _test_place(core.CUDAPinnedPlace())
+                _test_place("gpu_pinned")
             _test_place(core.CUDAPlace(0))
             _test_place("gpu:0")
 
@@ -165,14 +167,16 @@ class TestVarBase(unittest.TestCase):
         if core.is_compiled_with_cuda():
             a_np = np.random.rand(1024, 1024)
             with paddle.fluid.dygraph.guard(core.CPUPlace()):
-                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
-                a = paddle.to_tensor(a)
-                self.assertEqual(a.place.__repr__(), "CPUPlace")
+                if not core.is_compiled_with_rocm():
+                    a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                    a = paddle.to_tensor(a)
+                    self.assertEqual(a.place.__repr__(), "CPUPlace")
 
             with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
-                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
-                a = paddle.to_tensor(a)
-                self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
+                if not core.is_compiled_with_rocm():
+                    a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                    a = paddle.to_tensor(a)
+                    self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
 
             with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
                 a = paddle.to_tensor(a_np, place=paddle.CPUPlace())
@@ -260,14 +264,14 @@ class TestVarBase(unittest.TestCase):
 
             y = x**2
             y.backward()
-            self.assertTrue(np.array_equal(x.grad, [20.0]))
+            self.assertTrue(np.allclose(x.grad, [20.0]))
             self.assertEqual(detach_x.grad, None)
 
             detach_x.stop_gradient = False  # Set stop_gradient to be False, supported auto-grad
             z = 3 * detach_x**2
             z.backward()
-            self.assertTrue(np.array_equal(x.grad, [20.0]))
-            self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
+            self.assertTrue(np.allclose(x.grad, [20.0]))
+            self.assertTrue(np.allclose(detach_x.grad, [60.0]))
 
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
             with self.assertRaises(RuntimeError):
