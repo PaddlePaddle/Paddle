@@ -40,10 +40,10 @@ output_size = 2
 seq_length = 2
 
 
-class SimpleNet(fluid.dygraph.Layer):
+class SimpleMPNet(fluid.dygraph.Layer):
     def __init__(self, vocab_size, hidden_size, inner_size, output_size, np_fc1,
                  np_fc2, mp_id):
-        super(SimpleNet, self).__init__()
+        super(SimpleMPNet, self).__init__()
 
         if mp_id == 0:
             init_fc1_data = np_fc1[:, :(inner_size // 2)]
@@ -52,7 +52,7 @@ class SimpleNet(fluid.dygraph.Layer):
             init_fc1_data = np_fc1[:, (inner_size // 2):]
             init_fc2_data = np_fc2[(inner_size // 2):, :]
 
-        self.linear1 = fleet.mpu.ColumnParallelLinear(
+        self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
             hidden_size,
             inner_size,
             weight_attr=paddle.framework.ParamAttr(
@@ -60,7 +60,7 @@ class SimpleNet(fluid.dygraph.Layer):
             gather_output=False,
             has_bias=True)
 
-        self.linear2 = fleet.mpu.RowParallelLinear(
+        self.linear2 = fleet.meta_parallel.RowParallelLinear(
             inner_size,
             hidden_size,
             weight_attr=paddle.framework.ParamAttr(
@@ -72,11 +72,11 @@ class SimpleNet(fluid.dygraph.Layer):
             hidden_size,
             output_size,
             weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)),
+                initializer=paddle.nn.initializer.Constant(mp_id / 10)),
             bias_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)))
+                initializer=paddle.nn.initializer.Constant(mp_id / 10)))
 
-        self.embedding = fleet.mpu.VocabParallelEmbedding(
+        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
             vocab_size,
             hidden_size,
             weight_attr=paddle.nn.initializer.Constant(value=0.5))
@@ -146,12 +146,12 @@ class TrainDataset(Dataset):
 class TestDistTraning(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
-        model_parallel_size = 2
-        data_parallel_size = 1
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
         strategy.hybrid_configs = {
-            "num_data_parallel": data_parallel_size,
-            "num_model_parallel": model_parallel_size,
-            "num_pipeline_parallel": 1
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -172,7 +172,7 @@ class TestDistTraning(unittest.TestCase):
             train_data,
             batch_size=4,
             shuffle=False,
-            num_replicas=data_parallel_size,
+            num_replicas=self.data_parallel_size,
             rank=dp_id)
         train_data_loader = DataLoader(
             dataset=train_data,
@@ -180,8 +180,8 @@ class TestDistTraning(unittest.TestCase):
             num_workers=0,
             return_list=True)
 
-        model_a = SimpleNet(vocab_size, hidden_size, inner_size, output_size,
-                            np_fc1, np_fc2, mp_id)
+        model_a = SimpleMPNet(vocab_size, hidden_size, inner_size, output_size,
+                              np_fc1, np_fc2, mp_id)
         optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
                                            parameters=model_a.parameters())
         model_a = fleet.distributed_model(model_a)
@@ -204,5 +204,8 @@ class TestDistTraning(unittest.TestCase):
             loss_b.backward()
             optimizer_b.step()
             optimizer_b.clear_grad()
-
             np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
+
+
+if __name__ == "__main__":
+    unittest.main()
