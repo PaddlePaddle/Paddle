@@ -17,6 +17,7 @@ from ...utils.hybrid_parallel_util import fused_allreduce_gradients
 from ...base.topology import ParallelMode
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid import framework
+from paddle.fluid.framework import Variable
 
 
 class HybridParallelOptimizer:
@@ -35,6 +36,23 @@ class HybridParallelOptimizer:
             fused_allreduce_gradients(
                 list(self._inner_opt._parameter_list), self._hcg)
         self._inner_opt.step()
+
+    @imperative_base.no_grad
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameters=None,
+                 no_grad_set=None):
+        assert isinstance(loss, Variable), "The loss should be an Tensor."
+
+        parameter_list = parameters if parameters \
+            else self._parameter_list
+
+        if self._is_mp and self._need_dp:
+            fused_allreduce_gradients(list(parameter_list), self._hcg)
+
+        return self._inner_opt.minimize(loss, startup_program, parameters,
+                                        no_grad_set)
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)
