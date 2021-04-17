@@ -24,6 +24,12 @@ __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 _HYBRID_PARALLEL_GROUP = None
 
 
+class ParallelMode(object):
+    DATA_PARALLEL = 0
+    MODEL_PARALLEL = 1
+    PIPELINE_PARALLEL = 2
+
+
 class CommunicateTopology(object):
     def __init__(self, hybrid_group_names, dims):
         self._parallel_names = hybrid_group_names
@@ -126,6 +132,16 @@ class HybridCommunicateGroup(object):
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
+
+    def get_parallel_mode(self):
+        # there are three modes : DataParallel / ModelParallel / PipelineParallel
+        if self._num_model_parallel == 1 and self._num_pipe_parallel == 1:
+            return ParallelMode.DATA_PARALLEL
+        elif self._num_model_parallel > 1 and self._num_pipe_parallel == 1:
+            # initialize the seed
+            return ParallelMode.MODEL_PARALLEL
+        elif self._num_pipe_parallel > 1:
+            return ParallelMode.PIPELINE_PARALLEL
 
     def _check_vaild_topo(self):
         return self._dp_degree * self._mp_degree * self._pp_degree == self.nranks
