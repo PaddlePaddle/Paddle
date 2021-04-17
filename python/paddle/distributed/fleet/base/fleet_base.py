@@ -698,8 +698,11 @@ class Fleet(object):
         self._context = {}
 
         if paddle.fluid.framework.in_dygraph_mode():
-            return HybridParallelOptimizer(optimizer, self._hcg,
-                                           self._user_defined_strategy)
+            if self.worker_num() > 1:
+                return HybridParallelOptimizer(optimizer, self._hcg,
+                                               self._user_defined_strategy)
+            else:
+                return optimizer
         return self
 
     @dygraph_only
@@ -759,6 +762,8 @@ class Fleet(object):
 
         """
         assert model is not None, "model should not be None"
+        if self.worker_num() <= 1:
+            return model
         if self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
             distributed_model = paddle.DataParallel(
                 model,
