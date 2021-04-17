@@ -26,10 +26,10 @@ from paddle.io import DataLoader, Dataset
 import unittest
 
 
-def set_random_seed(seed, rank_id):
+def set_random_seed(seed, dp_id, rank_id):
     """Set random seed for reproducability."""
     random.seed(seed)
-    np.random.seed(seed)
+    np.random.seed(seed + dp_id)
     paddle.seed(seed + rank_id)
 
 
@@ -72,9 +72,9 @@ class SimpleMPNet(fluid.dygraph.Layer):
             hidden_size,
             output_size,
             weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(mp_id / 10)),
+                initializer=paddle.nn.initializer.Constant(0.0)),
             bias_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(mp_id / 10)))
+                initializer=paddle.nn.initializer.Constant(0.0)))
 
         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
             vocab_size,
@@ -161,12 +161,12 @@ class TestDistTraning(unittest.TestCase):
         mp_id = hcg.get_model_parallel_rank()
         dp_id = hcg.get_data_parallel_rank()
         rank_id = dist.get_rank()
-        set_random_seed(1024, rank_id)
+        set_random_seed(1024, dp_id, rank_id)
 
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
-        train_data = TrainDataset(length=32)
+        train_data = TrainDataset(length=10000)
 
         train_batch_sampler = paddle.io.DistributedBatchSampler(
             train_data,
@@ -193,6 +193,8 @@ class TestDistTraning(unittest.TestCase):
                                            parameters=model_b.parameters())
 
         for step, batch in enumerate(train_data_loader):
+            if step > 5:
+                return
             output_a = model_a(batch)
             loss_a = output_a.mean()
             loss_a.backward()

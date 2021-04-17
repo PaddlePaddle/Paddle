@@ -126,11 +126,15 @@ class HybridCommunicateGroup(object):
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
-        print("data parallel group", self._dp_group, file=sys.stderr)
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
-        print("data parallel group", self._mp_group, file=sys.stderr)
+        debug_str = "HybridParallelInfo: rank_id: %d, dp_degree: %d, " \
+                    "mp_degree: %d, pp_degree: %d\n" % (self.global_rank, self._dp_degree,
+                    self._mp_degree,self._pp_degree)
+        debug_str += "dp_group: %s, mp_group: %s" % (self._dp_group,
+                                                     self._mp_group)
+        print(debug_str, file=sys.stderr)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
