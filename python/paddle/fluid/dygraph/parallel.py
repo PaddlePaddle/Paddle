@@ -25,7 +25,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
-import base as imperative_base
+from paddle.fluid.dygraph import base as imperative_base
 import warnings
 import paddle
 import itertools
@@ -331,7 +331,7 @@ def construct_groups(vars, group_size):
 
     for var in vars:
         bytes = np.prod(var.shape) * core.size_of_dtype(var.dtype)
-        if memory_counter < mega_bytes and dtype == var.dtype:
+        if memory_counter < group_size and dtype == var.dtype:
             memory_counter += bytes
         else:
             memory_counter = 0
@@ -361,7 +361,7 @@ def sync_params_buffers(model,
         return
 
     # group size is 128M
-    coalesced_vars = construct_groups(model_vars, 134217728)
+    coalesced_vars = construct_groups(model_vars, 128 * 1024 * 1024)
 
     for coalesced_var, _, _ in coalesced_vars:
         paddle.distributed.broadcast(

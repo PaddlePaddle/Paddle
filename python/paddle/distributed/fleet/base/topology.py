@@ -135,12 +135,12 @@ class HybridCommunicateGroup(object):
 
     def get_parallel_mode(self):
         # there are three modes : DataParallel / ModelParallel / PipelineParallel
-        if self._num_model_parallel == 1 and self._num_pipe_parallel == 1:
+        if self._mp_degree == 1 and self._pp_degree == 1:
             return ParallelMode.DATA_PARALLEL
-        elif self._num_model_parallel > 1 and self._num_pipe_parallel == 1:
+        elif self._mp_degree > 1 and self._pp_degree == 1:
             # initialize the seed
             return ParallelMode.MODEL_PARALLEL
-        elif self._num_pipe_parallel > 1:
+        elif self._pp_degree > 1:
             return ParallelMode.PIPELINE_PARALLEL
 
     def _check_vaild_topo(self):

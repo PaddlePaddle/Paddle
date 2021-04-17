@@ -27,6 +27,7 @@ from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from . import topology as tp
+from .topology import ParallelMode
 from ..meta_parallel import ModelParallel
 from ..meta_optimizers import HybridParallelOptimizer
 
@@ -757,7 +758,7 @@ class Fleet(object):
 
 
         """
-        assert model is not None
+        assert model is not None, "model should not be None"
         if self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
             distributed_model = paddle.DataParallel(
                 model,

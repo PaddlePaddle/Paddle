@@ -26,12 +26,11 @@ from paddle.io import DataLoader, Dataset
 import unittest
 
 
-def set_random_seed(seed):
+def set_random_seed(seed, rank_id):
     """Set random seed for reproducability."""
     random.seed(seed)
     np.random.seed(seed)
-    paddle.seed(seed)
-    fleet.mpu.model_parallel_random_seed(seed)
+    paddle.seed(seed + rank_id)
 
 
 vocab_size = 5
@@ -162,7 +161,7 @@ class TestDistTraning(unittest.TestCase):
         mp_id = hcg.get_model_parallel_rank()
         dp_id = hcg.get_data_parallel_rank()
         rank_id = dist.get_rank()
-        set_random_seed(1024)
+        set_random_seed(1024, rank_id)
 
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
