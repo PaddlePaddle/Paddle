@@ -509,6 +509,10 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 f.write('\0')
             paddle.load(path)
 
+        with self.assertRaises(ValueError):
+            temp_lod = fluid.core.LoDTensor()
+            paddle.save(temp_lod, path, use_binary_format=True)
+
     def test_save_load_selected_rows(self):
         paddle.enable_static()
         place = fluid.CPUPlace() if not paddle.fluid.core.is_compiled_with_cuda(
@@ -517,13 +521,18 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         rows = [0, 4, 7]
         row_numel = 12
         selected_rows = fluid.core.SelectedRows(rows, height)
+        path = 'test_paddle_save_load_selected_rows/sr.pdsr'
+
+        with self.assertRaises(ValueError):
+            paddle.save(selected_rows, path, use_binary_format=True)
+
         np_array = np.random.randn(len(rows), row_numel).astype("float32")
         tensor = selected_rows.get_tensor()
         tensor.set(np_array, place)
-        path = 'test_paddle_save_load_selected_rows/sr.pdsr'
-        paddle.save(selected_rows, path, use_binary_format=True)
 
+        paddle.save(selected_rows, path, use_binary_format=True)
         load_sr = paddle.load(path)
+
         self.assertTrue(isinstance(load_sr, fluid.core.SelectedRows))
         self.assertTrue(list(load_sr.rows()) == rows)
         self.assertTrue(load_sr.height() == height)

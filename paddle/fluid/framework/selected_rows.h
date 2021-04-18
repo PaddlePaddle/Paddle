@@ -173,5 +173,9 @@ void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
 void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
                            const platform::DeviceContext& dev_ctx);
 
+void SerializeToStream(std::ostream& os, const SelectedRows& tensor);
+
+void DeserializeFromStream(std::ifstream& os, SelectedRows* tensor);
+
 }  // namespace framework
 }  // namespace paddle

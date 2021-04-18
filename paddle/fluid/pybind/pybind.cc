@@ -456,23 +456,6 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
-template <typename T>
-void SerializeToStream(std::ostream &os, const T &tensor) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext *dev_ctx;
-  auto place = tensor.place();
-  dev_ctx = pool.Get(place);
-  SerializeToStream(os, tensor, *dev_ctx);
-}
-
-template <typename T>
-void DeserializeFromStream(std::ifstream &os, const T &tensor) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext *dev_ctx;
-  dev_ctx = pool.Get(platform::CPUPlace());
-  DeserializeFromStream(os, tensor, *dev_ctx);
-}
-
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -537,7 +520,6 @@ PYBIND11_MODULE(core_noavx, m) {
                           "Cannot open %s to load variables.", str_file_name));
 
     DeserializeFromStream(fin, &tensor);
-
     int64_t tellg = fin.tellg();
     fin.close();
     return tellg;
@@ -551,7 +533,6 @@ PYBIND11_MODULE(core_noavx, m) {
                   "Cannot open %s to save SelectedRows.", str_file_name));
 
           SerializeToStream(fout, tensor);
-
           int64_t tellp = fout.tellp();
           fout.close();
           return tellp;
@@ -565,7 +546,6 @@ PYBIND11_MODULE(core_noavx, m) {
                                       str_file_name));
 
     DeserializeFromStream(fin, &tensor, paddle::platform::CPUDeviceContext());
-
     int64_t tellg = fin.tellg();
     fin.close();
     return tellg;
