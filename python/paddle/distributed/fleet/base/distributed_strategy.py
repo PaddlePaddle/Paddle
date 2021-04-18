@@ -625,9 +625,13 @@ class DistributedStrategy(object):
         """
         Indicating whether we are using find_unused_parameters to 
         find unused parameters in DataParallel.
+
         Default value: True
+
         Examples:
+
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.find_unused_parameters = True
@@ -915,6 +919,7 @@ class DistributedStrategy(object):
                           "model_parallel_configs")
         assign_configs_value(self.strategy.model_parallel_configs, configs)
 
+    @property
     def hybrid_configs(self):
         """
         Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism 
