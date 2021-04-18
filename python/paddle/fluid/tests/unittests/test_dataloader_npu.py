@@ -15,11 +15,12 @@
 from __future__ import division
 
 import sys
+sys.path.append("..")
 import unittest
 import numpy as np
 
 import paddle
-from ..unittests.test_multiprocess_dataloader_static import TestStaticDataLoader
+from unittests.test_multiprocess_dataloader_static import TestStaticDataLoader
 
 paddle.enable_static()
 

@@ -1740,7 +1740,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "Cannot use NPU because you have installed CPU/GPU version "
                  "PaddlePaddle.\n"
                  "If you want to use NPU, please try to install NPU version "
-                 "PaddlePaddle by: pip install paddlepaddle-xpu\n"
+                 "PaddlePaddle by: pip install paddlepaddle-npu\n"
                  "If you only have CPU, please change NPUPlace(%d) to be "
                  "CPUPlace().\n",
                  dev_id);
