@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+import sys
 from paddle.optimizer import Optimizer
+from paddle.fluid.clip import ClipGradByGlobalNorm
 from ...utils.hybrid_parallel_util import fused_allreduce_gradients
 from ...base.topology import ParallelMode
 from paddle.fluid.dygraph import base as imperative_base
@@ -20,7 +23,65 @@ from paddle.fluid import framework
 from paddle.fluid.framework import Variable
 
 
+class HybridParallelClipGrad:
+    def __init__(self, clip, hcg):
+        self._clip = clip
+        self._hcg = hcg
+
+    @imperative_base.no_grad
+    def _dygraph_clip(self, params_grads):
+        params_and_grads = []
+        sum_square_list = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            if getattr(p, 'need_clip', True) is False:
+                continue
+            merge_grad = g
+            if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                merge_grad = layers.merge_selected_rows(g)
+                merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+            square = layers.square(merge_grad)
+            sum_square = layers.reduce_sum(square)
+            sum_square_list.append(sum_square)
+
+        # all parameters have been filterd out
+        if len(sum_square_list) == 0:
+            return params_grads
+
+        global_norm_var = layers.concat(sum_square_list)
+        global_norm_var = layers.reduce_sum(global_norm_var)
+        # add all reduce to get global norm in world size
+        paddle.distributed.all_reduce(global_norm_var,
+                                      self._hcg.get_check_parallel_group())
+        global_norm_var = layers.sqrt(global_norm_var)
+
+        max_global_norm = layers.fill_constant(
+            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
+        clip_var = layers.elementwise_div(
+            x=max_global_norm,
+            y=layers.elementwise_max(
+                x=global_norm_var, y=max_global_norm))
+        for p, g in params_grads:
+            if g is None:
+                continue
+            if getattr(p, 'need_clip', True) is False:
+                params_and_grads.append((p, g))
+                continue
+            new_grad = layers.elementwise_mul(x=g, y=clip_var)
+            params_and_grads.append((p, new_grad))
+
+        return params_and_grads
+
+    def __getattr__(self, item):
+        return getattr(self._clip, item)
+
+    def __call__(self, params_grads):
+        return self._clip(params_grads)
+
+
 class HybridParallelOptimizer:
+    # adapter wrapper for optimizer
     def __init__(self, optimizer, hcg, strategy):
         self._inner_opt = optimizer
         self._strategy = strategy
@@ -28,6 +89,13 @@ class HybridParallelOptimizer:
         self._is_mp = (
             self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL)
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
+
+        if isinstance(self._inner_opt._grad_clip,
+                      ClipGradByGlobalNorm) and self._is_mp:
+            print("using ClipGradByGlobalNorm in ModelParallel, the origin" \
+                  "optmizer'grad clip will be changed.", file=sys.stderr)
+            self._inner_opt._grad_clip = HybridParallelClipGrad(
+                self._inner_opt._grad_clip, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only

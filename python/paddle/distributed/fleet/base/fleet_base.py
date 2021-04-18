@@ -30,6 +30,7 @@ from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import ModelParallel
 from ..meta_optimizers import HybridParallelOptimizer
+from ..meta_optimizers import HybridParallelGradScaler
 
 
 def _inited_runtime_handler_(func):
@@ -1327,3 +1328,7 @@ class Fleet(object):
         fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads
+
+    @dygraph_only
+    def distributed_scaler(self, scaler):
+        return HybridParallelGradScaler(scaler, self._hcg)
