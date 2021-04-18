@@ -29,29 +29,24 @@ class TestNpuCallback(unittest.TestCase):
     def test_static(self):
         # NPU is not supported in ParallelExecutor
         prog = paddle.static.Program()
-        with paddle.static.program_guard(prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(prog, startup_prog):
 
             x = paddle.static.data(
-                name="x", shape=[4096, 4096], dtype='float32')
+                name="x", shape=[1024, 1024], dtype='float32')
             for _ in range(500):
                 x = paddle.matmul(x, x)
 
-            t = fluid.LoDTensor()
-            if True:
-                data = np.ones([1024, 1024])
-                t.set(data, paddle.NPUPlace(0))
+            data = np.arange(128)
+            t = paddle.static.global_scope().var("data").get_tensor().set(
+                data, paddle.NPUPlace(0))
 
-            copy_data = np.array(t)
-            self.assertTrue(np.equal(copy_data, np.ones([1024, 1024])).all())
-
-        x_np = np.random.random([4096, 4096]).astype('float32')
-        compiled_prog = paddle.static.CompiledProgram(prog)
+        x_np = np.random.random([1024, 1024]).astype('float32')
         place = paddle.NPUPlace(0)
         exe = paddle.static.Executor(place)
-
-        with self.assertRaisesRegex(RuntimeError,
-                                    "NPU is not supported in ParallelExecutor"):
-            exe.run(compiled_prog, feed={"x": x_np})
+        exe.run(startup_prog)
+        copy_data = exe.run(prog, feed={"x": x_np}, fetch_list=['data'])
+        self.assertTrue(np.equal(copy_data[0], np.arange(128)).all())
 
 
 if __name__ == '__main__':

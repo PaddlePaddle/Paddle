@@ -37,7 +37,7 @@ class NPUStream final {
   bool Init(const Place& place);
 
   template <typename Callback>
-  void AddCallback(Callback&& callback) const {
+  void AddCallback(Callback&& callback) {
     is_callback_exec_ = false;
     std::thread td(ProcessCallback, &is_callback_exec_);
     std::ostringstream oss;
@@ -49,7 +49,7 @@ class NPUStream final {
     callback_manager_->AddCallback(callback);
   }
 
-  static void ProcessCallback(void* arg) const {
+  static void ProcessCallback(void* arg) {
     // aclrtContext context = nullptr;
     // PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context, place_.device));
     while (true) {
