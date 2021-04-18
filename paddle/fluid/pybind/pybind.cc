@@ -537,19 +537,19 @@ PYBIND11_MODULE(core_noavx, m) {
           fout.close();
           return tellp;
         });
-  m.def("_load_selected_rows", [](SelectedRows &tensor,
-                                  const std::string &str_file_name) {
-    std::ifstream fin(str_file_name, std::ios::binary);
-    PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fin), true,
-        platform::errors::Unavailable("Cannot open %s to load SelectedRows.",
-                                      str_file_name));
+  m.def("_load_selected_rows",
+        [](SelectedRows &tensor, const std::string &str_file_name) {
+          std::ifstream fin(str_file_name, std::ios::binary);
+          PADDLE_ENFORCE_EQ(
+              static_cast<bool>(fin), true,
+              platform::errors::Unavailable(
+                  "Cannot open %s to load SelectedRows.", str_file_name));
 
-    DeserializeFromStream(fin, &tensor, paddle::platform::CPUDeviceContext());
-    int64_t tellg = fin.tellg();
-    fin.close();
-    return tellg;
-  });
+          DeserializeFromStream(fin, &tensor);
+          int64_t tellg = fin.tellg();
+          fin.close();
+          return tellg;
+        });
   m.def("_save_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
            const Scope &scope) {
