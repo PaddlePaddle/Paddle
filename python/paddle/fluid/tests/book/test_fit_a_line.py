@@ -53,7 +53,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         sgd_optimizer = amp.bf16.decorate(
             sgd_optimizer,
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),
-            use_bf16_guard=True,
+            use_bf16_guard=False,
             use_pure_bf16=pure_bf16)
     sgd_optimizer.minimize(avg_cost)
 
@@ -80,9 +80,8 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                 avg_loss_value, = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[avg_cost])
-                # print(avg_loss_value)
-                if avg_loss_value[0] < 10.0:
-                    if save_dirname is not None:
+                if avg_loss_value[0] < 10.0 or pure_bf16:
+                    if save_dirname is not None and not pure_bf16:
                         fluid.io.save_inference_model(save_dirname, ['x'],
                                                       [y_predict], exe)
                     return

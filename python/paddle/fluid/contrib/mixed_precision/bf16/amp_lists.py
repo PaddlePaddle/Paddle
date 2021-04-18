@@ -90,8 +90,8 @@ gray_list = {
 
 _, _, _sys_unsupported_bf16_list = core.op_supported_infos(
     'CPU', core.VarDesc.VarType.BF16)
-unsupported_list = {'lookup_table',
-                    'lookup_table_v2'} | _sys_unsupported_bf16_list
+unsupported_list = _sys_unsupported_bf16_list
+
 fp32_list = black_list_fp16.copy().copy()
 fp32_list |= white_list_fp16
 fp32_list |= gray_list_fp16

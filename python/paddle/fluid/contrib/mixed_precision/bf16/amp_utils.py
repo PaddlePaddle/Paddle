@@ -136,7 +136,6 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
 def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
                          op_var_rename_map):
     num_cast_ops = 0
-
     target_var = block.var(target_name)
     if target_var.type not in _valid_types or target_var.dtype == dest_dtype:
         return num_cast_ops
@@ -166,6 +165,9 @@ def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
 
 
 def _is_in_fp32_varnames(op, amp_lists):
+    if not amp_lists.fp32_varnames:
+        return False
+
     for in_name in op.input_arg_names:
         if in_name in amp_lists.fp32_varnames:
             return True
@@ -337,6 +339,7 @@ def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
             #         (_bf16_guard_pattern in op.attr("op_namescope")):
             if op.has_attr('use_mkldnn'):
                 op._set_attr('use_mkldnn', True)
+            if op.has_attr('mkldnn_data_type'):
                 op._set_attr('mkldnn_data_type', 'bfloat16')
 
     # process ops in keep_fp32_ops
