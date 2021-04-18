@@ -915,6 +915,39 @@ class DistributedStrategy(object):
                           "model_parallel_configs")
         assign_configs_value(self.strategy.model_parallel_configs, configs)
 
+    def hybrid_configs(self):
+        """
+        Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism 
+        needs to meet the following relationships
+
+        total_number_GPUs = dp_degree * mp_degree * pp_degree
+
+        **Note**:
+            dp_degree(int): set number of GPUs in a data parallel group. Default -1.
+                                    This value should be an integer greater than 0.
+                                    If it is not set, or set to -1, its value will be inferred 
+                                    based on the total number of cards.
+            mp_degree(int): set number of GPUs in a model parallel group. Default 1
+            pp_degree(int): set number of GPUs in a pipeline parallel group. Default 1
+
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.hybrid_configs = {
+                "dp_degree": 1,
+                "mp_degree": 2,
+                "pp_degree": 1}
+        """
+        return get_msg_dict(self.strategy.hybrid_configs)
+
+    @hybrid_configs.setter
+    def hybrid_configs(self, configs):
+        check_configs_key(self.strategy.hybrid_configs, configs,
+                          "hybrid_configs")
+        assign_configs_value(self.strategy.hybrid_configs, configs)
+
     @property
     def localsgd(self):
         """

@@ -43,6 +43,12 @@ message ShardingConfig {
   optional int32 pp_degree = 11 [ default = 1 ];
 }
 
+message HybridConfig {
+  optional int32 dp_degree = 1 [ default = -1 ];
+  optional int32 mp_degree = 2 [ default = 1 ];
+  optional int32 pp_degree = 3 [ default = 1 ];
+}
+
 message AMPConfig {
   optional float init_loss_scaling = 1 [ default = 32768.0 ];
   optional int32 incr_every_n_steps = 2 [ default = 1000 ];
@@ -178,7 +184,8 @@ message DistributedStrategy {
   optional LambConfig lamb_configs = 109;
   optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
   optional ShardingConfig sharding_configs = 111;
-  optional ModelParallelConfig model_parallel_configs = 112;
+  optional HybridConfig hybrid_configs = 112;
+  optional ModelParallelConfig model_parallel_configs = 113;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }
