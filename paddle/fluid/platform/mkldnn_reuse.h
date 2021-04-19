@@ -676,7 +676,7 @@ class BroadcastDataMKLDNNHandler
       const auto src0_md = dnnl::memory::desc(
           src0_tz, platform::MKLDNNGetDataType<T>(), x->format());
       const auto src1_md = dnnl::memory::desc(
-          src1_tz, platform::MKLDNNGetDataType<T>(), y->format());
+          src1_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
       dnnl::primitive_attr attributes;
       attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
