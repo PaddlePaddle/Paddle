@@ -70,9 +70,10 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
     def train_loop(main_program):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe.run(fluid.default_startup_program())
-
-        if use_bf16:
-            sgd_optimizer.amp_init(exe.place)
+        test_prog = main_program.clone(for_test=True)
+        if pure_bf16:
+            sgd_optimizer.amp_init(
+                exe.place, test_program=test_prog, use_bf16_test=True)
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -115,7 +116,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, use_bf16=False):
     if save_dirname is None:
         return
 
@@ -149,7 +150,9 @@ def infer(use_cuda, save_dirname=None):
                           feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
         print("infer shape: ", results[0].shape)
-        print("infer results: ", results[0])
+        from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
+        print("infer results: ",
+              convert_uint16_to_float(results[0]) if use_bf16 else results[0])
         print("ground truth: ", test_label)
 
 
@@ -164,7 +167,7 @@ def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
     save_dirname = "fit_a_line.inference.model"
 
     train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16)
-    infer(use_cuda, save_dirname)
+    infer(use_cuda, save_dirname, use_bf16)
 
 
 class TestFitALineBase(unittest.TestCase):
