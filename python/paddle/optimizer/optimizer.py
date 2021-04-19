@@ -100,8 +100,21 @@ class Optimizer(object):
                  weight_decay=None,
                  grad_clip=None,
                  name=None):
+        if not isinstance(parameters, (list, tuple, set)):
+            raise TypeError(
+                "`parameters` argument given to the optimizer should be "
+                "an iterable of paddle Tensors, but got argument type is `{}`.".
+                format(type(parameters)))
+
         self._parameter_list = list(
             parameters) if parameters is not None else None
+        for x in self._parameter_list:
+            if not isinstance(x, paddle.Tensor):
+                raise TypeError(
+                    "`parameters` argument given to the optimizer should be "
+                    "an iterable of paddle Tensors, but got iterable member type is `{}`.".
+                    format(type(x)))
+
         self._name = name
         if framework.in_dygraph_mode():
             if self._parameter_list is None:
@@ -110,7 +123,8 @@ class Optimizer(object):
                 )
             if weight_decay is not None:
                 for param in self._parameter_list:
-                    if param.regularizer is not None:
+                    if hasattr(param,
+                               'regularizer') and param.regularizer is not None:
                         logging.info(
                             "If regularizer of a Parameter has been set by 'paddle.ParamAttr' or 'static.WeightNormParamAttr' already. "
                             "The weight_decay[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
@@ -433,17 +447,20 @@ class Optimizer(object):
     def _create_param_lr(self, param_and_grad):
         # create learning rate tensor for every parameter
         param = param_and_grad[0]
-        param_lr = param.optimize_attr['learning_rate']
-        if type(param_lr) == Variable:
-            return param_lr
-        else:
-            if param_lr == 1.0:
-                return self._global_learning_rate()
+        if hasattr(param, 'optimize_attr'):
+            param_lr = param.optimize_attr['learning_rate']
+            if type(param_lr) == Variable:
+                return param_lr
             else:
-                with default_main_program()._lr_schedule_guard(
-                        is_with_opt=True), framework.name_scope(
-                            'scale_with_param_lr'):
-                    return self._global_learning_rate() * param_lr
+                if param_lr == 1.0:
+                    return self._global_learning_rate()
+                else:
+                    with default_main_program()._lr_schedule_guard(
+                            is_with_opt=True), framework.name_scope(
+                                'scale_with_param_lr'):
+                        return self._global_learning_rate() * param_lr
+        else:
+            return self._global_learning_rate()
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters

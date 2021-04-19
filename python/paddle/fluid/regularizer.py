@@ -28,7 +28,10 @@ def _create_regularization_of_grad(param, grad, regularization=None):
     Function helper of append_regularization_ops.
     """
     # If no gradient or no regularization is specified,  then we don't need to do anything
-    if grad is None or (param.regularizer is None and regularization is None):
+    if grad is None or regularization is None:
+        return grad
+    if not hasattr(param, 'regularizer') or (hasattr(param, 'regularizer') and
+                                             param.regularizer is None):
         return grad
     regularization_term = None
     if param.regularizer is not None:
