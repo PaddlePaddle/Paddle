@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -10,337 +10,435 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using float16 = paddle::platform::float16;
-
 template <typename T>
-struct CudaVecType {
-  using type = T;
-  static constexpr int vecsize = 1;
-};
-
-template <>
-struct CudaVecType<platform::float16> {
-  using type = __half2;
-  static constexpr int vecsize = 2;
-};
-
-template <>
-struct CudaVecType<float> {
-  using type = float4;
-  static constexpr int vecsize = 4;
-};
-
-template <typename T>
-class BaseGPUFunctor {
- public:
+struct BaseCudaActiveFunctor {
   using ELEMENT_TYPE = T;
-
   using AttrPair = std::vector<std::pair<const char*, float*>>;
-
   AttrPair GetAttrs() { return AttrPair(); }
 };
 
-/* ========================================================================== */
-
-/* ===========================    relu forward   ============================ */
+// For forward, args[0] means the input x;
+// For backward, args[0] means the input dout, args[1] means the input x or out,
+// which depends on the FwdDeps;
+/********************Relu Begin********************/
 template <typename T>
-class ReluGPUFunctor : public BaseGPUFunctor<T> {
- private:
-  T zero_;
+struct CudaReluFunctor : public BaseCudaActiveFunctor<T> {
+  T zero = static_cast<T>(0.0f);
 
- public:
-  ReluGPUFunctor() { zero_ = static_cast<T>(0.0f); }
-
-  // for relu forward when T is double
-  __device__ __forceinline__ typename CudaVecType<T>::type Compute(
-      const typename CudaVecType<T>::type in) {
-    // relu forward : out = max(x, 0)
-    return in > zero_ ? in : zero_;
-  }
-
-  // when num % vecsize != 0 this func will be used
-  __device__ __forceinline__ T ComputeRemainder(const T in) {
-    // relu forward : out = max(x, 0)
-    return in > zero_ ? in : zero_;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return args[0] > zero ? args[0] : zero;
   }
 };
 
-template <>
-__device__ __forceinline__ CudaVecType<float>::type
-ReluGPUFunctor<float>::Compute(const CudaVecType<float>::type in) {
-  // relu forward : out = max(in, 0)
-  return make_float4((in.x > zero_) * (in.x), (in.y > zero_) * (in.y),
-                     (in.z > zero_) * (in.z), (in.w > zero_) * (in.w));
-}
-
-template <>
-__device__ __forceinline__ CudaVecType<float16>::type
-ReluGPUFunctor<float16>::Compute(const CudaVecType<float16>::type in) {
-// relu forward : out = max(in, 0)
-#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  const half2 kzero = __float2half2_rn(0.0f);
-  return __hmul2(__hgt2(in, kzero), in);
-#else
-  const float2 xx = __half22float2(in);
-  return __floats2half2_rn((xx.x > 0.0f) * static_cast<float>(xx.x),
-                           (xx.y > 0.0f) * static_cast<float>(xx.y));
-#endif
-}
-/* ========================================================================== */
-
-/* ===========================    relu backward   ============================
- */
-
 template <typename T>
-class ReluGradGPUFunctor : public BaseGPUFunctor<T> {
- private:
-  T zero_;
+struct CudaReluGradFunctor : public BaseCudaActiveFunctor<T> {
+  T zero = static_cast<T>(0.0f);
 
- public:
-  ReluGradGPUFunctor() { zero_ = static_cast<T>(0.0f); }
-
-  // for relu backward when T is double
-  __device__ __forceinline__ typename CudaVecType<T>::type Compute(
-      const typename CudaVecType<T>::type out,
-      const typename CudaVecType<T>::type dout) {
-    return out > zero_ ? dout : zero_;
-  }
-
-  // when num % vecsize != 0 this func will be used
-  __device__ __forceinline__ T ComputeRemainder(const T out, const T dout) {
-    // relu backward : dx = out > 0 ? dout : 0
-    return out > zero_ ? dout : zero_;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return args[1] > zero ? args[0] : zero;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
+/********************Relu End********************/
 
-template <>
-__device__ __forceinline__ CudaVecType<float>::type
-ReluGradGPUFunctor<float>::Compute(const CudaVecType<float>::type out,
-                                   const CudaVecType<float>::type dout) {
-  // relu backward : dx = out > 0 ? dout : 0;
-  return make_float4((out.x > zero_) * (dout.x), (out.y > zero_) * (dout.y),
-                     (out.z > zero_) * (dout.z), (out.w > zero_) * (dout.w));
-}
-
-template <>
-__device__ __forceinline__ CudaVecType<float16>::type
-ReluGradGPUFunctor<float16>::Compute(const CudaVecType<float16>::type out,
-                                     const CudaVecType<float16>::type dout) {
-// relu backward : dx = out > 0 ? dout : 0;
-#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  const half2 kzero = __float2half2_rn(0.0f);
-  return __hmul2(__hgt2(out, kzero), dout);
-#else
-  const float2 xx = __half22float2(out);
-  const float2 yy = __half22float2(dout);
-  return __floats2half2_rn((xx.x > 0.0f) * static_cast<float>(yy.x),
-                           (xx.y > 0.0f) * static_cast<float>(yy.y));
-#endif
-}
-
-/* ========================================================================== */
-/* ========================    leaky relu forward    ========================
- */
+/********************LeakyRelu Begin********************/
 template <typename T>
-class LeakyReluGPUFunctor : public BaseGPUFunctor<T> {
- private:
-  T zero_;
-  float alpha_;
+struct CudaLeakyReluFunctor : public BaseCudaActiveFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float alpha;
 
- public:
-  LeakyReluGPUFunctor() { zero_ = static_cast<T>(0.0f); }
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha_}};
-  }
-  // leakyrelu forward : out = x > 0 ? x : x * alpha
-  __device__ __forceinline__ typename CudaVecType<T>::type Compute(
-      const typename CudaVecType<T>::type in) {
-    return in > zero_ ? in : static_cast<T>(alpha_) * in;
+  typename BaseCudaActiveFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
   }
 
-  __device__ __forceinline__ T ComputeRemainder(const T in) {
-    // leakyrelu forward : out = x > 0 ? x : x * alpha
-    return in > zero_ ? in : static_cast<T>(alpha_) * in;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return args[0] > zero ? args[0] : static_cast<T>(alpha) * args[0];
   }
 };
 
-template <>
-__device__ __forceinline__ CudaVecType<float>::type
-LeakyReluGPUFunctor<float>::Compute(const CudaVecType<float>::type in) {
-  // leakyrelu forward : out = x > 0 ? x : x * alpha
-  return make_float4((in.x > zero_) ? (in.x) : (in.x) * alpha_,
-                     (in.y > zero_) ? (in.y) : (in.y) * alpha_,
-                     (in.z > zero_) ? (in.z) : (in.z) * alpha_,
-                     (in.w > zero_) ? (in.w) : (in.w) * alpha_);
-}
-
-template <>
-__device__ __forceinline__ CudaVecType<float16>::type
-LeakyReluGPUFunctor<float16>::Compute(const CudaVecType<float16>::type in) {
-  // leakyrelu forward : out = x > 0 ? x : x * alpha
-  const float2 xx = __half22float2(in);
-  return __floats2half2_rn((xx.x > 0.0f) ? xx.x : xx.x * alpha_,
-                           (xx.y > 0.0f) ? xx.y : xx.y * alpha_);
-}
-/* ========================================================================== */
-
-/* ===========================  leaky relu backward   =======================
- */
 template <typename T>
-class LeakyReluGradGPUFunctor : public BaseGPUFunctor<T> {
- private:
-  T zero_;
-  float alpha_;
+struct CudaLeakyReluGradFunctor : public BaseCudaActiveFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float alpha;
 
- public:
-  LeakyReluGradGPUFunctor() { zero_ = static_cast<T>(0.0f); }
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha_}};
+  typename BaseCudaActiveFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
   }
 
-  // for leaky relu backward when T is double
-  __device__ __forceinline__ typename CudaVecType<T>::type Compute(
-      const typename CudaVecType<T>::type in,
-      const typename CudaVecType<T>::type dout) {
-    // leakyrelu backward : dx = x > 0 ? dout : alpha * dout
-    return in > zero_ ? dout : static_cast<T>(alpha_) * dout;
-  }
-
-  // when num % vecsize != 0 this func will be used
-  __device__ __forceinline__ T ComputeRemainder(const T in, const T dout) {
-    // leakyrelu backward : dx = x > 0 ? dout : alpha * dout
-    return in > zero_ ? dout : static_cast<T>(alpha_) * dout;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return args[1] > zero ? args[0] : static_cast<T>(alpha) * args[0];
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
+/********************LeakyRelu End********************/
 
-template <>
-__device__ __forceinline__ CudaVecType<float>::type
-LeakyReluGradGPUFunctor<float>::Compute(const CudaVecType<float>::type in,
-                                        const CudaVecType<float>::type dout) {
-  // leakyrelu backward : dx = x > 0 ? dout : alpha * dout
-  return make_float4((in.x > zero_) ? (dout.x) : alpha_ * (dout.x),
-                     (in.y > zero_) ? (dout.y) : alpha_ * (dout.y),
-                     (in.z > zero_) ? (dout.z) : alpha_ * (dout.z),
-                     (in.w > zero_) ? (dout.w) : alpha_ * (dout.w));
-}
+/********************Sigmoid Begin********************/
+template <typename T>
+struct CudaSigmoidFunctor : public BaseCudaActiveFunctor<T> {
+  // CT means Compute Type
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT one = static_cast<CT>(1.0f);
 
-template <>
-__device__ __forceinline__ CudaVecType<float16>::type LeakyReluGradGPUFunctor<
-    float16>::Compute(const CudaVecType<float16>::type in,
-                      const CudaVecType<float16>::type dout) {
-  // leakyrelu backward : dx = x > 0 ? dout : alpha * dout
-  const float2 xx = __half22float2(in);
-  const float2 yy = __half22float2(dout);
-  return __floats2half2_rn((xx.x > 0.0f) ? yy.x : alpha_ * yy.x,
-                           (xx.y > 0.0f) ? yy.y : alpha_ * yy.y);
-}
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(one / (one + exp(-x)));
+  }
+};
 
-/* ========================================================================== */
+template <typename T>
+struct CudaSigmoidGradFunctor : public BaseCudaActiveFunctor<T> {
+  T one = static_cast<T>(1.0f);
 
-template <typename T, typename Functor>
-__global__ void ActivationGradKernelVec(const T* forward_data, const T* dout,
-                                        T* dx, int num, Functor functor) {
-  using VecType = typename CudaVecType<T>::type;
-  constexpr int vecsize = CudaVecType<T>::vecsize;
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int stride = blockDim.x * gridDim.x;
-  int loop = num / vecsize;
-  int tail = num % vecsize;
-  const VecType* in_forward = reinterpret_cast<const VecType*>(forward_data);
-  const VecType* in_dout = reinterpret_cast<const VecType*>(dout);
-  VecType* out = reinterpret_cast<VecType*>(dx);
-  VecType forward_vec, dout_vec;
-  T in_data, dout_data;
-  for (int i = idx; i < loop; i += stride) {
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
-    forward_vec = __ldg(in_forward + i);
-    dout_vec = __ldg(in_dout + i);
-#else
-    forward_vec = in_forward[i];
-    dout_vec = in_dout[i];
-#endif
-    out[i] = functor.Compute(forward_vec, dout_vec);
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return args[0] * args[1] * (one - args[1]);
   }
 
-  while (idx == loop && tail) {
-    in_data = forward_data[num - tail];
-    dout_data = dout[num - tail];
-    dx[num - tail] = functor.ComputeRemainder(in_data, dout_data);
-    --tail;
-  }
-}
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+/********************Sigmoid End********************/
 
-template <typename T, typename Functor>
-__global__ void ActivationkernelVec(const T* src, T* dst, int num,
-                                    Functor functor) {
-  constexpr int vecsize = CudaVecType<T>::vecsize;
-  using VecType = typename CudaVecType<T>::type;
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int stride = blockDim.x * gridDim.x;
-  int loop = num / vecsize;
-  int tail = num % vecsize;
-  const VecType* in = reinterpret_cast<const VecType*>(src);
-  VecType* out = reinterpret_cast<VecType*>(dst);
-  VecType x_vec;
-  for (int i = idx; i < loop; i += stride) {
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
-    x_vec = __ldg(in + i);
-#else
-    x_vec = in[i];
-#endif
-    out[i] = functor.Compute(x_vec);
+/********************LogSigmoid Begin********************/
+template <typename T>
+struct CudaLogSigmoidFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT zero = static_cast<CT>(0.0f);
+
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    CT temp = x > zero ? zero : -x;
+    return T(-temp - log(exp(-temp) + exp(-x - temp)));
+  }
+};
+
+template <typename T>
+struct CudaLogSigmoidGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT zero = static_cast<CT>(0.0f);
+
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    CT temp = x > zero ? zero : -x;
+    return T(dout * (exp(-x - temp) / (exp(-temp) + exp(-x - temp))));
   }
 
-  while (idx == loop && tail) {
-    dst[num - tail] = functor.ComputeRemainder(src[num - tail]);
-    --tail;
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************LogSigmoid End********************/
+
+/********************Atan Begin********************/
+template <typename T>
+struct CudaAtanFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(atan(x));
   }
-}
+};
+
+template <typename T>
+struct CudaAtanGradFunctor : public BaseCudaActiveFunctor<T> {
+  T one = static_cast<T>(1.0f);
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return args[0] * one / (one + args[1] * args[1]);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Atan End********************/
+
+/********************SoftShrink Begin********************/
+template <typename T>
+struct CudaSoftShrinkFunctor : public BaseCudaActiveFunctor<T> {
+  float lambda;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"lambda", &lambda}};
+  }
+
+  __device__ __forceinline__ T operator()(const T* args) const {
+    T lambdaT = static_cast<T>(lambda);
+    T temp1 = static_cast<T>(args[0] > lambdaT);
+    T temp2 = static_cast<T>(args[0] < -lambdaT);
+    return temp1 * (args[0] - lambdaT) + temp2 * (args[0] + lambdaT);
+  }
+};
+
+template <typename T>
+struct CudaSoftShrinkGradFunctor : public BaseCudaActiveFunctor<T> {
+  float lambda;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"lambda", &lambda}};
+  }
+
+  __device__ __forceinline__ T operator()(const T* args) const {
+    T lambdaT = static_cast<T>(lambda);
+    T temp1 = static_cast<T>(args[1] > lambdaT);
+    T temp2 = static_cast<T>(args[1] < -lambdaT);
+    return args[0] * static_cast<T>(temp1 + temp2);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************SoftShrink End********************/
+
+/********************Ceil Begin********************/
+template <typename T>
+struct CudaCeilFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(ceil(x));
+  }
+};
+/********************Ceil End********************/
+
+/********************Floor Begin********************/
+template <typename T>
+struct CudaFloorFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(floor(x));
+  }
+};
+/********************Floor End********************/
+
+/********************Round Begin********************/
+template <typename T>
+struct CudaRoundFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(round(x));
+  }
+};
+/********************Floor End********************/
+
+/********************Zero Begin********************/
+template <typename T>
+struct CudaZeroGradFunctor : public BaseCudaActiveFunctor<T> {
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return static_cast<T>(0.0f);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kNoDeps; }
+};
+/********************Zero End********************/
+
+/********************Cos Begin********************/
+template <typename T>
+struct CudaCosFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(cos(x));
+  }
+};
+
+template <typename T>
+struct CudaCosGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    return T(-dout * sin(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Cos End********************/
+
+/********************Sin Begin********************/
+template <typename T>
+struct CudaSinFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(sin(x));
+  }
+};
+
+template <typename T>
+struct CudaSinGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    return T(dout * cos(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Sin End********************/
+
+/********************Tan Begin********************/
+template <typename T>
+struct CudaTanFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(tan(x));
+  }
+};
+
+template <typename T>
+struct CudaTanGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    return T(dout / (cos(x) * cos(x)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Tan End********************/
+
+/********************Asin Begin********************/
+template <typename T>
+struct CudaAsinFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(asin(x));
+  }
+};
+
+template <typename T>
+struct CudaAsinGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT one = static_cast<CT>(1.0f);
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    return T(dout * one / sqrt(one - x * x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Asin End********************/
+
+/********************Acos Begin********************/
+template <typename T>
+struct CudaAcosFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(acos(x));
+  }
+};
+
+template <typename T>
+struct CudaAcosGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT one = static_cast<CT>(1.0f);
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    return T(-dout * one / sqrt(one - x * x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Acos End********************/
+
+/********************Cosh Begin********************/
+template <typename T>
+struct CudaCoshFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(cosh(x));
+  }
+};
+
+template <typename T>
+struct CudaCoshGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    return T(dout * sinh(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Cosh End********************/
+
+/********************Sinh Begin********************/
+template <typename T>
+struct CudaSinhFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(sinh(x));
+  }
+};
+
+template <typename T>
+struct CudaSinhGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    return T(dout * cosh(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Sinh End********************/
+
+/********************Reciprocal Begin********************/
+template <typename T>
+struct CudaReciprocalFunctor : public BaseCudaActiveFunctor<T> {
+  T one = static_cast<T>(1.0f);
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return one / args[0];
+  }
+};
+
+template <typename T>
+struct CudaReciprocalGradFunctor : public BaseCudaActiveFunctor<T> {
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return -args[0] * args[1] * args[1];
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+/********************Reciprocal End********************/
 
 template <typename DeviceContext, typename Functor>
 class ActivationGPUKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   using T = typename Functor::ELEMENT_TYPE;
-  void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* in_x = nullptr;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor* x = nullptr;
     framework::Tensor* out = nullptr;
-    ExtractActivationTensor(context, &in_x, &out);
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-
-    int num = in_x->numel();
-    const T* input_data = in_x->data<T>();
-    T* output_data = out->mutable_data<T>(dev_ctx.GetPlace(),
-                                          static_cast<size_t>(num * sizeof(T)));
-
-    int block = 512;
-#ifdef __HIPCC__
-    block = 256;
-#endif
-    Functor functor;
+    ExtractActivationTensor(ctx, &x, &out);
+    out->mutable_data<T>(ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    std::vector<const framework::Tensor*> ins = {x};
+    std::vector<framework::Tensor*> outs = {out};
+    auto functor = Functor();
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
-      *attr.second = context.Attr<float>(attr.first);
+      *attr.second = ctx.Attr<float>(attr.first);
     }
-    constexpr int vecsize = CudaVecType<T>::vecsize;
-    int grid = max((num / vecsize + block - 1) / block, 1);
-    auto stream = context.cuda_device_context().stream();
-    ActivationkernelVec<T, Functor><<<grid, block, 0, stream>>>(
-        input_data, output_data, num, functor);
+    LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T>(dev_ctx, ins, &outs,
+                                                            functor);
   }
 };
 
@@ -349,43 +447,38 @@ class ActivationGradGPUKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   using T = typename Functor::ELEMENT_TYPE;
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     const framework::Tensor *x, *out, *d_out;
     framework::Tensor* d_x = nullptr;
     x = out = d_out = nullptr;
-    ExtractActivationGradTensor<Functor::FwdDeps()>(context, &x, &out, &d_out,
+    ExtractActivationGradTensor<Functor::FwdDeps()>(ctx, &x, &out, &d_out,
                                                     &d_x);
-    int numel = d_out->numel();
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto* dx_data = d_x->mutable_data<T>(
-        dev_ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
-    auto* dout_data = d_out->data<T>();
+    d_x->mutable_data<T>(ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto functor = Functor();
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = ctx.Attr<float>(attr.first);
+    }
 
-    auto* forward_data = dout_data;
+    std::vector<const framework::Tensor*> ins = {d_out};
+    std::vector<framework::Tensor*> outs = {d_x};
+
     if (static_cast<int>(Functor::FwdDeps()) == static_cast<int>(kDepOut)) {
       // Only need forward output Out
-      forward_data = out->data<T>();
+      ins.push_back(out);
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(dev_ctx, ins,
+                                                               &outs, functor);
     } else if (static_cast<int>(Functor::FwdDeps()) ==
                static_cast<int>(kDepX)) {
       // Only need forward input X
-      forward_data = x->data<T>();
+      ins.push_back(x);
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(dev_ctx, ins,
+                                                               &outs, functor);
+    } else {
+      LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T>(dev_ctx, ins,
+                                                              &outs, functor);
     }
-
-    int block = 512;
-#ifdef __HIPCC__
-    block = 256;
-#endif
-
-    Functor functor;
-    auto attrs = functor.GetAttrs();
-    for (auto& attr : attrs) {
-      *attr.second = context.Attr<float>(attr.first);
-    }
-    constexpr int vecsize = CudaVecType<T>::vecsize;
-    int grid = max((numel / vecsize + block - 1) / block, 1);
-    auto stream = context.cuda_device_context().stream();
-    ActivationGradKernelVec<T, Functor><<<grid, block, 0, stream>>>(
-        forward_data, dout_data, dx_data, numel, functor);
   }
 };
 
@@ -410,7 +503,6 @@ namespace plat = paddle::platform;
                                 ops::grad_functor<double>>,                 \
       ops::ActivationGradKernel<plat::CUDADeviceContext,                    \
                                 ops::grad_functor<plat::float16>>);
-FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CUDA_KERNEL);
 
 #define REGISTER_ACTIVATION_GPU_KERNEL(act_type, op_name, functor,             \
                                        grad_functor)                           \
@@ -430,8 +522,8 @@ FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CUDA_KERNEL);
                                    ops::grad_functor<plat::float16>>);
 
 /* ======================== leaky relu register  ============================ */
-REGISTER_ACTIVATION_GPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluGPUFunctor,
-                               LeakyReluGradGPUFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(leaky_relu, LeakyRelu, CudaLeakyReluFunctor,
+                               CudaLeakyReluGradFunctor);
 
 REGISTER_OP_CUDA_KERNEL(
     leaky_relu_grad_grad,
@@ -456,7 +548,8 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ===========================    relu register  ============================ */
-REGISTER_ACTIVATION_GPU_KERNEL(relu, Relu, ReluGPUFunctor, ReluGradGPUFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(relu, Relu, CudaReluFunctor,
+                               CudaReluGradFunctor);
 
 REGISTER_OP_CUDA_KERNEL(
     relu_grad_grad,
@@ -594,3 +687,72 @@ REGISTER_OP_CUDA_KERNEL(
     ops::LogDoubleGradKernel<plat::CUDADeviceContext,
                              ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
+REGISTER_ACTIVATION_GPU_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
+                               CudaSigmoidGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,
+                               CudaLogSigmoidGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(atan, Atan, CudaAtanFunctor,
+                               CudaAtanGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(softshrink, SoftShrink, CudaSoftShrinkFunctor,
+                               CudaSoftShrinkGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(ceil, Ceil, CudaCeilFunctor,
+                               CudaZeroGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(floor, Floor, CudaFloorFunctor,
+                               CudaZeroGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(cos, Cos, CudaCosFunctor, CudaCosGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(tan, Tan, CudaTanFunctor, CudaTanGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(acos, Acos, CudaAcosFunctor,
+                               CudaAcosGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(sin, Sin, CudaSinFunctor, CudaSinGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(asin, Asin, CudaAsinFunctor,
+                               CudaAsinGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(sinh, Sinh, CudaSinhFunctor,
+                               CudaSinhGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(cosh, Cosh, CudaCoshFunctor,
+                               CudaCoshGradFunctor);
+REGISTER_ACTIVATION_GPU_KERNEL(round, Round, CudaRoundFunctor,
+                               CudaZeroGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(sigmoid, Sigmoid, SigmoidFunctor,
+// SigmoidGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(logsigmoid, LogSigmoid, LogSigmoidFunctor,
+// LogSigmoidGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(atan, Atan, AtanFunctor, AtanGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(softshrink, SoftShrink, SoftShrinkFunctor,
+// SoftShrinkGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(ceil, Ceil, CeilFunctor, ZeroGradFunctor);
+//  REGISTER_ACTIVATION_CUDA_KERNEL(floor, Floor, FloorFunctor,
+//  ZeroGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(cos, Cos, CosFunctor, CosGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(tan, Tan, TanFunctor, TanGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(acos, Acos, AcosFunctor, AcosGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(sin, Sin, SinFunctor, SinGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(asin, Asin, AsinFunctor, AsinGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(sinh, Sinh, SinhFunctor, SinhGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(cosh, Cosh, CoshFunctor, CoshGradFunctor);
+// REGISTER_ACTIVATION_CUDA_KERNEL(round, Round, RoundFunctor, ZeroGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(reciprocal, Reciprocal, ReciprocalFunctor,
+                                ReciprocalGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(log2, Log2, Log2Functor, Log2GradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(log10, Log10, Log10Functor, Log10GradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(brelu, BRelu, BReluFunctor, BReluGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(soft_relu, SoftRelu, SoftReluFunctor,
+                                SoftReluGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(stanh, STanh, STanhFunctor, STanhGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(softplus, Softplus, SoftplusFunctor,
+                                SoftplusGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(softsign, Softsign, SoftsignFunctor,
+                                SoftsignGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(tanh_shrink, TanhShrink, TanhShrinkFunctor,
+                                TanhShrinkGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(hard_shrink, HardShrink, HardShrinkFunctor,
+                                HardShrinkGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,
+                                HardSigmoidGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(swish, Swish, SwishFunctor, SwishGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(thresholded_relu, ThresholdedRelu,
+                                ThresholdedReluFunctor,
+                                ThresholdedReluGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(hard_swish, HardSwish, HardSwishFunctor,
+                                HardSwishGradFunctor);
