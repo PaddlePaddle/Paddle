@@ -570,8 +570,10 @@ def save(obj, path, protocol=2, **configs):
         raise TypeError(
             "Type of `use_binary_format` should be bool, but received {}.".
             format(type(config.use_binary_format)))
+
     if config.use_binary_format:
         _save_binary_var(obj, path)
+
     else:
         # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
         if config.pickle_protocol is not None:
@@ -580,7 +582,11 @@ def save(obj, path, protocol=2, **configs):
                 "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
             )
 
-        if _is_state_dict(obj):
+        if isinstance(obj, Program):
+            obj.desc.flush()
+            with open(path, "wb") as f:
+                f.write(obj.desc.serialize_to_string())
+        elif _is_state_dict(obj):
             if in_dygraph_mode():
                 _legacy_save(obj, path, protocol)
             else:
@@ -795,8 +801,16 @@ def load(path, **configs):
                     tensor, _ = _load_lod_tensor(path)
                     return tensor
                 except:
-                    raise ValueError(
-                        "`paddle.load` can not parse the file:{}.".format(path))
+                    try:
+                        with open(path, "rb") as f:
+                            program_desc_str = f.read()
+                            program = Program.parse_from_string(
+                                program_desc_str)
+                            return program
+                    except:
+                        raise ValueError(
+                            "`paddle.load` can not parse the file:{}.".format(
+                                path))
 
     else:
         load_result = _legacy_load(path, **configs)
