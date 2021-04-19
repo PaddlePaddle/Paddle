@@ -29,6 +29,32 @@ using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
 template <typename T = float>
+class InterpolateMKLDNNHandler
+    : public MKLDNNHandlerT<T, dnnl::resampling_forward> {
+ public:
+  InterpolateMKLDNNHandler(const dnnl::algorithm algo,
+                           const platform::MKLDNNDeviceContext& dev_ctx,
+                           const dnnl::engine engine, platform::Place cpu_place,
+                           const Tensor* x, Tensor* z,
+                           const std::string& uniq_name)
+      : platform::MKLDNNHandlerT<T, dnnl::resampling_forward>(
+            dev_ctx, engine, cpu_place,
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                uniq_name)) {
+    if (!this->isCached()) {
+      const auto src_x_tz = framework::vectorize(x->dims());
+      const auto dst_tz = framework::vectorize(z->dims());
+      const auto src_md = dnnl::memory::desc(
+          src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+      const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
+                                       MKLDNNMemoryFormat::any);
+      this->AcquireForwardPrimitiveDescriptor(
+          dnnl::prop_kind::forward_inference, algo, src_md, dst_md);
+    }
+  }
+};
+
+template <typename T = float>
 class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
   std::vector<int> ComputeOutputShape(
       const framework::ExecutionContext& ctx) const {
@@ -68,19 +94,32 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
         out_dims = out_size_data;
       }
     } else {
-      float scale;
+      std::vector<float> scale;
+      scale.reserve(3);
       auto scale_tensor = ctx.Input<Tensor>("Scale");
       if (scale_tensor != nullptr) {
         auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-        scale = scale_data[0];
+        scale.resize(3, scale_data[0]);
+        std::copy(scale_data.begin(), scale_data.end(), scale.begin());
       } else {
-        scale = ctx.Attr<float>("scale");
+        std::string op_type = ctx.Type();
+
+        if (op_type.find("v2") == std::string::npos) {  // v1
+          scale.push_back(ctx.Attr<float>("scale"));
+          scale.push_back(scale[0]);
+          scale.push_back(scale[0]);
+        } else {  // v2
+          std::vector<float> scale_attr = ctx.Attr<std::vector<float>>("scale");
+          scale.resize(3, scale_attr[0]);
+          std::copy(scale_attr.begin(), scale_attr.end(), scale.begin());
+        }
       }
-      if (scale > 0) {
+      if (scale[0] > 0.0f && scale[1] > 0.0f && scale[2] > 0.0f) {
+        int j = 0;
         std::vector<int64_t> in_dhw_vec = framework::vectorize(in_dhw_dims);
         std::transform(
             in_dhw_vec.begin(), in_dhw_vec.end(), out_dims.begin(),
-            [&](int64_t i) -> int { return static_cast<int>(i * scale); });
+            [&](int64_t i) -> int { return static_cast<int>(i * scale[j++]); });
       }
     }
 
@@ -118,9 +157,9 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     framework::DDim dim_out = framework::make_ddim(out_dims_vec);
     z->mutable_data<T>(dim_out, ctx.GetPlace());
 
-    paddle::platform::InterpolateMKLDNNHandler<T> handler(
-        algo, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, z,
-        ctx.OutputName("Out"));
+    InterpolateMKLDNNHandler<T> handler(algo, dev_ctx, mkldnn_engine,
+                                        ctx.GetPlace(), x, z,
+                                        ctx.OutputName("Out"));
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(z);
@@ -145,4 +184,9 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(nearest_interp, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);
 REGISTER_OP_KERNEL(bilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>);
+
+REGISTER_OP_KERNEL(nearest_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>);
+REGISTER_OP_KERNEL(bilinear_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);
