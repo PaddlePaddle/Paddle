@@ -150,9 +150,7 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
                           feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
         print("infer shape: ", results[0].shape)
-        from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
-        print("infer results: ",
-              convert_uint16_to_float(results[0]) if use_bf16 else results[0])
+        print("infer results: ", results[0])
         print("ground truth: ", test_label)
 
 
