@@ -188,7 +188,7 @@ class TestDistBase(unittest.TestCase):
                          path_id="0",
                          check_error_log=False,
                          need_envs={}):
-        if backend == "nccl" or "bkcl":
+        if backend == "nccl" or backend == "bkcl":
             with_gloo = '0'
         else:
             with_gloo = '1'
