@@ -42,7 +42,9 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
     auto dims = ctx->GetInputDim("DistMat");
     PADDLE_ENFORCE_EQ(dims.size() == 2UL || dims.size() == 3UL, true,
                       platform::errors::InvalidArgument(
-                          "The rank of Input(DistMat) must be 2 or 3."));
+                          "Expected the rank of Input(DistMat) must be 2 or 3. "
+                          "But received %d.",
+                          dims.size()));
 
     if (dims.size() == 3UL) {
       ctx->SetOutputDim("ColToRowMatchIndices",

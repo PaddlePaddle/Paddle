@@ -52,9 +52,12 @@ class TargetAssignOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("NegIndices")) {
       auto neg_dims = ctx->GetInputDim("NegIndices");
-      PADDLE_ENFORCE_EQ(neg_dims.size() == 2UL || neg_dims.size() == 3UL, true,
-                        platform::errors::InvalidArgument(
-                            "The rank of Input(NegIndices) must be 2 or 3."));
+      PADDLE_ENFORCE_EQ(
+          neg_dims.size() == 2UL || neg_dims.size() == 3UL, true,
+          platform::errors::InvalidArgument(
+              "Expected the rank of Input(NegIndices) must be 2 or 3. "
+              "But received %d.",
+              neg_dims.size()));
       PADDLE_ENFORCE_EQ(
           neg_dims[neg_dims.size() - 1], 1,
           platform::errors::InvalidArgument(
@@ -128,7 +131,7 @@ If id = MatchIndices[i][j] > 0,
     Out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
     OutWeight[i][j] = 1.
 
-Otherwise, 
+Otherwise,
 
     Out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
     OutWeight[i][j] = 0.
