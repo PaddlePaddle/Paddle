@@ -468,7 +468,7 @@ class ImperativeQuantizeOutputs(object):
         """
         Whether the layer needs to calculate output scales.
         """
-        return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
+        return isinstance(layer, utils.quant_output_layers) \
             or ('quantized' in layer.full_name() and \
                 'quantized_noweight' not in layer.full_name())
 

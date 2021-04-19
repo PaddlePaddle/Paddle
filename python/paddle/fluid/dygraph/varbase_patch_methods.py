@@ -14,6 +14,8 @@
 
 import inspect
 import numpy as np
+import warnings
+import weakref
 
 import paddle
 from .. import framework
@@ -24,6 +26,34 @@ from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+
+
+class TensorHookRemoveHelper(object):
+    """
+    A helper class that for removing Tensor gradient's hook.
+    """
+
+    def __init__(self, tensor, hook_id):
+        self._tensor_ref = weakref.ref(tensor)
+        self._hook_id = hook_id
+
+    def remove(self):
+        """
+        Remove reference Tensor's hook.
+
+        Returns:
+            bool: Return True if removed successfully
+        """
+        tensor = self._tensor_ref()
+        if tensor is not None:
+            res = tensor._remove_grad_hook(self._hook_id)
+            if res is True:
+                return True
+            else:
+                warnings.warn(
+                    "The backward hook (ID: %d) of Tensor `%s` you want to remove does not exist or has been removed."
+                    % (self._hook_id, tensor.name), RuntimeWarning)
+        return False
 
 
 def monkey_patch_varbase():
@@ -133,7 +163,7 @@ def monkey_patch_varbase():
                                       framework._current_expected_place())
 
     @framework.dygraph_only
-    def backward(self, retain_graph=False):
+    def backward(self, grad_tensor=None, retain_graph=False):
         """
         Run backward of current Graph which starts from current Tensor.
 
@@ -142,17 +172,22 @@ def monkey_patch_varbase():
         You can clear gradient by ``Tensor.clear_grad()`` .
 
         Args:
+            grad_tensor(Tensor, optional): initial gradient values of the current Tensor. If `grad_tensor` is None, 
+            the initial gradient values of the current Tensor would be Tensor filled with 1.0; 
+            if `grad_tensor` is not None, it must have the same length as the current Tensor.
+            Teh default value is None.
+
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
                 :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
                 Defaults to False.
-
         Returns:
             NoneType: None
 
         Examples:
             .. code-block:: python
 
+                import paddle
                 x = paddle.to_tensor(5., stop_gradient=False)
                 for i in range(5):
                     y = paddle.pow(x, 4.0)
@@ -168,15 +203,36 @@ def monkey_patch_varbase():
                 print("{}".format(x.grad))
                 # 0.
 
+                grad_tensor=paddle.to_tensor(2.)
+                for i in range(5):
+                    y = paddle.pow(x, 4.0)
+                    y.backward(grad_tensor)
+                    print("{}: {}".format(i, x.grad))
+                # 0: [1000.]
+                # 1: [2000.]
+                # 2: [3000.]
+                # 3: [4000.]
+                # 4: [5000.]
+
         """
         if framework.in_dygraph_mode():
+            if grad_tensor is not None:
+                assert isinstance(
+                    grad_tensor, paddle.
+                    Tensor), "The type of grad_tensot must be paddle.Tensor"
+                assert grad_tensor.shape == self.shape, \
+                    "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
+                    grad_tensor.name, grad_tensor.shape, self.name, self.shape)
+
             if paddle.is_compiled_with_xpu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
-                scaled_loss._run_backward(framework._dygraph_tracer(),
-                                          retain_graph)
+                core.dygraph_run_backward([scaled_loss], [grad_tensor],
+                                          retain_graph,
+                                          framework._dygraph_tracer())
             else:
-                self._run_backward(framework._dygraph_tracer(), retain_graph)
+                core.dygraph_run_backward([self], [grad_tensor], retain_graph,
+                                          framework._dygraph_tracer())
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
@@ -210,6 +266,73 @@ def monkey_patch_varbase():
                     np.array(new_ivar.value().get_selected_rows().rows()))
         else:
             return np.array(new_ivar.value().get_tensor())
+
+    @framework.dygraph_only
+    def register_hook(self, hook):
+        """
+        Registers a backward hook for current Tensor.
+
+        The hook will be called every time the gradient Tensor of current Tensor is computed.
+
+        The hook should not modify the input gradient Tensor, but it can optionally return
+        a new gradient Tensor which will be used in place of current Tensor's gradient.
+
+        The hook should have the following signature:
+
+            hook(grad) -> Tensor or None
+
+        Args:
+            hook(function): A backward hook to be registered for Tensor.grad
+
+        Returns:
+            TensorHookRemoveHelper: A helper object that can be used to remove the registered hook by calling `remove()` method.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                # hook function return None
+                def print_hook_fn(grad):
+                    print(grad)
+
+                # hook function return Tensor
+                def double_hook_fn(grad):
+                    grad = grad * 2
+                    return grad
+
+                x = paddle.to_tensor([0., 1., 2., 3.], stop_gradient=False)
+                y = paddle.to_tensor([4., 5., 6., 7.], stop_gradient=False)
+                z = paddle.to_tensor([1., 2., 3., 4.])
+
+                # one Tensor can register multiple hooks
+                h = x.register_hook(print_hook_fn)
+                x.register_hook(double_hook_fn)
+
+                w = x + y
+                # register hook by lambda function
+                w.register_hook(lambda grad: grad * 2)
+
+                o = z.matmul(w)
+                o.backward()
+                # print_hook_fn print content in backward
+                # Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #        [2., 4., 6., 8.])
+
+                print("w.grad:", w.grad) # w.grad: [1. 2. 3. 4.]
+                print("x.grad:", x.grad) # x.grad: [ 4.  8. 12. 16.]
+                print("y.grad:", y.grad) # y.grad: [2. 4. 6. 8.]
+
+                # remove hook
+                h.remove()
+        """
+        if self.stop_gradient is True:
+            raise RuntimeError(
+                "Cannot register hook on a tensor that stop gradient.")
+
+        hook_id = self._register_grad_hook(hook)
+        helper = TensorHookRemoveHelper(self, hook_id)
+        return helper
 
     @property
     def grad(self):
@@ -316,7 +439,8 @@ def monkey_patch_varbase():
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("clear_grad", clear_grad),
         ("inplace_version", inplace_version), ("grad", grad),
-        ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
+        ("gradient", gradient), ("register_hook", register_hook),
+        ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)

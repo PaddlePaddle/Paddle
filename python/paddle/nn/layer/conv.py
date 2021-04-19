@@ -25,6 +25,7 @@ __all__ = [
 
 import numpy as np
 
+from ...fluid import get_flags
 from ...fluid import core
 from ...device import get_cudnn_version
 from ...fluid.dygraph import layers
@@ -152,6 +153,13 @@ class _ConvNd(layers.Layer):
                                           in_channels != 1 and
                                           out_channels % in_channels == 0):
             self._op_type = 'depthwise_conv2d'
+            if core.is_compiled_with_rocm():
+                self._use_cudnn = True
+            else:
+                self._use_cudnn = False
+
+        if (core.is_compiled_with_cuda() and get_flags(
+                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
             self._use_cudnn = False
 
     def extra_repr(self):

@@ -16,13 +16,18 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
+#include "paddle/fluid/distributed/service/graph_brpc_server.h"
+#include "paddle/fluid/distributed/service/ps_local_server.h"
 #include "paddle/fluid/distributed/table/table.h"
 
 namespace paddle {
 namespace distributed {
 
 REGISTER_PSCORE_CLASS(PSServer, BrpcPsServer);
+REGISTER_PSCORE_CLASS(PSServer, PsLocalServer);
 REGISTER_PSCORE_CLASS(PsBaseService, BrpcPsService);
+REGISTER_PSCORE_CLASS(PSServer, GraphBrpcServer);
+REGISTER_PSCORE_CLASS(PsBaseService, GraphBrpcService);
 
 PSServer *PSServerFactory::create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();

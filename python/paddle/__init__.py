@@ -31,6 +31,19 @@ from .fluid.dygraph import monkey_patch_math_varbase
 monkey_patch_variable()
 monkey_patch_math_varbase()
 import paddle.framework
+from .framework.dtype import dtype as dtype
+from paddle.framework.dtype import uint8
+from paddle.framework.dtype import int8
+from paddle.framework.dtype import int16
+from paddle.framework.dtype import int32
+from paddle.framework.dtype import int64
+from paddle.framework.dtype import float16
+from paddle.framework.dtype import float32
+from paddle.framework.dtype import float64
+from paddle.framework.dtype import bfloat16
+from paddle.framework.dtype import bool
+from paddle.framework.dtype import complex64
+from paddle.framework.dtype import complex128
 from .framework import VarBase as Tensor
 import paddle.compat
 import paddle.distributed
@@ -44,6 +57,7 @@ import paddle.metric
 import paddle.device
 import paddle.regularizer
 import paddle.incubate
+import paddle.autograd
 
 # TODO: define alias in tensor and framework directory
 
@@ -237,6 +251,7 @@ from .framework import ParamAttr  #DEFINE_ALIAS
 from .framework import create_parameter  #DEFINE_ALIAS
 from .framework import CPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPlace  #DEFINE_ALIAS
+from .framework import NPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 
 from .framework import grad  #DEFINE_ALIAS
@@ -261,6 +276,7 @@ from .device import set_device
 from .device import get_device
 from .device import is_compiled_with_cuda  #DEFINE_ALIAS
 from .device import is_compiled_with_xpu
+from .device import is_compiled_with_npu
 from .device import XPUPlace
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS

@@ -39,7 +39,11 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#ifdef __HIPCC__
+constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
+#else
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
+#endif
 #define BLOCK_X 32
 #define BLOCK_Y 32
 #endif

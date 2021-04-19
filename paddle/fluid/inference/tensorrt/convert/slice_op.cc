@@ -31,6 +31,12 @@ class SliceOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
 
+    if (op_desc.HasAttr("out_threshold")) {
+      float out_scale =
+          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      engine_->SetTensorDynamicRange(input, out_scale);
+    }
+
     std::vector<int> axes =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     std::vector<int> starts =
@@ -90,14 +96,14 @@ class SliceOpConverter : public OpConverter {
         // bool ban_fp16 = engine_->disable_trt_plugin_fp16();
         plugin::SpecialSlicePluginDynamic* plugin =
             new plugin::SpecialSlicePluginDynamic();
-        layer = engine_->AddPluginV2(plugin_inputs.data(), plugin_inputs.size(),
-                                     plugin);
+        layer = engine_->AddDynamicPlugin(plugin_inputs.data(),
+                                          plugin_inputs.size(), plugin);
       } else {
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
         plugin::SlicePluginDynamic* plugin =
             new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
-        layer = engine_->AddPluginV2(&input, 1, plugin);
+        layer = engine_->AddDynamicPlugin(&input, 1, plugin);
       }
 #else
       PADDLE_THROW(platform::errors::Fatal(

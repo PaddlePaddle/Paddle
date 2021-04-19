@@ -76,6 +76,54 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
           model_input_shape_str, runtime_input_shape_str));
 }
 
+static void RuntimeDynamicShapeCheck(
+    const std::string &x, const std::vector<int64_t> &runtime_input_shape,
+    const std::vector<int> &min_input_shape,
+    const std::vector<int> &max_input_shape) {
+  PADDLE_ENFORCE_EQ(runtime_input_shape.size(), min_input_shape.size(),
+                    platform::errors::InvalidArgument(
+                        "TRT engine runtime input dims size(%d) inconsistent "
+                        "with the dynamic shape size(%d)",
+                        runtime_input_shape.size(), min_input_shape.size()));
+  auto is_input_shape_valid = [&](
+      const std::vector<int64_t> &runtime_input_shape,
+      const std::vector<int> &min_input_shape,
+      const std::vector<int> &max_input_shape) -> bool {
+    for (size_t i = 0; i < runtime_input_shape.size(); i++) {
+      if (runtime_input_shape[i] <= max_input_shape[i] &&
+          runtime_input_shape[i] >= min_input_shape[i]) {
+        continue;
+      } else {
+        return false;
+      }
+    }
+    return true;
+  };
+  auto comma_fold = [](std::string a, int b) {
+    return std::move(a) + ", " + std::to_string(b);
+  };
+  std::string runtime_input_shape_str = std::accumulate(
+      std::next(runtime_input_shape.begin()), runtime_input_shape.end(),
+      std::to_string(runtime_input_shape[0]), comma_fold);
+  std::string min_input_shape_str =
+      std::accumulate(std::next(min_input_shape.begin()), min_input_shape.end(),
+                      std::to_string(min_input_shape[0]), comma_fold);
+  std::string max_input_shape_str =
+      std::accumulate(std::next(max_input_shape.begin()), max_input_shape.end(),
+                      std::to_string(max_input_shape[0]), comma_fold);
+  PADDLE_ENFORCE_EQ(is_input_shape_valid(runtime_input_shape, min_input_shape,
+                                         max_input_shape),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "TRT runtime input shape of %s is invalid. Expect "
+                        "runtime input shape to be within min/max input shape "
+                        "configured in SetTRTDynamicShapeInfo(),"
+                        "but got runtime input shape = [%s], min input shape = "
+                        "[%s], max input shape = [%s].",
+                        x, runtime_input_shape_str, min_input_shape_str,
+                        max_input_shape_str));
+}
+
 class TensorRTEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> input_names_;
@@ -272,6 +320,22 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+        std::map<std::string, std::vector<int>> min_input_shape =
+            engine->min_input_shape();
+        std::map<std::string, std::vector<int>> max_input_shape =
+            engine->max_input_shape();
+        PADDLE_ENFORCE_EQ(
+            min_input_shape.count(x), true,
+            platform::errors::InvalidArgument(
+                "Input %s not found in TRT engine min_input_shape.", x));
+        PADDLE_ENFORCE_EQ(
+            max_input_shape.count(x), true,
+            platform::errors::InvalidArgument(
+                "Input %s not found in TRT engine max_input_shape.", x));
+        auto x_min_input_shape = min_input_shape[x];
+        auto x_max_input_shape = max_input_shape[x];
+        RuntimeDynamicShapeCheck(x, t_shape, x_min_input_shape,
+                                 x_max_input_shape);
         auto *trt_context = engine->context();
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));

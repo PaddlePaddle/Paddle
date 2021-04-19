@@ -205,7 +205,7 @@ class DeviceWorker {
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
   paddle::platform::Place place_;
-  int64_t batch_num_;
+  int64_t batch_num_ = 0;
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
@@ -562,7 +562,6 @@ class PSGPUWorker : public HogwildWorker {
   void ResetStat();
 
  protected:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   void PushGradients();
   void DumpParam();
   void CopySparseTable();
