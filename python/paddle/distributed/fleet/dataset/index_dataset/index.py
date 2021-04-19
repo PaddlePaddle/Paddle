@@ -1,3 +1,17 @@
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from paddle.fluid.core import IndexWrapper, TreeIndex
 from builder import TreeIndexBuilder, GraphIndexBuilder
 
@@ -31,7 +45,7 @@ class GraphIndex(Index):
     def get_path_of_item(self, id):
         if isinstance(id, list):
             assert len(id) > 0
-            assert isinstance(id[0], int)
+            # assert isinstance(id[0], int)
             return self._graph.get_path_of_item(id)
         elif isinstance(id, int):
             return self._graph.get_path_of_item([id])
@@ -51,7 +65,6 @@ class GraphIndex(Index):
                 "Illegal input type {}, required list or int".format(type(id)))
 
     def gen_kd_represent(self, width, height):
-
         def recursive_method(start_idx, cur_path):
             if start_idx == width:
                 self.kd_represent_list.append(list(cur_path))
@@ -92,14 +105,18 @@ class GraphIndex(Index):
 
 #   int update_Jpath_of_item(
 #     std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const int J, const double lambda, const int factor);
-    def update_Jpath_of_item(self, item_paths, T=3, J=self.item_path_nums, lamd=1e-7, factor=2):
+#  J=self.item_path_nums
+
+    def update_Jpath_of_item(self, item_paths, T=3, J=3, lamd=1e-7, factor=2):
 
         if isinstance(item_paths, dict):
             assert len(item_paths) > 0
             assert isinstance(item_paths[0], list)
-            return self._graph.update_Jpath_of_item(item_paths, T, J, lamd, factor)
+            return self._graph.update_Jpath_of_item(item_paths, T, J, lamd,
+                                                    factor)
         elif isinstance(item_paths, int):  # {int, ["",""]}
-            return self._graph.update_Jpath_of_item({item_paths, []}, T, J, lamd, factor)
+            return self._graph.update_Jpath_of_item({item_paths, []}, T, J,
+                                                    lamd, factor)
         else:
             raise ValueError(
                 "Illegal input type {}, required list or int".format(type(id)))
