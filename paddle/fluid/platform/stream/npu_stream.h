@@ -28,6 +28,8 @@ namespace stream {
 
 #ifdef PADDLE_WITH_ASCEND_CL
 
+static bool is_callback_exec_ = false;
+
 class NPUStream final {
  public:
   NPUStream() = default;
@@ -58,11 +60,11 @@ class NPUStream final {
   //   return is_callback_exec_;
   // }
 
-  void SetCallbackExecuteFlag(bool callback_flag) {
-    is_callback_exec_ = callback_flag;
-  }
+  // void SetCallbackExecuteFlag(bool callback_flag) {
+  //   is_callback_exec_ = callback_flag;
+  // }
 
-  uint64_t GetCallbackThreadId() const { return callback_thread_id_; }
+  // uint64_t GetCallbackThreadId() const { return callback_thread_id_; }
 
   template <typename Callback>
   void RecordEvent(aclrtEvent ev, Callback callback) const {
@@ -88,7 +90,7 @@ class NPUStream final {
   Place place_;
   aclrtStream stream_{nullptr};
   std::unique_ptr<StreamCallbackManager<aclrtStream>> callback_manager_;
-  bool is_callback_exec_;
+  // bool is_callback_exec_;
   uint64_t callback_thread_id_;
 
   DISABLE_COPY_AND_ASSIGN(NPUStream);

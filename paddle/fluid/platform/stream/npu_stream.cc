@@ -29,10 +29,12 @@ bool NPUStream::Init(const Place& place) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateStream(&stream_));
   callback_manager_.reset(new StreamCallbackManager<aclrtStream>(stream_));
   is_callback_exec_ = false;
-  std::thread td(ProcessCallback, &is_callback_exec_);
-  std::ostringstream oss;
-  oss << td.get_id();
-  callback_thread_id_ = std::stoull(oss.str());
+  // std::thread td(ProcessCallback, &is_callback_exec_);
+  // std::ostringstream oss;
+  // oss << td.get_id();
+  // callback_thread_id_ = std::stoull(oss.str());
+  (void)pthread_create(&callback_thread_id_, nullptr, *ProcessCallback,
+                       &is_callback_exec_);
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSubscribeReport(
       static_cast<uint64_t>(callback_thread_id_), stream_));
   VLOG(3) << "NPUStream Init stream: " << stream_;
@@ -42,10 +44,10 @@ bool NPUStream::Init(const Place& place) {
 void NPUStream::Destroy() {
   NPUDeviceGuard guard(BOOST_GET_CONST(NPUPlace, place_).device);
   Wait();
+  WaitCallback();
   is_callback_exec_ = true;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtUnSubscribeReport(
       static_cast<uint64_t>(callback_thread_id_), stream_));
-  WaitCallback();
   if (stream_) {
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyStream(stream_));
   }
