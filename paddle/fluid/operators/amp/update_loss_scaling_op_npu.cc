@@ -41,7 +41,7 @@ void Update(const platform::NPUDeviceContext& ctx,
     // bad_out_data = bad_in_data + 1
     Tensor factor_tensor(bad_out_tensor->type());
     factor_tensor.mutable_data<int>({1}, place);
-    TensorFromVector(std::vector<int>{1}, ctx, &factor_tensor);
+    FillNpuTensorWithConstant<int>(&factor_tensor, static_cast<int>(1));
     auto runner_p2 = NpuOpRunner("Add", {*bad_in_tensor, factor_tensor},
                                  {*bad_out_tensor}, {});
     runner_p2.Run(stream);
@@ -84,7 +84,7 @@ void Update(const platform::NPUDeviceContext& ctx,
     // good_out_data = good_in_data + 1
     Tensor factor_tensor(good_out_tensor->type());
     factor_tensor.mutable_data<int>({1}, place);
-    TensorFromVector(std::vector<int>{1}, ctx, &factor_tensor);
+    FillNpuTensorWithConstant<int>(&factor_tensor, static_cast<int>(1));
     auto runner_p2 = NpuOpRunner("Add", {*good_in_tensor, factor_tensor},
                                  {*good_out_tensor}, {});
     runner_p2.Run(stream);
