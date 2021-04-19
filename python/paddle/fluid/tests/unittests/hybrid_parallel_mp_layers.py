@@ -173,9 +173,9 @@ class TestDistTraning(unittest.TestCase):
         self.word_size = self.hcg.get_model_parallel_world_size()
         self.rank_id = self.hcg.get_model_parallel_rank()
 
-        input_size_per_card = 17
+        input_size_per_card = 11
         input_size = input_size_per_card * self.model_parallel_size
-        output_size_per_card = 13
+        output_size_per_card = 10
         output_size = output_size_per_card * self.model_parallel_size
         batch_size = 4
 

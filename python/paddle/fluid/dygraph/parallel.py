@@ -323,7 +323,7 @@ def scale_loss(loss):
 
 @imperative_base.no_grad
 @framework.dygraph_only
-def construct_groups(vars, group_size):
+def build_groups(vars, group_size):
     group_idx = 0
     memory_counter = 0
     var_groups = OrderedDict()
@@ -334,7 +334,7 @@ def construct_groups(vars, group_size):
         if memory_counter < group_size and dtype == var.dtype:
             memory_counter += bytes
         else:
-            memory_counter = 0
+            memory_counter = bytes
             dtype = var.dtype
             group_idx += 1
         var_groups.setdefault(group_idx, []).append(var)
@@ -361,7 +361,7 @@ def sync_params_buffers(model,
         return
 
     # group size is 128M
-    coalesced_vars = construct_groups(model_vars, 128 * 1024 * 1024)
+    coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
 
     for coalesced_var, _, _ in coalesced_vars:
         paddle.distributed.broadcast(

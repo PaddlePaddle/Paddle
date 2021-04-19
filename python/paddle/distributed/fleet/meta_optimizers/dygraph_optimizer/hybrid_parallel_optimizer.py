@@ -92,7 +92,7 @@ class HybridParallelOptimizer:
 
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and self._is_mp:
-            print("using ClipGradByGlobalNorm in ModelParallel, the origin" \
+            print("using ClipGradByGlobalNorm in ModelParallel, the origin " \
                   "optmizer'grad clip will be changed.", file=sys.stderr)
             self._inner_opt._grad_clip = HybridParallelClipGrad(
                 self._inner_opt._grad_clip, hcg)

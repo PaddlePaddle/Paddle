@@ -19,7 +19,7 @@ import warnings
 from paddle import framework
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph.parallel import _split_tensors, sync_params_buffers, construct_groups
+from paddle.fluid.dygraph.parallel import _split_tensors, sync_params_buffers, build_groups
 from collections import OrderedDict
 
 
@@ -37,7 +37,7 @@ def _apply_collective_grads(parameters, comm_group):
             assert g_var not in grad_var_set
             grad_var_set.add(g_var)
 
-    coalesced_grads_and_vars = construct_groups(grad_vars, 128 * 1024 * 1024)
+    coalesced_grads_and_vars = build_groups(grad_vars, 128 * 1024 * 1024)
 
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks

@@ -30,6 +30,12 @@ class TestHybridParallel(TestMultipleGpus):
     def test_hybrid_parallel_mp_model(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_model.py')
 
+    def test_hybrid_parallel_mp_amp(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_amp.py')
+
+    def test_hybrid_parallel_mp_clip_grad(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
+
 
 if __name__ == "__main__":
     unittest.main()

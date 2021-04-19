@@ -17,25 +17,11 @@ from __future__ import print_function
 
 import paddle
 import numpy as np
-import random
-import paddle.distributed as dist
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-import paddle.fluid.generator as generator
-from paddle.io import DataLoader, Dataset
-from hybrid_parallel_mp_amp import TestDistTraning
+from hybrid_parallel_mp_model import TestDistMPTraning
 import unittest
 
 
-class TestMPClipGrad(TestDistTraning):
-    def train_batch(self, batch, model, optimizer, is_mp):
-        output = model(batch)
-        loss = output.mean()
-        loss.backward()  # do backward
-        optimizer.minimize(loss)  # update parameters
-        optimizer.clear_grad()
-        return loss
-
+class TestMPClipGrad(TestDistMPTraning):
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(
