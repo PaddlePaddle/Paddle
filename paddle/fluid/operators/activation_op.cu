@@ -412,8 +412,8 @@ namespace plat = paddle::platform;
                                 ops::grad_functor<plat::float16>>);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CUDA_KERNEL);
 
-#define REGISTER_ACTIVATION_GPU_KERNEL(act_type, op_name, functor,             \
-                                       grad_functor)                           \
+#define REGISTER_ACTIVATION_HIGH_PERFORMANCE_KERNEL(act_type, op_name,         \
+                                                    functor, grad_functor)     \
   REGISTER_OP_CUDA_KERNEL(                                                     \
       act_type, ops::ActivationGPUKernel<paddle::platform::CUDADeviceContext,  \
                                          ops::functor<float>>,                 \
@@ -430,8 +430,9 @@ FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CUDA_KERNEL);
                                    ops::grad_functor<plat::float16>>);
 
 /* ======================== leaky relu register  ============================ */
-REGISTER_ACTIVATION_GPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluGPUFunctor,
-                               LeakyReluGradGPUFunctor);
+REGISTER_ACTIVATION_HIGH_PERFORMANCE_KERNEL(leaky_relu, LeakyRelu,
+                                            LeakyReluGPUFunctor,
+                                            LeakyReluGradGPUFunctor);
 
 REGISTER_OP_CUDA_KERNEL(
     leaky_relu_grad_grad,
@@ -454,9 +455,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ELUDoubleGradKernel<plat::CUDADeviceContext,
                              ops::ELUGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
-
 /* ===========================    relu register  ============================ */
-REGISTER_ACTIVATION_GPU_KERNEL(relu, Relu, ReluGPUFunctor, ReluGradGPUFunctor);
+REGISTER_ACTIVATION_HIGH_PERFORMANCE_KERNEL(relu, Relu, ReluGPUFunctor,
+                                            ReluGradGPUFunctor);
 
 REGISTER_OP_CUDA_KERNEL(
     relu_grad_grad,
