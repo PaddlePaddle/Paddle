@@ -213,6 +213,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
         GetExecutorInfoFromCache(program, start_op_index, end_op_index,
                                  ctx.GetPlace(), &scope, output_var_names,
                                  /*is_grad*/ false);
+    // TODO(Aurelius84): make it only call once
+    parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
 
     // Step 3. run ops
     VLOG(3) << "start to call pe.Run()...";
@@ -294,6 +296,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
         GetExecutorInfoFromCache(program, start_op_index, end_op_index,
                                  ctx.GetPlace(), &scope, output_grad_var_names,
                                  /*is_grad*/ true);
+
+    // TODO(Aurelius84): make it only call once
+    parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, output_grad_var_names);
 
     details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
                                 &scope);

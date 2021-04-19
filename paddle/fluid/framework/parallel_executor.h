@@ -99,6 +99,9 @@ class ParallelExecutor {
   // TODO(Aurelius84): It should not be a member function of PE
   void PrepareLocalExeScopes(Scope *scope);
 
+  void SkipMemoryReuse(size_t scope_idx,
+                       const std::vector<std::string> &skip_vars);
+
  private:
   // broadcast the parameters from the 0th device.
   // trainer_id the trainer index in nccl distributed training.
