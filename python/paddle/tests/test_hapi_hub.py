@@ -23,39 +23,52 @@ import copy
 import subprocess
 
 import paddle
-import paddle.fluid as fluid
+import paddle.hapi.hub as hub
 
 
 class TestHub(unittest.TestCase):
     def testLoad(self, ):
-        github_model = paddle.hub.load(
-            'lyuwenyu/PaddleClas:hub_L',
-            model='ResNet18',
+        model = hub.load(
+            'lyuwenyu/paddlehub_demo:main',
+            model='MM',
             source='github',
             force_reload=True)
-        local_model = paddle.hub.load(
-            '~/.cache/paddle/hub/lyuwenyu_PaddleClas_hub_L',
-            model='ResNet18',
+
+        model = hub.load(
+            'lyuwenyu/paddlehub_demo:main',
+            model='MM',
             source='github',
-            force_reload=False)
-        assert type(github_model) == type(local_model), 'hub.load'
+            force_reload=True,
+            pretrained=True)
+
+        model = hub.load(
+            'lyuwenyu/paddlehub_demo',
+            model='MM',
+            source='github',
+            force_reload=True,
+            pretrained=False)
 
     def testHelp(self, ):
-        github_docs = paddle.hub.help(
-            'lyuwenyu/PaddleClas:hub_L',
-            model='ResNet18',
+        docs = hub.help(
+            'lyuwenyu/paddlehub_demo:main',
+            model='MM',
             source='github',
             force_reload=True)
-        local_docs = paddle.hub.list(
-            '~/.cache/paddle/hub/lyuwenyu_PaddleClas_hub_L', source='local')
-        assert github_docs == local_docs, 'hub.help'
+
+        docs = hub.load(
+            'lyuwenyu/paddlehub_demo',
+            model='MM',
+            source='github',
+            force_reload=False)
 
     def testList(self, ):
-        github_entries = paddle.hub.list(
-            'lyuwenyu/PaddleClas:hub_L', source='github', force_reload=True)
-        local_entries = paddle.hub.list(
-            '~/.cache/paddle/hub/lyuwenyu_PaddleClas_hub_L', source='local')
-        assert github_entries == local_entries, 'hub.list'
+        models = hub.list(
+            'lyuwenyu/paddlehub_demo:main',
+            source='github',
+            force_reload=True, )
+
+        models = hub.list(
+            'lyuwenyu/paddlehub_demo', source='github', force_reload=False)
 
 
 if __name__ == '__main__':
