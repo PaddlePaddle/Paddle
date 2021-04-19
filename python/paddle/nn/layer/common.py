@@ -1397,8 +1397,6 @@ class Unfold(layers.Layer):
 
     
     Parameters:
-        x(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
-                                  data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
         strides(int|list):        The strides, should be [stride_h, stride_w]
