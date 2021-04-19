@@ -184,21 +184,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(1) << "TRT Conv2d expect 1 filter, but got "
                 << desc.Input("Filter").size() << " filter.";
         return false;
-      } else {
-        auto* block = desc.Block();
-        std::string filter_var_name = desc.Input("Filter").front();
-        auto* Y_v = block->FindVar(filter_var_name);
-        if (Y_v == nullptr) {
-          VLOG(1) << "Can not find " << filter_var_name
-                  << " presistale var in scope.";
-          return false;
-        }
-        const auto shape = Y_v->GetShape();
-        if (shape.size() != 4) {
-          VLOG(1) << "The conv2d filter's dims size should be 4,"
-                     "but got "
-                  << shape.size();
-        }
       }
 
       if (desc.HasAttr("enable_int8")) {
@@ -299,15 +284,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
-      auto* block = desc.Block();
-      auto* input_var = block->FindVar(desc.Input("X").front());
-      for (unsigned int i = 0; i < input_var->GetShape().size(); i++) {
-        if (input_var->GetShape()[i] <= 0) {
-          VLOG(1) << "flatten input dim should be > 0, but got "
-                  << input_var->GetShape()[i] << ".";
-          return false;
-        }
-      }
     }
 
     if (op_type == "gather") {
@@ -383,54 +359,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      : 1);
       if (x_num_col_dims != 1 && x_num_col_dims != 2) {
         return false;
-      }
-      auto* block = desc.Block();
-      auto input_names = desc.InputNames();
-      std::string i_name = "X";
-      std::string w_name = "Y";
-      if (input_names.size() >= 3) {
-        i_name = "Input";
-        w_name = "W";
-      }
-
-      auto* Y_v = block->FindVar(desc.Input(w_name).front());
-      if (Y_v == nullptr) {
-        VLOG(1) << "Can not find " << w_name
-                << " presistale var of fc in scope.";
-        return false;
-      }
-      if (Y_v->GetShape().size() != 2) {
-        VLOG(1) << "The fc's weight should be a matrix with 2 dims, but "
-                   "it's "
-                << Y_v->GetShape().size() << "-dimensional.";
-        return false;
-      }
-      if (!with_dynamic_shape) {
-        auto* X = block->FindVar(desc.Input(i_name).front());
-        if (x_num_col_dims > X->GetShape().size()) {
-          VLOG(1) << "Params and input dims mismatch. Paddle-TRT FC "
-                     "converter expects x_num_col_dims <= input dims";
-          return false;
-        }
-        if (x_num_col_dims == 1) {
-          if (X->GetShape().size() == 4) {
-            if (X->GetShape()[3] != 1) {
-              VLOG(1) << "Invalid Paddle-TRT FC dimensions. When "
-                         "x_num_col_dims equals to 1 and input "
-                         "dims equals to 4, the last dim of input must be 1, "
-                         "but got "
-                      << X->GetShape()[3];
-              return false;
-            }
-          }
-        } else {
-          if (X->GetShape().size() == 1) {
-            VLOG(1) << "Invalid Paddle-TRT FC dimensions. When x_num_col_dims "
-                       "equals to "
-                       "2, input_dims should not be 1";
-            return false;
-          }
-        }
       }
     }
 
@@ -509,7 +437,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "batch_norm") {
       const std::vector<std::string> bn_inputs = {"X", "Bias", "Mean", "Scale",
                                                   "Variance"};
-      auto* block = desc.Block();
       for (unsigned int i = 0; i < bn_inputs.size(); i++) {
         if (desc.Input(bn_inputs[i]).size() != 1) {
           VLOG(1) << "Invalid " << bn_inputs[i]
@@ -517,16 +444,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      "converter. Expected 1, received "
                   << desc.Input(bn_inputs[i]).size() << ".";
           return false;
-        }
-
-        // "Bias", "Mean", "Scale", "Variance"
-        if (i != 0) {
-          auto* var_desc = block->FindVar(desc.Input(bn_inputs[i]).front());
-          if (var_desc == nullptr) {
-            VLOG(1) << "Variable of " << bn_inputs[i]
-                    << " of batch_norm TRT converter is not found.";
-            return false;
-          }
         }
       }
 
@@ -626,16 +543,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "should be same ";
         return false;
       }
-      auto* block = desc.Block();
-      auto emb_names = desc.Input("Embs");
-      for (unsigned int i = 0; i < emb_names.size(); i++) {
-        auto* temp_var = block->FindVar(emb_names[i]);
-        const auto shape = temp_var->GetShape();
-        if (shape.size() != 2) {
-          VLOG(1) << "The fused EmbEltwiseLayerNorm's emb should be 2 dims.";
-          return false;
-        }
-      }
     }
 
     if (op_type == "gelu") {
@@ -647,35 +554,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (desc.Output("Out").size() != 1) {
         VLOG(1) << "gelu op has only 1 output, but got "
                 << desc.Output("Out").size();
-        return false;
-      }
-    }
-
-    if (op_type == "instance_norm") {
-      auto* block = desc.Block();
-      auto* scale_var = block->FindVar(desc.Input("Scale")[0]);
-      auto* bias_var = block->FindVar(desc.Input("Bias")[0]);
-      if (scale_var == nullptr) {
-        VLOG(1)
-            << "Input [Scale] of instance_norm op converter should not be null";
-        return false;
-      }
-      if (bias_var == nullptr) {
-        VLOG(1)
-            << "Input [Bias] of instance_norm op converter should not be null";
-        return false;
-      }
-      auto scale_numel = std::accumulate(scale_var->GetShape().begin(),
-                                         scale_var->GetShape().end(), 1,
-                                         std::multiplies<int64_t>());
-      auto bias_numel = std::accumulate(bias_var->GetShape().begin(),
-                                        bias_var->GetShape().end(), 1,
-                                        std::multiplies<int64_t>());
-      if (scale_numel != bias_numel) {
-        VLOG(1)
-            << "Num of input [Scale] and [Bias] of instance_norm op converter "
-               "should be equal. Got Scale num = "
-            << scale_numel << ", but Bias num = " << bias_numel;
         return false;
       }
     }
@@ -701,17 +579,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Y").size();
         return false;
       }
-      auto* block = desc.Block();
-      auto* Bias_v = block->FindVar(desc.Input("Bias").front());
-      auto* Scale_v = block->FindVar(desc.Input("Scale").front());
-      if (Bias_v == nullptr) {
-        VLOG(1) << "Input(Bias) of layer_norm should not be null.";
-        return false;
-      }
-      if (Scale_v == nullptr) {
-        VLOG(1) << "Input(Scale) of layer_norm should not be null.";
-        return false;
-      }
     }
 
     if (op_type == "leaky_relu") {
@@ -729,33 +596,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "pad") {
-      auto* block = desc.Block();
-      auto* input_var = block->FindVar(desc.Input("X")[0]);
-      if (input_var->GetShape().size() < 2) {
-        VLOG(1) << "Input X[0]'s dimension should greater than or equal to 2. "
-                   "But received %d.";
+      const float pad_value = BOOST_GET_CONST(float, desc.GetAttr("pad_value"));
+      if (pad_value != 0.0f) {
+        VLOG(1) << "The pad layer of TRT only support zero.";
         return false;
-      }
-      if (!desc.HasAttr("paddings") || !desc.HasAttr("pad_value")) {
-        return false;
-      } else {
-        const std::vector<int> paddings =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-        if ((input_var->GetShape().size() + 1) * 2 != paddings.size()) {
-          VLOG(1) << "Input X[0]'s dimension(nbDims for "
-                     "short) should meet the condition:"
-                     "(nbDims + 1) * 2 == pad_size. But "
-                     "received nbDims:"
-                  << input_var->GetShape().size()
-                  << ", pad_size:" << paddings.size() << ".";
-          return false;
-        }
-        const float pad_value =
-            BOOST_GET_CONST(float, desc.GetAttr("pad_value"));
-        if (pad_value != 0.0f) {
-          VLOG(1) << "The pad layer of TRT only support zero.";
-          return false;
-        }
       }
     }
 
@@ -772,12 +616,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size() << ".";
         return false;
       }
-      auto* block = desc.Block();
-      auto* alpha_var = block->FindVar(desc.Input("Alpha")[0]);
-      if (alpha_var == nullptr) {
-        VLOG(1) << "Variable Alpha of prelu TRT converter is not found.";
-        return false;
-      }
     }
 
     if (op_type == "roi_align") {
@@ -790,15 +628,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "shuffle_channel") {
-      auto* block = desc.Block();
-      auto* alpha_var = block->FindVar(desc.Input("X")[0]);
-      if (alpha_var->GetShape().size() != 3) {
-        VLOG(1) << "ShuffleChannel TRT op converter "
-                   "input dims is invalid. The input "
-                   "dims size should be 3, but got "
-                << alpha_var->GetShape().size() << ".";
-        return false;
-      }
       if (with_dynamic_shape) {
         VLOG(1) << "You are running the TRT Dynamic Shape mode, "
                    "the shuffle_channel op does not support dynamic shape yet";

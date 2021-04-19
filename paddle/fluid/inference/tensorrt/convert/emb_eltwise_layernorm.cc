@@ -68,6 +68,10 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       int64_t emb_size = framework::product(emb_dims);
       input_embs.push_back(emb_data);
       emb_sizes.push_back(emb_size);
+      PADDLE_ENFORCE_EQ(
+          emb_dims.size(), 2,
+          platform::errors::InvalidArgument(
+              "The fused EmbEltwiseLayerNorm's emb should be 2 dims."));
       hidden = emb_dims[1];
     }
 

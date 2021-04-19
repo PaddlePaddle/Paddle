@@ -46,6 +46,23 @@ class BatchNormOpConverter : public OpConverter {
     auto* Variance_v = scope.FindVar(op_desc.Input("Variance").front());
     const float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
 
+    PADDLE_ENFORCE_NOT_NULL(
+        Bias_v,
+        platform::errors::NotFound(
+            "Variable of Bias of batch_norm TRT converter is not found."));
+    PADDLE_ENFORCE_NOT_NULL(
+        Mean_v,
+        platform::errors::NotFound(
+            "Variable of Mean of batch_norm TRT converter is not found."));
+    PADDLE_ENFORCE_NOT_NULL(
+        Scale_v,
+        platform::errors::NotFound(
+            "Variable of Scale of batch_norm TRT converter is not found."));
+    PADDLE_ENFORCE_NOT_NULL(
+        Variance_v,
+        platform::errors::NotFound(
+            "Variable of Variance of batch_norm TRT converter is not found."));
+
     // get tensor
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Mean_t = Mean_v->GetMutable<framework::LoDTensor>();

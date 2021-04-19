@@ -36,6 +36,12 @@ class LayerNormOpConverter : public OpConverter {
     const float eps = op_desc.HasAttr("epsilon")
                           ? BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"))
                           : 1e-5f;
+    PADDLE_ENFORCE_NOT_NULL(
+        Bias_v, platform::errors::InvalidArgument(
+                    "Input(Bias) of layer_norm should not be null."));
+    PADDLE_ENFORCE_NOT_NULL(
+        Scale_v, platform::errors::InvalidArgument(
+                     "Input(Scale) of layer_norm should not be null."));
 
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();

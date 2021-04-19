@@ -36,6 +36,9 @@ class PReluOpConverter : public OpConverter {
     std::string mode = BOOST_GET_CONST(std::string, op_desc.GetAttr("mode"));
     //
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
+    PADDLE_ENFORCE_NOT_NULL(
+        alpha_var, platform::errors::NotFound(
+                       "Variable Alpha of prelu TRT converter is not found."));
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
     platform::CPUPlace cpu_place;

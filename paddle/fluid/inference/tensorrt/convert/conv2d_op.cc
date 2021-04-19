@@ -40,6 +40,9 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
   std::string filter_var_name = op_desc.Input("Filter").front();
   auto* Y_v = scope.FindVar(filter_var_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      Y_v, platform::errors::NotFound(
+               "Can not find %s presistale var in scope.", filter_var_name));
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
   float* weight_data = nullptr;
   bool enable_int8 = op_desc.HasAttr("enable_int8");
@@ -58,6 +61,11 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
     weight_data =
         engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t, false);
   }
+
+  PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL,
+                    platform::errors::InvalidArgument(
+                        "The conv2d filter's dims size should be 4, but got %d",
+                        Y_t->dims().size()));
 
   const int n_output = Y_t->dims()[0];
   const int n_input = Y_t->dims()[1];
