@@ -153,6 +153,13 @@ class _ConvNd(layers.Layer):
                                           in_channels != 1 and
                                           out_channels % in_channels == 0):
             self._op_type = 'depthwise_conv2d'
+            if core.is_compiled_with_rocm():
+                self._use_cudnn = True
+            else:
+                self._use_cudnn = False
+
+        if (core.is_compiled_with_cuda() and get_flags(
+                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
             self._use_cudnn = False
 
     def extra_repr(self):
@@ -644,10 +651,6 @@ class Conv2D(_ConvNd):
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format)
-
-        if (core.is_compiled_with_cuda() and get_flags(
-                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
-            self._use_cudnn = False
 
     def forward(self, x):
         if self._padding_mode != 'zeros':

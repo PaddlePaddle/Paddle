@@ -52,10 +52,6 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
                                                            list_sublayers):
                 self.assertEqual(sublayer, expected_sublayer)
 
-            for name, sublayer in model.named_sublayers(
-                    include_sublayers=False):
-                self.assertEqual(model[name], sublayer)
-
             self.assertListEqual(
                 [l for _, l in list(model.named_sublayers(include_self=True))],
                 [model] + expected_sublayers)
@@ -71,7 +67,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
 
             named_parameters = list(model.named_parameters())
             expected_named_parameters = list()
-            for prefix, layer in model.named_sublayers(include_sublayers=True):
+            for prefix, layer in model.named_sublayers():
                 for name, param in layer.named_parameters(
                         include_sublayers=False):
                     full_name = prefix + ('.' if prefix else '') + name

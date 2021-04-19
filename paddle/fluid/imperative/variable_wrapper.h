@@ -38,6 +38,9 @@ class VariableWrapper {
 
   explicit VariableWrapper(const std::string& name) : name_(name) {}
 
+  VariableWrapper(const std::string& name, const framework::Variable& variable)
+      : var_(variable), name_(name) {}
+
   ~VariableWrapper() { VLOG(10) << "Destruct VariableWrapper: " << Name(); }
 
   const framework::Variable& Var() const { return var_; }
@@ -220,35 +223,35 @@ class VariableWrapper {
   }
 
   /* Hook related methods */
-  bool HasHook() const { return !hooks_.empty(); }
+  bool HasVariableWrapperHook() const { return !var_hooks_.empty(); }
 
-  bool HasMutableHook() const { return !mutable_hooks_.empty(); }
-
-  int64_t AddHook(std::shared_ptr<VariableWrapperHook>&& hook) {
-    hooks_.emplace(next_hook_id_, std::move(hook));
+  int64_t AddVariableWrapperHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    var_hooks_.emplace(next_hook_id_, std::move(hook));
     return next_hook_id_++;
   }
 
-  bool RemoveHook(const int64_t& hook_id) {
-    auto remove_cnt = hooks_.erase(hook_id);
+  bool RemoveVariableWrapperHook(const int64_t& hook_id) {
+    auto remove_cnt = var_hooks_.erase(hook_id);
     if (remove_cnt == 0) {
       return false;
     }
     return true;
   }
 
-  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>& GetHooks()
+  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>&
+  GetVariableWrapperHooks() const {
+    return var_hooks_;
+  }
+
+  bool HasVoidHook() const { return !void_hooks_.empty(); }
+
+  void AddVoidHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>& GetVoidHooks()
       const {
-    return hooks_;
-  }
-
-  void AddMutableHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
-    mutable_hooks_.emplace_back(std::move(hook));
-  }
-
-  const std::vector<std::shared_ptr<InplaceVariableWrapperHook>>&
-  GetMutableHooks() const {
-    return mutable_hooks_;
+    return void_hooks_;
   }
 
  private:
@@ -319,14 +322,19 @@ class VariableWrapper {
   // isn't need
   bool is_empty_{false};
 
-  // NOTE(chenweihang): only grad var can hold hooks now
+  // NOTE(chenweihang): only grad var will hold hooks now
   int64_t next_hook_id_{0};
-  // Hooks used to register hook for grad var, support adding and removing,
+  // [ Hooks with VariableWrapper as input and output ]
+  // NOTE: Now registered for grad var, support adding and removing,
   // key is the accumulated int64_t value
-  std::map<int64_t, std::shared_ptr<VariableWrapperHook>> hooks_;
-  // Hooks executed after the execution of the entire backward process is over,
-  // currently only supported for reducing in distributed training
-  std::vector<std::shared_ptr<InplaceVariableWrapperHook>> mutable_hooks_;
+  // NOTE: Var hook need to support removing, so need hook id
+  std::map<int64_t, std::shared_ptr<VariableWrapperHook>> var_hooks_;
+  // [ Hooks without input and output ]
+  // NOTE: Now registered after the execution of the entire backward
+  // process is over, currently only used for reducing in distributed
+  // training
+  // NOTE: Now no need to support remove void hook
+  std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
 };
 
 }  // namespace imperative

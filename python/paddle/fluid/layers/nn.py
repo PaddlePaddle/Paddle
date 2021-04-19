@@ -491,7 +491,7 @@ def embedding(input,
     helper = LayerHelper('embedding', **locals())
     check_variable_and_dtype(input, 'input', ['int64'],
                              'fluid.layers.embedding')
-    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+    check_dtype(dtype, 'dtype', ['uint16', 'float16', 'float32', 'float64'],
                 'fluid.layers.embedding')
 
     if is_distributed:
@@ -1522,6 +1522,10 @@ def conv2d(input,
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
+        l_type = 'depthwise_conv2d'
+
+    if (num_channels == groups and num_filters % num_channels == 0 and
+            core.is_compiled_with_rocm()):
         l_type = 'depthwise_conv2d'
 
     helper = LayerHelper(l_type, **locals())
@@ -9514,8 +9518,8 @@ def pow(x, factor=1.0, name=None):
             y_2 = fluid.layers.pow(x, factor=factor_tensor)
             # y_2 is x^{3.0}
     """
-    check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'],
-                             'pow')
+    check_variable_and_dtype(
+        x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'pow')
 
     helper = LayerHelper('pow', **locals())
     inputs = {'X': x}
@@ -10328,7 +10332,8 @@ def expand(x, expand_times, name=None):
     inputs = {"X": [x]}
     attrs = {}
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'expand')
     check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
         raise ValueError(
