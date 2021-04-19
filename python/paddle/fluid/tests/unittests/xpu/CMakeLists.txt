@@ -21,5 +21,11 @@ foreach(TEST_OP ${DIST_TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
 
+# dist xpu tests: 
+if (WITH_XPU_BKCL)
+    py_test(test_collective_reduce_api_xpu SRCS "../test_collective_reduce_api.py")
+    py_test(test_collective_allreduce_api_xpu SRCS "../test_collective_allreduce_api.py")
+endif()
+
 set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op_xpu PROPERTIES TIMEOUT 120)
