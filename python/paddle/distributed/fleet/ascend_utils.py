@@ -67,15 +67,17 @@ def _get_ascend_rankfile(rank_table_file_path):
     with open(rank_table_file_path) as json_file:
         json_data = json.load(json_file)
 
-    node_ips = []
+    node_ips, device_ids = [], []
     device_count = 0
     server_list = json_data['server_list']
     for server in server_list:
         node_ips.append(server['server_id'])
         device_list = server['device']
         device_count = len(device_list)
+        for device in device_list:
+            device_ids.append(device["device_id"])
 
-    return node_ips, device_count
+    return node_ips, device_count, device_ids
 
 def get_cloud_cluster(rank_table_file=None,
                     device_mode=DeviceMode.ASCEND_NPU,
@@ -88,7 +90,7 @@ def get_cloud_cluster(rank_table_file=None,
     """
     if rank_table_file:
         # multi trainers
-        node_ips, device_count = _get_ascend_rankfile(rank_table_file)
+        node_ips, device_count, device_ids = _get_ascend_rankfile(rank_table_file)
         if len(node_ips) == 1:
             node_ip = node_ips[0]
         else:
@@ -107,7 +109,7 @@ def get_cloud_cluster(rank_table_file=None,
         node_ip = node_ips[0]
         device_count = 1
 
-    devices_per_proc = [str(x) for x in range(device_count)]
+    devices_per_proc = device_ids
     free_ports = [
         x for x in range(start_port, start_port + len(devices_per_proc))
     ]
