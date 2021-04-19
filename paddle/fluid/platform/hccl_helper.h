@@ -14,7 +14,8 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_HCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 
 #include <stdio.h>
 #include <memory>
@@ -23,7 +24,6 @@
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
-
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/dynload/hccl.h"
@@ -44,15 +44,11 @@ inline HcclDataType ToHCCLDataType(framework::proto::VarType::Type type) {
     return HCCL_DATA_TYPE_FP32;
   } else if (type == framework::proto::VarType::FP16) {
     return HCCL_DATA_TYPE_FP16;
-  }else if (type == framework::proto::VarType::INT32) {
+  } else if (type == framework::proto::VarType::INT32) {
     return HCCL_DATA_TYPE_INT32;
   } else if (type == framework::proto::VarType::INT8) {
     return HCCL_DATA_TYPE_INT8;
-  }
-  // else if (type == framework::proto::VarType::FP64) {
-  //   return HCCL_DATA_TYPE_FP32;
-  // }
-  else {
+  } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in hccl is not supported."));
   }
@@ -221,15 +217,15 @@ class HCCLCommunicator {
     return GetHierarchicalInterCtx(run_order);
   }
 
+  /*
+   When nccl inits nccl comm using ncclCommInitAll, it meets error when
+   allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
+   create a new nccl comm for sync_batch_norm_op. And these codes should be
+   polished with a unified nccl management.
+  */
 
-   /*
-    When nccl inits nccl comm using ncclCommInitAll, it meets error when
-    allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
-    create a new nccl comm for sync_batch_norm_op. And these codes should be
-    polished with a unified nccl management.
-   */
-
-  HCCLContextMap *GetSyncBatchNormCtx(framework::Scope* scope, const std::vector<platform::Place> &places) {
+  HCCLContextMap *GetSyncBatchNormCtx(
+      framework::Scope *scope, const std::vector<platform::Place> &places) {
     auto *hccl_id_var = scope->FindVar(HCCL_ID_VARNAME);
     if (hccl_id_var != nullptr) {
       return DefaultFlatCtx();

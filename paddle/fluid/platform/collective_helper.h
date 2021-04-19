@@ -20,10 +20,10 @@
 #include <vector>
 
 #include "boost/variant.hpp"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/dynload/hccl.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/dynload/hccl.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -172,12 +172,12 @@ class HCCLCommContext {
     return comm_ctx;
   }
 
-  HCCLComm* CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
-                          int rank, int dev_id, int ring_id);
+  HCCLComm* CreateHCCLComm(HcclRootInfo* hccl_id, int nranks, int rank,
+                           int dev_id, int ring_id);
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
-  HCCLComm* AssignHCCLComm(HcclComm comm, int nranks, int rank,
-                                          int dev_id, int ring_id);
+  HCCLComm* AssignHCCLComm(HcclComm comm, int nranks, int rank, int dev_id,
+                           int ring_id);
 
   // retrieve a communicator by the ring id in multiprocessing mode
   HCCLComm* Get(int ring_id) const {
@@ -211,7 +211,6 @@ class HCCLCommContext {
     return Get(ring_id, BOOST_GET_CONST(NPUPlace, place).device);
   }
 
-
  private:
   // Init global hcom
   HCCLCommContext() {}
@@ -220,8 +219,8 @@ class HCCLCommContext {
 
   HcclComm comm_;
 
-public:
-  ~HCCLCommContext(){ }
+ public:
+  ~HCCLCommContext() {}
 
   std::once_flag once_flag_;
   std::mutex comm_map_mutex_;

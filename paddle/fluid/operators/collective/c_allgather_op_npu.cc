@@ -27,14 +27,15 @@ namespace operators {
 template <typename T>
 class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext &ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     HcclDataType dtype = platform::ToHCCLDataType(in->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
-    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+    std::string group =
+        std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     auto place = ctx.GetPlace();
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
@@ -44,25 +45,24 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(out_dims, place);
 
     uint64_t send_numel = in->numel();
-    void *send_buff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
-    void *recv_buff = reinterpret_cast<void*>(out->data<T>());
+    void *send_buff = reinterpret_cast<void *>(const_cast<T *>(in->data<T>()));
+    void *recv_buff = reinterpret_cast<void *>(out->data<T>());
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
+      stream = static_cast<platform::NPUDeviceContext *>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
 
     VLOG(3) << "begin hccl allgather, parameter is: "
-      << ", group is " << group
-      << ", ring_id is " << ring_id
-      << ", nranks is " << nranks;
+            << ", group is " << group << ", ring_id is " << ring_id
+            << ", nranks is " << nranks;
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
-        send_buff, recv_buff, send_numel, dtype,
-        comm->comm(), (void*)stream));
+        send_buff, recv_buff, send_numel, dtype, comm->comm(),
+        reinterpret_cast<void *>(stream)));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -77,8 +77,7 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_allgather,
-                        ops::CAllGatherOpASCENDKernel<int8_t>,
-                        ops::CAllGatherOpASCENDKernel<int>,
-                        ops::CAllGatherOpASCENDKernel<float>,
-                        ops::CAllGatherOpASCENDKernel<plat::float16>);
+REGISTER_OP_NPU_KERNEL(c_allgather, ops::CAllGatherOpASCENDKernel<int8_t>,
+                       ops::CAllGatherOpASCENDKernel<int>,
+                       ops::CAllGatherOpASCENDKernel<float>,
+                       ops::CAllGatherOpASCENDKernel<plat::float16>);

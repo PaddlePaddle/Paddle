@@ -37,7 +37,6 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-
 #if defined(PADDLE_WITH_NCCL)
     PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
                       platform::errors::PreconditionNotMet(
@@ -60,10 +59,8 @@ class CSyncCommStreamOp : public framework::OperatorBase {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU or NPU."));
 #endif
-
   }
 };
-
 
 class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:

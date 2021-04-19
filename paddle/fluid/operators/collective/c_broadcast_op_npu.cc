@@ -28,7 +28,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto x = ctx.Input<framework::LoDTensor>("X");
-    void *ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
+    void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
     HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
@@ -36,7 +36,8 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+    auto comm =
+        paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -47,13 +48,15 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     }
 
     int root = ctx.Attr<int>("root");
-    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+    std::string group =
+        std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
 
-    VLOG(3) << "begin hccl broadcast, parameter is: "<< "root " << root
-      << ", group is " << group << ", comm: " << comm->comm() << ", stream: " << stream;
+    VLOG(3) << "begin hccl broadcast, parameter is: "
+            << "root " << root << ", group is " << group
+            << ", comm: " << comm->comm() << ", stream: " << stream;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(ptr, numel,
-                                  dtype, (uint32_t)root, comm->comm(), stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+        ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
     VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
             << framework::product(out->dims());
@@ -61,10 +64,9 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     dev_ctx->Wait();
 
     if (out != x) {
-      framework::TensorCopy(
-          *static_cast<const framework::Tensor*>(x), place,
-          *platform::DeviceContextPool::Instance().Get(place),
-          static_cast<framework::Tensor*>(out));
+      framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
+                            *platform::DeviceContextPool::Instance().Get(place),
+                            static_cast<framework::Tensor*>(out));
     }
     dev_ctx->Wait();
 
@@ -83,8 +85,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_broadcast,
-                        ops::CBroadcastOpASCENDKernel<int>,
-                        ops::CBroadcastOpASCENDKernel<int8_t>,
-                        ops::CBroadcastOpASCENDKernel<float>,
-                        ops::CBroadcastOpASCENDKernel<plat::float16>);
+REGISTER_OP_NPU_KERNEL(c_broadcast, ops::CBroadcastOpASCENDKernel<int>,
+                       ops::CBroadcastOpASCENDKernel<int8_t>,
+                       ops::CBroadcastOpASCENDKernel<float>,
+                       ops::CBroadcastOpASCENDKernel<plat::float16>);

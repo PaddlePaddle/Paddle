@@ -30,9 +30,10 @@ namespace operators {
 
 class CCommInitOpAscend : public framework::OperatorBase {
  public:
-  CCommInitOpAscend(const std::string& type, const framework::VariableNameMap& inputs,
-              const framework::VariableNameMap& outputs,
-              const framework::AttributeMap& attrs)
+  CCommInitOpAscend(const std::string& type,
+                    const framework::VariableNameMap& inputs,
+                    const framework::VariableNameMap& outputs,
+                    const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
@@ -72,7 +73,8 @@ CCommInit operator
 
 Initialize collective communicatoin context within this trainer
 )DOC");
-    AddAttr<int>("rank_ids", "(int) The number of ranks of distributed trainers");
+    AddAttr<int>("rank_ids",
+                 "(int) The number of ranks of distributed trainers");
     AddAttr<int>("rank",
                  "(int) The rank of the trainer in distributed training.");
     AddAttr<int>("device_id",
@@ -90,4 +92,5 @@ Initialize collective communicatoin context within this trainer
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_comm_init_hccl, ops::CCommInitOpAscend, ops::CCommInitOpAscendMaker);
+REGISTER_OPERATOR(c_comm_init_hccl, ops::CCommInitOpAscend,
+                  ops::CCommInitOpAscendMaker);

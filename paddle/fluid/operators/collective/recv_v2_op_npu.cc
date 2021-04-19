@@ -28,13 +28,14 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto x = ctx.Output<framework::LoDTensor>("Out");
-    void *ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
+    void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
     HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+    auto comm =
+        paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -47,18 +48,17 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     int peer = ctx.Attr<int>("peer");
 
-    PADDLE_ENFORCE_EQ(nranks, 2,
-                platform::errors::InvalidArgument(
-                    "The nranks must be 2, but (%d)",
-                      nranks));
+    PADDLE_ENFORCE_EQ(nranks, 2, platform::errors::InvalidArgument(
+                                     "The nranks must be 2, but (%d)", nranks));
 
     int root = peer;
 
-    VLOG(3) << "begin hccl recv, parameter is: "<< "root " << root
-      << ", comm: " << comm->comm() << ", stream: " << stream;
+    VLOG(3) << "begin hccl recv, parameter is: "
+            << "root " << root << ", comm: " << comm->comm()
+            << ", stream: " << stream;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(ptr, numel,
-                                  dtype, (uint32_t)root, comm->comm(), stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+        ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -73,8 +73,7 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(recv_v2,
-                        ops::CRecvOpASCENDKernel<int>,
-                        ops::CRecvOpASCENDKernel<int8_t>,
-                        ops::CRecvOpASCENDKernel<float>,
-                        ops::CRecvOpASCENDKernel<plat::float16>);
+REGISTER_OP_NPU_KERNEL(recv_v2, ops::CRecvOpASCENDKernel<int>,
+                       ops::CRecvOpASCENDKernel<int8_t>,
+                       ops::CRecvOpASCENDKernel<float>,
+                       ops::CRecvOpASCENDKernel<plat::float16>);

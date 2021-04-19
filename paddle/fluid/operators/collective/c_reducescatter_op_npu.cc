@@ -31,7 +31,8 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
 
     int ring_id = ctx.Attr<int>("ring_id");
-    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+    std::string group =
+        std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     auto place = ctx.GetPlace();
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
@@ -60,13 +61,12 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
     VLOG(3) << "begin hccl reduce scatter, parameter is: "
-      << "recv_numel: " << recv_numel
-      << "dtype: " << dtype
-      << "hccl_red_type: " << HCCL_REDUCE_SUM
-      << ", group is: " << group;
+            << "recv_numel: " << recv_numel << "dtype: " << dtype
+            << "hccl_red_type: " << HCCL_REDUCE_SUM << ", group is: " << group;
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclReduceScatter(
-        inputPtr, outputPtr, recv_numel, dtype, HCCL_REDUCE_SUM, comm->comm(), (void*)stream));
+        inputPtr, outputPtr, recv_numel, dtype, HCCL_REDUCE_SUM, comm->comm(),
+        reinterpret_cast<void*>(stream)));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));
@@ -81,7 +81,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(c_reducescatter,
-                        ops::CReduceScatterOpAscendKernel<int8_t>,
-                        ops::CReduceScatterOpAscendKernel<int>,
-                        ops::CReduceScatterOpAscendKernel<float>,
-                        ops::CReduceScatterOpAscendKernel<plat::float16>);
+                       ops::CReduceScatterOpAscendKernel<int8_t>,
+                       ops::CReduceScatterOpAscendKernel<int>,
+                       ops::CReduceScatterOpAscendKernel<float>,
+                       ops::CReduceScatterOpAscendKernel<plat::float16>);

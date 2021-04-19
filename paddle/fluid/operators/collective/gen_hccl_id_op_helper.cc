@@ -267,7 +267,8 @@ static void RecvHCCLID(int conn, HcclRootInfo* hccl_id) {
   static_assert(HCCL_UNIQUE_ID_BYTES <= 1024,
                 "hccl id bytes must <= buffer size");
 
-  CHECK_SYS_CALL(SocketRecv(conn, buffer, HCCL_UNIQUE_ID_BYTES), "recv hccl id");
+  CHECK_SYS_CALL(SocketRecv(conn, buffer, HCCL_UNIQUE_ID_BYTES),
+                 "recv hccl id");
   memcpy(hccl_id, buffer, HCCL_UNIQUE_ID_BYTES);
 }
 

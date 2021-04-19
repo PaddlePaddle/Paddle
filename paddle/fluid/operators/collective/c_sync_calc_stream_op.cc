@@ -28,7 +28,6 @@ class CSyncCalcStreamOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
                       platform::errors::PreconditionNotMet(

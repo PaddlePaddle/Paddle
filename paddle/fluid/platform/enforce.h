@@ -1236,7 +1236,6 @@ inline std::string build_npu_error_msg(HcclResult stat) {
   return sout.str();
 }
 
-
 #define PADDLE_ENFORCE_NPU_SUCCESS(COND)                       \
   do {                                                         \
     auto __cond__ = (COND);                                    \

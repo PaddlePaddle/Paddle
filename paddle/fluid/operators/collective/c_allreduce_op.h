@@ -22,8 +22,12 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -33,7 +37,6 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
@@ -127,8 +130,10 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     void* recvbuff = reinterpret_cast<void*>(out->data<T>());
 
     int ring_id = ctx.Attr<int>("ring_id");
-    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+    std::string group =
+        std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+    auto comm =
+        paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -162,13 +167,12 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     }
 
     VLOG(3) << "begin hccl allreduce, parameter is: "
-      << "input num: " << numel
-      << "dtype: " << dtype
-      << "hccl_red_type: " << hccl_red_type
-      << ", group is: " << group;
+            << "input num: " << numel << "dtype: " << dtype
+            << "hccl_red_type: " << hccl_red_type << ", group is: " << group;
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(), (void*)stream));
+        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
+        reinterpret_cast<void*>(stream)));
 
     out->Resize(in->dims());
 #else

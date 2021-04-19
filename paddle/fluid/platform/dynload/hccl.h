@@ -44,14 +44,14 @@ extern void* hccl_dso_handle;
   };                                                                     \
   extern DynLoad__##__name __name
 
-#define HCCL_RAND_ROUTINE_EACH(__macro)         \
-  __macro(HcclReduceScatter);                   \
-  __macro(HcclCommDestroy);                     \
-  __macro(HcclAllReduce);                       \
-  __macro(HcclCommInitRootInfo);                \
-  __macro(HcclGetRootInfo);                     \
-  __macro(HcclBroadcast);                       \
-  __macro(HcclCommInitClusterInfo);             \
+#define HCCL_RAND_ROUTINE_EACH(__macro) \
+  __macro(HcclReduceScatter);           \
+  __macro(HcclCommDestroy);             \
+  __macro(HcclAllReduce);               \
+  __macro(HcclCommInitRootInfo);        \
+  __macro(HcclGetRootInfo);             \
+  __macro(HcclBroadcast);               \
+  __macro(HcclCommInitClusterInfo);     \
   __macro(HcclAllGather);
 
 HCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HCCL_WRAP)

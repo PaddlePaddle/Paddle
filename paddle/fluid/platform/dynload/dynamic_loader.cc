@@ -38,7 +38,9 @@ DEFINE_string(nccl_dir, "",
 
 DEFINE_string(hccl_dir, "",
               "Specify path for loading hccl library, such as libhccl.so. "
-              "For instance, /usr/local/Ascend/ascend-toolkit/latest/fwkacllib/lib64/. If default, "
+              "For instance, "
+              "/usr/local/Ascend/ascend-toolkit/latest/fwkacllib/lib64/. If "
+              "default, "
               "dlopen will search hccl from LD_LIBRARY_PATH");
 
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
@@ -415,8 +417,6 @@ void* GetHCCLDsoHandle() {
                                     warning_msg);
 #endif
 }
-
-
 
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)

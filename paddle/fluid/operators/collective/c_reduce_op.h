@@ -24,18 +24,21 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
-#include <gloo/reduce.h>
+#include <gloo/allreduce.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
@@ -132,8 +135,10 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
 
     int ring_id = ctx.Attr<int>("ring_id");
     int root_id = ctx.Attr<int>("root_id");
-    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+    std::string group =
+        std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+    auto comm =
+        paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -169,22 +174,20 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
     }
 
     VLOG(3) << "begin hccl reduce, parameter is: "
-      << "input num: " << numel
-      << "root_id: " << root_id
-      << "dtype: " << dtype
-      << "hccl_red_type: " << hccl_red_type
-      << ", group is: " << group;
+            << "input num: " << numel << "root_id: " << root_id
+            << "dtype: " << dtype << "hccl_red_type: " << hccl_red_type
+            << ", group is: " << group;
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(), (void*)stream));
+        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
+        reinterpret_cast<void*>(stream)));
 
-
-    if(rank_id != root_id){
+    if (rank_id != root_id) {
       auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
       memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
-            npu_place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
-            numel * sizeof(T),
-            stream);
+                   npu_place,
+                   reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
+                   numel * sizeof(T), stream);
     }
 
     out->Resize(in->dims());

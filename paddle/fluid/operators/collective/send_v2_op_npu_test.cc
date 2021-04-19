@@ -16,21 +16,21 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
+#include <stdio.h>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
-#include <stdio.h>
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/string/printf.h"
 
-#include "paddle/fluid/operators/collective/send_v2_op.h"
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
+#include "paddle/fluid/operators/collective/send_v2_op.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -46,25 +46,23 @@ USE_NO_KERNEL_OP(c_gen_hccl_id);
 USE_NO_KERNEL_OP(c_comm_init_hccl);
 USE_OP_DEVICE_KERNEL(send_v2, NPU);
 
-
-void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id){
-
+void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
+                     HcclRootInfo* hccl_id) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
-  VLOG(2) << "rank_id = " << rank_id
-  << "; device_id = " << device_id
-  << "; rank_id = " << rank_id
-  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
+  VLOG(2) << "rank_id = " << rank_id << "; device_id = " << device_id
+          << "; rank_id = " << rank_id
+          << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
 
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap gen_hccl_id;
 
-
-  std::vector<std::string > endpointList={"127.0.0.1:6175", "127.0.0.1:6177"};
+  std::vector<std::string> endpointList = {"127.0.0.1:6175", "127.0.0.1:6177"};
   gen_hccl_id["rank"] = rank_id;
   gen_hccl_id["endpoint"] = endpointList[rank_id];
-  std::vector<std::string> other_endpoints= {endpointList[rank_id == 0 ? 1 : 0]};
+  std::vector<std::string> other_endpoints = {
+      endpointList[rank_id == 0 ? 1 : 0]};
   gen_hccl_id["other_endpoints"] = other_endpoints;
 
   auto out = scope->Var("Out");
@@ -72,8 +70,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo*
 
   VLOG(3) << "break";
 
-  auto comm_init_op =
-      f::OpRegistry::CreateOp("c_gen_hccl_id", {}, {{"Out", {"Out"}}}, gen_hccl_id);
+  auto comm_init_op = f::OpRegistry::CreateOp("c_gen_hccl_id", {},
+                                              {{"Out", {"Out"}}}, gen_hccl_id);
   VLOG(3) << "break";
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
@@ -82,8 +80,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo*
   memcpy(hccl_id, id, 1024);
 }
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id){
-
+void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
+             HcclRootInfo* hccl_id) {
   auto x = scope->Var("X");
   auto id = x->GetMutable<HcclRootInfo>();
 
@@ -92,10 +90,9 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
-  VLOG(2) << "rank_id = " << rank_id
-  << "; device_id = " << device_id
-  << "; rank_id = " << rank_id
-  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
+  VLOG(2) << "rank_id = " << rank_id << "; device_id = " << device_id
+          << "; rank_id = " << rank_id
+          << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
 
   // std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
@@ -104,53 +101,54 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id
   comm_init_attrs["rank"] = rank_id;
   comm_init_attrs["device_id"] = device_id;
   // comm_init_attrs["rank_ids"] = rank_ids;
-  auto comm_init_op =
-      f::OpRegistry::CreateOp("c_comm_init_hccl", {{"X", {"X"}}}, {}, comm_init_attrs);
+  auto comm_init_op = f::OpRegistry::CreateOp(
+      "c_comm_init_hccl", {{"X", {"X"}}}, {}, comm_init_attrs);
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
   ctx.Wait();
 }
 
-void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx){
-    std::cout<< "BEGIN TEST:"<< __FUNCTION__ <<std::endl;
-    auto x = scope->Var("Data");
-    auto tensor_x = x->GetMutable<f::LoDTensor>();
-    int num = atoi(getenv("DATA_SIZE"));;
-    EXPECT_GT(num, 0);
-    EXPECT_LT(num, 1 << 15);
-    std::vector<float> init(num*num, 1.0 * atoi(getenv("DEST_RANK")));
-    int rank_id = atoi(getenv("RANK_ID"));
-    VLOG(3)<<"rank id:"<<rank_id;
-    TensorFromVector(init, ctx, tensor_x);
-    tensor_x->Resize({num, num});
-    ctx.Wait();
-    auto place = ctx.GetPlace();
-    ctx.Wait();
+void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx) {
+  std::cout << "BEGIN TEST:" << __FUNCTION__ << std::endl;
+  auto x = scope->Var("Data");
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  int num = atoi(getenv("DATA_SIZE"));
 
-    f::AttributeMap attrs;
-    attrs["tag"]=std::string("srtest");
-    attrs["peer"]=atoi(getenv("DEST_RANK"));
-    attrs["ring_id"]=0;
-    attrs["srTag"]=0;
+  EXPECT_GT(num, 0);
+  EXPECT_LT(num, 1 << 15);
+  std::vector<float> init(num * num, 1.0 * atoi(getenv("DEST_RANK")));
+  int rank_id = atoi(getenv("RANK_ID"));
+  VLOG(3) << "rank id:" << rank_id;
+  TensorFromVector(init, ctx, tensor_x);
+  tensor_x->Resize({num, num});
+  ctx.Wait();
+  auto place = ctx.GetPlace();
+  ctx.Wait();
 
-    auto op = f::OpRegistry::CreateOp("send_v2", {{"X", {"Data"}}}, {}, attrs);
+  f::AttributeMap attrs;
+  attrs["tag"] = std::string("srtest");
+  attrs["peer"] = atoi(getenv("DEST_RANK"));
+  attrs["ring_id"] = 0;
+  attrs["srTag"] = 0;
 
-    for (int i = 0; i < 10; i ++) {
-      op->Run(*scope, place);
-    }
-    VLOG(3)<<"send run over";
-    ctx.Wait();
+  auto op = f::OpRegistry::CreateOp("send_v2", {{"X", {"Data"}}}, {}, attrs);
+
+  for (int i = 0; i < 10; i++) {
+    op->Run(*scope, place);
+  }
+  VLOG(3) << "send run over";
+  ctx.Wait();
 }
 
-TEST(send_v2, NPU){
-    f::Scope scope;
-    HcclRootInfo hccl_id;
+TEST(send_v2, NPU) {
+  f::Scope scope;
+  HcclRootInfo hccl_id;
 
-    char * npu_id=getenv("FLAGS_selected_npus");
-    VLOG(3) << "Select npu:" << npu_id;
-    p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
+  char* npu_id = getenv("FLAGS_selected_npus");
+  VLOG(3) << "Select npu:" << npu_id;
+  p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
 
-    PrepareUniqueId(&scope, ctx, &hccl_id);
-    Prepare(&scope, ctx, &hccl_id);
-    TestHcomSendOp(&scope, ctx);
+  PrepareUniqueId(&scope, ctx, &hccl_id);
+  Prepare(&scope, ctx, &hccl_id);
+  TestHcomSendOp(&scope, ctx);
 }

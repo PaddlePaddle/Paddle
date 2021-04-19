@@ -38,8 +38,7 @@ class CGenHCCLIdOp : public framework::OperatorBase {
                const framework::VariableNameMap& inputs,
                const framework::VariableNameMap& outputs,
                const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {
-  }
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
@@ -73,8 +72,7 @@ class CGenHCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
-  }
+               const platform::Place& dev_place) const override {}
 };
 
 #endif
