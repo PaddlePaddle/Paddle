@@ -204,6 +204,16 @@ call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
+rem ------Build windows avx release package------
+:CASE_build_release_whl
+set WITH_AVX=ON
+set ON_INFER=OFF
+set CUDA_ARCH_NAME=All
+
+call :cmake || goto cmake_error
+call :build || goto build_error
+goto:success
+
 rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
