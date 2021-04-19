@@ -187,6 +187,7 @@ endif()
 
 if ((NOT WITH_NCCL) AND (NOT WITH_RCCL))
     list(REMOVE_ITEM TEST_OPS test_imperative_group)
+    LIST(REMOVE_ITEM TEST_OPS test_new_group_api)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -879,7 +880,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
         test_collective_barrier_api
         test_collective_reduce_api
         test_collective_allreduce_api
-        test_new_group_size
+        test_new_group_api
         test_collective_broadcast_api
         test_collective_allgather_api
         PROPERTIES LABELS "RUN_TYPE=DIST")
