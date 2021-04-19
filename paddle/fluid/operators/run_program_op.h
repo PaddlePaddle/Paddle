@@ -209,10 +209,11 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
     auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+    auto cache_key = framework::ExecutorInfoCache::CacheKey(
+        program, ctx.GetPlace(), start_op_index, end_op_index,
+        /*is_grad*/ false);
     auto parallel_executor =
-        GetExecutorInfoFromCache(program, start_op_index, end_op_index,
-                                 ctx.GetPlace(), &scope, output_var_names,
-                                 /*is_grad*/ false);
+        GetExecutorInfoFromCache(cache_key, &scope, output_var_names);
     // TODO(Aurelius84): make it only call once
     parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
 
@@ -292,10 +293,11 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and scope
     auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+    auto cache_key = framework::ExecutorInfoCache::CacheKey(
+        program, ctx.GetPlace(), start_op_index, end_op_index,
+        /*is_grad*/ true);
     auto parallel_executor =
-        GetExecutorInfoFromCache(program, start_op_index, end_op_index,
-                                 ctx.GetPlace(), &scope, output_grad_var_names,
-                                 /*is_grad*/ true);
+        GetExecutorInfoFromCache(cache_key, &scope, output_grad_var_names);
 
     // TODO(Aurelius84): make it only call once
     parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, output_grad_var_names);

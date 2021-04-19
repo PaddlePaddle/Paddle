@@ -25,14 +25,30 @@ namespace framework {
 
 namespace details {
 
-static platform::DeviceType Place2DeviceType(const platform::Place &place) {
-  if (platform::is_cpu_place(place)) {
-    return platform::DeviceType::CPU;
-  } else if (platform::is_gpu_place(place)) {
-    return platform::DeviceType::CUDA;
-  } else {
-    return platform::DeviceType::XPU;
+static ExecutionStrategy GetExecutionStrategy(
+    const ExecutorInfoCache::CacheKey &cache_key) {
+  framework::ExecutionStrategy execution_strategy;
+
+  switch (cache_key.device_type_) {
+    case platform::DeviceType::CPU: {
+      execution_strategy.num_threads_ = 2;
+      break;
+    }
+    case platform::DeviceType::CUDA: {
+      execution_strategy.num_threads_ = 4;
+      break;
+    }
+    case platform::DeviceType::XPU: {
+      execution_strategy.num_threads_ = 1;
+      break;
+    }
+    default:
+      PADDLE_THROW(platform::errors::Unavailable("Unsupport Device type %d.",
+                                                 cache_key.device_type_));
   }
+  execution_strategy.use_device_ = cache_key.device_type_;
+
+  return execution_strategy;
 }
 
 void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
@@ -62,42 +78,31 @@ std::vector<std::string> ParseSafeEagerDeletionSkipVars(
   std::unordered_set<std::string> visited_vars;
 
   auto all_ops = program.Block(0).AllOps();
-  // Between forward and backward op, there are many fill_constant_ops
   size_t backward_op_start_index =
       forward_op_nums + (output_var_names.size() * 2);
 
   // step 2: parse the necegssary variable of backward op
-  // std::unordered_set<std::string> op_outputs;
-  // std::unordered_set<std::string> op_inputs;
+  std::unordered_set<std::string> op_outputs;
+  std::unordered_set<std::string> op_inputs;
   for (auto i = backward_op_start_index; i < all_ops.size(); ++i) {
     framework::OpDesc *op = all_ops[i];
     for (const std::string &in_arg_name : op->InputArgumentNames()) {
-      if (!visited_vars.count(in_arg_name)) {
-        skip_eager_vars.emplace_back(in_arg_name);
-        VLOG(3) << "skip var: " << in_arg_name;
-        visited_vars.insert(in_arg_name);
-      }
+      op_inputs.emplace(in_arg_name);
     }
-
-    // for (const std::string &in_arg_name : op->InputArgumentNames()) {
-    //   op_inputs.emplace(in_arg_name);
-    // }
-    // for (const std::string &out_arg_name : op->OutputArgumentNames()) {
-    //   op_outputs.emplace(out_arg_name);
-    // }
+    for (const std::string &out_arg_name : op->OutputArgumentNames()) {
+      op_outputs.emplace(out_arg_name);
+    }
   }
 
   // For the grad op input variables, if it is not output of grad_op, it may
   // be output of forward op and we should set the variables as skip_var to
   // prevent it being deleted when grad op is called multiple times.
-  // for (const std::string &var_name : op_inputs) {
-  //   if (op_outputs.find(var_name) == op_outputs.end()) {
-  //     skip_eager_vars.emplace_back(var_name);
-  //   }
-  // }
-
+  for (const std::string &var_name : op_inputs) {
+    if (op_outputs.find(var_name) == op_outputs.end()) {
+      skip_eager_vars.emplace_back(var_name);
+    }
+  }
   VLOG(3) << "Found skip_eager_vars: " << skip_eager_vars.size();
-
   return skip_eager_vars;
 }
 
@@ -112,36 +117,22 @@ ExecutorInfoCache &ExecutorInfoCache::Instance() {
 }
 
 std::shared_ptr<framework::ParallelExecutor> GetExecutorInfoFromCache(
-    const ProgramDesc *program, int64_t start_op_index, int64_t end_op_index,
-    const platform::Place &place, framework::Scope *scope,
-    const std::vector<std::string> &output_var_names, bool is_grad) {
+    const ExecutorInfoCache::CacheKey &cache_key, framework::Scope *scope,
+    const std::vector<std::string> &output_var_names) {
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
-  auto device_type = details::Place2DeviceType(place);
-  auto cache_key = framework::ExecutorInfoCache::KeyInfo(
-      program, static_cast<int>(device_type), start_op_index, end_op_index,
-      is_grad);
 
   if (!cached_exe_info.Has(cache_key)) {
-    VLOG(1) << "create exe_info for program: " << program
-            << " is_grad: " << is_grad;
+    VLOG(1) << "create exe_info for " << cache_key.DebugString();
 
     framework::BuildStrategy build_strategy;
-    framework::ExecutionStrategy execution_strategy;
-    if (platform::is_cpu_place(place)) {
-      execution_strategy.use_device_ = platform::DeviceType::CPU;
-      execution_strategy.num_threads_ = 2;
-    } else if (platform::is_gpu_place(place)) {
-      execution_strategy.use_device_ = platform::DeviceType::CUDA;
-      execution_strategy.num_threads_ = 4;
-    } else {
-      execution_strategy.use_device_ = platform::DeviceType::XPU;
-      execution_strategy.num_threads_ = 1;
-    }
+    auto execution_strategy = details::GetExecutionStrategy(cache_key);
 
     auto graph = std::make_shared<framework::ir::Graph>(
-        *program, start_op_index, end_op_index);
+        *cache_key.program_desc_, cache_key.start_op_index_,
+        cache_key.end_op_index_);
     auto parallel_executor = std::make_shared<framework::ParallelExecutor>(
-        place, scope, execution_strategy, build_strategy, graph.get());
+        cache_key.place_, scope, execution_strategy, build_strategy,
+        graph.get());
     parallel_executor->PrepareLocalExeScopes(scope);
 
     framework::ExecutorInfoCache::ValueType cache_val = {parallel_executor,
@@ -150,8 +141,7 @@ std::shared_ptr<framework::ParallelExecutor> GetExecutorInfoFromCache(
 
     return parallel_executor;
   } else {
-    VLOG(1) << "get exe_info from cache by program: " << program
-            << " is_grad: " << is_grad;
+    VLOG(1) << "get exe_info from cache by: " << cache_key.DebugString();
     auto cache_val = cached_exe_info.GetMutable(cache_key);
     auto parallel_executor = cache_val.first;
     // update op_handle scope_map in pe->executor_->Graph

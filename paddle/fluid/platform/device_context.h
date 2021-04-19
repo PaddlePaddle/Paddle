@@ -99,6 +99,8 @@ enum DeviceType {
   NPU = 3,
 };
 
+DeviceType Place2DeviceType(const platform::Place& place);
+
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
