@@ -772,34 +772,34 @@ class DistributedStrategy(object):
         Set sharding configurations. 
 
         **Note**:
-            sharding_segment_strategy(string): strategy used to segment the program(forward & backward operations). two strategise are 
+            sharding_segment_strategy(string, optional): strategy used to segment the program(forward & backward operations). two strategise are 
             available: "segment_broadcast_MB" and "segment_anchors". segment is a concept used in sharding to overlap computation and 
             communication. Default is segment_broadcast_MB.
 
-            segment_broadcast_MB(float): segment by the parameters broadcast volume. sharding will introduce parameter broadcast operations into program, and 
+            segment_broadcast_MB(float, optional): segment by the parameters broadcast volume. sharding will introduce parameter broadcast operations into program, and 
             after every segment_broadcast_MB size parameter being broadcasted, the program will be cutted into one segment.
             This configuration will affect the communication speed in sharding training, and should be an empirical value decided by your model size and network topology.
-            Only enable sharding_segment_strategy = segment_broadcast_MB. when Default is 32.0 .
+            Only enable when sharding_segment_strategy = segment_broadcast_MB. Default is 32.0 .
 
             segment_anchors(list): list of anchors used to segment the program, which allows a finner control of program segmentation. 
-            this strategy is experimental by now. Only enable sharding_segment_strategy = segment_anchors.
+            this strategy is experimental by now. Only enable when sharding_segment_strategy = segment_anchors.
 
-            sharding_degree(int): specific the number of gpus within each sharding parallelism group; and sharding will be turn off if sharding_degree=1.  Default is 8.
+            sharding_degree(int, optional): specific the number of gpus within each sharding parallelism group; and sharding will be turn off if sharding_degree=1.  Default is 8.
 
-            gradient_merge_acc_step(int): specific the accumulation steps in gradient merge; and gradient merge will be turn off if gradient_merge_acc_step=1.  Default is 1.
+            gradient_merge_acc_step(int, optional): specific the accumulation steps in gradient merge; and gradient merge will be turn off if gradient_merge_acc_step=1.  Default is 1.
 
-            optimize_offload(bool): enable the optimizer offload which will offload the moment vars to Host memory in order to saving GPU memory for fitting larger model. 
+            optimize_offload(bool, optional): enable the optimizer offload which will offload the moment vars to Host memory in order to saving GPU memory for fitting larger model. 
             the moment var will be prefetch from and offloaded to Host memory during update stage. it is a stragtegy that trades off between training speed and GPU memory, and is recommened to be turn on only when gradient_merge_acc_step large, where
             the number of time of update stage will be relatively small compared with forward&backward's.  Default is False.
 
-            dp_degree(int): specific the number of data parallelism group; when dp_degree >= 2, it will introduce dp_degree ways data parallelism as the outer parallelsim for the inner parallelsim. User should ensure global_world_size = mp_degree * sharding_degree * pp_degree * dp_degree. Default is 1.
+            dp_degree(int, optional): specific the number of data parallelism group; when dp_degree >= 2, it will introduce dp_degree ways data parallelism as the outer parallelsim for the inner parallelsim. User is responsible to ensure global_world_size = mp_degree * sharding_degree * pp_degree * dp_degree. Default is 1.
 
-            mp_degree(int): [Hybrid parallelism ONLY] specific the the number of gpus within each megatron parallelism group; and megatron parallelism will turn be off if mp_degree=1.  Default is 1.
+            mp_degree(int, optional): [Hybrid parallelism ONLY] specific the the number of gpus within each megatron parallelism group; and megatron parallelism will turn be off if mp_degree=1.  Default is 1.
 
-            pp_degree(int): [Hybrid parallelism ONLY] specific the the number of gpus within each pipeline parallelism group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
+            pp_degree(int, optional): [Hybrid parallelism ONLY] specific the the number of gpus within each pipeline parallelism group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
 
-            pp_allreduce_in_optimize(bool): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
-            This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now.
+            pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
+            This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now..  Default is False.
 
 
         Examples:
