@@ -160,11 +160,11 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
 
  protected:
   mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
-
     auto tensor_dims_size = tensor->dims().size();
     PADDLE_ENFORCE_EQ(
         tensor_dims_size <= 5 && tensor_dims_size >= 1, true,
-        platform::errors::InvalidArgument("Dims for reduction_grad oneDNN op must be in range <1, 5>"));
+        platform::errors::InvalidArgument(
+            "Dims for reduction_grad oneDNN op must be in range <1, 5>"));
 
     switch (tensor_dims_size) {
       case 1:
