@@ -38,7 +38,7 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_MKLDNN
   // For naive executor we assume inference scenario so
-  // training happens then no communication among threads
+  // then no communication among threads
   // happens so we can keep oneDNN cache per thread
   platform::AttachPointerHashToMKLDNNKey(this, place_, true);
 #endif
@@ -127,13 +127,7 @@ void NaiveExecutor::CleanFeedFetchOps() {
   ops_.swap(ops);
 }
 
-NaiveExecutor::~NaiveExecutor() {
-#ifdef PADDLE_WITH_MKLDNN
-  // Clear mkl-dnn cache,
-  // this is needed to have mkl-dnn unit tests working
-  ClearMKLDNNCache(place_);
-#endif
-}
+NaiveExecutor::~NaiveExecutor() {}
 
 }  // namespace framework
 }  // namespace paddle
