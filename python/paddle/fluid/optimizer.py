@@ -1700,7 +1700,7 @@ class LarsMomentumOptimizer(Optimizer):
         else:
             self._exclude_from_weight_decay = exclude_from_weight_decay
         self._multi_precision = multi_precision
-        self._rescale_grad = rescale_grad
+        self._rescale_grad = float(rescale_grad)
         self._master_weights = {}
 
     def _create_master_weight(self, param):

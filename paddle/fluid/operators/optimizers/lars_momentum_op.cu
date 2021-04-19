@@ -23,15 +23,13 @@ template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
 template <typename T, typename MT>
-__global__ void MomentumLarsKernel(const T* p, const T* g, const MT* v,
-                                   const MultiPrecisionType<T>* learning_rate,
-                                   const MT mu, const int64_t num,
-                                   const MT lars_coeff,
-                                   const MT lars_weight_decay,
-                                   const MultiPrecisionType<T>* p_norm,
-                                   const MultiPrecisionType<T>* g_norm,
-                                   T* p_out, MT* v_out, const MT epsilon,
-                                   const MT* master_p, MT* master_p_out) {
+__global__ void MomentumLarsKernel(
+    const T* p, const T* g, const MT* v,
+    const MultiPrecisionType<T>* learning_rate, const MT mu, const int64_t num,
+    const MT lars_coeff, const MT lars_weight_decay,
+    const MultiPrecisionType<T>* p_norm, const MultiPrecisionType<T>* g_norm,
+    T* p_out, MT* v_out, const MT epsilon, const MT* master_p, MT* master_p_out,
+    const MultiPrecisionType<T> rescale_grad) {
   const MT lr = static_cast<MT>(learning_rate[0]);
   MT local_lr = lr;
   const MT p_n = static_cast<MT>(p_norm[0]);
@@ -44,8 +42,7 @@ __global__ void MomentumLarsKernel(const T* p, const T* g, const MT* v,
   }
 
   CUDA_KERNEL_LOOP(i, num) {
-    // TODO(wangxi): rescale_grad_
-    MT grad = static_cast<MT>(g[i]);
+    MT grad = static_cast<MT>(g[i]) * static_cast<MT>(rescale_grad);
     MT param = master_p ? master_p[i] : static_cast<MT>(p[i]);
 
     MT v_new = v[i] * mu + local_lr * (grad + lars_weight_decay * param);
@@ -109,6 +106,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT lars_weight_decay =
         static_cast<MT>(ctx.Attr<float>("lars_weight_decay"));
     MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
+    MPDType rescale_grad =
+        static_cast<MPDType>(ctx.Attr<float>("rescale_grad"));
 
     auto* p = param->data<T>();
     auto* g = grad->data<T>();
@@ -135,13 +134,13 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     ep_norm.device(*place) =
         eigen_p.template cast<MPDType>().square().sum().sqrt();
     eg_norm.device(*place) =
-        eigen_g.template cast<MPDType>().square().sum().sqrt();
+        (eigen_g.template cast<MPDType>() * rescale_grad).square().sum().sqrt();
 
     MomentumLarsKernel<
         T, MT><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
         p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay,
-        p_norm_data, g_norm_data, p_out, v_out, epsilon, master_p,
-        master_p_out);
+        p_norm_data, g_norm_data, p_out, v_out, epsilon, master_p, master_p_out,
+        rescale_grad);
   }
 };
 
