@@ -58,10 +58,10 @@ set(PYBIND_SRCS
   compatible.cc
   generator_py.cc)
 
-if(WITH_ASCEND)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
   set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
-endif(WITH_ASCEND)
+endif()
 
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
@@ -86,7 +86,8 @@ endif()
 
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
-  set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
+
+  set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag ascend_wrapper)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
@@ -100,6 +101,7 @@ if(WITH_PYTHON)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
+
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(op_function_generator ${os_dependency_modules})
   if(WITH_ROCM)
@@ -153,9 +155,9 @@ if(WITH_PYTHON)
           )
     endif()
   else(WIN32)
-    # If there are no *.so in /usr/lib or LD_LIBRARY_PATH, 
+    # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
-    # LD_LIBRARY_PATH. This is different with Windows platformm, which search 
+    # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     add_custom_command(TARGET op_function_generator
           POST_BUILD

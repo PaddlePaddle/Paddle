@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 cmake_policy(VERSION 3.10)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -34,7 +34,7 @@ option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
 option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
-# NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON 
+# NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
@@ -65,7 +65,7 @@ if(WITH_MUSL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
 endif()
 
-if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
+if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
@@ -103,7 +103,7 @@ if(WIN32)
             endif()
         endforeach(flag_var)
     endif()
-    
+
     # NOTE(Avin0323): Less parallel count result in faster compilation.
     math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
     # windows build turn off warnings, use parallel compiling.
