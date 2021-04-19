@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#ifdef PADDLE_WITH_ASCEND_CL
+
 #include <hccl/hccl.h>
 #include <hccl/hccl_types.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/port.h"
-// #include "paddle/fluid/platform/dynload/hcom.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 #define HCOM_GROUP_PREFIX "HCOM_GROUP_"
 
@@ -71,3 +72,4 @@ HCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_HCCL_WRAP)
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
+#endif
