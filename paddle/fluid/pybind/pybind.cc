@@ -524,28 +524,28 @@ PYBIND11_MODULE(core_noavx, m) {
     fin.close();
     return tellg;
   });
-  m.def("_save_selected_rows",
-        [](const SelectedRows &tensor, const std::string &str_file_name) {
-          std::ofstream fout(str_file_name, std::ios::binary);
-          PADDLE_ENFORCE_EQ(
-              static_cast<bool>(fout), true,
-              platform::errors::Unavailable(
-                  "Cannot open %s to save SelectedRows.", str_file_name));
+  m.def("_save_selected_rows", [](const SelectedRows &selected_rows,
+                                  const std::string &str_file_name) {
+    std::ofstream fout(str_file_name, std::ios::binary);
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fout), true,
+        platform::errors::Unavailable("Cannot open %s to save SelectedRows.",
+                                      str_file_name));
 
-          SerializeToStream(fout, tensor);
-          int64_t tellp = fout.tellp();
-          fout.close();
-          return tellp;
-        });
+    SerializeToStream(fout, selected_rows);
+    int64_t tellp = fout.tellp();
+    fout.close();
+    return tellp;
+  });
   m.def("_load_selected_rows",
-        [](SelectedRows &tensor, const std::string &str_file_name) {
+        [](SelectedRows &selected_rows, const std::string &str_file_name) {
           std::ifstream fin(str_file_name, std::ios::binary);
           PADDLE_ENFORCE_EQ(
               static_cast<bool>(fin), true,
               platform::errors::Unavailable(
                   "Cannot open %s to load SelectedRows.", str_file_name));
 
-          DeserializeFromStream(fin, &tensor);
+          DeserializeFromStream(fin, &selected_rows);
           int64_t tellg = fin.tellg();
           fin.close();
           return tellg;
