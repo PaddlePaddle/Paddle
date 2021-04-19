@@ -169,7 +169,7 @@ class ParallelExecutorPrivate {
             platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
             platform::errors::PreconditionNotMet(
                 "PaddlePaddle failed to get NCCL unique ID. It may due to your "
-                "system setting or NCCL library error, please debug on NCCL"));
+                "system settings or NCCL library error, please debug on NCCL"));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
@@ -632,7 +632,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                  member_->places_.size());
   // Step1. Initialize necessary info of member_ with strategy.
   InitExecutorPrivateMemberInfo(exec_strategy, build_strategy, places.size(),
-                                graph);
+                                *graph);
 
   // Step 2. Create local scopes
   CreateLocalScopes(scope, local_scopes, /*create_new*/ true);
@@ -655,7 +655,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
     return false;
   };
-  // Bcast Parameters to all GPUs
+  // Broadcast Parameters to all GPUs
   if (need_broadcast()) {
     BCastParamsToDevices(bcast_vars, member_->build_strategy_.trainer_id_);
   }
@@ -690,7 +690,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   // Step 11. Set scope_map of op from each graph
-  ReSetOpScopeMaOfGraphs(final_graphs, scope_map);
+  ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
 
   // Step 12. Set ReaderOpDeviceInfo for each graph
   SetReaderOpDeviceInfoOfGraphs(final_graphs);
@@ -1072,7 +1072,7 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 
 void ParallelExecutor::InitExecutorPrivateMemberInfo(
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    size_t device_count, ir::Graph *graph) {
+    size_t device_count, const ir::Graph &graph) {
   member_->use_device_ = exec_strategy.use_device_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
@@ -1124,7 +1124,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
   member_->build_strategy_.enable_parallel_graph_ =
-      EnableParallelGraphExecution(*graph, exec_strategy,
+      EnableParallelGraphExecution(graph, exec_strategy,
                                    member_->build_strategy_);
   if (member_->build_strategy_.enable_parallel_graph_) {
     LOG(INFO) << "The Executor would execute the graph by ParallelGraph "
@@ -1430,7 +1430,7 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
   return final_graphs;
 }
 
-void ParallelExecutor::ReSetOpScopeMaOfGraphs(
+void ParallelExecutor::ResetOpHandleScopeMapOfGraphs(
     const std::vector<ir::Graph *> &final_graphs,
     const std::unordered_map<Scope *, Scope *> &scope_map) {
   PADDLE_ENFORCE_GE(
