@@ -297,6 +297,8 @@ def _contain_x(obj, condition_func):
         flag = False
         for key in keys:
             flag |= _contain_x(obj[key], condition_func)
+            if flag:
+                return True
         return flag
     else:
         return False
@@ -388,7 +390,7 @@ def _parsed_as_state_dict(obj):
     return False
 
 
-def _parse_every_tensor(obj, condition_func, convert_func):
+def _parse_every_object(obj, condition_func, convert_func):
     if condition_func(obj):
         return convert_func(obj)
     elif type(obj) in (dict, collections.OrderedDict, list):
@@ -400,12 +402,14 @@ def _parse_every_tensor(obj, condition_func, convert_func):
             if condition_func(obj[key]):
                 obj[key] = convert_func(obj[key])
             else:
-                obj[key] = _parse_every_tensor(obj[key], condition_func,
+                obj[key] = _parse_every_object(obj[key], condition_func,
                                                convert_func)
         return obj
     elif type(obj) == tuple:
         return tuple(
-            _parse_every_tensor(list(obj), condition_func, convert_func))
+            _parse_every_object(list(obj), condition_func, convert_func))
+    elif type(obj) == set:
+        return set(_parse_every_object(list(obj), condition_func, convert_func))
     else:
         if isinstance(obj, collections.Iterable) and not isinstance(obj, (
                 str, np.ndarray, core.VarBase, core.LoDTensor)):
@@ -416,6 +420,22 @@ def _parse_every_tensor(obj, condition_func, convert_func):
 
 
 def _parse_load_result(obj, return_numpy):
+    def is_layer(obj):
+        return isinstance(obj, core.Layer)
+
+    def parse_layer(obj):
+        temp_dict = _parse_load_result(obj.__dict__, False)
+        obj.__dict__.update(temp_dict)
+        return obj
+
+    if _contain_x(obj, is_layer):
+        if not in_dygraph_mode():
+            raise ValueError(
+                "Layer can only be loaded in dynamic graph mode, but now in static graph mode."
+            )
+
+        _parse_every_object(obj, is_layer, parse_layer)
+
     def tuple_to_tensor(obj):
         return _tuple_to_tensor(obj, return_numpy=return_numpy)
 
@@ -423,10 +443,10 @@ def _parse_load_result(obj, return_numpy):
         return _ndarray_to_tensor(obj, return_numpy=return_numpy)
 
     if _contain_x(obj, _transformed_from_varbase):
-        return _parse_every_tensor(obj, _transformed_from_varbase,
+        return _parse_every_object(obj, _transformed_from_varbase,
                                    tuple_to_tensor)
     else:
-        return _parse_every_tensor(obj, _transformed_from_lodtensor,
+        return _parse_every_object(obj, _transformed_from_lodtensor,
                                    ndarray_to_tensor)
 
 

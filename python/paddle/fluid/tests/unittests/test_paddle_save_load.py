@@ -39,7 +39,7 @@ CLASS_NUM = 10
 if six.PY2:
     LARGE_PARAM = 2**2
 else:
-    LARGE_PARAM = 2**26
+    LARGE_PARAM = 2**2
 
 
 def random_batch_reader():
@@ -998,6 +998,31 @@ class TestSaveLoadProgram(unittest.TestCase):
             load_startup = paddle.load(path2).desc.serialize_to_string()
             self.assertTrue(origin_main == load_main)
             self.assertTrue(origin_startup == load_startup)
+
+
+class TestSaveLoadLayer(unittest.TestCase):
+    def test_save_load_layer(self):
+        paddle.disable_static()
+        inps = paddle.randn([1, IMAGE_SIZE], dtype='float32')
+        layer1 = LinearNet()
+        layer2 = LinearNet()
+        layer1.eval()
+        layer2.eval()
+        origin = (layer1(inps), layer2(inps))
+        path = "test_save_load_layer_/layer.pdmodel"
+        paddle.save((layer1, layer2), path)
+
+        # static
+        paddle.enable_static()
+        with self.assertRaises(ValueError):
+            paddle.load(path)
+        # dygraph
+        paddle.disable_static()
+
+        loaded_layer = paddle.load(path)
+        loaded_result = [l(inps) for l in loaded_layer]
+        for i in range(len(origin)):
+            self.assertTrue((origin[i] - loaded_result[i]).abs().max() < 1e-10)
 
 
 if __name__ == '__main__':
