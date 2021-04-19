@@ -352,7 +352,9 @@ void XPUAllocator::Free(void* p, size_t size, size_t index) {
   xpu_free(p);
 }
 
-bool XPUAllocator::UseGpu() const { return true; }
+bool XPUAllocator::UseGpu() const { return false; }
+
+bool XPUAllocator::UseXPU() { return true; }
 
 #endif
 

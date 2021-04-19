@@ -37,8 +37,13 @@ BuddyAllocator::BuddyAllocator(
     size_t max_chunk_size)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
+#ifdef PADDLE_WITH_XPU
+      cache_(system_allocator->UseXPU()),
+#else
       cache_(system_allocator->UseGpu()),
-      system_allocator_(std::move(system_allocator)) {}
+#endif
+      system_allocator_(std::move(system_allocator)) {
+}
 
 BuddyAllocator::~BuddyAllocator() {
   VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
@@ -257,7 +262,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  if (system_allocator_->UseGpu()) {
+  if (system_allocator_->UseXPU()) {
     if ((total_used_ + total_free_) == 0) {
       // Compute the allocation size for xpu for the first allocation.
       allocate_bytes = std::max(platform::XPUInitAllocSize(), request_bytes);
