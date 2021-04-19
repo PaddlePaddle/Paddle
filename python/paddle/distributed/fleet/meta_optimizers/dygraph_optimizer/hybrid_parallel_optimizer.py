@@ -21,6 +21,7 @@ from ...base.topology import ParallelMode
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid import framework
 from paddle.fluid.framework import Variable
+from ...utils.log_util import logger
 
 
 class HybridParallelClipGrad:
@@ -92,8 +93,8 @@ class HybridParallelOptimizer:
 
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and self._is_mp:
-            print("using ClipGradByGlobalNorm in ModelParallel, the origin " \
-                  "optmizer'grad clip will be changed.", file=sys.stderr)
+            logger.warning("using ClipGradByGlobalNorm in ModelParallel, the origin " \
+                  "optmizer'grad clip will be changed.")
             self._inner_opt._grad_clip = HybridParallelClipGrad(
                 self._inner_opt._grad_clip, hcg)
 

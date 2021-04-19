@@ -19,6 +19,10 @@ import paddle
 import numpy as np
 from hybrid_parallel_mp_model import TestDistMPTraning
 import unittest
+import logging
+
+#log = logging.getLogger("HybridParallel")
+#log.setLevel(logging.WARNING)
 
 
 class TestMPClipGrad(TestDistMPTraning):

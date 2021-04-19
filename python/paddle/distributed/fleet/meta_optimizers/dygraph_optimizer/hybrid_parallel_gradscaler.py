@@ -64,7 +64,7 @@ class HybridParallelGradScaler:
         ]
         core.ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
                                           self._found_inf)
-        # allreduce_max foun_inf in check_group
+        # allreduce_max found_inf in check_group
         if self._is_mp:
             self._found_inf = paddle.cast(self._found_inf, dtype="int64")
             paddle.distributed.all_reduce(

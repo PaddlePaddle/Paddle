@@ -19,6 +19,8 @@ import collections
 import numpy as np
 from itertools import product
 from functools import reduce
+from ..utils.log_util import logger
+
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 _HYBRID_PARALLEL_GROUP = None
@@ -139,7 +141,7 @@ class HybridCommunicateGroup(object):
                     self._mp_degree,self._pp_degree)
         debug_str += "dp_group: %s, mp_group: %s, check/clip group: %s" % (
             self._dp_group, self._mp_group, self._check_group)
-        print(debug_str, file=sys.stderr)
+        logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
