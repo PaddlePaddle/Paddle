@@ -92,6 +92,9 @@ class ParallelExecutor {
 
   void RunWithoutFetch(const std::vector<std::string> &skip_eager_vars);
 
+  void SkipMemoryReuse(size_t scope_idx,
+                       const std::vector<std::string> &skip_vars);
+
   const ir::Graph &Graph() const;
 
  private:

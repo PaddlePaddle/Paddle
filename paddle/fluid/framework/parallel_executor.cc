@@ -945,6 +945,17 @@ void ParallelExecutor::RunWithoutFetch(
   member_->executor_->Run(/*fetch_tensors*/ {}, /*return_merged*/ false);
 }
 
+void ParallelExecutor::SkipMemoryReuse(
+    size_t scope_idx, const std::vector<std::string> &skip_vars) {
+  for (auto &var_name : skip_vars) {
+    bool is_persistable = member_->IsPersistable(var_name);
+    if (!is_persistable) {
+      VLOG(3) << "SkipMemoryReuse for var: " << var_name;
+      member_->SetSkipMemoryReuse(scope_idx, var_name);
+    }
+  }
+}
+
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
     const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
   if (!member_->AllowPartialFeed()) {

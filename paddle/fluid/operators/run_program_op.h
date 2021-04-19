@@ -271,6 +271,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
                                    build_strategy,      // build_strategy
                                    graph.get());
 
+    // TODO(Aurelius84): make it only call once
+    pe.SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
+
     // Step 3. run ops
     // TODO(Aurelius84): Skip fetch_tensor overhead and just run all ops.
     VLOG(3) << "start to call pe.Run()...";
@@ -369,6 +372,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                                    execution_strategy,  // exec_strategy
                                    build_strategy,      // build_strategy
                                    graph.get());
+
+    // TODO(Aurelius84): make it only call once
+    pe.SkipMemoryReuse(/*scope_idx*/ 0, output_grad_var_names);
 
     details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
                                 &scope);
