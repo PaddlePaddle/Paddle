@@ -858,6 +858,14 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             temp_lod = fluid.core.LoDTensor()
             paddle.save(temp_lod, path, use_binary_format=True)
 
+        with self.assertRaises(RuntimeError):
+            fluid.core._save_lod_tensor(
+                temp_lod, 'test_save_load_error_not_exist_file/not_exist_file')
+
+        with self.assertRaises(RuntimeError):
+            fluid.core._load_lod_tensor(
+                temp_lod, 'test_save_load_error_not_exist_file/not_exist_file')
+
     def test_save_load_selected_rows(self):
         paddle.enable_static()
         place = fluid.CPUPlace() if not paddle.fluid.core.is_compiled_with_cuda(
@@ -883,6 +891,15 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         self.assertTrue(load_sr.height() == height)
         self.assertTrue(
             np.array_equal(np.array(load_sr.get_tensor()), np_array))
+
+        with self.assertRaises(RuntimeError):
+            fluid.core._save_selected_rows(
+                selected_rows,
+                'test_paddle_save_load_selected_rows_not_exist_file/temp')
+        with self.assertRaises(RuntimeError):
+            fluid.core._load_selected_rows(
+                selected_rows,
+                'test_paddle_save_load_selected_rows_not_exist_file/temp')
 
 
 class TestSaveLoad(unittest.TestCase):
