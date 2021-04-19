@@ -18,7 +18,7 @@
 #include <set>
 #include <sstream>
 #include "paddle/fluid/distributed/common/utils.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {

@@ -621,16 +621,12 @@ class DataParallel(layers.Layer):
             structured_name_prefix=structured_name_prefix)
 
     @framework.deprecate_stat_dict
-    def set_state_dict(self,
-                       state_dict,
-                       include_sublayers=True,
-                       use_structured_name=True):
+    def set_state_dict(self, state_dict, use_structured_name=True):
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
@@ -656,9 +652,7 @@ class DataParallel(layers.Layer):
         '''
 
         self._layers.set_state_dict(
-            state_dict,
-            include_sublayers=include_sublayers,
-            use_structured_name=use_structured_name)
+            state_dict, use_structured_name=use_structured_name)
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

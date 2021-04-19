@@ -81,7 +81,10 @@ class FP16Utils(object):
             if not FP16Utils.is_fp32_cast_op(block, op):
                 continue
             output_name = op.desc.output_arg_names()[0]
-            param_name = output_name.strip("@GRAD")
+            # TODO (JZ-LIANG) revise this for uniform mixed parallelism
+            param_name = output_name.strip(
+                "@GRAD@MERGED"
+            ) if "@MERGED" in output_name else output_name.strip("@GRAD")
             if param_name not in shard.global_params:
                 raise ValueError("Output 'X' of cast_op must be a grad of"
                                  "model param, but {} is not a grad".format(
@@ -105,7 +108,11 @@ class FP16Utils(object):
                 reversed_x = []
                 reversed_x_paramname = []
                 for input_name in op.desc.input('X'):
-                    param_name = input_name.strip("@GRAD")
+                    # TODO (JZ-LIANG) revise this for uniform mixed parallelism
+                    if "@MERGED" in input_name:
+                        param_name = input_name.strip("@GRAD@MERGED")
+                    else:
+                        param_name = input_name.strip("@GRAD")
                     if param_name not in shard.global_params:
                         raise ValueError(
                             "Input 'X' of check_finite_and_unscale must"
@@ -166,6 +173,61 @@ class FP16Utils(object):
             attrs={
                 "in_dtype": inf_var_int32.dtype,
                 "out_dtype": inf_var_sharding.dtype,
+                OP_ROLE_KEY: OpRole.Optimize
+            })
+        block._sync_with_cpp()
+
+    # TODO (JZ-LIANG) revise this for uniform mixed parallelism
+    @staticmethod
+    def sync_amp_check_nan_inf(block, ring_id):
+        update_loss_scaling_op_idx = -1
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type == "update_loss_scaling":
+                update_loss_scaling_op_idx = idx
+                inf_var_name = op.desc.input('FoundInfinite')[0]
+                op._rename_input(inf_var_name, inf_var_name + "@GLOBAL_WORLD")
+
+        # not use amp
+        if update_loss_scaling_op_idx == -1:
+            return
+        inf_var = block.var(inf_var_name)
+        inf_var_int32 = block.create_var(
+            name=inf_var_name + "@cast_int32",
+            shape=inf_var.shape,
+            dtype=core.VarDesc.VarType.INT32)
+        inf_var_global = block.create_var(
+            name=inf_var_name + "@GLOBAL_WORLD",
+            shape=inf_var.shape,
+            dtype=inf_var.dtype)
+        block._insert_op_without_sync(
+            update_loss_scaling_op_idx,
+            type='cast',
+            inputs={'X': inf_var},
+            outputs={'Out': inf_var_int32},
+            attrs={
+                "in_dtype": inf_var.dtype,
+                "out_dtype": inf_var_int32.dtype,
+                OP_ROLE_KEY: OpRole.Optimize
+            })
+        block._insert_op_without_sync(
+            update_loss_scaling_op_idx + 1,
+            type='c_allreduce_max',
+            inputs={'X': inf_var_int32},
+            outputs={'Out': inf_var_int32},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': True,
+                OP_ROLE_KEY: OpRole.Optimize
+            })
+        block._insert_op_without_sync(
+            update_loss_scaling_op_idx + 2,
+            type='cast',
+            inputs={'X': inf_var_int32},
+            outputs={'Out': inf_var_global},
+            attrs={
+                "in_dtype": inf_var_int32.dtype,
+                "out_dtype": inf_var_global.dtype,
                 OP_ROLE_KEY: OpRole.Optimize
             })
         block._sync_with_cpp()

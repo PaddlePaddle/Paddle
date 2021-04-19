@@ -32,5 +32,9 @@ void BindGraphPyService(py::module* m);
 void BindGraphPyFeatureNode(py::module* m);
 void BindGraphPyServer(py::module* m);
 void BindGraphPyClient(py::module* m);
+void BindIndexNode(py::module* m);
+void BindTreeIndex(py::module* m);
+void BindIndexWrapper(py::module* m);
+void BindIndexSampler(py::module* m);
 }  // namespace pybind
 }  // namespace paddle

@@ -29,14 +29,24 @@ message RecomputeConfig {
 }
 
 message ShardingConfig {
-  optional float segment_broadcast_MB = 1 [ default = 32.0 ];
-  optional bool hybrid_dp = 2 [ default = false ];
-  optional int32 sharding_degree = 3 [ default = 8 ];
-  optional int32 mp_degree = 4 [ default = 1 ];
-  optional string sharding_segment_strategy = 5
+  optional string sharding_segment_strategy = 1
       [ default = 'segment_broadcast_MB' ];
-  repeated string segment_anchors = 6;
-  optional int32 gradient_merge_acc_step = 7 [ default = 1 ];
+  optional float segment_broadcast_MB = 2 [ default = 32.0 ];
+  repeated string segment_anchors = 3;
+  optional int32 sharding_degree = 4 [ default = 8 ];
+  optional int32 mp_degree = 5 [ default = 1 ];
+  optional int32 dp_degree = 6 [ default = 1 ];
+  optional bool hybrid_dp = 7 [ default = false ];
+  optional int32 gradient_merge_acc_step = 8 [ default = 1 ];
+  optional bool optimize_offload = 9 [ default = false ];
+  optional bool pp_allreduce_in_optimize = 10 [ default = false ];
+  optional int32 pp_degree = 11 [ default = 1 ];
+}
+
+message HybridConfig {
+  optional int32 dp_degree = 1 [ default = -1 ];
+  optional int32 mp_degree = 2 [ default = 1 ];
+  optional int32 pp_degree = 3 [ default = 1 ];
 }
 
 message AMPConfig {
@@ -120,6 +130,7 @@ message AsyncConfig {
   optional bool launch_barrier = 9 [ default = true ];
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
   optional int32 lr_decay_steps = 11 [ default = 10 ];
+  optional int32 use_ps_gpu = 12 [ default = 0 ];
 }
 
 message PipelineConfig {
@@ -170,6 +181,7 @@ message DistributedStrategy {
   optional LambConfig lamb_configs = 109;
   optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
   optional ShardingConfig sharding_configs = 111;
+  optional HybridConfig hybrid_configs = 112;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }

@@ -1213,6 +1213,7 @@ class Executor(object):
             # In distributed training, the compiled program is saved in Program._graph
             has_compiled_graph = isinstance(program._graph,
                                             compiler.CompiledProgram)
+
             if has_compiled_graph:
                 program._graph._compile(scope, self.place)
                 # _graph in program does not support inference since the _graph is optimized
@@ -1372,11 +1373,14 @@ class Executor(object):
                          fetch_info=None,
                          print_period=100):
         is_heter = 0
+        use_ps_gpu = 0
         if not program._fleet_opt is None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
                 is_heter = 1
+            if program._fleet_opt.get("use_ps_gpu", False):
+                use_ps_gpu = True
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -1411,7 +1415,9 @@ class Executor(object):
             trainer._set_program(program.program)
 
         if thread <= 0:
-            if dataset.thread_num <= 0:
+            if use_ps_gpu:
+                trainer._set_thread(len(program._fleet_opt["worker_places"]))
+            elif dataset.thread_num <= 0:
                 raise RuntimeError(
                     "You should set thread num first, either in Dataset"
                     "or in Executor.train_from_dataset")

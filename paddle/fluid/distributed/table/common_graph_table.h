@@ -26,7 +26,7 @@
 #include <vector>
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
@@ -103,13 +103,16 @@ class GraphTable : public SparseTable {
 
   Node *find_node(uint64_t id);
 
-  virtual int32_t pull_sparse(float *values, const uint64_t *keys, size_t num) {
+  virtual int32_t pull_sparse(float *values,
+                              const PullSparseValue &pull_value) {
     return 0;
   }
+
   virtual int32_t push_sparse(const uint64_t *keys, const float *values,
                               size_t num) {
     return 0;
   }
+
   virtual void clear() {}
   virtual int32_t flush() { return 0; }
   virtual int32_t shrink(const std::string &param) { return 0; }
@@ -140,5 +143,5 @@ class GraphTable : public SparseTable {
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
 };
-}
-};
+}  // namespace distributed
+};  // namespace paddle

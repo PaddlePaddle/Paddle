@@ -191,13 +191,15 @@ if(WITH_PYTHON)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
+  add_custom_target(fleet_proto_init ALL  
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py 
+  )
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -207,8 +209,6 @@ if(WITH_PYTHON)
     string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
           COMMAND copy /Y *.py ${proto_dstpath}
 	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -216,6 +216,12 @@ if(WITH_PYTHON)
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif(NOT WIN32)
 endif()
+
+if (WITH_PSCORE)
+  add_custom_target(index_dataset_proto_init ALL DEPENDS fleet_proto_init index_dataset_py_proto
+    COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto.")
+endif(WITH_PSCORE)
 
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
@@ -367,29 +373,23 @@ endif()
 ##### 2.0 New custom op extension mechanism related #####
 
 # if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
-set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
-
-set(PADDLE_CUSTOM_OP_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_operator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_tensor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_op_meta_info.cc
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc)
-set(PADDLE_CUSTOM_OP_SRCS ${PADDLE_CUSTOM_OP_SRCS} PARENT_SCOPE)
-
-cc_library(paddle_custom_op_shared
-    SHARED SRCS ${PADDLE_CUSTOM_OP_SRCS} DEPS ${PADDLE_CUSTOM_OP_MODULES})
-
-get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
-target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
-
-if (LINUX)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_custom_op.so
-      CACHE INTERNAL "Paddle custom op lib")
-endif()
-
 if (WIN32)
+  set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
+
+  set(PADDLE_CUSTOM_OP_SRCS
+      ${CMAKE_CURRENT_SOURCE_DIR}/custom_operator.cc
+      ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_tensor.cc
+      ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_op_meta_info.cc
+      ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc)
+  set(PADDLE_CUSTOM_OP_SRCS ${PADDLE_CUSTOM_OP_SRCS} PARENT_SCOPE)
+
+  cc_library(paddle_custom_op_shared
+      SHARED SRCS ${PADDLE_CUSTOM_OP_SRCS} DEPS ${PADDLE_CUSTOM_OP_MODULES})
+
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
+  target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
+
   if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
     set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR})
   else()
@@ -401,10 +401,4 @@ if (WIN32)
   set(PADDLE_CUSTOM_OP_SHARED_LIB
       ${paddle_custom_op_lib_path}/paddle_custom_op.dll
       CACHE INTERNAL "Paddle custom op dll")
-endif()
-
-if(APPLE)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/paddle_custom_op.dylib
-      CACHE INTERNAL "Paddle custom op lib")
 endif()

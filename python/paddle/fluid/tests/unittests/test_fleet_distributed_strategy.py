@@ -73,6 +73,17 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.pipeline_configs = configs
         self.assertEqual(strategy.pipeline_configs["accumulate_steps"], 2)
 
+    def test_hybrid_parallel_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": 2,
+            "pp_degree": 4
+        }
+        self.assertEqual(strategy.hybrid_configs["dp_degree"], 1)
+        self.assertEqual(strategy.hybrid_configs["mp_degree"], 2)
+        self.assertEqual(strategy.hybrid_configs["pp_degree"], 4)
+
     def test_localsgd(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.localsgd = True
