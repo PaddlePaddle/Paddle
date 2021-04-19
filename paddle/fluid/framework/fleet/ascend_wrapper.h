@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_ASCEND
+#ifdef PADDLE_WITH_ASCEND_CL
 #include <glog/logging.h>
 
 #include <map>
@@ -29,7 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 
 #include "ge/ge_api.h"
-#include "ge/ge_api_types.h"
 #include "graph/attr_value.h"
 #include "graph/tensor.h"
 #include "graph/types.h"

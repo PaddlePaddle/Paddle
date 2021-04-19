@@ -29,9 +29,9 @@ set(third_party_deps)
 # 2. REPOSITORY:    specify git REPOSITORY of 3rd party
 # 3. TAG:           specify git tag/branch/commitID of 3rd party
 # 4. DIR:           overwrite the original SOURCE_DIR when cache directory
-# 
+#
 # The function Return 1 PARENT_SCOPE variables:
-#  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add, 
+#  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add,
 #                            and you no longer need to set any donwnload steps in ExternalProject_Add.
 # For example:
 #    Cache_third_party(${TARGET}
@@ -52,7 +52,7 @@ FUNCTION(cache_third_party TARGET)
         SET(${TARGET_NAME}_DOWNLOAD_CMD
                 GIT_REPOSITORY  ${cache_third_party_REPOSITORY})
         IF(cache_third_party_TAG)
-            LIST(APPEND   ${TARGET_NAME}_DOWNLOAD_CMD  
+            LIST(APPEND   ${TARGET_NAME}_DOWNLOAD_CMD
                     GIT_TAG     ${cache_third_party_TAG})
         ENDIF()
     ELSEIF(cache_third_party_URL)
@@ -130,7 +130,7 @@ ENDFUNCTION()
 # Correction of flags on different Platform(WIN/MAC) and Print Warning Message
 if (APPLE)
     if(WITH_MKL)
-        MESSAGE(WARNING 
+        MESSAGE(WARNING
             "Mac is not supported with MKL in Paddle yet. Force WITH_MKL=OFF.")
         set(WITH_MKL OFF CACHE STRING "Disable MKL for building on mac" FORCE)
     endif()
@@ -141,7 +141,7 @@ if(WIN32 OR APPLE)
     SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in Windows and MacOS" FORCE)
 
     if(WITH_LIBXSMM)
-        MESSAGE(WARNING 
+        MESSAGE(WARNING
             "Windows, Mac are not supported with libxsmm in Paddle yet."
             "Force WITH_LIBXSMM=OFF")
         SET(WITH_LIBXSMM OFF CACHE STRING "Disable LIBXSMM in Windows and MacOS" FORCE)
@@ -276,7 +276,7 @@ endif(WITH_BOX_PS)
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)
     include(external/ascend)
-    if(WITH_ASCEND)
+    if(WITH_ASCEND OR WITH_ASCEND_CL)
         list(APPEND third_party_deps extern_ascend)
     endif()
     if(WITH_ASCEND_CL)
@@ -290,7 +290,7 @@ if (WITH_PSCORE)
 
     include(external/leveldb)
     list(APPEND third_party_deps extern_leveldb)
-        
+
     include(external/brpc)
     list(APPEND third_party_deps extern_brpc)
 
