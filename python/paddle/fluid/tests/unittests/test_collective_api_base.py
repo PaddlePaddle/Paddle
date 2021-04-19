@@ -50,6 +50,9 @@ class TestCollectiveAPIRunnerBase(object):
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
                 device_id)  #if args.use_gpu else fluid.CPUPlace()
+        elif args['backend'] == 'bkcl':
+            device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+            place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -71,7 +74,6 @@ class TestCollectiveAPIRunnerBase(object):
 def runtime_main(test_class, col_type):
     args = {}
     model = test_class()
-    args["deviceid"] = os.getenv("FLAGS_selected_gpus")
     args["trainerid"] = int(os.getenv("PADDLE_TRAINER_ID"))
     args["trainernum"] = int(os.getenv("PADDLE_TRAINERS_NUM"))
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
@@ -112,21 +114,38 @@ class TestDistBase(unittest.TestCase):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
-        env0 = {
-            "FLAGS_selected_gpus": "0",
-            "PADDLE_TRAINER_ID": "0",
-            "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-            "PADDLE_CURRENT_ENDPOINT": w0_ep
-        }
+        if core.is_compiled_with_cuda():
+            env0 = {
+                "FLAGS_selected_gpus": "0",
+                "PADDLE_TRAINER_ID": "0",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": w0_ep
+            }
 
-        env1 = {
-            "FLAGS_selected_gpus": "1",
-            "PADDLE_TRAINER_ID": "1",
-            "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-            "PADDLE_CURRENT_ENDPOINT": w1_ep
-        }
+            env1 = {
+                "FLAGS_selected_gpus": "1",
+                "PADDLE_TRAINER_ID": "1",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": w1_ep
+            }
+        elif core.is_compiled_with_xpu():
+            env0 = {
+                "FLAGS_selected_xpus": "0",
+                "PADDLE_TRAINER_ID": "0",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": w0_ep
+            }
+
+            env1 = {
+                "FLAGS_selected_xpus": "1",
+                "PADDLE_TRAINER_ID": "1",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": w1_ep
+            }
         #update environment
         env0.update(envs)
         env1.update(envs)
@@ -169,7 +188,10 @@ class TestDistBase(unittest.TestCase):
                          path_id="0",
                          check_error_log=False,
                          need_envs={}):
-        with_gloo = '0' if backend == "nccl" else '1'
+        if backend == "nccl" or "bkcl":
+            with_gloo = '0'
+        else:
+            with_gloo = '1'
         required_envs = {
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_eager_delete_tensor_gb": "0.0",

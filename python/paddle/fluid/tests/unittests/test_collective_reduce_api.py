@@ -29,8 +29,11 @@ class TestCollectiveReduceAPI(TestDistBase):
     def test_reduce_nccl(self):
         self.check_with_place("collective_reduce_api.py", "reduce", "nccl")
 
-    def test_reduce_gloo(self):
-        self.check_with_place("collective_reduce_api.py", "reduce", "gloo", "1")
+    def test_reduce_bkcl(self):
+        self.check_with_place("collective_reduce_api.py", "reduce", "bkcl")
+
+    # def test_reduce_gloo(self):
+    #     self.check_with_place("collective_reduce_api.py", "reduce", "gloo", "1")
 
 
 if __name__ == '__main__':

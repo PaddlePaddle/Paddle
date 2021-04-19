@@ -26,13 +26,17 @@ class TestCollectiveAllreduceAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_allreduce_nccl(self):
-        self.check_with_place("collective_allreduce_api.py", "allreduce",
-                              "nccl")
+    # def test_allreduce_nccl(self):
+    #     self.check_with_place("collective_allreduce_api.py", "allreduce",
+    #                           "nccl")
 
-    def test_allreduce_gloo(self):
+    def test_allreduce_bkcl(self):
         self.check_with_place("collective_allreduce_api.py", "allreduce",
-                              "gloo", "2")
+                              "bkcl")
+
+    # def test_allreduce_gloo(self):
+    #     self.check_with_place("collective_allreduce_api.py", "allreduce",
+    #                           "gloo", "2")
 
 
 if __name__ == '__main__':
