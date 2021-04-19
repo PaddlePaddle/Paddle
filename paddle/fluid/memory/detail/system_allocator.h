@@ -95,7 +95,7 @@ class XPUAllocator : public SystemAllocator {
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu() const;
 
-  bool UseXPU() override;
+  bool UseXPU();
 
  private:
   size_t xpu_alloc_size_ = 0;

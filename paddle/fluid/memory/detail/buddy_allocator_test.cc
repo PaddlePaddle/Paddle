@@ -34,6 +34,11 @@ DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
+#ifdef PADDLE_WITH_XPU
+DECLARE_uint64(initial_xpu_memory_in_mb);
+DECLARE_uint64(reallocate_xpu_memory_in_mb);
+#endif
+
 namespace paddle {
 namespace memory {
 namespace detail {
