@@ -3047,8 +3047,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_PSLIB
   BindHeterWrapper(&m);
 #endif
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);
 #endif
   BindGlooWrapper(&m);
@@ -3088,6 +3087,11 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraphPyService(&m);
   BindGraphPyServer(&m);
   BindGraphPyClient(&m);
+  BindIndexNode(&m);
+  BindTreeIndex(&m);
+  BindIndexWrapper(&m);
+  BindIndexSampler(&m);
+
 #endif
 }
 }  // namespace pybind

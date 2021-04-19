@@ -31,7 +31,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
 #if IS_TRT_VERSION_GE(6000)
-    VLOG(4) << "convert fluid swish op to tensorrt layer";
+    VLOG(4) << "convert fluid EmbEltwiseLayerNorm op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     auto id_names = op_desc.Input("Ids");
@@ -89,10 +89,14 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     int64_t bias_size = framework::product(bias_dims);
     int64_t scale_size = framework::product(scale_dims);
     nvinfer1::ILayer* layer = nullptr;
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
 
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
         int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
+        if (enable_int8) {
+          output_fp16 = 1;
+        }
         PADDLE_ENFORCE_EQ(
             output_fp16, 1,
             platform::errors::InvalidArgument(
