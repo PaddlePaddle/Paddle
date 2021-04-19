@@ -57,6 +57,7 @@ class ActivationOpConverter : public OpConverter {
           "Wrong activation op type, the trt do not support the %s act type.",
           op_type_));
     }
+
     nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
         op_pair->second);
