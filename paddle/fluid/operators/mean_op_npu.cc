@@ -68,10 +68,8 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
     Tensor mean_tensor(grad->type());
     mean_tensor.Resize({1});
     mean_tensor.mutable_data<T>(context.GetPlace());
-    std::vector<float> mean_vec;
-    mean_vec.push_back(1.0 / static_cast<float>(IG->numel()));
-    framework::TensorFromVector(mean_vec, context.device_context(),
-                                &mean_tensor);
+    FillNpuTensorWithConstant<T>(
+        &mean_tensor, static_cast<T>(1.0 / static_cast<float>(IG->numel())));
 
     // means mul ones
     Tensor mean_ma(grad->type());

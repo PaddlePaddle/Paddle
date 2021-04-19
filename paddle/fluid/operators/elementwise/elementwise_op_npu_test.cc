@@ -38,7 +38,7 @@ USE_OP(elementwise_sub);
 USE_OP_DEVICE_KERNEL(elementwise_sub, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope *scope, const p::DeviceContext &ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
@@ -62,8 +62,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   TensorFromVector(init_y, ctx, tensor_y);
   tensor_y->Resize({10, 10});
 
-  ctx.Wait();
-
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
@@ -74,7 +72,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
                                     {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
-  ctx.Wait();
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -93,7 +90,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 }
 
 template <typename T>
-void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
+void CompareGrad(f::Scope *scope, const p::DeviceContext &ctx,
                  std::string op_type) {
   // init
   auto dout = scope->Var("DOut");
@@ -122,8 +119,6 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   TensorFromVector(init_dout, ctx, tensor_dout);
   tensor_dout->Resize({2, 3, 5});
 
-  ctx.Wait();
-
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(
@@ -132,7 +127,6 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
-  ctx.Wait();
 
   std::vector<T> dx_vec;
   TensorToVector(*tensor_dx, ctx, &dx_vec);
@@ -160,30 +154,30 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
 TEST(elementwise_add, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx, "elementwise_add");
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx, "elementwise_add");
 }
 
 TEST(elementwise_sub, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx, "elementwise_sub");
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx, "elementwise_sub");
 }
 
 TEST(elementwise_sub, NPU_fp16) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<p::float16>(&scope, ctx, "elementwise_sub");
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<p::float16>(&scope, *ctx, "elementwise_sub");
 }
 
 TEST(elementwise_sub_grad, NPU) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  CompareGrad<float>(&scope, ctx, "elementwise_sub_grad");
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  CompareGrad<float>(&scope, *ctx, "elementwise_sub_grad");
 }
 
 TEST(elementwise_add_grad, NPU) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  CompareGrad<float>(&scope, ctx, "elementwise_add_grad");
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  CompareGrad<float>(&scope, *ctx, "elementwise_add_grad");
 }
