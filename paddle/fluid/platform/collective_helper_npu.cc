@@ -34,7 +34,7 @@ class HCCLCommImpl : public HCCLComm {
     return BOOST_GET_CONST(NPUPlace, dev_ctx_->GetPlace()).device;
   }
 
-  ~HCCLCommImpl(){
+  ~HCCLCommImpl() {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclCommDestroy(comm_));
   }
 
@@ -80,15 +80,19 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
 
   HcclComm comm;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
+  VLOG(1) << "initialized comm: " << &comm << ", nranks: " << nranks
+          << ", hccl_id: " << hccl_id << ", rank: " << rank;
   PADDLE_ENFORCE_NPU_SUCCESS(
       platform::dynload::HcclCommInitRootInfo(nranks, hccl_id, rank, &comm));
 
- VLOG(1) << "initialized comm: " << &comm  << ", nranks: " << nranks << ", hccl_id: " << hccl_id << ", rank: " << rank;
+  VLOG(1) << "initialized comm: " << &comm << ", nranks: " << nranks
+          << ", hccl_id: " << hccl_id << ", rank: " << rank;
 
   auto* comm_wrapper = AssignHCCLComm(comm, nranks, rank, dev_id, ring_id);
 
   VLOG(1) << "hccl communicator of rank " << rank << " in ring " << ring_id
-          << " has been created on device " << dev_id << ", with comm: " << comm_wrapper->comm();
+          << " has been created on device " << dev_id
+          << ", with comm: " << comm_wrapper->comm();
 
   std::call_once(once_flag_, []() {
     std::atexit([]() { HCCLCommContext::Instance().ReleaseHCCLComms(); });

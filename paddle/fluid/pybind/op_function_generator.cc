@@ -26,7 +26,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
-#ifdef PADDLE_WITH_ASCEND
+#ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
 
@@ -350,12 +350,9 @@ std::string GenerateOpFunctionsBody(
   }
   ins_initializer += "}";
 
-  if (input_args.back() == ',') {
+  if (!input_args.empty() && input_args.back() == ',') {
     input_args.pop_back();
   }
-  // if (!input_args.empty() && input_args.back() == ',') {
-  //   input_args.pop_back();
-  // }
 
   // Generate outs initializer
   std::string outs_initializer = "{";
@@ -367,6 +364,7 @@ std::string GenerateOpFunctionsBody(
   int outs_num = 0;
   for (auto& output : op_proto->outputs()) {
     auto& out_name = output.name();
+
     // skip those dispensable oututs
     if (output.dispensable() && !FindOutsMap(op_type, out_name)) {
       continue;
@@ -462,7 +460,7 @@ std::string GenerateOpFunctionsBody(
     return_str.pop_back();
   }
   outs_initializer += "}";
-  if (inplace_mapping_str.back() == ',') {
+  if (!inplace_mapping_str.empty() && inplace_mapping_str.back() == ',') {
     inplace_mapping_str.pop_back();
   }
   if (!use_inplace_strategy && FindViewOpMap(op_type)) {
@@ -570,7 +568,7 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-#ifdef PADDLE_WITH_ASCEND
+#ifdef PADDLE_WITH_ASCEND_CL
   auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();
   ascend_ptr->InitGEForUT();
 #endif
@@ -605,8 +603,9 @@ int main(int argc, char* argv[]) {
 
   out.close();
 
-#ifdef PADDLE_WITH_ASCEND
+#ifdef PADDLE_WITH_ASCEND_CL
   ge::GEFinalize();
 #endif
+
   return 0;
 }

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_ASCEND
+#ifdef PADDLE_WITH_ASCEND_CL
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
