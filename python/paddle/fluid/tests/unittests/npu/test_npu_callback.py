@@ -26,27 +26,65 @@ paddle.enable_static()
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestNpuCallback(unittest.TestCase):
-    def test_static(self):
+    def test_callback(self):
         # NPU is not supported in ParallelExecutor
-        prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        with paddle.static.program_guard(prog, startup_prog):
-
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.static.data(
                 name="x", shape=[1024, 1024], dtype='float32')
             for _ in range(500):
                 x = paddle.matmul(x, x)
 
-            data = np.arange(128)
-            t = paddle.static.global_scope().var("data").get_tensor().set(
-                data, paddle.NPUPlace(0))
+            cpu_var_name = "tensor@Cpu"
+            npu_var_name = "tensor@Npu"
+            cpu_var = main_program.global_block().create_var(
+                name=cpu_var_name,
+                shape=[10, 10],
+                dtype='float32',
+                persistable=False,
+                stop_gradient=True)
+            npu_var = main_program.global_block().create_var(
+                name=npu_var_name,
+                shape=[10, 10],
+                dtype='float32',
+                persistable=False,
+                stop_gradient=True)
+            main_program.global_block().append_op(
+                type="fill_constant",
+                outputs={"Out": npu_var_name},
+                attrs={
+                    "shape": [10, 10],
+                    "dtype": npu_var.dtype,
+                    "value": 1.0,
+                    "place_type": 1
+                })
+            with paddle.fluid.device_guard('cpu'):
+                main_program.global_block().append_op(
+                    type="fill_constant",
+                    outputs={"Out": cpu_var_name},
+                    attrs={
+                        "shape": [10, 10],
+                        "dtype": cpu_var.dtype,
+                        "value": 2.0,
+                        "place_type": 0
+                    })
+
+            main_program.global_block().append_op(
+                type='memcpy',
+                inputs={'X': cpu_var},
+                outputs={'Out': npu_var},
+                attrs={'dst_place_type': 4})
 
         x_np = np.random.random([1024, 1024]).astype('float32')
         place = paddle.NPUPlace(0)
         exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
-        copy_data = exe.run(prog, feed={"x": x_np}, fetch_list=['data'])
-        self.assertTrue(np.equal(copy_data[0], np.arange(128)).all())
+        copy_data = exe.run(main_program,
+                            feed={"x": x_np},
+                            fetch_list=[npu_var.name])
+        print(copy_data)
+        self.assertTrue(
+            np.equal(copy_data[0], np.ones([10, 10]).astype('float32') * 2).all(
+            ))
 
 
 if __name__ == '__main__':
