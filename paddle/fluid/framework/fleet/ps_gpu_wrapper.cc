@@ -310,6 +310,7 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   timeline.Pause();
   VLOG(1) << "GpuPs build table total costs: " << timeline.ElapsedSec()
           << " s.";
+  gpu_task_pool_.Push(gpu_task);
 }
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
