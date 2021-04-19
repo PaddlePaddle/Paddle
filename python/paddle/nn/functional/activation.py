@@ -47,6 +47,7 @@ __all__ = [
     'softshrink',
     'softsign',
     'sigmoid',
+    'silu'
     'swish',
     'tanh',
     'tanh_',
@@ -755,6 +756,40 @@ def selu(x,
         outputs={'Out': out},
         attrs={'scale': scale,
                'alpha': alpha})
+    return out
+
+
+def silu(x, name=None):
+    """
+    silu activation.
+    .. math:
+        silu(x) = \frac{x}{1 + e^{-x}}
+    
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+    
+    Examples:
+        .. code-block:: python
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
+        out = F.silu(x) # [ 0.7310586 1.1639534 2.8577224, 3.9280552 ]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.silu(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'silu')
+    helper = LayerHelper("silu", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='silu', inputs={'X': x}, outputs={'Out': out})
     return out
 
 

@@ -27,6 +27,7 @@ __all__ = [
     'SELU',
     'LeakyReLU',
     'Sigmoid',
+    'Silu',
     'Hardsigmoid',
     'Softmax',
     'Softplus',
@@ -917,6 +918,44 @@ class ThresholdedReLU(layers.Layer):
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'threshold={}{}'.format(self._threshold, name_str)
+
+
+class Silu(layers.Layer):
+    """
+    Silu Activation.
+    .. math::
+
+        Silu(x) = \\frac{x}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            m = paddle.nn.Silu()
+            out = m(x) # [ 0.7310586 1.1639534 2.8577224, 3.9280552 ]
+    """
+
+    def __init__(self, name=None):
+        super(Silu, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.silu(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
 
 
 class LogSigmoid(layers.Layer):

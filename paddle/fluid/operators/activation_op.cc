@@ -162,6 +162,12 @@ $$out = \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
+UNUSED constexpr char SiluDoc[] = R"DOC(
+Silu Activation Operator
+
+$$out = x * \\frac{1}{1 + e^{-x}}$$
+)DOC";
+
 UNUSED constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
@@ -697,6 +703,7 @@ It is recommended to use the defaults for this activation.
 };
 
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
+REGISTER_ACTIVATION_OP_MAKER(Silu, SiluDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);

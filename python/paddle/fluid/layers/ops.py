@@ -27,6 +27,7 @@ __deprecated_func_name__ = {
 
 __activations_noattr__ = [
     'sigmoid',
+    'silu',
     'logsigmoid',
     'tanh_shrink',
     'softplus',
@@ -97,6 +98,20 @@ Examples:
         out = F.sigmoid(x)
         print(out)
         # [0.40131234 0.450166   0.52497919 0.57444252]
+
+""")
+
+add_sample_code(globals()["silu"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+
+        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+        out = F.silu(x)
+        print(out)
+        # [ 0.7310586 1.1639534 2.8577224, 3.9280552 ]
 
 """)
 
