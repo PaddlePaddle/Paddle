@@ -88,6 +88,9 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
 
     if (engine_->use_oss()) {
       int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
+      if (enable_int8) {
+        output_fp16 = 1;
+      }
       PADDLE_ENFORCE_EQ(
           output_fp16, 1,
           platform::errors::InvalidArgument(
@@ -133,8 +136,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                                                          // eval_placeholder_2
       auto max_seqlen_tensor =
           engine_->GetITensor(engine_->network()->getInput(3)->getName());
-      auto* shuffle_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *max_seqlen_tensor);
+      auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Shuffle, *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
       nvinfer1::Dims shape_dim;
       shape_dim.nbDims = 1;
       shape_dim.d[0] = -1;

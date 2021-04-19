@@ -63,6 +63,10 @@ class SkipLayerNormOpConverter : public OpConverter {
       int ld = input1->getDimensions().d[2];  // hidden dimension
       assert(ld > 0);
 
+      if (enable_int8) {
+        type = static_cast<int>(nvinfer1::DataType::kHALF);
+      }
+
       const std::vector<nvinfer1::PluginField> fields{
           {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
           {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
