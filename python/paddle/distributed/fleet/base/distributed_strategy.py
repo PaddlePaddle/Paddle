@@ -621,6 +621,34 @@ class DistributedStrategy(object):
             raise ValueError("last_comm_group_size_MB should be greater than 0")
 
     @property
+    def find_unused_parameters(self):
+        """
+        Indicating whether we are using find_unused_parameters to 
+        find unused parameters in DataParallel.
+
+        Default value: True
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.find_unused_parameters = True
+        """
+
+        return self.strategy.find_unused_parameters
+
+    @find_unused_parameters.setter
+    @is_strict_auto
+    def find_unused_parameters(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.find_unused_parameters = flag
+        else:
+            print(
+                "WARNING: find_unused_parameters should have value of bool type")
+
+    @property
     def _fuse_grad_size_in_TFLOPS(self):
         return self.strategy.fuse_grad_size_in_TFLOPS
 
@@ -838,6 +866,40 @@ class DistributedStrategy(object):
         check_configs_key(self.strategy.pipeline_configs, configs,
                           "pipeline_configs")
         assign_configs_value(self.strategy.pipeline_configs, configs)
+
+    @property
+    def hybrid_configs(self):
+        """
+        Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism 
+        needs to meet the following relationships
+
+        total_number_GPUs = dp_degree * mp_degree * pp_degree
+
+        **Note**:
+            dp_degree(int): set number of GPUs in a data parallel group. Default -1.
+                                    This value should be an integer greater than 0.
+                                    If it is not set, or set to -1, its value will be inferred 
+                                    based on the total number of cards.
+            mp_degree(int): set number of GPUs in a model parallel group. Default 1
+            pp_degree(int): set number of GPUs in a pipeline parallel group. Default 1
+
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.hybrid_configs = {
+                "dp_degree": 1,
+                "mp_degree": 2,
+                "pp_degree": 1}
+        """
+        return get_msg_dict(self.strategy.hybrid_configs)
+
+    @hybrid_configs.setter
+    def hybrid_configs(self, configs):
+        check_configs_key(self.strategy.hybrid_configs, configs,
+                          "hybrid_configs")
+        assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property
     def localsgd(self):

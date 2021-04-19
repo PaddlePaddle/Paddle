@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
@@ -23,51 +24,59 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
+/*
+   input: an array;
+   return: the result of the math functor
+   1. For Unary Op, the length of input array is 1,
+      e.g. Relu: return args[0] > 0 ? args[0] : 0;
+   2. For Binary Op, the length of input array is 2,
+      e.g. Add: return args[0] + args[1];
+*/
+template <typename T>
+struct CudaAddFunctor {
+  inline HOSTDEVICE T operator()(T args[]) const { return args[0] + args[1]; }
+};
+
 template <typename T>
 struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
-    AddRangeFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-                                                              x->numel());
-    for_range(functor);
-  }
-};
-
-template <>
-struct SameDimsElemwiseAdd<platform::CUDADeviceContext, platform::float16> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    auto size = x->numel();
-    dim3 grid_size = dim3(((size + 1) / 2 + PADDLE_CUDA_THREAD_SIZE - 1) /
-                              PADDLE_CUDA_THREAD_SIZE,
-                          1);
-    dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
-    const half* x2 =
-        reinterpret_cast<const half*>(x->data<platform::float16>());
-    const half* y2 =
-        reinterpret_cast<const half*>(y->data<platform::float16>());
-    half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
-    SameDimsElemwiseAddCUDAKernel<<<
-        grid_size, block_size, 0,
-        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
-        x2, y2, z2, size);
+    std::vector<const framework::Tensor*> ins = {x, y};
+    std::vector<framework::Tensor*> outs = {z};
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(
+        ctx.template device_context<platform::CUDADeviceContext>(), ins, &outs,
+        CudaAddFunctor<T>());
   }
 };
 
 template <typename T>
-static __global__ void SimpleElemwiseAddGradCUDAKernel(const T* dout,
-                                                       int64_t size, T* dx,
-                                                       T* dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
+static __global__ void SimpleElemwiseAddGradCUDAKernel(
+    const T* __restrict__ dout, int size, int vec_size, T* dx, T* dy) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = gridDim.x * blockDim.x;
+  int loop = size / vec_size;
+  int remainder = size % vec_size;
+  const float4* dout_vec = reinterpret_cast<const float4*>(dout);
+  float4* dx_vec = reinterpret_cast<float4*>(dx);
+  float4* dy_vec = reinterpret_cast<float4*>(dy);
+  float4 tmp_loop;
 
-  while (col < size) {
-    dx[col] = dout[col];
-    dy[col] = dout[col];
-    col += blockDim.x * gridDim.x;
+  for (int i = tid; i < loop; i += stride) {
+    tmp_loop = dout_vec[i];
+    dx_vec[i] = tmp_loop;
+    dy_vec[i] = tmp_loop;
+  }
+
+  if (tid == loop && remainder != 0) {
+    T tmp_rem;
+    while (remainder) {
+      int idx = size - remainder;
+      remainder--;
+      tmp_rem = dout[idx];
+      dx[idx] = tmp_rem;
+      dy[idx] = tmp_rem;
+    }
   }
 }
 
@@ -79,15 +88,39 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
-  auto size = x->numel();
-  dim3 grid_size =
-      dim3((size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
-  SimpleElemwiseAddGradCUDAKernel<
-      T><<<grid_size, block_size, 0,
-           ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
-      dout->data<T>(), size, dx->mutable_data<T>(ctx.GetPlace()),
-      dy->mutable_data<T>(ctx.GetPlace()));
+  auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+  auto* dy_data = dy->mutable_data<T>(ctx.GetPlace());
+  auto* dout_data = dout->data<T>();
+  if (dx_data == dout_data && dy_data != dout_data) {
+    VLOG(4) << "Special case when dx_data is the same as dout_data, "
+               "only need copy dout to dy";
+    framework::TensorCopy(
+        *dout, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), dy);
+  } else if (dx_data != dout_data && dy_data == dout_data) {
+    VLOG(4) << "Special case when dy_data is the same as dout_data, "
+               "only need copy dout to dx";
+    framework::TensorCopy(
+        *dout, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), dx);
+  } else if (dx_data != dout_data && dy_data != dout_data) {
+    auto size = x->numel();
+    int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
+    dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+    dim3 grid_size =
+        dim3(((size + vec_size - 1) / vec_size + PADDLE_CUDA_THREAD_SIZE - 1) /
+                 PADDLE_CUDA_THREAD_SIZE,
+             1);
+    SimpleElemwiseAddGradCUDAKernel<
+        T><<<grid_size, block_size, 0,
+             ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
+        dout->data<T>(), size, vec_size, dx->mutable_data<T>(ctx.GetPlace()),
+        dy->mutable_data<T>(ctx.GetPlace()));
+  } else {
+    VLOG(4) << "Special case when dy_data is the same as dout_data, "
+               "and dx_data is the same as dout_data, do not need "
+               "any operator";
+  }
 }
 
 }  // namespace operators

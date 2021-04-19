@@ -36,48 +36,73 @@ DECLARE_bool(sort_sum_gradient);
 namespace paddle {
 namespace imperative {
 
-void BasicEngine::Init(VarBase* var, bool retain_graph) {
+void BasicEngine::Init(
+    const std::vector<std::shared_ptr<VarBase>>& tensors,
+    const std::vector<std::shared_ptr<VarBase>>& grad_tensors,
+    bool retain_graph) {
   retain_graph_ = retain_graph;
-  init_node_ = var->GradVarBase()->GradNode();
-  PADDLE_ENFORCE_EQ(var->GradVarBase()->GraphIsFreed(), false,
-                    platform::errors::Unavailable(
-                        "%s trying to backward through the same graph a second "
-                        "time, but this graph have already been freed. Please "
-                        "specify Tensor.backward(retain_graph=True) when "
-                        "calling backward at the first time.",
-                        var->Name()));
-
-  if (!retain_graph) {
-    VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
-            << " because of retain_graph=False when calling backward";
-    var->GradVarBase()->SetGraphIsFreed(true);
-    var->GradVarBase()->ClearGradNode();
-  }
-
-  if (init_node_ == nullptr || var->OverridedStopGradient()) {
-    VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
-               "stop_gradient=True: "
-            << var->Name();
-    return;
-  }
-
-  VLOG(3) << "Init first node of backward";
 
   PADDLE_ENFORCE_EQ(
-      var->HasGradVar(), true,
-      platform::errors::NotFound("Grad variable not exist for variable %s",
-                                 var->Name()));
+      tensors.size(), grad_tensors.size(),
+      platform::errors::Unavailable(
+          "The size of tensors do not equal the size of grad_tensors,"
+          "the size of tensors is %s, but the size of grad_tensors is %s.",
+          tensors.size(), grad_tensors.size()));
 
-  auto& fwd_var = var->Var().Get<framework::LoDTensor>();
-  auto* grad_var =
-      var->GradVarBase()->MutableVar()->GetMutable<framework::LoDTensor>();
-  VLOG(6) << "init loss grad:" << var->GradVarBase()->Name()
-          << " as stop_gradient false";
-  var->GradVarBase()->InnerSetOverridedStopGradient(false);
-  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(fwd_var.place());
-  grad_var->Resize(fwd_var.dims());
-  grad_var->mutable_data(fwd_var.place(), fwd_var.type());
-  operators::math::set_constant(*dev_ctx, grad_var, 1.0);
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    auto var = tensors[i];
+    auto grad_tensor = grad_tensors[i];
+
+    auto init_node = var->GradVarBase()->GradNode();
+    PADDLE_ENFORCE_EQ(
+        var->GradVarBase()->GraphIsFreed(), false,
+        platform::errors::Unavailable(
+            "%s trying to backward through the same graph a second "
+            "time, but this graph have already been freed. Please "
+            "specify Tensor.backward(retain_graph=True) when "
+            "calling backward at the first time.",
+            var->Name()));
+
+    if (!retain_graph) {
+      VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
+              << " because of retain_graph=False when calling backward";
+      var->GradVarBase()->SetGraphIsFreed(true);
+      var->GradVarBase()->ClearGradNode();
+    }
+
+    if (init_node == nullptr || var->OverridedStopGradient()) {
+      VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
+                 "stop_gradient=True: "
+              << var->Name();
+      continue;
+    }
+
+    VLOG(3) << "Init node of backward";
+
+    PADDLE_ENFORCE_EQ(
+        var->HasGradVar(), true,
+        platform::errors::NotFound("Tensor %s has no gradient", var->Name()));
+
+    auto& fwd_var = var->Var().Get<framework::LoDTensor>();
+    auto* grad_var =
+        var->GradVarBase()->MutableVar()->GetMutable<framework::LoDTensor>();
+    VLOG(6) << "init loss grad:" << var->GradVarBase()->Name()
+            << " as stop_gradient false";
+    var->GradVarBase()->InnerSetOverridedStopGradient(false);
+    auto* dev_ctx =
+        platform::DeviceContextPool::Instance().Get(fwd_var.place());
+    if (grad_tensor == nullptr) {
+      grad_var->Resize(fwd_var.dims());
+      grad_var->mutable_data(fwd_var.place(), fwd_var.type());
+      operators::math::set_constant(*dev_ctx, grad_var, 1.0);
+    } else {
+      paddle::framework::TensorCopy(
+          grad_tensor->Var().Get<framework::LoDTensor>(), fwd_var.place(),
+          *dev_ctx, grad_var);
+    }
+
+    init_nodes_.push_back(init_node);
+  }
 }
 
 void BasicEngine::CheckBackwardInputs(const OpBase& op) {
@@ -141,17 +166,6 @@ void BasicEngine::PrepareGradAccumulators(
                 << var.get()
                 << ") that don't have grad node  with reference count "
                 << accumulator->RefCnt();
-
-        if (var->HasLeafHooks()) {
-          VLOG(3) << "Grad variable wrapper (" << var->Name()
-                  << ") has leaf grad hooks.";
-          PADDLE_ENFORCE_NE(
-              var->HasGradNode(), true,
-              platform::errors::PermissionDenied(
-                  "Only leaf Tensor's gradient can append hook to "
-                  "Gradientaccumulator."));
-          accumulator->SetPostHooks(var->GetLeafHooks());
-        }
       } else {
         // Because Inplace op overwrites the grad_node of the input grad_var. So
         // only the information of grad_pending_node can be used to find the
@@ -235,8 +249,10 @@ void BasicEngine::PrepareDeps() {
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
 
-  q.push(init_node_.get());
-  visited.insert(init_node_.get());
+  for (size_t i = 0; i < init_nodes_.size(); ++i) {
+    q.push(init_nodes_[i].get());
+    visited.insert(init_nodes_[i].get());
+  }
 
   while (!q.empty()) {
     auto* cur_node = q.front();
@@ -262,15 +278,41 @@ void BasicEngine::PrepareDeps() {
   }
 }
 
+static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
+    const NameVarMap<VariableWrapper>& bwd_ins, const std::string& op_type) {
+  std::shared_ptr<NameVarMap<VariableWrapper>> tmp_ins_ptr = nullptr;
+  for (const auto& pair : bwd_ins) {
+    for (size_t i = 0; i < pair.second.size(); ++i) {
+      auto& var = pair.second[i];
+      if (var->HasVariableWrapperHook()) {
+        if (tmp_ins_ptr == nullptr) {
+          tmp_ins_ptr = std::make_shared<NameVarMap<VariableWrapper>>(bwd_ins);
+        }
+        VLOG(3) << "Call " << var->GetVariableWrapperHooks().size()
+                << " hooks of " << op_type << "'s input `" << pair.first
+                << "`'s var `" << var->Name() << "`.";
+        auto tmp_var = var;
+        for (const auto& hook_pair : var->GetVariableWrapperHooks()) {
+          tmp_var = (*hook_pair.second)(tmp_var);
+        }
+        (*tmp_ins_ptr)[pair.first][i] = tmp_var;
+      }
+    }
+  }
+  return tmp_ins_ptr;
+}
+
 void BasicEngine::Execute() {
-  if (init_node_ == nullptr) {
+  if (init_nodes_.empty()) {
     return;
   }
 
   PrepareDeps();
   // Start execute Computation graph
   std::queue<std::shared_ptr<GradOpNode>> q;
-  q.push(std::move(init_node_));
+  for (size_t i = 0; i < init_nodes_.size(); ++i) {
+    q.push(std::move(init_nodes_[i]));
+  }
 
   size_t op_num = 0;
 
@@ -292,10 +334,15 @@ void BasicEngine::Execute() {
       auto& bwd_ins = cur_op.GetInsMap();
       auto& bwd_outs = cur_op.GetOutsMap();
 
+      /**
+       * [ Why need temporary outputs here? ]
+       *
+       * - construct the temp output map, avoid to disrupt graph
+       * - replace the element in the map by temp var, because a
+       *   var may be coresponding to several grad var in one op
+       */
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
-      // 1. construct the temp output map, avoid to disrupt graph
-      // 2. replace the element in the map by temp var, because a
-      // var may be coresponding to several grad var in one op
+
       for (auto& pair : tmp_outs) {
         if (!pair.second.IsGrad()) {
           continue;
@@ -408,10 +455,28 @@ void BasicEngine::Execute() {
         }
       }
 
+      /**
+       * [ Why need temporary inputs here? ]
+       *
+       * - Hook execution should not change original input tensor.
+       *   User can register hook for Tensor's gradient, It is expected
+       *   that the hook only affects the gradient of the backward
+       *   propagation, and does not affect the gradient value input
+       *   as the hook.
+       * - use `tmp_ins_ptr`, only copy bwd_ins when the var in bwd_ins
+       *   hold hooks
+       */
+      auto tmp_ins_ptr = CallGradientHooks(bwd_ins, cur_op.Type());
+
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
-        OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
-                    cur_op.place());
+        if (tmp_ins_ptr == nullptr) {
+          OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
+                      cur_op.place());
+        } else {
+          OpBase::Run(cur_op.InnerOp(), *tmp_ins_ptr, tmp_outs, cur_op.Attrs(),
+                      cur_op.place());
+        }
       }
 
       for (auto& pair : inplace_output_grad_var_list_) {
@@ -428,15 +493,14 @@ void BasicEngine::Execute() {
         if (!accumulator->SumGradCompleted()) {
           continue;
         }
-        // 1. Call Hooks for **inner_var_**
+        // 1. Call Hooks for `inner_var_`
+        accumulator->CallGradientHooks();
 
-        // 2. Sum Gradient with Previous Graph
+        // 2. Sum Gradient `inner_var_` to `var_` of Current or Previous Graph
         accumulator->AccumulateGrad();
 
-        // 3. Call backward Hooks for **var_**
-        if (accumulator->HasPostHooks()) {
-          accumulator->CallBackwardPostHooks();
-        }
+        // 3. Call backward Hooks for `var_`
+        accumulator->CallReduceHooks();
       }
 
       need_accu_var_list_.clear();
@@ -470,7 +534,7 @@ void BasicEngine::Execute() {
 }
 
 void BasicEngine::Clear() {
-  init_node_.reset();
+  init_nodes_.clear();
   node_deps_.clear();
   accumulators_.clear();
   accumulators_with_grad_node_.clear();

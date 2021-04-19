@@ -24,6 +24,7 @@ import re
 import traceback
 import six
 import copy
+from types import MethodType, FunctionType
 
 import numpy as np
 import subprocess
@@ -53,7 +54,6 @@ __all__ = [
     'is_compiled_with_cuda',
     'is_compiled_with_xpu',
     'Variable',
-    'load_op_library',
     'require_version',
     'device_guard',
     'set_flags',
@@ -1185,37 +1185,6 @@ class Variable(object):
         pass
 
     @fake_interface_only
-    def set_value(self, value):
-        """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
-        Set a new value for this Variable.
-
-        Args:
-            value (Variable|np.ndarray): the new value.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
-
-                data = np.ones([3, 1024], dtype='float32')
-                with fluid.dygraph.guard():
-                    linear = fluid.dygraph.Linear(1024, 4)
-                    t = to_variable(data)
-                    linear(t)  # call with default weight
-                    custom_weight = np.random.randn(1024, 4).astype("float32")
-                    linear.weight.set_value(custom_weight)  # change existing weight
-                    out = linear(t)  # call with different weight
-
-        """
-        pass
-
-    @fake_interface_only
     def backward(self, retain_graph=False):
         """
         **Notes**:
@@ -2006,10 +1975,164 @@ class Variable(object):
                 "paddle.Tensor to a paddle.Tensor, but received {}".format(
                     type(value)))
 
-        self.block.append_op(
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
             type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
 
         return self
+
+    def get_value(self, scope=None):
+        """
+        Get the value of variable in given scope. 
+
+        Args:
+            scope(Scope, optional) : If `scope` is None, it will be set to global scope 
+                obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
+                Default: None
+
+        Returns:
+            Tensor: the value in given scope.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import paddle.static as static 
+                import numpy as np
+
+                paddle.enable_static()
+
+                x = static.data(name="x", shape=[10, 10], dtype='float32')
+
+                y = static.nn.fc(x, 10, name='fc')
+                place = paddle.CPUPlace()
+                exe = static.Executor(place)
+                prog = paddle.static.default_main_program()
+                exe.run(static.default_startup_program())
+                inputs = np.ones((10, 10), dtype='float32')
+                exe.run(prog, feed={'x': inputs}, fetch_list=[y, ])
+                path = 'temp/tensor_'
+                for var in prog.list_vars():
+                    if var.persistable:
+                        t = var.get_value()
+                        paddle.save(t, path+var.name+'.pdtensor')
+
+                for var in prog.list_vars():
+                    if var.persistable:
+                        t_load = paddle.load(path+var.name+'.pdtensor')
+                        var.set_value(t_load)
+        """
+        # The 'framework' is a low-level module, and 'executor' 
+        # can not be imported at the begainning of this file. 
+        # Therefore, the above two modules are dynamically imported.
+        from .executor import global_scope
+        if scope is not None and not isinstance(scope, core._Scope):
+            raise TypeError(
+                "`scope` should be None or `paddle.static.Scope` type, but received {}.".
+                format(type(scope)))
+
+        if scope is None:
+            scope = global_scope()
+        var_temp = scope.find_var(self.name)
+        if var_temp is None:
+            raise ValueError("Can not find Variable '{}' in the Scope.".format(
+                self.name))
+        t = var_temp.get_tensor()
+        return t
+
+    def set_value(self, value, scope=None):
+        '''
+        Set the value to the tensor in given scope. 
+
+        Args:
+            value(Tensor/ndarray) : The value to be set.
+            scope(Scope, optional) : If `scope` is None, it will be set to global scope 
+                obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
+                Default: None
+
+        Returns:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import paddle.static as static 
+                import numpy as np
+
+                paddle.enable_static()
+
+                x = static.data(name="x", shape=[10, 10], dtype='float32')
+
+                y = static.nn.fc(x, 10, name='fc')
+                place = paddle.CPUPlace()
+                exe = static.Executor(place)
+                prog = paddle.static.default_main_program()
+                exe.run(static.default_startup_program())
+                inputs = np.ones((10, 10), dtype='float32')
+                exe.run(prog, feed={'x': inputs}, fetch_list=[y, ])
+                path = 'temp/tensor_'
+                for var in prog.list_vars():
+                    if var.persistable:
+                        t = var.get_value()
+                        paddle.save(t, path+var.name+'.pdtensor')
+
+                for var in prog.list_vars():
+                    if var.persistable:
+                        t_load = paddle.load(path+var.name+'.pdtensor')
+                        var.set_value(t_load)
+        '''
+
+        # The 'framework' is a low-level module, and 'executor'
+        # can not be imported at the begainning of this file. 
+        # Therefore, the above two modules are dynamically imported.
+        from .executor import global_scope
+
+        if not (isinstance(value, np.ndarray) or hasattr(value, '__array__')):
+            raise TypeError(
+                "`value` should be `numpy.ndarray` or `LoDTensor`, but received {}.".
+                format(type(value)))
+
+        if scope is not None and not isinstance(scope, core._Scope):
+            raise TypeError(
+                "`scope` should be None or `paddle.static.Scope` type, but received {}.".
+                format(type(scope)))
+
+        if scope is None:
+            scope = global_scope()
+
+        var_temp = scope.find_var(self.name)
+        if var_temp is None:
+            raise ValueError("Can not find Variable '{}' in the Scope.".format(
+                self.name))
+
+        t = var_temp.get_tensor()
+
+        if hasattr(value, 'shape'):
+            if isinstance(value.shape, (MethodType, FunctionType)):
+                value_shape = value.shape()
+            else:
+                value_shape = value.shape
+            if list(t.shape()) != list(value_shape):
+                raise ValueError(
+                    "{} expected a shape {}, but the received shape is {}.".
+                    format(self.name, list(t.shape()), list(value_shape)))
+
+        p = t._place()
+        if p.is_cpu_place():
+            place = core.CPUPlace()
+        elif p.is_cuda_pinned_place():
+            place = core.CUDAPinnedPlace()
+        elif p.is_xpu_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.XPUPlace(p.xpu_device_id())
+        else:
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.CUDAPlace(p.gpu_device_id())
+
+        t.set(value, place)
 
 
 def get_all_op_protos():
@@ -3116,10 +3239,7 @@ class Block(object):
             Operator: the insert Operator.
         """
         self._sync_with_cpp()
-        op_desc = self.desc._insert_op(index)
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        self.ops.insert(index, op)
-        return op
+        return self._insert_op_without_sync(index, *args, **kwargs)
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
@@ -5319,6 +5439,173 @@ class Program(object):
             parameters.extend(each_block.all_parameters())
         return parameters
 
+    def state_dict(self, mode='all', scope=None):
+        """
+        Get parameters and persistable buffers of program as a dict. The key is the name of the parameter or the name of the buffer.
+        The value is the tensor of this variable in the given scope.
+
+        .. note::
+            This function MUST called after run start_up_program
+
+        Args:
+            mode(str, optional): Source of the obtained parameters and buffers. 
+                    'opt' :  The return value only contains the variable in the optimizer. 
+                    'param' : The return value only contains the variable in the network, not the variable in the optimizer.  
+                    'all' : The return value contains the variable in the network and optimizer.
+                    Default: 'all'
+            scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
+                obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
+                Default: None
+
+        Retruns:
+            dict: a dict contains the parameters and persistable buffers.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                x = static.data(name="x", shape=[10, 10], dtype='float32')
+                y = static.nn.fc(x, 10)
+                z = static.nn.fc(y, 10)
+
+                place = paddle.CPUPlace()
+                exe = static.Executor(place)
+                exe.run(static.default_startup_program())
+                prog = static.default_main_program()
+
+                path = "./temp/model.pdparams"
+                paddle.save(prog.state_dict(), path)
+        """
+        # The 'framework' is a low-level module, and 'executor'
+        # can not be imported at the begainning of this file. 
+        # Therefore, the above two modules are dynamically imported.
+        from .executor import global_scope
+        if scope is not None and not isinstance(scope, core._Scope):
+            raise TypeError(
+                "`scope` should be None or `paddle.static.Scope'` type, but received {}.".
+                format(type(scope)))
+
+        if scope is None:
+            scope = global_scope()
+
+        if not isinstance(mode, str):
+            raise TypeError("Type of `mode` should be string, but received {}.".
+                            format(type(mode)))
+
+        def is_parameter(var):
+            return isinstance(var, Parameter)
+
+        def is_persistable(var):
+            if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+                var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                var.desc.type() == core.VarDesc.VarType.READER:
+                return False
+            return var.persistable
+
+        def is_belong_to_optimizer(var):
+            if not (isinstance(var, Parameter) or var.desc.need_check_feed()):
+                return is_persistable(var)
+            return False
+
+        def condition(var):
+
+            if mode == 'param':
+                return is_parameter(var)
+            elif mode == 'opt':
+                return is_belong_to_optimizer(var)
+            elif mode == 'all':
+                return is_parameter(var) or is_belong_to_optimizer(var)
+            else:
+                raise ValueError(
+                    "`mode` string should be 'param', 'opt' or 'all', but received {}.".
+                    format(mode))
+
+        var_list = filter(condition, self.list_vars())
+
+        state_dict = dict()
+        for var in var_list:
+            var_temp = scope.find_var(var.name)
+            if var_temp is None:
+                raise ValueError(
+                    "Can not find Variable '{}' in the scope. Make sure it is initialized".
+                    format(var.name))
+            state_dict[var.name] = var_temp.get_tensor()
+
+        return state_dict
+
+    def set_state_dict(self, state_dict, scope=None):
+        """
+        Set parameters and persistable buffers in state_dict to program. 
+        An exception will throw if shape or dtype of the parameters is not match.
+        
+        .. note::
+            This function MUST called after run start_up_program
+
+        Args:
+            state_dict(dict): the dict store parameters and persistable buffers. 
+                The key is the name of the parameter or the name of the buffer.
+                The value is the tensor of this variable in the given scope.
+            scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
+                obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
+                Default: None
+        
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                x = static.data(name="x", shape=[10, 10], dtype='float32')
+                y = static.nn.fc(x, 10)
+                z = static.nn.fc(y, 10)
+
+                place = paddle.CPUPlace()
+                exe = static.Executor(place)
+                exe.run(static.default_startup_program())
+                prog = static.default_main_program()
+
+                path = "./temp/model.pdparams"
+                paddle.save(prog.state_dict(), path)
+                state_dict_load = paddle.load(path)
+                prog.set_state_dict(state_dict_load)
+        """
+
+        if not isinstance(state_dict, dict):
+            raise TypeError(
+                "Type of `state_dict` should be dict, but received {}.".format(
+                    type(state_dict)))
+
+        vars_dict = {var.name: var for var in self.list_vars()}
+        condition = True if 'StructuredToParameterName@@' in state_dict else False
+        for name, value in state_dict.items():
+            if condition:
+                if name == "StructuredToParameterName@@":
+                    continue
+                if name in state_dict['StructuredToParameterName@@']:
+                    name = state_dict['StructuredToParameterName@@'][name]
+            if name in vars_dict:
+                try:
+                    vars_dict[name].set_value(value, scope)
+                except ValueError as err:
+                    warnings.warn(
+                        ("Skip loading for '{}'. ".format(name) + str(err)))
+                except TypeError as err:
+                    warnings.warn(
+                        ("Skip loading for '{}'. ".format(name) + str(err)))
+            else:
+                warnings.warn((
+                    "Skip loading for '{0}'. Because '{0}' not in the program.".
+                    format(name)))
+
 
 @six.add_metaclass(ParameterMetaClass)
 class Parameter(Variable):
@@ -5770,33 +6057,6 @@ def _dygraph_place_guard(place):
         _set_dygraph_tracer_expected_place(tmp_place)
 
 
-def load_op_library(lib_filename):
-    """
-    :api_attr: Static Graph
-
-    Load a dynamic library, including custom operators and kernels.
-    When library is loaded, ops and kernels registered in the library
-    will be available in PaddlePaddle main process.
-    Please note, the type of custom operators can't have the same type
-    with the existing operators in the framework.
-
-    Args:
-        lib_filename (str): name of dynamic library.
-    
-    Returns:
-        list[str]: new registered custom op names.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            #fluid.load_op_library('custom_op.so')
-
-    """
-    core.load_op_library(lib_filename)
-    return OpProtoHolder.instance().update_op_proto()
-
-
 def switch_device(device):
     global _current_device
     pre_device = _current_device
@@ -5938,7 +6198,7 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -5948,9 +6208,11 @@ def _get_paddle_place(place):
     place = place.lower()
     if (place == "cpu"):
         return core.CPUPlace()
+
     if (place == "device"):
         return core.Place()
 
+    # GPU
     avaliable_gpu_place = re.match(r'gpu:\d+', place)
     if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
         if not core.is_compiled_with_cuda():
@@ -5966,6 +6228,8 @@ def _get_paddle_place(place):
             device_id = place_info_list[1]
             device_id = int(device_id)
             return core.CUDAPlace(device_id)
+
+    # XPU
     avaliable_xpu_place = re.match(r'xpu:\d+', place)
     if avaliable_xpu_place:
         if not core.is_compiled_with_xpu():
@@ -5976,9 +6240,22 @@ def _get_paddle_place(place):
         device_id = place_info_list[1]
         device_id = int(device_id)
         return core.XPUPlace(device_id)
+
+    # NPU
+    avaliable_npu_place = re.match(r'npu:\d+', place)
+    if avaliable_npu_place:
+        if not core.is_compiled_with_npu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with NPU".format(avaliable_npu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.NPUPlace(device_id)
+
     raise ValueError(
-        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
-    )
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace and NPUPlace, but received {}.".
+        format(place))
 
 
 def _get_paddle_place_list(places):

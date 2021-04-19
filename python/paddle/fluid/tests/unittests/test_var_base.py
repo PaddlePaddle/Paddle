@@ -76,6 +76,11 @@ class TestVarBase(unittest.TestCase):
                     y = x.cuda(blocking=True)
                     self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
 
+                # support 'dtype' is core.VarType
+                x = paddle.rand((2, 2))
+                y = paddle.to_tensor([2, 2], dtype=x.dtype)
+                self.assertEqual(y.dtype, core.VarDesc.VarType.FP32)
+
                 # set_default_dtype take effect on complex
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
                 self.assertTrue(np.array_equal(x.numpy(), [1 + 2j]))

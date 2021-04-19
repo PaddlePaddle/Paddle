@@ -49,6 +49,7 @@ class SkipLayerNormOpConverter : public OpConverter {
     auto* scale = get_persistable_data("Scale", &scale_dims);
     int bias_size = framework::product(bias_dims);
     int scale_size = framework::product(scale_dims);
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
@@ -61,6 +62,10 @@ class SkipLayerNormOpConverter : public OpConverter {
                                         : nvinfer1::DataType::kFLOAT);
         int ld = input1->getDimensions().d[2];  // hidden dimension
         assert(ld > 0);
+
+        if (enable_int8) {
+          type = static_cast<int>(nvinfer1::DataType::kHALF);
+        }
 
         const std::vector<nvinfer1::PluginField> fields{
             {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
@@ -90,7 +95,7 @@ class SkipLayerNormOpConverter : public OpConverter {
         plugin::SkipLayerNormPluginDynamic* plugin =
             new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
                                                    scale_size, eps, with_fp16);
-        layer = engine_->AddPluginV2(inputs.data(), 2, plugin);
+        layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(

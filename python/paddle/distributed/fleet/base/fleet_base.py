@@ -26,6 +26,7 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
+from . import topology as tp
 
 
 def _inited_runtime_handler_(func):
@@ -234,6 +235,48 @@ class Fleet(object):
                         self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
 
+            # init hybrid parallel environment in dygraph
+            if tp._HYBRID_PARALLEL_GROUP is None:
+                self._init_hybrid_parallel_env()
+            else:
+                warnings.warn(
+                    "The dygraph hybrid parallel environment has been initialized."
+                )
+
+    def _init_hybrid_parallel_env(self):
+        """initialize the hybrid environment
+        """
+        self.hybrid_configs = self._user_defined_strategy.hybrid_configs
+        self.dp_degree = self.hybrid_configs["dp_degree"]
+        self.mp_degree = self.hybrid_configs["mp_degree"]
+        self.pp_degree = self.hybrid_configs["pp_degree"]
+
+        assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
+        assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+
+        self.mp_degree = max(self.mp_degree, 1)
+        self.pp_degree = max(self.pp_degree, 1)
+
+        if self.dp_degree < 0:
+            nranks = paddle.distributed.get_world_size()
+            self.dp_degree = nranks // (self.mp_degree * self.pp_degree)
+
+        self.dp_degree = max(self.dp_degree, 1)
+
+        self._topology = tp.CommunicateTopology(
+            hybrid_group_names=["data", "pipe", "model"],
+            dims=[self.dp_degree, self.pp_degree, self.mp_degree])
+
+        self._hcg = tp.HybridCommunicateGroup(self._topology)
+
+    def get_hybrid_communicate_group(self):
+        assert self._hcg is not None
+        return self._hcg
+
+    def get_hybrid_parallel_topology(self):
+        assert self._topology is not None
+        return self._topology
+
     def is_first_worker(self):
         """
         Check whether the node is the first instance of worker.
@@ -288,6 +331,18 @@ class Fleet(object):
 
         """
         return self._role_maker._worker_num()
+
+    def node_num(self):
+        return self._role_maker._get_node_num()
+
+    def local_rank(self):
+        return self._role_maker._get_local_rank()
+
+    def local_device_ids(self):
+        return self._role_maker._get_local_device_ids()
+
+    def world_device_ids(self):
+        return self._role_maker._get_world_device_ids()
 
     def is_worker(self):
         """
@@ -628,12 +683,13 @@ class Fleet(object):
         self.user_defined_optimizer = optimizer
 
         if strategy is not None:
-            warnings.warn(
-                "It is recommended to use DistributedStrategy "
-                "in fleet.init(). The strategy here is only for compatibility. "
-                "If the strategy in fleet.distributed_optimizer() is "
-                "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
-                "which will take effect in distributed training.")
+            if self._is_collective:
+                warnings.warn(
+                    "It is recommended to use DistributedStrategy "
+                    "in fleet.init(). The strategy here is only for compatibility. "
+                    "If the strategy in fleet.distributed_optimizer() is "
+                    "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
+                    "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
 
         self._context = {}
@@ -705,7 +761,9 @@ class Fleet(object):
             model,
             comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
             last_comm_buffer_size=self._user_defined_strategy.
-            last_comm_group_size_MB)
+            last_comm_group_size_MB,
+            find_unused_parameters=self._user_defined_strategy.
+            find_unused_parameters)
         return self.model
 
     @dygraph_only

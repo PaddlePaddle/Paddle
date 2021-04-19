@@ -212,7 +212,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     Args:
         x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float32,
-                      float64, int8, int32, int64.
+                      float64, int8, int32, int64, uint8.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
@@ -249,7 +249,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The input x should be a Tensor")
 
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+        'flatten')
     helper = LayerHelper('flatten', **locals())
 
     x_dim = len(x.shape)
@@ -1431,7 +1432,8 @@ def expand(x, shape, name=None):
                     'Elements in shape must be 1-D Tensors or integers.')
 
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'expand')
     check_type(shape, 'shape', (list, tuple, Variable), 'expand')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
         raise ValueError("When the data type of input 'x' for expand is bool, "
