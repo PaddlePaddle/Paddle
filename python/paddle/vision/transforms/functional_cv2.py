@@ -136,8 +136,8 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     Args:
         img (np.array): Image to be padded.
         padding (int|list|tuple): Padding on each border. If a single int is provided this
-            is used to pad all borders. If tuple of length 2 is provided this is the padding
-            on left/right and top/bottom respectively. If a tuple of length 4 is provided
+            is used to pad all borders. If list/tuple of length 2 is provided this is the padding
+            on left/right and top/bottom respectively. If a list/tuple of length 4 is provided
             this is the padding for the left, top, right and bottom borders
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
