@@ -80,6 +80,7 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
 
   HcclComm comm;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
+ VLOG(1) << "initialized comm: " << &comm  << ", nranks: " << nranks << ", hccl_id: " << hccl_id << ", rank: " << rank;
   PADDLE_ENFORCE_NPU_SUCCESS(
       platform::dynload::HcclCommInitRootInfo(nranks, hccl_id, rank, &comm));
 

@@ -21,7 +21,12 @@ else()
     set(ASCEND_DIR /usr/local/Ascend)
 endif()
 
-if(WITH_ASCEND)
+if(EXISTS ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/include/graph/ascend_string.h)
+  # It means CANN 20.2 +
+  add_definitions(-DPADDLE_WITH_ASCEND_STRING)
+endif()
+
+if(WITH_ASCEND OR WITH_ASCEND_CL)
   set(ASCEND_DRIVER_DIR ${ASCEND_DIR}/driver/lib64)
   set(ASCEND_DRIVER_COMMON_DIR ${ASCEND_DIR}/driver/lib64/common)
   set(ASCEND_DRIVER_SHARE_DIR ${ASCEND_DIR}/driver/lib64/share)
@@ -42,10 +47,6 @@ if(WITH_ASCEND)
   set(atlas_ge_runner_lib ${ATLAS_RUNTIME_DIR}/libge_runner.so)
   set(atlas_acl_lib ${ATLAS_RUNTIME_DIR}/libascendcl.so)
   INCLUDE_DIRECTORIES(${ATLAS_RUNTIME_INC_DIR})
-
-  if(EXISTS ${ATLAS_RUNTIME_INC_DIR}/graph/ascend_string.h)
-    add_definitions(-DPADDLE_WITH_ASCEND_STRING)
-  endif()
 
   ADD_LIBRARY(ascend_ge SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET ascend_ge PROPERTY IMPORTED_LOCATION ${atlas_ge_runner_lib})
