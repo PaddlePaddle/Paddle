@@ -28,11 +28,14 @@ def has_valid_extension(filename, extensions):
 
     Args:
         filename (str): path to a file
-        extensions (tuple of str): extensions to consider (lowercase)
+        extensions (list[str]|tuple[str]): extensions to consider
 
     Returns:
         bool: True if the filename ends with one of given extensions
     """
+    assert isinstance(extensions,
+                      (list, tuple)), ("`extensions` must be list or tuple.")
+    extensions = tuple([x.lower() for x in extensions])
     return filename.lower().endswith(extensions)
 
 
@@ -73,7 +76,7 @@ class DatasetFolder(Dataset):
     Args:
         root (string): Root directory path.
         loader (callable|optional): A function to load a sample given its path.
-        extensions (tuple[str]|optional): A list of allowed extensions.
+        extensions (list[str]|tuple[str]|optional): A list of allowed extensions.
             both extensions and is_valid_file should not be passed.
         transform (callable|optional): A function/transform that takes in
             a sample and returns a transformed version.
@@ -226,7 +229,7 @@ class ImageFolder(Dataset):
     Args:
         root (string): Root directory path.
         loader (callable, optional): A function to load a sample given its path.
-        extensions (tuple[string], optional): A list of allowed extensions.
+        extensions (list[str]|tuple[str], optional): A list of allowed extensions.
             both extensions and is_valid_file should not be passed.
         transform (callable, optional): A function/transform that takes in
             a sample and returns a transformed version.

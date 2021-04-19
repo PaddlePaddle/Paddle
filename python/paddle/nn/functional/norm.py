@@ -23,6 +23,8 @@ from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
 from ...fluid import core, dygraph_utils
 
+import numbers
+
 __all__ = [
     'batch_norm',
     #       'data_norm',
@@ -286,6 +288,14 @@ def layer_norm(x,
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
+    if isinstance(normalized_shape, numbers.Integral):
+        normalized_shape = [normalized_shape]
+    elif isinstance(normalized_shape, tuple):
+        normalized_shape = list(normalized_shape)
+    elif not isinstance(normalized_shape, list):
+        raise ValueError(
+            "`normalized_shape` should be int, list of ints or tuple of ints.")
+
     normalized_ndim = len(normalized_shape)
     begin_norm_axis = input_ndim - normalized_ndim
     if input_ndim < normalized_ndim or input_shape[
