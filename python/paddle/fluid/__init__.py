@@ -70,7 +70,6 @@ from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
 from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
 from .incubate import fleet
-from .incubate import data_generator
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import profiler
