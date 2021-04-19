@@ -39,7 +39,7 @@ CLASS_NUM = 10
 if six.PY2:
     LARGE_PARAM = 2**2
 else:
-    LARGE_PARAM = 2**2
+    LARGE_PARAM = 2**26
 
 
 def random_batch_reader():

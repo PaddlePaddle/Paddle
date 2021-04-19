@@ -311,7 +311,7 @@ def _is_state_dict(obj):
 
         for key, value in obj.items():
             if not isinstance(value, (core.VarBase, core.LoDTensor)):
-                if _contain_x(obj, condition):
+                if _contain_x(value, condition):
                     return False
         return True
 
