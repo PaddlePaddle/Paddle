@@ -44,10 +44,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     // step1: inverse scale(RealDiv)
     Tensor const_tensor;
     const_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{static_cast<T>(1.0)}, ctx.device_context(),
-                     &const_tensor);
-
-    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
+    FillNpuTensorWithConstant<T>(&const_tensor, static_cast<T>(1.0));
 
     // Inverse(1.0/scale)
     Tensor* tmp_inverse_out = const_cast<Tensor*>(scale);
@@ -61,7 +58,6 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 
     size_t x_size = xs.size();
     for (size_t i = 0; i < x_size; ++i) {
-      found_inf_data = true;
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
@@ -77,6 +73,8 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
             NpuOpRunner("CheckNumerics", {*x}, {check_xout},
                         {{"message", std::string("check_nan_and_inf")}});
         runner_checknumerics.Run(stream);
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .Wait();
       } catch (platform::EnforceNotMet& exception) {
         LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
         found_inf_data = true;
@@ -104,7 +102,11 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
       bool* is_found_inf =
           found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
       *is_found_inf = true;
-      framework::TensorCopySync(found_inf_tensor, ctx.GetPlace(), found_inf);
+
+      framework::TensorCopy(
+          found_inf_tensor, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), found_inf);
+      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
     }
   }
 };

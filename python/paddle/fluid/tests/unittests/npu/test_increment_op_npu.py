@@ -26,7 +26,7 @@ from paddle.fluid import core
 paddle.enable_static()
 SEED = 2021
 
-NPUPlace = 5
+NPUPlace = 0
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
