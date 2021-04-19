@@ -123,7 +123,7 @@ class TestConvertWithCache(unittest.TestCase):
 
 
 @declarative
-def sum_even_util_limit(max_len, limit):
+def sum_even_until_limit(max_len, limit):
     ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
     for i in range(max_len):
         if i % 2 > 0:
@@ -147,7 +147,7 @@ def sum_under_while(limit):
 class TestToOutputWithCache(unittest.TestCase):
     def test_output(self):
         with fluid.dygraph.guard():
-            ret = sum_even_util_limit(80, 10)
+            ret = sum_even_until_limit(80, 10)
             self.assertEqual(ret.numpy(), 30)
 
             ret = declarative(sum_under_while)(100)

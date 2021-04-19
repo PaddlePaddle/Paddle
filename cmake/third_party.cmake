@@ -17,7 +17,6 @@ include(ExternalProject)
 
 set(THIRD_PARTY_PATH  "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
     "A path setting third party libraries download & build directories.")
-
 set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
     "A path cache third party source code to avoid repeated download.")
 
@@ -39,6 +38,7 @@ set(third_party_deps)
 #            REPOSITORY ${TARGET_REPOSITORY}
 #            TAG        ${TARGET_TAG}
 #            DIR        ${TARGET_SOURCE_DIR})
+
 FUNCTION(cache_third_party TARGET)
     SET(options "")
     SET(oneValueArgs URL REPOSITORY TAG DIR)
@@ -208,11 +208,6 @@ include(external/warpctc)   # download, build, install warpctc
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
-if(WITH_AMD_GPU)
-    include(external/rocprim)   # download, build, install rocprim
-    list(APPEND third_party_deps extern_rocprim)
-endif()
-
 include(cblas)              	# find first, then download, build, install openblas
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
@@ -227,7 +222,7 @@ if(WITH_MKLDNN)
 endif()
 
 include(external/protobuf)  	# find first, then download, build, install protobuf
-if(NOT PROTOBUF_FOUND OR WIN32)
+if(TARGET extern_protobuf)
     list(APPEND third_party_deps extern_protobuf)
 endif()
 
@@ -237,18 +232,24 @@ if(WITH_PYTHON)
     list(APPEND third_party_deps extern_pybind)
 endif()
 
-IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
+IF(WITH_TESTING OR WITH_DISTRIBUTE)
     include(external/gtest)     # download, build, install gtest
     list(APPEND third_party_deps extern_gtest)
 ENDIF()
 
 if(WITH_GPU)
-    include(external/cub)       # download cub
-    list(APPEND third_party_deps extern_cub)
-  
+    if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+        include(external/cub)       # download cub
+        list(APPEND third_party_deps extern_cub)
+    endif()
     set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
     file_download_and_uncompress(${CUDAERROR_URL} "cudaerror") # download file cudaErrorMessage
 endif(WITH_GPU)
+
+if(WITH_XPU)
+    include(external/xpu)          # download, build, install xpu
+    list(APPEND third_party_deps extern_xpu)
+endif(WITH_XPU)
 
 if(WITH_PSLIB)
     include(external/pslib)          # download, build, install pslib
@@ -273,13 +274,28 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
-if(WITH_DISTRIBUTE)
-    if(WITH_GRPC)
-        list(APPEND third_party_deps extern_grpc)
-    else()
-        list(APPEND third_party_deps extern_leveldb)
-        list(APPEND third_party_deps extern_brpc)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
+    include(external/ascend)
+    if(WITH_ASCEND)
+        list(APPEND third_party_deps extern_ascend)
     endif()
+    if(WITH_ASCEND_CL)
+        list(APPEND third_party_deps extern_ascend_cl)
+    endif()
+endif ()
+
+if (WITH_PSCORE)
+    include(external/snappy)
+    list(APPEND third_party_deps extern_snappy)
+
+    include(external/leveldb)
+    list(APPEND third_party_deps extern_leveldb)
+        
+    include(external/brpc)
+    list(APPEND third_party_deps extern_brpc)
+
+    include(external/libmct)     # download, build, install libmct
+    list(APPEND third_party_deps extern_libmct)
 endif()
 
 if(WITH_XBYAK)
@@ -300,11 +316,14 @@ if(WITH_DGC)
 endif()
 
 if (WITH_LITE)
+    message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    list(APPEND third_party_deps extern_cryptopp)
+    add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

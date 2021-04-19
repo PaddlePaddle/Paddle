@@ -14,6 +14,7 @@
 """Test cases for role makers."""
 
 from __future__ import print_function
+import paddle
 import os
 import unittest
 
@@ -32,15 +33,10 @@ class TestCloudRoleMaker2(unittest.TestCase):
     def test_pslib_2(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_pslib_2")
-            return
+
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["TRAINING_ROLE"] = "TRAINER"
@@ -60,10 +56,10 @@ class TestCloudRoleMaker2(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.program_guard(train_program, startup_program):
             show = fluid.layers.data(name="show", shape=[-1, 1], \
-                dtype="float32", lod_level=1, append_batch_size=False)
+                                     dtype="float32", lod_level=1, append_batch_size=False)
             fc = fluid.layers.fc(input=show, size=1, act=None)
             label = fluid.layers.data(name="click", shape=[-1, 1], \
-                dtype="int64", lod_level=1, append_batch_size=False)
+                                      dtype="int64", lod_level=1, append_batch_size=False)
             label_cast = fluid.layers.cast(label, dtype='float32')
             cost = fluid.layers.log_loss(fc, label_cast)
         try:
@@ -87,7 +83,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role2._all_gather(1)
         role2._all_gather(1)
         role2._barrier_server()
-        role2.all_gather(1)
+        role2._all_gather(1)
         role3 = GeneralRoleMaker(path="./test_gloo_3")
         role3._worker_gather(1)
         role3._worker_gather(1)
@@ -163,9 +159,9 @@ class TestCloudRoleMaker2(unittest.TestCase):
             data = "1 1 1 1\n"
             f.write(data)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = paddle.distributed.InMemoryDataset()
         dataset.set_filelist(["test_fleet_gloo_role_maker_1.txt"])
-        dataset.set_use_var([show, label])
+        dataset._set_use_var([show, label])
         dataset.load_into_memory()
         dataset.get_memory_data_size(fleet)
         dataset.get_shuffle_data_size(fleet)
@@ -236,7 +232,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
             def distributed_optimizer(self, optimizer, strategy=None):
                 """
                 dummy distributed optimizer
-                
+
                 Args:
                     optimizer(None): fake optimizer
                     strategy(None): fake strategy

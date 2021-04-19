@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -74,8 +73,12 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                             inp_var_names[i]));
 
       auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
+      PADDLE_ENFORCE_EQ(
+          tensor.IsInitialized(), true,
+          platform::errors::InvalidArgument(
+              "The Tensor of Variable(%s) to be saved is not initialized.",
+              inp_var_names[i]));
       // Serialize tensors one by one
-
       // Check types to see if a fp16 transformation is required
       auto in_dtype = tensor.type();
       auto out_dtype =

@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
@@ -31,6 +32,11 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+class Dataset;
+class ProgramDesc;
+class Scope;
+class TrainerBase;
 
 struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);

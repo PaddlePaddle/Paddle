@@ -14,9 +14,12 @@
 
 from __future__ import print_function
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph import declarative, ProgramTranslator
+
+from test_fetch_feed import Linear
 
 import unittest
 
@@ -119,6 +122,62 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.assertTrue(np.allclose(dy_var.numpy(), st_var.numpy()))
             else:
                 self.assertTrue(dy_var, st_var)
+
+
+class TestWithTrainAndEval(unittest.TestCase):
+    def test_switch_eval_and_train(self):
+        program_translator = ProgramTranslator()
+
+        with fluid.dygraph.guard():
+            linear_net = Linear()
+            x_data = np.random.random((4, 10)).astype('float32')
+            x = fluid.dygraph.to_variable(x_data)
+            linear_net(x)
+
+            _, partial_layer = linear_net.forward.program_cache.last()[-1]
+            # check default mode is for training
+            self.assertEqual(partial_layer.program,
+                             partial_layer._train_program)
+
+            # switch to run test program after `eval()`
+            linear_net.eval()
+            linear_net(x)
+            self.assertEqual(partial_layer.program,
+                             partial_layer._infer_program)
+
+            # switch back into training
+            linear_net.train()
+            linear_net(x)
+            self.assertEqual(partial_layer.program,
+                             partial_layer._train_program)
+
+
+class GPT2LMHeadModel(fluid.dygraph.Layer):
+    def __init__(self):
+        super(GPT2LMHeadModel, self).__init__()
+        self.embedding0 = paddle.nn.Embedding(20, 16)
+        self.embedding1 = paddle.nn.Embedding(20, 32)
+        self.lm_head_weight = paddle.to_tensor(
+            np.random.rand(2, 3).astype('float32'))
+
+    @declarative
+    def forward(self, x):
+        x = fluid.layers.reshape(x, shape=[-1, 6])
+        x1, x2, x3 = fluid.layers.split(input=x, dim=1, num_or_sections=3)
+        return x1
+
+
+class TestPruneUnusedParamInProgram(unittest.TestCase):
+    def test_prune(self):
+        input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
+
+        place = fluid.CPUPlace()
+        with fluid.dygraph.guard(place):
+            model = GPT2LMHeadModel()
+            model.eval()
+            input_ids = paddle.to_tensor(input_ids)
+            out = model(input_ids)
+            self.assertTrue(np.array_equal(out.numpy(), [[15, 11]]))
 
 
 if __name__ == '__main__':

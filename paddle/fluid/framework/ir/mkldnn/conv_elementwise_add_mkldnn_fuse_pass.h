@@ -28,6 +28,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+class GraphPatternDetector;
+class Node;
+namespace patterns {
+struct Conv;
+}  // namespace patterns
+
 using graph_ptr = ir::Graph*;
 using GraphWithStats = std::pair<ir::Graph*, int>;
 

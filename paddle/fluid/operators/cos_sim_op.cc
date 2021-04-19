@@ -82,7 +82,7 @@ class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The 1st input of cos_sim op, LoDTensor with shape ``[N_1, N_2, "
+             "The 1st input of cos_sim op, Tensor with shape ``[N_1, N_2, "
              "..., N_k]``, the data type is float32.");
     AddInput("Y",
              "The 2nd input of cos_sim op, Tensor with shape ``[N_1 or 1, N_2, "
@@ -109,9 +109,6 @@ The input X and Y must have the same shape, except that the 1st dimension
 of input Y could be just 1 (different from input X), which will be
 broadcasted to match the shape of input X before computing their cosine
 similarity.
-
-Both the input X and Y can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD information with input X.
 
 )DOC");
   }

@@ -30,7 +30,7 @@ class TestConvDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 3, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(x, 2, 1, groups=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -57,7 +57,7 @@ class TestConvDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 3, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(x, 2, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -82,7 +82,7 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
     def func(self, place):
         shape = [2, 3, 3, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(x, 2, 1, padding=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -107,7 +107,7 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 3, 4, 2]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv3d(x, 2, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -132,7 +132,7 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
     def func(self, place):
         shape = [2, 4, 5, 3, 2]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv3d(x, 2, 1, padding=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -157,7 +157,7 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(
             input=x,
@@ -188,7 +188,7 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(
             input=x,
@@ -219,7 +219,7 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(
             input=x,
@@ -250,7 +250,7 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(
             input=x,
@@ -283,7 +283,7 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(
             input=x,
@@ -316,7 +316,7 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 2, 2, 2]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv3d(
             input=x,
@@ -347,7 +347,7 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 2, 2, 2]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv3d(
             input=x,
@@ -379,7 +379,7 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 3, 3, 2]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv3d(
             input=x,
@@ -410,7 +410,7 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
     def func(self, place):
         shape = [2, 2, 2, 2, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv3d(
             input=x,
@@ -438,12 +438,12 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
             self.func(p)
 
 
-class TestConv3dDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
+class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 2, 2, 3]
         eps = 0.005
-        dtype = np.float64
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv3d(
             input=x,
@@ -465,6 +465,37 @@ class TestConv3dDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 4, 3, 3]
+        eps = 0.005
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
+        x = layers.data('x', shape, False, dtype)
+
+        # condition of depthwise conv: 
+        # use_cudnn == False
+        # groups == filters
+        # num_filters % num_channels == 0
+        y = layers.conv2d(
+            x, shape[1], 1, groups=shape[1], bias_attr=False, use_cudnn=False)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = []
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:

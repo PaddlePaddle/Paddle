@@ -12,20 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <cmath>
 #include <mutex>   // NOLINT
 #include <thread>  // NOLINT
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 
-int test_main(const AnalysisConfig& config, Barrier* barrier = nullptr) {
+int test_predictor(const AnalysisConfig& config_in,
+                   Barrier* barrier = nullptr) {
   static std::mutex mutex;
+  AnalysisConfig config{config_in};
   std::unique_ptr<PaddlePredictor> predictor;
   {
     std::unique_lock<std::mutex> lock(mutex);
@@ -58,7 +60,66 @@ int test_main(const AnalysisConfig& config, Barrier* barrier = nullptr) {
   return 0;
 }
 
-#ifdef PADDLE_WITH_CUDA
+int test_predictor_zero_copy(const AnalysisConfig& config_in,
+                             Barrier* barrier = nullptr) {
+  static std::mutex mutex;
+  AnalysisConfig config{config_in};
+  config.SwitchUseFeedFetchOps(false);
+  std::unique_ptr<PaddlePredictor> predictor;
+  {
+    std::unique_lock<std::mutex> lock(mutex);
+    predictor = std::move(CreatePaddlePredictor(config));
+  }
+  if (barrier) {
+    barrier->Wait();
+  }
+
+  std::vector<float> input({1});
+  auto in_tensor =
+      predictor->GetInputTensor(predictor->GetInputNames().front());
+  in_tensor->Reshape({1, 1});
+  in_tensor->copy_from_cpu(input.data());
+
+  predictor->ZeroCopyRun();
+
+  auto out_tensor =
+      predictor->GetOutputTensor(predictor->GetOutputNames().front());
+  std::vector<float> data_o(10);
+  out_tensor->copy_to_cpu(data_o.data());
+
+  const std::vector<float> truth_values = {
+      -0.00621776f, -0.00620937f, 0.00990623f,  -0.0039817f, -0.00074315f,
+      0.61229795f,  -0.00491806f, -0.00068755f, 0.18409646f, 0.30090684f};
+  const size_t expected_size = 1;
+  EXPECT_EQ(predictor->GetOutputNames().size(), expected_size);
+  for (size_t j = 0; j < truth_values.size(); ++j) {
+    EXPECT_LT(std::abs(data_o[j] - truth_values[j]), 10e-6);
+  }
+  return 0;
+}
+
+#ifdef PADDLE_WITH_XPU
+TEST(AnalysisPredictor, native_xpu) {
+  AnalysisConfig config;
+  config.EnableXpu();
+  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
+  test_predictor(config);
+  test_predictor_zero_copy(config);
+}
+#endif
+
+#ifdef LITE_SUBGRAPH_WITH_XPU
+TEST(AnalysisPredictor, lite_xpu) {
+  AnalysisConfig config;
+  config.EnableXpu();
+  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
+  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
+  test_predictor(config);
+  test_predictor_zero_copy(config);
+}
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(AnalysisPredictor, thread_local_stream) {
   const size_t thread_num = 5;
   std::vector<std::thread> threads(thread_num);
@@ -69,7 +130,8 @@ TEST(AnalysisPredictor, thread_local_stream) {
       config.EnableUseGpu(100, 0);
       config.SetModel(FLAGS_infer_model + "/" + "mul_model");
       config.EnableGpuMultiStream();
-      test_main(config, &barrier);
+      test_predictor(config, &barrier);
+      test_predictor_zero_copy(config);
     });
   }
   for (auto& th : threads) {
@@ -82,7 +144,8 @@ TEST(AnalysisPredictor, lite_engine) {
   config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_infer_model + "/" + "mul_model");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
-  test_main(config);
+  test_predictor(config);
+  test_predictor_zero_copy(config);
 }
 #endif
 

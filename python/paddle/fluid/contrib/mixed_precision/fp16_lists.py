@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import copy
+from ... import core
 
-__all__ = ["AutoMixedPrecisionLists"]
+__all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
 
 class AutoMixedPrecisionLists(object):
@@ -27,6 +28,7 @@ class AutoMixedPrecisionLists(object):
     Args:
         custom_white_list (set): Users' custom white list.
         custom_black_list (set): Users' custom black list.
+        custom_black_varnames (set): Users' custom black varibles' names.
     """
 
     def __init__(self,
@@ -38,6 +40,7 @@ class AutoMixedPrecisionLists(object):
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
+        self.unsupported_list = copy.copy(unsupported_fp16_list)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -64,9 +67,10 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
+                self.unsupported_list.add(op_name)
 
 
-# The three sets listed below are changed dynamiclly. They don't contain all  
+# The three sets listed below are changed dynamiclly. They don't contain all
 # paddle ops currently.
 
 # The set of ops that support fp16 calculation and are considered numerically-
@@ -74,6 +78,7 @@ class AutoMixedPrecisionLists(object):
 white_list = {
     'conv2d',
     'matmul',
+    'matmul_v2',
     'mul',
 }
 
@@ -91,6 +96,9 @@ black_list = {
     'sigmoid_cross_entropy_with_logits',
     'cross_entropy',
     'cross_entropy2',
+    # fp16 is slower than fp32, though fp16 is supported.
+    'lookup_table',
+    'lookup_table_v2',
 }
 
 # This set contains two types of ops. All ops supported fp16 calculation. One 
@@ -108,9 +116,9 @@ gray_list = {
     'elementwise_mod',
     'elementwise_floordiv',
     'batch_norm',
+    'layer_norm',
     'tanh',
     'sigmoid',
-    'lookup_table',
     'top_k',
     'pool2d',
     'pool3d',
@@ -122,6 +130,7 @@ gray_list = {
     'flatten2',
     'stack',
     'unstack',
+    'uniform_random',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
@@ -135,150 +144,14 @@ gray_list = {
     'get_tensor_from_selected_rows',
     'sign',
     'cast',
+    'fused_bn_add_activation',
 }
-'''
+
 # The set of ops that don't support fp16 calculation
-unsupported_fp16_list = {
-	# from python/paddle/fluid/layers/io.py
-    'send',
-    'send_barrier',
-    'recv',
-    'fetch_barrier',
-    'create_py_reader',
-    'create_double_buffer_reader',
-    'read',
-    'load',
-    
-   	# from python/paddle/fluid/control_flow.py
-    'increment',
-    'less_than',
-    'less_equal',
-    'greater_than',
-    'greater_equal',
-    'equal',
-    'not_equal',
-    'read_from_array',
-    'shrink_rnn_memory',
-    'lod_array_length',
-    'logical_and',
-    'logical_or',
-    'logical_xor',
-    'logical_not',
-    'print',
-    'conditional_block',
-    'while',
-    'ifelse',
-    'is_empty',
+# lookup_table fp16 is slower than fp32, though fp16 is supported.
+_, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+    'GPU', core.VarDesc.VarType.FP16)
+unsupported_fp16_list = {'lookup_table',
+                         'lookup_table_v2'} | _sys_unsupported_fp16_list
 
-    'lstm',
-    'cudnn_lstm',
-    'lstmp',
-    'gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'bpr_loss',
-    'chunk_eval',
-    'sequence_conv',
-    'sequence_softmax',
-    # Depthwise conv2d isn't fast and safe currently.
-    # ref: https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/grappler/optimizers/auto_mixed_precision_lists.h#L79
-    'depthwise_conv2d',
-    # Tensor Core kernels are not available for 3D convolutions currently.
-    'conv3d',
-    'sequence_pool',
-    'sequence_concat',
-    'sequence_slice',
-    'data_norm',
-    'layer_norm',
-    'group_norm',
-    'spectral_norm',
-    'depthwise_conv2d_transpose',
-    'sequence_expand',
-    'conv_transposed2d',
-    'conv_transposed3d',
-    'sequence_expand_as',
-    'sequence_pad',
-    'sequence_unpad',
-    'sequence_erase',
-    'beam_search',
-    'beam_search_decode',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'reduce_all',
-    'reduce_any',
-    'split',
-    'edit_distance',
-    'ctc_align',
-    'warpctc',
-    'sequence_reshape',
-    'nce',
-    'hierarchical_sigmoid',
-    'im2sequence',
-    'row_conv',
-    'multiplex',
-    'sample_logits',
-    'one_hot',
-    'smooth_l1_loss',
-    'squeeze2',
-    'unsqueeze2',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'pad_constant_like',
-    'label_smooth',
-    'scatter',
-    'sequence_scatter',
-    'random_crop',
-    'mean_iou',
-    'selu',
-    'crop',
-    'affine_grid',
-    'rank_loss',
-    'margin_rank_loss',
-    'pad2d',
-    'elu',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
-    'prelu',
-    'brelu',
-    'sequence_enumerate',
-    'sequence_mask',
-    'expand',
-    'sampling_id',
-    'maxout',
-    'space_to_depth',
-    'sequence_reverse',
-    'similarity_focus',
-    'hash',
-    'grid_sampler',
-    'log_loss',
-    'teacher_student_sigmoid_loss',
-    'add_position_encoding',
-    'bilinear_tensor_product',
-    'shuffle_channel',
-    'temporal_shift',
-    'psroi_pool',
-    'huber_loss',
-    'kldiv_loss',
-    'tree_conv',
-    'pixel_shuffle',
-    'fsp',
-    'cvm',
-
-    'affine_channel',
-    'roi_pool',
-    'roi_align',
-    'anchor_generator',
-    'generate_proposals',
-    'generate_proposal_labels',
-    'generate_mask_labels',
-		
-}
-'''
+CustomOpLists = AutoMixedPrecisionLists

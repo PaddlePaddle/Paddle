@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
+
 #include <cctype>
 #include <functional>
 #include <string>
@@ -20,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -29,12 +31,16 @@
 
 // data processing
 DECLARE_bool(use_mkldnn);
+DECLARE_string(tracer_mkldnn_ops_on);
+DECLARE_string(tracer_mkldnn_ops_off);
 // debug
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(cpu_deterministic);
 DECLARE_bool(enable_rpc_profiler);
 DECLARE_int32(multiple_of_cupti_buffer_size);
 DECLARE_bool(reader_queue_speed_test_mode);
+DECLARE_int32(call_stack_level);
+DECLARE_bool(sort_sum_gradient);
 // device management
 DECLARE_int32(paddle_num_threads);
 // executor
@@ -58,13 +64,15 @@ DECLARE_bool(use_system_allocator);
 // others
 DECLARE_bool(benchmark);
 DECLARE_int32(inner_op_parallelism);
+DECLARE_int32(max_inplace_grad_add);
 DECLARE_string(tracer_profile_fname);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cudnn
 DECLARE_uint64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 DECLARE_bool(cudnn_deterministic);
 DECLARE_bool(cudnn_exhaustive_search);
+DECLARE_bool(conv2d_disable_cudnn);
 // data processing
 DECLARE_bool(enable_cublas_tensor_op_math);
 // device management
@@ -80,6 +88,17 @@ DECLARE_uint64(reallocate_gpu_memory_in_mb);
 // others
 DECLARE_bool(sync_nccl_allreduce);
 #endif
+
+#ifdef PADDLE_WITH_XPU
+// device management
+DECLARE_string(selected_xpus);
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+// device management
+DECLARE_string(selected_npus);
+#endif
+
 #ifdef PADDLE_WITH_DISTRIBUTE
 DECLARE_int32(rpc_send_thread_num);
 DECLARE_int32(rpc_get_thread_num);
@@ -330,23 +349,24 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
   } while (0)
 
 static void RegisterGlobalVarGetterSetter() {
-  REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_use_mkldnn,
-                              FLAGS_free_idle_chunk,
+  REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_free_idle_chunk,
                               FLAGS_free_when_no_cache_hit);
 
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
       FLAGS_allocator_strategy, FLAGS_use_system_allocator, FLAGS_check_nan_inf,
-      FLAGS_cpu_deterministic, FLAGS_enable_rpc_profiler,
-      FLAGS_multiple_of_cupti_buffer_size, FLAGS_reader_queue_speed_test_mode,
-      FLAGS_pe_profile_fname, FLAGS_print_sub_graph_dir,
-      FLAGS_fraction_of_cpu_memory_to_use, FLAGS_fuse_parameter_groups_size,
-      FLAGS_fuse_parameter_memory_size, FLAGS_init_allocated_mem,
-      FLAGS_initial_cpu_memory_in_mb, FLAGS_memory_fraction_of_eager_deletion,
-      FLAGS_use_pinned_memory, FLAGS_benchmark, FLAGS_inner_op_parallelism,
-      FLAGS_tracer_profile_fname, FLAGS_paddle_num_threads);
+      FLAGS_call_stack_level, FLAGS_sort_sum_gradient, FLAGS_cpu_deterministic,
+      FLAGS_enable_rpc_profiler, FLAGS_multiple_of_cupti_buffer_size,
+      FLAGS_reader_queue_speed_test_mode, FLAGS_pe_profile_fname,
+      FLAGS_print_sub_graph_dir, FLAGS_fraction_of_cpu_memory_to_use,
+      FLAGS_fuse_parameter_groups_size, FLAGS_fuse_parameter_memory_size,
+      FLAGS_init_allocated_mem, FLAGS_initial_cpu_memory_in_mb,
+      FLAGS_memory_fraction_of_eager_deletion, FLAGS_use_pinned_memory,
+      FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
+      FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
+      FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_gpu_memory_limit_mb, FLAGS_cudnn_deterministic,
       FLAGS_conv_workspace_size_limit, FLAGS_cudnn_batchnorm_spatial_persistent,
@@ -355,8 +375,17 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_fraction_of_cuda_pinned_memory_to_use,
       FLAGS_fraction_of_gpu_memory_to_use, FLAGS_initial_gpu_memory_in_mb,
       FLAGS_reallocate_gpu_memory_in_mb, FLAGS_enable_cublas_tensor_op_math,
-      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce);
+      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce,
+      FLAGS_conv2d_disable_cudnn);
 #endif
+#ifdef PADDLE_WITH_XPU
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_xpus);
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_npus);
+#endif
+
 #ifdef PADDLE_WITH_DITRIBUTE
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_send_thread_num,
                              FLAGS_rpc_get_thread_num,

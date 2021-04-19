@@ -15,6 +15,7 @@ import time
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Linear, Embedding
 from paddle.fluid.dygraph import to_variable, ProgramTranslator, declarative
@@ -274,7 +275,7 @@ class Args(object):
     lr = 0.01
     vocab_size = 1000
     padding_size = 50
-    log_step = 2
+    log_step = 5
     train_step = 10
 
 
@@ -285,8 +286,8 @@ def train(args, to_static):
 
     with fluid.dygraph.guard(place):
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         train_reader = fake_data_reader(args.class_num, args.vocab_size,
                                         args.batch_size, args.padding_size)

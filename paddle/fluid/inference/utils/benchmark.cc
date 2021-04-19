@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/utils/benchmark.h"
-#include <sstream>
+
+#include <fstream>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

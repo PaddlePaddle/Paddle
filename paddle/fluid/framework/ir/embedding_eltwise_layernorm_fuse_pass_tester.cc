@@ -16,12 +16,13 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-TEST(SkipLayerNormFusePass, basic) {
+TEST(EmbeddingElewiseLayernormFusePass, basic) {
   // inputs                           operator            output
   // --------------------------------------------------------------------
   // (x, y)                       elementwise_add    -> elementwise_out
@@ -89,6 +90,12 @@ TEST(SkipLayerNormFusePass, basic) {
       num_fused_nodes_after, 2,
       platform::errors::PreconditionNotMet(
           "The number of fusion nodes does not meet expectations after fuse"));
+}
+
+TEST(EmbeddingElewiseLayernormFusePass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("embedding_eltwise_layernorm_fuse_pass"));
 }
 
 }  // namespace ir

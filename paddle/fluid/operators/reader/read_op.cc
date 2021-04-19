@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -122,10 +121,13 @@ class ReadOp : public framework::OperatorBase {
     const std::vector<framework::proto::VarType::Type>& var_types =
         reader->VarTypes();
     const std::vector<bool>& need_check_feed = reader->NeedCheckFeed();
-    PADDLE_ENFORCE_EQ(out_arg_names.size(), need_check_feed.size(),
-                      platform::errors::InvalidArgument(
-                          "output size of read_op and the number of fed "
-                          "variables of reader do not match"));
+    PADDLE_ENFORCE_EQ(
+        out_arg_names.size(), need_check_feed.size(),
+        platform::errors::InvalidArgument(
+            "Output size of read_op and the number of fed "
+            "variables of reader do not match. Received size of output is %d, "
+            "number of fed variables of reader is %d",
+            out_arg_names.size(), need_check_feed.size()));
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =

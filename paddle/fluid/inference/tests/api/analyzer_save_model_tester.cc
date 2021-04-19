@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -36,7 +37,7 @@ TEST(Analyzer, save_model) {
   cfg.SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   //  ensure the path being unique
   std::string optimModelPath = FLAGS_infer_model + "/only_for_save_model_test";
-  mkdir(optimModelPath.c_str(), 0777);
+  MKDIR(optimModelPath.c_str());
   SaveOptimModel(&cfg, optimModelPath);
 
   // Each config can only be applied to one predictor.

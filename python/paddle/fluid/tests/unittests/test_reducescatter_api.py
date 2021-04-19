@@ -16,8 +16,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle
 
 from test_collective_base import TestDistBase
+
+paddle.enable_static()
 
 
 class TestReduceScatterAPI(TestDistBase):

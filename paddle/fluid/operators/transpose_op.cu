@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/gpu_launch_param_config.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -730,14 +730,21 @@ REGISTER_OP_CUDA_KERNEL(
     transpose,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
-                            plat::float16>);
+                            paddle::platform::complex64>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
-                                plat::float16>);
+                                plat::float16>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::complex64>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::complex128>);
 
 REGISTER_OP_CUDA_KERNEL(
     transpose2,
@@ -745,8 +752,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
-                            plat::float16>);
+                            paddle::platform::complex64>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     transpose2_grad,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, int32_t>,
@@ -754,4 +764,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
-                                plat::float16>);
+                                plat::float16>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::complex64>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::complex128>);

@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/system_allocator.h"
 
 #include <memory>
-#include <vector>
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
@@ -57,7 +56,7 @@ TEST(CPUAllocator, LockMem) {
   TestAllocator(&a, 0);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(GPUAllocator, Alloc) {
   paddle::memory::detail::GPUAllocator a(0);
   TestAllocator(&a, 2048);
@@ -78,7 +77,19 @@ TEST(GPUAllocator, AllocFailure) {
     allocator.Alloc(&index, alloc_size);
     ASSERT_TRUE(false);
   } catch (paddle::memory::allocation::BadAlloc&) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+#endif
   }
+}
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+TEST(NPUAllocator, Alloc) {
+  paddle::memory::detail::NPUAllocator a(0);
+  TestAllocator(&a, 1 << 20);
+  TestAllocator(&a, 1);
 }
 #endif

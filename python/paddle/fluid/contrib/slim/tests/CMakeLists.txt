@@ -98,18 +98,16 @@ function(download_quant_model install_dir data_file)
     endif()
 endfunction()
 
-function(save_quant_ic_model_test target quant_model_dir fp32_model_save_path int8_model_save_path)
+function(save_quant_ic_model_test target quant_model_dir int8_model_save_path)
     py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_quant_model.py
             ARGS --quant_model_path ${quant_model_dir}
-	         --fp32_model_save_path ${fp32_model_save_path}
 	         --int8_model_save_path ${int8_model_save_path}
 		 --debug)
 endfunction()
 
-function(save_quant_nlp_model_test target quant_model_dir fp32_model_save_path int8_model_save_path ops_to_quantize)
+function(save_quant_nlp_model_test target quant_model_dir int8_model_save_path ops_to_quantize)
     py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_quant_model.py
             ARGS --quant_model_path ${quant_model_dir}
-	         --fp32_model_save_path ${fp32_model_save_path}
 	         --int8_model_save_path ${int8_model_save_path}
 		 --ops_to_quantize ${ops_to_quantize})
 endfunction()
@@ -123,9 +121,12 @@ endfunction()
 
 if(WIN32)
 	list(REMOVE_ITEM TEST_OPS test_light_nas)
+	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
 	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
-    list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
-    list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
+	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
+	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_lstm_model)
+	list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
+	list(REMOVE_ITEM TEST_OPS test_quantize_transpiler_v2)
 endif()
 
 if(LINUX AND WITH_MKLDNN)
@@ -138,41 +139,6 @@ if(LINUX AND WITH_MKLDNN)
 	# Models should be already downloaded for INT8v2 unit tests
 
 	set(INT8_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
-	set(INT8_IC_TEST_FILE "test_mkldnn_int8_quantization_strategy.py")
-	set(INT8_IC_TEST_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${INT8_IC_TEST_FILE}")
-
-	# googlenet int8
-	set(INT8_GOOGLENET_MODEL_DIR "${INT8_INSTALL_DIR}/googlenet")
-	inference_analysis_python_api_int8_test_custom_warmup_batch_size(test_slim_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} ${INT8_IC_TEST_FILE_PATH} 10)
-
-	# mobilenet int8
-	set(INT8_MOBILENET_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv1")
-	inference_analysis_python_api_int8_test(test_slim_int8_mobilenet ${INT8_MOBILENET_MODEL_DIR} ${IMAGENET_DATA_PATH} ${INT8_IC_TEST_FILE_PATH})
-	inference_analysis_python_api_int8_test_mkldnn(test_slim_int8_mobilenet_mkldnn ${INT8_MOBILENET_MODEL_DIR} ${IMAGENET_DATA_PATH} ${INT8_IC_TEST_FILE_PATH})
-
-	# temporarily adding WITH_SLIM_MKLDNN_FULL_TEST FLAG for QA testing the following UTs locally,
-	# since the following UTs cost too much time on CI test.
-	if (WITH_SLIM_MKLDNN_FULL_TEST)
-		# resnet50 int8
-		set(INT8_RESNET50_MODEL_DIR "${INT8_INSTALL_DIR}/resnet50")
-		inference_analysis_python_api_int8_test(test_slim_int8_resnet50 ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH} ${INT8_IC_TEST_FILE_PATH})
-
-		# mobilenetv2 int8
-		set(INT8_MOBILENETV2_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv2")
-		inference_analysis_python_api_int8_test(test_slim_int8_mobilenetv2 ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH} ${INT8_IC_TEST_FILE_PATH})
-
-		# resnet101 int8
-		set(INT8_RESNET101_MODEL_DIR "${INT8_INSTALL_DIR}/resnet101")
-		inference_analysis_python_api_int8_test(test_slim_int8_resnet101 ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH} ${INT8_IC_TEST_FILE_PATH})
-
-		# vgg16 int8
-		set(INT8_VGG16_MODEL_DIR "${INT8_INSTALL_DIR}/vgg16")
-		inference_analysis_python_api_int8_test(test_slim_int8_vgg16 ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH} ${INT8_IC_TEST_FILE_PATH})
-
-		# vgg19 int8
-		set(INT8_VGG19_MODEL_DIR "${INT8_INSTALL_DIR}/vgg19")
-		inference_analysis_python_api_int8_test(test_slim_int8_vgg19 ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH} ${INT8_IC_TEST_FILE_PATH})
-	endif()
 
 	#### QUANT & INT8 comparison python api tests
 
@@ -261,8 +227,6 @@ if(LINUX AND WITH_MKLDNN)
 	set(NLP_LABLES_PATH "${NLP_DATA_DIR}/Ernie_dataset/label.xnli.dev")
 	download_quant_data(${NLP_DATA_DIR} ${NLP_DATA_ARCHIVE})
 
-	set(QUANT2_NLP_OPS_TO_QUANTIZE "fc,reshape2,transpose2,matmul,elementwise_add")
-
 	# Quant2 Ernie
 	set(QUANT2_ERNIE_MODEL_ARCHIVE "ernie_qat.tar.gz")
 	set(QUANT2_ERNIE_MODEL_DIR "${QUANT_INSTALL_DIR}/Ernie_quant2")
@@ -270,17 +234,25 @@ if(LINUX AND WITH_MKLDNN)
 	set(FP32_ERNIE_MODEL_ARCHIVE "ernie_fp32_model.tar.gz")
 	set(FP32_ERNIE_MODEL_DIR "${QUANT_INSTALL_DIR}/Ernie_float")
 	download_quant_fp32_model(${FP32_ERNIE_MODEL_DIR} ${FP32_ERNIE_MODEL_ARCHIVE})
-	inference_quant2_int8_nlp_test(test_quant2_int8_ernie_mkldnn ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH} ${NLP_LABLES_PATH} ${QUANT2_NLP_OPS_TO_QUANTIZE})
+	set(QUANT2_ERNIE_OPS_TO_QUANTIZE "fc,reshape2,transpose2,matmul,elementwise_add")
+	inference_quant2_int8_nlp_test(test_quant2_int8_ernie_mkldnn ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH} ${NLP_LABLES_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
+
+	# Quant2 GRU
+	set(QUANT2_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
+	set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
+	download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE})
+	set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
 	### Save FP32 model or INT8 model from Quant model
         
 	set(QUANT2_INT8_RESNET50_SAVE_PATH "${QUANT_INSTALL_DIR}/ResNet50_quant2_int8")
-	set(QUANT2_FP32_RESNET50_SAVE_PATH "${QUANT_INSTALL_DIR}/ResNet50_quant2_fp32")
-	save_quant_ic_model_test(save_quant2_model_resnet50 ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QUANT2_FP32_RESNET50_SAVE_PATH} ${QUANT2_INT8_RESNET50_SAVE_PATH})
+	save_quant_ic_model_test(save_quant2_model_resnet50 ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QUANT2_INT8_RESNET50_SAVE_PATH})
 
 	set(QUANT2_INT8_ERNIE_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8")
-	set(QUANT2_FP32_ERNIE_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_fp32")
-	save_quant_nlp_model_test(save_quant2_model_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_FP32_ERNIE_SAVE_PATH} ${QUANT2_INT8_ERNIE_SAVE_PATH} ${QUANT2_NLP_OPS_TO_QUANTIZE})
+	save_quant_nlp_model_test(save_quant2_model_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_INT8_ERNIE_SAVE_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
+
+	set(QUANT2_INT8_GRU_SAVE_PATH "${QUANT_INSTALL_DIR}/GRU_quant2_int8")
+	save_quant_nlp_model_test(save_quant2_model_gru ${QUANT2_GRU_MODEL_DIR}/GRU_quant_acc ${QUANT2_INT8_GRU_SAVE_PATH} ${QUANT2_GRU_OPS_TO_QUANTIZE})
 
 	# Convert Quant2 model to dot and pdf files 
 	set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8_dot_file")
@@ -298,7 +270,61 @@ list(REMOVE_ITEM TEST_OPS
 #TODO(wanghaoshuang): Fix this unitest failed on GCC8.
 LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
-LIST(REMOVE_ITEM TEST_OPS test_user_defined_quantization)
+
+# only tests on singal GPU environment
+LIST(REMOVE_ITEM TEST_OPS test_imperative_qat_addquantdequant)
+
+py_test_modules(test_imperative_qat_addquantdequant MODULES test_imperative_qat_addquantdequant ENVS
+	CUDA_VISIBLE_DEVICES=0)
+	
+# fix
+if(WIN32)
+    SET(SINGLE_CARD_TEST_OPS
+        test_user_defined_quantization
+        test_quantization_scale_pass
+        test_quantization_pass
+        test_moving_average_abs_max_scale_op
+        test_imperative_qat_channelwise
+        test_imperative_qat
+        test_imperative_out_scale
+        test_graph)
+    LIST(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
+    foreach(src ${SINGLE_CARD_TEST_OPS})
+        py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
+    endforeach()
+endif()
+
+
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
+
+# setting timeout value for old unittests
+if(NOT WIN32)
+    set_tests_properties(test_post_training_quantization_lstm_model PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_post_training_quantization_mobilenetv1 PROPERTIES TIMEOUT 400 LABELS "RUN_TYPE=NIGHTLY")
+    set_tests_properties(test_post_training_quantization_resnet50 PROPERTIES TIMEOUT 400 LABELS "RUN_TYPE=NIGHTLY")
+    set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT 120)
+endif()
+
+set_tests_properties(test_graph PROPERTIES TIMEOUT 120)
+set_tests_properties(test_quantization_pass PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 120)
+set_tests_properties(test_user_defined_quantization PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_qat_addquantdequant PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 120)
+if(LINUX AND WITH_MKLDNN)
+    set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(convert_model2dot_ernie PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant2_int8_resnet50_channelwise_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant_int8_mobilenetv2_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant2_int8_resnet50_range_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(save_quant2_model_resnet50 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant2_int8_ernie_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
+endif()

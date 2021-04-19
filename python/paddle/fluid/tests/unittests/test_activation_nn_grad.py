@@ -18,11 +18,34 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
+import paddle
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 
 from decorator_helper import prog_scope
+
+
+class TestTanhDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.tanh(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 class TestReluDoubleGradCheck(unittest.TestCase):
@@ -78,15 +101,17 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 class TestELUDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        shape = [2, 3, 7, 9]
+        shape = [2, 4, 4, 4]
         eps = 1e-6
-        alpha = 1.1
+        alpha = 0.2
         dtype = np.float64
+        SEED = 0
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
 
         y = layers.elu(x, alpha=alpha)
+        np.random.RandomState(SEED)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)
@@ -123,6 +148,30 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestRsqrtDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0001
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+
+        y = layers.rsqrt(x)
+        x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places = [fluid.CUDAPlace(0)]
+        for p in places:
+            self.func(p)
+
+
 class TestSquareDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -135,6 +184,58 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
         x.persistable = True
         y = layers.square(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestAbsDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.abs(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        # Because we set delta = 0.005 in calculating numeric gradient,
+        # if x is too small, the numeric gradient is inaccurate.
+        # we should avoid this
+        x_arr[np.abs(x_arr) < 0.005] = 0.02
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestLogDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.log(x)
+
+        x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps)

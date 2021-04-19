@@ -180,7 +180,10 @@ REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_pool,
-    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, double>);
+
 REGISTER_OP_CPU_KERNEL(
     sequence_pool_grad,
-    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -32,22 +32,29 @@ class BCELossOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "BCELoss");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(
-        x_dims.size(), label_dims.size(),
-        platform::errors::InvalidArgument(
-            "Input(X) and Input(Label) shall have the same shape."));
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(label_dims);
-    bool check = ctx->IsRuntime() || !contain_unknown_dim;
+    auto labels_dims = ctx->GetInputDim("Label");
+
+    int rank = x_dims.size();
+    PADDLE_ENFORCE_EQ(rank, labels_dims.size(),
+                      platform::errors::InvalidArgument(
+                          "Input(X) and Input(Label) shall have the same rank."
+                          "But received: the rank of Input(X) is [%d], "
+                          "the rank of Input(Label) is [%d].",
+                          rank, labels_dims.size()));
+
+    bool check = true;
+    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
+                                framework::product(labels_dims) <= 0)) {
+      check = false;
+    }
+
     if (check) {
-      PADDLE_ENFORCE_EQ(
-          x_dims.size(), label_dims.size(),
-          platform::errors::InvalidArgument(
-              "ShapeError: Input(X) and Input(Label) shall have the same shape "
-              "But received: the shape of Input(X) is [%s], the shape of "
-              "Input(Label) is [%s].",
-              x_dims, label_dims));
+      PADDLE_ENFORCE_EQ(x_dims, labels_dims,
+                        platform::errors::InvalidArgument(
+                            "Input(X) and Input(Label) shall have the same "
+                            "shape. But received: the shape of Input(X) is "
+                            "[%s], the shape of Input(Label) is [%s].",
+                            x_dims, labels_dims));
     }
 
     ctx->ShareDim("X", "Out");
@@ -76,20 +83,31 @@ class BCELossGradOp : public framework::OperatorWithKernel {
                    framework::GradVarName("X"), "BCELossGrad");
 
     auto x_dims = ctx->GetInputDim("X");
+    auto labels_dims = ctx->GetInputDim("Label");
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(dout_dims);
-    bool check = ctx->IsRuntime() || !contain_unknown_dim;
+
+    bool check = true;
+    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
+                                framework::product(labels_dims) <= 0)) {
+      check = false;
+    }
+
     if (check) {
+      PADDLE_ENFORCE_EQ(x_dims, labels_dims,
+                        platform::errors::InvalidArgument(
+                            "Input(X) and Input(Label) shall have the same "
+                            "shape. But received: the shape of Input(X) is "
+                            "[%s], the shape of Input(Label) is [%s].",
+                            x_dims, labels_dims));
+
       PADDLE_ENFORCE_EQ(x_dims, dout_dims,
                         platform::errors::InvalidArgument(
-                            "ShapeError:The Input(X) and Input(Out@Grad) "
-                            "should have the same "
-                            "shape, But received: the shape of Input(X) is "
-                            "[%s], the shape of "
-                            "Input(Out@GRAD) is [%s].",
+                            "Input(X) and Input(Out@Grad) shall have the same "
+                            "shape. But received: the shape of Input(X) is "
+                            "[%s], the shape of Input(Out@Grad) is [%s].",
                             x_dims, dout_dims));
     }
+
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }

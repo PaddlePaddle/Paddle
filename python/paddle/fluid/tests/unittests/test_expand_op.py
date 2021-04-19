@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+import paddle
 
 
 # Situation 1: expand_times is a list(without tensor)
@@ -26,8 +27,10 @@ class TestExpandOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
+        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
+        ) else "float64"
 
-        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.inputs = {'X': np.random.random(self.ori_shape).astype(self.dtype)}
         self.attrs = {'expand_times': self.expand_times}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
@@ -78,13 +81,16 @@ class TestExpandOpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
+        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
+        ) else "float64"
+
         expand_times_tensor = []
         for index, ele in enumerate(self.expand_times):
             expand_times_tensor.append(("x" + str(index), np.ones(
                 (1)).astype('int32') * ele))
 
         self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float64"),
+            'X': np.random.random(self.ori_shape).astype(self.dtype),
             'expand_times_tensor': expand_times_tensor,
         }
         self.attrs = {"expand_times": self.infer_expand_times}
@@ -122,9 +128,11 @@ class TestExpandOpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
+        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
+        ) else "float64"
 
         self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float64"),
+            'X': np.random.random(self.ori_shape).astype(self.dtype),
             'ExpandTimes': np.array(self.expand_times).astype("int32"),
         }
         self.attrs = {}
@@ -235,6 +243,20 @@ class TestExpandAPI(unittest.TestCase):
         assert np.array_equal(res_1, np.tile(input, (2, 3)))
         assert np.array_equal(res_2, np.tile(input, (2, 3)))
         assert np.array_equal(res_3, np.tile(input, (1, 3)))
+
+
+class TestExpandDygraphAPI(unittest.TestCase):
+    def test_expand_times_is_tensor(self):
+        with paddle.fluid.dygraph.guard():
+            a = paddle.rand([2, 5])
+            b = paddle.fluid.layers.expand(a, expand_times=[2, 3])
+            c = paddle.fluid.layers.expand(
+                a, expand_times=paddle.to_tensor(
+                    [2, 3], dtype='int32'))
+            self.assertTrue(
+                np.array_equal(b.numpy(), np.tile(a.numpy(), [2, 3])))
+            self.assertTrue(
+                np.array_equal(c.numpy(), np.tile(a.numpy(), [2, 3])))
 
 
 if __name__ == "__main__":

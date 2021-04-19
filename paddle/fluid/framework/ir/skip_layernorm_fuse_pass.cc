@@ -13,10 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/skip_layernorm_fuse_pass.h"
+
 #include <string>
-#include <unordered_set>
-#include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -144,6 +153,10 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
 
+    if (elementwise->Op()->HasAttr("out_threshold")) {
+      new_desc.SetAttr("enable_int8", true);
+    }
+
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});
 
@@ -180,3 +193,8 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
 REGISTER_PASS(skip_layernorm_fuse_pass,
               paddle::framework::ir::SkipLayerNormFusePass);
+REGISTER_PASS_CAPABILITY(skip_layernorm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("elementwise_add", 1)
+            .EQ("layer_norm", 0));

@@ -16,7 +16,7 @@ from __future__ import print_function
 
 from . import framework
 from . import core
-from .framework import in_dygraph_mode
+from .framework import in_dygraph_mode, default_main_program
 import numpy as np
 from .core import VarDesc
 from . import unique_name
@@ -45,10 +45,20 @@ class Initializer(object):
     def __init__(self):
         pass
 
-    def __call__(self, param, block):
+    def __call__(self, param, block=None):
         """Add corresponding initialization operations to the network
         """
         raise NotImplementedError()
+
+    def _check_block(self, block):
+        if block is None:
+            if in_dygraph_mode():
+                block = default_main_program().global_block()
+            else:
+                raise ValueError(
+                    "The parameter 'block' is needed in static graph mode.")
+
+        return block
 
     def _compute_fans(self, var):
         """Compute the fan_in and the fan_out for layers
@@ -95,10 +105,14 @@ class ConstantInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-    	    import paddle.fluid as fluid
+            import paddle
+            import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
-	    fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.Constant(value=2.0))
+            fc = fluid.layers.fc(
+                input=x,
+                size=10,
+                param_attr=fluid.initializer.Constant(value=2.0))
 
     """
 
@@ -108,17 +122,19 @@ class ConstantInitializer(Initializer):
         self._value = value
         self._force_cpu = force_cpu
 
-    def __call__(self, var, block):
-        """Add constant initialization ops for a variable
+    def __call__(self, var, block=None):
+        """Initialize the input tensor with constant.
 
         Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            the initialization op
+            The initialization op
         """
+        block = self._check_block(block)
+
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
 
@@ -208,19 +224,22 @@ class UniformInitializer(Initializer):
         self._diag_step = diag_step
         self._diag_val = diag_val
 
-    def __call__(self, var, block):
-        """Add uniform distribution initialization ops for a variable
+    def __call__(self, var, block=None):
+        """Initialize the input tensor with Uniform distribution.
 
         Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            the initialization op
+            The initialization op
         """
+        block = self._check_block(block)
+
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+        check_variable_and_dtype(var, "Out",
+                                 ["uint16", "float16", "float32", "float64"],
                                  "uniform_random")
 
         # Initialization Ops should be prepended and not appended
@@ -228,7 +247,7 @@ class UniformInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initializers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -257,7 +276,7 @@ class UniformInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -297,27 +316,30 @@ class NormalInitializer(Initializer):
         self._std_dev = scale
         self._seed = seed
 
-    def __call__(self, var, block):
-        """Add normal distribution initialization ops for a variable
+    def __call__(self, var, block=None):
+        """Initialize the input tensor with Normal distribution.
 
         Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            the initialization op
+            The initialization op
         """
+        block = self._check_block(block)
+
         assert isinstance(block, framework.Block)
 
-        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+        check_variable_and_dtype(var, "Out",
+                                 ["uint16", "float16", "float32", "float64"],
                                  "guassian_random")
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -343,7 +365,7 @@ class NormalInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -381,17 +403,19 @@ class TruncatedNormalInitializer(Initializer):
         self._std_dev = scale
         self._seed = seed
 
-    def __call__(self, var, block):
-        """Add truncated normal distribution initialization ops for a variable
+    def __call__(self, var, block=None):
+        """Initialize the input tensor with TruncatedNormal distribution.
 
         Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            the initialization op
+            The initialization op
         """
+        block = self._check_block(block)
+
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
         # Initialization Ops should be prepended and not appended
@@ -399,7 +423,7 @@ class TruncatedNormalInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -424,7 +448,7 @@ class TruncatedNormalInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -437,7 +461,7 @@ class TruncatedNormalInitializer(Initializer):
 
 
 class XavierInitializer(Initializer):
-    """
+    r"""
     This class implements the Xavier weight initializer from the paper
     `Understanding the difficulty of training deep feedforward neural
     networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
@@ -490,19 +514,22 @@ class XavierInitializer(Initializer):
         self._fan_out = fan_out
         self._seed = seed
 
-    def __call__(self, var, block):
-        """Add xavier initialization ops for a variable
+    def __call__(self, var, block=None):
+        """Initialize the input tensor with Xavier initialization.
 
         Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            the initialization op
+            The initialization op
         """
+        block = self._check_block(block)
+
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+        check_variable_and_dtype(var, "Out",
+                                 ["uint16", "float16", "float32", "float64"],
                                  "xavier_init")
 
         f_in, f_out = self._compute_fans(var)
@@ -515,7 +542,7 @@ class XavierInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -557,7 +584,7 @@ class XavierInitializer(Initializer):
                 },
                 stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -571,7 +598,7 @@ class XavierInitializer(Initializer):
 
 
 class MSRAInitializer(Initializer):
-    """Implements the MSRA initializer a.k.a. Kaiming Initializer
+    r"""Implements the MSRA initializer a.k.a. Kaiming Initializer
 
     This class implements the weight initialization from the paper
     `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
@@ -603,7 +630,9 @@ class MSRAInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.MSRA(uniform=False))
@@ -620,17 +649,19 @@ class MSRAInitializer(Initializer):
         self._fan_in = fan_in
         self._seed = seed
 
-    def __call__(self, var, block):
-        """Add MSRA initialization ops for a variable
+    def __call__(self, var, block=None):
+        """Initialize the input tensor with MSRA initialization.
 
         Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            the initialization op
+            The initialization op
         """
+        block = self._check_block(block)
+
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
         f_in, f_out = self._compute_fans(var)
@@ -642,7 +673,7 @@ class MSRAInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -684,7 +715,7 @@ class MSRAInitializer(Initializer):
                 },
                 stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -707,31 +738,32 @@ class BilinearInitializer(Initializer):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import math
+
+            import paddle
+            import paddle.nn as nn
+            from paddle.regularizer import L2Decay
+
             factor = 2
             C = 2
             B = 8
             H = W = 32
-            w_attr = fluid.param_attr.ParamAttr(
-                learning_rate=0., 
-                regularizer=fluid.regularizer.L2Decay(0.),
-                initializer=fluid.initializer.Bilinear())
-            x = fluid.data(name="data", shape=[B, 3, H, W], 
-                                  dtype="float32")
-            conv_up = fluid.layers.conv2d_transpose(
-                input=x,
-                num_filters=C,
-                output_size=None,
-                filter_size=2 * factor - factor % 2,
-                padding=int(math.ceil((factor - 1) / 2.)),
-                stride=factor,
-                groups=C,
-                param_attr=w_attr,
-                bias_attr=False)
+            w_attr = paddle.ParamAttr(learning_rate=0.,
+                                      regularizer=L2Decay(0.),
+                                      initializer=nn.initializer.Bilinear())
+            data = paddle.rand([B, 3, H, W], dtype='float32')
+            conv_up = nn.Conv2DTranspose(3,
+                                         out_channels=C,
+                                         kernel_size=2 * factor - factor % 2,
+                                         padding=int(
+                                             math.ceil((factor - 1) / 2.)),
+                                         stride=factor,
+                                         weight_attr=w_attr,
+                                         bias_attr=False)
+            x = conv_up(data)
 
-    Where, `num_filters=C` and `groups=C` means this is channel-wise transposed
-    convolution. The filter shape will be (C, 1, K, K) where K is `filer_size`,
+    Where, `out_channels=C` and `groups=C` means this is channel-wise transposed
+    convolution. The filter shape will be (C, 1, K, K) where K is `kernel_size`,
     This initializer will set a (K, K) interpolation kernel for every channel
     of the filter identically. The resulting shape of the output feature map
     will be (B, C, factor * H, factor * W). Note that the learning rate and the
@@ -745,22 +777,19 @@ class BilinearInitializer(Initializer):
         """
         super(BilinearInitializer, self).__init__()
 
-    def __call__(self, var, block):
-        """Add bilinear initialization ops for a variable
+    def __call__(self, var, block=None):
+        """Initialize the input tensor with Bilinear initialization.
 
         Args:
-            var (Variable): Variable that needs to be initialized.
-            block (Block): The block in which initialization ops should
-                           be added.
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            Operator: the initialization op
-
-        Raises:
-            ValueError: If type of `var` and `block` is not right.
-                        If the shape of `var` size is not 4 and
-                        var.shape[2] != var.shape[3].
+            The initialization op
         """
+        block = self._check_block(block)
+
         if not isinstance(var, framework.Variable):
             raise ValueError("var must be framework.Variable.")
 
@@ -786,7 +815,9 @@ class BilinearInitializer(Initializer):
         weight = np.reshape(weight, shape)
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16 or var.dtype == VarDesc.VarType.FP64:
+        if var.dtype in [
+                VarDesc.VarType.FP16, VarDesc.VarType.BF16, VarDesc.VarType.FP64
+        ]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -816,7 +847,9 @@ class BilinearInitializer(Initializer):
                 value_name: values
             })
 
-        if var.dtype == VarDesc.VarType.FP16 or var.dtype == VarDesc.VarType.FP64:
+        if var.dtype in [
+                VarDesc.VarType.FP16, VarDesc.VarType.BF16, VarDesc.VarType.FP64
+        ]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -855,22 +888,24 @@ class NumpyArrayInitializer(Initializer):
         super(NumpyArrayInitializer, self).__init__()
         self._value = value
 
-    def __call__(self, var, block):
-        """Add constant initialization ops for a variable
+    def __call__(self, var, block=None):
+        """Initialize the input tensor with Numpy array.
 
         Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            the initialization op
+            The initialization op
         """
+        block = self._check_block(block)
+
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             np_value = self._value.astype("float32")
             out_var = block.create_var(
@@ -907,7 +942,7 @@ class NumpyArrayInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -927,7 +962,7 @@ def set_global_initializer(weight_init, bias_init=None):
     After this API is invoked, the global initializer will takes effect in subsequent code.
 
     The model parameters include ``weight`` and ``bias`` . In the framework, they correspond 
-    to ``fluid.Parameter`` , which is inherited from ``fluid.Variable`` , and is a persistable Variable.
+    to ``paddle.ParamAttr`` , which is inherited from ``paddle.Tensor`` , and is a persistable Variable.
     This API only takes effect for model parameters, not for variables created through apis such as 
     :ref:`api_fluid_layers_create_global_var` , :ref:`api_fluid_layers_create_tensor`.
     
@@ -946,27 +981,30 @@ def set_global_initializer(weight_init, bias_init=None):
 
     Examples:
         .. code-block:: python
-            import paddle.fluid as fluid
 
-            fluid.set_global_initializer(fluid.initializer.Uniform(), fluid.initializer.Constant())
-            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            import paddle
+            import paddle.nn as nn
+
+            nn.initializer.set_global_initializer(nn.initializer.Uniform(), nn.initializer.Constant())
+            x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
             # The weight of conv1 is initialized by Uniform
             # The bias of conv1 is initialized by Constant
-            conv1 = fluid.layers.conv2d(x, 5, 3)
+            conv1 = nn.Conv2D(4, 6, (3, 3))
+            y_var1 = conv1(x_var)
 
             # If set param_attr/bias_attr too, global initializer will not take effect
             # The weight of conv2 is initialized by Xavier
             # The bias of conv2 is initialized by Normal
-            conv2 = fluid.layers.conv2d(conv1, 5, 3, 
-                param_attr=fluid.initializer.Xavier(), 
-                bias_attr=fluid.initializer.Normal())
+            conv2 = nn.Conv2D(4, 6, (3, 3), 
+                weight_attr=nn.initializer.XavierUniform(),
+                bias_attr=nn.initializer.Normal())
+            y_var2 = conv2(x_var)
 
             # Cancel the global initializer in framework, it will takes effect in subsequent code
-            fluid.set_global_initializer(None)
-
-
+            nn.initializer.set_global_initializer(None)
     """
+
     check_type(weight_init, 'weight_init', (Initializer, type(None)),
                'set_global_initializer')
     global _global_weight_initializer_

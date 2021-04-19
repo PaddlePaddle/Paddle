@@ -230,7 +230,7 @@ class SoftsignLayer(object):
 
 
 class FC(Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``FC`` class.
     For more details, refer to code examples.
     It creates a fully connected layer in the network. It can take
@@ -492,25 +492,16 @@ class BOW(Layer):
         left_soft = softsign_layer.ops(bow_left)
         right_soft = softsign_layer.ops(bow_right)
 
-        left_bow = self.bow_layer(left_soft)
-        right_bow = self.bow_layer(right_soft)
-        cos_sim_layer = CosSimLayer()
-        pred = cos_sim_layer.ops(left_bow, right_bow)
-        return left_bow, pred
-
-        # TODO(huihuangzheng): uncomment the following return statements after
-        # we fix it.
-        #
         # matching layer
-        #if self.task_mode == "pairwise":
-        #    left_bow = self.bow_layer(left_soft)
-        #    right_bow = self.bow_layer(right_soft)
-        #    cos_sim_layer = CosSimLayer()
-        #    pred = cos_sim_layer.ops(left_bow, right_bow)
-        #    return left_bow, pred
-        #else:
-        #    concat_layer = ConcatLayer(1)
-        #    concat = concat_layer.ops([left_soft, right_soft])
-        #    concat_fc = self.bow_layer_po(concat)
-        #    pred = self.softmax_layer(concat_fc)
-        #    return left_soft, pred
+        if self.task_mode == "pairwise":
+            left_bow = self.bow_layer(left_soft)
+            right_bow = self.bow_layer(right_soft)
+            cos_sim_layer = CosSimLayer()
+            pred = cos_sim_layer.ops(left_bow, right_bow)
+            return left_bow, pred
+        else:
+            concat_layer = ConcatLayer(1)
+            concat = concat_layer.ops([left_soft, right_soft])
+            concat_fc = self.bow_layer_po(concat)
+            pred = self.softmax_layer(concat_fc)
+            return left_soft, pred

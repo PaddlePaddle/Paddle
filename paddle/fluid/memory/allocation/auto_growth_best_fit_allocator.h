@@ -19,6 +19,7 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
@@ -38,8 +39,13 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   void FreeImpl(Allocation *allocation) override;
 
+  // Release the memory block which is not used in pool.
+  uint64_t ReleaseImpl(const platform::Place &place) override {
+    return FreeIdleChunks();
+  }
+
  private:
-  void FreeIdleChunks();
+  uint64_t FreeIdleChunks();
 
   template <typename T>
   using List = std::list<T>;

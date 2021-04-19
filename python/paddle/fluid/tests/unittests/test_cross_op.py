@@ -79,7 +79,7 @@ class TestCrossAPI(unittest.TestCase):
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 3])
             y = fluid.layers.data(name='y', shape=[-1, 3])
-            z = paddle.cross(x, y, dim=1)
+            z = paddle.cross(x, y, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             res, = exe.run(feed={'x': self.data_x,
                                  'y': self.data_y},
@@ -103,6 +103,14 @@ class TestCrossAPI(unittest.TestCase):
                                [-1.0, -1.0, -1.0]])
         self.assertTrue(np.allclose(expect_out, np.array(res)))
 
+        # case 3:
+        with program_guard(Program(), Program()):
+            x = fluid.data(name="x", shape=[-1, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[-1, 3], dtype='float32')
+
+            y_1 = paddle.cross(x, y, name='result')
+            self.assertEqual(('result' in y_1.name), True)
+
     def test_dygraph_api(self):
         self.input_data()
         # case 1:
@@ -119,7 +127,7 @@ class TestCrossAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(self.data_x)
             y = fluid.dygraph.to_variable(self.data_y)
-            z = paddle.cross(x, y, dim=1)
+            z = paddle.cross(x, y, axis=1)
             np_z = z.numpy()
         expect_out = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
                                [0.0, 0.0, 0.0]])

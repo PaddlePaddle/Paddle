@@ -14,9 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/assign_op.h"
 
 #include <gtest/gtest.h>
-#include <iostream>
-#include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"

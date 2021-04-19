@@ -19,7 +19,15 @@
 
 namespace paddle {
 namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Graph;
 
 void InitReaderQueueDeviceCount(Graph *graph, const Scope &scope,
                                 size_t dev_cnt);

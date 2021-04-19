@@ -12,17 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <set>
-#include <unordered_map>
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/lodtensor_printer.h"
 
 namespace paddle {
 namespace framework {
+
+class OpDesc;
+class OperatorBase;
+class ProgramDesc;
 
 bool HasDependentOutput(const OpDesc& op_desc,
                         const std::unordered_set<std::string>& dependent_vars) {

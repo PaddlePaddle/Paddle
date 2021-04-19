@@ -15,9 +15,11 @@
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import ParamBase
+from paddle.jit import ProgramTranslator
 
 
 class L1(fluid.Layer):
@@ -85,6 +87,31 @@ class TestBaseLayer(unittest.TestCase):
                 idx += 1
             ret = l()
             self.assertTrue(np.allclose(ret.numpy(), 0.8 * np.ones([2, 2])))
+
+    def test_add_parameter_with_error(self):
+        with fluid.dygraph.guard():
+            net = fluid.Layer()
+            param = net.create_parameter(shape=[1])
+
+            with self.assertRaises(TypeError):
+                net.add_parameter(10, param)
+
+            with self.assertRaises(KeyError):
+                net.add_parameter("param.name", param)
+
+            with self.assertRaises(KeyError):
+                net.add_parameter("", param)
+
+            with self.assertRaises(KeyError):
+                net.test_param = 10
+                net.add_parameter("test_param", param)
+
+            with self.assertRaises(TypeError):
+                net.add_parameter("no_param", 10)
+
+            load_param = net.create_parameter(shape=[1])
+            net._loaddict_holder[load_param.name] = load_param
+            net.add_parameter("load_param", load_param)
 
 
 class BufferLayer(fluid.Layer):
@@ -261,6 +288,114 @@ class TestBuffer(unittest.TestCase):
 
     def assert_var_base_equal(self, var1, var2):
         self.assertTrue(np.array_equal(var1.numpy(), var2.numpy()))
+
+
+class BufferNetWithModification(paddle.nn.Layer):
+    def __init__(self, shape):
+        super(BufferNetWithModification, self).__init__()
+
+        self.buffer1 = paddle.zeros(shape, 'int32')
+        self.buffer2 = paddle.zeros(shape, 'int32')
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        self.buffer1 += x
+        self.buffer2 = self.buffer1 + x
+
+        out = self.buffer1 + self.buffer2
+
+        return out
+
+
+class TestModifiedBuffer(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.prog_trans = ProgramTranslator()
+        self.shape = [10, 16]
+
+    def _run(self, to_static=False):
+        self.prog_trans.enable(to_static)
+
+        x = paddle.ones([1], 'int32')
+        net = BufferNetWithModification(self.shape)
+        out = net(x)
+
+        return out, net.buffer1, net.buffer2
+
+    def test_modified(self):
+        dy_outs = self._run(False)
+        st_outs = self._run(True)
+
+        for i in range(len(dy_outs)):
+            self.assertTrue(
+                np.array_equal(dy_outs[i].numpy(), st_outs[i].numpy()))
+
+
+class TestLayerTo(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.linear = paddle.nn.Linear(2, 2)
+        self.new_grad = np.random.random([2, 2])
+        self.linear.weight._set_grad_ivar(paddle.to_tensor(self.new_grad))
+        buffer = paddle.to_tensor([0.0], dtype='float32')
+        self.linear.register_buffer("buf_name", buffer, persistable=True)
+
+        sublayer = paddle.nn.Conv1D(3, 2, 3)
+        self.linear.add_sublayer(1, sublayer)
+
+    def test_to_api(self):
+        self.linear.to(dtype='double')
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(np.allclose(self.linear.weight.grad, self.new_grad))
+        self.assertTrue(self.linear.weight._grad_ivar().dtype,
+                        paddle.fluid.core.VarDesc.VarType.FP64)
+
+        self.linear.to()
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertTrue(np.allclose(self.linear.weight.grad, self.new_grad))
+        self.assertTrue(self.linear.weight._grad_ivar().dtype,
+                        paddle.fluid.core.VarDesc.VarType.FP64)
+
+        if paddle.fluid.is_compiled_with_cuda():
+            self.linear.to(device=paddle.CUDAPlace(0))
+            self.assertTrue(self.linear.weight.place.is_gpu_place())
+            self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
+            self.assertTrue(self.linear.buf_name.place.is_gpu_place())
+            self.assertEqual(self.linear.buf_name.place.gpu_device_id(), 0)
+            self.assertTrue(self.linear.weight._grad_ivar().place.is_gpu_place(
+            ))
+            self.assertEqual(
+                self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
+
+            self.linear.to(device='gpu:0')
+            self.assertTrue(self.linear.weight.place.is_gpu_place())
+            self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
+            self.assertTrue(self.linear.buf_name.place.is_gpu_place())
+            self.assertEqual(self.linear.buf_name.place.gpu_device_id(), 0)
+            self.assertTrue(self.linear.weight._grad_ivar().place.is_gpu_place(
+            ))
+            self.assertEqual(
+                self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
+
+        self.linear.to(device=paddle.CPUPlace())
+        self.assertTrue(self.linear.weight.place.is_cpu_place())
+        self.assertTrue(self.linear.buf_name.place.is_cpu_place())
+        self.assertTrue(self.linear.weight._grad_ivar().place.is_cpu_place())
+
+        self.linear.to(device='cpu')
+        self.assertTrue(self.linear.weight.place.is_cpu_place())
+        self.assertTrue(self.linear.buf_name.place.is_cpu_place())
+        self.assertTrue(self.linear.weight._grad_ivar().place.is_cpu_place())
+
+        self.assertRaises(ValueError, self.linear.to, device=1)
+
+        self.assertRaises(AssertionError, self.linear.to, blocking=1)
 
 
 if __name__ == '__main__':

@@ -81,9 +81,11 @@ bool contain_unknown_dim(const DDim& ddim) {
 }
 
 DDim slice_ddim(const DDim& dim, int begin, int end) {
-  PADDLE_ENFORCE(begin >= 0 && end <= dim.size(),
-                 "[begin(%d), end(%d)) must be inside [0, %d) in ddim slice.",
-                 begin, end, dim.size());
+  PADDLE_ENFORCE_EQ(
+      (begin >= 0 && end <= dim.size()), true,
+      platform::errors::InvalidArgument(
+          "[begin(%d), end(%d)) must be inside [0, %d) in ddim slice.", begin,
+          end, dim.size()));
   // Constructor of DDim would check whether end - begin is valid
   return DDim(dim.Get() + begin, end - begin);
 }

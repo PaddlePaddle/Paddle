@@ -12,7 +12,7 @@ file(GLOB jit_kernel_cc_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cc")
 list(REMOVE_ITEM jit_kernel_cc_srcs test.cc benchmark.cc)
 cc_library(jit_kernel_base SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
 
-copy_if_different(${jit_file} ${jit_file_final} jit_kernel_base)
+copy_if_different(${jit_file} ${jit_file_final})
 
 # refer must go first
 add_subdirectory(refer)
@@ -25,4 +25,7 @@ cc_library(jit_kernel_helper INTERFACE SRCS ${jit_kernel_cc_srcs} DEPS jit_kerne
 cc_test(jit_kernel_test SRCS test.cc DEPS jit_kernel_helper)
 if(NOT WIN32)
     cc_binary(jit_kernel_benchmark SRCS benchmark.cc DEPS jit_kernel_helper device_tracer tensor)
+endif()
+if(WITH_TESTING AND TEST jit_kernel_test)
+    set_tests_properties(jit_kernel_test PROPERTIES TIMEOUT 120)
 endif()

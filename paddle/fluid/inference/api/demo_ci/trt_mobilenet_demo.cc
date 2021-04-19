@@ -16,8 +16,8 @@ limitations under the License. */
  * This file contains demo of mobilenet for tensorrt.
  */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
+#include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -73,7 +73,7 @@ void Main() {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::Main();
   return 0;
 }

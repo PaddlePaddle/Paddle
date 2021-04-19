@@ -16,6 +16,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -75,7 +76,8 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -88,7 +90,8 @@ class MatMulKernel : public framework::OpKernel<T> {
         mat_dim_a.batch_size_ = 0;
       }
     }
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
     if (head_number > 1) {
@@ -227,7 +230,8 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -348,6 +352,182 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
   return dim;
 }
 
+template <typename DeviceContext, typename T>
+class MatMulDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void MatMul(const framework::ExecutionContext &context,
+              const framework::Tensor &a, bool trans_a,
+              const framework::Tensor &b, bool trans_b, bool flag,
+              framework::Tensor *out) const {
+    out->mutable_data<T>(context.GetPlace());
+    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+
+    int head_number = 1;
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+    head_number = context.Attr<int>("head_number");
+#endif
+
+    if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
+      // the transpose_X must be false, if is true, the transpose cost much time
+      if (!trans_a) {
+        mat_dim_a.height_ *= mat_dim_a.batch_size_;
+        mat_dim_a.batch_size_ = 0;
+      }
+    }
+    blas.MatMul(a, mat_dim_a, b, mat_dim_b,
+                static_cast<T>(context.Attr<float>("alpha")), out,
+                static_cast<T>(flag));
+  }
+
+  void CalcInputGrad(const framework::ExecutionContext &context,
+                     const framework::Tensor &a, bool trans_a,
+                     bool is_fold_init_dims_a, const framework::Tensor &b,
+                     bool trans_b, bool is_fold_init_dims_b, bool flag,
+                     framework::Tensor *out) const {
+    if (out == nullptr) return;
+    bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
+                        out->dims().size() == 2;
+    if (!need_combine) {
+      MatMul(context, a, trans_a, b, trans_b, flag, out);
+    } else {
+      auto &ctx = context.template device_context<DeviceContext>();
+      MatMul(context, is_fold_init_dims_a
+                          ? FoldInitDims(a)
+                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
+             trans_a, is_fold_init_dims_b
+                          ? FoldInitDims(b)
+                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
+             trans_b, flag, out);
+    }
+  }
+
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto x = *context.Input<framework::Tensor>("X");
+    auto y = *context.Input<framework::Tensor>("Y");
+    auto dout = *context.Input<framework::LoDTensor>("DOut");
+    auto *ddx = context.Input<framework::LoDTensor>("DDX");
+    auto *ddy = context.Input<framework::LoDTensor>("DDY");
+
+    auto *dx = context.Output<framework::LoDTensor>("DX");
+    auto *dy = context.Output<framework::LoDTensor>("DY");
+    auto *ddout = context.Output<framework::LoDTensor>("DDOut");
+
+    bool transpose_x = context.Attr<bool>("transpose_X");
+    bool transpose_y = context.Attr<bool>("transpose_Y");
+
+    ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
+
+    framework::DDim dx_dims;
+    if (dx) {
+      dx_dims = dx->dims();
+      if (dx_dims != x.dims()) {
+        dx->Resize(x.dims());
+      }
+    }
+
+    framework::DDim dy_dims;
+    if (dy) {
+      dy_dims = dy->dims();
+      if (dy_dims != y.dims()) {
+        dy->Resize(y.dims());
+      }
+    }
+
+    framework::DDim ddout_dims;
+    if (ddout) {
+      ddout_dims = ddout->dims();
+      if (ddout_dims != dout.dims()) {
+        ddout->Resize(dout.dims());
+      }
+    }
+
+    bool ddout_flag = false;
+    if (ddx) {
+      auto ddx_mat = *ddx;
+      if (ddx_mat.dims() != x.dims()) {
+        ddx_mat.Resize(x.dims());
+      }
+      if (dy) {
+        if (transpose_x && transpose_y) {
+          // dy = dout' * ddx'
+          CalcInputGrad(context, dout, true, true, ddx_mat, true, false, false,
+                        dy);
+        } else if (transpose_x) {
+          // dy = ddx * dout
+          CalcInputGrad(context, ddx_mat, false, false, dout, false, true,
+                        false, dy);
+        } else if (transpose_y) {
+          // dy = dout' * ddx
+          CalcInputGrad(context, dout, true, true, ddx_mat, false, true, false,
+                        dy);
+        } else {
+          // dy = ddx' * dout
+          CalcInputGrad(context, ddx_mat, true, true, dout, false, true, false,
+                        dy);
+        }
+      }
+
+      if (ddout) {
+        CalcInputGrad(context, ddx_mat, transpose_x, true, y, transpose_y,
+                      false, ddout_flag, ddout);
+        ddout_flag = true;
+      }
+    }
+
+    if (ddy) {
+      auto ddy_mat = *ddy;
+      if (ddy_mat.dims() != y.dims()) {
+        ddy_mat.Resize(y.dims());
+      }
+      if (dx) {
+        if (transpose_x && transpose_y) {
+          // dx = ddy' * dout'
+          CalcInputGrad(context, ddy_mat, true, true, dout, true, false, false,
+                        dx);
+        } else if (transpose_x) {
+          // dx = ddy * dout'
+          CalcInputGrad(context, ddy_mat, false, false, dout, true, false,
+                        false, dx);
+        } else if (transpose_y) {
+          // dx = dout * ddy
+          CalcInputGrad(context, dout, false, false, ddy_mat, false, true,
+                        false, dx);
+        } else {
+          // dx = dout * ddy'
+          CalcInputGrad(context, dout, false, false, ddy_mat, true, false,
+                        false, dx);
+        }
+      }
+
+      if (ddout) {
+        CalcInputGrad(context, x, transpose_x, true, ddy_mat, transpose_y,
+                      false, ddout_flag, ddout);
+      }
+    }
+
+    if (dx) {
+      if (dx_dims != x.dims()) {
+        dx->Resize(dx_dims);
+      }
+    }
+
+    if (dy) {
+      if (dy_dims != y.dims()) {
+        dy->Resize(dy_dims);
+      }
+    }
+
+    if (ddout) {
+      if (ddout_dims != dout.dims()) {
+        ddout->Resize(ddout_dims);
+      }
+    }
+  }
+};
+
 class MatMulOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -386,7 +566,8 @@ class MatMulOp : public framework::OperatorWithKernel {
                     DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     int head_number = context->Attrs().Get<int>("head_number");
     bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
     if (context->IsRuntime()) {
@@ -406,7 +587,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
                       platform::errors::InvalidArgument(
                           "Input X's width should be equal to the Y's height, "
-                          "but received X's shape: [%s],"
+                          "but received X's shape: [%s], "
                           "Y's shape: [%s].",
                           dim_x, dim_y));
 #endif
@@ -480,17 +661,31 @@ class MatMulOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
     using mkldnn::memory;
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -535,13 +730,17 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a axis atribute of fused transpose for `Out` output.)DOC")
         .SetDefault({});
-    /* int8 parameters */
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Only used on CPU.")
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
+    /* int8 parameters */
     AddAttr<float>("Scale_x",
                    "(float, default 1.0f), The quantize scale of X tensor")
         .SetDefault(1.0f);
@@ -556,7 +755,8 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "used in MKL-DNN INT8")
         .SetDefault(false);
 
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
 #endif
@@ -643,6 +843,61 @@ class MatMulOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetAttrMap(this->Attrs());
   }
 };
+
+class MatMulOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext *context) const override {
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
+    OP_INOUT_CHECK(context->HasInput("DOut"), "Input", "DOut", "matmul");
+
+    if (context->HasOutput("DX") && context->HasInput("DDY")) {
+      context->ShareDim("X", "DX");
+    }
+
+    if (context->HasOutput("DY") && context->HasInput("DDX")) {
+      context->ShareDim("Y", "DY");
+    }
+
+    if (context->HasOutput("DDOut") &&
+        (context->HasInput("DDY") || context->HasInput("DDX"))) {
+      context->ShareDim("DOut", "DDOut");
+    }
+  }
+};
+
+template <typename T>
+class MatMulOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> retv) const override {
+    retv->SetType("matmul_grad_grad");
+    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("Y", this->Input("Y"));
+    retv->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    retv->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    retv->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
+
+    auto ddx = this->OutputGrad(framework::GradVarName("X"));
+    auto ddy = this->OutputGrad(framework::GradVarName("Y"));
+
+    if (!ddx.empty() || !ddy.empty()) {
+      retv->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    }
+    retv->SetOutput(
+        "DX", ddy.empty() ? this->EmptyInputGrad() : this->InputGrad("X"));
+    retv->SetOutput(
+        "DY", ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Y"));
+
+    retv->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -650,7 +905,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(matmul, ops::MatMulOp, ops::MatMulOpMaker,
                   ops::MatMulOpGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad);
+REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad,
+                  ops::MatMulOpDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::MatMulOpDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(matmul_grad_grad, ops::MatMulOpDoubleGrad);
 REGISTER_OP_CPU_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>);
@@ -659,7 +917,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-#ifdef PADDLE_WITH_CUDA
+REGISTER_OP_CPU_KERNEL(
+    matmul_grad_grad,
+    ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,
@@ -671,4 +934,19 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MatMulGradKernel<paddle::platform::CUDADeviceContext,
                           paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    matmul_grad_grad,
+    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
+
+REGISTER_OP_VERSION(matmul)
+    .AddCheckpoint(
+        R"ROC(Register matmul for adding the attribute of
+       fused_reshape_Y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "fused_reshape_Y",
+            "In order to support the function of fused the input Y "
+            " and input X into the input X when "
+            "using the operator of matmul, and get raw shape of input Y.",
+            std::vector<int>{}));

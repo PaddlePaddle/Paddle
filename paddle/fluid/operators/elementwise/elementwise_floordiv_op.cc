@@ -13,8 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_floordiv_op.h"
+
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -52,3 +69,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext,
                                    int64_t>);
+
+REGISTER_OP_VERSION(elementwise_floordiv)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_floordiv for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_floordiv.",
+            1.0f));

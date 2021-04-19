@@ -47,7 +47,7 @@ struct CastDataType {
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
       trans(*context, in_begin, in_end, out_begin,
             CastDataTypeFunctor<InType, OutType>());
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     } else if (platform::is_gpu_place(in_.place())) {
       platform::Transform<platform::CUDADeviceContext> trans;
       auto* context = static_cast<const platform::CUDADeviceContext*>(ctx_);
@@ -56,7 +56,8 @@ struct CastDataType {
       context->Wait();
 #endif
     } else {
-      PADDLE_THROW("Unsupported place!");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Place type is not supported when casting data type."));
     }
   }
 };
@@ -76,6 +77,10 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
       framework::VisitDataType(dst_type,
                                CastDataType<platform::float16>(in, out, ctx));
       break;
+    case proto::VarType::BF16:
+      framework::VisitDataType(dst_type,
+                               CastDataType<platform::bfloat16>(in, out, ctx));
+      break;
     case proto::VarType::FP32:
       framework::VisitDataType(dst_type, CastDataType<float>(in, out, ctx));
       break;
@@ -92,13 +97,40 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
       framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
       break;
     case proto::VarType::INT16:
-      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      framework::VisitDataType(dst_type, CastDataType<int16_t>(in, out, ctx));
       break;
     case proto::VarType::UINT8:
-      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      framework::VisitDataType(dst_type, CastDataType<uint8_t>(in, out, ctx));
       break;
     default:
-      PADDLE_THROW("Not support type %d", src_type);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when casting data type.",
+          DataTypeToString(src_type)));
+  }
+}
+
+void TransComplexToReal(const proto::VarType::Type& dst_type,
+                        const proto::VarType::Type& src_type, const Tensor& in,
+                        Tensor* out) {
+  auto& pool = platform::DeviceContextPool::Instance();
+  auto* ctx = pool.Get(in.place());
+  out->Resize(in.dims());
+
+  // complex -> real
+  switch (src_type) {
+    case proto::VarType::COMPLEX64:
+      framework::VisitDataType(dst_type,
+                               CastDataType<platform::complex64>(in, out, ctx));
+      break;
+    case proto::VarType::COMPLEX128:
+      framework::VisitDataType(
+          dst_type, CastDataType<platform::complex128>(in, out, ctx));
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when casting complex tensor to real "
+          "data type.",
+          DataTypeToString(src_type)));
   }
 }
 

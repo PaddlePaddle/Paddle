@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
@@ -60,8 +60,8 @@ class TestMNIST(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         return img, label
 
-    def _compare_ir_memory_optimize(self, model, use_cuda):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def _compare_ir_memory_optimize(self, model, use_device):
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         img, label = self._dummy_data()
@@ -69,13 +69,13 @@ class TestMNIST(TestParallelExecutorBase):
             model,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_ir_memory_optimize=False)
         first_loss1, last_loss1 = self.check_network_convergence(
             model,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_ir_memory_optimize=True)
         for loss in zip(first_loss0, first_loss1):
             self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
@@ -83,12 +83,12 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
 
     def test_simple_fc_net(self):
-        self._compare_ir_memory_optimize(simple_fc_net, False)
-        self._compare_ir_memory_optimize(simple_fc_net, True)
+        self._compare_ir_memory_optimize(simple_fc_net, DeviceType.CPU)
+        self._compare_ir_memory_optimize(simple_fc_net, DeviceType.CUDA)
 
     def test_fc_with_reshape_net(self):
-        self._compare_ir_memory_optimize(fc_with_inplace_net, False)
-        self._compare_ir_memory_optimize(fc_with_inplace_net, True)
+        self._compare_ir_memory_optimize(fc_with_inplace_net, DeviceType.CPU)
+        self._compare_ir_memory_optimize(fc_with_inplace_net, DeviceType.CUDA)
 
 
 if __name__ == '__main__':

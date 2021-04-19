@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/strided_memcpy.h"
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
 namespace operators {
@@ -72,7 +72,7 @@ TEST(StridedMemcpy, CPUConcat) {
   }
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(StridedMemcpy, GPUCrop) {
   // clang-format off
   int src[] = {

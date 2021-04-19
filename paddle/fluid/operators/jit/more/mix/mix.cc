@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/jit/more/mix/mix.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -95,7 +94,8 @@ void (*getActFunc(KernelType type, int d))(const T*, T*, int) {  // NOLINT
   } else if (type == kVIdentity) {
     return KernelFuncs<VIdentityTuple<T>, CPUPlace>::Cache().At(d);
   }
-  PADDLE_THROW("Not support type: %s", type);
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Act JIT kernel do not support type: %s", type));
   return nullptr;
 }
 

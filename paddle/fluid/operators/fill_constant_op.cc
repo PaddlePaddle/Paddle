@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fill_constant_op.h"
 #include <string>
+#include "paddle/fluid/framework/op_version_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -115,6 +116,15 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                   "memory. Otherwise, fill output variable to the running "
                   "device")
         .SetDefault(false);
+    AddAttr<int>("place_type",
+                 "(int, default -1) allow mamually setting place where the "
+                 "variable should be hold. "
+                 "-1: not set manually, determine the place by executor. "
+                 "0: CPUPlace. "
+                 "1: CUDAPlace. "
+                 "2: CUDAPinnedPlace. "
+                 "3: XPUPlace. ")
+        .SetDefault(-1);
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");
@@ -139,7 +149,27 @@ REGISTER_OPERATOR(
 
 REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                        ops::FillConstantKernel<double>,
+                       ops::FillConstantKernel<uint8_t>,
                        ops::FillConstantKernel<int64_t>,
                        ops::FillConstantKernel<int>,
                        ops::FillConstantKernel<bool>,
-                       ops::FillConstantKernel<paddle::platform::float16>);
+                       ops::FillConstantKernel<paddle::platform::float16>,
+                       ops::FillConstantKernel<paddle::platform::bfloat16>,
+                       ops::FillConstantKernel<paddle::platform::complex64>,
+                       ops::FillConstantKernel<paddle::platform::complex128>);
+
+REGISTER_OP_VERSION(fill_constant)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade fill_constant, add a new input [ValueTensor].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "ValueTensor",
+            "In order to support new feature tensor support of Value"))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade fill_constant to add a new attribute [place_type].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "place_type",
+            "In order to support tensor in CUDAPinnedPlace and XPUPlace", -1));

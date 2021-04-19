@@ -16,7 +16,7 @@
 #include <limits>
 #include <vector>
 #include "paddle/fluid/operators/stack_op.h"
-#include "paddle/fluid/platform/gpu_launch_param_config.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;

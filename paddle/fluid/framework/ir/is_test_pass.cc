@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/is_test_pass.h"
-#include <string>
-#include <utility>
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 void IsTestPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Sets is_test attrbiute to true and if it is missing, inserts it "

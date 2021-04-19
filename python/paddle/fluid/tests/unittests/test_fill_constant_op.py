@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -81,26 +81,6 @@ class TestFillConstantOp4(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-
-class TestFillConstantOp5(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program()):
-            out_np = np.zeros(shape=(1), dtype='float32')
-            out = paddle.zeros(shape=[1], dtype="float32")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result = exe.run(fetch_list=[out])
-            self.assertEqual((result == out_np).all(), True)
-        with program_guard(Program()):
-            data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.ones(shape=[1], out=data, dtype="float32")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result = exe.run(feed={"X": np.array(
-                [0.1], dtype="float32")},
-                             fetch_list=[data, out])
-            self.assertEqual(result[0], result[1])
 
 
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
@@ -289,18 +269,26 @@ class TestFillConstantAPI(unittest.TestCase):
         out_6 = fluid.layers.fill_constant(
             shape=shape_tensor_int64, dtype=np.float32, value=1.1)
 
-        val = fluid.layers.fill_constant(shape=[1], dtype=np.float32, value=1.1)
+        val1 = fluid.layers.fill_constant(
+            shape=[1], dtype=np.float32, value=1.1)
+        val2 = fluid.layers.fill_constant(
+            shape=[1], dtype=np.float64, value=1.1)
         out_7 = fluid.layers.fill_constant(
-            shape=shape_tensor_int64, dtype=np.float32, value=val)
+            shape=shape_tensor_int64, dtype=np.float32, value=val1)
+
+        out_8 = fluid.layers.fill_constant(
+            shape=shape_tensor_int64, dtype=np.float32, value=val2)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
+        res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8 = exe.run(
             fluid.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                 "shape_tensor_int64": np.array([1, 2]).astype("int64"),
             },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7])
+            fetch_list=[
+                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8
+            ])
 
         assert np.array_equal(res_1, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_2, np.full([1, 2], 1.1, dtype="float32"))
@@ -309,6 +297,54 @@ class TestFillConstantAPI(unittest.TestCase):
         assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_6, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_7, np.full([1, 2], 1.1, dtype="float32"))
+        assert np.array_equal(res_8, np.full([1, 2], 1.1, dtype="float32"))
+
+
+class TestFillConstantImperative(unittest.TestCase):
+    def test_api(self):
+        with fluid.dygraph.guard():
+            data1 = np.array([1, 2]).astype('int32')
+            data2 = np.array([1.1]).astype('float32')
+            data3 = np.array([88]).astype('int32')
+            shape = fluid.dygraph.to_variable(data1)
+            val = fluid.dygraph.to_variable(data2)
+            value = fluid.dygraph.to_variable(data3)
+            res1 = fluid.layers.fill_constant(
+                shape=[1, 2], dtype='float32', value=1.1)
+            res2 = fluid.layers.fill_constant(
+                shape=shape, dtype='float32', value=1.1)
+            res3 = fluid.layers.fill_constant(
+                shape=shape, dtype='float32', value=val)
+            res4 = fluid.layers.fill_constant(
+                shape=shape, dtype='int32', value=value)
+            assert np.array_equal(
+                res1.numpy(), np.full(
+                    [1, 2], 1.1, dtype="float32"))
+            assert np.array_equal(
+                res2.numpy(), np.full(
+                    [1, 2], 1.1, dtype="float32"))
+            assert np.array_equal(
+                res3.numpy(), np.full(
+                    [1, 2], 1.1, dtype="float32"))
+            assert np.array_equal(
+                res4.numpy(), np.full(
+                    [1, 2], 88, dtype="int32"))
+
+    def test_nan(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.nan)
+            self.assertTrue(np.isnan(res.numpy().item(0)))
+
+    def test_inf(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.inf)
+            self.assertTrue(np.isinf(res.numpy().item(0)))
+
+    def test_ninf(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.NINF)
+            self.assertTrue(np.isinf(res.numpy().item(0)))
+            self.assertEqual(np.NINF, res.numpy().item(0))
 
 
 class TestFillConstantOpError(unittest.TestCase):
@@ -317,7 +353,7 @@ class TestFillConstantOpError(unittest.TestCase):
             #for ci coverage
             x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
             self.assertRaises(
-                ValueError,
+                TypeError,
                 fluid.layers.fill_constant,
                 shape=[1],
                 value=5,
@@ -330,16 +366,18 @@ class TestFillConstantOpError(unittest.TestCase):
                 dtype='int16',
                 out=x1)
 
-            # The argument dtype of fill_constant_op must be one of bool, float16,
-            #float32, float64, int32 or int64
-            x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
-
             self.assertRaises(
                 TypeError,
                 fluid.layers.fill_constant,
-                shape=[1],
+                shape=[1.1],
                 value=5,
-                dtype='uint8')
+                dtype='float32',
+                out=x1)
+
+            # The argument dtype of fill_constant_op must be one of bool, float16,
+            #float32, float64, uint8, int32 or int64
+            x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
+
             self.assertRaises(
                 TypeError,
                 fluid.layers.fill_constant,
@@ -387,5 +425,31 @@ class TestFillConstantOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
 
 
+class TestFillConstantOp_ValueTensorBf16(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "fill_constant"
+        self.init_data()
+
+        self.inputs = {
+            "ShapeTensor": np.array(self.shape).astype("int32"),
+            'ValueTensor':
+            convert_float_to_uint16(np.array([self.value]).astype("float32"))
+        }
+        self.attrs = {'value': self.value, 'dtype': core.VarDesc.VarType.BF16}
+        self.outputs = {'Out': np.full(self.shape, self.value)}
+
+    def init_data(self):
+        self.shape = [123, 92]
+        self.value = 3.0
+        self.dtype = np.uint16
+        self.mkldnn_data_type = "bfloat16"
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

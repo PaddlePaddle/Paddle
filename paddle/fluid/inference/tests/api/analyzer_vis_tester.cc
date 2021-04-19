@@ -56,12 +56,12 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrDebug();
   cfg->SwitchSpecifyInputNames(false);
-  // TODO(TJ): fix fusion gru
-  cfg->pass_builder()->DeletePass("fc_gru_fuse_pass");
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
-  PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
+  PADDLE_ENFORCE_EQ(
+      FLAGS_test_all_data, 0,
+      paddle::platform::errors::Fatal("Only have single batch of data."));
   std::string line;
   std::ifstream file(FLAGS_infer_data);
   std::getline(file, line);
@@ -86,6 +86,7 @@ void profile(bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
     cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
   }
   // cfg.pass_builder()->TurnOnDebug();
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -101,7 +102,9 @@ void profile(bool use_mkldnn = false) {
     auto refer = ProcessALine(line);
     file.close();
 
-    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    PADDLE_ENFORCE_GT(outputs.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     auto &output = outputs.back().front();
     size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
     CHECK_EQ(numel, refer.data.size());
@@ -134,6 +137,7 @@ void compare(bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
     cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

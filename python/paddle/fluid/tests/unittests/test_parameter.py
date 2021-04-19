@@ -15,6 +15,9 @@
 from __future__ import print_function
 
 import unittest
+import copy
+import paddle
+from paddle.fluid.dygraph import guard
 from paddle.fluid.framework import default_main_program
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
@@ -26,7 +29,7 @@ main_program = default_main_program()
 
 
 class ParameterChecks(unittest.TestCase):
-    def check_param(self):
+    def check_parameter(self):
         shape = [784, 100]
         val = 1.0625
         b = main_program.global_block()
@@ -46,6 +49,28 @@ class ParameterChecks(unittest.TestCase):
         p = io.get_parameter_value_by_name('fc.w', exe, main_program)
         self.assertTrue(np.allclose(np.array(p), np.ones(shape) * val))
 
+    def check_parambase(self):
+        with guard():
+            linear = paddle.nn.Linear(10, 10)
+            param = linear.weight
+
+            memo = {}
+            param_copy = copy.deepcopy(param, memo)
+            self.assertEqual(param_copy.shape, param.shape)
+            self.assertEqual(param_copy.type, param.type)
+            self.assertEqual(param_copy.dtype, param.dtype)
+            self.assertEqual(str(param_copy.place), str(param.place))
+            self.assertTrue(np.array_equal(param_copy.numpy(), param.numpy()))
+            self.assertEqual(param_copy.optimize_attr, param.optimize_attr)
+            self.assertEqual(param_copy.regularizer, param.regularizer)
+            self.assertEqual(param_copy.do_model_average,
+                             param.do_model_average)
+            self.assertEqual(param_copy.need_clip, param.need_clip)
+            self.assertEqual(param_copy.is_distributed, param.is_distributed)
+
+            pram_copy2 = copy.deepcopy(param, memo)
+            self.assertEqual(id(param_copy), id(pram_copy2))
+
     def check_exceptions(self):
         b = main_program.global_block()
         with self.assertRaises(ValueError):
@@ -63,8 +88,11 @@ class ParameterChecks(unittest.TestCase):
 
 
 class TestParameter(ParameterChecks):
-    def test_param(self):
-        self.check_param()
+    def _test_parameter(self):
+        self.check_parameter()
+
+    def test_parambase(self):
+        self.check_parambase()
 
     def test_exceptions(self):
         self.check_exceptions()

@@ -205,7 +205,10 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else {
-      PADDLE_THROW("unsupported pooling pooltype");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "unsupported pooling pooltype: %s. Only support \"MAX\", "
+          "\"AVERAGE\", \"SUM\", \"SQRT\", \"LAST\" and \"FIRST\"",
+          pooltype));
     }
   }
 };
@@ -370,7 +373,10 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
 
     } else {
-      PADDLE_THROW("unsupported pooling pooltype");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "unsupported pooling pooltype: %s. Only support \"MAX\", "
+          "\"AVERAGE\", \"SUM\", \"SQRT\", \"LAST\" and \"FIRST\"",
+          pooltype));
     }
   }
 };

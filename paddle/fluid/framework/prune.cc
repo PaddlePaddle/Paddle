@@ -16,20 +16,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
-#include <algorithm>
-#include <memory>
 #include <queue>
-#include <set>
-#include <string>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
-#include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -210,6 +198,23 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       should_run.push_back(true);
     } else {
       should_run.push_back(false);
+      // If the output of an op modifies feed vars, the op should not clip.
+      // For example, in the transformer structure, the third parameter returned
+      // by beam_search op is generally assigned to a feed var. Cutting the
+      // assign op will cause an error.
+      if (parent_block_id != -1) {
+        bool flag = false;
+        for (auto& var : op_desc.outputs()) {
+          for (auto& argu : var.arguments()) {
+            if (feed_var_names.count(argu)) {
+              flag = true;
+            }
+          }
+        }
+        if (flag) {
+          should_run.back() = true;
+        }
+      }
     }
   }
 

@@ -16,7 +16,7 @@ from __future__ import print_function
 import logging
 
 from . import framework
-from .framework import in_dygraph_mode, _varbase_creator, device_guard
+from .framework import in_dygraph_mode, _varbase_creator
 from . import core
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
@@ -62,10 +62,8 @@ def _create_regularization_of_grad(param, grad, regularization=None):
     return new_grad
 
 
-def append_regularization_ops(parameters_and_grads,
-                              regularization=None,
-                              param_device_map=None):
-    """Create and add backward regularization Operators
+def append_regularization_ops(parameters_and_grads, regularization=None):
+    r"""Create and add backward regularization Operators
 
     Creates and adds backward regularization operators in the BlockDesc.
     This will add gradients of the regularizer function to the gradients
@@ -95,19 +93,16 @@ def append_regularization_ops(parameters_and_grads,
         repeate_regularizer = False
         with framework.name_scope('regularization'):
             for param, grad in parameters_and_grads:
-                device = param_device_map[
-                    param.name] if param_device_map else None
                 if not repeate_regularizer and param.regularizer is not None and regularization is not None:
                     repeate_regularizer = True
                     logging.info(
                         "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
                         "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                         % regularization.__str__())
-                with device_guard(device):
-                    with param.block.program._optimized_guard([param, grad]):
-                        new_grad = _create_regularization_of_grad(
-                            param, grad, regularization)
-                        params_and_grads.append((param, new_grad))
+                with param.block.program._optimized_guard([param, grad]):
+                    new_grad = _create_regularization_of_grad(param, grad,
+                                                              regularization)
+                    params_and_grads.append((param, new_grad))
     return params_and_grads
 
 
@@ -137,7 +132,7 @@ class WeightDecayRegularizer(object):
 
 
 class L2DecayRegularizer(WeightDecayRegularizer):
-    """ 
+    r""" 
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
     It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ). 
@@ -244,7 +239,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
 
 class L1DecayRegularizer(WeightDecayRegularizer):
-    """
+    r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
     
     It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ). 

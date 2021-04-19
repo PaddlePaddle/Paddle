@@ -17,10 +17,12 @@
 //
 
 #include <paddle/fluid/framework/op_registry.h>
+
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -70,6 +72,13 @@ TEST(test_tracer, test_trace_op) {
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+
+#ifndef PADDLE_WITH_XPU
+  ASSERT_THROW(tracer.TraceOp("mul", ins, outs, mul_attr_map,
+                              platform::XPUPlace(0), true);
+               , platform::EnforceNotMet);
+#endif
+
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
   for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
@@ -193,7 +202,7 @@ TEST(test_tracer, test_track_backward_input) {
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 }
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   // Doing an mul
   imperative::Tracer tracer;
@@ -240,9 +249,11 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::AttributeMap reduce_attr_map;
   tracer.TraceOp("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
                  gpu_place, true);
-  detail::BackwardStrategy back_st;
   imperative::BasicEngine engine;
-  engine.Init(reduce_sum_out.get(), back_st);
+
+  std::vector<std::shared_ptr<imperative::VarBase>> tensors{reduce_sum_out};
+  std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
+  engine.Init(tensors, grad_tensors);
   engine.Execute();
 
   framework::LoDTensor rlt;
@@ -287,9 +298,9 @@ TEST(test_tracer, test_unique_name_generator) {
   ASSERT_STREQ("fc_1", fc_2.c_str());
   // use `eager_tmp` as key if not specify it.
   auto tmp_var_2 = tracer.GenerateUniqueName();
-  ASSERT_STREQ("eager_tmp_2", tmp_var_2.c_str());
-  auto tmp_var_3 = tracer.GenerateUniqueName("eager_tmp");
-  ASSERT_STREQ("eager_tmp_3", tmp_var_3.c_str());
+  ASSERT_STREQ("dygraph_tmp_2", tmp_var_2.c_str());
+  auto tmp_var_3 = tracer.GenerateUniqueName("dygraph_tmp");
+  ASSERT_STREQ("dygraph_tmp_3", tmp_var_3.c_str());
 }
 
 TEST(test_tracer, test_current_tracer) {
@@ -304,10 +315,22 @@ TEST(test_tracer, test_expected_place) {
   // default expected place is CPUPlace
   imperative::Tracer tracer;
   ASSERT_EQ(platform::is_cpu_place(tracer.ExpectedPlace()), true);
-  // set to CUDAPlace
-  platform::CUDAPlace gpu_place(0);
-  tracer.SetExpectedPlace(gpu_place);
-  ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
+  {
+#ifdef PADDLE_WITH_CUDA
+    // set to CUDAPlace
+    platform::CUDAPlace gpu_place(0);
+    tracer.SetExpectedPlace(gpu_place);
+    ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
+#endif
+  }
+  {
+#ifdef PADDLE_WITH_XPU
+    // set to XPUPlace
+    platform::XPUPlace xpu_place(0);
+    tracer.SetExpectedPlace(xpu_place);
+    ASSERT_EQ(platform::is_xpu_place(tracer.ExpectedPlace()), true);
+#endif
+  }
 }
 
 TEST(test_tracer, test_var_without_grad_var) {
@@ -356,9 +379,10 @@ TEST(test_tracer, test_var_without_grad_var) {
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 
-  detail::BackwardStrategy back_st;
+  std::vector<std::shared_ptr<imperative::VarBase>> tensors{vout};
+  std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
   imperative::BasicEngine engine;
-  engine.Init(vout.get(), back_st);
+  engine.Init(tensors, grad_tensors);
   engine.Execute();
 
   // check the grad
@@ -501,7 +525,7 @@ static void TestVarOpDestructionMain(const platform::Place& place,
 
 TEST(test_tracer, test_var_op_destruction) {
   TestVarOpDestructionMain(platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   TestVarOpDestructionMain(platform::CUDAPlace(0));
 #endif
 }

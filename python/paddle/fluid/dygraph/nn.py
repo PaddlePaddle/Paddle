@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 from six.moves import reduce
 from .. import core
 from ..layers import utils
@@ -30,17 +31,19 @@ from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
+import os
+import paddle.utils.deprecated as deprecated
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
     'GRUUnit', 'InstanceNorm', 'LayerNorm', 'NCE', 'PRelu',
     'BilinearTensorProduct', 'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm',
-    'SpectralNorm', 'TreeConv'
+    'SpectralNorm', 'TreeConv', 'Flatten'
 ]
 
 
 class Conv2D(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv2D`` class.
     For more details, refer to code examples.
     The convolution2D layer calculates the output based on the input, filter
@@ -108,7 +111,7 @@ class Conv2D(layers.Layer):
         dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
-        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
+        groups (int, optional): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -171,6 +174,11 @@ class Conv2D(layers.Layer):
                  dtype='float32'):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__()
+
+        if (core.is_compiled_with_cuda() and paddle.fluid.get_flags(
+                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+            use_cudnn = False
+
         self._num_channels = num_channels
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
@@ -180,6 +188,7 @@ class Conv2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
         self._filter_size = filter_size
         self._num_filters = num_filters
         self._param_attr = param_attr
@@ -187,7 +196,8 @@ class Conv2D(layers.Layer):
         self._dtype = dtype
 
         if (self._num_channels == self._groups and
-                num_filters % self._num_channels == 0 and not self._use_cudnn):
+                num_filters % self._num_channels == 0 and
+                not self._use_cudnn and not self._use_mkldnn):
             self._l_type = 'depthwise_conv2d'
         else:
             self._l_type = 'conv2d'
@@ -224,14 +234,15 @@ class Conv2D(layers.Layer):
         if in_dygraph_mode() and self._l_type == 'conv2d':
             attrs = ('strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups
-                     if self._groups else 1, 'use_cudnn', self._use_cudnn)
+                     if self._groups else 1, 'use_cudnn', self._use_cudnn,
+                     'use_mkldnn', self._use_mkldnn)
             out = core.ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
-            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
-                                                            1)
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
+            pre_act = dygraph_utils._append_bias_in_dygraph(
+                pre_bias, self.bias, 1, use_mkldnn=self._use_mkldnn)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
         inputs = {
             'Input': [input],
             'Filter': [self.weight],
@@ -242,7 +253,7 @@ class Conv2D(layers.Layer):
             'dilations': self._dilation,
             'groups': self._groups if self._groups else 1,
             'use_cudnn': self._use_cudnn,
-            'use_mkldnn': False,
+            'use_mkldnn': self._use_mkldnn,
         }
 
         check_variable_and_dtype(input, 'input',
@@ -267,7 +278,8 @@ class Conv2D(layers.Layer):
                 inputs={'X': [pre_bias],
                         'Y': [self.bias]},
                 outputs={'Out': [pre_act]},
-                attrs={'axis': 1})
+                attrs={'axis': 1,
+                       'use_mkldnn': self._use_mkldnn})
         else:
             pre_act = pre_bias
 
@@ -276,7 +288,7 @@ class Conv2D(layers.Layer):
 
 
 class Conv3D(layers.Layer):
-    """
+    r"""
     **Convlution3D Layer**
 
     The convolution3D layer calculates the output based on the input, filter
@@ -339,7 +351,7 @@ class Conv3D(layers.Layer):
         dilation (int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups (int, optional): The groups number of the Conv3d Layer. According to grouped
+        groups (int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -478,7 +490,7 @@ class Conv3D(layers.Layer):
 
 
 class Conv3DTranspose(layers.Layer):
-    """
+    r"""
     **Convlution3D transpose layer**
 
     The convolution3D transpose layer calculates the output based on the input,
@@ -568,7 +580,7 @@ class Conv3DTranspose(layers.Layer):
         dilation(int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -695,10 +707,7 @@ class Conv3DTranspose(layers.Layer):
 
 
 class Pool2D(layers.Layer):
-    """
-    :alias_main: paddle.nn.Pool2D
-	:alias: paddle.nn.Pool2D,paddle.nn.layer.Pool2D,paddle.nn.layer.common.Pool2D
-	:old_api: paddle.fluid.dygraph.Pool2D
+    r"""
 
     This interface is used to construct a callable object of the ``Pool2D`` class.
     For more details, refer to code examples.
@@ -828,6 +837,8 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
@@ -853,8 +864,8 @@ class Pool2D(layers.Layer):
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
-                     'use_mkldnn', False, 'exclusive', self._exclusive,
-                     'data_format', self._data_format)
+                     'use_mkldnn', self._use_mkldnn, 'exclusive',
+                     self._exclusive, 'data_format', self._data_format)
             return core.ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
@@ -869,7 +880,7 @@ class Pool2D(layers.Layer):
             "paddings": self._pool_padding,
             "use_cudnn": self._use_cudnn,
             "ceil_mode": self._ceil_mode,
-            "use_mkldnn": False,
+            "use_mkldnn": self._use_mkldnn,
             "exclusive": self._exclusive,
             "data_format": self._data_format,
         }
@@ -887,9 +898,6 @@ class Pool2D(layers.Layer):
 
 class Linear(layers.Layer):
     """
-    :alias_main: paddle.nn.Linear
-	:alias: paddle.nn.Linear,paddle.nn.layer.Linear,paddle.nn.layer.common.Linear
-	:old_api: paddle.fluid.dygraph.Linear
     
     Fully-connected linear transformation layer:
 
@@ -958,16 +966,22 @@ class Linear(layers.Layer):
         self.bias = self.create_parameter(
             shape=[output_dim], attr=bias_attr, dtype=dtype, is_bias=True)
 
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+
     def forward(self, input):
         if in_dygraph_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
             core.ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                            'transpose_Y', False, "alpha", 1)
+                            'transpose_Y', False, "alpha", 1, "use_mkldnn",
+                            self._use_mkldnn)
             pre_act = dygraph_utils._append_bias_in_dygraph(
-                pre_bias, self.bias, axis=len(input.shape) - 1)
+                pre_bias,
+                self.bias,
+                axis=len(input.shape) - 1,
+                use_mkldnn=self._use_mkldnn)
 
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], "Linear")
@@ -976,6 +990,7 @@ class Linear(layers.Layer):
             "transpose_X": False,
             "transpose_Y": False,
             "alpha": 1,
+            "use_mkldnn": self._use_mkldnn,
         }
         inputs = {"X": [input], "Y": [self.weight]}
 
@@ -990,14 +1005,17 @@ class Linear(layers.Layer):
                 inputs={'X': [tmp],
                         'Y': [self.bias]},
                 outputs={'Out': [pre_activation]},
-                attrs={'axis': len(input.shape) - 1})
+                attrs={
+                    'axis': len(input.shape) - 1,
+                    'use_mkldnn': self._use_mkldnn
+                })
         else:
             pre_activation = tmp
         return self._helper.append_activation(pre_activation, act=self._act)
 
 
 class InstanceNorm(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``InstanceNorm`` class.
     For more details, refer to code examples.
 
@@ -1131,7 +1149,7 @@ class InstanceNorm(layers.Layer):
 
 
 class BatchNorm(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.BatchNorm
 	:alias: paddle.nn.BatchNorm,paddle.nn.layer.BatchNorm,paddle.nn.layer.norm.BatchNorm
 	:old_api: paddle.fluid.dygraph.BatchNorm
@@ -1250,6 +1268,7 @@ class BatchNorm(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
@@ -1314,16 +1333,15 @@ class BatchNorm(layers.Layer):
         if in_dygraph_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
-                     self._fuse_with_relu, "use_global_stats",
+                     self._data_layout, "use_mkldnn", self._use_mkldnn,
+                     "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
             batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
-
             return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act)
+                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], 'BatchNorm')
@@ -1351,6 +1369,9 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype, stop_gradient=True)
         saved_variance = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
+        reserve_space = self._helper.create_variable_for_type_inference(
+            dtype=self._helper.input_dtype(input), stop_gradient=True)
+
         batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
             self._dtype)
 
@@ -1361,6 +1382,8 @@ class BatchNorm(layers.Layer):
             "SavedMean": [saved_mean],
             "SavedVariance": [saved_variance]
         }
+        if reserve_space is not None:
+            outputs["ReserveSpace"] = [reserve_space]
 
         self._helper.append_op(
             type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
@@ -1448,6 +1471,9 @@ class Dropout(layers.Layer):
         self._is_test = is_test
 
     def forward(self, input):
+        # fast return for p == 0
+        if self._dropout_prob == 0:
+            return input
         prog = default_main_program()
         if (self._seed is None or self._seed == 0) and prog.random_seed != 0:
             self._seed = prog.random_seed
@@ -1479,7 +1505,7 @@ class Dropout(layers.Layer):
 
 
 class Embedding(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.Embedding
 	:alias: paddle.nn.Embedding,paddle.nn.layer.Embedding,paddle.nn.layer.common.Embedding
 	:old_api: paddle.fluid.dygraph.Embedding
@@ -1639,7 +1665,7 @@ class Embedding(layers.Layer):
 
 
 class LayerNorm(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
 	:old_api: paddle.fluid.dygraph.LayerNorm
@@ -2229,7 +2255,7 @@ class NCE(layers.Layer):
 
 
 class PRelu(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``PRelu`` class.
     For more details, refer to code examples.
     It implements three activation methods of the ``PRelu`` activation function.
@@ -2308,7 +2334,8 @@ class PRelu(layers.Layer):
             #NOTE(zhiqiu): The _alpha_shape should be [1, channel] + [1] * len(input_shape[2:]), not [1, channel, 1, 1].
             # However, the suffix 1 in the list is useless, since the tensor is viewed as one demension array during kernel calculation. 
             # And, input_shape is not required when mode is 'channel', so it is simplified.
-            self._alpha_shape = [1, channel]
+            #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
+            self._alpha_shape = [1, channel, 1, 1]
         elif mode == 'element':
             assert isinstance(input_shape, (
                 list, tuple
@@ -2336,10 +2363,7 @@ class PRelu(layers.Layer):
 
 
 class BilinearTensorProduct(layers.Layer):
-    """
-    :alias_main: paddle.nn.BilinearTensorProduct
-	:alias: paddle.nn.BilinearTensorProduct,paddle.nn.layer.BilinearTensorProduct,paddle.nn.layer.common.BilinearTensorProduct
-	:old_api: paddle.fluid.dygraph.BilinearTensorProduct
+    r"""
 
     **Add Bilinear Tensor Product Layer**
 
@@ -2376,21 +2400,21 @@ class BilinearTensorProduct(layers.Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
-       Variable: A 2-D Tensor of shape [batch_size, size].
+       Tensor: A 2-D Tensor of shape [batch_size, size].
 
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
-         import numpy
+        import paddle
+        import numpy
 
-         with fluid.dygraph.guard():
-             layer1 = numpy.random.random((5, 5)).astype('float32')
-             layer2 = numpy.random.random((5, 4)).astype('float32')
-             bilinearTensorProduct = fluid.dygraph.nn.BilinearTensorProduct(
-                    input1_dim=5, input2_dim=4, output_dim=1000)
-             ret = bilinearTensorProduct(fluid.dygraph.base.to_variable(layer1),
-                                fluid.dygraph.base.to_variable(layer2))
+        layer1 = numpy.random.random((5, 5)).astype('float32')
+        layer2 = numpy.random.random((5, 4)).astype('float32')
+        bilinearTensorProduct = paddle.nn.BilinearTensorProduct(
+            input1_dim=5, input2_dim=4, output_dim=1000)
+        ret = bilinearTensorProduct(paddle.to_tensor(layer1),
+                                    paddle.to_tensor(layer2))
+
     """
 
     def __init__(self,
@@ -2426,6 +2450,10 @@ class BilinearTensorProduct(layers.Layer):
             dtype=self._dtype,
             is_bias=True)
 
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.nn.Bilinear",
+        reason="New name and new args in Bilinear, easier to use.")
     def forward(self, x, y):
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'BilinearTensorProduct')
@@ -2452,7 +2480,7 @@ class BilinearTensorProduct(layers.Layer):
 
 
 class Conv2DTranspose(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
     For more details, refer to code examples.
     The convolution2D transpose layer calculates the output based on the input,
@@ -2526,7 +2554,7 @@ class Conv2DTranspose(layers.Layer):
         dilation(int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
-        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -2964,11 +2992,7 @@ class GroupNorm(layers.Layer):
 
 
 class SpectralNorm(layers.Layer):
-    """
-    :alias_main: paddle.nn.SpectralNorm
-	:alias: paddle.nn.SpectralNorm,paddle.nn.layer.SpectralNorm,paddle.nn.layer.norm.SpectralNorm
-	:old_api: paddle.fluid.dygraph.SpectralNorm
-
+    r"""
     This interface is used to construct a callable object of the ``SpectralNorm`` class.
     For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
     This layer calculates the spectral normalization value of weight parameters of
@@ -3016,13 +3040,13 @@ class SpectralNorm(layers.Layer):
     Examples:
        .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+            import paddle
+            x = paddle.rand((2,8,32,32))
 
-            with fluid.dygraph.guard():
-                weight = np.random.random((2, 8, 32, 32)).astype('float32')
-                spectralNorm = fluid.dygraph.nn.SpectralNorm(weight.shape, dim=1, power_iters=2)
-                ret = spectralNorm(fluid.dygraph.base.to_variable(weight))
+            spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
+            spectral_norm_out = spectral_norm(x)
+
+            print(spectral_norm_out.shape) # [2, 8, 32, 32]
 
     """
 
@@ -3182,3 +3206,41 @@ class TreeConv(layers.Layer):
         else:
             pre_activation = out
         return self._helper.append_activation(pre_activation, act=self._act)
+
+
+class Flatten(layers.Layer):
+    """
+    This interface is used to construct a callable object of the ``FLatten`` class.
+    For more details, refer to code examples.
+    It implements flatten a contiguous range of dims into a tensor.
+
+    Parameters:
+        start_axis(int): first dim to flatten (default = 1)
+        stop_axis(int): last dim to flatten (default = -1).
+    
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          inp_np = np.ones([5, 2, 3, 4]).astype('float32')
+          inp_np = paddle.to_tensor(inp_np)
+          flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
+          flatten_res = flatten(inp_np)
+
+    """
+
+    def __init__(self, start_axis=1, stop_axis=-1):
+        super(Flatten, self).__init__()
+        self.start_axis = start_axis
+        self.stop_axis = stop_axis
+
+    def forward(self, input):
+        out = paddle.tensor.manipulation.flatten(
+            input, start_axis=self.start_axis, stop_axis=self.stop_axis)
+        return out

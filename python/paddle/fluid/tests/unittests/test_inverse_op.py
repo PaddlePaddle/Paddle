@@ -86,15 +86,10 @@ class TestInverseAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
-    def check_static_result(self, place, with_out=False):
+    def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[4, 4], dtype="float64")
-            if with_out:
-                out = fluid.data(name="output", shape=[4, 4], dtype="float64")
-            else:
-                out = None
-            result = paddle.inverse(input=input, out=out)
-
+            result = paddle.inverse(x=input)
             input_np = np.random.random([4, 4]).astype("float64")
             result_np = np.linalg.inv(input_np)
 
@@ -140,5 +135,50 @@ class TestInverseAPIError(unittest.TestCase):
         self.assertRaises(ValueError, paddle.inverse, input)
 
 
+class TestInverseSingularAPI(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            result = paddle.inverse(x=input)
+
+            input_np = np.zeros([4, 4]).astype("float64")
+
+            exe = fluid.Executor(place)
+            try:
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={"input": input_np},
+                                  fetch_list=[result])
+            except RuntimeError as ex:
+                print("The mat is singular")
+                pass
+            except ValueError as ex:
+                print("The mat is singular")
+                pass
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_np = np.ones([4, 4]).astype("float64")
+                input = fluid.dygraph.to_variable(input_np)
+                try:
+                    result = paddle.inverse(input)
+                except RuntimeError as ex:
+                    print("The mat is singular")
+                    pass
+                except ValueError as ex:
+                    print("The mat is singular")
+                    pass
+
+
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

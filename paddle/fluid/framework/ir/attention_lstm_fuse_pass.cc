@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
+
 #include <string>
-#include <unordered_set>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -108,7 +108,9 @@ void FindWhileOp(Graph* graph) {
   GraphSafeRemoveNodes(graph, marked_nodes);
 }
 
-#define CHECK_P1(x) PADDLE_ENFORCE_NOT_NULL(x);
+#define CHECK_P1(x)        \
+  PADDLE_ENFORCE_NOT_NULL( \
+      x, platform::errors::NotFound("%s is a null pointer.", #x))
 #define CHECK_P2(x0, x1) \
   CHECK_P1(x0);          \
   CHECK_P1(x1);

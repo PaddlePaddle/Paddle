@@ -13,7 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/seqpool.h"
-#include <memory>
+
 #include "paddle/fluid/operators/jit/gen/act.h"  // for exp_float_consts ones
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -70,8 +70,14 @@ class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
   }
   std::unique_ptr<GenBase> CreateJitCode(
       const seq_pool_attr_t& attr) const override {
-    PADDLE_ENFORCE_GT(attr.w, 0);
-    PADDLE_ENFORCE_GT(attr.h, 0);
+    PADDLE_ENFORCE_GT(attr.w, 0, platform::errors::InvalidArgument(
+                                     "The attribute width of SeqPool should "
+                                     "be larger than 0. But it is %d.",
+                                     attr.w));
+    PADDLE_ENFORCE_GT(attr.h, 0, platform::errors::InvalidArgument(
+                                     "The attribute height of SeqPool should "
+                                     "be larger than 0. But it is %d.",
+                                     attr.h));
     return make_unique<SeqPoolJitCode>(attr, CodeSize(attr));
   }
 };

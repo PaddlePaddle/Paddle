@@ -14,11 +14,7 @@
 
 #include "paddle/fluid/framework/ir/multi_batch_merge_pass.h"
 
-#include <map>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
@@ -85,7 +81,9 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
   // 1. record op nodes of different roles
   for (auto node : nodes) {
     if (!node->IsOp()) continue;
-    PADDLE_ENFORCE(node->Op(), "must find opdesc");
+    PADDLE_ENFORCE_NOT_NULL(
+        node->Op(), platform::errors::InvalidArgument(
+                        "Node(%s) must hold op description.", node->Name()));
     int op_role = BOOST_GET_CONST(
         int, node->Op()->GetAttr(
                  framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
@@ -108,7 +106,9 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
     } else if (op_role & static_cast<int>(framework::OpRole::kLRSched)) {
       lr_ops.push_back(node);
     } else {  // NOLINT
-      PADDLE_THROW("Invalid op_role: %d", static_cast<int>(op_role));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid op role(%d), in node(%s).", static_cast<int>(op_role),
+          node->Name()));
     }
   }
 

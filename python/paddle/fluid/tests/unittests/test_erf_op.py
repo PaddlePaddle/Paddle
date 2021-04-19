@@ -19,6 +19,7 @@ import numpy as np
 from scipy.special import erf
 from op_test import OpTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
@@ -57,6 +58,12 @@ class TestErfLayer(unittest.TestCase):
         self._test_case(fluid.CPUPlace())
         if fluid.is_compiled_with_cuda():
             self._test_case(fluid.CUDAPlace(0))
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = paddle.static.data('x', [3, 4])
+            y = paddle.erf(x, name='erf')
+            self.assertTrue('erf' in y.name)
 
 
 if __name__ == '__main__':

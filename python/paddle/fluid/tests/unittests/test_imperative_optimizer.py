@@ -74,8 +74,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             try:
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
+                paddle.seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
                 mlp = MLP()
                 optimizer = self.get_optimizer_dygraph(
                     parameter_list=mlp.parameters())
@@ -91,8 +91,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             ) else fluid.CUDAPlace(0)
 
         with fluid.dygraph.guard(place):
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             mlp = MLP()
             optimizer = self.get_optimizer_dygraph(
@@ -132,8 +132,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             if place == None:
                 place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
@@ -190,10 +190,18 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         for key, value in six.iteritems(static_param_init_value):
             self.assertTrue(np.allclose(value, dy_param_init_value[key]))
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        if core.is_compiled_with_rocm():
+            self.assertTrue(np.allclose(static_out, dy_out, atol=1e-3))
+        else:
+            self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+            if core.is_compiled_with_rocm():
+                self.assertTrue(
+                    np.allclose(
+                        value, dy_param_value[key], atol=1e-3))
+            else:
+                self.assertTrue(np.allclose(value, dy_param_value[key]))
 
 
 class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):

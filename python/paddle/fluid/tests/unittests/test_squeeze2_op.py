@@ -13,11 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
+
 import numpy as np
 
 from op_test import OpTest
+import paddle
+
+paddle.enable_static()
 
 
 # Correct: General.

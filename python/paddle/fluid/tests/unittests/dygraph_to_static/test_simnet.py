@@ -28,7 +28,7 @@ random.seed(SEED)
 
 def create_conf_dict():
     conf_dict = {}
-    conf_dict["task_mode"] = "train"
+    conf_dict["task_mode"] = "pairwise"
     conf_dict["net"] = {"emb_dim": 128, "bow_dim": 128, "hidden_dim": 128}
     conf_dict["loss"] = {"margin": 0.1}
     return conf_dict
@@ -108,8 +108,8 @@ def train(conf_dict, to_static):
         place = fluid.CPUPlace()
 
     with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         conf_dict['dict_size'] = len(vocab)
         conf_dict['seq_len'] = args.seq_len

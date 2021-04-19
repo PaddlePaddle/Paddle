@@ -17,6 +17,8 @@ from __future__ import print_function
 import os
 import numpy as np
 import random
+import shutil
+import time
 import unittest
 import logging
 import paddle
@@ -27,10 +29,13 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.nn import Conv2D
+from paddle.nn import Linear, Conv2D, Softmax
 from paddle.fluid.dygraph.nn import Pool2D
-from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.contrib.slim.quantization.imperative.quant_nn import QuantizedConv2D
+
+paddle.enable_static()
 
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
@@ -40,7 +45,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
+def StaticLenet(data, num_classes=10):
     conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
     conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
     fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
@@ -82,15 +87,15 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
                           bias_attr=fc_b2_attr)
     fc3 = fluid.layers.fc(input=fc2,
                           size=num_classes,
-                          act=classifier_activation,
                           param_attr=fc_w3_attr,
                           bias_attr=fc_b3_attr)
+    fc4 = fluid.layers.softmax(fc3, use_cudnn=True)
 
-    return fc3
+    return fc4
 
 
 class ImperativeLenet(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
@@ -104,47 +109,46 @@ class ImperativeLenet(fluid.dygraph.Layer):
         fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
         self.features = Sequential(
             Conv2D(
-                num_channels=1,
-                num_filters=6,
-                filter_size=3,
+                in_channels=1,
+                out_channels=6,
+                kernel_size=3,
                 stride=1,
                 padding=1,
-                param_attr=conv2d_w1_attr,
+                weight_attr=conv2d_w1_attr,
                 bias_attr=conv2d_b1_attr),
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2),
             Conv2D(
-                num_channels=6,
-                num_filters=16,
-                filter_size=5,
+                in_channels=6,
+                out_channels=16,
+                kernel_size=5,
                 stride=1,
                 padding=0,
-                param_attr=conv2d_w2_attr,
+                weight_attr=conv2d_w2_attr,
                 bias_attr=conv2d_b2_attr),
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2))
 
         self.fc = Sequential(
             Linear(
-                input_dim=400,
-                output_dim=120,
-                param_attr=fc_w1_attr,
+                in_features=400,
+                out_features=120,
+                weight_attr=fc_w1_attr,
                 bias_attr=fc_b1_attr),
             Linear(
-                input_dim=120,
-                output_dim=84,
-                param_attr=fc_w2_attr,
+                in_features=120,
+                out_features=84,
+                weight_attr=fc_w2_attr,
                 bias_attr=fc_b2_attr),
             Linear(
-                input_dim=84,
-                output_dim=num_classes,
-                act=classifier_activation,
-                param_attr=fc_w3_attr,
-                bias_attr=fc_b3_attr))
+                in_features=84,
+                out_features=num_classes,
+                weight_attr=fc_w3_attr,
+                bias_attr=fc_b3_attr),
+            Softmax())
 
     def forward(self, inputs):
         x = self.features(inputs)
-
         x = fluid.layers.flatten(x, 1)
         x = self.fc(x)
         return x
@@ -155,12 +159,37 @@ class TestImperativeQat(unittest.TestCase):
     QAT = quantization-aware training
     """
 
+    @classmethod
+    def setUpClass(cls):
+        timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
+        cls.root_path = os.path.join(os.getcwd(), "imperative_qat_" + timestamp)
+        cls.save_path = os.path.join(cls.root_path, "lenet")
+        cls.dynamic_root_path = os.path.join(os.getcwd(),
+                                             "dynamic_mnist_" + timestamp)
+        cls.dynamic_save_path = os.path.join(cls.dynamic_root_path, "model")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.root_path)
+        shutil.rmtree(cls.dynamic_root_path)
+
     def test_qat_save(self):
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type='abs_max',
             activation_quantize_type='moving_average_abs_max')
-
         with fluid.dygraph.guard():
+            # For CI coverage
+            conv1 = Conv2D(
+                in_channels=3,
+                out_channels=2,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                padding_mode='replicate')
+            quant_conv1 = QuantizedConv2D(conv1)
+            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+            quant_conv1(fluid.dygraph.to_variable(data))
+
             lenet = ImperativeLenet()
             imperative_qat.quantize(lenet)
             adam = AdamOptimizer(
@@ -181,7 +210,6 @@ class TestImperativeQat(unittest.TestCase):
 
                     img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
-
                     out = lenet(img)
                     acc = fluid.layers.accuracy(out, label)
                     loss = fluid.layers.cross_entropy(out, label)
@@ -194,6 +222,8 @@ class TestImperativeQat(unittest.TestCase):
                             "Train | At epoch {} step {}: loss = {:}, acc= {:}".
                             format(epoch, batch_id,
                                    avg_loss.numpy(), acc.numpy()))
+                    if batch_id == 500:  # For shortening CI time
+                        break
 
                 lenet.eval()
                 for batch_id, data in enumerate(test_reader()):
@@ -221,7 +251,7 @@ class TestImperativeQat(unittest.TestCase):
             model_dict = lenet.state_dict()
             fluid.save_dygraph(model_dict, "save_temp")
 
-            # test the correctness of `save_quantized_model`
+            # test the correctness of `paddle.jit.save`
             data = next(test_reader())
             test_data = np.array([x[0].reshape(1, 28, 28)
                                   for x in data]).astype('float32')
@@ -230,22 +260,25 @@ class TestImperativeQat(unittest.TestCase):
             before_save = lenet(test_img)
 
         # save inference quantized model
-        path = "./mnist_infer_model"
-        imperative_qat.save_quantized_model(
-            dirname=path,
-            model=lenet,
-            input_shape=[(1, 28, 28)],
-            input_dtype=['float32'],
-            feed=[0],
-            fetch=[0])
+        paddle.jit.save(
+            layer=lenet,
+            path=TestImperativeQat.save_path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ])
+
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
         exe = fluid.Executor(place)
-        [inference_program, feed_target_names, fetch_targets] = (
-            fluid.io.load_inference_model(
-                dirname=path, executor=exe))
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(
+             dirname=TestImperativeQat.root_path,
+             executor=exe,
+             model_filename="lenet" + INFER_MODEL_SUFFIX,
+             params_filename="lenet" + INFER_PARAMS_SUFFIX)
         after_save, = exe.run(inference_program,
                               feed={feed_target_names[0]: test_data},
                               fetch_list=fetch_targets)
@@ -279,7 +312,7 @@ class TestImperativeQat(unittest.TestCase):
         activation_quant_type = 'moving_average_abs_max'
         param_init_map = {}
         seed = 1000
-        lr = 0.1
+        lr = 0.01
 
         # imperative train
         _logger.info(
@@ -332,13 +365,13 @@ class TestImperativeQat(unittest.TestCase):
                 if batch_id % 100 == 0:
                     _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
-        imperative_qat.save_quantized_model(
-            dirname="./dynamic_mnist",
-            model=lenet,
-            input_shape=[(1, 28, 28)],
-            input_dtype=['float32'],
-            feed=[0],
-            fetch=[0])
+        paddle.jit.save(
+            layer=lenet,
+            path=TestImperativeQat.dynamic_save_path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ])
 
         # static graph train
         _logger.info(

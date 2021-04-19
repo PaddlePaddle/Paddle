@@ -14,7 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+
+namespace paddle {
+namespace platform {
+struct EnforceNotMet;
+}  // namespace platform
+}  // namespace paddle
 
 class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
  public:

@@ -15,13 +15,14 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 #include <string>
-#include <unordered_set>
-#include <utility>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/string/string_helper.h"
+
+namespace paddle {
+namespace framework {
+class BlockDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -222,7 +223,7 @@ bool GetCondData(const framework::LoDTensor &cond) {
   }
   // when platform::is_gpu_place(cond.place()) is true
   std::unique_ptr<framework::LoDTensor> cpu_cond{new framework::LoDTensor()};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -230,6 +231,17 @@ bool GetCondData(const framework::LoDTensor &cond) {
       "Cond in WhileOp. Please compile WITH_GPU option."));
 #endif
   return cpu_cond->data<bool>()[0];
+}
+
+bool StrInVaraiableNameMap(const std::string &name,
+                           const framework::VariableNameMap &var_names) {
+  for (auto &ipt : var_names) {
+    if (std::find(ipt.second.begin(), ipt.second.end(), name) !=
+        ipt.second.end()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace operators

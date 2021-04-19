@@ -16,11 +16,14 @@
 
 #include <string>
 #include <unordered_set>
+
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+struct Argument;
 
 class IrInferCleanGraphPass : public AnalysisPass {
  public:

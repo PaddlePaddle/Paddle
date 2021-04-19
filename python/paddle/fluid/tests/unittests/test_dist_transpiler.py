@@ -660,15 +660,15 @@ class TestDistLookupTable(TestDistLookupTableBase):
         # 1 optimize for fc_w or fc_b adam
         self.assertEqual([op.type for op in pserver1.blocks[1].ops],
                          ["sum", "scale", "adam", "scale", "scale"])
-        # 4 prefetch -> lookup_sparse_table for data0
+        # 4 prefetch -> lookup_sparse_table_read for data0
         self.assertEqual([op.type for op in pserver1.blocks[2].ops],
                          ["sum", "scale", "adam", "scale", "scale"])
         # 2 optimize for table sgd
         self.assertEqual([op.type for op in pserver1.blocks[3].ops],
                          ["sum", "sgd"])
-        # 3 prefetch -> lookup_sparse_table for data0
+        # 3 prefetch -> lookup_sparse_table_read for data0
         self.assertEqual([op.type for op in pserver1.blocks[4].ops],
-                         ["lookup_sparse_table"])
+                         ["lookup_sparse_table_read"])
         # 5 save table
         self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
 
@@ -754,9 +754,9 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
                          ["adam", "scale", "scale"])
         # 3 optimize for table sgd
         self.assertEqual([op.type for op in pserver1.blocks[3].ops], ["sgd"])
-        # 4 prefetch -> lookup_sparse_table for data0
+        # 4 prefetch -> lookup_sparse_table_read for data0
         self.assertEqual([op.type for op in pserver1.blocks[4].ops],
-                         ["lookup_sparse_table"])
+                         ["lookup_sparse_table_read"])
         # 5 save table
         self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
 

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-#include <vector>
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {

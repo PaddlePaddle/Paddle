@@ -13,15 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
-#include <algorithm>
 #include <condition_variable>  // NOLINT
-#include <functional>
-#include <iostream>
-#include <thread>  // NOLINT
-#include <utility>
+#include <thread>              // NOLINT
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_string(allocator_strategy);
@@ -62,6 +57,7 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
         auto tl_allocator_impl =
             ThreadLocalCUDAAllocatorPool::Instance().Get(devices[j]);
         allocator_addresses[j][i] = tl_allocator_impl.get();
+        memory::Release(platform::CUDAPlace(devices[j]));
       }
     });
   }

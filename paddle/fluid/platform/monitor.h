@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "glog/logging.h"
 
 namespace paddle {
@@ -186,3 +187,13 @@ class StatRegistry {
   USE_INT_STAT(STAT_gpu13_mem_size); \
   USE_INT_STAT(STAT_gpu14_mem_size); \
   USE_INT_STAT(STAT_gpu15_mem_size)
+
+#define USE_NPU_MEM_STAT            \
+  USE_INT_STAT(STAT_npu0_mem_size); \
+  USE_INT_STAT(STAT_npu1_mem_size); \
+  USE_INT_STAT(STAT_npu2_mem_size); \
+  USE_INT_STAT(STAT_npu3_mem_size); \
+  USE_INT_STAT(STAT_npu4_mem_size); \
+  USE_INT_STAT(STAT_npu5_mem_size); \
+  USE_INT_STAT(STAT_npu6_mem_size); \
+  USE_INT_STAT(STAT_npu7_mem_size)

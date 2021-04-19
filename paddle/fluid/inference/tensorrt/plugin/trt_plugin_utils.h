@@ -103,7 +103,11 @@ struct Serializer<std::vector<T>,
     DeserializeValue(buffer, buffer_size, &size);
     value->resize(size);
     size_t nbyte = value->size() * sizeof(T);
-    PADDLE_ENFORCE_GE(*buffer_size, nbyte);
+    PADDLE_ENFORCE_GE(*buffer_size, nbyte,
+                      platform::errors::InvalidArgument(
+                          "Insufficient data in buffer, expect contains %d "
+                          "byte, but actually only contains %d byte.",
+                          *buffer_size, nbyte));
     std::memcpy(value->data(), *buffer, nbyte);
     reinterpret_cast<char const*&>(*buffer) += nbyte;
     *buffer_size -= nbyte;
@@ -126,6 +130,12 @@ template <typename T>
 inline void DeserializeValue(void const** buffer, size_t* buffer_size,
                              T* value) {
   return details::Serializer<T>::Deserialize(buffer, buffer_size, value);
+}
+
+template <typename T>
+inline void SerializeCudaPointer(void** buffer, T* value, int size) {
+  cudaMemcpy((*buffer), value, size * sizeof(T), cudaMemcpyDeviceToHost);
+  reinterpret_cast<char*&>(*buffer) += size * sizeof(T);
 }
 
 }  // namespace plugin

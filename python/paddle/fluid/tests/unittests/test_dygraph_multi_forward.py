@@ -27,6 +27,8 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
+SEED = 123123111
+
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
@@ -105,12 +107,11 @@ class MNIST(fluid.dygraph.Layer):
 
 class TestDygraphMultiForward(unittest.TestCase):
     def test_mnist_forward_float32(self):
-        seed = 90
         epoch_num = 1
-        with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
 
+        with fluid.dygraph.guard():
+            paddle.seed(SEED)
+            paddle.framework.random._manual_program_seed(SEED)
             mnist = MNIST()
             sgd = SGDOptimizer(
                 learning_rate=1e-3, parameter_list=mnist.parameters())
@@ -142,9 +143,8 @@ class TestDygraphMultiForward(unittest.TestCase):
                             dy_param_init_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-
+            paddle.seed(SEED)
+            paddle.framework.random._manual_program_seed(SEED)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 

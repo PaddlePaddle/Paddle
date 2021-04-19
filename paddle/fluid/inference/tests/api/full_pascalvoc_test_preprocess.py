@@ -19,7 +19,7 @@ import os
 import sys
 from paddle.dataset.common import download
 import tarfile
-import StringIO
+from six.moves import StringIO
 import hashlib
 import tarfile
 import argparse
@@ -191,7 +191,7 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
                 gt_labels[name_prefix] = tar.extractfile(tarInfo).read()
 
     for line_idx, name_prefix in enumerate(lines):
-        im = Image.open(StringIO.StringIO(images[name_prefix]))
+        im = Image.open(StringIO(images[name_prefix]))
         if im.mode == 'L':
             im = im.convert('RGB')
         im_width, im_height = im.size

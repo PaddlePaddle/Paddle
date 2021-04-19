@@ -16,11 +16,13 @@
 
 #include <atomic>
 #include <future>  // NOLINT
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include "ThreadPool.h"
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -29,10 +31,14 @@
 namespace paddle {
 namespace imperative {
 
+using GarbageCollectorMap =
+    std::map<platform::Place,
+             std::unique_ptr<paddle::framework::GarbageCollector>>;
+
 class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
-  std::string Generate(std::string key = "eager_tmp") {
+  std::string Generate(std::string key = "dygraph_tmp") {
     return prefix_ + key + "_" + std::to_string(id_++);
   }
 
@@ -56,10 +62,12 @@ class Tracer {
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
-               const platform::Place& place, bool trace_bacward);
+               const platform::Place& place, bool trace_bacward,
+               const std::map<std::string, std::string>& inplace_map = {});
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs);
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
@@ -83,7 +91,7 @@ class Tracer {
   // name like `tmp_0` in some cases when transform dygraph into static layers.
   // So we modify the default prefix key into `eager_tmp` to distinguish with
   // static graph.
-  std::string GenerateUniqueName(std::string key = "eager_tmp") {
+  std::string GenerateUniqueName(std::string key = "dygraph_tmp") {
     return generator_->Generate(key);
   }
 
@@ -91,11 +99,18 @@ class Tracer {
 
   platform::Place ExpectedPlace() const { return expected_place_; }
 
-  void SetExpectedPlace(platform::Place place) { expected_place_ = place; }
+  void SetExpectedPlace(platform::Place place);
 
   bool HasGrad() const { return has_grad_; }
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
+
+  void SetEnableAutoCast(bool enabled) { enable_autocast_ = enabled; }
+
+  bool IsAutoCastEnabled() const { return enable_autocast_; }
+
+  paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
+      const platform::Place& place);
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
@@ -104,11 +119,18 @@ class Tracer {
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   bool has_grad_{true};
+  bool enable_autocast_{false};
+  GarbageCollectorMap gcs_;
 };
 
 // To access static variable current_tracer
 const std::shared_ptr<Tracer>& GetCurrentTracer();
 void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+void IncreaseVarbaseReferenceCountUntilCopyComplete(
+    const std::shared_ptr<imperative::VarBase>& var,
+    const platform::Place& place);
+
+void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad);
 
 }  // namespace imperative
 }  // namespace paddle

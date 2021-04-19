@@ -51,7 +51,7 @@ def sequence_conv(input,
                   param_attr=None,
                   act=None,
                   name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
@@ -175,7 +175,7 @@ def sequence_conv(input,
 
 
 def sequence_softmax(input, use_cudnn=False, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -259,7 +259,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
 
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
@@ -346,7 +346,8 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    check_variable_and_dtype(input, 'input', ['float32'], 'sequence_pool')
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'sequence_pool')
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -635,7 +636,7 @@ def sequence_slice(input, offset, length, name=None):
 
 
 def sequence_expand(x, y, ref_level=-1, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
         Sequence Expand Layer. This layer will expand the input variable ``x`` \
@@ -758,8 +759,8 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         "sequence layer is not supported in dygraph mode yet.")
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand')
-    helper = LayerHelper('sequence_expand', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('sequence_expand', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sequence_expand',
@@ -771,7 +772,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
 
 def sequence_expand_as(x, y, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
         Sequence Expand As Layer. This OP will expand the input variable ``x`` \
@@ -879,8 +880,8 @@ def sequence_expand_as(x, y, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand_as')
     check_type(y, 'y', Variable, 'sequence_expand_as')
-    helper = LayerHelper('sequence_expand_as', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('sequence_expand_as', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sequence_expand_as',
@@ -891,7 +892,7 @@ def sequence_expand_as(x, y, name=None):
 
 
 def sequence_pad(x, pad_value, maxlen=None, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This layer padding the sequences in a same batch to a common length (according \
@@ -979,13 +980,13 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_pad', input=x, **locals())
+    helper = LayerHelper('sequence_pad', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_pad')
     check_variable_and_dtype(pad_value, 'pad_value',
                              ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_pad')
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     length = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
 
@@ -1061,12 +1062,12 @@ def sequence_unpad(x, length, name=None):
 
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_unpad', input=x, **locals())
+    helper = LayerHelper('sequence_unpad', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_unpad')
     check_variable_and_dtype(length, 'length', ['int64'],
                              'fluid.layers.sequence_unpad')
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
 
     length.stop_gradient = True
@@ -1232,7 +1233,7 @@ def sequence_scatter(input, index, updates, name=None):
 
 
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Generate a new sequence for the input index sequence with \
@@ -1300,7 +1301,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
 
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
-    """
+    r"""
     **SequenceMask Layer**
 
     This layer outputs a mask according to the input :code:`x` and

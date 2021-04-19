@@ -16,6 +16,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 class RNNMemoryHelperOp : public framework::OperatorBase {
  public:

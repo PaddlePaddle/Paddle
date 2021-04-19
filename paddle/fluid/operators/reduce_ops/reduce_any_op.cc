@@ -14,6 +14,21 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_any_op.h"
 
+namespace paddle {
+namespace framework {
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
+
 // kernel's device type is decided by input tensor place, to be consistent with
 // compare and logical ops
 REGISTER_REDUCE_OP_WITHOUT_GRAD(reduce_any, UseInputPlace);

@@ -15,8 +15,12 @@
 #pragma once
 
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 #else
 #include <sys/syscall.h>
@@ -29,6 +33,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/string_helper.h"
 

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from test_imperative_base import new_program_scope
@@ -29,8 +30,8 @@ class TestCompiledProgram(unittest.TestCase):
         self.label = np.random.randint(
             low=0, high=10, size=[16, 1], dtype=np.int64)
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -46,8 +47,8 @@ class TestCompiledProgram(unittest.TestCase):
 
     def test_compiled_program_base(self):
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -64,8 +65,8 @@ class TestCompiledProgram(unittest.TestCase):
 
     def test_compiled_program_with_data_parallel(self):
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)

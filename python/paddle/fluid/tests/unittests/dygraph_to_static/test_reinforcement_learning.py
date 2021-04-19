@@ -16,6 +16,7 @@ import gym
 import math
 import itertools
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph.nn as nn
 from paddle.fluid.dygraph import to_variable, Layer
@@ -64,8 +65,8 @@ def train(args, place, to_static):
     env.seed(SEED)
 
     with fluid.dygraph.guard(place):
-        fluid.default_main_program().random_seed = SEED
-        fluid.default_startup_program().random_seed = SEED
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
 
         policy = Policy()
@@ -112,7 +113,7 @@ def train(args, place, to_static):
             state = to_variable(state)
             state.stop_gradient = True
             loss_probs = policy(state)
-            # print(loss_probs.name)
+
             probs = loss_probs.numpy()
 
             action, _mask = sample_action(probs[0])
@@ -166,10 +167,8 @@ def train(args, place, to_static):
         running_reward = 10
         for i_episode in itertools.count(1):
             state, ep_reward = env.reset(), 0
-            # TODO(Aurelius84): In RL, we continuously select actions with multiple steps, 
-            # then accumulate loss to apply optimization. But currently all vars shared with 
-            # the same inner scope, which has problem in backward. I will fix it in next PR.
-            for t in range(1, 2):  # default 1000
+            # The default loop number is 10000 is models, we changed it to 1000 for smaller test
+            for t in range(1, 1000):
                 state = np.array(state).astype("float32")
                 action, loss = select_action(state)
                 state, reward, done, _ = env.step(action)
@@ -203,7 +202,6 @@ class TestDeclarative(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
             else fluid.CPUPlace()
-
         self.args = Args()
 
     def test_train(self):

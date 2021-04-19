@@ -72,6 +72,10 @@ void ThreadLocalAllocatorImpl::FreeImpl(ThreadLocalAllocation* allocation) {
   delete allocation;
 }
 
+uint64_t ThreadLocalAllocatorImpl::ReleaseImpl() {
+  return buddy_allocator_->Release();
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

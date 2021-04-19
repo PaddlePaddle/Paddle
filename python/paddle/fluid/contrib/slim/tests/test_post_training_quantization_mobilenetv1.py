@@ -26,6 +26,8 @@ import paddle.fluid as fluid
 from paddle.dataset.common import download
 from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
 
+paddle.enable_static()
+
 random.seed(0)
 np.random.seed(0)
 
@@ -316,6 +318,50 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
             "depthwise_conv2d",
             "mul",
             "pool2d",
+        ]
+        is_full_quantize = False
+        is_use_cache_file = False
+        is_optimize_model = True
+        diff_threshold = 0.025
+        self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
+                      is_full_quantize, is_use_cache_file, is_optimize_model,
+                      diff_threshold)
+
+
+class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
+    def test_post_training_avg_mobilenetv1(self):
+        model = "MobileNet-V1"
+        algo = "avg"
+        data_urls = [
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ]
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
+        quantizable_op_type = [
+            "conv2d",
+            "depthwise_conv2d",
+            "mul",
+        ]
+        is_full_quantize = False
+        is_use_cache_file = False
+        is_optimize_model = True
+        diff_threshold = 0.025
+        self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
+                      is_full_quantize, is_use_cache_file, is_optimize_model,
+                      diff_threshold)
+
+
+class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
+    def test_post_training_hist_mobilenetv1(self):
+        model = "MobileNet-V1"
+        algo = "hist"
+        data_urls = [
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ]
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
+        quantizable_op_type = [
+            "conv2d",
+            "depthwise_conv2d",
+            "mul",
         ]
         is_full_quantize = False
         is_use_cache_file = False

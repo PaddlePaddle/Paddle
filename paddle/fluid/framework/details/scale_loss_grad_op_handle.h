@@ -23,6 +23,18 @@
 
 namespace paddle {
 namespace framework {
+class Scope;
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 struct ScaleLossGradOpHandle : public OpHandleBase {

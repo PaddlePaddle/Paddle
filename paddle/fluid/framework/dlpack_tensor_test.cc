@@ -15,7 +15,12 @@
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <vector>
+
+namespace paddle {
+namespace platform {
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -98,7 +103,7 @@ void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
 
 template <typename T>
 void TestMainLoop() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::vector<platform::Place> places{platform::CPUPlace(),
                                       platform::CUDAPlace(0),
                                       platform::CUDAPinnedPlace()};

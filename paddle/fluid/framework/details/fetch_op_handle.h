@@ -24,6 +24,17 @@
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 struct FetchOpHandle : public OpHandleBase {

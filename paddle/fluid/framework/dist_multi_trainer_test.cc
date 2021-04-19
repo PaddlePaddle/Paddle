@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/trainer.h"
 
@@ -49,7 +43,12 @@ TEST(DisMultiTrainerTest, test1) {
   dataset->SetTrainerNum(1);
   dataset->SetDataFeedDesc(str);
   dataset->CreateReaders();
+  Scope root_scope;
+  tmp1->SetScope(&root_scope);
   tmp1->Initialize(t, dataset.get());
+  ProgramDesc p;
+  tmp1->InitOtherEnv(p);
+  tmp1->Finalize();
 #endif
 }
 }  // namespace framework

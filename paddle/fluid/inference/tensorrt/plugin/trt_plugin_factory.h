@@ -26,6 +26,7 @@
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace inference {

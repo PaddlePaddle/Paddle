@@ -13,7 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/variable_visitor.h"
+
 #include "paddle/fluid/framework/selected_rows.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -24,7 +33,9 @@ static void VisitVariable(Variable* var, Func* func) {
   } else if (var->IsType<SelectedRows>()) {
     (*func)(var->GetMutable<SelectedRows>());
   } else {
-    PADDLE_THROW("Not supported type %s", ToTypeName(var->Type()));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "VisitVariable is not supported for type %s.",
+        ToTypeName(var->Type())));
   }
 }
 
@@ -35,7 +46,8 @@ static void VisitVariable(const Variable& var, Func* func) {
   } else if (var.IsType<SelectedRows>()) {
     (*func)(var.Get<SelectedRows>());
   } else {
-    PADDLE_THROW("Not supported type %s", ToTypeName(var.Type()));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "VisitVariable is not supported for type %s.", ToTypeName(var.Type())));
   }
 }
 
@@ -50,7 +62,8 @@ struct TensorVisitor {
 
   template <typename T>
   void operator()() {
-    PADDLE_THROW("Not Support to get LoDTensor from %s", typeid(T).name());
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Getting tensor from type %s is not supported.", typeid(T).name()));
   }
 };
 
@@ -78,8 +91,8 @@ struct ShareDimsAndLoDVisitor {
 
   template <typename T>
   void operator()(const T&) {
-    PADDLE_ENFORCE("ShareDimsAndLoD is not supported by type %s",
-                   typeid(T).name());
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ShareDimsAndLoD is not supported for type %s.", typeid(T).name()));
   }
 };
 
@@ -89,42 +102,54 @@ void VariableVisitor::ShareDimsAndLoD(const Variable& src, Variable* trg) {
 }
 
 struct EnforceShapeAndDTypeEQVisitor {
-  const Variable* trg_;
+  const Variable* dst_;
 
   void operator()(const LoDTensor& src) {
-    auto& tensor = trg_->Get<LoDTensor>();
-    PADDLE_ENFORCE_EQ(
-        src.place().which(), tensor.place().which(),
-        "The Places of the two Variable must be all on CPU or all on GPU.");
+    auto& tensor = dst_->Get<LoDTensor>();
+    PADDLE_ENFORCE_EQ(src.place().which(), tensor.place().which(),
+                      platform::errors::PreconditionNotMet(
+                          "The place type of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(src.type(), tensor.type(),
-                      "The dtype of the two Variable is not equal.");
-    PADDLE_ENFORCE_EQ(src.dims(), tensor.dims(),
-                      "The dims of the two Variable is not equal.");
+                      platform::errors::PreconditionNotMet(
+                          "The dtype of the two variables is not equal."));
+    PADDLE_ENFORCE_EQ(
+        src.dims(), tensor.dims(),
+        platform::errors::PreconditionNotMet(
+            "The layout of the two variables' tensors is not equal."));
     PADDLE_ENFORCE_EQ(src.lod(), tensor.lod(),
-                      "The lod of the two Variable is not equal.");
-    PADDLE_ENFORCE_EQ(src.layout(), tensor.layout(),
-                      "The layout of the two Variable's tensor is not equal.");
+                      platform::errors::PreconditionNotMet(
+                          "The lod of the two variable is not equal."));
+    PADDLE_ENFORCE_EQ(
+        src.layout(), tensor.layout(),
+        platform::errors::PreconditionNotMet(
+            "The layout of the two variables' tensors tensor is not equal."));
   }
 
   void operator()(const SelectedRows& src) {
-    auto& selected_rows = trg_->Get<SelectedRows>();
-    PADDLE_ENFORCE_EQ(
-        src.place().which(), selected_rows.place().which(),
-        "The Places of the two Variable must be all on CPU or all on GPU.");
+    auto& selected_rows = dst_->Get<SelectedRows>();
+    PADDLE_ENFORCE_EQ(src.place().which(), selected_rows.place().which(),
+                      platform::errors::PreconditionNotMet(
+                          "The place type of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(src.value().type(), selected_rows.value().type(),
-                      "The dtype of the two Variable is not equal.");
-    PADDLE_ENFORCE_EQ(src.value().layout(), selected_rows.value().layout(),
-                      "The layout of the two Variable's tensor is not equal.");
+                      platform::errors::PreconditionNotMet(
+                          "The dtype of the two variables is not equal."));
+    PADDLE_ENFORCE_EQ(
+        src.value().layout(), selected_rows.value().layout(),
+        platform::errors::PreconditionNotMet(
+            "The layout of the two variables' tensors is not equal."));
     PADDLE_ENFORCE_EQ(src.height(), selected_rows.height(),
-                      "The height of the two Variable is not equal.");
+                      platform::errors::PreconditionNotMet(
+                          "The height of the two variables is not equal."));
     PADDLE_ENFORCE_EQ(src.GetCompleteDims(), selected_rows.GetCompleteDims(),
-                      "The dims of the two Variable is not equal.");
+                      platform::errors::PreconditionNotMet(
+                          "The dims of the two variables is not equal."));
   }
 
   template <typename T>
   void operator()(const T&) {
-    PADDLE_ENFORCE("EnforceShapeAndDTypeEQ is not supported by type %s",
-                   typeid(T).name());
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "EnforceShapeAndDTypeEQ is not supported for type %s.",
+        typeid(T).name()));
   }
 };
 

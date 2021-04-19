@@ -19,6 +19,12 @@
 #include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 class TensorFormatter {

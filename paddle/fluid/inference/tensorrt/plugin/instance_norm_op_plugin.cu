@@ -47,13 +47,7 @@ InstanceNormPlugin *CreateInstanceNormPluginDeserialize(const void *buffer,
 REGISTER_TRT_PLUGIN("instance_norm_plugin",
                     CreateInstanceNormPluginDeserialize);
 
-int InstanceNormPlugin::initialize() {
-  platform::dynload::cudnnCreate(&handle_);
-  platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
-  platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
-  platform::dynload::cudnnCreateTensorDescriptor(&b_desc_);
-  return 0;
-}
+int InstanceNormPlugin::initialize() { return 0; }
 
 nvinfer1::Dims InstanceNormPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) {
@@ -111,6 +105,7 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
       handle_, CUDNN_BATCHNORM_SPATIAL_PERSISTENT, &alpha, &beta, x_desc_,
       x_ptr, y_desc_, y_ptr, b_desc_, scale_d, bias_d, 1., nullptr, nullptr,
       eps_, nullptr, nullptr);
+  return cudaGetLastError() != cudaSuccess;
 }
 
 }  // namespace plugin

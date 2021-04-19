@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 from paddle import rand
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+import paddle
 
 
 class TestRandOpError(unittest.TestCase):
@@ -113,6 +114,32 @@ class TestRandOpForDygraph(unittest.TestCase):
         self.run_net(False)
         if core.is_compiled_with_cuda():
             self.run_net(True)
+
+
+class TestRandDtype(unittest.TestCase):
+    def test_default_dtype(self):
+        paddle.disable_static()
+
+        def test_default_fp16():
+            paddle.framework.set_default_dtype('float16')
+            paddle.tensor.random.rand([2, 3])
+
+        self.assertRaises(TypeError, test_default_fp16)
+
+        def test_default_fp32():
+            paddle.framework.set_default_dtype('float32')
+            out = paddle.tensor.random.rand([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+
+        def test_default_fp64():
+            paddle.framework.set_default_dtype('float64')
+            out = paddle.tensor.random.rand([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+
+        test_default_fp64()
+        test_default_fp32()
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

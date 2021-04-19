@@ -13,8 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
-#include <queue>
-#include <utility>
+
+namespace paddle {
+namespace framework {
+namespace details {
+class OpHandleBase;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

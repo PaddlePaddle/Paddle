@@ -27,9 +27,12 @@ class PRChecker(object):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = None
 
-    def check(self):
-        """ check pr. """
-        filename = 'block.txt'
+    def check(self, filename, msg):
+        """ 
+        Args:
+            filename (str): File to get block names.  
+            msg (str): Error message.  
+        """
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('No PR ID')
@@ -44,12 +47,10 @@ class PRChecker(object):
         with open(filename) as f:
             for l in f:
                 if l.rstrip('\r\n') == user:
-                    print('{} has unit-test to be fixed, so CI failed.'.format(
-                        user))
-                    exit(1)
-        exit(0)
+                    print('{} {}'.format(user, msg))
 
 
 if __name__ == '__main__':
     pr_checker = PRChecker()
-    pr_checker.check()
+    pr_checker.check('block.txt', 'has unit-test to be fixed, so CI failed.')
+    pr_checker.check('bk.txt', 'has benchmark issue to be fixed, so CI failed.')

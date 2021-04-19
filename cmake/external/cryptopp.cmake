@@ -17,28 +17,20 @@ INCLUDE(ExternalProject)
 SET(CRYPTOPP_PREFIX_DIR  ${THIRD_PARTY_PATH}/cryptopp)
 SET(CRYPTOPP_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cryptopp)
 SET(CRYPTOPP_INCLUDE_DIR "${CRYPTOPP_INSTALL_DIR}/include" CACHE PATH "cryptopp include directory." FORCE)
-SET(CRYPTOPP_REPOSITORY https://github.com/weidai11/cryptopp.git)
+SET(CRYPTOPP_REPOSITORY ${GIT_URL}/weidai11/cryptopp.git)
 SET(CRYPTOPP_TAG        CRYPTOPP_8_2_0)
 
 IF(WIN32)
   SET(CRYPTOPP_LIBRARIES "${CRYPTOPP_INSTALL_DIR}/lib/cryptopp-static.lib" CACHE FILEPATH "cryptopp library." FORCE)
-  SET(CRYPTOPP_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-  set(CompilerFlags
-        CMAKE_CXX_FLAGS
-        CMAKE_CXX_FLAGS_DEBUG
-        CMAKE_CXX_FLAGS_RELEASE
-        CMAKE_C_FLAGS
-        CMAKE_C_FLAGS_DEBUG
-        CMAKE_C_FLAGS_RELEASE
-        )
-  foreach(CompilerFlag ${CompilerFlags})
-    string(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
-  endforeach()
+  # There is a compilation parameter 'FI\"winapifamily.h\"' can't be used correctly
+  # with Ninja on Windows. The only difference between the patch file and original
+  # file is that the compilation parameters are changed to 'FIwinapifamily.h'. This
+  # patch command can be removed when upgrading to a higher version.
+  if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    set(CRYPTOPP_PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/patches/cryptopp/CMakeLists.txt" "<SOURCE_DIR>/")
+  endif()
 ELSE(WIN32)
   SET(CRYPTOPP_LIBRARIES "${CRYPTOPP_INSTALL_DIR}/lib/libcryptopp.a" CACHE FILEPATH "cryptopp library." FORCE)
-  SET(CRYPTOPP_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 ENDIF(WIN32)
 
 set(CRYPTOPP_CMAKE_ARGS ${COMMON_CMAKE_ARGS}
@@ -48,7 +40,7 @@ set(CRYPTOPP_CMAKE_ARGS ${COMMON_CMAKE_ARGS}
                         -DCMAKE_INSTALL_LIBDIR=${CRYPTOPP_INSTALL_DIR}/lib
                         -DCMAKE_INSTALL_PREFIX=${CRYPTOPP_INSTALL_DIR}
                         -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-                        -DCMAKE_CXX_FLAGS=${CRYPTOPP_CMAKE_CXX_FLAGS}
+                        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
                         -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -68,11 +60,13 @@ ExternalProject_Add(
     "${CRYPTOPP_DOWNLOAD_CMD}"
     PREFIX          ${CRYPTOPP_PREFIX_DIR}
     SOURCE_DIR      ${CRYPTOPP_SOURCE_DIR}
+    UPDATE_COMMAND  ""
     PATCH_COMMAND
     COMMAND ${CMAKE_COMMAND} -E remove_directory "<SOURCE_DIR>/cmake/"
-    COMMAND git clone https://github.com/noloader/cryptopp-cmake "<SOURCE_DIR>/cmake"
+    COMMAND git clone ${GIT_URL}/noloader/cryptopp-cmake "<SOURCE_DIR>/cmake"
     COMMAND cd "<SOURCE_DIR>/cmake" && git checkout tags/${CRYPTOPP_TAG} -b ${CRYPTOPP_TAG}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "<SOURCE_DIR>/cmake/" "<SOURCE_DIR>/"
+    COMMAND ${CRYPTOPP_PATCH_COMMAND}
     INSTALL_DIR     ${CRYPTOPP_INSTALL_DIR}
     CMAKE_ARGS ${CRYPTOPP_CMAKE_ARGS}
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${CRYPTOPP_INSTALL_DIR}

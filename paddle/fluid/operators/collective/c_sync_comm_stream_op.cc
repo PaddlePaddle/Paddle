@@ -11,52 +11,38 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#if defined(PADDLE_WITH_NCCL)
-#include <nccl.h>
-#endif
-
 #include <string>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#if defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/platform/collective_helper.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 namespace paddle {
 namespace operators {
 
-class CSyncCommStreamOp : public framework::OperatorBase {
+class CSyncCommStreamOp : public framework::OperatorWithKernel {
  public:
-  CSyncCommStreamOp(const std::string& type,
-                    const framework::VariableNameMap& inputs,
-                    const framework::VariableNameMap& outputs,
-                    const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      "Sync stream op can run on gpu place only for now.");
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 
-#if defined(PADDLE_WITH_NCCL)
-    int ring_id = Attr<int>("ring_id");
-    auto stream =
-        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-#else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
-#endif
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
 class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Dependency of the variable need to sync");
-    AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
+    AddInput("X", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
+    AddOutput("Out", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
 CSyncCommStream Operator
@@ -66,10 +52,38 @@ Call communication stream synchronization.
   }
 };
 
+template <typename T>
+class CSyncCommStreamCudaKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+
+    auto place = ctx.GetPlace();
+
+    int ring_id = ctx.Attr<int>("ring_id");
+    auto stream =
+        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
+
+#ifdef PADDLE_WITH_RCCL
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+#endif
+
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
+#endif
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_sync_comm_stream, ops::CSyncCommStreamOp,
-                  ops::CSyncCommStreamOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream, ops::CSyncCommStreamOp,
+                             ops::CSyncCommStreamOpMaker);
+
+REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream,
+                        ops::CSyncCommStreamCudaKernel<float>);

@@ -67,6 +67,8 @@ class LearningRateDecay(object):
             persistable=False)
         return lr
 
+    # Note: If you want to change what optimizer.state_dict stores, just overwrite this functions, 
+    # "self.step_num" will be stored by default.
     def state_dict(self):
         """
         Returns the state of the scheduler as a :class:`dict`.
@@ -95,7 +97,7 @@ class LearningRateDecay(object):
         """
         self.keys = ['step_num']
 
-    def set_dict(self, state_dict):
+    def set_state_dict(self, state_dict):
         """
         Loads the schedulers state.
         """
@@ -111,6 +113,9 @@ class LearningRateDecay(object):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
             )
+
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
 
     def step(self):
         raise NotImplementedError()
@@ -178,7 +183,7 @@ class PiecewiseDecay(LearningRateDecay):
 
 
 class NaturalExpDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies natural exponential decay to the initial learning rate.
@@ -261,7 +266,7 @@ class NaturalExpDecay(LearningRateDecay):
 
 
 class ExponentialDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies exponential decay to the learning rate.
@@ -343,7 +348,7 @@ class ExponentialDecay(LearningRateDecay):
 
 
 class InverseTimeDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies inverse time decay to the initial learning rate.
@@ -421,7 +426,7 @@ class InverseTimeDecay(LearningRateDecay):
 
 
 class PolynomialDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies polynomial decay to the initial learning rate.
@@ -515,7 +520,7 @@ class PolynomialDecay(LearningRateDecay):
 
 
 class CosineDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies cosine decay to the learning rate.
@@ -573,7 +578,7 @@ class CosineDecay(LearningRateDecay):
 
 
 class NoamDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies Noam decay to the initial learning rate. 
@@ -859,6 +864,7 @@ class ReduceLROnPlateau(LearningRateDecay):
         self.num_bad_epochs = 0
         self.epoch_num = 0
 
+    # "cooldown_counter / best_loss / num_bad_epochs / epoch_num / learning_rate" will be stored.
     def _state_keys(self):
         self.keys = [
             'cooldown_counter', 'best_loss', 'num_bad_epochs', 'epoch_num',
@@ -961,6 +967,8 @@ class _LearningRateEpochDecay(LearningRateDecay):
 
         self.epoch()
 
+    # For those subclass who overload _LearningRateEpochDecay, "self.epoch_num/learning_rate" will be stored by default.
+    # you can change it for your subclass.
     def _state_keys(self):
         self.keys = ['epoch_num', 'learning_rate']
 

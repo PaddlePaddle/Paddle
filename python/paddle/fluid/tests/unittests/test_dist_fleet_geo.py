@@ -16,19 +16,20 @@ from __future__ import print_function
 
 import os
 import unittest
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
-from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+
 from test_dist_fleet_base import TestFleetBase
-from dist_simnet_bow import train_network
+from dist_fleet_simnet_bow import train_network
+paddle.enable_static()
 
 
 class TestDistGeoCtr_2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "geo"
-        self._reader = "dataset"
+        self._reader = "pyreader"
         self._geo_sgd_need_push_nums = 5
 
     def check_with_place(self,
@@ -71,19 +72,15 @@ class TestGeoSgdTranspiler(unittest.TestCase):
         is_sparse = True
         is_distribute = False
 
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = False
-        strategy.geo_sgd_mode = True
-        strategy.geo_sgd_need_push_nums = 5
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"k_steps": 100, "launch_barrier": False}
 
-        avg_cost, _, _ = train_network(batch_size, is_distribute, is_sparse)
+        avg_cost, _, _, _ = train_network(batch_size, is_distribute, is_sparse)
 
         optimizer = fluid.optimizer.SGD(0.1)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
-
-        pserver_startup_program = fleet.startup_program
-        pserver_mian_program = fleet.main_program
 
 
 if __name__ == "__main__":

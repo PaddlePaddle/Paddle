@@ -14,17 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include <cuda.h>
 // NOTE(): support float16 to half in header file.
 #define PADDLE_CUDA_FP16
-#include <cuda_fp16.h>
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace platform {
 
-#if CUDA_VERSION < 9000
-#define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
+#ifdef PADDLE_WITH_HIP
+#define CREATE_SHFL_MASK(mask, predicate) mask = __ballot((predicate))
 #else
 #define FULL_WARP_MASK 0xFFFFFFFF
 #define CREATE_SHFL_MASK(mask, predicate) \
@@ -65,7 +65,7 @@ template <typename T>
 __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
                                                  int delta,
                                                  int width = warpSize) {
-#if CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
   return __shfl_down(val, delta, width);
 #else
   return __shfl_down_sync(mask, val, static_cast<unsigned>(delta), width);
@@ -75,7 +75,7 @@ __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
 template <typename T>
 __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
                                                 int width = warpSize) {
-#if CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
   return __shfl_xor(val, width);
 #else
   return __shfl_xor_sync(mask, val, width);
@@ -83,18 +83,27 @@ __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
 }
 
 // CUDA 9.0 have native compatible float16 shfl_down
-#if CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
 template <>
 __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                                        float16 val, int delta,
                                                        int width) {
+#ifdef PADDLE_WITH_HIP
+  return float16(__shfl_down(static_cast<float>(val),
+                             static_cast<unsigned>(delta), width));
+#else
   return float16(
       __shfl_down(static_cast<half>(val), static_cast<unsigned>(delta), width));
+#endif
 }
 template <>
 __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
                                                       float16 val, int width) {
+#ifdef PADDLE_WITH_HIP
+  return float16(__shfl_xor(static_cast<float>(val), width));
+#else
   return float16(__shfl_xor(static_cast<half>(val), width));
+#endif
 }
 #else
 template <>
@@ -104,17 +113,60 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
   return float16(__shfl_down_sync(mask, static_cast<half>(val),
                                   static_cast<unsigned>(delta), width));
 }
+
+template <>
+__forceinline__ __device__ paddle::platform::complex64 CudaShuffleDownSync(
+    unsigned mask, paddle::platform::complex64 val, int delta, int width) {
+  float real = static_cast<float>(__shfl_down_sync(
+      mask, static_cast<float>(val.real), static_cast<unsigned>(delta), width));
+  float imag = static_cast<float>(__shfl_down_sync(
+      mask, static_cast<float>(val.imag), static_cast<unsigned>(delta), width));
+  return paddle::platform::complex64(real, imag);
+}
+
+template <>
+__forceinline__ __device__ paddle::platform::complex128 CudaShuffleDownSync(
+    unsigned mask, paddle::platform::complex128 val, int delta, int width) {
+  double real = static_cast<double>(
+      __shfl_down_sync(mask, static_cast<double>(val.real),
+                       static_cast<unsigned>(delta), width));
+  double imag = static_cast<double>(
+      __shfl_down_sync(mask, static_cast<double>(val.imag),
+                       static_cast<unsigned>(delta), width));
+  return paddle::platform::complex128(real, imag);
+}
+
 template <>
 __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
                                                       float16 val, int width) {
   return float16(__shfl_xor_sync(mask, static_cast<half>(val), width));
+}
+
+template <>
+__forceinline__ __device__ paddle::platform::complex64 CudaShuffleXorSync(
+    unsigned mask, paddle::platform::complex64 val, int width) {
+  float real = static_cast<float>(
+      __shfl_xor_sync(mask, static_cast<float>(val.real), width));
+  float imag = static_cast<float>(
+      __shfl_xor_sync(mask, static_cast<float>(val.imag), width));
+  return paddle::platform::complex64(real, imag);
+}
+
+template <>
+__forceinline__ __device__ paddle::platform::complex128 CudaShuffleXorSync(
+    unsigned mask, paddle::platform::complex128 val, int width) {
+  double real = static_cast<double>(
+      __shfl_xor_sync(mask, static_cast<double>(val.real), width));
+  double imag = static_cast<double>(
+      __shfl_xor_sync(mask, static_cast<double>(val.imag), width));
+  return paddle::platform::complex128(real, imag);
 }
 #endif
 
 template <typename T>
 __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
                                              int width = 32) {
-#if CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
   return __shfl(val, src_line, width);
 #else
   return __shfl_sync(mask, val, src_line, width);
@@ -128,13 +180,17 @@ HOSTDEVICE T Infinity() {
 
 template <typename T>
 __device__ T reduceSum(T val, int tid, int len) {
-  // NOTE(zcd): The warp size should be taken from the
-  // parameters of the GPU but not specified as 32 simply.
-  // To make the reduceSum more efficiently,
-  // I use Warp-Level Parallelism and assume the Warp size
-  // is 32 which may be different for different GPU,
-  // but most card's warp size is 32.
+// NOTE(zcd): The warp size should be taken from the
+// parameters of the GPU but not specified as 32 simply.
+// To make the reduceSum more efficiently,
+// I use Warp-Level Parallelism and assume the Warp size
+// is 32 which may be different for different GPU,
+// but most card's warp size is 32.
+#ifdef PADDLE_WITH_HIP
+  const int warpSize = 64;
+#else
   const int warpSize = 32;
+#endif
   __shared__ T shm[warpSize];
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, tid < len);

@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
@@ -51,6 +52,7 @@ class ThreadLocalAllocatorImpl
   explicit ThreadLocalAllocatorImpl(const platform::Place& p);
   ThreadLocalAllocation* AllocateImpl(size_t size);
   void FreeImpl(ThreadLocalAllocation* allocation);
+  uint64_t ReleaseImpl();
 
  private:
   std::unique_ptr<memory::detail::BuddyAllocator> buddy_allocator_;
@@ -89,6 +91,9 @@ class ThreadLocalCUDAAllocator : public Allocator {
     auto* tl_allocation = static_cast<ThreadLocalAllocation*>(allocation);
     auto allocator_impl = tl_allocation->GetAllocator();
     allocator_impl->FreeImpl(tl_allocation);
+  }
+  uint64_t ReleaseImpl(const platform::Place& p) override {
+    return ThreadLocalCUDAAllocatorPool::Instance().Get(gpu_id_)->ReleaseImpl();
   }
 
  private:

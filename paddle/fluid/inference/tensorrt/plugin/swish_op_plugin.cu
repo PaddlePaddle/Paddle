@@ -44,12 +44,12 @@ nvinfer1::Dims SwishPlugin::getOutputDimensions(int index,
 template <typename T>
 __device__ T math_exp(T a);
 
-#ifdef SUPPORTS_CUDA_FP16
 template <>
 __device__ half math_exp<half>(half a) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   return hexp(a);
-}
 #endif
+}
 
 template <>
 __device__ float math_exp<float>(float a) {
@@ -67,6 +67,19 @@ __global__ void swish_kernel(int num, const T *input, T *output, T beta) {
 #else
     output[index] = input[index] /
                     (static_cast<T>(1.0) + math_exp<T>(-beta * input[index]));
+#endif
+  }
+}
+
+template <>
+__global__ void swish_kernel<half>(int num, const half *input, half *output,
+                                   half beta) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < num) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+    output[index] =
+        __ldg(input + index) /
+        (static_cast<half>(1.0) + math_exp<half>(-beta * __ldg(input + index)));
 #endif
   }
 }
@@ -92,14 +105,18 @@ int SwishPlugin::enqueue(int batch_size, const void *const *inputs,
 #if IS_TRT_VERSION_GE(6000)
 
 int SwishPluginDynamic::initialize() {
-  setPluginNamespace("swish");
   getPluginNamespace();
   return 0;
 }
 
-size_t SwishPluginDynamic::getSerializationSize() const { return 0; }
+size_t SwishPluginDynamic::getSerializationSize() const {
+  return SerializedSize(beta_) + SerializedSize(with_fp16_);
+}
 
-void SwishPluginDynamic::serialize(void *buffer) const {}
+void SwishPluginDynamic::serialize(void *buffer) const {
+  SerializeValue(&buffer, beta_);
+  SerializeValue(&buffer, with_fp16_);
+}
 
 nvinfer1::DimsExprs SwishPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
@@ -123,14 +140,14 @@ bool SwishPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORTS_CUDA_FP16
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
+    if (with_fp16_) {
+      return (in.type == nvinfer1::DataType::kFLOAT ||
+              in.type == nvinfer1::DataType::kHALF) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
   // output
@@ -157,20 +174,17 @@ int SwishPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Swish-->fp32";
     const float *input = static_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
     swish_kernel<float><<<blocks, threads, 0, stream>>>(num, input, output,
                                                         beta_);
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+    VLOG(1) << "TRT Plugin DataType selected. Swish-->fp16";
     const half *input = static_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
     swish_kernel<half><<<blocks, threads, 0, stream>>>(
         num, input, output, static_cast<half>(beta_));
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
-#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The Swish TRT Plugin's input type should be float or half."));

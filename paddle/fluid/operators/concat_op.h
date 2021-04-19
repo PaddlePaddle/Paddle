@@ -51,7 +51,7 @@ static inline framework::DDim ComputeAndCheckShape(
         }
       } else {
         bool check_shape =
-            is_runtime || (out_dims[j] > 0 && inputs_dims[i][j] > 0);
+            is_runtime || (inputs_dims[0][j] > 0 && inputs_dims[i][j] > 0);
         if (check_shape) {
           // check all shape in run time
           PADDLE_ENFORCE_EQ(inputs_dims[0][j], inputs_dims[i][j],

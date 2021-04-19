@@ -16,8 +16,13 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
+
+namespace paddle {
+struct PaddleTensor;
+}  // namespace paddle
 
 namespace paddle {
 namespace inference {

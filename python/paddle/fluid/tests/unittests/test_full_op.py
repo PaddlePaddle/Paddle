@@ -81,13 +81,10 @@ class TestFullOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             #for ci coverage
             self.assertRaises(
-                ValueError, paddle.full, shape=[1], fill_value=5, dtype='uint4')
+                TypeError, paddle.full, shape=[1], fill_value=5, dtype='uint4')
 
             # The argument dtype of full must be one of bool, float16,
-            #float32, float64, int32 or int64
-
-            self.assertRaises(
-                TypeError, paddle.full, shape=[1], fill_value=5, dtype='uint8')
+            #float32, float64, uint8, int32 or int64
 
             # The argument shape's type of full_op  must be list, tuple or Variable.
             def test_shape_type():
