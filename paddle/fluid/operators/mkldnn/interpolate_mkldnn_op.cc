@@ -30,7 +30,7 @@ using platform::to_void_cast;
 
 template <typename T = float>
 class InterpolateMKLDNNHandler
-    : public MKLDNNHandlerT<T, dnnl::resampling_forward> {
+    : public platform::MKLDNNHandlerT<T, dnnl::resampling_forward> {
  public:
   InterpolateMKLDNNHandler(const dnnl::algorithm algo,
                            const platform::MKLDNNDeviceContext& dev_ctx,
