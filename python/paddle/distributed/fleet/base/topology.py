@@ -24,8 +24,16 @@ __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 _HYBRID_PARALLEL_GROUP = None
 
 
+class ParallelMode(object):
+    DATA_PARALLEL = 0
+    MODEL_PARALLEL = 1
+    PIPELINE_PARALLEL = 2
+
+
 class CommunicateTopology(object):
-    def __init__(self, hybrid_group_names, dims):
+    def __init__(self,
+                 hybrid_group_names=["data", "pipe", "model"],
+                 dims=[1, 1, 1]):
         self._parallel_names = hybrid_group_names
         self._dims = dims
         self.coordinate = collections.namedtuple('Coordinate',
@@ -118,14 +126,28 @@ class HybridCommunicateGroup(object):
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
-        print("data parallel group", self._dp_group, file=sys.stderr)
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
-        print("data parallel group", self._mp_group, file=sys.stderr)
+        debug_str = "HybridParallelInfo: rank_id: %d, dp_degree: %d, " \
+                    "mp_degree: %d, pp_degree: %d\n" % (self.global_rank, self._dp_degree,
+                    self._mp_degree,self._pp_degree)
+        debug_str += "dp_group: %s, mp_group: %s" % (self._dp_group,
+                                                     self._mp_group)
+        print(debug_str, file=sys.stderr)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
+
+    def get_parallel_mode(self):
+        # there are three modes : DataParallel / ModelParallel / PipelineParallel
+        if self._mp_degree == 1 and self._pp_degree == 1:
+            return ParallelMode.DATA_PARALLEL
+        elif self._mp_degree > 1 and self._pp_degree == 1:
+            # initialize the seed
+            return ParallelMode.MODEL_PARALLEL
+        elif self._pp_degree > 1:
+            return ParallelMode.PIPELINE_PARALLEL
 
     def _check_vaild_topo(self):
         return self._dp_degree * self._mp_degree * self._pp_degree == self.nranks
