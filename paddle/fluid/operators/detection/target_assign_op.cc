@@ -41,8 +41,8 @@ class TargetAssignOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("X");
     auto mi_dims = ctx->GetInputDim("MatchIndices");
 
-    PADDLE_ENFORCE(
-        in_dims.size() == 3UL || in_dims.size() == 4UL,
+    PADDLE_ENFORCE_EQ(
+        in_dims.size() == 3UL || in_dims.size() == 4UL, true,
         platform::errors::InvalidArgument(
             "Expected the rank of Input(X) is 3 or 4. But received %d.",
             in_dims.size()));
@@ -52,9 +52,9 @@ class TargetAssignOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("NegIndices")) {
       auto neg_dims = ctx->GetInputDim("NegIndices");
-      PADDLE_ENFORCE(neg_dims.size() == 2UL || neg_dims.size() == 3UL,
-                     platform::errors::InvalidArgument(
-                         "The rank of Input(NegIndices) must be 2 or 3."));
+      PADDLE_ENFORCE_EQ(neg_dims.size() == 2UL || neg_dims.size() == 3UL, true,
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(NegIndices) must be 2 or 3."));
       PADDLE_ENFORCE_EQ(
           neg_dims[neg_dims.size() - 1], 1,
           platform::errors::InvalidArgument(

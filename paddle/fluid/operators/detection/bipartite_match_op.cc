@@ -40,9 +40,9 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
             "Output(ColToRowMatchDist) of BipartiteMatch should not be null."));
 
     auto dims = ctx->GetInputDim("DistMat");
-    PADDLE_ENFORCE(dims.size() == 2UL || dims.size() == 3UL,
-                   platform::errors::InvalidArgument(
-                       "The rank of Input(DistMat) must be 2 or 3."));
+    PADDLE_ENFORCE_EQ(dims.size() == 2UL || dims.size() == 3UL, true,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(DistMat) must be 2 or 3."));
 
     if (dims.size() == 3UL) {
       ctx->SetOutputDim("ColToRowMatchIndices",
