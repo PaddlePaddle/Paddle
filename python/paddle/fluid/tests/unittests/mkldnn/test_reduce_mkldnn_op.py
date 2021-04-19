@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 import paddle
 
 
-class TestReduceSumDefaultONEDNNOp(OpTest):
+class TestReduceSumDefaultOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -31,12 +31,12 @@ class TestReduceSumDefaultONEDNNOp(OpTest):
         self.check_output()
 
 
-class TestReduceDefaultWithGradONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceDefaultWithGradOneDNNOp(TestReduceSumDefaultOneDNNOp):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
 
-class TestReduceSum4DONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
+class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -47,8 +47,8 @@ class TestReduceSum4DONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
         }
 
 
-class TestReduceSum4DReduceAllWithoutReduceAllAttributeONEDNNOp(
-        TestReduceDefaultWithGradONEDNNOp):
+class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
+        TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -59,7 +59,7 @@ class TestReduceSum4DReduceAllWithoutReduceAllAttributeONEDNNOp(
         }
 
 
-class TestReduceSum5DKeepDimsONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
+class TestReduceSum5DKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -71,8 +71,8 @@ class TestReduceSum5DKeepDimsONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
         }
 
 
-class TestReduceSum5DReduceAllKeepDimsONEDNNOp(
-        TestReduceDefaultWithGradONEDNNOp):
+class TestReduceSum5DReduceAllKeepDimsOneDNNOp(
+        TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -83,7 +83,7 @@ class TestReduceSum5DReduceAllKeepDimsONEDNNOp(
         }
 
 
-class TestReduceSum4DReduceAllONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
+class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -95,7 +95,7 @@ class TestReduceSum4DReduceAllONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMax3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceMax3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -111,8 +111,8 @@ class TestReduceMax3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMax4DNegativeAndPositiveDimsONEDNNOp(
-        TestReduceSumDefaultONEDNNOp):
+class TestReduceMax4DNegativeAndPositiveDimsOneDNNOp(
+        TestReduceSumDefaultOneDNNOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -128,7 +128,7 @@ class TestReduceMax4DNegativeAndPositiveDimsONEDNNOp(
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMin3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceMin3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -141,7 +141,7 @@ class TestReduceMin3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-class TestReduceMean3DONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
+class TestReduceMean3DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -152,7 +152,7 @@ class TestReduceMean3DONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
         }
 
 
-class TestReduceMean4DReduceAllONEDNNOp(TestReduceDefaultWithGradONEDNNOp):
+class TestReduceMean4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True

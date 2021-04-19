@@ -127,17 +127,15 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
   void RunKernel(const framework::ExecutionContext& ctx,
                  dnnl::algorithm binary_type, float scale_x,
                  float scale_y) const {
-    auto& dev_ctx =
+    const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto dims = ctx.Attr<std::vector<int>>("dim");
     auto* input_dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
-
     auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
     output_dx->mutable_data<T>(ctx.GetPlace());
-
     output_dx->set_format(getPlainFormatTag(output_dx));
     output_dx->set_layout(input_dy->layout());
 
@@ -146,9 +144,8 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
         input_dy, scale_x, scale_y,
         ctx.InputName(framework::GradVarName("Out")));
 
-    auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
+    const auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
     const auto src_dy_memory = handler.AcquireSecondSrcMemory(input_dy);
-
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
     const std::unordered_map<int, dnnl::memory> args = {
@@ -157,14 +154,19 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
         {DNNL_ARG_DST, *src_dx_memory}};
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-
     binary_prim->execute(astream, args);
     astream.wait();
   }
 
  protected:
   mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
-    switch (tensor->dims().size()) {
+
+    auto tensor_dims_size = tensor->dims().size();
+    PADDLE_ENFORCE_EQ(
+        tensor_dims_size <= 5 && tensor_dims_size >= 1, true,
+        platform::errors::InvalidArgument("Dims for reduction_grad oneDNN op must be in range <1, 5>"));
+
+    switch (tensor_dims_size) {
       case 1:
         return mkldnn::memory::format_tag::a;
       case 2:
@@ -173,9 +175,9 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
         return mkldnn::memory::format_tag::abc;
       case 4:
         return mkldnn::memory::format_tag::abcd;
-      default:
-        return mkldnn::memory::format_tag::abcde;
     }
+
+    return mkldnn::memory::format_tag::abcde;
   }
 };
 

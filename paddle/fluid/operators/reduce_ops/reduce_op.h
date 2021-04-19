@@ -565,11 +565,12 @@ class ReduceGradOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     auto CanMKLDNNReduceGradBeUsed = [&]() {
       auto dx_dims = ctx.Input<Tensor>("X")->dims();
+
+      if (dx_dims.size() > 5) return false;  // max 5D tensor is supported
+
       if (ctx.Attr<bool>("reduce_all") ||
           ((int)ctx.Attr<std::vector<int>>("dim").size() == dx_dims.size()))
         return true;
-
-      if (dx_dims.size() > 5) return false;  // max 5D tensor is supported
 
       auto dy_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
 

@@ -664,9 +664,11 @@ class BroadcastDataMKLDNNHandler
 
       // GetExpectedKernelType checks if smaller vector is a subvector with all
       // the dims in correct order on the rightmost part of the bigger vector,
-      // f.e. a correct vector for broadcasting:
+      // i.e. a correct vector for broadcasting:
       //  x = 5, 7, 3, 2, 4, 8
       //  y = 4, 8
+      src1_tz.reserve(src0_tz.size());
+
       for (size_t i = src1_tz.size(); i < src0_tz.size(); ++i) {
         src1_tz.insert(src1_tz.begin(), 1L);
       }
@@ -674,7 +676,7 @@ class BroadcastDataMKLDNNHandler
       const auto src0_md = dnnl::memory::desc(
           src0_tz, platform::MKLDNNGetDataType<T>(), x->format());
       const auto src1_md = dnnl::memory::desc(
-          src1_tz, platform::MKLDNNGetDataType<T>(), x->format());
+          src1_tz, platform::MKLDNNGetDataType<T>(), y->format());
 
       dnnl::primitive_attr attributes;
       attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
@@ -689,7 +691,7 @@ class BroadcastDataMKLDNNHandler
     T* input_data = input->data<T>();
     memset(input_data, 0, this->fwd_pd_->src_desc().get_size());
     return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src_mem_p");
+        this->fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src0_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
