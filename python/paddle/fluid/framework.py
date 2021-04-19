@@ -3239,10 +3239,7 @@ class Block(object):
             Operator: the insert Operator.
         """
         self._sync_with_cpp()
-        op_desc = self.desc._insert_op(index)
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        self.ops.insert(index, op)
-        return op
+        return self._insert_op_without_sync(index, *args, **kwargs)
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """

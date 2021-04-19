@@ -26,8 +26,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
 
 #include <algorithm>
 #include <deque>
@@ -58,7 +57,12 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   auto& device_mutex = gpu_task->mutex_;
 
   std::vector<std::thread> threads;
+#ifdef PADDLE_WITH_PSLIB
   auto fleet_ptr = FleetWrapper::GetInstance();
+#endif
+#ifdef PADDLE_WITH_PSCORE
+  auto fleet_ptr = paddle::distributed::Communicator::GetInstance();
+#endif
 
   // data should be in input channel
   thread_keys_.resize(thread_keys_thread_num_);
@@ -124,9 +128,16 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   auto ptl_func = [this, &local_keys, &local_ptr, &table_id,
                    &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
+#ifdef PADDLE_WITH_PSLIB
     auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
         reinterpret_cast<char**>(local_ptr[i].data()), table_id,
         local_keys[i].data(), key_size);
+#endif
+#ifdef PADDLE_WITH_PSCORE
+    auto tt = fleet_ptr->_worker_ptr->pull_sparse_ptr(
+        reinterpret_cast<char**>(local_ptr[i].data()), table_id,
+        local_keys[i].data(), key_size);
+#endif
     tt.wait();
     auto status = tt.get();
     // auto status = 0;
@@ -153,8 +164,14 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   auto build_func = [device_num, &local_keys, &local_ptr, &device_keys,
                      &device_vals, &device_mutex](int i) {
     std::vector<std::vector<FeatureKey>> task_keys(device_num);
+#ifdef PADDLE_WITH_PSLIB
     std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> task_ptrs(
         device_num);
+#endif
+
+#ifdef PADDLE_WITH_PSCORE
+    std::vector<std::vector<paddle::distributed::VALUE*>> task_ptrs(device_num);
+#endif
 
     for (size_t j = 0; j < local_keys[i].size(); j++) {
       int shard = local_keys[i][j] % device_num;
@@ -169,7 +186,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
       int cur = device_keys[dev].size();
       device_keys[dev].resize(device_keys[dev].size() + len);
       device_vals[dev].resize(device_vals[dev].size() + len);
-
+#ifdef PADDLE_WITH_PSLIB
       for (int j = 0; j < len; ++j) {
         device_keys[dev][cur + j] = task_keys[dev][j];
         float* ptr_val = task_ptrs[dev][j]->data();
@@ -196,6 +213,35 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
           }
         }
       }
+#endif
+#ifdef PADDLE_WITH_PSCORE
+      for (int j = 0; j < len; ++j) {
+        device_keys[dev][cur + j] = task_keys[dev][j];
+        distributed::VALUE* ptr_val = task_ptrs[dev][j];
+        FeatureValue& val = device_vals[dev][cur + j];
+        bool has_mf = 1;
+        val.delta_score = 0;
+        val.show = ptr_val->count_;
+        val.clk = 0;
+        val.slot = 0;
+        val.lr = 0;
+        val.lr_g2sum = 0;
+        val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
+
+        if (has_mf) {
+          val.mf_size = MF_DIM + 1;
+          for (int x = 0; x < val.mf_size; x++) {
+            val.mf[x] = ptr_val->data_[x];
+          }
+        } else {
+          val.mf_size = 0;
+          for (int x = 0; x < MF_DIM + 1; x++) {
+            val.mf[x] = 0;
+          }
+        }
+      }
+#endif
+      VLOG(1) << "GpuPs build hbmps done";
 
       device_mutex[dev]->unlock();
     }

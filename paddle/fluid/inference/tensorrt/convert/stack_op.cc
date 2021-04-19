@@ -45,6 +45,11 @@ class StackOpConverter : public OpConverter {
 
     for (int i = 0; i < input_num; ++i) {
       inputs[i] = engine_->GetITensor(input[i]);
+      if (op_desc.HasAttr("out_threshold")) {
+        float out_scale =
+            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+        engine_->SetTensorDynamicRange(inputs[i], out_scale);
+      }
     }
 
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));

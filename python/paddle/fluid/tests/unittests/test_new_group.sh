@@ -17,4 +17,4 @@
 set -e
 
 CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --gpus=0,1  new_group.py
-CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --gpus=0,1  hybrid_communicate_group.py
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --gpus=0,1  hybrid_parallel_communicate_group.py
