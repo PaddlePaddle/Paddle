@@ -51,47 +51,46 @@ class SkipLayerNormOpConverter : public OpConverter {
     int scale_size = framework::product(scale_dims);
 
     nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      if (engine_->use_oss()) {
-        auto creator = GetPluginRegistry()->getPluginCreator(
-            "CustomSkipLayerNormPluginDynamic", "2");
-        assert(creator != nullptr);
-        int type = static_cast<int>((engine_->WithFp16() == 1)
-                                        ? nvinfer1::DataType::kHALF
-                                        : nvinfer1::DataType::kFLOAT);
-        int ld = input1->getDimensions().d[2];  // hidden dimension
-        assert(ld > 0);
 
-        const std::vector<nvinfer1::PluginField> fields{
-            {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
-            {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
-            {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
-            {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size},
-        };
-        nvinfer1::PluginFieldCollection* pluginPtr =
-            static_cast<nvinfer1::PluginFieldCollection*>(
-                malloc(sizeof(*pluginPtr) +
-                       fields.size() *
-                           sizeof(nvinfer1::PluginField)));  // remember to free
-        pluginPtr->nbFields = static_cast<int>(fields.size());
-        pluginPtr->fields = fields.data();
+    if (engine_->use_oss()) {
+      auto creator = GetPluginRegistry()->getPluginCreator(
+          "CustomSkipLayerNormPluginDynamic", "2");
+      assert(creator != nullptr);
+      int type = static_cast<int>((engine_->WithFp16() == 1)
+                                      ? nvinfer1::DataType::kHALF
+                                      : nvinfer1::DataType::kFLOAT);
+      int ld = input1->getDimensions().d[2];  // hidden dimension
+      assert(ld > 0);
 
-        auto pluginObj = creator->createPlugin(
-            "CustomSkipLayerNormPluginDynamic", pluginPtr);
-        auto plugin_layer = engine_->network()->addPluginV2(
-            inputs.data(), inputs.size(), *pluginObj);
+      const std::vector<nvinfer1::PluginField> fields{
+          {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
+          {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
+          {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
+          {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size},
+      };
+      nvinfer1::PluginFieldCollection* pluginPtr =
+          static_cast<nvinfer1::PluginFieldCollection*>(
+              malloc(sizeof(*pluginPtr) +
+                     fields.size() *
+                         sizeof(nvinfer1::PluginField)));  // remember to free
+      pluginPtr->nbFields = static_cast<int>(fields.size());
+      pluginPtr->fields = fields.data();
 
-        assert(plugin_layer != nullptr);
-        layer = plugin_layer;
-      } else {
-        float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-        plugin::SkipLayerNormPluginDynamic* plugin =
-            new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
-                                                   scale_size, eps, with_fp16);
-        layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
-      }
+      auto pluginObj =
+          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+      auto plugin_layer = engine_->network()->addPluginV2(
+          inputs.data(), inputs.size(), *pluginObj);
+
+      assert(plugin_layer != nullptr);
+      layer = plugin_layer;
+    } else {
+      float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      plugin::SkipLayerNormPluginDynamic* plugin =
+          new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
+                                                 scale_size, eps, with_fp16);
+      layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
     }
 
     auto output_name = op_desc.Output("Out")[0];
