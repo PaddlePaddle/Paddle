@@ -45,6 +45,7 @@ from paddle.framework.dtype import bool
 from paddle.framework.dtype import complex64
 from paddle.framework.dtype import complex128
 from .framework import VarBase as Tensor
+Tensor.__qualname__ = 'Tensor'
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
