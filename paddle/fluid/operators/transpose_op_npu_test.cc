@@ -126,12 +126,12 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(transpose2, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx);
 }
 
 TEST(transpose2_grad, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  CompareGrad<float>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  CompareGrad<float>(&scope, *ctx);
 }

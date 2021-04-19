@@ -71,12 +71,12 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
 TEST(increment, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx, "increment");
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx, "increment");
 }
 
 TEST(increment, NPU_fp64) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx, "increment");
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<double>(&scope, *ctx, "increment");
 }

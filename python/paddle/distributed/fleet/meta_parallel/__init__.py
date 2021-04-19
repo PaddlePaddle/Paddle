@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .mp_utils import *
+from .model_parallel import ModelParallel
