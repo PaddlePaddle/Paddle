@@ -58,6 +58,13 @@ class AffineChannelOpConverter : public OpConverter {
     auto data_layout = framework::StringToDataLayout(
         BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
 
+    PADDLE_ENFORCE_EQ(
+        data_layout, framework::DataLayout::kNCHW,
+        platform::errors::InvalidArgument(
+            "TensorRT affine channel converter can only convert NCHW format. "
+            "Other format should be run in fluid mode. Report a bug on github "
+            "issue if you see this line."));
+
     // tensorrt scalend layer only support spatial dims >= 2,
     // so nhwc is not availabe (spatial dims == 0)
     const int channel_axis = engine_->with_dynamic_shape();

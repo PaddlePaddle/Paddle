@@ -50,10 +50,10 @@ class FcOpConverter : public OpConverter {
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
-    auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         Y_v, platform::errors::NotFound(
                  "Can not find %s presistale var of fc in scope.", w_name));
+    auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     const int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
             ? BOOST_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
