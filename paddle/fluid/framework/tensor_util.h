@@ -167,10 +167,20 @@ void TensorFromVector(const std::vector<T>& src,
   // Since vector is on cpu, I think this function should be a "sync" operation,
   // so pass nullptr as stream to  memory::Copy().
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr, src_place,
-        src_ptr, size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+    auto stream =
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+                 src_place, src_ptr, size, stream);
+    Tensor* src_tensor;
+    TensorFromVector(src, src_tensor);
+    auto callback = [src_tensor, src_place]() {
+      VLOG(4) << "Run callback of var:" << src_tensor->Name() << " at place "
+              << src_place << " in memory::Copy.";
+    };
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(dst_place);
+    auto npu_stream =
+        static_cast<platform::NPUDeviceContext*>(dev_ctx)->NPUstream();
+    npu_stream->AddCallback(callback);
   }
 #endif
 }
@@ -209,10 +219,20 @@ inline void TensorFromVector(const std::vector<bool>& src,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr, src_place,
-        src_ptr, size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+    auto stream =
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+                 src_place, src_ptr, size, stream);
+    Tensor* src_tensor;
+    TensorFromVector(src, src_tensor);
+    auto callback = [src_tensor, src_place]() {
+      VLOG(4) << "Run callback of var:" << src_tensor->Name() << " at place "
+              << src_place << " in memory::Copy.";
+    };
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(dst_place);
+    auto npu_stream =
+        static_cast<platform::NPUDeviceContext*>(dev_ctx)->NPUstream();
+    npu_stream->AddCallback(callback);
   }
 #endif
   delete[] array;

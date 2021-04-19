@@ -217,19 +217,6 @@ void Copy<platform::NPUPlace, platform::CPUPlace>(platform::NPUPlace dst_place,
   if (stream) {
     platform::RecordEvent record_event("NpuMemcpyAsync:CPU->NPU");
     platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE, stream);
-    std::unique_ptr<paddle::framework::GarbageCollector> gc;
-    VLOG(4) << "Use default stream gc for NPU.";
-    gc.reset(new NPUDefaultStreamGarbageCollector(
-        BOOST_GET_CONST(platform::NPUPlace, dst_place), 0));
-    auto callback = [src, src_place]() {
-      VLOG(4) << "Run callback of var:" << src->Name() << " at place "
-              << src_place << " in memory::Copy.";
-      stream->SetCallbackExecuteFlag(true);
-      PADDLE_ENFORCE_NPU_SUCCESS(aclrtUnSubscribeReport(
-          static_cast<uint64_t>(stream->GetCallbackThreadId()),
-          stream->raw_stream()));
-    };
-    gc->DirectClearCallback(callback);
   } else {
     // On NPU, async operation after sync operation is ok, while sync operation
     // after async is not ok, since the async operation may not done.

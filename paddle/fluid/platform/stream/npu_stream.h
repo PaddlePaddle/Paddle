@@ -38,14 +38,6 @@ class NPUStream final {
 
   template <typename Callback>
   void AddCallback(Callback&& callback) {
-    is_callback_exec_ = false;
-    std::thread td(ProcessCallback, &is_callback_exec_);
-    std::ostringstream oss;
-    oss << td.get_id();
-    callback_thread_id_ = std::stoull(oss.str());
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSubscribeReport(
-        static_cast<uint64_t>(callback_thread_id_), stream_));
-
     callback_manager_->AddCallback(callback);
   }
 
@@ -54,7 +46,7 @@ class NPUStream final {
     // PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context, place_.device));
     while (true) {
       // timeout value is 100ms
-      (void)aclrtProcessReport(1000);
+      (void)aclrtProcessReport(100);
       if (*(static_cast<bool*>(arg)) == true) {
         return;
       }
