@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -41,10 +40,19 @@ class CastNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     int dtype = ctx.Attr<int>("out_dtype");
-
     auto* out = ctx.Output<Tensor>("Out");
-
     auto place = ctx.GetPlace();
+
+    if (x->type() == dtype) {
+      // NOTE(zhiqiu): NPU cast op may result in wrong value, so
+      // add special case here.
+      VLOG(4) << "cast to same dtype:" << dtype;
+      out->mutable_data(place, x->type());
+      framework::TensorCopy(
+          *x, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), out);
+      return;
+    }
 
     auto iter = DTYPE_2_ACL_DTYPE.find(
         static_cast<framework::proto::VarType::Type>(dtype));
@@ -76,7 +84,7 @@ class CastNPUKernel : public framework::OpKernel<T> {
   }
 };
 }  // namespace operators
-}  // namespace paddleaclDtype
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 
@@ -89,4 +97,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
-#endif

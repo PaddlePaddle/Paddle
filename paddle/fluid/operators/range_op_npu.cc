@@ -39,11 +39,23 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     framework::Tensor n;
-    framework::TensorCopySync(*start_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(
+        *start_t, platform::CPUPlace(),
+        context.template device_context<platform::DeviceContext>(), &n);
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
     T start = n.data<T>()[0];
-    framework::TensorCopySync(*end_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(
+        *end_t, platform::CPUPlace(),
+        context.template device_context<platform::DeviceContext>(), &n);
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
     T end = n.data<T>()[0];
-    framework::TensorCopySync(*step_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(
+        *step_t, platform::CPUPlace(),
+        context.template device_context<platform::DeviceContext>(), &n);
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
     T step = n.data<T>()[0];
 
     int64_t size = 0;
