@@ -491,22 +491,6 @@ def save(obj, path, protocol=2, **configs):
 
     if config.use_binary_format:
         _save_binary_var(obj, path)
-
-    # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
-    if config.pickle_protocol is not None:
-        protocol = config.pickle_protocol
-        warnings.warn(
-            "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
-        )
-    if isinstance(obj, Program):
-        obj.desc.flush()
-        with open(path, "wb") as f:
-            f.write(obj.desc.serialize_to_string())
-    elif _use_legacy(obj):
-        if in_dygraph_mode():
-            _legacy_save(obj, path, protocol)
-        else:
-            _legacy_static_save(obj, path, protocol)
     else:
         # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
         if config.pickle_protocol is not None:
@@ -514,16 +498,32 @@ def save(obj, path, protocol=2, **configs):
             warnings.warn(
                 "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
             )
-
-        if _use_legacy(obj):
+        if isinstance(obj, Program):
+            obj.desc.flush()
+            with open(path, "wb") as f:
+                f.write(obj.desc.serialize_to_string())
+        elif _use_legacy(obj):
             if in_dygraph_mode():
                 _legacy_save(obj, path, protocol)
             else:
                 _legacy_static_save(obj, path, protocol)
         else:
-            # save single variable
-            with open(path, 'wb') as f:
-                _pickle_save(obj, f, protocol)
+            # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
+            if config.pickle_protocol is not None:
+                protocol = config.pickle_protocol
+                warnings.warn(
+                    "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
+                )
+
+            if _use_legacy(obj):
+                if in_dygraph_mode():
+                    _legacy_save(obj, path, protocol)
+                else:
+                    _legacy_static_save(obj, path, protocol)
+            else:
+                # save single variable
+                with open(path, 'wb') as f:
+                    _pickle_save(obj, f, protocol)
 
 
 def _legacy_save(obj, path, protocol=2):
