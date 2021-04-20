@@ -1355,26 +1355,30 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             Tensor or LodTensor with shape [d_1, d_2, ..., d_n].
         maxlen (int, optional): Maximum length of the sequence. If :code:`maxlen` \
                            is None, it would be replace with :math:`max(x)`.
-        dtype (np.dtype|core.VarDesc.VarType|str, optional): Data type of the output, \
+        dtype (np.dtype|paddle.dtype|str, optional): Data type of the output, \
              ``int64`` by default.
         name(str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The output sequence mask. Tensor or LodTensor with shape [d_1, d_2, ..., d_n, maxlen] \
-            and data type of :code:`dtype`. The data type should be float32, float64, int8, \
+    Returns: The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
+            and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
 
-    Return Type: Variable
+    Return Type: Tensor
 
     Examples:
         .. code-block:: python
 
             import paddle
-            
 
             lengths = paddle.to_tensor([10, 9, 8])
             mask = paddle.nn.functional.sequence_mask(lengths)
+
+            print(mask.numpy())
+            # [[1 1 1 1 1 1 1 1 1 1]
+            #  [1 1 1 1 1 1 1 1 1 0]
+            #  [1 1 1 1 1 1 1 1 0 0]]
 
     """
     helper = LayerHelper('sequence_mask', **locals())
