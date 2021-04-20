@@ -1272,8 +1272,10 @@ class WeightQuantization(object):
         if abs(threshold_rate) < 1e-10:
             threshold_value = np.max(np.abs(weight_data))
         else:
-            threshold = np.percentile(np.abs(weight_data), 1 - threshold_rate)
-            weight_data = np.clip(weight_data, -threshold, threshold)
+            threshold_value = np.percentile(
+                np.abs(weight_data), 1 - threshold_rate)
+            weight_data = np.clip(weight_data, -threshold_value,
+                                  threshold_value)
         scale = threshold_value / quantize_range
         quantized_weight_data = \
             np.around(weight_data / scale).astype(save_weight_dtype)
