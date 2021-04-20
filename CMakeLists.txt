@@ -105,7 +105,7 @@ if(WIN32)
     endif()
     
     # NOTE(Avin0323): Less parallel count result in faster compilation.
-    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
+    math(EXPR PROCESS_MAX "${CPU_CORES} * 1 / 2")
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE

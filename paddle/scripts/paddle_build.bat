@@ -26,9 +26,19 @@ set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
-taskkill /f /im op_function_generator.exe
-wmic process where name="op_function_generator.exe" call terminate
+taskkill /f /im op_function_generator.exe  2>NUL
+taskkill /f /im cmake.exe  2>NUL
+taskkill /f /im MSBuild.exe 2>NUL
+taskkill /f /im CL.exe 2>NUL
+taskkill /f /im Lib.exe 2>NUL
+taskkill /f /im link.exe 2>NUL
+taskkill /f /im vctip.exe 2>NUL
+taskkill /f /im cvtres.exe 2>NUL
+taskkill /f /im rc.exe 2>NUL
 taskkill /f /im python.exe  2>NUL
+wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
+wmic process where name="cvtres.exe" call terminate 2>NUL
 
 
 rem ------initialize common variable------
@@ -249,6 +259,8 @@ echo    ========================================
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 set DISTUTILS_USE_SDK=1
+rem Windows 10 Kit bin dir
+set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -329,7 +341,7 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
+for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*3/5
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 set build_times=1
 :build_tp
@@ -361,15 +373,15 @@ if %GENERATOR% == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:DebugSymbols=false /p:DebugType=None /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     ) else (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:DebugSymbols=false /p:DebugType=None /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     )
 )
 
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
-    if %build_times% GTR 1 (
+    if %build_times% GTR 2 (
         exit /b 7
     ) else (
         echo Build Paddle failed, will retry!
@@ -706,9 +718,10 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+taskkill /f /im python.exe  2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
-taskkill /f /im python.exe  2>NUL
+wmic process where name="cvtres.exe" call terminate 2>NUL
 echo Windows CI run successfully!
 exit /b 0
 
