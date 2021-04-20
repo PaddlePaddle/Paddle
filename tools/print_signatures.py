@@ -79,7 +79,9 @@ def queue_dict(member, cur_name):
 
     doc_md5 = md5(member.__doc__)
 
-    if inspect.isclass(member):
+    if (inspect.isclass(member) or inspect.isfunction(member) or
+            inspect.ismethod(member)) and hasattr(
+                member, '__module__') and hasattr(member, '__name__'):
         args = member.__module__ + "." + member.__name__
     else:
         try:
@@ -176,9 +178,10 @@ def visit_all_module(mod):
                 visit_member(mod.__name__, instance)
 
 
-modules = sys.argv[1].split(",")
-for m in modules:
-    visit_all_module(importlib.import_module(m))
+if __name__ == '__main__':
+    modules = sys.argv[1].split(",")
+    for m in modules:
+        visit_all_module(importlib.import_module(m))
 
-for name in member_dict:
-    print(name, member_dict[name])
+    for name in member_dict:
+        print(name, member_dict[name])
