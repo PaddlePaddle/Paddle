@@ -199,7 +199,7 @@ option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
 option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
-option(WITH_STRIP       "Strip elf file after compilation"         ON)
+option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
