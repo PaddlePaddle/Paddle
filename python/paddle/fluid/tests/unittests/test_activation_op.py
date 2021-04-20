@@ -137,7 +137,7 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSiluAPI(unittest.TestCase):
