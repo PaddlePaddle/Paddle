@@ -26,14 +26,14 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct TruncatedNormal {
+struct GPUTruncatedNormal {
   T mean, std;
   T a_normal_cdf;
   T b_normal_cdf;
   unsigned int seed;
   T numeric_min;
 
-  __host__ __device__ TruncatedNormal(T mean, T std, T numeric_min, int seed)
+  __host__ __device__ GPUTruncatedNormal(T mean, T std, T numeric_min, int seed)
       : mean(mean), std(std), seed(seed), numeric_min(numeric_min) {
     a_normal_cdf = (1.0 + erff(-2.0 / sqrtf(2.0))) / 2.0;
     b_normal_cdf = (1.0 + erff(2.0 / sqrtf(2.0))) / 2.0;
@@ -113,10 +113,10 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
           TruncatedNormalOffset<T>(mean, std, std::numeric_limits<T>::min(),
                                    seed_offset.first, gen_offset));
     } else {
-      thrust::transform(
-          index_sequence_begin, index_sequence_begin + size,
-          thrust::device_ptr<T>(data),
-          TruncatedNormal<T>(mean, std, std::numeric_limits<T>::min(), seed));
+      thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                        thrust::device_ptr<T>(data),
+                        GPUTruncatedNormal<T>(
+                            mean, std, std::numeric_limits<T>::min(), seed));
     }
   }
 };
