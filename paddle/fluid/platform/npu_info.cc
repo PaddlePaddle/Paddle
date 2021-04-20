@@ -191,7 +191,7 @@ void NPUMemcpySync(void *dst, const void *src, size_t count,
   // NOTE(zhiqiu):  The default max_count is count
   dst_max_count = dst_max_count ? dst_max_count : count;
   VLOG(4) << dst << " " << dst_max_count << " " << src << " " << count << " "
-          << kind << " " << stream;
+          << kind;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(dst, dst_max_count, src, count, kind));
 }
 

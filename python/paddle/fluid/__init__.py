@@ -259,5 +259,5 @@ monkey_patch_varbase()
 
 # NOTE(zhiqiu): register npu_finalize on the exit of Python,
 # do some clean up manually.
-if paddle.is_compiled_with_npu():
+if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
