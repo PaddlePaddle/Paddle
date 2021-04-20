@@ -184,10 +184,12 @@ void TensorFromVector(const std::vector<T>& src,
     // memory::Copy(src_place, src_tensor_ptr,
     //              src_place, src_ptr, size);
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 src_place, src_ptr, size, stream);
+                 src_place, src_tensor_ptr, size, stream);
     auto callback = [src_tensor, src_place]() {
       // VLOG(4) << "Run callback of var:" << src_tensor->Name() << " at place "
       //         << src_place << " in memory::Copy.";
+      VLOG(4) << "Run callback of var at place " << src_place
+              << " in TensorFromVector";
     };
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(dst_place);
     auto npu_stream =
@@ -246,10 +248,12 @@ inline void TensorFromVector(const std::vector<bool>& src,
     // memory::Copy(src_place, src_tensor_ptr,
     //              src_place, src_ptr, size);
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 src_place, src_ptr, size, stream);
+                 src_place, src_tensor_ptr, size, stream);
     auto callback = [src_tensor, src_place]() {
       // VLOG(4) << "Run callback of var:" << src_tensor->Name() << " at place "
       //         << src_place << " in memory::Copy.";
+      VLOG(4) << "Run callback of var at place " << src_place
+              << " in TensorFromVector";
     };
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(dst_place);
     auto npu_stream =

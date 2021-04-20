@@ -39,21 +39,19 @@ class NPUStream final {
   bool Init(const Place& place);
 
   template <typename Callback>
-  void AddCallback(Callback&& callback) {
+  void AddCallback(Callback&& callback) const {
     callback_manager_->AddCallback(callback);
   }
 
-  static void ProcessCallback(void* arg) {
-    // aclrtContext context = nullptr;
-    // PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context, place_.device));
+  static void* ProcessCallback(void* arg) {
     while (true) {
       // timeout value is 100ms
       (void)aclrtProcessReport(100);
       if (*(static_cast<bool*>(arg)) == true) {
-        return;
+        VLOG(4) << "Exit NPU callback function";
+        return reinterpret_cast<void*>(0);
       }
     }
-    // PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyContext(context));
   }
 
   // bool GetCallbackExecuteFlag() const {
@@ -90,7 +88,6 @@ class NPUStream final {
   Place place_;
   aclrtStream stream_{nullptr};
   std::unique_ptr<StreamCallbackManager<aclrtStream>> callback_manager_;
-  // bool is_callback_exec_;
   uint64_t callback_thread_id_;
 
   DISABLE_COPY_AND_ASSIGN(NPUStream);

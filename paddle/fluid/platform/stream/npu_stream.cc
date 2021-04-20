@@ -29,10 +29,6 @@ bool NPUStream::Init(const Place& place) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateStream(&stream_));
   callback_manager_.reset(new StreamCallbackManager<aclrtStream>(stream_));
   is_callback_exec_ = false;
-  // std::thread td(ProcessCallback, &is_callback_exec_);
-  // std::ostringstream oss;
-  // oss << td.get_id();
-  // callback_thread_id_ = std::stoull(oss.str());
   (void)pthread_create(&callback_thread_id_, nullptr, *ProcessCallback,
                        &is_callback_exec_);
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSubscribeReport(
