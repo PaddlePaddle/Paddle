@@ -68,7 +68,7 @@ class TestHub(unittest.TestCase):
             force_reload=True, )
 
         models = hub.list(
-            'lyuwenyu/paddlehub_demo', source='github', force_reload=False)
+            'lyuwenyu/paddlehub_demo', source='github', force_reload=True)
 
 
 if __name__ == '__main__':
