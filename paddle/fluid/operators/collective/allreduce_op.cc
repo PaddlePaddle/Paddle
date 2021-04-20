@@ -15,7 +15,7 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
-#include "paddle/fluid/operators/distributed_ops/allreduce_op.h"
+#include "paddle/fluid/operators/collective/allreduce_op.h"
 
 namespace paddle {
 namespace operators {
