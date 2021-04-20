@@ -441,6 +441,14 @@ class TestFunctional(unittest.TestCase):
                 'uint8'))
             F.to_tensor(fake_img, data_format=1)
 
+        with self.assertRaises(ValueError):
+            fake_img = paddle.rand((3, 100, 100))
+            F.pad(fake_img, 1, padding_mode='symmetric')
+
+        with self.assertRaises(TypeError):
+            fake_img = paddle.rand((3, 100, 100))
+            F.resize(fake_img, {1: 1})
+
         with self.assertRaises(TypeError):
             fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
                 'uint8'))
@@ -528,6 +536,10 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_almost_equal(
             np_padded_img, tensor_padded_img.numpy().transpose(1, 2, 0))
 
+        tensor_padded_img = F.pad(tensor_img, 1, padding_mode='reflect')
+        tensor_padded_img = F.pad(tensor_img, [1, 2, 1, 2],
+                                  padding_mode='reflect')
+
         pil_p_img = pil_img.convert('P')
         pil_padded_img = F.pad(pil_p_img, [1, 2])
         pil_padded_img = F.pad(pil_p_img, [1, 2], padding_mode='reflect')
@@ -606,10 +618,13 @@ class TestFunctional(unittest.TestCase):
         rotated_pil_img = F.rotate(pil_img, 80, expand=True)
 
         tensor_img_chw = F.to_tensor(pil_img)
-        tensor_img_hwc = F.to_tensor(pil_img, data_format='HWC')
         rotated_tensor_img1 = F.rotate(tensor_img_chw, 80, expand=True)
         rotated_tensor_img2 = F.rotate(
-            tensor_img_chw, 80, center=(10, 10), expand=False)
+            tensor_img_chw,
+            80,
+            interpolation='bilinear',
+            center=(10, 10),
+            expand=False)
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
