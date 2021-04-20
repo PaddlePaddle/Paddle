@@ -2178,9 +2178,7 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("_npu_finalize", []() {
-    platform::AclInstance::Instance().Finalize();
-  });  // private interface
+  m.def("npu_finalize", []() { platform::AclInstance::Instance().Finalize(); });
 
   py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
 

@@ -15,6 +15,7 @@
 from __future__ import print_function
 import os
 import sys
+import atexit
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepadde without -U option
@@ -255,3 +256,8 @@ def __bootstrap__():
 monkey_patch_variable()
 __bootstrap__()
 monkey_patch_varbase()
+
+# NOTE(zhiqiu): register npu_finalize on the exit of Python,
+# do some clean up manually.
+if paddle.is_compiled_with_npu():
+    atexit.register(core.npu_finalize)
