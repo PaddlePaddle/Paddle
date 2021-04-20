@@ -1038,7 +1038,10 @@ class PostTrainingQuantization(object):
 
 
 class WeightQuantization(object):
-    _supported_quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
+    _supported_quantizable_op_type = [
+        'conv2d', 'depthwise_conv2d', 'mul', 'lookup_table'
+    ]
+    _supported_channel_wise_op_type = ['conv2d', 'depthwise_conv2d']
     _supported_weight_quantize_type = ['channel_wise_abs_max', 'abs_max']
 
     def __init__(self, model_dir, model_filename=None, params_filename=None):
@@ -1086,8 +1089,8 @@ class WeightQuantization(object):
                 parameters were saved in a single binary file.
             quantizable_op_type(list[str], optional): The list of ops 
                 that will be quantized, and the quantized ops should be
-                contained in ["conv2d", "depthwise_conv2d", "mul"]. 
-                Default is ["conv2d","mul"].
+                contained in ["conv2d", "depthwise_conv2d", "mul",
+                "lookup_table"]. Default is ["conv2d","mul"].
             weight_bits(int, optional): The bits for the quantized weight, 
                 and it should be 8 or 16. Default is 8.
             weight_quantize_type(str, optional): quantization type for weights,
@@ -1232,13 +1235,14 @@ class WeightQuantization(object):
         for op in quantized_ops:
             for var_name in op.input_arg_names:
                 if var_name in persistable_var_names:
-                    if weight_quantize_type == "abs_max":
+                    if weight_quantize_type == "channel_wise_abs_max" and \
+                        op.type in self._supported_channel_wise_op_type:
+                        self._weight_channel_wise_abs_max_quantization(
+                            scope, place, weight_bits, op, var_name, for_test)
+                    else:
                         self._weight_abs_max_quantization(
                             scope, place, weight_bits, threshold_rate, op,
                             var_name, for_test)
-                    elif weight_quantize_type == "channel_wise_abs_max":
-                        self._weight_channel_wise_abs_max_quantization(
-                            scope, place, weight_bits, op, var_name, for_test)
 
         io.save_inference_model(
             dirname=save_model_dir,
