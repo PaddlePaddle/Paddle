@@ -239,8 +239,9 @@ class TestOptimizer(unittest.TestCase):
 
 class TestSGDOptimizer(TestOptimizer):
     def test_optimizer_multiblock_except(self):
-        self.assertRaisesRegex(ValueError, "var param_y not in this block",
-                               self._check_grads, True)
+        with self.assertRaisesRegexp(ValueError,
+                                     "var param_y not in this block"):
+            self._check_grads(True)
 
 
 class TestAdamOptimizer(TestOptimizer):
