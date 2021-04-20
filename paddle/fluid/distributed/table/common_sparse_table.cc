@@ -126,17 +126,17 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
 int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
                    const int mode) {
   int64_t not_save_num = 0;
-  for (auto value : block->values_) {
-    if (mode == SaveMode::delta && !value.second->need_save_) {
+  for (auto& value : block->values_) {
+    if (mode == SaveMode::delta && !value.second.need_save_) {
       not_save_num++;
       continue;
     }
 
-    auto* vs = value.second->data_.data();
+    auto* vs = value.second.data_;
     std::stringstream ss;
     auto id = value.first;
-    ss << id << "\t" << value.second->count_ << "\t"
-       << value.second->unseen_days_ << "\t" << value.second->is_entry_ << "\t";
+    ss << id << "\t" << value.second.count_ << "\t" << value.second.unseen_days_
+       << "\t" << value.second.is_entry_ << "\t";
 
     for (int i = 0; i < block->value_length_; i++) {
       ss << vs[i];
@@ -148,7 +148,7 @@ int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
     os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
 
     if (mode == SaveMode::base || mode == SaveMode::delta) {
-      value.second->need_save_ = false;
+      value.second.need_save_ = false;
     }
   }
 
