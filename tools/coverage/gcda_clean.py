@@ -34,13 +34,13 @@ def get_pull(pull_id):
     """
     token = os.getenv('GITHUB_API_TOKEN')
     github = Github(token, timeout=60)
-    idx=1
+    idx = 1
     while idx < 4:
         try:
             repo = github.get_repo('PaddlePaddle/Paddle')
         except Exception as e:
             print(e)
-            print("get_repo error, retry {} times after {} secs.".format(idx, idx*10))
+            print("get_repo error, retry {} times after {} secs.".format(idx, idx * 10))
         else:
             break
         idx += 1
