@@ -599,11 +599,14 @@ class TestFunctional(unittest.TestCase):
     def test_rotate(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img).convert('RGB')
-        tensor_img = F.to_tensor(pil_img)
-
         rotated_np_img = F.rotate(np_img, 80, expand=True)
         rotated_pil_img = F.rotate(pil_img, 80, expand=True)
-        rotated_tensor_img = F.rotate(tensor_img, 80, expand=True)
+
+        tensor_img_chw = F.to_tensor(pil_img)
+        tensor_img_hwc = F.to_tensor(pil_img, data_format='HWC')
+        rotated_tensor_img1 = F.rotate(tensor_img_chw, 80, expand=True)
+        rotated_tensor_img2 = F.rotate(
+            tensor_img_chw, 80, center=(10, 10), expand=False)
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
