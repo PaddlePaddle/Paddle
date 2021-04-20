@@ -489,6 +489,30 @@ class ReduceOp : public framework::OperatorWithKernel {
       }
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    if (ctx.Input<paddle::framework::LoDTensor>("X")->dims().size() > 5)
+      return framework::OpKernelType(input_data_type, ctx.GetPlace());
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
+    if (input_data_type == framework::proto::VarType::FP16) {
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                        platform::errors::InvalidArgument(
+                            "float16 can only be used on GPU place"));
+    }
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class ReduceOpUseInputPlace : public ReduceOp {
@@ -579,6 +603,9 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "(int, default -1)"
         "The dtype of output, default value is -1, the dtype is same as intput")
         .SetDefault(-1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 

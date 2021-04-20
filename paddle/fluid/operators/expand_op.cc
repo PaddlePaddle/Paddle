@@ -273,3 +273,21 @@ REGISTER_OP_CPU_KERNEL(
     ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
+REGISTER_OP_CUDA_KERNEL(
+    expand, ops::ExpandKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ExpandKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ExpandKernel<paddle::platform::CUDADeviceContext,
+                      paddle::platform::float16>,
+    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ExpandKernel<paddle::platform::CUDADeviceContext, bool>);
+REGISTER_OP_CUDA_KERNEL(
+    expand_grad,
+    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext,
+                          paddle::platform::float16>,
+    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

@@ -672,6 +672,8 @@ REGISTER_OP_CPU_KERNEL(bilinear_interp_v2_grad,
                        ops::InterpolateV2GradKernel<double>);
 REGISTER_OP_CPU_KERNEL(nearest_interp_v2, ops::InterpolateV2Kernel<float>,
                        ops::InterpolateV2Kernel<double>,
+                       ops::InterpolateV2Kernel<int>,
+                       ops::InterpolateV2Kernel<int64_t>,
                        ops::InterpolateV2Kernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(nearest_interp_v2_grad,
                        ops::InterpolateV2GradKernel<float>,

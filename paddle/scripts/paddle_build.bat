@@ -462,26 +462,10 @@ dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
 pip install requests
-python %work_dir%\tools\get_quick_disable_lt.py > Output
-if %errorlevel%==0 (
-    set /p disable_ut_quickly=<Output
-    DEL Output
-    ) else (
-    set disable_ut_quickly=''
-)
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
-
-if "%NIGHTLY_MODE%"=="ON" (
-    set nightly_label="()"
-    ) else (
-    set nightly_label="(RUN_TYPE=NIGHTLY^|RUN_TYPE=DIST:NIGHTLY^|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
-    echo    ========================================
-    echo    "Unittests with nightly labels  are only run at night"
-    echo    ========================================
-)
 
 if "%WITH_GPU%"=="ON" (
     goto:parallel_test_base_gpu
