@@ -72,6 +72,8 @@ static void CheckOutputVarStatus(const Variable &src_var,
                                  const Variable &dst_var,
                                  const std::string &var_name) {
   if (dst_var.IsType<LoDTensor>()) {
+    VLOG(3) << var_name << "is LODTensor ? ";
+    VLOG(3) << src_var.IsType<LoDTensor>();
     PADDLE_ENFORCE_EQ(
         src_var.IsType<LoDTensor>(), true,
         platform::errors::InvalidArgument(
@@ -154,7 +156,9 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                         "RunProgram(Grad)Op'"
                                         "s internal scope.",
                                         var_names[i]));
+    VLOG(3) << "Found " << var_names[i] << " in " << scope << ", it is " << var;
     CheckOutputVarStatus(*var, *vars[i], var_names[i]);
+    VLOG(3) << "checkout done";
     VariableShare(*var, vars[i]);
   }
 }
@@ -176,6 +180,9 @@ static std::vector<std::string> ParseVarNamesNeededInBackward(
     const ProgramDesc &program, int64_t forward_op_nums,
     const std::vector<std::string> &output_var_names) {
   // step 1: all out_vars are skip_eager_var
+  for (auto &var_name : output_var_names) {
+    VLOG(3) << "skip output var name: " << var_name;
+  }
   std::vector<std::string> skip_eager_vars(output_var_names);
   std::unordered_set<std::string> visited_vars;
 
@@ -248,40 +255,41 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     details::ShareVarsIntoScope(input_vars, input_var_names, &scope);
     details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
-    framework::BuildStrategy build_strategy;
-    framework::ExecutionStrategy execution_strategy;
-    if (platform::is_cpu_place(ctx.GetPlace())) {
-      execution_strategy.use_device_ = platform::DeviceType::CPU;
-      execution_strategy.num_threads_ = 2;
-    } else if (platform::is_gpu_place(ctx.GetPlace())) {
-      execution_strategy.use_device_ = platform::DeviceType::CUDA;
-      execution_strategy.num_threads_ = 4;
-    } else {
-      execution_strategy.use_device_ = platform::DeviceType::XPU;
-      execution_strategy.num_threads_ = 1;
+    if (end_op_index > start_op_index) {
+      framework::BuildStrategy build_strategy;
+      framework::ExecutionStrategy execution_strategy;
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        execution_strategy.use_device_ = platform::DeviceType::CPU;
+        execution_strategy.num_threads_ = 2;
+      } else if (platform::is_gpu_place(ctx.GetPlace())) {
+        execution_strategy.use_device_ = platform::DeviceType::CUDA;
+        execution_strategy.num_threads_ = 4;
+      } else {
+        execution_strategy.use_device_ = platform::DeviceType::XPU;
+        execution_strategy.num_threads_ = 1;
+      }
+      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto graph = std::make_unique<framework::ir::Graph>(
+          *program, start_op_index, end_op_index);
+
+      framework::ParallelExecutor pe(ctx.GetPlace(),      // places
+                                     &scope,              // global_scope
+                                     execution_strategy,  // exec_strategy
+                                     build_strategy,      // build_strategy
+                                     graph.get());
+
+      // TODO(Aurelius84): make it only call once
+      pe.SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
+
+      // Step 3. run ops
+      VLOG(3) << "start to call pe.Run()...";
+      auto skip_eager_vars = details::ParseVarNamesNeededInBackward(
+          *program, end_op_index, output_var_names);
+      pe.RunWithoutFetch(skip_eager_vars);
+
+      VLOG(3) << "successfully to call pe.Run()...";
     }
 
-    auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
-    auto graph = std::make_unique<framework::ir::Graph>(
-        *program, start_op_index, end_op_index);
-
-    framework::ParallelExecutor pe(ctx.GetPlace(),      // places
-                                   &scope,              // global_scope
-                                   execution_strategy,  // exec_strategy
-                                   build_strategy,      // build_strategy
-                                   graph.get());
-
-    // TODO(Aurelius84): make it only call once
-    pe.SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
-
-    // Step 3. run ops
-    // TODO(Aurelius84): Skip fetch_tensor overhead and just run all ops.
-    VLOG(3) << "start to call pe.Run()...";
-    auto skip_eager_vars = details::ParseVarNamesNeededInBackward(
-        *program, end_op_index, output_var_names);
-    pe.RunWithoutFetch(skip_eager_vars);
-
-    VLOG(3) << "successfully to call pe.Run()...";
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
 
@@ -349,47 +357,49 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     auto &scope = *(global_inner_scope->kids().front());
 
-    // Step 2. prepare executor and scope
-    framework::BuildStrategy build_strategy;
-    framework::ExecutionStrategy execution_strategy;
-    if (platform::is_cpu_place(ctx.GetPlace())) {
-      execution_strategy.use_device_ = platform::DeviceType::CPU;
-      execution_strategy.num_threads_ = 2;
-    } else if (platform::is_gpu_place(ctx.GetPlace())) {
-      execution_strategy.use_device_ = platform::DeviceType::CUDA;
-      execution_strategy.num_threads_ = 4;
-    } else {
-      execution_strategy.use_device_ = platform::DeviceType::XPU;
-      execution_strategy.num_threads_ = 1;
+    if (end_op_index > start_op_index) {
+      // Step 2. prepare executor and scope
+      framework::BuildStrategy build_strategy;
+      framework::ExecutionStrategy execution_strategy;
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        execution_strategy.use_device_ = platform::DeviceType::CPU;
+        execution_strategy.num_threads_ = 2;
+      } else if (platform::is_gpu_place(ctx.GetPlace())) {
+        execution_strategy.use_device_ = platform::DeviceType::CUDA;
+        execution_strategy.num_threads_ = 4;
+      } else {
+        execution_strategy.use_device_ = platform::DeviceType::XPU;
+        execution_strategy.num_threads_ = 1;
+      }
+
+      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto graph = std::make_unique<framework::ir::Graph>(
+          *program, start_op_index, end_op_index);
+
+      framework::ParallelExecutor pe(ctx.GetPlace(),      // places
+                                     &scope,              // global_scope
+                                     execution_strategy,  // exec_strategy
+                                     build_strategy,      // build_strategy
+                                     graph.get());
+
+      // TODO(Aurelius84): make it only call once
+      pe.SkipMemoryReuse(/*scope_idx*/ 0, output_grad_var_names);
+
+      details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
+                                  &scope);
+      // Debug info: scope info when run end
+      VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
+
+      std::vector<std::string> skip_eager_vars(input_grad_var_names);
+      skip_eager_vars.insert(skip_eager_vars.end(), param_grad_names.begin(),
+                             param_grad_names.end());
+
+      // Step 3. run ops
+      // TODO(Aurelius84): Skip fetch_tensor overhead and just run all ops.
+      VLOG(3) << "start to call pe.Run()...";
+      pe.RunWithoutFetch(/*skip_eager_vars*/ skip_eager_vars);
+      VLOG(3) << "successfully to call pe.Run()...";
     }
-
-    auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
-    auto graph = std::make_unique<framework::ir::Graph>(
-        *program, start_op_index, end_op_index);
-
-    framework::ParallelExecutor pe(ctx.GetPlace(),      // places
-                                   &scope,              // global_scope
-                                   execution_strategy,  // exec_strategy
-                                   build_strategy,      // build_strategy
-                                   graph.get());
-
-    // TODO(Aurelius84): make it only call once
-    pe.SkipMemoryReuse(/*scope_idx*/ 0, output_grad_var_names);
-
-    details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
-                                &scope);
-    // Debug info: scope info when run end
-    VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
-
-    std::vector<std::string> skip_eager_vars(input_grad_var_names);
-    skip_eager_vars.insert(skip_eager_vars.end(), param_grad_names.begin(),
-                           param_grad_names.end());
-
-    // Step 3. run ops
-    // TODO(Aurelius84): Skip fetch_tensor overhead and just run all ops.
-    VLOG(3) << "start to call pe.Run()...";
-    pe.RunWithoutFetch(/*skip_eager_vars*/ skip_eager_vars);
-    VLOG(3) << "successfully to call pe.Run()...";
 
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);

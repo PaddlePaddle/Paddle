@@ -24,17 +24,21 @@ namespace ir {
 Graph::Graph(const ProgramDesc &program)
     : Graph(program, 0, program.Block(0).AllOps().size()) {}
 
-Graph::Graph(const ProgramDesc &program, u_int64_t start_op_index,
-             u_int64_t end_op_index)
+Graph::Graph(const ProgramDesc &program, int64_t start_op_index,
+             int64_t end_op_index)
     : program_(program) {
   auto var_nodes = InitFromProgram(program_, start_op_index, end_op_index);
   ResolveHazard(var_nodes);
 }
 
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
-    const ProgramDesc &program, u_int64_t start_op_index,
-    u_int64_t end_op_index) {
+    const ProgramDesc &program, int64_t start_op_index, int64_t end_op_index) {
   VLOG(3) << "block in program:" << program_.Size();
+  PADDLE_ENFORCE_GE(start_op_index, 0,
+                    platform::errors::InvalidArgument(
+                        "Required start_op_index >= 0, but received "
+                        "start_op_index = ",
+                        start_op_index));
   PADDLE_ENFORCE_GE(end_op_index, start_op_index,
                     platform::errors::InvalidArgument(
                         "Required end_op_index >= start_op_index, but received "
@@ -109,7 +113,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
 
   // TODO(Aurelius84): Should we create an  isolate var in @to_static? Skip it
   // now.
-  if (end_op_index == all_ops.size()) {
+  if (end_op_index == static_cast<int64_t>(all_ops.size())) {
     for (auto &pair : not_visited_vars) {
       const auto &var_name = pair.first;
       auto *var_desc = pair.second;

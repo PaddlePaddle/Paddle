@@ -80,8 +80,8 @@ class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
   // Construct a Graph with ops[start_op_index, end_op_index)
-  explicit Graph(const ProgramDesc &program, u_int64_t start_op_index,
-                 u_int64_t end_op_index);
+  explicit Graph(const ProgramDesc &program, int64_t start_op_index,
+                 int64_t end_op_index);
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -256,8 +256,7 @@ class Graph {
 
  private:
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
-      const ProgramDesc &program, u_int64_t start_op_index,
-      u_int64_t end_op_index);
+      const ProgramDesc &program, int64_t start_op_index, int64_t end_op_index);
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
