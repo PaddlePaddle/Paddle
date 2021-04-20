@@ -556,6 +556,9 @@ MKLDNNDeviceContextThreadLocals::Body::~Body() {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::MKLDNNDeviceContext* dev_ctx =
       (platform::MKLDNNDeviceContext*)pool.Get(cpu_place);
+  // Report that we are terminting thread so its TLS is invalid
+  dev_ctx->ReportDeadThread();
+  // if TLS cache is not used then let's clear it
   dev_ctx->ResetBlobMap();
 }
 
@@ -615,10 +618,14 @@ void MKLDNNDeviceContext::ResetBlobMap() {
   if (use_tls_cache_) {
     // So if we have cache stored in TLS then
     // we reset only active thread's cache
+    // if Thread is dead then no clearing cache
     // For naive executor there is no blocking
     // of cache clearing needed
-    VLOG(3) << "Clearing DNNL cache.";
-    tls().get_blobmap()->clear();
+    if (this->dead_threads.find(std::this_thread::get_id()) ==
+        this->dead_threads.end()) {
+      VLOG(3) << "Clearing DNNL cache.";
+      tls().get_blobmap()->clear();
+    }
   } else {
     // For shared cache among thread we clear whole cache
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);

@@ -127,7 +127,13 @@ void NaiveExecutor::CleanFeedFetchOps() {
   ops_.swap(ops);
 }
 
-NaiveExecutor::~NaiveExecutor() {}
+NaiveExecutor::~NaiveExecutor() {
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache,
+  // this is needed to have mkl-dnn unit tests working
+  ClearMKLDNNCache(place_);
+#endif
+}
 
 }  // namespace framework
 }  // namespace paddle

@@ -13,6 +13,7 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -735,6 +736,12 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   void EnableCacheViaTLS(void) { use_tls_cache_ = true; }
 
+  // Let know oneDNN context that TLS was disactivated so its cache was
+  // destroyed
+  void ReportDeadThread(void) {
+    this->dead_threads.insert(std::this_thread::get_id());
+  }
+
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
 
@@ -765,6 +772,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
   bool use_tls_cache_ = false;
+  std::set<std::thread::id> dead_threads;
 };
 #endif
 
