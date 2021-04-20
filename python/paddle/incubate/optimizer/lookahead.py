@@ -20,8 +20,6 @@ import paddle
 import numpy as np
 from paddle.fluid.dygraph import base as imperative_base
 
-__all__ = ["LookAhead"]
-
 
 class LookAhead(Optimizer):
     r"""

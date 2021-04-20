@@ -18,23 +18,7 @@ import os
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.framework import is_compiled_with_cuda  #DEFINE_ALIAS
-
-__all__ = [
-    'get_cudnn_version',
-    'set_device',
-    'get_device',
-    'XPUPlace',
-    'is_compiled_with_xpu'
-    #            'cpu_places',
-    #            'CPUPlace',
-    #            'cuda_pinned_places',
-    #            'cuda_places',
-    #            'CUDAPinnedPlace',
-    #            'CUDAPlace',
-    'is_compiled_with_cuda',
-    'is_compiled_with_npu'
-]
+from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 
 _cudnn_version = None
 

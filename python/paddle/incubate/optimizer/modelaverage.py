@@ -21,8 +21,6 @@ import numpy as np
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-__all__ = ["ModelAverage"]
-
 
 class ModelAverage(Optimizer):
     r"""

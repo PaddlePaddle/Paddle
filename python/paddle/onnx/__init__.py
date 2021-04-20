@@ -12,7 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from .export import export
-
-__all__ = ['export']
+from .export import export  # noqa: F401

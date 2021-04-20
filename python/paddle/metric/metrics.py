@@ -26,8 +26,6 @@ from ..fluid.layers.nn import topk
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
 import paddle
 
-__all__ = ['Metric', 'Accuracy', 'Precision', 'Recall', 'Auc', 'accuracy']
-
 
 def _is_numpy_(var):
     return isinstance(var, (np.ndarray, np.generic))
