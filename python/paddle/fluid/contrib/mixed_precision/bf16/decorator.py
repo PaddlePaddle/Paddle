@@ -181,19 +181,14 @@ class OptimizerWithMixedPrecision(object):
 
     def apply_gradients(self, params_grads):
         """
-        Check scaled gradients to determine whether to update loss scaling and update 
-        parameters by their scaled gradients.
+        Apply gradients.
   
         Args:
-            params_grads (list): A list of params and scaled grads.
+            params_grads (list): A list of params.
     
         Returns:
             A list of optimize operators.
         """
-
-        # Change the op_role_var attr for some ops, so that gradients
-        # transferred across GPUs can be bf16.
-        # update_role_var_grad(self._train_program, params_grads)
 
         return self._optimizer.apply_gradients(params_grads)
 
