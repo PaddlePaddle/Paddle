@@ -35,7 +35,6 @@ class AclInstance {
   const AclInstance &operator=(const AclInstance &o) = delete;
   static AclInstance &Instance();
   void Finalize();
-  std::vector<platform::DeviceContext *> GetInstanceDeviceContext();
 
  private:
   // forbid calling default constructor

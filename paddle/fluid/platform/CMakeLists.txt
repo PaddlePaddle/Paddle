@@ -141,7 +141,7 @@ if(WITH_ASCEND_CL)
 endif()
 
 IF(WITH_ASCEND_CL)
-cc_library(npu_instance SRCS npu_instance.cc DEPS npu_info device_context) 
+    cc_library(npu_instance SRCS npu_instance.cc DEPS npu_info device_context) 
 ENDIF()
 
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)

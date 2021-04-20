@@ -51,7 +51,7 @@ void AclInstance::Finalize() {
     VLOG(4) << "Call aclrtResetDevice " << devices_[i]
             << " status = " << status;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(
-      platform::NPUPlace(devices_[i])));
+        platform::NPUPlace(devices_[i]));
     auto npu_stream =
         static_cast<platform::NPUDeviceContext *>(dev_ctx)->NPUstream();
     npu_stream->Destroy();
