@@ -233,8 +233,8 @@ class TestOptimizer(unittest.TestCase):
                                                                  gt_grads)
                                 param_grads = gt_params + gt_grads
                                 for i in range(len(res)):
-                                    np.testing.assert_allclose(
-                                        res[i], param_grads[i], rtol=4e-3)
+                                    np.testing.assert_allclose(res[i],
+                                                               param_grads[i])
 
 
 class TestSGDOptimizer(TestOptimizer):
