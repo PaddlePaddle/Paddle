@@ -32,10 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
-#if (defined PADDLE_WITH_NCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
-#endif
-
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/reduce.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
