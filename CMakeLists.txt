@@ -369,8 +369,8 @@ endif()
 
 if(WITH_STRIP)
     find_program(STRIP_PATH strip)
-    if(NOT STRIP_PATH)
-        set(WITH_STRIP OFF CACHE STRING "No strip command." FORCE)
+    if(NOT STRIP_PATH OR NOT LINUX)
+        set(WITH_STRIP OFF CACHE STRING "Command strip is only used on Linux when it exists." FORCE)
     endif()
 endif()
 
