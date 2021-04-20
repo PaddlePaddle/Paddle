@@ -44,8 +44,9 @@ class SGDNPUKernel : public framework::OpKernel<T> {
     // NOTE(zhiqiu): ApplyGradientDescent updates params inplace, so
     // if param and param_out is not same, we need to do copy.
     if (param_out->data<T>() != param_var->data<T>()) {
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-      framework::TensorCopySync(*param_var, ctx.GetPlace(), param_out);
+      framework::TensorCopy(
+          *param_var, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), param_out);
     }
   }
 };

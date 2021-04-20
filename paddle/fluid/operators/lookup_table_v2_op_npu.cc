@@ -28,6 +28,12 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");      // int tensor
     auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
     auto *table_t = ctx.Input<framework::LoDTensor>("W");
+
+    // It seems cann 20.1 accepts int64, but cann 20.2+ not.
+    PADDLE_ENFORCE_EQ(ids_t->type(), framework::proto::VarType::INT32,
+                      platform::errors::Unimplemented(
+                          "The index of LookupTableV2 should be int32."));
+
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
         table_var->IsType<framework::LoDTensor>(), true,
@@ -49,28 +55,26 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
+
     auto *output_grad_t =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *table_grad_t =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
-    table_grad_t->mutable_data<T>(ctx.GetPlace());
+    auto *p = table_grad_t->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    // step2: ZerosLike x in device
-    Tensor zeroslike_w(table_grad_t->type());
-    zeroslike_w.Resize(table_grad_t->dims());
-    auto p = zeroslike_w.mutable_data<T>(ctx.GetPlace());
-
     platform::NPUMemsetAsync(static_cast<void *>(p), 0,
-                             zeroslike_w.numel() * sizeof(T), stream);
+                             table_grad_t->numel() * sizeof(T), stream);
 
-    table_grad_t->mutable_data<T>(ctx.GetPlace());
+    // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
+    // can be different tensor, but in cann 20.2+, it does inplace operation.
+    // Thus, the first input and output should be same tensor.
     auto runner_scatter =
-        NpuOpRunner("ScatterAdd", {zeroslike_w, *ids_t, *output_grad_t},
-                    {*table_grad_t}, {});
+        NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
+                    {*table_grad_t}, {{"use_locking", true}});
     runner_scatter.Run(stream);
   }
 };

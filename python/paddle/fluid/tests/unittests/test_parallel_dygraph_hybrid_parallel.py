@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import unittest
-import time
 import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
@@ -27,6 +26,9 @@ class TestHybridParallel(TestMultipleGpus):
 
     def test_hybrid_parallel_mp_random(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_random.py')
+
+    def test_hybrid_parallel_mp_model(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_model.py')
 
 
 if __name__ == "__main__":
