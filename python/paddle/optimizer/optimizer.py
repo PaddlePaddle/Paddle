@@ -100,20 +100,18 @@ class Optimizer(object):
                  weight_decay=None,
                  grad_clip=None,
                  name=None):
-        if not isinstance(parameters, (list, tuple, set)):
-            raise TypeError(
-                "`parameters` argument given to the optimizer should be "
-                "an iterable of paddle Tensors, but got argument type is `{}`.".
-                format(type(parameters)))
-
-        self._parameter_list = list(
-            parameters) if parameters is not None else None
-        for x in self._parameter_list:
-            if not isinstance(x, paddle.Tensor):
+        if parameters is not None:
+            # paddle.Tensor is also iterable, so here we don't check whether
+            # the input is iterable, if the input is paddle.Tensor, the
+            # list(paddle.Tensor) will be a error value
+            if isinstance(parameters, paddle.Tensor):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
-                    "an iterable of paddle Tensors, but got iterable member type is `{}`.".
-                    format(type(x)))
+                    "an iterable of paddle Tensors, but got argument type is `{}`.".
+                    format(type(parameters)))
+            self._parameter_list = list(parameters)
+        else:
+            self._parameter_list = None
 
         self._name = name
         if framework.in_dygraph_mode():

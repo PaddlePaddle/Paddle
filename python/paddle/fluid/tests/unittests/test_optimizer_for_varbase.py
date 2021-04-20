@@ -83,11 +83,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         with self.assertRaises(TypeError):
             optimizer.Adam(learning_rate=self.lr, parameters=x)
 
-    def test_optimizer_with_np_input_list(self):
-        x = np.zeros([2, 3])
-        with self.assertRaises(TypeError):
-            optimizer.Adam(learning_rate=self.lr, parameters=[x])
-
 
 if __name__ == "__main__":
     unittest.main()
