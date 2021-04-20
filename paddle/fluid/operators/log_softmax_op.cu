@@ -388,7 +388,7 @@ __global__ void ComputeLogSoftmaxBackwardInWarp(const T *output,
   constexpr int warp_iter = near_greater_power_of_two / kernel_warp_size;
   int batch_id = blockDim.y * blockIdx.x + threadIdx.y;
 
-  int thread_in_warp_idx = threadIdx.x % kernel_warp_size;
+  int thread_in_warp_idx = threadIdx.x;
 
   // 1.read data from global memory to registers
   AccT output_register[warp_iter];
@@ -464,13 +464,13 @@ class LogSoftmaxGradKernel<platform::CUDADeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *out = context.Input<framework::Tensor>("Out");
-    const auto *g_out =
+    const auto *d_out =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *g_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
 
     const auto *out_data = out->data<T>();
-    const auto *g_out_data = g_out->data<T>();
-    auto *g_x_data = g_x->mutable_data<T>(context.GetPlace());
+    const auto *d_out_data = d_out->data<T>();
+    auto *d_x_data = d_x->mutable_data<T>(context.GetPlace());
 
     const int rank = out->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
@@ -485,11 +485,11 @@ class LogSoftmaxGradKernel<platform::CUDADeviceContext, T>
 
     if (inner_size == 1 && dim_size <= 1024 && dim_size * sizeof(T) <= 4096) {
       LaunchSoftmaxBackwardForLastAxis<T, MPDType>(
-          g_x_data, g_out_data, out_data, dim_size, outer_size, stream);
+          d_x_data, d_out_data, out_data, dim_size, outer_size, stream);
     } else {
       LogSoftmaxGradFunctor<platform::CUDADeviceContext, T>()(
           context.template device_context<platform::CUDADeviceContext>(), out,
-          g_out, g_x, axis);
+          d_out, d_x, axis);
     }
   }
 };
