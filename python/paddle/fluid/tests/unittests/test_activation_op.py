@@ -137,11 +137,11 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
 class TestSiluAPI(unittest.TestCase):
-    # test paddle.nn.silu, paddle.nn.functional.silu
+    # test paddle.nn.Silu, paddle.nn.functional.silu
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
