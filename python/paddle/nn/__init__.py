@@ -83,6 +83,7 @@ from .layer.common import Dropout  #DEFINE_ALIAS
 from .layer.common import Dropout2D  #DEFINE_ALIAS
 from .layer.common import Dropout3D  #DEFINE_ALIAS
 from .layer.common import AlphaDropout  #DEFINE_ALIAS
+from .layer.common import Unfold  #DEFINE_ALIAS
 
 from .layer.pooling import AvgPool1D  #DEFINE_ALIAS
 from .layer.pooling import AvgPool2D  #DEFINE_ALIAS
@@ -150,6 +151,8 @@ from .layer.transformer import Transformer
 from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
 from .layer.vision import PixelShuffle
+
+from .layer.container import LayerDict  #DEFINE_ALIAS
 
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
