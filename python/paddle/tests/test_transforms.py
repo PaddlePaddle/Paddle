@@ -540,11 +540,14 @@ class TestFunctional(unittest.TestCase):
         np_reseized_img = F.resize(np_img, 40)
         pil_reseized_img = F.resize(pil_img, 40)
         tensor_reseized_img = F.resize(tensor_img, 40)
+        tensor_reseized_img2 = F.resize(tensor_img, (46, 40))
 
         np.testing.assert_almost_equal(np_reseized_img,
                                        np.array(pil_reseized_img))
         np.testing.assert_almost_equal(
             np_reseized_img, tensor_reseized_img.numpy().transpose(1, 2, 0))
+        np.testing.assert_almost_equal(
+            np_reseized_img, tensor_reseized_img2.numpy().transpose(1, 2, 0))
 
         gray_img = (np.zeros([28, 32])).astype('uint8')
         gray_resize_img = F.resize(gray_img, 40)

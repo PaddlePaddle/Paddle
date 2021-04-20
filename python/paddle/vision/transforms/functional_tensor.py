@@ -252,11 +252,13 @@ def rotate(img,
     w, h = _get_image_size(img, data_format=data_format)
 
     # image center is (0, 0) in matrix
-    translate = None
-    if translate is None:
-        post_trans = [0, 0]
-    else:
-        post_trans = translate
+    # translate = None
+    # if translate is None:
+    #     post_trans = [0, 0]
+    # else:
+    #     post_trans = translate
+
+    post_trans = [0, 0]
 
     if center is None:
         rotn_center = [0, 0]
