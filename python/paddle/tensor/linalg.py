@@ -13,28 +13,13 @@
 # limitations under the License.
 
 import numpy as np
-from paddle.common_ops_import import *
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from ..fluid.framework import in_dygraph_mode, _varbase_creator
 
-from ..fluid.layers import transpose  #DEFINE_ALIAS
-
-__all__ = [
-    'matmul',
-    'dot',
-    #       'einsum',
-    'norm',
-    'transpose',
-    'dist',
-    't',
-    'cross',
-    'cholesky',
-    #       'tensordot',
-    'bmm',
-    'histogram',
-    'mv'
-]
+from ..fluid.layers import transpose  # noqa: F401
+from paddle.common_ops_import import core
+from paddle.common_ops_import import VarDesc
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):

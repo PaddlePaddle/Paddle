@@ -17,8 +17,6 @@ import numpy as np
 from paddle.fluid.layers import core
 from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
-__all__ = ['set_printoptions']
-
 
 class PrintOptions(object):
     precision = 8
