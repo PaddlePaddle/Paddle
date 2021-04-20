@@ -33,7 +33,7 @@ from paddle.fluid import core
 from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _pickle_loads_mac
 from paddle.fluid.io import _legacy_save as _legacy_static_save
 
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, _current_expected_place
+from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, _current_expected_place, Program
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -453,8 +453,11 @@ def save(obj, path, protocol=2, **configs):
         warnings.warn(
             "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
         )
-
-    if _use_legacy(obj):
+    if isinstance(obj, Program):
+        obj.desc.flush()
+        with open(path, "wb") as f:
+            f.write(obj.desc.serialize_to_string())
+    elif _use_legacy(obj):
         if in_dygraph_mode():
             _legacy_save(obj, path, protocol)
         else:
@@ -627,46 +630,56 @@ def load(path, **configs):
 
     if os.path.isfile(path):
         config = _parse_load_config(configs)
-        with open(path, 'rb') as f:
-            # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-            if sys.platform == 'darwin' and sys.version_info.major == 3:
-                load_result = _pickle_loads_mac(path, f)
-            else:
-                load_result = pickle.load(f) if six.PY2 else pickle.load(
-                    f, encoding='latin1')
+        if six.PY2:
+            exception_type = KeyError
+        else:
+            exception_type = pickle.UnpicklingError
+        try:
+            with open(path, 'rb') as f:
+                # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+                if sys.platform == 'darwin' and sys.version_info.major == 3:
+                    load_result = _pickle_loads_mac(path, f)
+                else:
+                    load_result = pickle.load(f) if six.PY2 else pickle.load(
+                        f, encoding='latin1')
 
-            # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
-            if isinstance(load_result, dict):
+                # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
                 if isinstance(load_result, dict):
-                    load_result = _pack_loaded_dict(load_result)
-                # paddle2.0: paddle.save/load
-                if "StructuredToParameterName@@" in load_result:
+                    if isinstance(load_result, dict):
+                        load_result = _pack_loaded_dict(load_result)
+                    # paddle2.0: paddle.save/load
+                    if "StructuredToParameterName@@" in load_result:
 
-                    for key in load_result["StructuredToParameterName@@"]:
-                        load_result[key] = _ndarray_to_tensor(
-                            load_result[key], config.return_numpy)
+                        for key in load_result["StructuredToParameterName@@"]:
+                            load_result[key] = _ndarray_to_tensor(
+                                load_result[key], config.return_numpy)
 
-                    if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
-                        del load_result["StructuredToParameterName@@"]
+                        if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
+                            del load_result["StructuredToParameterName@@"]
+                    else:
+                        # paddle2.1 static.save/load
+                        for key in load_result:
+                            load_result[key] = _ndarray_to_tensor(
+                                load_result[key], config.return_numpy)
+
                 else:
-                    # paddle2.1 static.save/load
-                    for key in load_result:
-                        load_result[key] = _ndarray_to_tensor(
-                            load_result[key], config.return_numpy)
-
-            else:
-                # TODO(weixin): support complex objects such as layer.
-                # If `obj` is any object, the judgment condition should be more precise.
-                if _transformed_from_lodtensor(load_result):
-                    load_result = _ndarray_to_tensor(load_result,
-                                                     config.return_numpy)
-                elif _transformed_from_varbase(load_result):
-                    load_result = _tuple_to_tensor(load_result,
-                                                   config.return_numpy)
-                else:
-                    raise NotImplementedError(
-                        'Only support tensor and state_dict, but received {}.'.
-                        format(type(load_result)))
+                    # TODO(weixin): support complex objects such as layer.
+                    # If `obj` is any object, the judgment condition should be more precise.
+                    if _transformed_from_lodtensor(load_result):
+                        load_result = _ndarray_to_tensor(load_result,
+                                                         config.return_numpy)
+                    elif _transformed_from_varbase(load_result):
+                        load_result = _tuple_to_tensor(load_result,
+                                                       config.return_numpy)
+                    else:
+                        raise NotImplementedError(
+                            'Only support tensor and state_dict, but received {}.'.
+                            format(type(load_result)))
+        except exception_type:
+            with open(path, "rb") as f:
+                program_desc_str = f.read()
+                program = Program.parse_from_string(program_desc_str)
+                return program
 
     else:
         load_result = _legacy_load(path, **configs)
