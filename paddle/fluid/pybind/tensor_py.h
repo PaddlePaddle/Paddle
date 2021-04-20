@@ -293,8 +293,8 @@ void SetTensorFromPyArrayT(
         BOOST_GET_CONST(platform::NPUPlace, tmp_place).device);
     auto dst = self->mutable_data<T>(place);
 
-    src_place = platform::CPUPlace();
-    Tensor src_tensor(dst->type());
+    auto src_place = platform::CPUPlace();
+    framework::Tensor src_tensor;
     src_tensor.Resize(framework::make_ddim(dims));
     auto src_tensor_ptr =
         static_cast<void *>(src_tensor.mutable_data<T>(src_place));
@@ -310,7 +310,6 @@ void SetTensorFromPyArrayT(
       VLOG(4) << "Run callback of var at place " << src_place
               << " in SetTensorFromPyArrayT";
     };
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     auto npu_stream =
         static_cast<platform::NPUDeviceContext *>(dev_ctx)->NPUstream();
     npu_stream->AddCallback(callback);
