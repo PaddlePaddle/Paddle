@@ -28,10 +28,8 @@
 #endif
 
 #if !defined(GCC_WITHOUT_INTRINSICS) && !defined(PADDLE_WITH_ARM) && \
-    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
-#if !defined(_WIN32) || defined(PADDLE_WITH_MKL)
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && !defined(_WIN32)
 #define DENORM_USE_INTRINSICS
-#endif
 #endif
 
 #ifdef DENORM_USE_INTRINSICS
