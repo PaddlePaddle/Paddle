@@ -112,7 +112,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     base_group.add_argument(
         "--run_mode",
         type=str,
-        default="collective",
+        default=None,
         help="run mode of job, can be:collective/ps/ps-heter")
 
     if fluid.core.is_compiled_with_cuda():
