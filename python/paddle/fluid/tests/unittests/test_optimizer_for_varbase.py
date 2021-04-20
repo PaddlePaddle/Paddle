@@ -83,6 +83,40 @@ class TestOptimizerForVarBase(unittest.TestCase):
         with self.assertRaises(TypeError):
             optimizer.Adam(learning_rate=self.lr, parameters=x)
 
+    def test_create_param_lr_with_1_for_coverage(self):
+        x = paddle.fluid.framework.ParamBase(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="x",
+            optimize_attr={'learning_rate': 1.0})
+        x.value().get_tensor().set(
+            np.random.random((5, 10)).astype('float32'),
+            paddle.fluid.framework._current_expected_place())
+
+        y = paddle.ones([5, 10])
+        z = x + y
+        opt = optimizer.Adam(learning_rate=self.lr, parameters=[x])
+        z.backward()
+        opt.step()
+
+    def test_create_param_lr_with_no_1_value_for_coverage(self):
+        x = paddle.fluid.framework.ParamBase(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="x",
+            optimize_attr={'learning_rate': 0.12})
+        x.value().get_tensor().set(
+            np.random.random((5, 10)).astype('float32'),
+            paddle.fluid.framework._current_expected_place())
+
+        y = paddle.ones([5, 10])
+        z = x + y
+        opt = optimizer.Adam(learning_rate=self.lr, parameters=[x])
+        z.backward()
+        opt.step()
+
 
 if __name__ == "__main__":
     unittest.main()
