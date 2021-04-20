@@ -176,18 +176,9 @@ void TensorFromVector(const std::vector<T>& src,
         static_cast<void*>(src_tensor.mutable_data<T>(src_place));
     // src_place = platform::CPUPlace();
     memory::Copy(src_place, src_tensor_ptr, src_place, src_ptr, size);
-    // Tensor* src_tensor;
-    // src_tensor->Resize({static_cast<int64_t>(src.size())});
-    // auto src_tensor_ptr =
-    // static_cast<void*>(src_tensor->mutable_data<T>(src_place));
-    // //src_place = platform::CPUPlace();
-    // memory::Copy(src_place, src_tensor_ptr,
-    //              src_place, src_ptr, size);
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
                  src_place, src_tensor_ptr, size, stream);
     auto callback = [src_tensor, src_place]() {
-      // VLOG(4) << "Run callback of var:" << src_tensor->Name() << " at place "
-      //         << src_place << " in memory::Copy.";
       VLOG(4) << "Run callback of var at place " << src_place
               << " in TensorFromVector";
     };

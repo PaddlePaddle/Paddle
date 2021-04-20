@@ -20,6 +20,8 @@ namespace paddle {
 namespace platform {
 namespace stream {
 
+static bool is_callback_exec_ = false;
+
 bool NPUStream::Init(const Place& place) {
   PADDLE_ENFORCE_EQ(is_npu_place(place), true,
                     platform::errors::InvalidArgument(

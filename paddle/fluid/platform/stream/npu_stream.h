@@ -28,8 +28,6 @@ namespace stream {
 
 #ifdef PADDLE_WITH_ASCEND_CL
 
-static bool is_callback_exec_ = false;
-
 class NPUStream final {
  public:
   NPUStream() = default;
