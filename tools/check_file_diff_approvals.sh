@@ -53,6 +53,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
            "tools/wlist.json"
+           "tools/sampcd_processor.py"
            "paddle/scripts/paddle_build.bat"
            "tools/windows/run_unittests.sh"
            "tools/parallel_UT_rule.py"
@@ -79,6 +80,12 @@ function add_failed(){
     echo_list="${echo_list[@]}$1"
 }
 
+function run_test_sampcd_processor() {
+    CUR_PWD=$(pwd)
+    cd ${PADDLE_ROOT}/tools
+    python test_sampcd_processor.py
+    cd ${CUR_PWD}
+}
 
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
     echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content.\n"
@@ -136,6 +143,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "tools/wlist.json" ];then
           echo_line="You must have one TPM (jzhang533) approval for the api whitelist for the tools/wlist.json.\n"
           check_approval 1 29231
+      elif [ "${API_FILE}" == "tools/sampcd_processor.py" ];then
+          echo_line="test_sampcd_processor.py will be executed for changed sampcd_processor.py.\n"
+          run_test_sampcd_processor
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
 	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
 	      check_approval 1 35824027 38231817

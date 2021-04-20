@@ -151,6 +151,8 @@ from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
 from .layer.vision import PixelShuffle
 
+from .layer.container import LayerDict  #DEFINE_ALIAS
+
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
 from .layer import vision  #DEFINE_ALIAS

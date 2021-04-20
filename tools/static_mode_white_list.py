@@ -421,6 +421,8 @@ STATIC_MODE_TESTING_LIST = [
     'test_reader_reset',
     'test_recurrent_op',
     'test_reduce_op',
+    'test_reduce_mkldnn_op',
+    'test_reduce_bf16_mkldnn_op',
     'test_ref_by_trainer_id_op',
     'test_registry',
     'test_regularizer',
@@ -701,4 +703,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_generate_proposals_v2_op',
     'test_lamb_op_xpu',
     'test_model_cast_to_bf16',
+    'test_sgd_op_bf16',
 ]

@@ -87,7 +87,7 @@ class ValueBlock {
         value_dims_(value_dims),
         value_offsets_(value_offsets),
         value_idx_(value_idx) {
-    for (int x = 0; x < value_dims.size(); ++x) {
+    for (size_t x = 0; x < value_dims.size(); ++x) {
       value_length_ += value_dims[x];
     }
 
@@ -96,13 +96,15 @@ class ValueBlock {
       auto slices = string::split_string<std::string>(entry_attr, ":");
       if (slices[0] == "none") {
         entry_func_ = std::bind(&count_entry, std::placeholders::_1, 0);
+        threshold_ = 0;
       } else if (slices[0] == "count_filter_entry") {
-        int threshold = std::stoi(slices[1]);
-        entry_func_ = std::bind(&count_entry, std::placeholders::_1, threshold);
-      } else if (slices[0] == "probability_entry") {
-        float threshold = std::stof(slices[1]);
+        threshold_ = std::stoi(slices[1]);
         entry_func_ =
-            std::bind(&probility_entry, std::placeholders::_1, threshold);
+            std::bind(&count_entry, std::placeholders::_1, threshold_);
+      } else if (slices[0] == "probability_entry") {
+        threshold_ = std::stof(slices[1]);
+        entry_func_ =
+            std::bind(&probility_entry, std::placeholders::_1, threshold_);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Not supported Entry Type : %s, Only support [CountFilterEntry, "
@@ -155,7 +157,8 @@ class ValueBlock {
   }
 
   // pull
-  float *Init(const uint64_t &id, const bool with_update = true) {
+  float *Init(const uint64_t &id, const bool with_update = true,
+              const int counter = 1) {
     if (!Has(id)) {
       values_[id] = std::make_shared<VALUE>(value_length_);
     }
@@ -163,22 +166,37 @@ class ValueBlock {
     auto &value = values_.at(id);
 
     if (with_update) {
-      AttrUpdate(value);
+      AttrUpdate(value, counter);
     }
 
     return value->data_.data();
   }
 
-  void AttrUpdate(std::shared_ptr<VALUE> value) {
+  VALUE *InitGet(const uint64_t &id, const bool with_update = true,
+                 const int counter = 1) {
+    if (!Has(id)) {
+      values_[id] = std::make_shared<VALUE>(value_length_);
+    }
+
+    auto &value = values_.at(id);
+
+    if (with_update) {
+      AttrUpdate(value, counter);
+    }
+
+    return value.get();
+  }
+
+  void AttrUpdate(std::shared_ptr<VALUE> value, const int counter) {
     // update state
     value->unseen_days_ = 0;
-    ++value->count_;
+    value->count_ += counter;
 
     if (!value->is_entry_) {
       value->is_entry_ = entry_func_(value);
       if (value->is_entry_) {
         // initialize
-        for (int x = 0; x < value_names_.size(); ++x) {
+        for (size_t x = 0; x < value_names_.size(); ++x) {
           initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
                                      value_dims_[x]);
         }
@@ -223,6 +241,8 @@ class ValueBlock {
     return;
   }
 
+  float GetThreshold() { return threshold_; }
+
  private:
   bool Has(const uint64_t id) {
     auto got = values_.find(id);
@@ -245,6 +265,7 @@ class ValueBlock {
 
   std::function<bool(std::shared_ptr<VALUE>)> entry_func_;
   std::vector<std::shared_ptr<Initializer>> initializers_;
+  float threshold_;
 };
 
 }  // namespace distributed

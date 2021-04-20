@@ -200,6 +200,8 @@ CUDA_ATOMIC_WRAPPER(Max, float) {
 
     old = atomicCAS(address_as_i, assumed, __float_as_int(val));
   } while (assumed != old);
+
+  return __int_as_float(old);
 }
 
 CUDA_ATOMIC_WRAPPER(Max, double) {
@@ -219,6 +221,8 @@ CUDA_ATOMIC_WRAPPER(Max, double) {
 
     old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val));
   } while (assumed != old);
+
+  return __longlong_as_double(old);
 }
 
 // For atomicMin
@@ -272,6 +276,8 @@ CUDA_ATOMIC_WRAPPER(Min, float) {
 
     old = atomicCAS(address_as_i, assumed, __float_as_int(val));
   } while (assumed != old);
+
+  return __int_as_float(old);
 }
 
 CUDA_ATOMIC_WRAPPER(Min, double) {
@@ -291,6 +297,8 @@ CUDA_ATOMIC_WRAPPER(Min, double) {
 
     old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val));
   } while (assumed != old);
+
+  return __longlong_as_double(old);
 }
 
 }  // namespace platform
