@@ -613,6 +613,8 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
+        np.testing.assert_equal(rotated_np_img.shape,
+                                rotated_tensor_img1.shape[::-1])
 
     def test_rotate1(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
