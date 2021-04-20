@@ -1738,6 +1738,7 @@ REGISTER_OP_CUDA_KERNEL(bilinear_interp_v2_grad,
 REGISTER_OP_CUDA_KERNEL(nearest_interp_v2,
                         ops::InterpolateOpV2CUDAKernel<float>,
                         ops::InterpolateOpV2CUDAKernel<double>,
+                        ops::InterpolateOpV2CUDAKernel<int64_t>,
                         ops::InterpolateOpV2CUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(nearest_interp_v2_grad,
                         ops::InterpolateV2GradOpCUDAKernel<float>,
