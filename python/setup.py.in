@@ -519,9 +519,10 @@ else:
         long_description = unicode(f.read(), 'UTF-8')
 
 # strip *.so to reduce package size
-command = 'find ${PADDLE_BINARY_DIR}/python/paddle -name "*.so" | xargs -i strip {}'
-if os.system(command) != 0:
-    raise Exception("strip *.so failed, command: %s" % command)
+if '${WITH_STRIP}' == 'ON':
+    command = 'find ${PADDLE_BINARY_DIR}/python/paddle -name "*.so" | xargs -i strip {}'
+    if os.system(command) != 0:
+        raise Exception("strip *.so failed, command: %s" % command)
 
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
