@@ -33,7 +33,7 @@ from paddle.fluid import core
 from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _pickle_loads_mac
 from paddle.fluid.io import _legacy_save as _legacy_static_save
 
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, _current_expected_place
+from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, _current_expected_place, Program
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -488,8 +488,25 @@ def save(obj, path, protocol=2, **configs):
         raise TypeError(
             "Type of `use_binary_format` should be bool, but received {}.".
             format(type(config.use_binary_format)))
+
     if config.use_binary_format:
         _save_binary_var(obj, path)
+
+    # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
+    if config.pickle_protocol is not None:
+        protocol = config.pickle_protocol
+        warnings.warn(
+            "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
+        )
+    if isinstance(obj, Program):
+        obj.desc.flush()
+        with open(path, "wb") as f:
+            f.write(obj.desc.serialize_to_string())
+    elif _use_legacy(obj):
+        if in_dygraph_mode():
+            _legacy_save(obj, path, protocol)
+        else:
+            _legacy_static_save(obj, path, protocol)
     else:
         # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
         if config.pickle_protocol is not None:
@@ -726,8 +743,16 @@ def load(path, **configs):
                     tensor, _ = _load_lod_tensor(path)
                     return tensor
                 except:
-                    raise ValueError(
-                        "`paddle.load` can not parse the file:{}.".format(path))
+                    try:
+                        with open(path, "rb") as f:
+                            program_desc_str = f.read()
+                            program = Program.parse_from_string(
+                                program_desc_str)
+                            return program
+                    except:
+                        raise ValueError(
+                            "`paddle.load` can not parse the file:{}.".format(
+                                path))
 
     else:
         load_result = _legacy_load(path, **configs)

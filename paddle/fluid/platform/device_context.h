@@ -85,6 +85,7 @@ namespace platform {
 void SetAllowTF32Cublas(bool active);
 /*Get the global variable allow_tf32_cublas value*/
 bool AllowTF32Cublas();
+extern bool allow_tf32_cudnn;
 /*Set the value of the global variable allow_tf32_cudnn*/
 void SetAllowTF32Cudnn(bool active);
 /*Get the global variable allow_tf32_cudnn value*/
@@ -195,6 +196,13 @@ class NPUDeviceContext : public DeviceContext {
   /*! \brief  Set bkcl context. */
   void set_hccl_context(HCCLContext_t context) { hccl_context_ = context; }
 #endif
+
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return stream_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
  private:
   NPUPlace place_;

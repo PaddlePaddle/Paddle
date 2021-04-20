@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {

@@ -109,6 +109,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/npu_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -629,11 +630,6 @@ PYBIND11_MODULE(core_noavx, m) {
     return vectorize(operators::details::BroadcastTwoDims(
         make_ddim(x_dim), make_ddim(y_dim), -1));
   });
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  m.def("_npu_finalize",
-        []() { platform::AclInstance::Instance().Finalize(); });
-#endif
 
   m.def(
       "_append_python_callable_object_and_return_id",
@@ -1793,7 +1789,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "Cannot use NPU because you have installed CPU/GPU version "
                  "PaddlePaddle.\n"
                  "If you want to use NPU, please try to install NPU version "
-                 "PaddlePaddle by: pip install paddlepaddle-xpu\n"
+                 "PaddlePaddle by: pip install paddlepaddle-npu\n"
                  "If you only have CPU, please change NPUPlace(%d) to be "
                  "CPUPlace().\n",
                  dev_id);
@@ -2227,6 +2223,31 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  m.def("get_npu_device_count", platform::GetNPUDeviceCount);
+  m.def("_npu_finalize", []() {
+    platform::AclInstance::Instance().Finalize();
+  });  // private interface
+
+  py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
+
+  m.def("npu_prof_init", platform::NPUProfilerInit);
+  m.def("npu_prof_start", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerStart(c.ptr());
+  });
+  m.def("npu_prof_stop", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerStop(c.ptr());
+  });
+  m.def("npu_prof_finalize", platform::NPUProfilerFinalize);
+  m.def("npu_prof_create_config", []() {
+    return platform::NPUProfConfigWrapper(platform::NPUProfilerCreateConfig());
+  });
+
+  m.def("npu_prof_destropy_config", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerDestroyConfig(c.ptr());
+  });
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
@@ -3101,8 +3122,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_PSLIB
   BindHeterWrapper(&m);
 #endif
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);
 #endif
   BindGlooWrapper(&m);
@@ -3142,6 +3162,11 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraphPyService(&m);
   BindGraphPyServer(&m);
   BindGraphPyClient(&m);
+  BindIndexNode(&m);
+  BindTreeIndex(&m);
+  BindIndexWrapper(&m);
+  BindIndexSampler(&m);
+
 #endif
 }
 }  // namespace pybind

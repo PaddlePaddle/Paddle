@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -163,8 +163,11 @@ size_t NPUInitAllocSize() { return NPUAllocSize(/* realloc = */ false); }
 size_t NPUReallocSize() { return NPUAllocSize(/* realloc = */ true); }
 
 size_t NPUMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
+  // NOTE(zhiqiu): It seems the min chunk size should be 512 on NPU,
+  // though no document specify that explicitly.
+  // See https://gitee.com/zhiqiuchen/Ascend/tree/master/test_reduce_sum_d for
+  // details.
+  return 1 << 9;
 }
 
 size_t NPUMaxChunkSize() {

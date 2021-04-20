@@ -25,7 +25,7 @@ __all__ = [
 import numpy as np
 from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode
-from ...fluid import core, dygraph_utils
+from ...fluid import core, dygraph_utils, get_flags
 from ...fluid.layers import nn, utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
@@ -551,6 +551,13 @@ def conv2d(x,
     if (num_channels == groups and num_channels != 1 and
             num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
+        if core.is_compiled_with_rocm():
+            use_cudnn = True
+        else:
+            use_cudnn = False
+
+    if (core.is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")
+        ["FLAGS_conv2d_disable_cudnn"]):
         use_cudnn = False
 
     return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
