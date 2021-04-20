@@ -34,14 +34,14 @@ class TestHub(unittest.TestCase):
             'lyuwenyu/paddlehub_demo:main',
             model='MM',
             source='github',
-            force_reload=True,
+            force_reload=False,
             pretrained=True)
 
         model = hub.load(
             'lyuwenyu/paddlehub_demo',
             model='MM',
             source='github',
-            force_reload=True,
+            force_reload=False,
             pretrained=False)
 
         data = paddle.rand((1, 3, 100, 100))
@@ -54,7 +54,7 @@ class TestHub(unittest.TestCase):
             'lyuwenyu/paddlehub_demo:main',
             model='MM',
             source='github',
-            force_reload=True)
+            force_reload=False)
 
         docs = hub.load(
             'lyuwenyu/paddlehub_demo',
@@ -66,10 +66,10 @@ class TestHub(unittest.TestCase):
         models = hub.list(
             'lyuwenyu/paddlehub_demo:main',
             source='github',
-            force_reload=True, )
+            force_reload=False, )
 
         models = hub.list(
-            'lyuwenyu/paddlehub_demo', source='github', force_reload=True)
+            'lyuwenyu/paddlehub_demo', source='github', force_reload=False)
 
 
 if __name__ == '__main__':
