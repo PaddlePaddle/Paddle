@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 

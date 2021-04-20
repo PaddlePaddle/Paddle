@@ -187,6 +187,7 @@ def init_communicator(program, rank, nranks, wait_port, current_endpoint,
                 'rank_ids': nranks
             })
 
+
 def prepare_distributed_context(place=None):
     if place is None:
         place = fluid.CUDAPlace(ParallelEnv().dev_id) if ParallelEnv().nranks > 1 \
