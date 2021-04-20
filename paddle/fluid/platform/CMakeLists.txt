@@ -10,6 +10,12 @@ ELSE()
   set(XPU_CTX_DEPS)
 endif(WITH_XPU)
 
+if(WITH_ASCEND)
+    set(ASCEND_DEPS xpulib)
+ELSE()
+  set(ASCEND_DEPS)
+endif(WITH_ASCEND)
+
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -66,6 +72,14 @@ if(WITH_XPU)
 cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce xpulib)
 endif()
 
+if(WITH_ASCEND)
+    cc_library(ascend_npu_info SRCS ascend_npu_info.cc DEPS gflags glog enforce atlas_acl)
+endif()
+
+if(WITH_ASCEND_CL)
+    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
+endif()
+
 add_subdirectory(dynload)
 add_subdirectory(stream)
 
@@ -81,11 +95,20 @@ IF(WITH_GPU OR WITH_ROCM)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
 ENDIF()
 
+IF(WITH_ASCEND_CL)
+    set(NPU_CTX_DEPS npu_stream npu_info)
+ENDIF()
+
 IF(WITH_MKLDNN)
     set(MKLDNN_CTX_DEPS mkldnn)
 ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
+
+IF(WITH_ASCEND_CL)
+cc_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
+ENDIF()
+
 IF(WITH_GPU)
     nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
 ENDIF()
@@ -94,6 +117,8 @@ IF(WITH_ROCM)
 ENDIF()
 
 IF(WITH_GPU OR WITH_ROCM)
+  set(STREAM_CALLBACK_DEPS stream_callback_manager)
+ELSEIF(WITH_ASCEND_CL)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
 ELSE()
   set(STREAM_CALLBACK_DEPS)
@@ -108,7 +133,7 @@ cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS})
 
 cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEPS framework_proto  device_context enforce)
@@ -116,6 +141,11 @@ cc_library(collective_helper SRCS collective_helper.cc gen_comm_id_helper.cc DEP
 if(WITH_GPU OR WITH_ROCM)
     cc_library(cuda_resource_pool SRCS cuda_resource_pool.cc DEPS gpu_info)
     target_link_libraries(device_context cuda_resource_pool)
+endif()
+
+if(WITH_ASCEND_CL)
+    cc_library(npu_resource_pool SRCS npu_resource_pool.cc DEPS npu_info)
+    target_link_libraries(device_context npu_resource_pool)
 endif()
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)

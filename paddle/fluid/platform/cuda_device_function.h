@@ -26,13 +26,9 @@ namespace platform {
 #ifdef PADDLE_WITH_HIP
 #define CREATE_SHFL_MASK(mask, predicate) mask = __ballot((predicate))
 #else
-#if CUDA_VERSION < 9000
-#define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
-#else
 #define FULL_WARP_MASK 0xFFFFFFFF
 #define CREATE_SHFL_MASK(mask, predicate) \
   mask = __ballot_sync(FULL_WARP_MASK, (predicate))
-#endif
 #endif
 
 inline static int RoundToPowerOfTwo(int dim) {
@@ -69,7 +65,7 @@ template <typename T>
 __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
                                                  int delta,
                                                  int width = warpSize) {
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
   return __shfl_down(val, delta, width);
 #else
   return __shfl_down_sync(mask, val, static_cast<unsigned>(delta), width);
@@ -79,7 +75,7 @@ __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
 template <typename T>
 __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
                                                 int width = warpSize) {
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
   return __shfl_xor(val, width);
 #else
   return __shfl_xor_sync(mask, val, width);
@@ -87,7 +83,7 @@ __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
 }
 
 // CUDA 9.0 have native compatible float16 shfl_down
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
 template <>
 __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                                        float16 val, int delta,
@@ -170,7 +166,7 @@ __forceinline__ __device__ paddle::platform::complex128 CudaShuffleXorSync(
 template <typename T>
 __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
                                              int width = 32) {
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
   return __shfl(val, src_line, width);
 #else
   return __shfl_sync(mask, val, src_line, width);

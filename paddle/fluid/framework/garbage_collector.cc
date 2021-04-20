@@ -86,8 +86,9 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
   PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream_));
 #else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
+  callback_manager_.reset(
+      new platform::StreamCallbackManager<gpuStream_t>(stream_));
 #endif
-  callback_manager_.reset(new platform::StreamCallbackManager(stream_));
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
@@ -119,6 +120,32 @@ void CUDAPinnedGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback();
 }
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+NPUDefaultStreamGarbageCollector::NPUDefaultStreamGarbageCollector(
+    const platform::NPUPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void NPUDefaultStreamGarbageCollector::Wait() const {
+  static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
+      ->WaitStreamCallback();
+}
+
+void NPUDefaultStreamGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
+      ->AddStreamCallback(callback);
+}
+NPUUnsafeFastGarbageCollector::NPUUnsafeFastGarbageCollector(
+    const platform::NPUPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void NPUUnsafeFastGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
+}
+
 #endif
 
 int64_t GetEagerDeletionThreshold() {

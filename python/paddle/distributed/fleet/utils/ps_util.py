@@ -16,6 +16,7 @@
 import numpy as np
 import os
 import paddle
+import warnings
 
 
 class DistributedInfer:
@@ -104,8 +105,6 @@ class DistributedInfer:
                 vars=need_load_vars)
 
     def get_dist_infer_program(self):
-        import paddle.distributed.fleet as fleet
-
         varname2tables = self._get_sparse_table_map()
         convert_program = self._convert_program(self.origin_main_program,
                                                 varname2tables)
@@ -185,6 +184,7 @@ class DistributedInfer:
                                 "is_distributed": is_distributed,
                                 "padding_idx": padding_idx,
                                 "table_id": table_id,
+                                "is_test": True,
                                 "lookup_table_version": op_type
                             })
                     else:
@@ -193,6 +193,9 @@ class DistributedInfer:
                         )
 
             pull_sparse_ops = _get_pull_sparse_ops(program)
+            warnings.warn(
+                "lookup_table will be forced to test mode when use DistributedInfer"
+            )
             _pull_sparse_fuse(program, pull_sparse_ops)
             return program
 

@@ -149,12 +149,16 @@ packages=['paddle',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
+          'paddle.distributed.fleet.meta_optimizers.ascend',
+          'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
           'paddle.distributed.fleet.runtime',
           'paddle.distributed.fleet.dataset',
           'paddle.distributed.fleet.data_generator',
           'paddle.distributed.fleet.metrics',
           'paddle.distributed.fleet.proto',
           'paddle.distributed.fleet.utils',
+          'paddle.distributed.fleet.meta_parallel',
+          'paddle.distributed.fleet.meta_parallel.mp_utils',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -216,6 +220,7 @@ packages=['paddle',
           'paddle.static.amp',
           'paddle.tensor',
           'paddle.onnx',
+          'paddle.autograd',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -349,10 +354,6 @@ if '${WITH_XPU}' == 'OFF' and '${XPU_SDK_ROOT}' != '':
 
 
 ### New custom op extension mechanism related ###
-# copy libpaddle_custom_op.so to libs on linux
-if sys.platform.startswith('linux'):
-    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
-    package_data['paddle.libs'] += ['libpaddle_custom_op.so']
 
 # copy paddle_custom_op.lib/paddle_custom_op.dll to libs on Windows
 if os.name == 'nt':
@@ -511,10 +512,10 @@ else:
 
 # Log for PYPI
 if sys.version_info > (3,0):
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
         long_description = f.read()
 else:
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r")as f:
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r")as f:
         long_description = unicode(f.read(), 'UTF-8')
 
 with redirect_stdout():

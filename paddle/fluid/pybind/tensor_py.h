@@ -295,6 +295,22 @@ void SetTensorFromPyArrayT(
         "Cannot use XPUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
+  } else if (paddle::platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    platform::Place tmp_place = place;
+    platform::NPUDeviceGuard guard(
+        BOOST_GET_CONST(platform::NPUPlace, tmp_place).device);
+    auto dst = self->mutable_data<T>(place);
+    platform::NPUMemcpySync(dst, array.data(), array.nbytes(),
+                            ACL_MEMCPY_HOST_TO_DEVICE);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(place);
+    ctx.Wait();
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use NPUPlace in CPU/GPU/XPU version. "
+        "Please recompile or reinstall Paddle with NPU support."));
+#endif
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (paddle::platform::is_gpu_place(place)) {
@@ -647,6 +663,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
+  bool is_npu_tensor = platform::is_npu_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = tensor.type();
   size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
@@ -665,7 +682,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
 
-  if (!is_gpu_tensor && !is_xpu_tensor) {
+  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()), py_dims, py_strides,
@@ -733,6 +750,34 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use CUDAPlace in CPU only version, "
         "Please recompile or reinstall Paddle with CUDA support."));
+#endif
+  } else if (is_npu_tensor) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                      platform::errors::InvalidArgument(
+                          "PyArray is not writable, in which case memory leak "
+                          "or double free would occur"));
+    PADDLE_ENFORCE_EQ(
+        py_arr.owndata(), true,
+        platform::errors::InvalidArgument(
+            "PyArray does not own data, in which case  memory leak "
+            "or double free would occur"));
+
+    size_t copy_bytes = sizeof_dtype * numel;
+    auto p = BOOST_GET_CONST(platform::NPUPlace, tensor.place());
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(tensor.place());
+    paddle::memory::Copy(
+        platform::CPUPlace(), py_arr.mutable_data(), p, tensor_buf_ptr,
+        copy_bytes,
+        reinterpret_cast<const platform::NPUDeviceContext &>(ctx).stream());
+    ctx.Wait();
+    return py_arr;
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use NPUPlace in CPU/GPU/XPU version, "
+        "Please recompile or reinstall Paddle with NPU support."));
 #endif
   }
   PADDLE_THROW(platform::errors::Unimplemented("Place is not supported"));

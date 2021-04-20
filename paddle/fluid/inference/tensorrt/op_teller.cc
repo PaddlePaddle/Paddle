@@ -45,6 +45,12 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
+    int8_teller_set.insert("multihead_matmul");
+    int8_teller_set.insert("skip_layernorm");
+    int8_teller_set.insert("fused_embedding_eltwise_layernorm");
+    int8_teller_set.insert("matmul");
+    int8_teller_set.insert("stack");
+    int8_teller_set.insert("slice");
 #endif
   }
 
@@ -114,8 +120,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "roi_align",
       "affine_channel",
-      "multiclass_nms",
       "nearest_interp",
+      "anchor_generator",
   };
 };
 
@@ -205,7 +211,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           (desc.HasAttr("class_num") && desc.HasAttr("anchors") &&
            desc.HasAttr("downsample_ratio") && desc.HasAttr("conf_thresh") &&
            desc.HasAttr("clip_bbox") && desc.HasAttr("scale_x_y"));
-      return has_attrs;
+      if (!has_attrs) return false;
     }
 
     if (op_type == "affine_channel") {

@@ -224,7 +224,7 @@ class TestPool3D_Op(OpTest):
     def setUp(self):
         self.op_type = "pool3d"
         self.init_kernel_type()
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
         self.init_paddings()
@@ -277,9 +277,16 @@ class TestPool3D_Op(OpTest):
             return
         if self.has_cudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, set(['X']), 'Out')
+            if core.is_compiled_with_rocm():
+                self.check_grad_with_place(
+                    place, set(['X']), 'Out', max_relative_error=1e-2)
+            else:
+                self.check_grad_with_place(place, set(['X']), 'Out')
         elif self.pool_type != "max":
-            self.check_grad(set(['X']), 'Out')
+            if core.is_compiled_with_rocm():
+                self.check_grad(set(['X']), 'Out', max_relative_error=1e-2)
+            else:
+                self.check_grad(set(['X']), 'Out')
 
     def init_data_format(self):
         self.data_format = "NCDHW"
@@ -400,7 +407,10 @@ def create_test_cudnn_fp16_class(parent):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=1e-3)
+                    if core.is_compiled_with_rocm():
+                        self.check_output_with_place(place, atol=1e-2)
+                    else:
+                        self.check_output_with_place(place, atol=1e-3)
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name

@@ -108,7 +108,9 @@ class MeshgridGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Out")).size(), 1,
                       platform::errors::InvalidArgument(
-                          "Number of Inputs(Out@Grad) must be larger than 1"));
+                          "Number of Inputs(Out@Grad) should be larger than 1."
+                          "But received Inputs(Out@Grad)' size = %d .",
+                          ctx->Inputs(framework::GradVarName("Out")).size()));
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
@@ -155,3 +157,17 @@ REGISTER_OP_CPU_KERNEL(
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, double>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
+REGISTER_OP_CUDA_KERNEL(
+    meshgrid, ops::MeshgridKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MeshgridKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MeshgridKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::MeshgridKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::MeshgridKernel<paddle::platform::CUDADeviceContext, bool>);
+REGISTER_OP_CUDA_KERNEL(
+    meshgrid_grad,
+    ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

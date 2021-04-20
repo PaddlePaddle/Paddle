@@ -27,6 +27,14 @@ void BindPSHost(py::module* m);
 void BindCommunicatorContext(py::module* m);
 void BindDistCommunicator(py::module* m);
 void BindHeterClient(py::module* m);
-
+void BindGraphNode(py::module* m);
+void BindGraphPyService(py::module* m);
+void BindGraphPyFeatureNode(py::module* m);
+void BindGraphPyServer(py::module* m);
+void BindGraphPyClient(py::module* m);
+void BindIndexNode(py::module* m);
+void BindTreeIndex(py::module* m);
+void BindIndexWrapper(py::module* m);
+void BindIndexSampler(py::module* m);
 }  // namespace pybind
 }  // namespace paddle

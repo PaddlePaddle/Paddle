@@ -209,6 +209,16 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
       platform::SetXPUDeviceId(dev_id);
 #endif
+    } else if (platform::is_npu_place(place)) {
+#ifndef PADDLE_WITH_ASCEND_CL
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with NPU support.",
+          place));
+#else
+      auto dev_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
+      platform::SetNPUDeviceId(dev_id);
+#endif
     }
 
     {
@@ -1226,7 +1236,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       }
     }
   }
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+  VLOG(3) << "op type:" << type_
+          << ", expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
@@ -1243,6 +1254,16 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   if (kernel_iter == kernels.end() &&
       is_xpu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing XPU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (kernel_iter == kernels.end() &&
+      is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing NPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();

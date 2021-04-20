@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-
 #include "glog/logging.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace memory {
@@ -78,13 +78,13 @@ bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
+  VLOG(4) << "DeviceContextPool Get: " << place;
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU or WITH_XPU option or check that your train process "
-        "hold the "
-        "correct gpu_id if you use Executor.",
+        "with WITH_GPU, WITH_XPU or WITH_ASCEND_CL option or check that "
+        "your train process set the correct device id if you use Executor.",
         place));
   }
   return it->second.get().get();
@@ -145,6 +145,14 @@ DeviceContextPool::DeviceContextPool(
       PADDLE_THROW(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
                                           "re-compile with WITH_XPU option."));
+#endif
+    } else if (platform::is_npu_place(p)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPlace is not supported. Please "
+          "re-compile with WITH_ASCEND_CL option."));
 #endif
     }
   }
@@ -229,8 +237,36 @@ Place XPUDeviceContext::GetPlace() const { return place_; }
 xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_ASCEND_CL
+NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
+  NPUDeviceGuard guard(place_.device);
+  // PADDLE_ENFORCE_NPU_SUCCESS(aclrtCreateContext(&context_, place_.device));
+  // NOTE(zhiqiu): Usually, no need to create context explicitly,
+  // ACL creates a default context which contains 1 default stream
+  // and 1 sync strean after aclrtSetDevice.
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetCurrentContext(&context_));
+  stream_.reset(new stream::NPUStream(place));
+}
 
+NPUDeviceContext::~NPUDeviceContext() {
+  // NPUDeviceGuard guard(place_.device);
+  // PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyContext(context_));
+}
+
+void NPUDeviceContext::Wait() const {
+  platform::RecordEvent record_event("NPUDeviceContext/wait");
+  VLOG(4) << "NPU context(" << this << ")  Wait";
+  stream_->Wait();
+}
+
+aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
+
+Place NPUDeviceContext::GetPlace() const { return place_; }
+
+aclrtContext NPUDeviceContext::context() const { return context_; }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
   EigenCudaStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
@@ -706,6 +742,5 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 }
 
 #endif
-
 }  // namespace platform
 }  // namespace paddle
