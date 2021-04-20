@@ -19,6 +19,9 @@
 
 namespace paddle {
 namespace operators {
+/////////////////////////////////
+// case inner_size == 1  BEGIN
+/////////////////////////////////
 
 #define LAUNCH_WARP_FORWAR_COMPUTE(near_greater_power_of_two)                \
   case near_greater_power_of_two:                                            \
@@ -141,6 +144,185 @@ void LaunchSoftmaxForwardForLastAxis(T *dst, const T *src, int dim_size,
       break;
   }
 }
+/////////////////////////////////
+// case inner_size == 1  END
+/////////////////////////////////
+
+/////////////////////////////////
+// case inner_size != 1  BEGIN
+/////////////////////////////////
+
+template <typename T>
+struct Add {
+  __device__ __forceinline__ T operator()(T a, T b) const { return a + b; }
+};
+template <typename T>
+struct Max {
+  __device__ __forceinline__ T operator()(T a, T b) const {
+    return a < b ? b : a;
+  }
+};
+
+template <typename T>
+__forceinline__ __device__ T BlockReduceMax(T *shared, T val) {
+  // shared mem have #inner_size position offsets
+  shared += threadIdx.y * blockDim.x;
+  __syncthreads();
+  // read every threads' max_value and put them to smem
+  shared[threadIdx.x] = val;
+
+  // block reduce operation
+  int offset = blockDim.x / 2;
+  Max<T> max;
+  while (offset > 0) {
+    __syncthreads();
+    if (threadIdx.x < offset) {
+      shared[threadIdx.x] =
+          max(shared[threadIdx.x], shared[threadIdx.x + offset]);
+    }
+    offset /= 2;
+  }
+  __syncthreads();
+  return shared[0];
+}
+
+template <typename T>
+__forceinline__ __device__ T BlockReduceAdd(T *shared, T val) {
+  shared += threadIdx.y * blockDim.x;
+  __syncthreads();
+  shared[threadIdx.x] = val;
+  int offset = blockDim.x / 2;
+  Add<T> add;
+  // Reduction in smem
+  while (offset > 0) {
+    __syncthreads();
+    if (threadIdx.x < offset) {
+      shared[threadIdx.x] =
+          add(shared[threadIdx.x], shared[threadIdx.x + offset]);
+    }
+    offset /= 2;
+  }
+  __syncthreads();
+  return shared[0];
+}
+
+template <typename T, typename AccT>
+__global__ void LaunchLogSoftmaxForwardNotLastAxis(T *output, const T *input,
+                                                   int outer_size, int dim_size,
+                                                   int inner_size) {
+  extern __shared__ unsigned char smem[];
+  auto sdata = reinterpret_cast<AccT *>(smem);
+
+  const uint32_t outer_stride = inner_size * dim_size;
+  const uint32_t dim_stride = inner_size;
+
+  for (uint32_t x_id = blockIdx.x /** blockDim.x + threadIdx.x*/;
+       x_id < outer_size; x_id += /*blockDim.x**/ gridDim.x) {
+    for (uint32_t y_id = blockIdx.y * blockDim.y + threadIdx.y;
+         y_id < inner_size; y_id += blockDim.y * gridDim.y) {
+      const uint32_t data_offset = x_id * outer_stride + y_id;
+      if (blockDim.x > 1) {
+        // 1. reduce max
+        AccT max_value = -std::numeric_limits<AccT>::infinity();
+        for (uint32_t d = threadIdx.x; d < dim_size; d += blockDim.x) {
+          const AccT value =
+              static_cast<AccT>(input[data_offset + d * dim_stride]);
+          max_value = Max<AccT>()(max_value, value);
+        }
+        max_value = BlockReduceMax<AccT>(sdata, max_value);
+
+        // 2. reduce sum
+        AccT sum = 0;
+        for (uint32_t d = threadIdx.x; d < dim_size; d += blockDim.x)
+          sum +=
+              std::exp(static_cast<AccT>(input[data_offset + d * dim_stride]) -
+                       max_value);
+        sum = BlockReduceAdd<AccT>(sdata, sum);
+
+        // 3. input-max-log_sum and store
+        for (uint32_t d = threadIdx.x; d < dim_size; d += blockDim.x) {
+          output[data_offset + d * dim_stride] = static_cast<T>(
+              static_cast<AccT>(input[data_offset + d * dim_stride]) -
+              max_value - std::log(sum));
+        }
+      } else {
+        // 1. reduce max
+        AccT max_value = -std::numeric_limits<AccT>::infinity();
+        for (uint32_t d = threadIdx.x; d < dim_size; ++d) {
+          const AccT value =
+              static_cast<AccT>(input[data_offset + d * dim_stride]);
+          uint32_t id = data_offset + d * dim_stride;
+          max_value = Max<AccT>()(max_value, value);
+        }
+        AccT sum = 0;
+        for (uint32_t d = threadIdx.x; d < dim_size; ++d)
+          sum +=
+              std::exp(static_cast<AccT>(input[data_offset + d * dim_stride]) -
+                       max_value);
+        for (uint32_t d = threadIdx.x; d < dim_size; ++d) {
+          output[data_offset + d * dim_stride] = static_cast<T>(
+              static_cast<AccT>(input[data_offset + d * dim_stride]) -
+              max_value - std::log(sum));
+        }
+      }
+    }
+  }
+}
+
+inline dim3 GetGridSize(dim3 block, uint32_t max_active_blocks,
+                        uint64_t outer_size, uint64_t dim_size,
+                        uint64_t inner_size) {
+  // First, tile as many blocks as we can over the y axis
+  uint32_t inner_blocks = (inner_size + block.y - 1) / block.y;
+  if (inner_blocks > max_active_blocks) inner_blocks = max_active_blocks;
+  // Fill the x axis with as many blocks as we can fit (a little more is ok too)
+  uint32_t outer_blocks = (max_active_blocks + inner_blocks - 1) / inner_blocks;
+  if (outer_blocks > outer_size) outer_blocks = outer_size;
+  return dim3(outer_blocks, inner_blocks);
+}
+
+const int max_threads = 1024;
+
+inline dim3 GetBlockSize(uint64_t outer_size, uint64_t dim_size,
+                         uint64_t inner_size) {
+  uint32_t inner_threads = inner_size;
+  inner_threads = std::min(inner_threads, static_cast<uint32_t>(max_threads));
+  uint32_t dim_threads = 1;
+  if (inner_threads <= 64 && dim_size >= 64) {
+    while (inner_threads * dim_threads <= max_threads &&
+           dim_threads <= dim_size)
+      dim_threads *= 2;
+    dim_threads /= 2;
+  }
+  return dim3(dim_threads, inner_threads);
+}
+
+template <typename T, typename Kernel>
+void ComputeLaunchConfigure(Kernel k, uint64_t outer_size, uint64_t dim_size,
+                            uint64_t inner_size, dim3 &grid, dim3 &block,
+                            uint32_t &shared_mem, uint32_t num_sm) {
+  // get block config
+  block = GetBlockSize(outer_size, dim_size, inner_size);
+  // get num threads in a block
+  uint32_t block_threads = block.x * block.y;
+  // init shared_mem
+  shared_mem = block.x == 1 ? 0 : block_threads * sizeof(T);
+  int max_active_blocks;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipOccupancyMaxActiveBlocksPerMultiprocessor(
+      &max_active_blocks, k, block_threads, shared_mem));
+#else
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+      &max_active_blocks, k, block_threads, shared_mem));
+#endif
+  max_active_blocks *= num_sm;
+  grid =
+      GetGridSize(block, max_active_blocks, outer_size, dim_size, inner_size);
+}
+
+/////////////////////////////////
+// case inner_size != 1  END
+/////////////////////////////////
 
 template <typename T>
 class LogSoftmaxKernel<platform::CUDADeviceContext, T>
@@ -164,14 +346,25 @@ class LogSoftmaxKernel<platform::CUDADeviceContext, T>
     }
     int outer_size = SizeToAxis(axis, x->dims());
     gpuStream_t stream = context.cuda_device_context().stream();
+    uint32_t num_sm = context.cuda_device_context().GetSMCount();
 
     if (inner_size == 1 && dim_size <= 1024 && dim_size * sizeof(T) <= 4096) {
       LaunchSoftmaxForwardForLastAxis<T, MPDType>(output_data, input_data,
                                                   dim_size, outer_size, stream);
     } else {
-      LogSoftmaxFunctor<platform::CUDADeviceContext, T>()(
-          context.template device_context<platform::CUDADeviceContext>(), x,
-          out, axis);
+      // inner_size != 1
+      uint32_t shared_mem;
+      dim3 grid;
+      dim3 block;
+
+      ComputeLaunchConfigure<MPDType>(
+          &LaunchLogSoftmaxForwardNotLastAxis<T, MPDType>, outer_size, dim_size,
+          inner_size, grid, block, shared_mem, num_sm);
+
+      LaunchLogSoftmaxForwardNotLastAxis<
+          T,
+          MPDType /*, MinusMaxAndLogsum*/><<<grid, block, shared_mem, stream>>>(
+          output_data, input_data, outer_size, dim_size, inner_size);
     }
   }
 };
@@ -209,8 +402,8 @@ __global__ void ComputeLogSoftmaxBackwardInWarp(const T *output,
       grad_output_register[iter] = static_cast<AccT>(
           grad_output[batch_id * element_count + element_index]);
     } else {
-      output_register[iter] = AccT(0);
-      grad_output_register[iter] = AccT(0);
+      output_register[iter] = static_cast<AccT>(0);
+      grad_output_register[iter] = static_cast<AccT>(0);
     }
   }
 
