@@ -49,7 +49,6 @@ XPUGarbageCollector::XPUGarbageCollector(const platform::XPUPlace &place,
                                          size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
-  static_cast<platform::XPUDeviceContext *>(this->dev_ctx_)->Wait();
   callback();
 }
 #endif

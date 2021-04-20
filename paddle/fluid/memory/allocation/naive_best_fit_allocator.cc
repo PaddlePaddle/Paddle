@@ -196,6 +196,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
                               size_t size) {
 #ifdef PADDLE_WITH_XPU
   platform::XPUDeviceGuard(place.device);
+  xpu_wait();
   GetXPUBuddyAllocator(place.device)->Free(p);
 #else
   PADDLE_THROW(

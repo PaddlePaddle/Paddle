@@ -386,9 +386,9 @@ TEST(BuddyAllocator, NpuFraction) {
       platform::XPUMinChunkSize(), platform::XPUMaxChunkSize());
 
   // Less than pool size
-  TestBuddyAllocator(&buddy_allocator, 10);
-  TestBuddyAllocator(&buddy_allocator, 10 << 10);
-  TestBuddyAllocator(&buddy_allocator, 10 << 20);
+  TestBuddyAllocator(&buddy_allocator, 5);
+  TestBuddyAllocator(&buddy_allocator, 5 << 10);
+  TestBuddyAllocator(&buddy_allocator, 5 << 20);
   buddy_allocator.Release();
 
   // Greater than max chunk size
