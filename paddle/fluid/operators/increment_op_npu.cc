@@ -39,8 +39,10 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
     out_tensor->mutable_data<T>(context.GetPlace());
 
     Tensor step_tensor(x_tensor->type());
-    step_tensor.mutable_data<T>({1}, context.GetPlace());
-    FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
+    std::vector<T> step_vec;
+    step_vec.push_back(static_cast<T>(step));
+    framework::TensorFromVector(step_vec, context.device_context(),
+                                &step_tensor);
 
     auto runner =
         NpuOpRunner("Add", {*x_tensor, step_tensor}, {*out_tensor}, {});

@@ -67,10 +67,12 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     // on and off
     Tensor on_tensor(framework::proto::VarType::INT32);
     on_tensor.mutable_data<int>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<int>(&on_tensor, static_cast<int>(1));
+    TensorFromVector(std::vector<int>{static_cast<int>(1)},
+                     ctx.device_context(), &on_tensor);
     Tensor off_tensor(framework::proto::VarType::INT32);
     off_tensor.mutable_data<int>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<int>(&off_tensor, static_cast<int>(0));
+    TensorFromVector(std::vector<int>{static_cast<int>(0)},
+                     ctx.device_context(), &off_tensor);
 
     // one_hot
     Tensor tmp_onehot(on_tensor.type());
@@ -140,10 +142,12 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     // on and off
     Tensor on_tensor(framework::proto::VarType::INT32);
     on_tensor.mutable_data<int>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<int>(&on_tensor, static_cast<int>(1));
+    TensorFromVector(std::vector<int>{static_cast<int>(1)},
+                     ctx.device_context(), &on_tensor);
     Tensor off_tensor(framework::proto::VarType::INT32);
     off_tensor.mutable_data<int>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<int>(&off_tensor, static_cast<int>(0));
+    TensorFromVector(std::vector<int>{static_cast<int>(0)},
+                     ctx.device_context(), &off_tensor);
 
     // one_hot
     Tensor tmp_onehot(on_tensor.type());

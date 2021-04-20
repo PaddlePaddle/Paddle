@@ -64,17 +64,19 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     // NOTE(zhiqiu): beta1_pow and beta2_pow may on CPU and not transform place.
     if (beta1_pow->place() == platform::CPUPlace()) {
-      T beta1 = *beta1_pow->data<T>();
+      float beta1 = *beta1_pow->data<float>();
       // `mutable_data` operation needs to be done after getting data
       beta1_pow_out->mutable_data<T>(ctx.GetPlace());
-      FillNpuTensorWithConstant<T>(beta1_pow_out, beta1);
+      TensorFromVector(std::vector<float>{beta1}, ctx.device_context(),
+                       beta1_pow_out);
     } else {
       beta1_pow_out->mutable_data<T>(ctx.GetPlace());
     }
     if (beta2_pow->place() == platform::CPUPlace()) {
-      T beta2 = *beta2_pow->data<T>();
+      float beta2 = *beta2_pow->data<float>();
       beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-      FillNpuTensorWithConstant<T>(beta2_pow_out, beta2);
+      TensorFromVector(std::vector<float>{beta2}, ctx.device_context(),
+                       beta2_pow_out);
     } else {
       beta2_pow_out->mutable_data<T>(ctx.GetPlace());
     }
@@ -115,15 +117,18 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     // reshape
     Tensor beta1_tensor(framework::proto::VarType::FP32);
-    beta1_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&beta1_tensor, beta1);
+    beta1_tensor.mutable_data<float>({1}, ctx.GetPlace());
+    TensorFromVector(std::vector<T>{beta1}, ctx.device_context(),
+                     &beta1_tensor);
     Tensor beta2_tensor(framework::proto::VarType::FP32);
-    beta2_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&beta2_tensor, beta2);
+    beta2_tensor.mutable_data<float>({1}, ctx.GetPlace());
+    TensorFromVector(std::vector<T>{beta2}, ctx.device_context(),
+                     &beta2_tensor);
 
     Tensor epsilon_tensor(framework::proto::VarType::FP32);
     epsilon_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&epsilon_tensor, epsilon);
+    TensorFromVector(std::vector<T>{epsilon}, ctx.device_context(),
+                     &epsilon_tensor);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

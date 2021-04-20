@@ -65,7 +65,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
 
     Tensor tensor_tmp(data_type);
     tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&tensor_tmp, value);
+    TensorFromVector(std::vector<T>{value}, ctx.device_context(), &tensor_tmp);
 
     out_var->mutable_data<T>(shape, place);
     auto runner = NpuOpRunner("FillD", {tensor_tmp}, {*out_var},

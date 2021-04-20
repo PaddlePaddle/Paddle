@@ -77,7 +77,8 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // 2.1 Get a factor tensor with shape [1].
     Tensor factor_tensor(framework::proto::VarType::FP32);
     factor_tensor.mutable_data<float>({1}, place);
-    FillNpuTensorWithConstant<float>(&factor_tensor, factor);
+    TensorFromVector(std::vector<float>{factor}, ctx.device_context(),
+                     &factor_tensor);
 
     // 2.2 Get the factor which has the shape with x and the same value with
     // factor.
