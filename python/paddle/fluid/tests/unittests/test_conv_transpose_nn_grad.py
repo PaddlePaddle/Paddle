@@ -32,6 +32,8 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         shape = [2, 4, 3, 3]
         eps = 0.005
         dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d_transpose(
             x, 2, filter_size=1, groups=1, bias_attr=False)
@@ -41,8 +43,18 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x] + w,
+                y,
+                x_init=[x_arr] + w_arr,
+                place=place,
+                eps=eps,
+                atol=1e-4)
+        else:
+            gradient_checker.double_grad_check(
+                [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
     def test_grad(self):
         places = []
@@ -60,6 +72,8 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         shape = [2, 2, 3, 3]
         eps = 0.005
         dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d_transpose(
             input=x,
@@ -74,8 +88,18 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x] + w,
+                y,
+                x_init=[x_arr] + w_arr,
+                place=place,
+                eps=eps,
+                atol=1e-4)
+        else:
+            gradient_checker.double_grad_check(
+                [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
 
 class TestConvTranspose2DoubleGradCheck_PaddingSAME(
@@ -85,6 +109,8 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         shape = [2, 2, 3, 3]
         eps = 0.005
         dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d_transpose(
             input=x,
@@ -99,8 +125,18 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x] + w,
+                y,
+                x_init=[x_arr] + w_arr,
+                place=place,
+                eps=eps,
+                atol=1e-4)
+        else:
+            gradient_checker.double_grad_check(
+                [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
 
 class TestConvTranspose2DoubleGradCheck_PaddingVALID(
@@ -110,6 +146,8 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         shape = [2, 2, 3, 3]
         eps = 0.005
         dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d_transpose(
             input=x,
@@ -124,8 +162,18 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x] + w,
+                y,
+                x_init=[x_arr] + w_arr,
+                place=place,
+                eps=eps,
+                atol=1e-4)
+        else:
+            gradient_checker.double_grad_check(
+                [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
 
 class TestConvTranspose2DoubleGradCheck_ChannelLast(
@@ -135,6 +183,8 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
         shape = [2, 3, 3, 2]
         eps = 0.005
         dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d_transpose(
             input=x,
@@ -151,8 +201,18 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x] + w,
+                y,
+                x_init=[x_arr] + w_arr,
+                place=place,
+                eps=eps,
+                atol=1e-4)
+        else:
+            gradient_checker.double_grad_check(
+                [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
 
 if __name__ == "__main__":

@@ -45,6 +45,12 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
+    int8_teller_set.insert("multihead_matmul");
+    int8_teller_set.insert("skip_layernorm");
+    int8_teller_set.insert("fused_embedding_eltwise_layernorm");
+    int8_teller_set.insert("matmul");
+    int8_teller_set.insert("stack");
+    int8_teller_set.insert("slice");
 #endif
   }
 
@@ -114,7 +120,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "roi_align",
       "affine_channel",
-      "multiclass_nms",
       "nearest_interp",
       "anchor_generator",
   };

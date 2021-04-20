@@ -1236,7 +1236,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       }
     }
   }
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+  VLOG(3) << "op type:" << type_
+          << ", expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN

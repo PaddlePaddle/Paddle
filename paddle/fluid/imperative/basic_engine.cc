@@ -284,15 +284,15 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
   for (const auto& pair : bwd_ins) {
     for (size_t i = 0; i < pair.second.size(); ++i) {
       auto& var = pair.second[i];
-      if (var->HasHook()) {
+      if (var->HasVariableWrapperHook()) {
         if (tmp_ins_ptr == nullptr) {
           tmp_ins_ptr = std::make_shared<NameVarMap<VariableWrapper>>(bwd_ins);
         }
-        VLOG(3) << "Call " << var->GetHooks().size() << " hooks of " << op_type
-                << "'s input `" << pair.first << "`'s var `" << var->Name()
-                << "`.";
+        VLOG(3) << "Call " << var->GetVariableWrapperHooks().size()
+                << " hooks of " << op_type << "'s input `" << pair.first
+                << "`'s var `" << var->Name() << "`.";
         auto tmp_var = var;
-        for (const auto& hook_pair : var->GetHooks()) {
+        for (const auto& hook_pair : var->GetVariableWrapperHooks()) {
           tmp_var = (*hook_pair.second)(tmp_var);
         }
         (*tmp_ins_ptr)[pair.first][i] = tmp_var;
