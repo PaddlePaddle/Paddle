@@ -258,6 +258,31 @@ struct SigmoidGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
+// silu(x) = x / (1 + exp(-x))
+template <typename T>
+struct SiluFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    auto temp = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
+    out.device(d) = x * temp;
+  }
+};
+
+// silu'(x) = (1 / (1 + e^{-x}))  * (1 + out * e^{-x}))
+template <typename T>
+struct SiluGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    auto temp1 = static_cast<T>(1) + (-x).exp();  // 1+e^(-x)
+    auto temp2 = x * (-x).exp();                  // x*e^(-x)
+    dx.device(d) = dout * ((static_cast<T>(1) / temp1) *
+                           (static_cast<T>(1) + (temp2 / temp1)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 // Originally: logsigmoid(x) = -log (1 + exp(-x))
 // For numerical stability, we can use the log-sum-exp trick:
 // https://hips.seas.harvard.edu/blog/2013/01/09/computing-log-sum-exp/
@@ -2129,6 +2154,7 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
 
 #define FOR_EACH_ACTIVATION_OP(__macro)                                       \
   __macro(sigmoid, Sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
+  __macro(silu, Silu, SiluFunctor, SiluGradFunctor);                          \
   __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \
   __macro(softshrink, SoftShrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \
