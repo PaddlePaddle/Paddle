@@ -848,7 +848,7 @@ function check_approvals_of_unittest() {
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
-                exit 1
+                exit 6
             fi
         fi
     fi
