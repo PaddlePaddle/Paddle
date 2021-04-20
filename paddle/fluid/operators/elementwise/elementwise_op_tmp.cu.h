@@ -17,7 +17,6 @@
 #include <math.h>
 #include <algorithm>
 #include <functional>
-#include <iterator>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -28,6 +27,7 @@
 #ifdef __NVCC__
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <nvfunctional>
 #elif defined(__HIPCC__)
 #include <hip/hip_runtime.h>
 #endif
@@ -47,47 +47,6 @@
 
 namespace paddle {
 namespace operators {
-
-template <typename index_t>
-struct DivMod {
-  index_t div, mod;
-
-  __forceinline__ __device__ DivMod(index_t div, index_t mod)
-      : div(div), mod(mod) {}
-};
-
-template <typename IndexT>
-struct FastDivMod {
-  FastDivMod() {}
-
-  explicit FastDivMod(IndexT d) : divisor(d) {
-    for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
-      if ((1 << shift_val) >= divisor) {
-        break;
-      }
-    }
-    uint64_t one_uint64 = 1;
-    uint64_t temp_div =
-        ((one_uint64 << INT_BITS) * ((one_uint64 << shift_val) - divisor)) /
-            divisor +
-        1;
-    multiplier = temp_div;
-  }
-
-  __forceinline__ __device__ IndexT div(IndexT n) const {
-    IndexT t = __umulhi(n, multiplier);
-    return (t + n) >> shift_val;
-  }
-
-  __forceinline__ __device__ DivMod<IndexT> divmod(IndexT n) const {
-    IndexT q = div(n);
-    return DivMod<IndexT>(q, n - q * divisor);
-  }
-
-  IndexT divisor;
-  IndexT multiplier;
-  IndexT shift_val;
-};
 
 template <typename T, int Size>
 struct alignas(sizeof(T) * Size) CudaAlignedVector {
@@ -223,6 +182,46 @@ struct DimensionTransform {
   std::vector<vec_t> vec_dims;
 };
 
+template <typename index_t>
+struct DivMod {
+  index_t div, mod;
+
+  inline __device__ DivMod(index_t div, index_t mod) : div(div), mod(mod) {}
+};
+
+template <typename IndexT>
+struct FastDivMod {
+  FastDivMod() {}
+
+  explicit FastDivMod(IndexT d) : divisor(d) {
+    for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
+      if ((1 << shift_val) >= divisor) {
+        break;
+      }
+    }
+    uint64_t one_uint64 = 1;
+    uint64_t temp_div =
+        ((one_uint64 << INT_BITS) * ((one_uint64 << shift_val) - divisor)) /
+            divisor +
+        1;
+    multiplier = temp_div;
+  }
+
+  HOSTDEVICE IndexT div(IndexT n) const {
+    IndexT t = __umulhi(n, multiplier);
+    return (t + n) >> shift_val;
+  }
+
+  HOSTDEVICE DivMod<IndexT> divmod(IndexT n) const {
+    IndexT q = div(n);
+    return DivMod<IndexT>(q, n - q * divisor);
+  }
+
+  IndexT divisor;
+  IndexT multiplier;
+  IndexT shift_val;
+};
+
 template <typename merge_t, typename uint64_t = int>
 struct OffsetPreCalculator {
  private:
@@ -263,7 +262,6 @@ struct StrideVectorLoad {
  private:
   __device__ inline IndexT const get_offset(int tid) {
     IndexT offset = 0;
-
     // #pragma unroll
     for (int i = 0; i < nDims; ++i) {
       auto fast_divmoder = divmoders[i].divmod(tid);
@@ -274,7 +272,6 @@ struct StrideVectorLoad {
   }
 
  public:
-  using arg_t = CudaAlignedVector<T, vec_size>;
   StrideVectorLoad(const OffsetT *offset_calculator, int i) {
     memcpy(static_cast<void *>(strides), offset_calculator->strides[i].data(),
            sizeof(uint32_t) * nDims);
@@ -286,7 +283,7 @@ struct StrideVectorLoad {
                                     int tid, int thresh) {
     if (tid < thresh) {
       int index = vec_size * tid;
-
+      // #pragma unroll
       for (int i = 0; i < vec_size; ++i) {
         IndexT offset = get_offset(index + i);
         (*args).val[i + i] = in_data[offset];
@@ -294,6 +291,42 @@ struct StrideVectorLoad {
     }
   }
 
+  IndexT strides[MAX_DIMS];
+  FastDivMod<IndexT> divmoders[MAX_DIMS];
+};
+
+template <typename T, typename OffsetT, int nDims, int vec_size,
+          typename IndexT = uint32_t>
+struct StrideScalarLoad {
+  explicit StrideScalarLoad(const OffsetT *offset_calculator, int i,
+                            int data_offset)
+      : data_offset(data_offset) {
+    memcpy(static_cast<void *>(strides), offset_calculator->strides[i].data(),
+           sizeof(uint32_t) * nDims);
+    memcpy(static_cast<void *>(divmoders), offset_calculator->divmoder.data(),
+           sizeof(FastDivMod<uint32_t>) * nDims);
+  }
+
+  __device__ inline IndexT const get_offset(int tid) {
+    IndexT offset = 0;
+    // #pragma unroll
+    for (int i = 0; i < nDims; ++i) {
+      auto fast_divmoder = divmoders[i].divmod(tid);
+      tid = fast_divmoder.div;
+      offset += fast_divmoder.mod * strides[i];
+    }
+    return offset;
+  }
+
+  inline __device__ void operator()(const T *__restrict__ in_data, T *args,
+                                    int tid, int thresh) {
+    if (tid < thresh) {
+      int offset = get_offset(tid + data_offset);
+      *args = in_data[offset];
+    }
+  }
+
+  int data_offset;
   IndexT strides[MAX_DIMS];
   FastDivMod<IndexT> divmoders[MAX_DIMS];
 };
@@ -309,46 +342,18 @@ struct CommonVectorLoad {
   }
 };
 
-template <typename T, typename OffsetT, int nDims, int vec_size,
-          typename IndexT = uint32_t>
-struct StrideScalarLoad {
-  explicit StrideScalarLoad(const OffsetT *offset_calculator, int i) {
-    memcpy(static_cast<void *>(strides), offset_calculator->strides[i].data(),
-           sizeof(uint32_t) * nDims);
-    memcpy(static_cast<void *>(divmoders), offset_calculator->divmoder.data(),
-           sizeof(FastDivMod<uint32_t>) * nDims);
-  }
-
-  inline __device__ IndexT const get_offset(int tid) {
-    IndexT offset = 0;
-    for (int i = 0; i < nDims; ++i) {
-      auto fast_divmoder = divmoders[i].divmod(tid);
-      tid = fast_divmoder.div;
-      offset += fast_divmoder.mod * strides[i];
-    }
-    return offset;
-  }
-
-  inline __device__ void operator()(const T *__restrict__ in_data, T *args,
-                                    int tid, int thresh) {
-    if (tid < thresh) {
-      int offset = get_offset(tid);
-      *args = in_data[offset];
-    }
-  }
-
-  IndexT strides[MAX_DIMS];
-  FastDivMod<IndexT> divmoders[MAX_DIMS];
-};
-
 template <typename T>
 struct CommonScalarLoad {
+  explicit CommonScalarLoad(int data_offset) : data_offset(data_offset) {}
+
   __device__ inline void operator()(const T *__restrict__ in_data, T *args,
                                     int tid, int thresh) {
     if (tid < thresh) {
-      *args = in_data[tid];
+      *args = in_data[tid + data_offset];
     }
   }
+
+  int data_offset;
 };
 
 template <typename T, typename OffsetT, int N, int vec_size, int nDims>
@@ -360,11 +365,10 @@ struct TensorLoader {
                framework::Tensor *out, const OffsetT *offset_pre = nullptr) {
     auto numel = out->numel();
     auto remain = numel % vec_size;
-    std::cout << numel << std::endl;
-    std::cout << remain << std::endl;
+    auto main_len = numel - remain;
 
     for (int j = 0; j < N; ++j) {
-      in_data[j] = (*ins)[j]->data<T>();
+      data[j] = (*ins)[j]->data<T>();
 
       if ((*ins)[j]->dims() == out->dims()) {
         v_loader[j] = CommonVectorLoad<T, ArgT>();
@@ -374,22 +378,19 @@ struct TensorLoader {
       }
 
       if (remain) {
-        tail_data[j] = (*ins)[j]->data<T>() + (numel - remain) * sizeof(T);
-
         if ((*ins)[j]->dims() == out->dims()) {
-          s_loader[j] = CommonScalarLoad<T>();
+          s_loader[j] = CommonScalarLoad<T>(main_len);
         } else {
-          s_loader[j] =
-              StrideScalarLoad<T, OffsetT, nDims, vec_size>(offset_pre, j);
+          s_loader[j] = StrideScalarLoad<T, OffsetT, nDims, vec_size>(
+              offset_pre, j, main_len);
         }
       }
     }
   }
 
-  const T *in_data[N];
-  const T *tail_data[N];
-  std::function<void(const T *, ArgT *, int, int)> v_loader[N];
-  std::function<void(const T *, T *, int, int)> s_loader[N];
+  const T *data[N];
+  nvstd::function<void(const T *, ArgT *, int, int)> v_loader[N];
+  nvstd::function<void(const T *, T *, int, int)> s_loader[N];
 };
 
 }  // namespace operators
