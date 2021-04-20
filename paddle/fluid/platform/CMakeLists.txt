@@ -192,7 +192,6 @@ ENDIF()
 
 IF(WITH_ROCM)
   hip_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
-  hip_test(bfloat16_gpu_test SRCS bfloat16_test.cu DEPS lod_tensor)
   hip_test(test_limit_gpu_memory SRCS test_limit_gpu_memory.cu DEPS gpu_info flags)
   hip_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 ENDIF()

@@ -1,8 +1,11 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,8 +18,14 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <iostream>
+#include "paddle/fluid/framework/lod_tensor.h"
 
-#ifdef PADDLE_CUDA_BF16
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#endif
+
+#if CUDA_VERSION >= 11000 && __CUDA_ARCH__ >= 800
+#define PADDLE_CUDA_BF16
 using bf16 = __nv_bfloat16;
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
@@ -160,7 +169,7 @@ COMPOUND_KERNEL_LAUNCH(SubAssign)
 COMPOUND_KERNEL_LAUNCH(MulAssign)
 COMPOUND_KERNEL_LAUNCH(DivAssign)
 
-TEST(float16, compound_on_gpu) {
+TEST(bfloat16, compound_on_gpu) {
   TestAddAssign(1, 2, 3);
   TestSubAssign(2, 1, 1);
   TestMulAssign(2, 3, 6);
@@ -182,7 +191,7 @@ COMPARISON_KERNEL_LAUNCH(LessEqual)
 COMPARISON_KERNEL_LAUNCH(Greater)
 COMPARISON_KERNEL_LAUNCH(GreaterEqual)
 
-TEST(float16, comparision_on_gpu) {
+TEST(bfloat16, comparision_on_gpu) {
   TestEqual(1, 1, true);
   TestEqual(1, 2, false);
   TestNotEqual(2, 3, true);
@@ -197,6 +206,97 @@ TEST(float16, comparision_on_gpu) {
   TestGreaterEqual(4, 5, false);
 }
 
+TEST(bfloat16, conversion_on_gpu) {
+  // Convert float32 to bfloat16
+  EXPECT_EQ((bfloat16(1.0f)).x, 0x3f80);
+  EXPECT_EQ((bfloat16(0.5f)).x, 0x3f00);
+  EXPECT_EQ((bfloat16(0.33333f)).x, 0x3eab);
+  EXPECT_EQ((bfloat16(0.0f)).x, 0x0000);
+  EXPECT_EQ((bfloat16(-0.0f)).x, 0x8000);
+  EXPECT_EQ((bfloat16(65536.0f)).x, 0x4780);
+
+  // Assignment operator
+  bfloat16 v_assign;
+  v_assign = bf16(bfloat16(1.0f));
+  EXPECT_EQ(v_assign.x, 0x3f80);
+  v_assign = 0.33333;
+  EXPECT_EQ(v_assign.x, 0x3eab);
+
+  // Conversion operator
+  EXPECT_EQ(static_cast<float>(bfloat16(0.5f)), 0.5f);
+  EXPECT_NEAR(static_cast<double>(bfloat16(0.33333)), 0.33333, 0.01);
+  EXPECT_EQ(static_cast<int>(bfloat16(-1)), -1);
+  EXPECT_EQ(static_cast<bool>(bfloat16(true)), true);
+}
+
+TEST(bfloat16, lod_tensor_on_gpu) {
+  framework::LoDTensor src_tensor;
+  framework::LoDTensor gpu_tensor;
+  framework::LoDTensor dst_tensor;
+
+  bfloat16 *src_ptr = src_tensor.mutable_data<bfloat16>(
+      framework::make_ddim({2, 2}), CPUPlace());
+
+  bfloat16 arr[4] = {bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f),
+                     bfloat16(0.0f)};
+  memcpy(src_ptr, arr, 4 * sizeof(bfloat16));
+
+  // CPU LoDTensor to GPU LoDTensor
+  CUDAPlace gpu_place(0);
+  CUDADeviceContext gpu_ctx(gpu_place);
+  framework::TensorCopy(src_tensor, gpu_place, gpu_ctx, &gpu_tensor);
+
+  // GPU LoDTensor to CPU LoDTensor
+  framework::TensorCopy(gpu_tensor, CPUPlace(), gpu_ctx, &dst_tensor);
+
+  // Sync before comparing LoDTensors
+  gpu_ctx.Wait();
+  const bfloat16 *dst_ptr = dst_tensor.data<bfloat16>();
+  ASSERT_NE(src_ptr, dst_ptr);
+  for (size_t i = 0; i < 4; ++i) {
+    EXPECT_EQ(src_ptr[i].x, dst_ptr[i].x);
+  }
+}
+
+TEST(bfloat16, isinf) {
+  bfloat16 a;
+  a.x = 0x7f80;
+  bfloat16 b = bfloat16(INFINITY);
+  bfloat16 c = static_cast<bfloat16>(INFINITY);
+  EXPECT_EQ(std::isinf(a), true);
+  EXPECT_EQ(std::isinf(b), true);
+  EXPECT_EQ(std::isinf(c), true);
+}
+
+TEST(bfloat16, isnan) {
+  bfloat16 a;
+  a.x = 0x7fff;
+  bfloat16 b = bfloat16(NAN);
+  bfloat16 c = static_cast<bfloat16>(NAN);
+  EXPECT_EQ(std::isnan(a), true);
+  EXPECT_EQ(std::isnan(b), true);
+  EXPECT_EQ(std::isnan(c), true);
+}
+
+TEST(bfloat16, cast) {
+  bfloat16 a;
+  a.x = 0x0070;
+  auto b = a;
+  {
+    // change semantic, keep the same value
+    bfloat16 c = reinterpret_cast<bfloat16 &>(reinterpret_cast<unsigned &>(b));
+    EXPECT_EQ(b, c);
+  }
+
+  {
+    // use uint32 low 16 bit store float16
+    uint32_t c = reinterpret_cast<uint32_t &>(b);
+    bfloat16 d;
+    d.x = c;
+    EXPECT_EQ(b, d);
+  }
+}
+
 }  // namespace platform
 }  // namespace paddle
-#endif  // PADDLE_CUDA_BF16
+#endif  // CUDA_VERSION >= 11000 && __CUDA_ARCH__ >= 800
