@@ -227,7 +227,7 @@ def help(repo_dir, model, source='github', force_reload=False):
     return entry.__doc__
 
 
-def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
+def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     """
     Load model
 
@@ -239,7 +239,7 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
         mdoel (str): model name
         source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional), default is `False`
-        *args, **kwargs: parameters using for model
+        **kwargs: parameters using for model
     Return:
         paddle model
     Example:
@@ -265,4 +265,4 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
 
     entry = _load_entry_from_hubconf(hub_module, model)
 
-    return entry(*args, **kwargs)
+    return entry(**kwargs)
