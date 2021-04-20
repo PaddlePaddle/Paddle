@@ -17,13 +17,9 @@ from __future__ import print_function
 
 import unittest
 
-import os
-import time
-import copy
-import subprocess
-
 import paddle
-import paddle.hapi.hub as hub
+from paddle.hapi import hub
+import numpy as np
 
 
 class TestHub(unittest.TestCase):
@@ -47,6 +43,11 @@ class TestHub(unittest.TestCase):
             source='github',
             force_reload=True,
             pretrained=False)
+
+        data = paddle.rand((1, 3, 100, 100))
+        out = model(data)
+
+        np.testing.assert_equal(out.shape, [1, 8, 50, 50])
 
     def testHelp(self, ):
         docs = hub.help(
