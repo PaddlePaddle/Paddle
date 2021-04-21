@@ -76,13 +76,22 @@ def format_spec(spec):
 def queue_dict(member, cur_name):
     if cur_name in omitted_list:
         return
-
-    doc_md5 = md5(member.__doc__)
+    try:
+        eval(cur_name)
+    except AttributeError:
+        print("AttributeError occurred when `eval(%s)`, discard it.", cur_name)
+        return
 
     if (inspect.isclass(member) or inspect.isfunction(member) or
             inspect.ismethod(member)) and hasattr(
                 member, '__module__') and hasattr(member, '__name__'):
         args = member.__module__ + "." + member.__name__
+        try:
+            eval(args)
+        except AttributeError:
+            print("AttributeError occurred when `eval(%s)`, discard it for %s.",
+                  args, cur_name)
+            return
     else:
         try:
             args = inspect.getargspec(member)
@@ -97,6 +106,7 @@ def queue_dict(member, cur_name):
         if not has_type_error:
             args = format_spec(args)
 
+    doc_md5 = md5(member.__doc__)
     member_dict[cur_name] = "({}, ('document', '{}'))".format(args, doc_md5)
 
 
