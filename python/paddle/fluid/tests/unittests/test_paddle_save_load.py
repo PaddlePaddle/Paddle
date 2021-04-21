@@ -447,5 +447,29 @@ class TestSaveLoad(unittest.TestCase):
             paddle.load("test_paddle_save_load.linear")
 
 
+class TestSaveLoadProgram(unittest.TestCase):
+    def test_save_load_program(self):
+        paddle.enable_static()
+        with new_program_scope():
+            layer = LinearNet()
+            data = paddle.static.data(
+                name='x_static_save', shape=(None, IMAGE_SIZE), dtype='float32')
+            y_static = layer(data)
+            main_program = paddle.static.default_main_program()
+            startup_program = paddle.static.default_startup_program()
+            origin_main = main_program.desc.serialize_to_string()
+            origin_startup = startup_program.desc.serialize_to_string()
+            path1 = "test_paddle_save_load_program/main_program.pdmodel"
+            path2 = "test_paddle_save_load_program/startup_program.pdmodel"
+            paddle.save(main_program, path1)
+            paddle.save(startup_program, path2)
+
+        with new_program_scope():
+            load_main = paddle.load(path1).desc.serialize_to_string()
+            load_startup = paddle.load(path2).desc.serialize_to_string()
+            self.assertTrue(origin_main == load_main)
+            self.assertTrue(origin_startup == load_startup)
+
+
 if __name__ == '__main__':
     unittest.main()

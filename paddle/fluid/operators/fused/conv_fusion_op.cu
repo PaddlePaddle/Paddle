@@ -200,13 +200,13 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
         cudnn_conv_desc, CUDNN_DEFAULT_MATH));
-#if CUDNN_VERSION >= 11000
+#if CUDA_VERSION >= 11000 && CUDNN_VERSION >= 8000
     if (!platform::allow_tf32_cudnn) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(cudnn_conv_desc,
                                                          CUDNN_FMA_MATH));
     }
-#endif  // CUDA_VERSION >= 11000
+#endif  // CUDA_VERSION >= 11000 && CUDNN_VERSION >= 8000
 
     auto x_dims = framework::vectorize(transformed_input.dims());
     auto f_dims = framework::vectorize(filter->dims());
