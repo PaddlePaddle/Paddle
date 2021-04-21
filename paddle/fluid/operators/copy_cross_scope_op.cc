@@ -51,7 +51,7 @@ class CopyCrossScopeOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override {
     int num_micro_scopes = scope.kids().size();
     int num_micro_batches = Attr<int>("num_micro_batches");
-    bool ToM = Attr<bool>("ToM");
+    bool ToM = Attr<bool>("to_main_scope");
     PADDLE_ENFORCE_EQ(num_micro_scopes, num_micro_batches,
                       platform::errors::InvalidArgument(
                           "For pipeline, number of micro scopes (%d) should "
@@ -124,12 +124,20 @@ class CopyCrossScopeOp : public framework::OperatorBase {
 class CopyCrossScopeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Tensor to copy.");
-    AddInput("Id", "ID of the current scope.");
-    AddAttr<bool>("ToM", "Return current scope to main scope.");
+    AddInput("X",
+             "(Tensor), The first input tensor of copy_cross_scope op, which "
+             "is copying micro scope.");
+    AddInput("Id",
+             "(Tensor), The second input tensor of copy_cross_scope op, which "
+             "is a id of the current micro scope.");
+    AddAttr<bool>("to_main_scope", "Return current scope to main scope.")
+        .SetDefault(false);
     AddAttr<int>("num_micro_batches", "Number of micro batches for pipeline.");
     AddComment(R"DOC(
-      This op is used by pipeline to copy tensors across micro batch scopes.
+      This op is used by pipeline to copy tensors across micro batch scopes. 
+      Copy the variable value of the giving Id's micro scope to the micro scope of Id + 1 position. 
+      If need to copy back to the main scope, using to_main_scope option to copy the variable value of 
+      the current micro scope to the main scope.
     )DOC");
   }
 };
