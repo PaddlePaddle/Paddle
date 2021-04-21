@@ -20,9 +20,6 @@ import numbers
 import paddle
 import paddle.nn.functional as F
 
-from paddle.nn.functional import affine_grid, grid_sample
-from paddle.nn.functional import pad as paddle_pad
-
 import sys
 import collections
 
@@ -34,11 +31,6 @@ def _assert_image_tensor(img, data_format):
         raise RuntimeError(
             'not support [type={}, ndim={}, data_format={}] paddle image'.
             format(type(img), img.ndim, data_format))
-
-
-# def _assert_data_format(data_format):
-#     assert data_format.lower() in ('chw', 'hwc', 'nchw', 'nhwc'
-#                                    ), "`data_format` should in ('chw', 'hwc', 'nchw', 'nhwc')"
 
 
 def _assert_image_data_format(data_format):
@@ -162,9 +154,7 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
 
 def _affine_grid(theta, w, h, ow, oh):
     d = 0.5
-    # tic = time.time()
     base_grid = paddle.ones((1, oh, ow, 3), dtype=theta.dtype)
-    # print(time.time() - tic)
 
     x_grid = paddle.linspace(-ow * 0.5 + d, ow * 0.5 + d - 1, ow)
     base_grid[..., 0] = x_grid
@@ -179,19 +169,16 @@ def _affine_grid(theta, w, h, ow, oh):
 
 
 def _grid_transform(img, grid, mode, fill):
-
     if img.shape[0] > 1:
-        # Apply same grid to a batch of images
         grid = grid.expand(img.shape[0], grid.shape[1], grid.shape[2],
                            grid.shape[3])
 
-    # Append a dummy mask for customized fill colors, should be faster than grid_sample() twice
     if fill is not None:
         dummy = paddle.ones(
             (img.shape[0], 1, img.shape[2], img.shape[3]), dtype=img.dtype)
         img = paddle.concat((img, dummy), axis=1)
 
-    img = grid_sample(
+    img = F.grid_sample(
         img, grid, mode=mode, padding_mode="zeros", align_corners=False)
 
     # Fill with required color
@@ -309,7 +296,6 @@ def rotate(img,
 
     grid = _affine_grid(matrix, w, h, ow, oh)
 
-    # out = grid_sample(img, grid, mode=interpolation)
     out = _grid_transform(img, grid, mode=interpolation, fill=fill)
 
     return out.squeeze(0)
@@ -481,12 +467,11 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
 
     img = img.unsqueeze(0)
     #  'constant', 'reflect', 'replicate', 'circular'
-    img = paddle_pad(
-        img,
-        pad=padding,
-        mode=padding_mode,
-        value=float(fill),
-        data_format='N' + data_format)
+    img = F.pad(img,
+                pad=padding,
+                mode=padding_mode,
+                value=float(fill),
+                data_format='N' + data_format)
 
     return img.squeeze(0)
 
