@@ -62,11 +62,12 @@ class CSyncCalcStreamCudaKernel : public framework::OpKernel<T> {
 #endif
 
 #elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
+    auto place = ctx.GetPlace();
+
     PADDLE_ENFORCE_EQ(is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
 
-    auto place = ctx.GetPlace();
     auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(dev_ctx->stream()));
