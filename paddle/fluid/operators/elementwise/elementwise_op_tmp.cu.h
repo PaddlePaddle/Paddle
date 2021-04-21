@@ -14,9 +14,7 @@
 
 #pragma once
 
-#include <math.h>
 #include <algorithm>
-#include <functional>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -64,7 +62,9 @@ struct DimensionTransform {
 
  private:
   __inline__ void DimsExtend(int N) {
-    for (auto in_dim : vec_dims) {
+    std::reverse(out_dims.begin(), out_dims.end());
+
+    for (auto &in_dim : vec_dims) {
       std::reverse(in_dim.begin(), in_dim.end());
 
       if (in_dim.size() < dim_size) {
@@ -78,7 +78,6 @@ struct DimensionTransform {
             idx_out++;
           }
         } while (idx_out < dim_size);
-
         std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
       }
     }
@@ -123,7 +122,7 @@ struct DimensionTransform {
 
  public:
   DimensionTransform(std::vector<const framework::Tensor *> *ins,
-                     const framework::DDim dims, int N) {
+                     const framework::DDim &dims, int N) {
     dim_size = dims.size();
     out_dims = framework::vectorize<uint64_t>(dims);
     vec_dims.resize(N);
@@ -135,29 +134,20 @@ struct DimensionTransform {
     auto merge_sequential_dims = [](bool &equal, std::vector<vec_t> &in_dims,
                                     vec_t &out, int i, int num) -> void {
       for (int j = 1; j < num; ++j) {
-        equal = (in_dims[0][i] == in_dims[j][i]);
+        equal = (in_dims[0][i] == in_dims[j][i]) ? true : false;
       }
     };
 
     auto merge_sequential_one_dims = [](bool &equal,
                                         std::vector<vec_t> &in_dims, vec_t &out,
                                         int i, int num) -> void {
-      if (in_dims[0][i] == 1) {
-        for (auto in_dim : in_dims) {
-          if (in_dim[i] == out[i]) {
-            equal = true;
-          } else {
-            PADDLE_ENFORCE_NE(
-                in_dim[i], out[i],
-                platform::errors::InvalidArgument(
-                    "One input tensor %d th dimension(%d) is neither equal to"
-                    "the output tensor %d th dimension(%d), nor equal to 1.\n",
-                    i, in_dim[i], out[i]));
-          }
+      equal = in_dims[0][i] == 1;
+      if (equal) {
+        for (int j = 1; j < num; ++j) {
+          equal = in_dims[j][i] == out[i];
         }
       }
     };
-
     typedef void (*func_t)(bool &, std::vector<vec_t> &, vec_t &, int, int);
     func_t merge_ptr = merge_sequential_dims;
     DimsReorganise<func_t>(merge_ptr, N);
@@ -207,7 +197,7 @@ struct FastDivMod {
     multiplier = temp_div;
   }
 
-  HOSTDEVICE IndexT div(IndexT n) const {
+  __device__ inline IndexT div(IndexT n) const {
     IndexT t = __umulhi(n, multiplier);
     return (t + n) >> shift_val;
   }
@@ -230,25 +220,26 @@ struct OffsetPreCalculator {
     for (int j = 0; j < N; ++j) {
       for (int i = 0; i < dim_size; ++i) {
         strides[j][i] = in_dims[j][i] == 1 ? 0 : strides[j][i];
-        strides[j][i] = (i != 0) ? std::accumulate(in_dims[j].begin(),
-                                                   in_dims[j].begin() + i, 1,
-                                                   std::multiplies<uint64_t>())
-                                 : strides[j][i];
+        strides[j][i] =
+            (i != 0 && strides[j][i] != 0)
+                ? std::accumulate(in_dims[j].begin(), in_dims[j].begin() + i, 1,
+                                  std::multiplies<uint64_t>())
+                : strides[j][i];
       }
     }
   }
 
  public:
-  explicit OffsetPreCalculator(merge_t *merge_dims) {
-    auto N = merge_dims->vec_dims.size();
-    int dim_size = merge_dims->dim_size;
+  explicit OffsetPreCalculator(const merge_t &merge_dims) {
+    auto N = merge_dims.vec_dims.size();
+    int dim_size = merge_dims.dim_size;
     divmoder.resize(dim_size);
     strides.resize(N, std::vector<uint64_t>(dim_size, 1));
 
     for (int i = 0; i < dim_size; ++i) {
-      divmoder[i] = FastDivMod<uint64_t>(merge_dims->out_dims[i]);
+      divmoder[i] = FastDivMod<uint64_t>(merge_dims.out_dims[i]);
     }
-    auto vec_dims = merge_dims->vec_dims;
+    auto vec_dims = merge_dims.vec_dims;
     StirdeCalculator<decltype(vec_dims)>(N, dim_size, vec_dims);
   }
 
@@ -260,7 +251,7 @@ template <typename T, typename ArgT, typename OffsetT, int nDims, int vec_size,
           typename IndexT = uint32_t>
 struct StrideVectorLoad {
  private:
-  __device__ inline IndexT const get_offset(int tid) {
+  HOSTDEVICE inline IndexT const get_offset(int tid) {
     IndexT offset = 0;
     // #pragma unroll
     for (int i = 0; i < nDims; ++i) {
@@ -272,14 +263,14 @@ struct StrideVectorLoad {
   }
 
  public:
-  StrideVectorLoad(const OffsetT *offset_calculator, int i) {
-    memcpy(static_cast<void *>(strides), offset_calculator->strides[i].data(),
+  StrideVectorLoad(const OffsetT &offset_calculator, int i) {
+    memcpy(static_cast<void *>(strides), offset_calculator.strides[i].data(),
            sizeof(uint32_t) * nDims);
-    memcpy(static_cast<void *>(divmoders), offset_calculator->divmoder.data(),
+    memcpy(static_cast<void *>(divmoders), offset_calculator.divmoder.data(),
            sizeof(FastDivMod<uint32_t>) * nDims);
   }
 
-  __device__ inline void operator()(const T *__restrict__ in_data, ArgT *args,
+  HOSTDEVICE inline void operator()(const T *__restrict__ in_data, ArgT *args,
                                     int tid, int thresh) {
     if (tid < thresh) {
       int index = vec_size * tid;
@@ -298,16 +289,16 @@ struct StrideVectorLoad {
 template <typename T, typename OffsetT, int nDims, int vec_size,
           typename IndexT = uint32_t>
 struct StrideScalarLoad {
-  explicit StrideScalarLoad(const OffsetT *offset_calculator, int i,
+  explicit StrideScalarLoad(const OffsetT &offset_calculator, int i,
                             int data_offset)
       : data_offset(data_offset) {
-    memcpy(static_cast<void *>(strides), offset_calculator->strides[i].data(),
+    memcpy(static_cast<void *>(strides), offset_calculator.strides[i].data(),
            sizeof(uint32_t) * nDims);
-    memcpy(static_cast<void *>(divmoders), offset_calculator->divmoder.data(),
+    memcpy(static_cast<void *>(divmoders), offset_calculator.divmoder.data(),
            sizeof(FastDivMod<uint32_t>) * nDims);
   }
 
-  __device__ inline IndexT const get_offset(int tid) {
+  HOSTDEVICE inline IndexT const get_offset(int tid) {
     IndexT offset = 0;
     // #pragma unroll
     for (int i = 0; i < nDims; ++i) {
@@ -318,7 +309,7 @@ struct StrideScalarLoad {
     return offset;
   }
 
-  inline __device__ void operator()(const T *__restrict__ in_data, T *args,
+  HOSTDEVICE inline void operator()(const T *__restrict__ in_data, T *args,
                                     int tid, int thresh) {
     if (tid < thresh) {
       int offset = get_offset(tid + data_offset);
@@ -333,7 +324,7 @@ struct StrideScalarLoad {
 
 template <typename T, typename ArgT>
 struct CommonVectorLoad {
-  __device__ inline void operator()(const T *__restrict__ in_data, ArgT *args,
+  HOSTDEVICE inline void operator()(const T *__restrict__ in_data, ArgT *args,
                                     int tid, int thresh) {
     if (tid < thresh) {
       const ArgT *vec_data = reinterpret_cast<const ArgT *>(in_data);
@@ -346,7 +337,7 @@ template <typename T>
 struct CommonScalarLoad {
   explicit CommonScalarLoad(int data_offset) : data_offset(data_offset) {}
 
-  __device__ inline void operator()(const T *__restrict__ in_data, T *args,
+  HOSTDEVICE inline void operator()(const T *__restrict__ in_data, T *args,
                                     int tid, int thresh) {
     if (tid < thresh) {
       *args = in_data[tid + data_offset];
@@ -362,7 +353,7 @@ struct TensorLoader {
 
   TensorLoader() {}
   TensorLoader(std::vector<const framework::Tensor *> *ins,
-               framework::Tensor *out, const OffsetT *offset_pre = nullptr) {
+               framework::Tensor *out, const OffsetT &offset_pre = nullptr) {
     auto numel = out->numel();
     auto remain = numel % vec_size;
     auto main_len = numel - remain;

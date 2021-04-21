@@ -13,11 +13,9 @@
 // limitations under the License.
 
 #pragma once
-
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_tmp.cu.h"
+
+#define DEBUG 0
 
 namespace paddle {
 namespace operators {
@@ -75,84 +73,86 @@ __global__ void CommonElementwiseKernel(const loader_t &in_loaders, T *out,
 template <typename T, typename OffsetT, int vec_size, int N>
 void CommonElementwiseCore(const framework::ExecutionContext &ctx,
                            std::vector<const framework::Tensor *> *ins,
-                           framework::Tensor *out, const OffsetT *offset_pre) {
-  auto numel = out->numel();
-  int loop = numel / vec_size;
-  int remain = numel - loop * vec_size;
-  constexpr int threads = 256;
-  int blocks = (numel + threads - 1) / threads;
-
-  T *out_data = out->mutable_data<T>(ctx.GetPlace());
-  auto dim_size = offset_pre->strides.size();
-  auto stream =
-      ctx.template device_context<platform::CUDADeviceContext>().stream();
-
+                           framework::Tensor *out, const OffsetT &offset_pre) {
+  if (platform::is_gpu_place(ctx.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-  switch (dim_size) {
-    case 2: {
-      auto loader =
-          TensorLoader<T, OffsetT, N, vec_size, 2>(ins, out, offset_pre);
-      CommonElementwiseKernel<T, decltype(loader), N, vec_size,
-                              2><<<blocks, threads, 0, stream>>>(
-          loader, out_data, loop, remain);
-      break;
+    int numel = out->numel();
+    int loop = numel / vec_size;
+    int remain = numel - loop * vec_size;
+    const int threads = 256;
+    int blocks = (numel + threads - 1) / threads;
+    int dim_size = offset_pre.strides.size();
+
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto stream = dev_ctx.stream();
+    T *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+
+    switch (dim_size) {
+      case 2: {
+        const auto loader =
+            TensorLoader<T, OffsetT, N, vec_size, 2>(ins, out, offset_pre);
+        CommonElementwiseKernel<T, decltype(loader), N, vec_size,
+                                2><<<blocks, threads, 0, stream>>>(
+            loader, out_data, loop, remain);
+        break;
+      }
+      case 3: {
+        const auto loader =
+            TensorLoader<T, OffsetT, N, vec_size, 3>(ins, out, offset_pre);
+        CommonElementwiseKernel<T, decltype(loader), N, vec_size,
+                                3><<<blocks, threads, 0, stream>>>(
+            loader, out_data, loop, remain);
+        break;
+      }
+      case 4: {
+        const auto loader =
+            TensorLoader<T, OffsetT, N, vec_size, 4>(ins, out, offset_pre);
+        CommonElementwiseKernel<T, decltype(loader), N, vec_size,
+                                4><<<blocks, threads, 0, stream>>>(
+            loader, out_data, loop, remain);
+        break;
+      }
+      case 5: {
+        const auto loader =
+            TensorLoader<T, OffsetT, N, vec_size, 5>(ins, out, offset_pre);
+        CommonElementwiseKernel<T, decltype(loader), N, vec_size,
+                                5><<<blocks, threads, 0, stream>>>(
+            loader, out_data, loop, remain);
+        break;
+      }
+      default: { ; }
     }
-    case 3: {
-      const auto loader =
-          TensorLoader<T, OffsetT, N, vec_size, 3>(ins, out, offset_pre);
-      CommonElementwiseKernel<T, decltype(loader), N, vec_size,
-                              3><<<blocks, threads, 0, stream>>>(
-          loader, out_data, loop, remain);
-      break;
-    }
-    case 4: {
-      const auto loader =
-          TensorLoader<T, OffsetT, N, vec_size, 4>(ins, out, offset_pre);
-      CommonElementwiseKernel<T, decltype(loader), N, vec_size,
-                              4><<<blocks, threads, 0, stream>>>(
-          loader, out_data, loop, remain);
-      break;
-    }
-    case 5: {
-      const auto loader =
-          TensorLoader<T, OffsetT, N, vec_size, 5>(ins, out, offset_pre);
-      CommonElementwiseKernel<T, decltype(loader), N, vec_size,
-                              5><<<blocks, threads, 0, stream>>>(
-          loader, out_data, loop, remain);
-      break;
-    }
-    default: { ; }
-  }
 #endif  // (__NVCC__) || (__HIPCC__)
+  }
 }
 
 template <typename T, int vec_size = 1>
 void BroadcastDimsTransform(const framework::ExecutionContext &ctx,
                             std::vector<const framework::Tensor *> *ins,
                             framework::Tensor *out) {
-  auto input_num = ins->size();
-  auto merged_dims = DimensionTransform(ins, out->dims(), input_num);
-#if defined(__NVCC__) || defined(__HIPCC__)
-  auto offset_pre = OffsetPreCalculator<decltype(merged_dims)>(&merged_dims);
+  int input_num = ins->size();
+  const auto merged_dims = DimensionTransform(ins, out->dims(), input_num);
+  const auto offset_pre =
+      OffsetPreCalculator<decltype(merged_dims)>(merged_dims);
+
   switch (input_num) {
     case 2: {
       CommonElementwiseCore<T, decltype(offset_pre), vec_size, 2>(ctx, ins, out,
-                                                                  &offset_pre);
+                                                                  offset_pre);
       break;
     }
     case 3: {
       CommonElementwiseCore<T, decltype(offset_pre), vec_size, 3>(ctx, ins, out,
-                                                                  &offset_pre);
+                                                                  offset_pre);
       break;
     }
     case 4: {
       CommonElementwiseCore<T, decltype(offset_pre), vec_size, 4>(ctx, ins, out,
-                                                                  &offset_pre);
+                                                                  offset_pre);
       break;
     }
     default: { ; }
   }
-#endif
 }
 
 template <typename DeviceContext, typename T>
