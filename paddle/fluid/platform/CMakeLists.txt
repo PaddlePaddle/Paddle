@@ -143,6 +143,11 @@ if(WITH_GPU OR WITH_ROCM)
     target_link_libraries(device_context cuda_resource_pool)
 endif()
 
+if(WITH_ASCEND_CL)
+    cc_library(npu_resource_pool SRCS npu_resource_pool.cc DEPS npu_info)
+    target_link_libraries(device_context npu_resource_pool)
+endif()
+
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
 if(WITH_GPU)
