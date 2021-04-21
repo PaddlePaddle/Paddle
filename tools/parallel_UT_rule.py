@@ -1103,7 +1103,7 @@ TWO_PARALLEL_JOB = [
     'test_parallel_executor_fetch_isolated_var',
     'test_imperative_load_static_param',
     'test_fuse_bn_add_act_pass',
-    'test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass'
+    'test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass',
     'test_custom_relu_model',
     'test_quantize_transpiler_v2',
     'paddle_infer_api_test',
