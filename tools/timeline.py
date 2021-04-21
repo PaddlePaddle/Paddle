@@ -22,6 +22,7 @@ import unittest
 import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
+
 def get_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -31,12 +32,22 @@ def get_argparse():
         help='Input profile file name. If there are multiple file, the format '
         'should be trainer1=file1,trainer2=file2,ps=file3')
     parser.add_argument(
-        '--timeline_path', type=str, default='', help='Output timeline file name.')
+        '--timeline_path',
+        type=str,
+        default='',
+        help='Output timeline file name.')
     parser.add_argument(
-        '--mlnx_perf_path', type=str, default='', help='mlnx_perf input filename.')
+        '--mlnx_perf_path',
+        type=str,
+        default='',
+        help='mlnx_perf input filename.')
     parser.add_argument(
-        '--dcgm_perf_path', type=str, default='', help='dcgm perf input filename.')
+        '--dcgm_perf_path',
+        type=str,
+        default='',
+        help='dcgm perf input filename.')
     args = parser.parse_args()
+
 
 class _ChromeTraceFormatter(object):
     def __init__(self):
@@ -302,7 +313,7 @@ class Timeline(object):
 
         has_header = False
         metric_list = []
-        pid_map={}
+        pid_map = {}
 
         with open(dcgm_perf_file, "r") as rf:
             for line in rf:
@@ -338,7 +349,8 @@ class Timeline(object):
                     record_list = line.split(',')
 
                     gpuId = int(record_list[metric_list.index("Entity")])
-                    timestamp = float(record_list[metric_list.index("TIMESTAMP")])
+                    timestamp = float(record_list[metric_list.index(
+                        "TIMESTAMP")])
 
                     if not has_header or len(metric_list) == 0:
                         continue
@@ -366,6 +378,7 @@ class Timeline(object):
         self._allocate_events()
         self._allocate_memory_event()
         return self._chrome_trace.format_to_string()
+
 
 if __name__ == '__main__':
     args = get_argparse()
@@ -413,4 +426,3 @@ if __name__ == '__main__':
             tl.add_dcgm_perf(dcgm_perf_path)
 
         f.write(tl.generate_chrome_trace())
-
