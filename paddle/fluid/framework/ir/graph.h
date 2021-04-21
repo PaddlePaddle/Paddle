@@ -95,6 +95,8 @@ class Graph {
     return attrs_.count(attr_name) > 0;
   }
 
+  bool IsConstructedByPartialProgram() const { return is_partial_; }
+
   template <typename AttrType>
   AttrType &GetOrInit(const std::string &attr_name) {
     if (!Has(attr_name)) {
@@ -265,6 +267,7 @@ class Graph {
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
   size_t num_node_created_{0};  // help to generate a unique node id.
+  bool is_partial_{false};  // whether is constructed with partial programDesc
 };
 
 bool IsControlDepVar(const ir::Node &var);

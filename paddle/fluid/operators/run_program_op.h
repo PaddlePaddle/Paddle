@@ -72,8 +72,6 @@ static void CheckOutputVarStatus(const Variable &src_var,
                                  const Variable &dst_var,
                                  const std::string &var_name) {
   if (dst_var.IsType<LoDTensor>()) {
-    VLOG(3) << var_name << "is LODTensor ? ";
-    VLOG(3) << src_var.IsType<LoDTensor>();
     PADDLE_ENFORCE_EQ(
         src_var.IsType<LoDTensor>(), true,
         platform::errors::InvalidArgument(
@@ -258,6 +256,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     if (end_op_index > start_op_index) {
       framework::BuildStrategy build_strategy;
       framework::ExecutionStrategy execution_strategy;
+      execution_strategy.skip_drop_scope_ = true;
       if (platform::is_cpu_place(ctx.GetPlace())) {
         execution_strategy.use_device_ = platform::DeviceType::CPU;
         execution_strategy.num_threads_ = 2;
@@ -361,6 +360,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       // Step 2. prepare executor and scope
       framework::BuildStrategy build_strategy;
       framework::ExecutionStrategy execution_strategy;
+      execution_strategy.skip_drop_scope_ = true;
       if (platform::is_cpu_place(ctx.GetPlace())) {
         execution_strategy.use_device_ = platform::DeviceType::CPU;
         execution_strategy.num_threads_ = 2;

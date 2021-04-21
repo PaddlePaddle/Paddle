@@ -113,7 +113,11 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
 
   // TODO(Aurelius84): Should we create an  isolate var in @to_static? Skip it
   // now.
-  if (end_op_index == static_cast<int64_t>(all_ops.size())) {
+  if (end_op_index < static_cast<int64_t>(all_ops.size()) ||
+      start_op_index > 0) {
+    is_partial_ = true;
+  }
+  if (!is_partial_) {
     for (auto &pair : not_visited_vars) {
       const auto &var_name = pair.first;
       auto *var_desc = pair.second;
