@@ -710,7 +710,7 @@ class Conv2DTranspose(_ConvNd):
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by the convolution.
-        kernel_size(int|list|uple): The kernel size. If kernel_size is a tuple,
+        kernel_size(int|list|tuple): The kernel size. If kernel_size is a tuple,
             it must contain two integers, (kernel_size_H, kernel_size_W).
             Otherwise, the kernel will be a square.
         stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must

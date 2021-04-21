@@ -627,7 +627,7 @@ def conv1d_transpose(x,
           so for conv1d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`L_{out} = L^\prime_{out}`;
           else, the :math:`L_{out}` of the output size must between :math:`L^\prime_{out}`
-          and :math:`L^\prime_{out} + stride`. conv1d_transpose can compute the kernel size automatically.
+          and :math:`L^\prime_{out} + stride`.
 
     Args:
         x(Tensor): 3-D tensor with [N, C, L] or [N, L, C] format,
@@ -893,8 +893,7 @@ def conv2d_transpose(x,
           If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
           else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
           and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
-          conv2d_transpose can compute the kernel size automatically.
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`.
 
     Args:
         x(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
@@ -928,8 +927,8 @@ def conv2d_transpose(x,
             If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width). 
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
-            tuple, it must contain two integers, (image_height, image_width). None if use
-            filter_size, padding, and stride to calculate output_size.
+            tuple, it must contain two integers, (image_height, image_width). if output_size is None, 
+            use filter_size, padding, and stride to calculate output_size.
             If output_size is specified, output_size and filter_size (weight)'s shape 
             should follow the formula above. Default: None. output_size and filter_size 
             should not be None at the same time.
@@ -1289,8 +1288,7 @@ def conv3d_transpose(x,
           size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
           the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
           and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
-          conv3d_transpose can compute the kernel size automatically.
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`.
 
     Args:
         x(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type 
