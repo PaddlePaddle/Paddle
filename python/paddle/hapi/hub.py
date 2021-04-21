@@ -41,8 +41,6 @@ def _git_archive_link(repo_owner, repo_name, branch, source):
     elif source == 'gitee':
         return 'https://gitee.com/{}/{}/repository/archive/{}.zip'.format(
             repo_owner, repo_name, branch)
-    else:
-        raise ValueError('Do not support source `{}` by now.'.format(source))
 
 
 def _parse_repo_info(github):

@@ -27,7 +27,7 @@ import numpy as np
 class TestHub(unittest.TestCase):
     def setUp(self, ):
         self.local_repo = os.path.dirname(os.path.abspath(__file__))
-        # self.github_repo = 'lyuwenyu/paddlehub_demo'
+        self.github_repo = 'lyuwenyu/paddlehub_demo:main'
 
     def testLoad(self, ):
         model = hub.load(
@@ -52,6 +52,29 @@ class TestHub(unittest.TestCase):
             force_reload=False, )
 
         print(models)
+
+    def testExcept(self, ):
+        with self.assertRaises(ValueError):
+            _ = hub.help(
+                self.github_repo,
+                model='MM',
+                source='github-test',
+                force_reload=False)
+
+        with self.assertRaises(ValueError):
+            _ = hub.load(
+                self.github_repo,
+                model='MM',
+                source='github-test',
+                force_reload=False)
+
+        with self.assertRaises(ValueError):
+            _ = hub.list(
+                self.github_repo, source='github-test', force_reload=False)
+
+        with self.assertRaises(ValueError):
+            _ = hub.load(
+                self.local_repo, model=123, source='local', force_reload=False)
 
 
 if __name__ == '__main__':
