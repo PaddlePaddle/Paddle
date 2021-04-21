@@ -19,6 +19,12 @@ if(WITH_NCCL OR WITH_RCCL)
     op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 
+if(WITH_ASCEND)
+    op_library(gen_nccl_id_op)
+    op_library(c_gen_nccl_id_op)
+endif()
+
+
 if(WITH_GLOO)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper)
 endif()

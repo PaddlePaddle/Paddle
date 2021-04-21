@@ -212,8 +212,8 @@ void RunBrpcPushSparse() {
 
   /*-----------------------Test Server Init----------------------------------*/
   LOG(INFO) << "Run pull_sparse_param";
-  auto pull_status = worker_ptr_->pull_sparse(fea_value_ptr.data(), 0,
-                                              fea_keys.data(), fea_keys.size());
+  auto pull_status = worker_ptr_->pull_sparse(
+      fea_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_status.wait();
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
     fea_values.data()[idx] *= 2.0;
@@ -241,7 +241,7 @@ void RunBrpcPushSparse() {
   push_status.wait();
 
   auto pull_param_status = worker_ptr_->pull_sparse(
-      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
+      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_param_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
@@ -275,7 +275,7 @@ void RunBrpcPushSparse() {
   push_grad_status.wait();
 
   auto pull_update_status = worker_ptr_->pull_sparse(
-      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
+      fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_update_status.wait();
 
   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
