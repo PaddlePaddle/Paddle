@@ -404,7 +404,7 @@ class Conv1DTranspose(_ConvNd):
           so for conv1d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`L_{out} = L^\prime_{out}`;
           else, the :math:`L_{out}` of the output size must between :math:`L^\prime_{out}`
-          and :math:`L^\prime_{out} + stride`. conv1d_transpose can compute the kernel size automatically.
+          and :math:`L^\prime_{out} + stride`.
 
     Args:
         in_channels(int): The number of channels in the input image.

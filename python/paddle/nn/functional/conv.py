@@ -658,9 +658,8 @@ def conv1d_transpose(x,
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain one integer, `(feature_length)`. None if use
             filter_size, padding, and stride to calculate output_size.
-            If output_size and filter_size are specified at the same time, They
-            should follow the formula above. Default: None. output_size and filter_size
-            should not be None at the same time.
+            If output_size and filter_size (shape of weight) are specified at the same time, They
+            should follow the formula above.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCL"`, `"NLC"`.
             The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
@@ -929,7 +928,7 @@ def conv2d_transpose(x,
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_height, image_width). None if use
             filter_size, padding, and stride to calculate output_size. If output_size is specified,
-            output_size and filter_size (weight)'s shape should follow the formula above.
+            output_size and filter_size (shape of weight) should follow the formula above.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -1324,7 +1323,7 @@ def conv3d_transpose(x,
         output_size(int|list|tuple, optional): The output image size. If output size is a
             tuple, it must contain three integers, (image_depth, image_height, image_width).
             None if use filter_size, padding, and stride to calculate output_size. If output_size
-            and filter_size (weight)'s shape are specified at the same time, They should follow the formula above.
+            and filter_size (shape of weight) are specified at the same time, They should follow the formula above.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
