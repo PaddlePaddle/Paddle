@@ -36,6 +36,15 @@ namespace paddle {
 namespace operators {
 
 namespace detail {
+// returns floor(log2(n))
+static inline int last_pow2(int n) {
+  n |= (n >> 1);
+  n |= (n >> 2);
+  n |= (n >> 4);
+  n |= (n >> 8);
+  n |= (n >> 16);
+  return std::max(1, n - (n >> 1));
+}
 template <typename T, size_t ElementCount>
 struct Array {
  public:
@@ -89,6 +98,37 @@ __global__ void ReduceKernel2D(const Tx* x, Ty* y, ReduceOp reducer,
   }
 }
 
+// reduce higher dim
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
+__global__ void ReduceHigherDim(const Tx* x, Ty* y, ReduceOp reducer,
+                                TransformOp transformer, Ty init, int nx,
+                                int ny, int block_size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idy = blockIdx.y * block_size;
+  Ty temp = static_cast<Ty>(0.0f);
+  if (idx > nx) return;
+  for (int iy = 0; iy < block_size && idy + iy < ny; iy++) {
+    int id = (idy + iy) * nx + idx;
+    Ty tp = static_cast<Ty>(x[id]);
+    temp += tp;
+  }
+  y[idx + blockIdx.y * nx] = static_cast<Ty>(transformer(temp));
+}
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
+__global__ void ReduceHigherDim_t(const Tx* x, Ty* y, ReduceOp reducer,
+                                  TransformOp transformer, Ty init, int nx,
+                                  int ny, int block_size) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idy = blockIdx.y * block_size;
+  Ty temp = static_cast<Ty>(0.0f);
+  if (idx > nx) return;
+  for (int iy = 0; iy < block_size && idy + iy < ny; iy++) {
+    int id = (idy + iy) * nx + idx;
+    Ty tp = static_cast<Ty>(x[id]);
+    reducer(temp, tp);
+  }
+  y[idx + blockIdx.y * nx] = static_cast<Ty>(transformer(temp));
+}
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim, int Rank, int ReduceRank>
 __global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
@@ -236,10 +276,56 @@ static void TensorReduceImpl(
                               reduce_num, reducer, init, stream);
     return;
   }
+  // when data like this: [n, m] reduce m;
   if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
     ReduceKernel2D<Tx, Ty, ReduceOp, TransformOp,
                    BlockDim><<<left_num, BlockDim, 0, stream>>>(
         x_data, y_data, reducer, transformer, init, reduce_num);
+    return;
+  }
+  // when data like this: [n, m] reduce n;
+  if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 0) {
+    int device_id = platform::GetCurrentDeviceId();
+    int max_mp = platform::GetCUDAMultiProcessors(device_id);
+    int max_threads_per_mp =
+        platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+    int max_threads = max_threads_per_mp * max_mp;
+    // init
+    int reduce_nx = x_strides[0];
+    int reduce_ny = reduce_num;
+    printf("this is reduce higher dim %d %d nx %d ny %d \n", sizeof(Tx),
+           sizeof(Ty), reduce_nx, reduce_ny);
+    printf("max_mp %d max_threads_per_mp %d max_threads %d \n", max_mp,
+           max_threads_per_mp, max_threads);
+    if (max_threads / reduce_nx >= 2 && reduce_ny > 512) {
+      printf(" this is reduce y and reduce global!\n");
+      int BlockSize = last_pow2(reduce_ny / (max_threads / reduce_nx));
+      int grid_y = (reduce_ny + BlockSize - 1) / BlockSize;
+      framework::Tensor tmp;
+      // reduce y
+      dim3 block(32, 1);
+      dim3 grid((reduce_nx + block.x - 1) / block.x, grid_y);
+      printf("block x y and grid x y %d %d %d %d\n", block.x, block.y, grid.x,
+             grid.y);
+      detail::ReduceHigherDim<Tx, Ty, ReduceOp,
+                              TransformOp><<<grid, block, 0, stream>>>(
+          x_data, y_data, reducer, transformer, init, reduce_nx, reduce_ny,
+          BlockSize);
+      int block_size = 32;
+      int block_num = (reduce_nx + block_size - 1) / block_size;
+      detail::ReduceHigherDim_t<
+          Ty, Ty, ReduceOp, TransformOp><<<block_num, block_size, 0, stream>>>(
+          y_data, y_data, reducer, transformer, init, reduce_nx, grid_y,
+          grid_y + 10);
+    } else {
+      int block_size = 32;
+      int block_num = (reduce_nx + block_size - 1) / block_size;
+      printf(" this is higher reduce\n");
+      detail::ReduceHigherDim<
+          Tx, Ty, ReduceOp, TransformOp><<<block_num, block_size, 0, stream>>>(
+          x_data, y_data, reducer, transformer, init, reduce_nx, reduce_ny,
+          reduce_ny + 1);
+    }
     return;
   }
   /*
