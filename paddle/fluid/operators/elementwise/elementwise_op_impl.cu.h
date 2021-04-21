@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
 namespace paddle {
 namespace operators {
 
@@ -90,8 +92,7 @@ struct ElementwiseDataWrapper {
 
 template <ElementwiseType ET, int VecSize, typename T, typename Functor>
 __device__ void VectorizedKernelImpl(
-    ElementwiseDataWrapper<ET, VecSize, T> data, int size, Functor func,
-    int tid) {
+    ElementwiseDataWrapper<ET, VecSize, T> data, Functor func, int tid) {
   using VecType = CudaAlignedVector<T, VecSize>;
   VecType ins_vec[ET];
   VecType out_vec;
@@ -121,10 +122,9 @@ __device__ void VectorizedKernelImpl(
   data.store_vector(out_vec, tid);
 }
 
-template <ElementwiseType ET, typename T, typename Functor>
-__device__ void ScalarKernelImpl(ElementwiseDataWrapper<ET, 1, T> data,
-                                 int size, Functor func, int start,
-                                 int remain) {
+template <ElementwiseType ET, int VecSize, typename T, typename Functor>
+__device__ void ScalarKernelImpl(ElementwiseDataWrapper<ET, VecSize, T> data,
+                                 Functor func, int start, int remain) {
   T ins[ET];
   T out;
 
@@ -146,12 +146,11 @@ __global__ void VectorizedKernel(const T *__restrict__ in0,
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int remain = size - VecSize * tid;
   remain = remain > 0 ? remain : 0;
+  auto data = ElementwiseDataWrapper<ET, VecSize, T>(out, in0, in1);
   if (remain >= VecSize) {
-    auto data = ElementwiseDataWrapper<ET, VecSize, T>(out, in0, in1);
-    VectorizedKernelImpl(data, size, func, tid);
+    VectorizedKernelImpl(data, func, tid);
   } else {
-    auto data = ElementwiseDataWrapper<ET, 1, T>(out, in0, in1);
-    ScalarKernelImpl(data, size, func, tid * VecSize, remain);
+    ScalarKernelImpl(data, func, tid * VecSize, remain);
   }
 }
 
@@ -162,7 +161,7 @@ __global__ void ScalarKernel(const T *__restrict__ in0,
   auto data = ElementwiseDataWrapper<ET, 1, T>(out, in0, in1);
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int remain = tid < size ? 1 : 0;
-  ScalarKernelImpl(data, size, func, tid, remain);
+  ScalarKernelImpl(data, func, tid, remain);
 }
 
 template <ElementwiseType ET, typename T, typename Functor>
