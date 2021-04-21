@@ -546,8 +546,8 @@ def assign(input, output=None):
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
-        input (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
-            float16, float32, float64, int32 and int64.
+        input (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple, list or scalar,
+            its data type supports float16, float32, float64, int32, int64, and bool.
         output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
 
@@ -569,8 +569,14 @@ def assign(input, output=None):
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
-    check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
+    check_type(input, 'input', (Variable, numpy.ndarray, list, tuple, float,
+                                int, bool), 'assign')
     is_inplace = True if output is not None else False
+
+    if numpy.isscalar(input) and not isinstance(input, str):
+        input = numpy.array([input])
+    elif isinstance(input, (list, tuple)):
+        input = numpy.array(input)
 
     if isinstance(input, Variable):
         check_dtype(
@@ -584,6 +590,11 @@ def assign(input, output=None):
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
+        if dtype == VarDesc.VarType.FP64:
+            # Setting FP64 numpy data is not supported in Paddle, so we
+            # use FP32 here
+            dtype = VarDesc.VarType.FP32
+
         if dtype == VarDesc.VarType.BOOL:
             value_name = "bool_values"
             values = [bool(v) for v in input.flat]
