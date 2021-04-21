@@ -52,6 +52,8 @@ class DeviceMode():
     GPU = 1
     KUNLUN = 2
     XPU = 2
+    ASCEND_NPU = 3
+    UNKNOWN = 3
 
 
 class Cluster(object):
@@ -98,6 +100,14 @@ class Cluster(object):
                 r.append(t.endpoint)
         return r
 
+    def world_device_ids(self):
+        r = []
+        for pod in self.pods:
+            for t in pod.trainers:
+                str_accelerators = [str(acc) for acc in t.accelerators]
+                r.append(str_accelerators)
+        return r
+
     def pods_endpoints(self):
         r = []
         for pod in self.pods:
@@ -105,7 +115,6 @@ class Cluster(object):
             assert pod.port != None and pod.addr != None, "{} not a valid endpoint".format(
                 ep)
             r.append(ep)
-
         return r
 
     def get_pod_by_id(self, pod_id):
@@ -132,23 +141,23 @@ class JobServer(object):
 
 class Trainer(object):
     def __init__(self):
-        self.gpus = []
+        self.accelerators = []
         self.endpoint = None
         self.rank = None
 
     def __str__(self):
-        return "gpu:{} endpoint:{} rank:{}".format(self.gpus, self.endpoint,
-                                                   self.rank)
+        return "accelerator:{} endpoint:{} rank:{}".format(
+            self.accelerators, self.endpoint, self.rank)
 
     def __eq__(self, t):
-        if len(self.gpus) != len(t.gpus):
+        if len(self.accelerators) != len(t.accelerators):
             return False
 
         if self.endpoint != t.endpoint or \
                 self.rank != t.rank:
             return False
 
-        for a, b in zip(self.gpus, t.gpus):
+        for a, b in zip(self.accelerators, t.accelerators):
             if a != b:
                 return False
 
@@ -171,12 +180,13 @@ class Pod(object):
         self.servers = []
         self.workers = []
         self.heter_workers = []
-        self.gpus = []
+        self.accelerators = []
+        self.device_mode = None
 
     def __str__(self):
-        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{} servers:{} \
+        return "rank:{} id:{} addr:{} port:{} visible_accelerator:{} trainers:{} servers:{} \
             workers:{} heter_workers:{}".format(
-            self.rank, self.id, self.addr, self.port, self.gpus, [
+            self.rank, self.id, self.addr, self.port, self.accelerators, [
                 str(t) for t in self.trainers
             ], [str(s) for s in self.servers], [str(w) for w in self.workers],
             [str(h) for h in self.heter_workers])
@@ -231,12 +241,12 @@ class Pod(object):
     def rank(self):
         return self.rank
 
-    def get_visible_gpus(self):
+    def get_visible_accelerators(self):
         r = ""
-        for g in self.gpus:
+        for g in self.accelerators:
             r += "{},".format(g)
 
-        assert r != "", "this pod {} can't see any gpus".format(self)
+        assert r != "", "this pod {} can't see any accelerators".format(self)
 
         r = r[:-1]
         return r
@@ -264,23 +274,27 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
+        pod.device_mode = device_mode
+
         cur_node_endpoints = trainer_endpoints[node_rank]
         # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
         assert len(cur_node_endpoints) >= len(
             devices_per_proc
-        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
+        ), "current trainer_endpoints size should be greater equal than acclerators size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            if device_mode == DeviceMode.GPU:
+            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU:
                 if isinstance(devices_per_proc[i], (list, tuple)):
-                    trainer.gpus.extend(devices_per_proc[i])
+                    trainer.accelerators.extend(devices_per_proc[i])
+                    pod.accelerators.extend(devices_per_proc[i])
                 else:
-                    trainer.gpus.append(devices_per_proc[i])
+                    trainer.accelerators.append(devices_per_proc[i])
+                    pod.accelerators.append(devices_per_proc[i])
             elif device_mode == DeviceMode.XPU:
                 if isinstance(devices_per_proc[i], (list, tuple)):
-                    trainer.gpus.extend(devices_per_proc[i])
+                    trainer.accelerators.extend(devices_per_proc[i])
                 else:
-                    trainer.gpus.append(devices_per_proc[i])
+                    trainer.accelerators.append(devices_per_proc[i])
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
@@ -451,21 +465,37 @@ def start_local_trainers(cluster,
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
+    ids = cluster.world_device_ids()
+    res = [':'.join(ele) for ele in ids]
     procs = []
     for idx, t in enumerate(pod.trainers):
         proc_env = {
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "PADDLE_RANK_IN_NODE": str(idx),
+            "PADDLE_LOCAL_DEVICE_IDS":
+            ",".join([str(acc) for acc in t.accelerators]),
+            "PADDLE_WORLD_DEVICE_IDS": ",".join(res),
         }
 
-        if fluid.core.is_compiled_with_cuda() and len(t.gpus) > 0:
+        if len(t.accelerators) > 0 and pod.device_mode == DeviceMode.GPU:
             proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
-                [str(g) for g in t.gpus])
-        elif fluid.core.is_compiled_with_xpu() and len(t.gpus) > 0:
+                [str(g) for g in t.accelerators])
+
+        elif len(t.
+                 accelerators) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU:
+            proc_env["FLAGS_selected_npus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+
+        if len(t.accelerators) > 0:
+            proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+        # to do: same code style in future
+        if fluid.core.is_compiled_with_xpu() and len(t.accelerators) > 0:
             proc_env["FLAGS_selected_xpus"] = "%s" % ",".join(
-                [str(g) for g in t.gpus])
+                [str(g) for g in t.accelerators])
 
         current_env.update(proc_env)
 
@@ -623,11 +653,17 @@ def get_xpus(xpus):
 
 
 def get_device_mode():
-    if fluid.core.is_compiled_with_cuda() and fluid.core.get_cuda_device_count(
-    ) > 0:
-        print("launch train in GPU mode")
+    if fluid.core.is_compiled_with_ascend() and \
+            fluid.core.NPUDevice.get_device_count() > 0:
+        print("launch train in ascend npu mode!")
+        return DeviceMode.ASCEND_NPU
+
+    if fluid.core.is_compiled_with_cuda() and \
+            fluid.core.get_cuda_device_count() > 0:
+        print("launch train in GPU mode!")
         return DeviceMode.GPU
-    elif fluid.core.is_compiled_with_xpu() and fluid.core.get_xpu_device_count(
+
+    if fluid.core.is_compiled_with_xpu() and fluid.core.get_xpu_device_count(
     ) > 0:
         print("launch train in XPU mode")
         return DeviceMode.XPU
@@ -654,6 +690,8 @@ def get_device_proc_info(args):
             ]
         else:
             devices_per_proc = gpus
+    elif device_mode == DeviceMode.ASCEND_NPU:
+        devices_per_proc = None
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:

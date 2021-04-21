@@ -238,7 +238,8 @@ class UniformInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+        check_variable_and_dtype(var, "Out",
+                                 ["uint16", "float16", "float32", "float64"],
                                  "uniform_random")
 
         # Initialization Ops should be prepended and not appended
@@ -246,7 +247,7 @@ class UniformInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initializers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -275,7 +276,7 @@ class UniformInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -330,14 +331,15 @@ class NormalInitializer(Initializer):
 
         assert isinstance(block, framework.Block)
 
-        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+        check_variable_and_dtype(var, "Out",
+                                 ["uint16", "float16", "float32", "float64"],
                                  "guassian_random")
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -363,7 +365,7 @@ class NormalInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -421,7 +423,7 @@ class TruncatedNormalInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -446,7 +448,7 @@ class TruncatedNormalInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -526,7 +528,8 @@ class XavierInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(block, framework.Block)
-        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+        check_variable_and_dtype(var, "Out",
+                                 ["uint16", "float16", "float32", "float64"],
                                  "xavier_init")
 
         f_in, f_out = self._compute_fans(var)
@@ -539,7 +542,7 @@ class XavierInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -581,7 +584,7 @@ class XavierInitializer(Initializer):
                 },
                 stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -670,7 +673,7 @@ class MSRAInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -712,7 +715,7 @@ class MSRAInitializer(Initializer):
                 },
                 stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -812,7 +815,9 @@ class BilinearInitializer(Initializer):
         weight = np.reshape(weight, shape)
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16 or var.dtype == VarDesc.VarType.FP64:
+        if var.dtype in [
+                VarDesc.VarType.FP16, VarDesc.VarType.BF16, VarDesc.VarType.FP64
+        ]:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -842,7 +847,9 @@ class BilinearInitializer(Initializer):
                 value_name: values
             })
 
-        if var.dtype == VarDesc.VarType.FP16 or var.dtype == VarDesc.VarType.FP64:
+        if var.dtype in [
+                VarDesc.VarType.FP16, VarDesc.VarType.BF16, VarDesc.VarType.FP64
+        ]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -898,7 +905,7 @@ class NumpyArrayInitializer(Initializer):
         assert isinstance(block, framework.Block)
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             out_dtype = VarDesc.VarType.FP32
             np_value = self._value.astype("float32")
             out_var = block.create_var(
@@ -935,7 +942,7 @@ class NumpyArrayInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},

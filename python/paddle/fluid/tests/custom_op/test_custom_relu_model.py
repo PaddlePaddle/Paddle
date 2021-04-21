@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,9 +21,9 @@ from paddle import nn
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args
+from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_MAC
 
-# Because Windows don't use docker, the shared lib already exists in the 
+# Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\custom_relu_for_model_jit\\custom_relu_for_model_jit.pyd'.format(
     get_build_directory())
@@ -35,9 +35,13 @@ if os.name == 'nt' and os.path.isfile(file):
 # custom_relu_op_dup.cc is only used for multi ops test,
 # not a new op, if you want to test only one op, remove this
 # source file
+source_files = ['custom_relu_op.cc']
+if not IS_MAC:
+    source_files.append('custom_relu_op.cu')
+
 custom_module = load(
     name='custom_relu_for_model_jit',
-    sources=['custom_relu_op.cc', 'custom_relu_op.cu'],
+    sources=source_files,
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
@@ -84,7 +88,7 @@ class TestDygraphModel(unittest.TestCase):
             for i in range(self.batch_num)
         ]
 
-        self.devices = ['cpu', 'gpu']
+        self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
         self.model_path_template = "infer_model/custom_relu_dygaph_model_{}.pdparams"
@@ -191,7 +195,7 @@ class TestStaticModel(unittest.TestCase):
             for i in range(self.batch_num)
         ]
 
-        self.devices = ['cpu', 'gpu']
+        self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
         self.model_path_template = "infer_model/custom_relu_static_model_{}_{}"

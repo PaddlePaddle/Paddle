@@ -3239,10 +3239,7 @@ class Block(object):
             Operator: the insert Operator.
         """
         self._sync_with_cpp()
-        op_desc = self.desc._insert_op(index)
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        self.ops.insert(index, op)
-        return op
+        return self._insert_op_without_sync(index, *args, **kwargs)
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
@@ -6201,7 +6198,7 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6211,9 +6208,11 @@ def _get_paddle_place(place):
     place = place.lower()
     if (place == "cpu"):
         return core.CPUPlace()
+
     if (place == "device"):
         return core.Place()
 
+    # GPU
     avaliable_gpu_place = re.match(r'gpu:\d+', place)
     if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
         if not core.is_compiled_with_cuda():
@@ -6229,6 +6228,8 @@ def _get_paddle_place(place):
             device_id = place_info_list[1]
             device_id = int(device_id)
             return core.CUDAPlace(device_id)
+
+    # XPU
     avaliable_xpu_place = re.match(r'xpu:\d+', place)
     if avaliable_xpu_place:
         if not core.is_compiled_with_xpu():
@@ -6239,9 +6240,22 @@ def _get_paddle_place(place):
         device_id = place_info_list[1]
         device_id = int(device_id)
         return core.XPUPlace(device_id)
+
+    # NPU
+    avaliable_npu_place = re.match(r'npu:\d+', place)
+    if avaliable_npu_place:
+        if not core.is_compiled_with_npu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with NPU".format(avaliable_npu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.NPUPlace(device_id)
+
     raise ValueError(
-        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
-    )
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace and NPUPlace, but received {}.".
+        format(place))
 
 
 def _get_paddle_place_list(places):

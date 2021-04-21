@@ -39,7 +39,7 @@ set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/
 ExternalProject_Add(
         extern_brpc
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        # TODO(gongwb): change to de newst repo when they changed.
+        # TODO(gongwb): change to de newst repo when they changed
         GIT_REPOSITORY  "https://github.com/wangjiawei04/brpc"
         GIT_TAG         "e203afb794caf027da0f1e0776443e7d20c0c28e"
         PREFIX          ${BRPC_SOURCES_DIR}
