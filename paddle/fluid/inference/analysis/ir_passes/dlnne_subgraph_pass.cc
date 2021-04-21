@@ -63,6 +63,7 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       // "layer_norm",
       // "scale",
       // "stack",
+      "relu6", "reshape2", "transpose2", "concat", "slice",
   };
 
   framework::ir::FusePassBase::Init("dlnne_subgraph_pass", graph);

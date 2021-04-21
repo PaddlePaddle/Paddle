@@ -111,8 +111,12 @@ const std::vector<std::string> kTRTSubgraphPasses({
 });
 
 const std::vector<std::string> kDlnneSubgraphPasses({
-    "conv_bn_fuse_pass",    //
-    "dlnne_subgraph_pass",  //
+    "is_test_pass",                  //
+    "simplify_with_basic_ops_pass",  //
+    "conv_bn_fuse_pass",             //
+    "depthwise_conv_bn_fuse_pass",   //
+    "shuffle_channel_detect_pass",   //
+    "dlnne_subgraph_pass",           //
 });
 
 const std::vector<std::string> kLiteSubgraphPasses({
