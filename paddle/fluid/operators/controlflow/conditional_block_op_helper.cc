@@ -36,12 +36,13 @@ static bool IsMatchedConditionalBlockOpAndConditionalBlockGradOp(
 static void FindAllConditionalBlockAndConditionalBlockGradOp(
     const framework::ProgramDesc &program, std::vector<OpVariant> *fwd_ops,
     std::vector<OpVariant> *bwd_ops) {
-  PADDLE_ENFORCE_GE(
-      fwd_ops->size(), bwd_ops->size(),
-      platform::errors::InvalidArgument(
-          "Size of forward ops must be greater or equal to backward ops. The "
-          "number of forward ops is %d and the number of backward ops is %d",
-          fwd_ops->size(), bwd_ops->size()));
+  // PADDLE_ENFORCE_GE(
+  //     fwd_ops->size(), bwd_ops->size(),
+  //     platform::errors::InvalidArgument(
+  //         "Size of forward ops must be greater or equal to backward ops. The
+  //         "
+  //         "number of forward ops is %d and the number of backward ops is %d",
+  //         fwd_ops->size(), bwd_ops->size()));
 
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
