@@ -115,8 +115,7 @@ def visit_member(parent_name, member, member_name=None):
     if inspect.isclass(member):
         queue_dict(member, cur_name)
         for name, value in inspect.getmembers(member):
-            if hasattr(value, '__name__') and (not name.startswith("_") or
-                                               name == "__init__"):
+            if hasattr(value, '__name__') and not name.startswith("_"):
                 visit_member(cur_name, value)
     elif inspect.ismethoddescriptor(member):
         return
