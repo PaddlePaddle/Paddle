@@ -57,32 +57,24 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     tmp_inverse_out = &inverse_out;
 
     size_t x_size = xs.size();
-    for (size_t i = 0; i < x_size; ++i) {
+
+    // NOTE(zhiqiu):
+    Tensor float_status, addr;
+    float_status.mutable_data<float>({8}, ctx.GetPlace());
+    addr.mutable_data<float>({8}, ctx.GetPlace());
+    platform::NPUMemsetAsync(static_cast<void*>(float_status.data<T>()), 0,
+                             float_status.numel() * sizeof(T), stream);
+    platform::NPUMemsetAsync(static_cast<void*>(addr.data<T>()), 0,
+                             addr.numel() * sizeof(T), stream);
+    auto runner_float_status =
+        NpuOpRunner("NPUGetFloatStatus", {*ddr}, {float_status},
+                    {{"message", std::string("check_nan_and_inf")}});
+    runner_float_status.Run(stream);
+
+    for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
-
-      // step2: CheckNumerics
-      // CheckNumerics runs on the Ascend AI CPU, which delivers poor
-      // performance.
-      Tensor check_xout(x->type());
-      check_xout.Resize(x->dims());
-      check_xout.mutable_data<T>(ctx.GetPlace());
-      try {
-        auto runner_checknumerics =
-            NpuOpRunner("CheckNumerics", {*x}, {check_xout},
-                        {{"message", std::string("check_nan_and_inf")}});
-        runner_checknumerics.Run(stream);
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .Wait();
-      } catch (platform::EnforceNotMet& exception) {
-        LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-        found_inf_data = true;
-      } catch (...) {
-        LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-        found_inf_data = true;
-      }
-
       if (!found_inf_data) {
         // MatMul
         auto runner_matmul =
@@ -92,8 +84,8 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
         // ZerosLike
         auto runner_zeroslike = NpuOpRunner("ZerosLike", {*x}, {*out}, {});
         runner_zeroslike.Run(stream);
-      }  // end if
-    }    // end for
+      }
+    }
 
     // set found_inf to true
     if (found_inf_data) {
@@ -108,6 +100,10 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
           ctx.template device_context<platform::DeviceContext>(), found_inf);
       ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
     }
+
+    auto runner_clear_status =
+        NpuOpRunner("NPUClearFloatStatus", {addr}, {float_status});
+    runner_float_status.Run(stream);
   }
 };
 
