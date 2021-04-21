@@ -95,6 +95,35 @@ void CUDAStream::Wait() const {
   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
+// Thread-local current streams
+static thread_local CUDAStream** current_streams = nullptr;
+
+static int device_count = -1;
+
+void InitCudaStreamOnce() {
+  if (current_streams) {
+    return;
+  }
+
+  device_count = GetCUDADeviceCount();
+  current_streams = new CUDAStream*[device_count];
+  return;
+}
+
+CUDAStream& get_current_stream(int deviceId) {
+  InitCudaStreamOnce();
+
+  if (deviceId == -1) {
+    deviceId = platform::GetCurrentDeviceId();
+  }
+
+  if (!current_streams[deviceId]) {
+    platform::Place device = CUDAPlace(deviceId);
+    current_streams[deviceId] = new CUDAStream(device, Priority::kNormal);
+  }
+  return *current_streams[device_count];
+}
+
 }  // namespace stream
 }  // namespace platform
 }  // namespace paddle
