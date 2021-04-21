@@ -100,9 +100,9 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
                                   {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
       } else {
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .Wait();
-        framework::TensorCopySync(*tmp_dout, ctx.GetPlace(), dx);
+        framework::TensorCopy(
+            *tmp_dout, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), dx);
       }
     }
 
@@ -127,8 +127,6 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
                                   {{"axes", axes}, {"keep_dims", false}});
         runner.Run(stream);
         tmp_dout = &reduced_dout;
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .Wait();
       }
 
       // stage 2
@@ -144,9 +142,9 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
                                   {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
       } else {
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .Wait();
-        framework::TensorCopySync(*tmp_dout, ctx.GetPlace(), dy);
+        framework::TensorCopy(
+            *tmp_dout, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), dy);
       }
     }
   }

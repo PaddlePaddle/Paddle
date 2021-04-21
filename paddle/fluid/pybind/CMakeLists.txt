@@ -76,7 +76,7 @@ endif (WITH_CRYPTO)
 if (WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
   set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  list(APPEND PYBIND_DEPS fleet communicator)
+  list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS fleet_py.cc)
 endif()
 
@@ -86,8 +86,11 @@ endif()
 
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
-
-  set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag ascend_wrapper)
+  if (WITH_ASCEND_CL)
+    set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag ascend_wrapper)
+  else()
+    set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
+  endif()
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 

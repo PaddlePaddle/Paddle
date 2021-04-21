@@ -41,8 +41,6 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTra
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers import collective
-from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
-from paddle.fluid.incubate.fleet.base import role_maker
 
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.fluid.executor import scope_guard, Executor
@@ -50,6 +48,8 @@ from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
+from paddle.distributed.fleet.base import role_maker
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -277,6 +277,11 @@ class StaticGraphAdapter(object):
 
         self._nranks = ParallelEnv().nranks
         self._local_rank = ParallelEnv().local_rank
+
+        self._amp_level = "O0"
+        self._amp_configs = {}
+        self._amp_custom_lists = {}
+        self._use_fp16_guard = True
 
     @property
     def mode(self):
@@ -576,11 +581,26 @@ class StaticGraphAdapter(object):
                 if self._nranks > 1:
                     role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                     fleet.init(role)
-                    dist_strategy = DistributedStrategy()
-                    dist_strategy.mode = "collective"
-                    dist_strategy.collective_mode = "grad_allreduce"
+                    dist_strategy = fleet.DistributedStrategy()
+                    if self._amp_level != 'O0':
+                        dist_strategy.amp = True
+                        dist_strategy.amp_configs = self._amp_configs.copy()
+                        dist_strategy.amp_configs.update(self._amp_custom_lists)
+                        dist_strategy.amp_configs[
+                            'use_pure_fp16'] = self._amp_level == 'O2'
                     self.model._optimizer = fleet.distributed_optimizer(
                         self.model._optimizer, strategy=dist_strategy)
+                elif self._amp_level != "O0" and core.is_compiled_with_cuda:
+                    amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                        **self.
+                        _amp_custom_lists) if self._amp_custom_lists else None
+
+                    self.model._optimizer = paddle.static.amp.decorate(
+                        self.model._optimizer,
+                        amp_lists=amp_lists,
+                        use_pure_fp16=self._amp_level == "O2",
+                        use_fp16_guard=self._use_fp16_guard,
+                        **self._amp_configs)
 
                 self.model._optimizer.minimize(self._loss_endpoint)
 
@@ -624,6 +644,10 @@ class StaticGraphAdapter(object):
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
 
+        if self._amp_level == "O2" and mode == 'train' and core.is_compiled_with_cuda(
+        ):
+            self.model._optimizer.amp_init(place)
+
         if self._nranks < 2:
             compiled_prog = fluid.CompiledProgram(prog)
         else:
@@ -646,6 +670,11 @@ class DynamicGraphAdapter(object):
         }
 
         self._input_info = None
+        self._amp_level = "O0"
+        self._amp_configs = {}
+        self._amp_custom_lists = {}
+        self._use_fp16_guard = True
+
         if self._nranks > 1:
             dist.init_parallel_env()
             stradegy = fluid.dygraph.parallel.ParallelStrategy()
@@ -675,19 +704,30 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+        if self._amp_level != "O0":
+            scaler = paddle.amp.GradScaler(**self._amp_configs)
+        with paddle.amp.auto_cast(
+                enable=self._amp_level != 'O0', **self._amp_custom_lists):
+            if self._nranks > 1:
+                outputs = self.ddp_model.forward(
+                    * [to_variable(x) for x in inputs])
+            else:
+                outputs = self.model.network.forward(
+                    * [to_variable(x) for x in inputs])
+
+            losses = self.model._loss(*(to_list(outputs) + labels))
+            losses = to_list(losses)
+            final_loss = fluid.layers.sum(losses)
+
+        if self._amp_level != "O0":
+            scaled = scaler.scale(final_loss)
+            scaled.backward()
+            scaler.minimize(self.model._optimizer, scaled)
+            self.model.network.clear_gradients()
         else:
-            outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
-
-        losses = self.model._loss(*(to_list(outputs) + labels))
-        losses = to_list(losses)
-        final_loss = fluid.layers.sum(losses)
-        final_loss.backward()
-
-        self.model._optimizer.minimize(final_loss)
-        self.model.network.clear_gradients()
+            final_loss.backward()
+            self.model._optimizer.minimize(final_loss)
+            self.model.network.clear_gradients()
 
         metrics = []
         for metric in self.model._metrics:
@@ -842,6 +882,16 @@ class Model(object):
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
     must be required for static graph.
 
+    When training on GPU, auto mixed precision (AMP) training is supported, and
+    pure float16 training is also supported in static mode while using Adam,
+    AdamW and Momentum optimizer. Before using pure float16 training,
+    `multi_precision` could be set to True when creating optimizer, which can
+    avoid poor accuracy or slow convergence in a way, and inputs of dtype float
+    should be cast to float16 by users. Users should also use
+    `paddle.static.amp.fp16_guard` API to limit the range of pure float16
+    training, otherwise, 'use_fp16_guard' should be set to False by users.
+    However, limiting the range of is not supported during training using AMP.
+
     Args:
         network (paddle.nn.Layer): The network is an instance of
             paddle.nn.Layer.
@@ -856,13 +906,15 @@ class Model(object):
 
 
     Examples:
+        1. A common example
+
         .. code-block:: python
 
           import paddle
           import paddle.nn as nn
           import paddle.vision.transforms as T
           from paddle.static import InputSpec
-
+  
           device = paddle.set_device('cpu') # or 'gpu'
 
           net = nn.Sequential(
@@ -870,24 +922,62 @@ class Model(object):
               nn.Linear(784, 200),
               nn.Tanh(),
               nn.Linear(200, 10))
-
+  
           # inputs and labels are not required for dynamic graph.
           input = InputSpec([None, 784], 'float32', 'x')
           label = InputSpec([None, 1], 'int64', 'label')
-
+          
           model = paddle.Model(net, input, label)
           optim = paddle.optimizer.SGD(learning_rate=1e-3,
               parameters=model.parameters())
+
           model.prepare(optim,
                         paddle.nn.CrossEntropyLoss(),
                         paddle.metric.Accuracy())
-
+          
           transform = T.Compose([
               T.Transpose(),
               T.Normalize([127.5], [127.5])
           ])
           data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
           model.fit(data, epochs=2, batch_size=32, verbose=1)
+
+
+        2. An example using mixed precision training.
+
+        .. code-block:: python
+
+          import paddle
+          import paddle.nn as nn
+          import paddle.vision.transforms as T
+
+          def run_example_code():
+            device = paddle.set_device('gpu')
+
+            net = nn.Sequential(nn.Flatten(1), nn.Linear(784, 200), nn.Tanh(),
+                                nn.Linear(200, 10))
+
+            model = paddle.Model(net)
+            optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
+
+            amp_configs = {
+                "level": "O1",
+                "custom_white_list": {'conv2d'},
+                "use_dynamic_loss_scaling": True
+            }
+            model.prepare(optim,
+                paddle.nn.CrossEntropyLoss(),
+                paddle.metric.Accuracy(),
+                amp_configs=amp_configs)
+
+            transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+            data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+            model.fit(data, epochs=2, batch_size=32, verbose=1)
+
+          # mixed precision training is only support on GPU now.
+          if paddle.is_compiled_with_cuda():
+            run_example_code()
+
     """
 
     def __init__(self, network, inputs=None, labels=None):
@@ -924,12 +1014,12 @@ class Model(object):
         Run one training step on a batch of data.
 
         Args:
-            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could
-                be a numpy array or paddle.Tensor, or a list of arrays or
+            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
+                be a numpy array or paddle.Tensor, or a list of arrays or 
                 tensors (in case the model has multiple inputs).
-            labels (numpy.ndarray|Tensor|list): Batch of labels. It could be
-                a numpy array or paddle.Tensor, or a list of arrays or tensors
-                (in case the model has multiple labels). If has no labels,
+            labels (numpy.ndarray|Tensor|list): Batch of labels. It could be 
+                a numpy array or paddle.Tensor, or a list of arrays or tensors 
+                (in case the model has multiple labels). If has no labels, 
                 set None. Default is None.
 
         Returns:
@@ -940,7 +1030,7 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-
+            
               import numpy as np
               import paddle
               import paddle.nn as nn
@@ -975,12 +1065,12 @@ class Model(object):
         Run one evaluating step on a batch of data.
 
         Args:
-            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could
-                be a numpy array or paddle.Tensor, or a list of arrays or
+            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
+                be a numpy array or paddle.Tensor, or a list of arrays or 
                 tensors (in case the model has multiple inputs).
-            labels (numpy.ndarray|Tensor|list): Batch of labels. It could be
-                a numpy array or paddle.Tensor, or a list of arrays or tensors
-                (in case the model has multiple labels). If has no labels,
+            labels (numpy.ndarray|Tensor|list): Batch of labels. It could be 
+                a numpy array or paddle.Tensor, or a list of arrays or tensors 
+                (in case the model has multiple labels). If has no labels, 
                 set None. Default is None.
 
         Returns:
@@ -991,7 +1081,7 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-
+            
               import numpy as np
               import paddle
               import paddle.nn as nn
@@ -1027,8 +1117,8 @@ class Model(object):
         Run one predicting step on a batch of data.
 
         Args:
-            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could
-                be a numpy array or paddle.Tensor, or a list of arrays or
+            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
+                be a numpy array or paddle.Tensor, or a list of arrays or 
                 tensors (in case the model has multiple inputs).
 
         Returns:
@@ -1038,14 +1128,14 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-
+            
               import numpy as np
               import paddle
               import paddle.nn as nn
               from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-
+              
               input = InputSpec([None, 784], 'float32', 'x')
               label = InputSpec([None, 1], 'int64', 'label')
 
@@ -1067,12 +1157,12 @@ class Model(object):
         return loss
 
     def save(self, path, training=True):
-        """
-        This function saves parameters, optimizer information or model and
+        """  
+        This function saves parameters, optimizer information or model and 
         paramters only for inference to path. It depends on the parameter
         `training`.
 
-        If `training` is set to True, the parameters saved contain all
+        If `training` is set to True, the parameters saved contain all 
         the trainable Variable, will save to a file with suffix ".pdparams".
         The optimizer information contains all the variable used by optimizer.
         For Adam optimizer, contains beta1, beta2, momentum etc. All the
@@ -1125,13 +1215,13 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-
+                
                 transform = T.Compose([
                     T.Transpose(),
                     T.Normalize([127.5], [127.5])
                 ])
                 data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
-
+                
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
@@ -1175,7 +1265,7 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-
+            
               import paddle
               import paddle.nn as nn
               from paddle.static import InputSpec
@@ -1257,7 +1347,7 @@ class Model(object):
               from paddle.static import InputSpec
 
               input = InputSpec([None, 784], 'float32', 'x')
-
+              
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
                   nn.Tanh(),
@@ -1267,7 +1357,94 @@ class Model(object):
         """
         return self._adapter.parameters()
 
-    def prepare(self, optimizer=None, loss=None, metrics=None):
+    def _prepare_amp(self, amp_configs):
+        def _check_pure_fp16_configs():
+            # pure float16 training has some restricts now
+            if self._adapter._amp_level == "O2":
+                if in_dygraph_mode():
+                    warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
+                        "and it will be supported in future version.")
+                else:
+                    # grad clip is not supported in pure fp16 training now
+                    assert self._optimizer._grad_clip is None, \
+                        "Grad clip is not supported in pure float16 training now, and it will be supported in future version."
+
+        self._adapter._amp_custom_lists = {}
+        self._adapter._amp_configs = {}
+
+        # check and get level of mixed precision training
+        if not amp_configs:
+            self._adapter._amp_level = 'O0'
+            return
+        elif isinstance(amp_configs, str):
+            if amp_configs not in ('O0', 'O1', 'O2'):
+                raise ValueError(
+                    "The level of amp_configs should be 'O0', 'O1' or 'O2'.")
+            self._adapter._amp_level = amp_configs
+            _check_pure_fp16_configs()
+            return
+        else:
+            if 'level' not in amp_configs:
+                self._adapter._amp_level = 'O1'
+            elif amp_configs['level'] not in ('O0', 'O1', 'O2'):
+                raise ValueError(
+                    "amp_configs['level'] should be 'O0', 'O1' or 'O2'.")
+            else:
+                self._adapter._amp_level = amp_configs['level']
+        amp_config_key_set = set(amp_configs.keys()) - {'level'}
+        if not amp_config_key_set or self._adapter._amp_level == 'O0':
+            return
+
+        if 'use_pure_fp16' in amp_configs:
+            raise ValueError(
+                "''use_pure_fp16' is an invalid parameter, "
+                "the level of mixed precision training only depends on 'O1' or 'O2'."
+            )
+
+        _check_pure_fp16_configs()
+
+        # construct amp_custom_lists
+        if self._adapter._amp_level != 'O0' and amp_config_key_set:
+            for param_name in [
+                    'custom_white_list', 'custom_black_list',
+                    'custom_black_varnames'
+            ]:
+                if param_name in amp_config_key_set:
+                    self._adapter._amp_custom_lists[param_name] = amp_configs[
+                        param_name]
+                    amp_config_key_set -= {param_name}
+
+        def _check_amp_configs(amp_config_key_set):
+            accepted_param_set = {
+                'init_loss_scaling',
+                'incr_ratio',
+                'decr_ratio',
+                'incr_every_n_steps',
+                'decr_every_n_nan_or_inf',
+                'use_dynamic_loss_scaling',
+                'use_fp16_guard',
+            }
+            if amp_config_key_set - accepted_param_set:
+                raise ValueError(
+                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, "
+                    "but {} could not be recognized.".format(
+                        tuple(amp_config_key_set - accepted_param_set)))
+
+            if 'use_fp16_guard' in amp_config_key_set:
+                if in_dygraph_mode():
+                    raise ValueError(
+                        "'use_fp16_guard' is supported in static mode only.")
+                self._adapter._use_fp16_guard = amp_configs['use_fp16_guard']
+                amp_config_key_set.remove('use_fp16_guard')
+
+            return amp_config_key_set
+
+        amp_configs_set = _check_amp_configs(amp_config_key_set)
+        for key in amp_configs_set:
+            self._adapter._amp_configs[key] = amp_configs[key]
+
+    def prepare(self, optimizer=None, loss=None, metrics=None,
+                amp_configs=None):
         """
         Configures the model before runing.
 
@@ -1281,7 +1458,23 @@ class Model(object):
                 It can be None when there is no loss.
             metrics (Metric|list of Metric|None): If metrics is set, all
                 metrics will be calculated and output in train/eval mode.
-
+            amp_configs (str|dict|None): AMP configurations. If AMP or pure
+                float16 training is used, the key 'level' of 'amp_configs'
+                should be set to 'O1' or 'O2' respectively. Otherwise, the
+                value of 'level' defaults to 'O0', which means float32
+                training. In addition to 'level', users could pass in more
+                parameters consistent with mixed precision API. The supported
+                keys are: 'init_loss_scaling', 'incr_ratio', 'decr_ratio',
+                'incr_every_n_steps', 'decr_every_n_nan_or_inf',
+                'use_dynamic_loss_scaling', 'custom_white_list',
+                'custom_black_list', and 'custom_black_varnames'or
+                'use_fp16_guard' is only supported in static mode. Users could
+                refer to mixed precision API documentations
+                 :ref:`api_paddle_amp_auto_cast` and
+                 :ref:`api_paddle_amp_GradScaler` for details. For convenience,
+                'amp_configs' could be set to 'O1' or 'O2' if no more
+                parameters are needed. 'amp_configs' could be None in float32
+                training. Default: None.
         Returns:
             None
         """
@@ -1318,6 +1511,7 @@ class Model(object):
                 "{} is not sub class of Metric".format(
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
+        self._prepare_amp(amp_configs)
 
         if not in_dygraph_mode():
             self._adapter.prepare()
@@ -1342,12 +1536,12 @@ class Model(object):
         evaluation will be done at the end of each epoch.
 
         Args:
-            train_data (Dataset|DataLoader): An iterable data loader is used for
-                train. An instance of paddle paddle.io.Dataset or
+            train_data (Dataset|DataLoader): An iterable data loader is used for 
+                train. An instance of paddle paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended. Default: None.
             eval_data (Dataset|DataLoader): An iterable data loader is used for
-                evaluation at the end of epoch. If None, will not do evaluation.
-                An instance of paddle.io.Dataset or paddle.io.Dataloader
+                evaluation at the end of epoch. If None, will not do evaluation. 
+                An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended. Default: None.
             batch_size (int): Integer number. The batch size of train_data
                 and eval_data. When train_data and eval_data are both the
@@ -1404,10 +1598,10 @@ class Model(object):
               ])
               train_dataset = MNIST(mode='train', transform=transform)
               val_dataset = MNIST(mode='test', transform=transform)
-
+           
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
-
+           
               model = paddle.Model(
                   paddle.vision.models.LeNet(),
                   input, label)
@@ -1436,7 +1630,7 @@ class Model(object):
               dynamic = True
               if not dynamic:
                   paddle.enable_static()
-
+              
               transform = T.Compose([
                     T.Transpose(),
                     T.Normalize([127.5], [127.5])
@@ -1447,10 +1641,10 @@ class Model(object):
               val_dataset = MNIST(mode='test', transform=transform)
               val_loader = paddle.io.DataLoader(val_dataset,
                   batch_size=64)
-
+           
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
-
+           
               model = paddle.Model(
                   paddle.vision.models.LeNet(), input, label)
               optim = paddle.optimizer.Adam(
@@ -1551,7 +1745,7 @@ class Model(object):
 
         Args:
             eval_data (Dataset|DataLoader): An iterable data loader is used for
-                evaluation. An instance of paddle.io.Dataset or
+                evaluation. An instance of paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended.
             batch_size (int): Integer number. The batch size of train_data
                 and eval_data.  When eval_data is the instance of Dataloader,
@@ -1648,7 +1842,7 @@ class Model(object):
             batch_size (int): Integer number. The batch size of train_data and eval_data.
                 When train_data and eval_data are both the instance of Dataloader, this
                 argument will be ignored. Default: 1.
-            num_workers (int): The number of subprocess to load data, 0 for no subprocess
+            num_workers (int): The number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this argument will be ignored. Default: 0.
             stack_outputs (bool): Whether stack output field like a batch, as for an output
@@ -1867,10 +2061,10 @@ class Model(object):
         """Prints a string summary of the network.
 
         Args:
-            input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor.
-                    if not set, input_size will get from ``self._inputs`` if network only have
-                    one input, input_size can be tuple or InputSpec. if model have multiple
-                    input, input_size must be a list which contain every input's shape.
+            input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. 
+                    if not set, input_size will get from ``self._inputs`` if network only have 
+                    one input, input_size can be tuple or InputSpec. if model have multiple 
+                    input, input_size must be a list which contain every input's shape. 
                     Default: None.
             dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
@@ -1882,10 +2076,10 @@ class Model(object):
 
               import paddle
               from paddle.static import InputSpec
-
+           
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
-
+           
               model = paddle.Model(paddle.vision.LeNet(),
                   input, label)
               optim = paddle.optimizer.Adam(

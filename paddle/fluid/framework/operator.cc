@@ -396,7 +396,6 @@ OperatorBase::OperatorBase(const std::string& type,
   // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
   // Inputs, outputs and attrs will be set to empty map
   // to improve the execution efficiency of dygraph.
-
   if (inputs_.size() > 0 || outputs_.size() > 0) {
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
@@ -1237,7 +1236,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       }
     }
   }
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+  VLOG(3) << "op type:" << type_
+          << ", expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN

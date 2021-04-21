@@ -59,8 +59,8 @@ void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   VLOG(2) << preStr << ":" << std::endl << debugstring;
 }
 
-void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id){
-
+void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
+                     HcclRootInfo* hccl_id) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
@@ -71,11 +71,11 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo*
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap gen_hccl_id;
 
-
-  std::vector<std::string > endpointList={"127.0.0.1:6175", "127.0.0.1:6177"};
+  std::vector<std::string> endpointList = {"127.0.0.1:6175", "127.0.0.1:6177"};
   gen_hccl_id["rank"] = rank_id;
   gen_hccl_id["endpoint"] = endpointList[rank_id];
-  std::vector<std::string> other_endpoints= {endpointList[rank_id == 0 ? 1 : 0]};
+  std::vector<std::string> other_endpoints = {
+      endpointList[rank_id == 0 ? 1 : 0]};
   gen_hccl_id["other_endpoints"] = other_endpoints;
 
   auto out = scope->Var("Out");
@@ -83,8 +83,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo*
 
   VLOG(3) << "break";
 
-  auto comm_init_op =
-      f::OpRegistry::CreateOp("c_gen_hccl_id", {}, {{"Out", {"Out"}}}, gen_hccl_id);
+  auto comm_init_op = f::OpRegistry::CreateOp("c_gen_hccl_id", {},
+                                              {{"Out", {"Out"}}}, gen_hccl_id);
   VLOG(3) << "break";
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
@@ -93,8 +93,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo*
   memcpy(hccl_id, id, 1024);
 }
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id){
-
+void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
+             HcclRootInfo* hccl_id) {
   auto x = scope->Var("X");
   auto id = x->GetMutable<HcclRootInfo>();
 
@@ -103,10 +103,9 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
-  VLOG(2) << "rank_id = " << rank_id
-  << "; device_id = " << device_id
-  << "; rank_id = " << rank_id
-  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
+  VLOG(2) << "rank_id = " << rank_id << "; device_id = " << device_id
+          << "; rank_id = " << rank_id
+          << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
 
   // std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
@@ -115,8 +114,8 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id
   comm_init_attrs["rank"] = rank_id;
   comm_init_attrs["device_id"] = device_id;
   // comm_init_attrs["rank_ids"] = rank_ids;
-  auto comm_init_op =
-      f::OpRegistry::CreateOp("c_comm_init_hccl", {{"X", {"X"}}}, {}, comm_init_attrs);
+  auto comm_init_op = f::OpRegistry::CreateOp(
+      "c_comm_init_hccl", {{"X", {"X"}}}, {}, comm_init_attrs);
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
   ctx.Wait();
@@ -163,8 +162,8 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // comm sync
 
-  auto sync_op = f::OpRegistry::CreateOp("c_sync_comm_stream", {{"X", {"Data"}}},
-                                         {{"Out", {"OutData"}}}, attrs);
+  auto sync_op = f::OpRegistry::CreateOp(
+      "c_sync_comm_stream", {{"X", {"Data"}}}, {{"Out", {"OutData"}}}, attrs);
   sync_op->Run(*scope, place);
 
   // ctx.Wait();

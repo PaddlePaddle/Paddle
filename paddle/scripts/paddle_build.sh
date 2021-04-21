@@ -607,7 +607,7 @@ EOF
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
-            nightly_label=""
+            nightly_label="(NIGHTLY_LABEL)"
         else
             nightly_label="(RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
             echo "========================================="
@@ -685,28 +685,23 @@ EOF
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         paddle version
         # Recovery proxy to avoid failure in later steps
-        set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
         if [ "$mactest_error" != 0 ];then
             show_ut_retry_result
         fi
-        set -x
     fi
 }
 
 function get_precision_ut_mac() {
     on_precision=0
-    set -x
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precison_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then
-            set +x
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
-            set -x
         fi
     fi
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
@@ -848,7 +843,7 @@ function check_approvals_of_unittest() {
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
-                exit 1
+                exit 6
             fi
         fi
     fi
