@@ -13,7 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
+
+#ifdef __HIPCC__
+#define ELEMENTWISE_BLOCK_SIZE 256
+#else
+#define ELEMENTWISE_BLOCK_SIZE 512
+#endif
 
 namespace paddle {
 namespace operators {
@@ -172,7 +181,7 @@ void LaunchElementwiseCudaKernel(
   // calculate the max vec_size for all ins and outs
   auto size = ins[0]->numel();
   int vec_size = GetVectorizedSize<T>(ins, *outs);
-  int block_size = PADDLE_CUDA_THREAD_SIZE;
+  int block_size = ELEMENTWISE_BLOCK_SIZE;
   int grid_size =
       ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
   const T *in0 = ins[0]->data<T>();
