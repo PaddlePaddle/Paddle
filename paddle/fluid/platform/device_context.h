@@ -204,12 +204,12 @@ class NPUDeviceContext : public DeviceContext {
   void set_hccl_comm(HcclComm comm) { hccl_comm_ = comm; }
 #endif
 
-  template <typename Callback>
-  void AddStreamCallback(Callback&& callback) const {
-    return stream_->AddCallback(callback);
-  }
+  // template <typename Callback>
+  // void AddStreamCallback(Callback&& callback) const {
+  //   return stream_->AddCallback(callback);
+  // }
 
-  void WaitStreamCallback() const { return stream_->WaitCallback(); }
+  // void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
  private:
   NPUPlace place_;

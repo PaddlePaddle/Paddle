@@ -19,6 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/hccl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -56,9 +61,8 @@ template <typename T>
 class CSyncCommStreamCudaKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-
     auto place = ctx.GetPlace();
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
@@ -75,7 +79,7 @@ class CSyncCommStreamCudaKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
-    int ring_id = Attr<int>("ring_id");
+    int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));

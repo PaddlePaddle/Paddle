@@ -62,5 +62,5 @@ if(WITH_ASCEND_CL)
     cc_test(c_sync_comm_stream_op_npu_test SRCS c_sync_comm_stream_op_npu_test.cc
         DEPS op_registry c_broadcast_op c_comm_init_hccl_op c_sync_comm_stream_op c_gen_hccl_id_op gen_hccl_id_op_helper ${COLLECTIVE_DEPS} ascend_hccl dynamic_loader dynload_warpctc scope device_context enforce executor)
     cc_test(c_sync_calc_stream_op_npu_test SRCS c_sync_calc_stream_op_npu_test.cc
-        DEPS op_registry elementwise_add_op c_sync_calc_stream_op ${COLLECTIVE_DEPS} ascend_hccl dynamic_loader dynload_warpctc scope device_context enforce executor)
+        DEPS op_registry elementwise_add_op c_sync_calc_stream_op c_gen_hccl_id_op gen_hccl_id_op_helper ${COLLECTIVE_DEPS} ascend_hccl dynamic_loader dynload_warpctc scope device_context enforce executor)
 endif()
