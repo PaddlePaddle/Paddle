@@ -33,27 +33,59 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
         main_program = paddle.static.Program()
         with program_guard(main_program):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
+            b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             scale = paddle.static.data(name="scale", shape=[1], dtype='float32')
+            float_status = paddle.static.data(
+                name="status", shape=[8], dtype='float32')
+            main_program.global_block().append_op(
+                type="alloc_float_status",
+                outputs={"FloatStatus": float_status}, )
             b = paddle.fluid.layers.elementwise_div(a, a)
-            out, found_inf = check_finite_and_unscale([b], scale)
+            out, found_inf = check_finite_and_unscale([float_status, b], scale)
 
-        return main_program, out, found_inf
+        return main_program, out, found_inf, float_status
 
-    def run_prog(self, a, scale):
-        main_program, out, found_inf = self.get_prog()
+    def run_prog(self, a, b, scale):
+        main_program, out, found_inf, float_status = self.get_prog()
         place = fluid.NPUPlace(0)
         exe = fluid.Executor(place)
-        out_, founf_inf_ = exe.run(main_program,
-                                   feed={"a": a,
-                                         "scale": scale},
-                                   fetch_list=[out, found_inf])
+        out_, founf_inf_, float_status_ = exe.run(
+            main_program,
+            feed={"a": a,
+                  "b": b,
+                  "scale": scale},
+            fetch_list=[out, found_inf, float_status])
+        print(float_status_)
         return out_, founf_inf_
 
-    def test_contains_inf(self):
+    def test_contains_nan(self):
         a = np.zeros((32, 32)).astype('float32')
+        b = np.zeros((32, 32)).astype('float32')
         scale = np.array([2.0]).astype('float32')
 
-        out, found_inf = self.run_prog(a, scale)
+        out, found_inf = self.run_prog(a, b, scale)
+        print(out, found_inf)
+
+        self.assertTrue(np.allclose(out, (a + 1) / scale[0]))
+        self.assertTrue(found_inf[0])
+
+    def test_contains_inf(self):
+        a = np.ones((32, 32)).astype('float32')
+        b = np.zeros((32, 32)).astype('float32')
+        scale = np.array([2.0]).astype('float32')
+
+        out, found_inf = self.run_prog(a, b, scale)
+        print(out, found_inf)
+
+        self.assertTrue(np.allclose(out, (a + 1) / scale[0]))
+        self.assertTrue(found_inf[0])
+
+    def test_not_contains_nan_inf(self):
+        a = np.zeros((32, 32)).astype('float32')
+        b = np.ones((32, 32)).astype('float32')
+        scale = np.array([2.0]).astype('float32')
+
+        out, found_inf = self.run_prog(a, b, scale)
         print(out, found_inf)
 
         self.assertTrue(np.allclose(out, (a + 1) / scale[0]))

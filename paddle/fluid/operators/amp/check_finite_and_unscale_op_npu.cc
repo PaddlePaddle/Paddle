@@ -36,6 +36,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     const auto xs = ctx.MultiInput<framework::Tensor>("X");
     const auto* scale = ctx.Input<framework::Tensor>("Scale");
+    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
 
@@ -63,21 +64,28 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     tmp_inverse_out = &inverse_out;
 
     // NOTE(zhiqiu):
-    Tensor float_status, addr;
-    float_status.mutable_data<float>({8}, ctx.GetPlace());
-    addr.mutable_data<float>({8}, ctx.GetPlace());
-    platform::NPUMemsetAsync(static_cast<void*>(float_status.data<T>()), 0,
-                             float_status.numel() * sizeof(T), stream);
-    platform::NPUMemsetAsync(static_cast<void*>(addr.data<T>()), 0,
-                             addr.numel() * sizeof(T), stream);
-    auto runner_float_status =
-        NpuOpRunner("NPUGetFloatStatus", {addr}, {float_status},
-                    {{"message", std::string("check_nan_and_inf")}});
-    runner_float_status.Run(stream);
+    Tensor tmp;
+    tmp.mutable_data<float>({8}, ctx.GetPlace());
 
     std::vector<float> float_status_vec;
     TensorToVector(
-        float_status,
+        *float_status,
+        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        &float_status_vec);
+    VLOG(4) << "float_status_vec:";
+    for (auto i : float_status_vec) {
+      VLOG(4) << i;
+    }
+
+    // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
+    // tmp is only placeholder.
+    auto runner_float_status =
+        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
+                    {{"message", std::string("check_nan_and_inf")}});
+    runner_float_status.Run(stream);
+
+    TensorToVector(
+        *float_status,
         ctx.template device_context<paddle::platform::NPUDeviceContext>(),
         &float_status_vec);
     VLOG(4) << "float_status:";
@@ -118,8 +126,16 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     }
 
     auto runner_clear_status =
-        NpuOpRunner("NPUClearFloatStatus", {addr}, {float_status});
+        NpuOpRunner("NPUClearFloatStatus", {*float_status}, {tmp});
     runner_clear_status.Run(stream);
+    TensorToVector(
+        *float_status,
+        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        &float_status_vec);
+    VLOG(4) << "float_status:";
+    for (auto i : float_status_vec) {
+      VLOG(4) << i;
+    }
   }
 };
 
