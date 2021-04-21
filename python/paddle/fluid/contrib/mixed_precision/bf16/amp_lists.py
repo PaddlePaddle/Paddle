@@ -84,8 +84,11 @@ bf16_list = {'elementwise_add', }
 
 # depends on the prev_op type
 gray_list = {
+    'cast',
+    'fill_constant',
+    'reduce_mean',
     'reshape2',
-    'lookup_table',
+    'scale',
 }
 
 _, _, _sys_unsupported_bf16_list = core.op_supported_infos(

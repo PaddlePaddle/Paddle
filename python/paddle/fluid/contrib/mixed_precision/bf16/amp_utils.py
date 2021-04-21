@@ -260,8 +260,6 @@ def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
         for op in ops:
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
-                #TODO verify first
-            # if op.type in amp_lists.fp32_list or _need_keep_fp32(op, amp_lists.unsupported_list, use_bf16_guard):
             if _need_keep_fp32(op, amp_lists.unsupported_list, use_bf16_guard):
                 keep_fp32_ops.add(op)
                 continue  # processed below
@@ -288,9 +286,6 @@ def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
                         continue
 
                     if in_var.dtype == core.VarDesc.VarType.FP32:
-                        # if in_var.is_data:
-                        #     to_bf16_pre_cast_ops.add(op)
-                        # else:
                         in_var.desc.set_dtype(core.VarDesc.VarType.BF16)
                         to_bf16_var_names.add(in_var_name)
 
@@ -335,8 +330,6 @@ def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
             if op.has_attr('dtype') and op.attr(
                     'dtype') == core.VarDesc.VarType.FP32:
                 op._set_attr('dtype', core.VarDesc.VarType.BF16)
-            # if op.has_attr('op_namescope') and \
-            #         (_bf16_guard_pattern in op.attr("op_namescope")):
             if op.has_attr('use_mkldnn'):
                 op._set_attr('use_mkldnn', True)
             if op.has_attr('mkldnn_data_type'):
@@ -412,7 +405,7 @@ def cast_parameters_to_bf16(place, program, scope=None, to_bf16_var_names=None):
             param_t.set(np.uint16(data), place)
 
 
-def rewrite_program_bf16(main_prog, amp_lists=None, use_bf16_guard=False):
+def rewrite_program_bf16(main_prog, amp_lists=None):
     """
     Traverse all ops in current block and insert cast op according to
     which set current op belongs to.
@@ -452,8 +445,7 @@ def rewrite_program_bf16(main_prog, amp_lists=None, use_bf16_guard=False):
             fp32_op_set.add(op)
             continue
 
-        if op.type in amp_lists.fp32_list or _need_keep_fp32(
-                op, amp_lists.unsupported_list, use_bf16_guard):
+        if op.type in amp_lists.fp32_list:
             fp32_op_set.add(op)
         elif op.type in amp_lists.bf16_list:
             bf16_op_set.add(op)
