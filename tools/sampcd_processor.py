@@ -609,12 +609,16 @@ def get_api_md5(path):
     api_md5 = {}
     API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
                           path)
+    pat = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
+    patArgSpec = re.compile(
+        r'^(paddle[^,]+)\s+\(ArgSpec.*document\W*([0-9a-z]{32})')
     with open(API_spec) as f:
         for line in f.readlines():
-            api = line.split(' ', 1)[0]
-            md5 = line.split("'document', ")[1].replace(')', '').replace('\n',
-                                                                         '')
-            api_md5[api] = md5
+            mo = pat.search(line)
+            if not mo:
+                mo = patArgSpec.search(line)
+            if mo:
+                api_md5[mo.group(1)] = mo.group(2)
     return api_md5
 
 
@@ -629,9 +633,12 @@ def get_incrementapi():
         for key in pr_api:
             if key in dev_api:
                 if dev_api[key] != pr_api[key]:
+                    logger.debug("%s in dev is %s, different from pr's %s", key,
+                                 dev_api[key], pr_api[key])
                     f.write(key)
                     f.write('\n')
             else:
+                logger.debug("%s is not in dev", key)
                 f.write(key)
                 f.write('\n')
 

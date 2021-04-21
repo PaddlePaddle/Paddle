@@ -157,12 +157,12 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(gelu, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx);
 }
 
 TEST(gelu_grad, NPU) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  CompareGrad<float>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  CompareGrad<float>(&scope, *ctx);
 }

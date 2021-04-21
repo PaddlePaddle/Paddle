@@ -84,6 +84,15 @@ class FleetWrapper {
                           int fea_dim,
                           const std::vector<std::string>& var_emb_names);
 
+  // Pull sparse variables from server in async mode
+  // Param<in>: scope, table_id, var_names, fea_keys, fea_dim
+  // Param<out>: fea_values std::future
+  std::future<int32_t> PullSparseVarsAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<uint64_t>* fea_keys,
+      std::vector<std::vector<float>>* fea_values, int fea_dim);
+
   // Pull sparse variables from server in sync mode
   // pull immediately to tensors
   // is_training is true means training, false means inference, the behavior is
