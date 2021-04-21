@@ -16,22 +16,27 @@ import argparse
 import json
 import six
 import sys
+import re
 import unittest
 
 import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument(
-    '--profile_path',
-    type=str,
-    default='',
-    help='Input profile file name. If there are multiple file, the format '
-    'should be trainer1=file1,trainer2=file2,ps=file3')
-parser.add_argument(
-    '--timeline_path', type=str, default='', help='Output timeline file name.')
-args = parser.parse_args()
-
+def get_argparse():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        '--profile_path',
+        type=str,
+        default='',
+        help='Input profile file name. If there are multiple file, the format '
+        'should be trainer1=file1,trainer2=file2,ps=file3')
+    parser.add_argument(
+        '--timeline_path', type=str, default='', help='Output timeline file name.')
+    parser.add_argument(
+        '--mlnx_perf_path', type=str, default='', help='mlnx_perf input filename.')
+    parser.add_argument(
+        '--dcgm_perf_path', type=str, default='', help='dcgm perf input filename.')
+    args = parser.parse_args()
 
 class _ChromeTraceFormatter(object):
     def __init__(self):
@@ -58,7 +63,7 @@ class _ChromeTraceFormatter(object):
         event = {}
         event['ph'] = ph
         event['cat'] = category
-        event['name'] = name.replace("ParallelExecutor::Run/", "")
+        event['name'] = name
         event['pid'] = pid
         event['tid'] = tid
         event['ts'] = timestamp
@@ -135,6 +140,10 @@ class Timeline(object):
         self._devices = dict()
         self._mem_devices = dict()
         self._chrome_trace = _ChromeTraceFormatter()
+
+        self._allocate_pids()
+        self._allocate_events()
+        self._allocate_memory_event()
 
     def _allocate_pid(self):
         cur_pid = self._pid
@@ -270,37 +279,138 @@ class Timeline(object):
                     0, total_size)
                 i += 1
 
+    def add_mlnx_perf(self, mlnx_perf_path):
+        if mlnx_perf_path == None:
+            return
+
+        # zhangwenhui03: to do Pid
+        self._chrome_trace.emit_pid("tx", self._allocate_pid())
+        self._chrome_trace.emit_pid("rx", self._allocate_pid())
+        with open(mlnx_perf_path, "r") as rf:
+            for line in rf:
+                event_str = json.loads(line.strip())
+                self._chrome_trace._events.append(event_str)
+
+    def add_dcgm_perf(self, dcgm_perf_file):
+        if dcgm_perf_file == None:
+            return
+
+        regex_list = [
+            (re.compile(r' +'), ','),
+            (re.compile(r'^,'), ''),
+        ]
+
+        has_header = False
+        metric_list = []
+        pid_map={}
+
+        with open(dcgm_perf_file, "r") as rf:
+            for line in rf:
+                #  skip the unused line
+                if 'nv-hostengine' in line or 'dmon' in line or 'Host Engine Listener Started' in line:
+                    continue
+
+                # process the head line
+                if line.strip().startswith("# Entity"):
+                    line = line.strip()[2:]
+                    if 'Entity' == line[0:len('Entity')]:
+                        if not has_header:
+                            has_header = True
+                            for r in regex_list:
+                                line = r[0].sub(r[1], line)
+
+                        metric_list = line.split(',')
+                        for item in metric_list:
+                            if item == "Entity" or item == "TIMESTAMP":
+                                continue
+
+                            metric_pid = self._allocate_pid()
+                            self._chrome_trace.emit_pid(item, metric_pid)
+                            pid_map[item] = metric_pid
+
+                # process the data line
+                elif line.strip().startswith("GPU"):
+                    line = line.strip()[3:]
+
+                    for r in regex_list:
+                        line = r[0].sub(r[1], line)
+
+                    record_list = line.split(',')
+
+                    gpuId = int(record_list[metric_list.index("Entity")])
+                    timestamp = float(record_list[metric_list.index("TIMESTAMP")])
+
+                    if not has_header or len(metric_list) == 0:
+                        continue
+
+                    for metric, record in zip(metric_list, record_list):
+                        if metric == "Entity" or metric == "TIMESTAMP":
+                            continue
+
+                        di = {}
+                        di['name'] = metric
+                        di['pid'] = pid_map[metric]
+                        di['ts'] = timestamp
+                        di['cat'] = metric
+                        di['tid'] = gpuId
+                        di['ph'] = "C"
+                        # di['args'] = {"gpu_id": gpu_id}
+
+                        self._chrome_trace._events.append(di)
+
+                else:
+                    continue
+
     def generate_chrome_trace(self):
         self._allocate_pids()
         self._allocate_events()
         self._allocate_memory_event()
         return self._chrome_trace.format_to_string()
 
+if __name__ == '__main__':
+    args = get_argparse()
 
-profile_path = '/tmp/profile'
-if args.profile_path:
-    profile_path = args.profile_path
-timeline_path = '/tmp/timeline'
-if args.timeline_path:
-    timeline_path = args.timeline_path
+    profile_path = '/tmp/profile'
+    if args.profile_path:
+        profile_path = args.profile_path
 
-profile_paths = profile_path.split(',')
-profile_dict = dict()
-if len(profile_paths) == 1:
-    with open(profile_path, 'rb') as f:
-        profile_s = f.read()
-        profile_pb = profiler_pb2.Profile()
-        profile_pb.ParseFromString(profile_s)
-    profile_dict['trainer'] = profile_pb
-else:
-    for profile_path in profile_paths:
-        k, v = profile_path.split('=')
-        with open(v, 'rb') as f:
+    timeline_path = '/tmp/timeline'
+    if args.timeline_path:
+        timeline_path = args.timeline_path
+
+    mlnx_perf_path = None
+    if args.mlnx_perf_path:
+        mlnx_perf_path = args.mlnx_perf_path
+
+    dcgm_perf_path = None
+    if args.dcgm_perf_path:
+        dcgm_perf_path = args.dcgm_perf_path
+
+    profile_paths = profile_path.split(',')
+    profile_dict = dict()
+    if len(profile_paths) == 1:
+        with open(profile_path, 'rb') as f:
             profile_s = f.read()
             profile_pb = profiler_pb2.Profile()
             profile_pb.ParseFromString(profile_s)
-        profile_dict[k] = profile_pb
+        profile_dict['trainer'] = profile_pb
+    else:
+        for profile_path in profile_paths:
+            k, v = profile_path.split('=')
+            with open(v, 'rb') as f:
+                profile_s = f.read()
+                profile_pb = profiler_pb2.Profile()
+                profile_pb.ParseFromString(profile_s)
+            profile_dict[k] = profile_pb
 
-tl = Timeline(profile_dict)
-with open(timeline_path, 'w') as f:
-    f.write(tl.generate_chrome_trace())
+    tl = Timeline(profile_dict)
+
+    with open(timeline_path, 'w') as f:
+        # if mlnx_perf_path is not None:
+        #     tl.add_mlnx_perf(mlnx_perf_path)
+
+        if dcgm_perf_path is not None:
+            tl.add_dcgm_perf(dcgm_perf_path)
+
+        f.write(tl.generate_chrome_trace())
+
