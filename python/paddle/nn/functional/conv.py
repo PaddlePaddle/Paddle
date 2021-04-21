@@ -414,7 +414,7 @@ def conv2d(x,
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -853,7 +853,7 @@ def conv2d_transpose(x,
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -1086,7 +1086,7 @@ def conv3d(x,
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
@@ -1242,7 +1242,7 @@ def conv3d_transpose(x,
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
