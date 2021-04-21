@@ -24,6 +24,12 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+// NOTE(zhiqiu): The CheckFiniteAndUnscaleNPUKernel is different from CUDA.
+// On NPU, we do not really check the data of input tensors,
+// but use NPUGetFloatStatus to check whether the nan/inf occurs on device,
+// and clear it after this op.
+// Which may leads to wrong result if the input tensors is not calculated
+// on NPU device, but got from other way, for example, feeding.
 template <typename T>
 class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
  public:
@@ -69,6 +75,16 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
                     {{"message", std::string("check_nan_and_inf")}});
     runner_float_status.Run(stream);
 
+    std::vector<float> float_status_vec;
+    TensorToVector(
+        float_status,
+        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        &float_status_vec);
+    VLOG(4) << "float_status:";
+    for (auto i : float_status_vec) {
+      VLOG(4) << i;
+    }
+
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
       auto* out = outs[i];
@@ -86,6 +102,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     }
 
     // set found_inf to true
+    VLOG(4) << "found overflow:" << found_inf_data;
     if (found_inf_data) {
       Tensor found_inf_tensor;
       found_inf_tensor.Resize({1});
@@ -97,11 +114,12 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
           found_inf_tensor, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), found_inf);
       ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
+    } else {
     }
 
     auto runner_clear_status =
         NpuOpRunner("NPUClearFloatStatus", {addr}, {float_status});
-    runner_float_status.Run(stream);
+    runner_clear_status.Run(stream);
   }
 };
 
