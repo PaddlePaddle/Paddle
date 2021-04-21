@@ -71,6 +71,7 @@ class CSyncCommStreamCudaKernel : public framework::OpKernel<T> {
 #endif
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
+    auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
