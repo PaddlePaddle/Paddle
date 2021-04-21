@@ -324,7 +324,7 @@ def srccoms_extract(srcfile, wlist, methods):
     if allidx != -1:
         alllist = []
         # get all list for layers/ops.py
-        if srcfile.name.find("ops.py") != -1:
+        if srcfile.name.find("fluid/layers/ops.py") != -1:
             for ai in range(0, len(srcls)):
                 if srcls[ai].startswith("__all__"):
                     lb = srcls[ai].find('[')
