@@ -27,7 +27,7 @@ import pydoc
 import hashlib
 import six
 import functools
-import logging
+import paddle
 
 member_dict = collections.OrderedDict()
 
@@ -71,8 +71,10 @@ def queue_dict(member, cur_name):
         try:
             eval(cur_name)
         except (AttributeError, NameError, SyntaxError) as e:
-            #print("Error(%s) occurred when `eval(%s)`, discard it.",
-            #      str(e), cur_name)
+            print(
+                "Error({}) occurred when `eval({})`, discard it.".format(
+                    str(e), cur_name),
+                file=sys.stderr)
             return
 
     if (inspect.isclass(member) or inspect.isfunction(member) or
@@ -82,8 +84,10 @@ def queue_dict(member, cur_name):
         try:
             eval(args)
         except (AttributeError, NameError, SyntaxError) as e:
-            #print("AttributeError occurred when `eval(%s)`, discard it for %s.",
-            #      args, cur_name)
+            print(
+                "Error({}) occurred when `eval({})`, discard it for {}.".format(
+                    str(e), args, cur_name),
+                file=sys.stderr)
             return
     else:
         try:
@@ -173,9 +177,10 @@ def visit_all_module(mod):
             visit_all_module(instance)
         else:
             if member_name != instance.__name__:
-                #logging.warning(
-                #    "Found alias API, alias name is: {}, original name is: {}".
-                #    format(member_name, instance.__name__))
+                print(
+                    "Found alias API, alias name is: {}, original name is: {}".
+                    format(member_name, instance.__name__),
+                    file=sys.stderr)
                 visit_member(mod.__name__, instance, member_name)
             else:
                 visit_member(mod.__name__, instance)
