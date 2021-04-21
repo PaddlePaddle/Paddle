@@ -17,6 +17,10 @@ from typing import Any, Iterable, List, Tuple
 from paddle.fluid import core
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
+import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S')
 
 # import warnings
 # from typing import Any, Iterable, List, Tuple
@@ -70,63 +74,65 @@ class CheckpointFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        print("here!!!")
-        # if not torch.autograd._is_checkpoint_valid():
-        #     raise RuntimeError(
-        #         "Checkpointing is not compatible with .grad() or when an `inputs` parameter"
-        #         " is passed to .backward(). Please use .backward() and do not pass its `inputs`"
-        #         " argument.")
-        # Copy the list to avoid modifying original list.
-        inputs = list(ctx.inputs)
-        tensor_indices = ctx.tensor_indices
-        tensors = ctx.saved_tensor()
+        with paddle.fluid.dygraph.guard():
+            # if not torch.autograd._is_checkpoint_valid():
+            #     raise RuntimeError(
+            #         "Checkpointing is not compatible with .grad() or when an `inputs` parameter"
+            #         " is passed to .backward(). Please use .backward() and do not pass its `inputs`"
+            #         " argument.")
+            # Copy the list to avoid modifying original list.
+            inputs = list(ctx.inputs)
+            tensor_indices = ctx.tensor_indices
+            tensors = ctx.saved_tensor()
 
-        # Restore inputs
-        for i, idx in enumerate(tensor_indices):
-            inputs[idx] = tensors[i]
+            # Restore inputs
+            for i, idx in enumerate(tensor_indices):
+                inputs[idx] = tensors[i]
 
-        # Stash the surrounding rng state, and mimic the state that was
-        # present at this time during forward.  Restore the surrounding state
-        # when we're done.
-        # rng_devices = []
-        # if ctx.preserve_rng_state and ctx.had_cuda_in_fwd:
-        #     rng_devices = ctx.fwd_gpu_devices
-        # with torch.random.fork_rng(devices=rng_devices, enabled=ctx.preserve_rng_state):
-        #     if ctx.preserve_rng_state:
-        #         torch.set_rng_state(ctx.fwd_cpu_state)
-        #         if ctx.had_cuda_in_fwd:
-        #             set_device_states(ctx.fwd_gpu_devices, ctx.fwd_gpu_states)
-        detached_inputs = detach_variable(tuple(inputs))
-        # with torch.enable_grad(), torch.cuda.amp.autocast(ctx.had_autocast_in_fwd):
+            # Stash the surrounding rng state, and mimic the state that was
+            # present at this time during forward.  Restore the surrounding state
+            # when we're done.
+            # rng_devices = []
+            # if ctx.preserve_rng_state and ctx.had_cuda_in_fwd:
+            #     rng_devices = ctx.fwd_gpu_devices
+            # with torch.random.fork_rng(devices=rng_devices, enabled=ctx.preserve_rng_state):
+            #     if ctx.preserve_rng_state:
+            #         torch.set_rng_state(ctx.fwd_cpu_state)
+            #         if ctx.had_cuda_in_fwd:
+            #             set_device_states(ctx.fwd_gpu_devices, ctx.fwd_gpu_states)
+            detached_inputs = detach_variable(tuple(inputs))
+            # with torch.enable_grad(), torch.cuda.amp.autocast(ctx.had_autocast_in_fwd):
 
-        # paddle.enable_grad()
-        tracer = framework._dygraph_tracer()
-        tracer._has_grad = True
+            # paddle.enable_grad()
+            tracer = framework._dygraph_tracer()
+            tracer._has_grad = True
+            outputs = ctx.run_function(*detached_inputs)
 
-        outputs = ctx.run_function(*detached_inputs)
+            if isinstance(outputs, core.VarBase):
+                outputs = (outputs, )
+            # enable_grad
+            assert len(outputs) == len(args)
 
-        if isinstance(outputs, core.VarBase):
-            outputs = (outputs, )
-        # enable_grad
-        assert len(outputs) == len(args)
+            # run backward() with only tensor that requires grad
+            outputs_with_grad = []
+            args_with_grad = []
+            for i in range(len(outputs)):
+                if isinstance(outputs[i],
+                              core.VarBase) and not outputs[i].stop_gradient:
+                    outputs_with_grad.append(outputs[i])
+                    args_with_grad.append(args[i])
+            if len(outputs_with_grad) == 0:
+                raise RuntimeError("none of output has requires_grad=True,"
+                                   " this checkpoint() is not necessary")
+            paddle.autograd.backward(outputs_with_grad, args_with_grad)
+            # grads = tuple(
+            #     inp.grad if isinstance(inp, core.VarBase) else None
+            #     for inp in detached_inputs)
+            grads = tuple(inp._grad_ivar() for inp in detached_inputs
+                          if isinstance(inp, core.VarBase))
 
-        # run backward() with only tensor that requires grad
-        outputs_with_grad = []
-        args_with_grad = []
-        for i in range(len(outputs)):
-            if isinstance(outputs[i],
-                          core.VarBase) and not outputs[i].stop_gradient:
-                outputs_with_grad.append(outputs[i])
-                args_with_grad.append(args[i])
-        if len(outputs_with_grad) == 0:
-            raise RuntimeError("none of output has requires_grad=True,"
-                               " this checkpoint() is not necessary")
-        paddle.autograd.backward(outputs_with_grad, args_with_grad)
-        grads = tuple(
-            inp.grad if isinstance(inp, core.VarBase) else None
-            for inp in detached_inputs)
-
-        return (None, None) + grads
+            # return (None, None) + grads
+            return grads
 
 
 def checkpoint(function, *args, **kwargs):
