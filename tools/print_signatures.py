@@ -33,13 +33,6 @@ member_dict = collections.OrderedDict()
 
 visited_modules = set()
 
-# APIs that should not be printed into API.spec 
-omitted_list = [
-    "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
-    "paddle.fluid.io.ComposeNotAligned",
-    "paddle.fluid.io.ComposeNotAligned.__init__",
-]
-
 
 def md5(doc):
     hash = hashlib.md5()
@@ -74,13 +67,24 @@ def format_spec(spec):
 
 
 def queue_dict(member, cur_name):
-    if cur_name in omitted_list:
-        return
+    if cur_name != 'paddle':
+        try:
+            eval(cur_name)
+        except (AttributeError, NameError) as e:
+            print("Error(%s) occurred when `eval(%s)`, discard it.",
+                  str(e), cur_name)
+            return
 
-    doc_md5 = md5(member.__doc__)
-
-    if inspect.isclass(member):
+    if (inspect.isclass(member) or inspect.isfunction(member) or
+            inspect.ismethod(member)) and hasattr(
+                member, '__module__') and hasattr(member, '__name__'):
         args = member.__module__ + "." + member.__name__
+        try:
+            eval(args)
+        except AttributeError:
+            print("AttributeError occurred when `eval(%s)`, discard it for %s.",
+                  args, cur_name)
+            return
     else:
         try:
             args = inspect.getargspec(member)
@@ -95,6 +99,7 @@ def queue_dict(member, cur_name):
         if not has_type_error:
             args = format_spec(args)
 
+    doc_md5 = md5(member.__doc__)
     member_dict[cur_name] = "({}, ('document', '{}'))".format(args, doc_md5)
 
 
@@ -176,9 +181,10 @@ def visit_all_module(mod):
                 visit_member(mod.__name__, instance)
 
 
-modules = sys.argv[1].split(",")
-for m in modules:
-    visit_all_module(importlib.import_module(m))
+if __name__ == '__main__':
+    modules = sys.argv[1].split(",")
+    for m in modules:
+        visit_all_module(importlib.import_module(m))
 
-for name in member_dict:
-    print(name, member_dict[name])
+    for name in member_dict:
+        print(name, member_dict[name])
