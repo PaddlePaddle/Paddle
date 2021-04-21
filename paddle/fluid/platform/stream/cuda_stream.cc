@@ -110,7 +110,7 @@ void InitCudaStreamOnce() {
   return;
 }
 
-CUDAStream& get_current_stream(int deviceId) {
+CUDAStream* get_current_stream(int deviceId) {
   InitCudaStreamOnce();
 
   if (deviceId == -1) {
@@ -121,7 +121,7 @@ CUDAStream& get_current_stream(int deviceId) {
     platform::Place device = CUDAPlace(deviceId);
     current_streams[deviceId] = new CUDAStream(device, Priority::kNormal);
   }
-  return *current_streams[device_count];
+  return current_streams[device_count];
 }
 
 }  // namespace stream

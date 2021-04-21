@@ -609,9 +609,11 @@ void BindImperative(py::module *m_ptr) {
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
           imperative::SetCurrentTracer(tracer);
         });
-  m.def("_get_current_stream", [](int deviceId) {
-    return paddle::platform::stream::get_current_stream(deviceId);
-  });
+  m.def("_get_current_stream",
+        [](int deviceId) {
+          return paddle::platform::stream::get_current_stream(deviceId);
+        },
+        py::return_value_policy::reference);
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase", R"DOC()DOC")
