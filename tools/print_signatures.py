@@ -33,13 +33,6 @@ member_dict = collections.OrderedDict()
 
 visited_modules = set()
 
-# APIs that should not be printed into API.spec 
-omitted_list = [
-    "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
-    "paddle.fluid.io.ComposeNotAligned",
-    "paddle.fluid.io.ComposeNotAligned.__init__",
-]
-
 
 def md5(doc):
     hash = hashlib.md5()
@@ -74,8 +67,6 @@ def format_spec(spec):
 
 
 def queue_dict(member, cur_name):
-    if cur_name in omitted_list:
-        return
     if cur_name != 'paddle':
         try:
             eval(cur_name)
