@@ -70,9 +70,9 @@ def queue_dict(member, cur_name):
     if cur_name != 'paddle':
         try:
             eval(cur_name)
-        except (AttributeError, NameError) as e:
-            print("Error(%s) occurred when `eval(%s)`, discard it.",
-                  str(e), cur_name)
+        except (AttributeError, NameError, SyntaxError) as e:
+            #print("Error(%s) occurred when `eval(%s)`, discard it.",
+            #      str(e), cur_name)
             return
 
     if (inspect.isclass(member) or inspect.isfunction(member) or
@@ -81,9 +81,9 @@ def queue_dict(member, cur_name):
         args = member.__module__ + "." + member.__name__
         try:
             eval(args)
-        except AttributeError:
-            print("AttributeError occurred when `eval(%s)`, discard it for %s.",
-                  args, cur_name)
+        except (AttributeError, NameError, SyntaxError) as e:
+            #print("AttributeError occurred when `eval(%s)`, discard it for %s.",
+            #      args, cur_name)
             return
     else:
         try:
@@ -173,9 +173,9 @@ def visit_all_module(mod):
             visit_all_module(instance)
         else:
             if member_name != instance.__name__:
-                logging.warn(
-                    "Found alias API, alias name is: {}, original name is: {}".
-                    format(member_name, instance.__name__))
+                #logging.warning(
+                #    "Found alias API, alias name is: {}, original name is: {}".
+                #    format(member_name, instance.__name__))
                 visit_member(mod.__name__, instance, member_name)
             else:
                 visit_member(mod.__name__, instance)
