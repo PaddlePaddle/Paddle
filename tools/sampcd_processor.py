@@ -44,9 +44,7 @@ if logger.handlers:
 else:
     console = logging.StreamHandler()
     logger.addHandler(console)
-console.setFormatter(
-    logging.Formatter(
-        "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
+console.setFormatter(logging.Formatter("%(message)s"))
 
 RUN_ON_DEVICE = 'cpu'
 GPU_ID = 0
