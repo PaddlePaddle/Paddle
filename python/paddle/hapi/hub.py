@@ -118,8 +118,11 @@ def _load_entry_from_hubconf(m, name):
 
 
 def _check_module_exists(name):
-    import importlib.util
-    return importlib.util.find_spec(name) is not None
+    try:
+        __import__(name)
+        return True
+    except ImportError:
+        return False
 
 
 def _check_dependencies(m):
