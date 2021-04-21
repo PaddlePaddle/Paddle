@@ -614,6 +614,9 @@ void BindImperative(py::module *m_ptr) {
           return paddle::platform::stream::get_current_stream(deviceId);
         },
         py::return_value_policy::reference);
+  m.def("_get_cuda_flags", [](bool enable_timing, bool blocking, bool interprocess) {
+    return platform::get_cuda_flags(enable_timing, blocking, interprocess);
+  });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase", R"DOC()DOC")
@@ -1614,6 +1617,8 @@ void BindImperative(py::module *m_ptr) {
       });
 
   py::class_<paddle::platform::CudaEvent>(m, "CUDAEvent")
+      .def(py::init<>())
+      .def(py::init<unsigned int>())
       .def("record",
            [](paddle::platform::CudaEvent &self,
               paddle::platform::stream::CUDAStream &stream) {

@@ -120,10 +120,21 @@ class MemEvent {
 // todo:  cudaEvent or gpuEvent
 class CudaEvent {
  public:
-  CudaEvent() {}
+  CudaEvent() {
+    VLOG(0) << "begin to init CudaEvent()";
+
+    cudaEventCreateWithFlags(&event_, flags_);
+  }
+
+  CudaEvent(unsigned int flags): flags_(flags) {
+    VLOG(0) << "begin to init CudaEvent(flags)";
+    cudaEventCreateWithFlags(&event_, flags_);
+  }
 
   void Record(paddle::platform::stream::CUDAStream& stream) {
+    VLOG(0) << "begin to Record";
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, stream.raw_stream()));
+    VLOG(0) << "end Record";
   }
 
   bool Query() {
@@ -145,8 +156,17 @@ class CudaEvent {
   cudaEvent_t GetRawCudaEvent() { return event_; }
 
  private:
+  unsigned int  flags_ = cudaEventDefault;
   cudaEvent_t event_;
 };
+
+static unsigned int get_cuda_flags(bool enable_timing, bool blocking, bool interprocess) {
+    unsigned int flags =
+    (blocking ? cudaEventBlockingSync : cudaEventDefault) |
+    (enable_timing ? cudaEventDefault : cudaEventDisableTiming) |
+    (interprocess ? cudaEventInterprocess : cudaEventDefault);
+    return flags;
+}
 
 }  // namespace platform
 }  // namespace paddle

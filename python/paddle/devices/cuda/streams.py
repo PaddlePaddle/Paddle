@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
+from paddle.fluid import core_avx, core
 from .. import cuda
 
 
@@ -41,7 +41,8 @@ class Stream(core.CUDAStream):
 
 class Event(core.CUDAEvent):
     def __init__(self, enable_timing=False, blocking=False, interprocess=False):
-        self.cuda_event = None
+        flags = core_avx._get_cuda_flags(enable_timing, blocking, interprocess)
+        super(Event, self).__init__(flags)
         pass
 
     def record(self, stream=None):

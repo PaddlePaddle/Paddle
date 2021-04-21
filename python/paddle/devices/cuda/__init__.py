@@ -13,7 +13,11 @@
 # limitations under the License.
 
 from . import streams
+from paddle.fluid import core_avx
+
 
 
 def current_stream(device=None):
-    return streams.Stream()
+    if device is None:
+        device = -1
+    return core_avx._get_current_stream(device)
