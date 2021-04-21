@@ -84,7 +84,7 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "Updates has wrong shape.The dimensions of Updates and Input(Updates) "
               "should match, but received Updates's %d-th dimension is %d, "
-              "Input(Updates)'s %d-th dimension is %d."
+              "Input(Updates)'s %d-th dimension is %d.",
               i, r_updates_dims[i], i, updates_dims[i]));
     }
     ctx->SetOutputDim("Out", ref_dims);

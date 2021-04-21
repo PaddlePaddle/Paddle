@@ -58,7 +58,7 @@ class ScatterOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Input(Updates) and Input(Ids) should have same batch-size, but"
             " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
-            "batch-size is %d."
+            "batch-size is %d.",
             ctx->GetInputDim("Updates")[0], ctx->GetInputDim("Ids")[0]));
     ctx->SetOutputDim("Out", ref_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
