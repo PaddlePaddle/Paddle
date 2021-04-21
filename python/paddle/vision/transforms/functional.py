@@ -41,7 +41,7 @@ def _is_pil_image(img):
 
 
 def _is_tensor_image(img):
-    return isinstance(img, paddle.Tensor)
+    return isinstance(img, paddle.Tensor) and img.ndim == 3
 
 
 def _is_numpy_image(img):
