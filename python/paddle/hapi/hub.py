@@ -26,16 +26,6 @@ MODULE_HUBCONF = 'hubconf.py'
 HUB_DIR = os.path.expanduser(os.path.join('~', '.cache', 'paddle', 'hub'))
 
 
-def import_module(name, path):
-    import importlib.util
-    from importlib.abc import Loader
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    assert isinstance(spec.loader, Loader)
-    spec.loader.exec_module(module)
-    return module
-
-
 def _remove_if_exists(path):
     if os.path.exists(path):
         if os.path.isfile(path):
@@ -176,7 +166,7 @@ def list(repo_dir, source='github', force_reload=False):
             repo_dir, force_reload, True, source=source)
 
     sys.path.insert(0, repo_dir)
-    hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
+    hub_module = __import__(MODULE_HUBCONF.split('.')[0])
     sys.path.remove(repo_dir)
 
     entrypoints = [
@@ -219,7 +209,7 @@ def help(repo_dir, model, source='github', force_reload=False):
             repo_dir, force_reload, True, source=source)
 
     sys.path.insert(0, repo_dir)
-    hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
+    hub_module = __import__(MODULE_HUBCONF.split('.')[0])
     sys.path.remove(repo_dir)
 
     entry = _load_entry_from_hubconf(hub_module, model)
@@ -258,7 +248,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
             repo_dir, force_reload, True, source=source)
 
     sys.path.insert(0, repo_dir)
-    hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
+    hub_module = __import__(MODULE_HUBCONF.split('.')[0])
     sys.path.remove(repo_dir)
 
     _check_dependencies(hub_module)
