@@ -67,16 +67,6 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
 
-    std::vector<float> float_status_vec;
-    TensorToVector(
-        *float_status,
-        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
-        &float_status_vec);
-    VLOG(4) << "float_status_vec:";
-    for (auto i : float_status_vec) {
-      VLOG(4) << i;
-    }
-
     // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
     // tmp is only placeholder.
     auto runner_float_status =
@@ -84,14 +74,20 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
                     {{"message", std::string("check_nan_and_inf")}});
     runner_float_status.Run(stream);
 
+    Tensor sum;
+    sum.mutable_data<float>({1}, ctx.GetPlace());
+    auto runner_reduce_sum =
+        NpuOpRunner("ReduceSumD", {*float_status}, {sum},
+                    {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
+    runner_reduce_sum.Run(stream);
+
+    std::vector<float> sum_vec;
     TensorToVector(
-        *float_status,
-        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
-        &float_status_vec);
-    VLOG(4) << "float_status:";
-    for (auto i : float_status_vec) {
-      VLOG(4) << i;
-    }
+        sum, ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        &sum_vec);
+    found_inf_data = (sum_vec[0] > 1);
+
+    VLOG(4) << "found_inf_data:" << found_inf_data;
 
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
@@ -111,31 +107,24 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 
     // set found_inf to true
     VLOG(4) << "found overflow:" << found_inf_data;
+    Tensor found_inf_tensor;
+    found_inf_tensor.Resize({1});
+    bool* is_found_inf =
+        found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
     if (found_inf_data) {
-      Tensor found_inf_tensor;
-      found_inf_tensor.Resize({1});
-      bool* is_found_inf =
-          found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
       *is_found_inf = true;
-
-      framework::TensorCopy(
-          found_inf_tensor, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), found_inf);
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
     } else {
+      *is_found_inf = false;
     }
+
+    framework::TensorCopy(
+        found_inf_tensor, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), found_inf);
+    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
 
     auto runner_clear_status =
         NpuOpRunner("NPUClearFloatStatus", {*float_status}, {tmp});
     runner_clear_status.Run(stream);
-    TensorToVector(
-        *float_status,
-        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
-        &float_status_vec);
-    VLOG(4) << "float_status:";
-    for (auto i : float_status_vec) {
-      VLOG(4) << i;
-    }
   }
 };
 

@@ -29,7 +29,7 @@ class AllocFloatStatusKernel : public framework::OpKernel<T> {
     auto* float_status = ctx.Output<framework::Tensor>("FloatStatus");
     float_status->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("NPUAllocFloatStatus", {}, {float_status});
+    auto runner = NpuOpRunner("NPUAllocFloatStatus", {}, {*float_status});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
