@@ -44,6 +44,13 @@ MSVC_COMPILE_FLAGS = [
     '/wd4190', '/EHsc', '/w', '/DGOOGLE_GLOG_DLL_DECL',
     '/DBOOST_HAS_STATIC_ASSERT', '/DNDEBUG', '/DPADDLE_USE_DSO'
 ]
+CLANG_COMPILE_FLAGS = [
+    '-fno-common', '-dynamic', '-DNDEBUG', '-g', '-fwrapv', '-O3', '-arch',
+    'x86_64'
+]
+CLANG_LINK_FLAGS = [
+    '-dynamiclib', '-undefined', 'dynamic_lookup', '-arch', 'x86_64'
+]
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64', 'paddle_custom_op.lib']
 
@@ -247,7 +254,7 @@ class VersionManager:
 def combine_hash(md5, value):
     """
     Return new hash value.
-    DO NOT use `hash()` beacuse it doesn't generate stable value between different process.
+    DO NOT use `hash()` because it doesn't generate stable value between different process.
     See https://stackoverflow.com/questions/27522626/hash-function-in-python-3-3-returns-different-results-between-sessions
     """
     md5.update(repr(value).encode())
@@ -286,13 +293,13 @@ def clean_object_if_change_cflags(so_path, extension):
     if os.path.exists(so_path) and os.path.exists(version_file):
         old_version_info = deserialize(version_file)
         so_version = old_version_info.get(so_name, None)
-        # delete shared library file if versison is changed to re-compile it.
+        # delete shared library file if version is changed to re-compile it.
         if so_version is not None and so_version != versioner.version:
             log_v(
                 "Re-Compiling {}, because specified cflags have been changed. New signature {} has been saved into {}.".
                 format(so_name, versioner.version, version_file))
             os.remove(so_path)
-            # upate new version information
+            # update new version information
             new_version_info = versioner.details
             new_version_info[so_name] = versioner.version
             serialize(version_file, new_version_info)
@@ -348,6 +355,54 @@ def get_cuda_arch_flags(cflags):
     return []
 
 
+def _get_fluid_path():
+    """
+    Return installed fluid dir path.
+    """
+    import paddle
+    return os.path.join(os.path.dirname(paddle.__file__), 'fluid')
+
+
+def _get_core_name():
+    """
+    Return pybind DSO module name.
+    """
+    import paddle
+    if paddle.fluid.core.load_noavx:
+        return 'core_noavx.so'
+    else:
+        return 'core_avx.so'
+
+
+def _get_lib_core_path():
+    """
+    Return real path of libcore_(no)avx.dylib on MacOS.
+    """
+    raw_core_name = _get_core_name()
+    lib_core_name = "lib{}.dylib".format(raw_core_name[:-3])
+    return os.path.join(_get_fluid_path(), lib_core_name)
+
+
+def _reset_so_rpath(so_path):
+    """
+    NOTE(Aurelius84): Runtime path of core_(no)avx.so is modified into `@loader_path/../libs`
+    in setup.py.in. While loading custom op, `@loader_path` is the dirname of custom op
+    instead of `paddle/fluid`. So we modify `@loader_path` from custom dylib into `@rpath`
+    to ensure dynamic loader find it correctly.
+
+    Moreover, we will add `-rpath site-packages/paddle/fluid` while linking the dylib so
+    that we don't need to set `LD_LIBRARY_PATH` any more.
+    """
+    assert os.path.exists(so_path)
+    if OS_NAME.startswith("darwin"):
+        origin_runtime_path = "@loader_path/../libs/"
+        rpath = "@rpath/{}".format(_get_core_name())
+        cmd = 'install_name_tool -change {} {} {}'.format(origin_runtime_path,
+                                                          rpath, so_path)
+
+        run_cmd(cmd)
+
+
 def normalize_extension_kwargs(kwargs, use_cuda=False):
     """
     Normalize include_dirs, library_dir and other attributes in kwargs.
@@ -381,15 +436,28 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
     else:
+        ########################### Linux Platform ###########################
+        extra_link_args = kwargs.get('extra_link_args', [])
+        # On Linux, GCC support '-l:xxx.so' to specify the library name
+        # without `lib` prefix.
+        if OS_NAME.startswith('linux'):
+            extra_link_args.append('-l:{}'.format(_get_core_name()))
+        ########################### MacOS Platform ###########################
+        else:
+            # See _reset_so_rpath for details.
+            extra_link_args.append('-Wl,-rpath,{}'.format(_get_fluid_path()))
+            # On MacOS, ld don't support `-l:xx`, so we create a
+            # libcore_avx.dylib symbol link.
+            lib_core_name = create_sym_link_if_not_exist()
+            extra_link_args.append('-l{}'.format(lib_core_name))
+        ###########################   -- END --    ###########################
+
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
         # Note(Aurelius84): This marco will impact memory layout of `Tensor`.
-        # We align it automatially with pre-installed Paddle.
+        # We align it automatically with pre-installed Paddle.
         if core.is_compiled_with_mkldnn():
             add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_MKLDNN'])
 
-        # append link flags
-        extra_link_args = kwargs.get('extra_link_args', [])
-        extra_link_args.append('-lpaddle_custom_op')
         if use_cuda:
             extra_link_args.append('-lcudart')
 
@@ -404,6 +472,30 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     kwargs['language'] = 'c++'
     return kwargs
+
+
+def create_sym_link_if_not_exist():
+    """
+    Create soft symbol link of `core_avx.so` or `core_noavx.so`
+    """
+    assert OS_NAME.startswith('darwin')
+
+    raw_core_name = _get_core_name()
+    core_path = os.path.join(_get_fluid_path(), raw_core_name)
+    new_lib_core_path = _get_lib_core_path()
+
+    # create symbol link
+    if not os.path.exists(new_lib_core_path):
+        try:
+            os.symlink(core_path, new_lib_core_path)
+            assert os.path.exists(new_lib_core_path)
+        except Exception:
+            raise RuntimeError(
+                "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`".
+                format(raw_core_name, core_path, new_lib_core_path))
+
+    # core_avx or core_noavx without suffix
+    return raw_core_name[:-3]
 
 
 def find_cuda_home():
@@ -518,6 +610,11 @@ def find_paddle_includes(use_cuda=False):
             cuda_include_dir = find_cuda_includes()
             include_dirs.extend(cuda_include_dir)
 
+    if OS_NAME.startswith('darwin'):
+        # NOTE(Aurelius84): Ensure to find std v1 headers correctly.
+        std_v1_includes = '/Library/Developer/CommandLineTools/usr/include/c++/v1/'
+        include_dirs.append(std_v1_includes)
+
     return include_dirs
 
 
@@ -567,6 +664,9 @@ def find_paddle_libraries(use_cuda=False):
             cuda_lib_dir = find_cuda_libraries()
             paddle_lib_dirs.extend(cuda_lib_dir)
 
+    # add `paddle/fluid` to search `core_avx.so` or `core_noavx.so`
+    paddle_lib_dirs.append(_get_fluid_path())
+
     return paddle_lib_dirs
 
 
@@ -614,9 +714,6 @@ def get_build_directory(verbose=False):
         if IS_WINDOWS:
             root_extensions_directory = os.path.normpath(
                 root_extensions_directory)
-        elif OS_NAME.startswith('darwin'):
-            # TODO(Aurelius84): consider macOs
-            raise NotImplementedError("Not support Mac now.")
 
         log_v("$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
               format(root_extensions_directory), verbose)
@@ -654,6 +751,8 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     """
     if IS_WINDOWS:
         dynamic_suffix = '.pyd'
+    elif OS_NAME.startswith('darwin'):
+        dynamic_suffix = '.dylib'
     else:
         dynamic_suffix = '.so'
     ext_path = os.path.join(build_directory, module_name + dynamic_suffix)
@@ -694,22 +793,29 @@ def _custom_api_content(op_name):
     params_str, ins_str, attrs_str, outs_str = _get_api_inputs_str(op_name)
 
     API_TEMPLATE = textwrap.dedent("""
+        from paddle.fluid.core import VarBase
+        from paddle.fluid.framework import in_dygraph_mode, _dygraph_tracer
         from paddle.fluid.layer_helper import LayerHelper
 
         def {op_name}({inputs}):
-            helper = LayerHelper("{op_name}", **locals())
-
             # prepare inputs and outputs
             ins = {ins}
             attrs = {attrs}
             outs = {{}}
             out_names = {out_names}
-            for out_name in out_names:
-                # Set 'float32' temporarily, and the actual dtype of output variable will be inferred
-                # in runtime.
-                outs[out_name] = helper.create_variable(dtype='float32')
-            
-            helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
+
+            # The output variable's dtype use default value 'float32',
+            # and the actual dtype of output variable will be inferred in runtime.
+            if in_dygraph_mode():
+                for out_name in out_names:
+                    outs[out_name] = VarBase()
+                _dygraph_tracer().trace_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
+            else:
+                helper = LayerHelper("{op_name}", **locals())
+                for out_name in out_names:
+                    outs[out_name] = helper.create_variable(dtype='float32')
+
+                helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
 
             res = [outs[out_name] for out_name in out_names]
 
@@ -757,7 +863,7 @@ def _get_api_inputs_str(op_name):
     # e.g: x, y, z
     param_names = in_names + attr_names
     # NOTE(chenweihang): we add suffix `@VECTOR` for std::vector<Tensor> input,
-    # but the string contains `@` cannot used as argument name, so we split 
+    # but the string contains `@` cannot used as argument name, so we split
     # input name by `@`, and only use first substr as argument
     params_str = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}

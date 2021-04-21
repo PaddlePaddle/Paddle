@@ -26,7 +26,10 @@ from paddle.fluid import core
 class TestGPUPackagePaddle(unittest.TestCase):
     def test_import_paddle(self):
         if core.is_compiled_with_cuda():
-            os.environ['CUDA_VISIBLE_DEVICES'] = ''
+            if core.is_compiled_with_rocm():
+                os.environ['HIP_VISIBLE_DEVICES'] = ''
+            else:
+                os.environ['CUDA_VISIBLE_DEVICES'] = ''
             test_file = 'test_no_gpu_run_rand.py'
             with open(test_file, 'w') as wb:
                 cmd_test = """

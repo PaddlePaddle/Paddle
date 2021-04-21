@@ -27,8 +27,10 @@ class TestExpandOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
+        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
+        ) else "float64"
 
-        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.inputs = {'X': np.random.random(self.ori_shape).astype(self.dtype)}
         self.attrs = {'expand_times': self.expand_times}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
@@ -79,13 +81,16 @@ class TestExpandOpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
+        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
+        ) else "float64"
+
         expand_times_tensor = []
         for index, ele in enumerate(self.expand_times):
             expand_times_tensor.append(("x" + str(index), np.ones(
                 (1)).astype('int32') * ele))
 
         self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float64"),
+            'X': np.random.random(self.ori_shape).astype(self.dtype),
             'expand_times_tensor': expand_times_tensor,
         }
         self.attrs = {"expand_times": self.infer_expand_times}
@@ -123,9 +128,11 @@ class TestExpandOpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
+        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
+        ) else "float64"
 
         self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float64"),
+            'X': np.random.random(self.ori_shape).astype(self.dtype),
             'ExpandTimes': np.array(self.expand_times).astype("int32"),
         }
         self.attrs = {}

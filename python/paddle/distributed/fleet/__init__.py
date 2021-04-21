@@ -21,6 +21,7 @@ from .dataset import *
 from .data_generator import MultiSlotDataGenerator, MultiSlotStringDataGenerator
 from . import metrics
 from .base.topology import CommunicateTopology, HybridCommunicateGroup
+from .meta_parallel import random, layers
 
 __all__ = [
     "DistributedStrategy", "UtilBase", "UserDefinedRoleMaker",
@@ -72,3 +73,4 @@ get_lr = fleet.get_lr
 state_dict = fleet.state_dict
 set_state_dict = fleet.set_state_dict
 shrink = fleet.shrink
+get_hybrid_communicate_group = fleet.get_hybrid_communicate_group

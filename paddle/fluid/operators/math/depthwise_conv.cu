@@ -919,11 +919,10 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
         batch_size * output_channels * output_height * output_width;
 #ifdef __HIPCC__
     int block_size = 256;
-    int grid_size = std::min((nums_output + block_size - 1) / block_size, 256);
 #else
     int block_size = 512;
-    int grid_size = (nums_output + block_size - 1) / block_size;
 #endif
+    int grid_size = (nums_output + block_size - 1) / block_size;
 
 #define check_case(c_filter_multiplier, c_stride, c_filter)                    \
   if (c_filter_multiplier == 0 ||                                              \

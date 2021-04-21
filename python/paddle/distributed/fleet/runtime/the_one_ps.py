@@ -453,6 +453,17 @@ class TheOnePSRuntime(RuntimeBase):
         worker = self._get_fleet_proto(is_server=False, is_sync=is_sync)
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
 
+        dist_strategy = self.context["valid_strategy"]
+        use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
+        if use_ps_gpu:
+            main_program = self.context['loss'].block.program
+            if not main_program._fleet_opt:
+                main_program._fleet_opt = {}
+            main_program._fleet_opt["use_ps_gpu"] = True
+            gpus_env = os.getenv("FLAGS_selected_gpus")
+            main_program._fleet_opt[
+                "worker_places"] = [int(s) for s in gpus_env.split(",")]
+
         def sync_strategy_envs():
             kwargs = {}
             kwargs[
@@ -741,6 +752,11 @@ class TheOnePSRuntime(RuntimeBase):
             downpour_server = DownpourServer()
 
             service = Service()
+            dist_strategy = self.context["valid_strategy"]
+            use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
+            if use_ps_gpu:
+                service.server_class = "PsLocalServer"
+                service.client_class = "PsLocalClient"
             downpour_server.set_service_param(service)
 
             tables = _get_tables()
