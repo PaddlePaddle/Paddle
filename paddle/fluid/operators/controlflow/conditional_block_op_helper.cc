@@ -16,8 +16,6 @@
 
 #include <string>
 
-#include "paddle/fluid/operators/controlflow/op_variant.h"
-
 namespace paddle {
 namespace framework {
 class ProgramDesc;
@@ -36,13 +34,12 @@ static bool IsMatchedConditionalBlockOpAndConditionalBlockGradOp(
 static void FindAllConditionalBlockAndConditionalBlockGradOp(
     const framework::ProgramDesc &program, std::vector<OpVariant> *fwd_ops,
     std::vector<OpVariant> *bwd_ops) {
-  // PADDLE_ENFORCE_GE(
-  //     fwd_ops->size(), bwd_ops->size(),
-  //     platform::errors::InvalidArgument(
-  //         "Size of forward ops must be greater or equal to backward ops. The
-  //         "
-  //         "number of forward ops is %d and the number of backward ops is %d",
-  //         fwd_ops->size(), bwd_ops->size()));
+  PADDLE_ENFORCE_GE(
+      fwd_ops->size(), bwd_ops->size(),
+      platform::errors::InvalidArgument(
+          "Size of forward ops must be greater or equal to backward ops. The"
+          "number of forward ops is %d and the number of backward ops is %d",
+          fwd_ops->size(), bwd_ops->size()));
 
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
@@ -190,16 +187,16 @@ void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
 
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
     const framework::ProgramDesc &program,
-    const std::vector<framework::OperatorBase *> &ifelse_ops,
-    const std::vector<framework::OperatorBase *> &ifelse_grad_ops) {
+    const std::vector<OpVariant> &ifelse_ops,
+    const std::vector<OpVariant> &ifelse_grad_ops) {
   std::vector<OpVariant> fwd_ops, bwd_ops;
   fwd_ops.reserve(ifelse_ops.size());
-  for (auto *op : ifelse_ops) {
+  for (auto &op : ifelse_ops) {
     fwd_ops.emplace_back(op);
   }
 
   bwd_ops.reserve(ifelse_grad_ops.size());
-  for (auto *op : ifelse_grad_ops) {
+  for (auto &op : ifelse_grad_ops) {
     bwd_ops.emplace_back(op);
   }
 
