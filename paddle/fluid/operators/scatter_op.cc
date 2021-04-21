@@ -53,8 +53,7 @@ class ScatterOp : public framework::OperatorWithKernel {
             "Input(Updates)'s shape is %d.",
             ref_dims.size(), updates_dims.size()));
     PADDLE_ENFORCE_EQ(
-        ctx->GetInputDim("Updates")[0],
-        ctx->GetInputDim("Ids")[0],
+        ctx->GetInputDim("Updates")[0], ctx->GetInputDim("Ids")[0],
         platform::errors::InvalidArgument(
             "Input(Updates) and Input(Ids) should have same batch-size, but"
             " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
