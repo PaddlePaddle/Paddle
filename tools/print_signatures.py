@@ -76,11 +76,13 @@ def format_spec(spec):
 def queue_dict(member, cur_name):
     if cur_name in omitted_list:
         return
-    try:
-        eval(cur_name)
-    except AttributeError:
-        print("AttributeError occurred when `eval(%s)`, discard it.", cur_name)
-        return
+    if cur_name != 'paddle':
+        try:
+            eval(cur_name)
+        except AttributeError:
+            print("AttributeError occurred when `eval(%s)`, discard it.",
+                  cur_name)
+            return
 
     if (inspect.isclass(member) or inspect.isfunction(member) or
             inspect.ismethod(member)) and hasattr(
