@@ -531,5 +531,31 @@ class TestAdamOpV2(unittest.TestCase):
             adam.step()
 
 
+class TestAdamOpV2Group(TestAdamOpV2):
+    def test_adam_op(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01,
+            parameters=[{
+                'params': linear_1.parameters()
+            }, {
+                'params': linear_2.parameters(),
+                'weight_decay': 0.001,
+                'beta1': 0.1,
+                'beta2': 0.99
+            }],
+            weight_decay=0.1)
+        out = linear_1(a)
+        out = linear_2(out)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -43,7 +43,10 @@ class Adadelta(Optimizer):
         epsilon (float): a small float number for numeric stability. Default 1.0e-6.
         rho (float): a floating point value indicating the decay rate. Default 0.95.
         parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+            This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
         It canbe a float value as coeff of L2 regularization or \
@@ -77,6 +80,27 @@ class Adadelta(Optimizer):
             adadelta.step()
             adadelta.clear_grad()
 
+            #Note that the learning_rate of linear_2 is 0.01.
+            linear_1 = paddle.nn.Linear(10, 10)
+            linear_2 = paddle.nn.Linear(10, 10)
+            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            out = linear_1(inp)
+            out = linear_2(out)
+            loss = paddle.mean(out)
+            adadelta = paddle.optimizer.Adadelta(
+                learning_rate=0.1,
+                parameters=[{
+                    'params': linear_1.parameters()
+                }, {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1,
+                }],
+                weight_decay=0.01)                   
+            out.backward()
+            adadelta.step()
+            adadelta.clear_grad()
+
     """
 
     _avg_squared_grad_acc_str = "_avg_squared_grad"
@@ -105,10 +129,15 @@ class Adadelta(Optimizer):
         self.type = "adadelta"
         self._epsilon = epsilon
         self._rho = rho
+        self.default_dict = {'epsilon': self._epsilon, 'rho': self._rho}
+        if self._parameter_list and isinstance(self._parameter_list[0], dict):
+            self._update_param_groups()
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
+        if isinstance(parameters, dict):
+            parameters = parameters['params']
 
         for p in parameters:
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
@@ -117,6 +146,11 @@ class Adadelta(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
+
+        if isinstance(param_and_grad, dict):
+            self._epsilon = param_and_grad['epsilon']
+            self._rho = param_and_grad['rho']
+            param_and_grad = param_and_grad['params']
 
         avg_squared_grad_acc = self._get_accumulator(
             self._avg_squared_grad_acc_str, param_and_grad[0])

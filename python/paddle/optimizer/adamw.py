@@ -46,7 +46,10 @@ class AdamW(Adam):
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
 	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. \
+	    This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
 	    The default value is None in static mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
@@ -101,6 +104,30 @@ class AdamW(Adam):
             adam.step()
             adam.clear_grad()
 
+
+            #Note that the learning_rate of linear_2 is 0.01.
+            linear_1 = paddle.nn.Linear(10, 10)
+            linear_2 = paddle.nn.Linear(10, 10)
+            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            out = linear_1(inp)
+            out = linear_2(out)
+            loss = paddle.mean(out)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.1,
+                parameters=[{
+                    'params': linear_1.parameters()
+                }, {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1,
+                    'beta1': 0.8
+                }],
+                weight_decay=0.01,
+                beta1=0.9)                   
+            out.backward()
+            adam.step()
+            adam.clear_grad()
+
     """
 
     def __init__(self,
@@ -143,6 +170,9 @@ class AdamW(Adam):
             name=name,
             lazy_mode=lazy_mode,
             multi_precision=multi_precision)
+        self.default_dict = {'coeff': self._coeff}
+        if self._parameter_list and isinstance(self._parameter_list[0], dict):
+            self._update_param_groups()
 
     def _append_decoupled_weight_decay(self, block, param_and_grad):
         """
@@ -156,7 +186,11 @@ class AdamW(Adam):
         Raises:
             Exception: The type of coeff and parameter is not consistent.
         """
-        param, grad = param_and_grad
+        if not isinstance(param_and_grad, dict):
+            param, grad = param_and_grad
+        else:
+            param, grad = param_and_grad['params']
+            self._coeff = param_and_grad['coeff']
 
         if self._apply_decay_param_fun is not None \
                 and not self._apply_decay_param_fun(param.name):
