@@ -56,8 +56,6 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     runner_inverse.Run(stream);
     tmp_inverse_out = &inverse_out;
 
-    size_t x_size = xs.size();
-
     // NOTE(zhiqiu):
     Tensor float_status, addr;
     float_status.mutable_data<float>({8}, ctx.GetPlace());
@@ -67,7 +65,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     platform::NPUMemsetAsync(static_cast<void*>(addr.data<T>()), 0,
                              addr.numel() * sizeof(T), stream);
     auto runner_float_status =
-        NpuOpRunner("NPUGetFloatStatus", {*ddr}, {float_status},
+        NpuOpRunner("NPUGetFloatStatus", {addr}, {float_status},
                     {{"message", std::string("check_nan_and_inf")}});
     runner_float_status.Run(stream);
 
