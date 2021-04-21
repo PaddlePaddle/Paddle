@@ -657,8 +657,8 @@ def conv1d_transpose(x,
             Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain one integer, `(feature_length)`. None if use
-            filter_size, padding, and stride to calculate output_size.
-            If output_size and filter_size (shape of weight) are specified at the same time, They
+            filter_size(shape of weight), padding, and stride to calculate output_size.
+            If output_size and filter_size are specified at the same time, They
             should follow the formula above.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCL"`, `"NLC"`.
@@ -927,8 +927,8 @@ def conv2d_transpose(x,
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_height, image_width). None if use
-            filter_size, padding, and stride to calculate output_size. If output_size is specified,
-            output_size and filter_size (shape of weight) should follow the formula above.
+            filter_size(shape of weight), padding, and stride to calculate output_size. If output_size is specified,
+            output_size and filter_size should follow the formula above.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -1322,8 +1322,8 @@ def conv3d_transpose(x,
             Default: dilation = 1.
         output_size(int|list|tuple, optional): The output image size. If output size is a
             tuple, it must contain three integers, (image_depth, image_height, image_width).
-            None if use filter_size, padding, and stride to calculate output_size. If output_size
-            and filter_size (shape of weight) are specified at the same time, They should follow the formula above.
+            None if use filter_size(shape of weight), padding, and stride to calculate output_size. If output_size
+            and filter_size are specified at the same time, They should follow the formula above.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
