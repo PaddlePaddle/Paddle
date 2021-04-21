@@ -70,9 +70,9 @@ def queue_dict(member, cur_name):
     if cur_name != 'paddle':
         try:
             eval(cur_name)
-        except AttributeError:
-            print("AttributeError occurred when `eval(%s)`, discard it.",
-                  cur_name)
+        except (AttributeError, NameError) as e:
+            print("Error(%s) occurred when `eval(%s)`, discard it.",
+                  str(e), cur_name)
             return
 
     if (inspect.isclass(member) or inspect.isfunction(member) or
