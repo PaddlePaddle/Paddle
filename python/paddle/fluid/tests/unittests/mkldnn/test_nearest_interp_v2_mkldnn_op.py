@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -62,12 +62,12 @@ def nearest_neighbor_interp_mkldnn_np(X,
 
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
-class TestNearestInterpMKLDNNOp(OpTest):
+class TestNearestInterpV2MKLDNNOp(OpTest):
     def init_test_case(self):
         pass
 
     def setUp(self):
-        self.op_type = "nearest_interp"
+        self.op_type = "nearest_interp_v2"
         self.interp_method = 'nearest'
         self._cpu_only = True
         self.use_mkldnn = True
@@ -76,7 +76,7 @@ class TestNearestInterpMKLDNNOp(OpTest):
         # priority: actual_shape > out_size > scale > out_h & out_w
         self.out_h = 1
         self.out_w = 1
-        self.scale = 2.0
+        self.scale = [2.0, 3.0]
         self.out_size = None
         self.actual_shape = None
 
@@ -90,9 +90,23 @@ class TestNearestInterpMKLDNNOp(OpTest):
             in_h = self.input_shape[1]
             in_w = self.input_shape[2]
 
-        if self.scale > 0:
-            out_h = int(in_h * self.scale)
-            out_w = int(in_w * self.scale)
+        scale_h = 0
+        scale_w = 0
+
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                scale_h = float(self.scale)
+                scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_w = self.scale[0]
+                scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[1]
+                scale_h = self.scale[0]
+
+        if scale_h > 0 and scale_w > 0:
+            out_h = int(in_h * scale_h)
+            out_w = int(in_w * scale_w)
         else:
             out_h = self.out_h
             out_w = self.out_w
@@ -100,6 +114,9 @@ class TestNearestInterpMKLDNNOp(OpTest):
         output_np = nearest_neighbor_interp_mkldnn_np(
             input_np, out_h, out_w, self.out_size, self.actual_shape,
             self.data_layout)
+
+        if isinstance(self.scale, float):
+            self.scale = [self.scale]
 
         self.inputs = {'X': input_np}
         if self.out_size is not None:
@@ -120,46 +137,45 @@ class TestNearestInterpMKLDNNOp(OpTest):
         self.check_output(check_dygraph=False)
 
 
-class TestNearestInterpOpMKLDNNNHWC(TestNearestInterpMKLDNNOp):
+class TestNearestInterpOpV2MKLDNNNHWC(TestNearestInterpV2MKLDNNOp):
     def init_test_case(self):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 27
         self.out_w = 49
-        self.scale = 2.0
+        self.scale = [2.0, 3.0]
         self.data_layout = 'NHWC'
 
 
-class TestNearestNeighborInterpMKLDNNCase2(TestNearestInterpMKLDNNOp):
+class TestNearestNeighborInterpV2MKLDNNCase2(TestNearestInterpV2MKLDNNOp):
     def init_test_case(self):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
-        self.scale = 1.
 
 
-class TestNearestNeighborInterpCase3(TestNearestInterpMKLDNNOp):
+class TestNearestNeighborInterpV2MKLDNNCase3(TestNearestInterpV2MKLDNNOp):
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 128
-        self.scale = 0.
+        self.scale = [0.1, 0.05]
 
 
-class TestNearestNeighborInterpCase4(TestNearestInterpMKLDNNOp):
+class TestNearestNeighborInterpV2MKLDNNCase4(TestNearestInterpV2MKLDNNOp):
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
         self.out_w = 32
-        self.scale = 0.
+        self.scale = [13.0, 15.0]
         self.out_size = np.array([65, 129]).astype("int32")
 
 
-class TestNearestNeighborInterpSame(TestNearestInterpMKLDNNOp):
+class TestNearestNeighborInterpV2MKLDNNSame(TestNearestInterpV2MKLDNNOp):
     def init_test_case(self):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
         self.out_w = 64
-        self.scale = 0.
+        self.out_size = np.array([65, 129]).astype("int32")
 
 
 if __name__ == "__main__":

@@ -83,6 +83,7 @@ from .layer.common import Dropout  #DEFINE_ALIAS
 from .layer.common import Dropout2D  #DEFINE_ALIAS
 from .layer.common import Dropout3D  #DEFINE_ALIAS
 from .layer.common import AlphaDropout  #DEFINE_ALIAS
+from .layer.common import Unfold  #DEFINE_ALIAS
 
 from .layer.pooling import AvgPool1D  #DEFINE_ALIAS
 from .layer.pooling import AvgPool2D  #DEFINE_ALIAS
