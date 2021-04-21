@@ -124,6 +124,8 @@ def _check_module_exists(name):
     except ImportError:
         return False
 
+    return False
+
 
 def _check_dependencies(m):
     dependencies = getattr(m, VAR_DEPENDENCY, None)

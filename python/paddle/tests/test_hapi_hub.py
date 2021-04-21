@@ -16,33 +16,22 @@ from __future__ import division
 from __future__ import print_function
 
 import unittest
+import os
 
 import paddle
 from paddle.hapi import hub
+
 import numpy as np
 
 
 class TestHub(unittest.TestCase):
+    def setUp(self, ):
+        self.local_repo = os.path.dirname(os.path.abspath(__file__))
+        # self.github_repo = 'lyuwenyu/paddlehub_demo'
+
     def testLoad(self, ):
         model = hub.load(
-            'lyuwenyu/paddlehub_demo:main',
-            model='MM',
-            source='github',
-            force_reload=True)
-
-        model = hub.load(
-            'lyuwenyu/paddlehub_demo:main',
-            model='MM',
-            source='github',
-            force_reload=False,
-            pretrained=True)
-
-        model = hub.load(
-            'lyuwenyu/paddlehub_demo',
-            model='MM',
-            source='github',
-            force_reload=False,
-            pretrained=False)
+            self.local_repo, model='MM', source='local', out_channels=8)
 
         data = paddle.rand((1, 3, 100, 100))
         out = model(data)
@@ -51,25 +40,18 @@ class TestHub(unittest.TestCase):
 
     def testHelp(self, ):
         docs = hub.help(
-            'lyuwenyu/paddlehub_demo:main',
+            self.local_repo,
             model='MM',
-            source='github',
-            force_reload=False)
-
-        docs = hub.load(
-            'lyuwenyu/paddlehub_demo',
-            model='MM',
-            source='github',
-            force_reload=False)
+            source='local', )
+        print(docs)
 
     def testList(self, ):
         models = hub.list(
-            'lyuwenyu/paddlehub_demo:main',
-            source='github',
+            self.local_repo,
+            source='local',
             force_reload=False, )
 
-        models = hub.list(
-            'lyuwenyu/paddlehub_demo', source='github', force_reload=False)
+        print(models)
 
 
 if __name__ == '__main__':
