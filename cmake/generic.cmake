@@ -934,3 +934,4 @@ function(generate_dummy_static_lib)
   configure_file(${PROJECT_SOURCE_DIR}/cmake/dummy.c.in ${dummy_FILE_PATH} @ONLY)
   add_library(${dummy_LIB_NAME} STATIC ${dummy_FILE_PATH})
 endfunction()
+

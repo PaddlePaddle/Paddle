@@ -110,22 +110,22 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
   // out found_inf
   Tensor found_inf_tensor;
   found_inf_tensor.Resize({1});
-  bool *is_finite_data =
+  bool *found_inf_data =
       found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
   f::TensorCopy(*found_inf, place, &found_inf_tensor);
-  EXPECT_FALSE(*is_finite_data);
+  EXPECT_TRUE(*found_inf_data);
 
   ctx.Wait();
 }
 
 TEST(check_finite_and_unscale, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx);
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx);
 }
 
 TEST(check_finite_and_unscale, NPU_fp16) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<p::float16>(&scope, ctx);
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<p::float16>(&scope, *ctx);
 }

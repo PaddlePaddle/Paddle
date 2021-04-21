@@ -39,6 +39,7 @@ taskkill /f /im python.exe  2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
+wmic process where name="rc.exe" call terminate 2>NUL
 
 
 rem ------initialize common variable------
@@ -64,6 +65,7 @@ if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
+if not defined retry_times set retry_times=2
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
@@ -219,6 +221,7 @@ rem ------Build windows avx whl package------
 set WITH_AVX=ON
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
+set retry_times=4
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -230,6 +233,7 @@ rem ------Build windows no-avx whl package------
 set WITH_AVX=OFF
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
+set retry_times=4
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -354,7 +358,7 @@ if %GENERATOR% == "Ninja" (
 )
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
-    if %build_times% GTR 2 (
+    if %build_times% GTR %retry_times% (
         exit /b 7
     ) else (
         echo Build third_party failed, will retry!
@@ -373,15 +377,15 @@ if %GENERATOR% == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:DebugSymbols=false /p:DebugType=None /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     ) else (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:DebugSymbols=false /p:DebugType=None /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     )
 )
 
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
-    if %build_times% GTR 2 (
+    if %build_times% GTR %retry_times% (
         exit /b 7
     ) else (
         echo Build Paddle failed, will retry!

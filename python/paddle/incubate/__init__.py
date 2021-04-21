@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from . import optimizer
+from . import checkpoint
 from ..fluid.contrib import reader
 from ..fluid.layer_helper import LayerHelper
 
 __all__ = []
 __all__ += ["reader"]
 __all__ += optimizer.__all__
+__all__ += checkpoint.__all__

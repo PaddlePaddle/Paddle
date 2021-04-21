@@ -77,6 +77,21 @@ class HeterContext {
       mutex_[i] = new std::mutex();
     }
   }
+
+  void Reset() {
+    for (size_t i = 0; i < feature_keys_.size(); ++i) {
+      feature_keys_[i].clear();
+    }
+    for (size_t i = 0; i < value_ptr_.size(); ++i) {
+      value_ptr_[i].clear();
+    }
+    for (size_t i = 0; i < device_values_.size(); ++i) {
+      device_values_[i].clear();
+    }
+    for (size_t i = 0; i < device_keys_.size(); ++i) {
+      device_keys_[i].clear();
+    }
+  }
   void batch_add_keys(
       const std::vector<std::unordered_set<uint64_t>>& thread_keys) {
     assert(thread_keys.size() == feature_keys_.size());
@@ -88,6 +103,15 @@ class HeterContext {
       std::copy(thread_keys[i].begin(), thread_keys[i].end(),
                 feature_keys_[i].begin() + idx);
     }
+  }
+
+  void batch_add_keys(int shard_num,
+                      const std::unordered_set<uint64_t>& shard_keys) {
+    int idx = feature_keys_[shard_num].size();
+    feature_keys_[shard_num].resize(feature_keys_[shard_num].size() +
+                                    shard_keys.size());
+    std::copy(shard_keys.begin(), shard_keys.end(),
+              feature_keys_[shard_num].begin() + idx);
   }
 
   void UniqueKeys() {

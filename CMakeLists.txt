@@ -104,8 +104,9 @@ if(WIN32)
         endforeach(flag_var)
     endif()
     
-    # NOTE(Avin0323): Less parallel count result in faster compilation.
-    math(EXPR PROCESS_MAX "${CPU_CORES} * 1 / 2")
+    # NOTE(zhouwei25): temporarily change MP to 1 for reducing CPU & memory utilization
+    set(PROCESS_MAX 1)
+    #math(EXPR PROCESS_MAX "${CPU_CORES} * 1 / 2")
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -133,6 +134,9 @@ if(WIN32)
 
     foreach(flag_var CMAKE_SHARED_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_LINKER_FLAGS)
         set(${flag_var} "${${flag_var}} /ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
+        if(MSVC_STATIC_CRT)
+            set(${flag_var} "${${flag_var}} /NODEFAULTLIB:MSVCRT.LIB")
+        endif()
     endforeach(flag_var)
 
     if (WITH_WIN_DUMP_DBG)
