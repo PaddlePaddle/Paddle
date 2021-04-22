@@ -98,6 +98,17 @@ RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e44
 WORKDIR /home/setuptools-40.6.2
 RUN python setup.py build && python setup.py install
 WORKDIR /home
+RUN python3.9 -m pip uninstall -y pip setuptools && \
+  python3.8 -m pip uninstall -y pip setuptools && \
+  python3.7 -m pip uninstall -y pip setuptools && \
+  python3.6 -m pip uninstall -y pip setuptools
+RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && apt-get -y install unzip && unzip setuptools-50.3.2.zip
+WORKDIR /home/setuptools-50.3.2
+RUN python3.9 setup.py build && python3.9 setup.py install && \
+  python3.8 setup.py build && python3.8 setup.py install && \
+  python3.7 setup.py build && python3.7 setup.py install && \
+  python3.6 setup.py build && python3.6 setup.py install
+WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
 WORKDIR pip-20.0.1
 RUN python setup.py install && \
@@ -107,8 +118,8 @@ RUN python setup.py install && \
   python3.6 setup.py install
 
 WORKDIR /home
-RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-20.0.1.tar.gz && \
-    rm -r Python-$version setuptools-40.6.2 pip-20.0.1
+RUN rm Python-$version.tgz setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
+    rm -r Python-$version setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1
 
 # Install Go and glide
 WORKDIR /home
