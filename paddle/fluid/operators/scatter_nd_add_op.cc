@@ -72,7 +72,7 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         r_updates_dims.size(), updates_dims_size,
         platform::errors::InvalidArgument(
-            "Updates has wrong shape.The shape of Updates and Input(Updates) "
+            "Updates has wrong shape. The shape of Updates and Input(Updates) "
             "should be same, but received the shape of Updates is %d, "
             "the shape of Input(Updates) is %d.",
             r_updates_dims.size(), updates_dims_size));
@@ -81,7 +81,7 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           r_updates_dims[i], updates_dims[i],
           platform::errors::InvalidArgument(
-              "Updates has wrong shape.The dimensions of Updates and "
+              "Updates has wrong shape. The dimensions of Updates and "
               "Input(Updates) should match, but received Updates's"
               "%d-th dimension is %d, Input(Updates)'s %d-th "
               "dimension is %d.",
