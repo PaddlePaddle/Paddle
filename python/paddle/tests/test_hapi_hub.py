@@ -65,6 +65,8 @@ class TestHub(unittest.TestCase):
         docs = hub.help(
             self.github_repo, model='MM', source='github', force_reload=False)
 
+        print(docs)
+
     def testList(self, ):
         models = hub.list(
             self.local_repo,
@@ -75,6 +77,8 @@ class TestHub(unittest.TestCase):
             self.github_repo,
             source='github',
             force_reload=False, )
+
+        print(models)
 
     def testExcept(self, ):
         with self.assertRaises(ValueError):
