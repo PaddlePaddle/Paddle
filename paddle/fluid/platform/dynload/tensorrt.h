@@ -46,7 +46,9 @@ extern void* tensorrt_plugin_dso_handle;
       });                                                                     \
       static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);          \
       if (p_##__name == nullptr) {                                            \
-        return nullptr;                                                       \
+        PADDLE_ENFORCE_NOT_NULL(                                              \
+            p_##__name, platform::errors::Unavailable(                        \
+                            "Load tensorrt plugin %s failed", #__name));      \
       }                                                                       \
       using tensorrt_func = decltype(&::__name);                              \
       auto ret = reinterpret_cast<tensorrt_func>(p_##__name)(args...);        \
@@ -79,11 +81,13 @@ extern void* tensorrt_plugin_dso_handle;
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
   __macro(createInferRuntime_INTERNAL);     \
-  __macro(getPluginRegistry);
+  __macro(getPluginRegistry);               \
+  __macro(getInferLibVersion);
 #else
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
-  __macro(createInferRuntime_INTERNAL);
+  __macro(createInferRuntime_INTERNAL);     \
+  __macro(getInferLibVersion);
 #endif
 
 #define TENSORRT_PLUGIN_RAND_ROUTINE_EACH(__macro) \
