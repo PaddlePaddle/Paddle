@@ -50,8 +50,8 @@ class CIdentityOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<bool>(
         "use_calc_stream",
-        "(bool default false) eject CUDA operations to calculation stream.")
-        .SetDefault(false);
+        "(bool default true) eject CUDA operations to calculation stream.")
+        .SetDefault(true);
     AddAttr<bool>("use_model_parallel",
                   "(bool default true) use this op with model parallel.")
         .SetDefault(true);

@@ -22,8 +22,8 @@ class CConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "c_split");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_split");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "c_concat");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_concat");
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
@@ -46,7 +46,7 @@ class CConcatOp : public framework::OperatorWithKernel {
 
     framework::DDim dim = ctx->GetInputDim("X");
     dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
-    if (dim[0] < 0) dim[0] = -1;
+    if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
     ctx->SetOutputDim("Out", dim);
   }
 
@@ -82,14 +82,14 @@ class CConcatOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddAttr<bool>(
         "use_calc_stream",
-        "(bool default false) eject CUDA operations to calculation stream.")
-        .SetDefault(false);
+        "(bool default true) eject CUDA operations to calculation stream.")
+        .SetDefault(true);
     AddAttr<bool>("use_model_parallel",
-                  "(bool default false) use this op with model parallel.")
+                  "(bool default true) use this op with model parallel.")
         .SetDefault(true);
     AddComment(R"DOC(
 CConcat Operator
-Concat the tensor along the last dimension.
+AllGather the tensors on different trainers and concat them along the last dimension.
 )DOC");
   }
 };

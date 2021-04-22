@@ -31,7 +31,7 @@ class CIdentityOpCUDAKernel : public framework::OpKernel<T> {
             "The ring_id (%d) for c_identity op must be non-negative.", rid));
     out->mutable_data<T>(ctx.GetPlace());
 
-    TensorCopySync(*x, out->place(), out);
+    TensorCopy(*x, out->place(), out);
   }
 };
 

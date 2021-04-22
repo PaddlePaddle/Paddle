@@ -17,8 +17,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -35,12 +37,6 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    PADDLE_ENFORCE_EQ(
-        nranks, comm->nranks(),
-        platform::errors::InvalidArgument("nranks: %s should equal to %s",
-                                          nranks, comm->nranks()));
-
     PADDLE_ENFORCE_GE(rank, 0,
                       platform::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
@@ -57,6 +53,13 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
                           "less than that of nranks (%d).",
                           rank, nranks));
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    PADDLE_ENFORCE_EQ(
+        nranks, comm->nranks(),
+        platform::errors::InvalidArgument("nranks: %s should equal to %s",
+                                          nranks, comm->nranks()));
+
     framework::Tensor temp_out;
     framework::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
@@ -65,12 +68,9 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     const T* send_buff = x->data<T>();
     T* recv_buff = temp_out.data<T>();
     gpuStream_t stream = nullptr;
-    if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
-    } else {
-      stream = comm->stream();
-    }
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
         send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm->comm(), stream));
@@ -91,6 +91,10 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     math::ConcatFunctor<platform::CUDADeviceContext, T> functor;
     out->mutable_data<T>(out_dims, place);
     functor(dev_ctx, inputs, axis, out);
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
+#endif
   }
 };
 }  // namespace operators
