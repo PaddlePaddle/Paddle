@@ -166,16 +166,6 @@ class Timeline(object):
         self._timeInfo = {}
         self._minTimeStamp = 0
 
-    def _add_profile(self):
-        profileFileList = glob.glob(os.path.join(self._profilePath, "*"))
-        for profile in profileFileList:
-            with open(profile, 'rb') as f:
-                profile_s = f.read()
-                profile_pb = profiler_pb2.Profile()
-                profile_pb.ParseFromString(profile_s)
-
-            self._profile_dict[os.path.basename(profile)] = profile_pb
-
     def _set_timeInfo(self, timeFileNamePrefix="time.txt", sed="."):
         timeFileNameList = glob.glob(os.path.join(self._timePath, timeFileNamePrefix, sed,"*"))
         for timeFileName in timeFileNameList:
@@ -196,6 +186,22 @@ class Timeline(object):
     def _align_ts(self, ts):
         return ts - self._minTimeStamp
         # return ts
+
+    def _add_profile_perf(self):
+        self._add_profile()
+        self._allocate_pids()
+        self._allocate_events()
+        self._allocate_memory_event()
+
+    def _add_profile(self):
+        profileFileList = glob.glob(os.path.join(self._profilePath, "*"))
+        for profile in profileFileList:
+            with open(profile, 'rb') as f:
+                profile_s = f.read()
+                profile_pb = profiler_pb2.Profile()
+                profile_pb.ParseFromString(profile_s)
+
+            self._profile_dict[os.path.basename(profile)] = profile_pb
 
     def _allocate_pid(self):
         cur_pid = self._pid
@@ -445,13 +451,9 @@ class Timeline(object):
                     continue
 
     def generate_chrome_trace(self):
-        self._add_profile()
         self._set_timeInfo()
 
-        self._allocate_pids()
-        self._allocate_events()
-        self._allocate_memory_event()
-
+        self._add_profile_perf()
         self._add_mlnx_perf()
         self._add_dcgm_perf()
 
