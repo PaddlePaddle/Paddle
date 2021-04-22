@@ -59,7 +59,7 @@ class AdamW(Adam):
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
         apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
-            will be updated. It only works when we want to specify tensors.
+            will be updated with weight decay. It only works when we want to specify tensors.
             Default: None.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies

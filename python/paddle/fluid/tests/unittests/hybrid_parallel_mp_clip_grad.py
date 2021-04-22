@@ -12,29 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
 from __future__ import print_function
 
+import paddle
+import numpy as np
+from hybrid_parallel_mp_model import TestDistMPTraning
 import unittest
-import paddle.fluid as fluid
+import logging
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+#log = logging.getLogger("HybridParallel")
+#log.setLevel(logging.WARNING)
 
 
-class TestHybridParallel(TestMultipleGpus):
-    def test_hybrid_parallel_mp_layers(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_layers.py')
-
-    def test_hybrid_parallel_mp_random(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_random.py')
-
-    def test_hybrid_parallel_mp_model(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_model.py')
-
-    def test_hybrid_parallel_mp_amp(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_amp.py')
-
-    def test_hybrid_parallel_mp_clip_grad(self):
-        self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
+class TestMPClipGrad(TestDistMPTraning):
+    def build_optimizer(self, model):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
+        scheduler = paddle.optimizer.lr.ExponentialDecay(
+            learning_rate=0.001, gamma=0.999, verbose=True)
+        optimizer = paddle.optimizer.SGD(scheduler,
+                                         grad_clip=grad_clip,
+                                         parameters=model.parameters())
+        return optimizer
 
 
 if __name__ == "__main__":
