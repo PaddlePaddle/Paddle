@@ -164,12 +164,20 @@ class FcOpConverter : public OpConverter {
         auto output_name = op_desc.Output("Out").front();
         // add shuffle before fc
         nvinfer1::Dims reshape_before_fc_dim;
-        reshape_before_fc_dim.nbDims = x_dim.nbDims + 2;
-        for (int i = 0; i < x_dim.nbDims; i++) {
-          reshape_before_fc_dim.d[i] = 0;
+        if (x_num_col_dims == 1 && x_dim.nbDims == 3) {
+          reshape_before_fc_dim.nbDims = x_dim.nbDims + 1;
+          for (int i = 0; i < x_dim.nbDims; i++) {
+            reshape_before_fc_dim.d[i] = 0;
+          }
+          reshape_before_fc_dim.d[x_dim.nbDims] = 1;
+        } else {
+          reshape_before_fc_dim.nbDims = x_dim.nbDims + 2;
+          for (int i = 0; i < x_dim.nbDims; i++) {
+            reshape_before_fc_dim.d[i] = 0;
+          }
+          reshape_before_fc_dim.d[x_dim.nbDims] = 1;
+          reshape_before_fc_dim.d[x_dim.nbDims + 1] = 1;
         }
-        reshape_before_fc_dim.d[x_dim.nbDims] = 1;
-        reshape_before_fc_dim.d[x_dim.nbDims + 1] = 1;
         auto* reshape_before_fc_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
         reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
