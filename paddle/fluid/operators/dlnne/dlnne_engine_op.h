@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <cuda.h>          // NOTLINT
+#include <cuda_runtime.h>  // NOTLINT
+#include <dlnne.h>         // NOTLINT
 
 #include <assert.h>
 #include <ctime>
@@ -24,10 +27,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include "cuda/cuda.h"          // NOTLINT
-#include "cuda/cuda_runtime.h"  // NOTLINT
-#include "nne/dlnne.h"          // NOTLINT
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -112,7 +111,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
     num_outputs = Outputs("Ys").size();
     for (const auto &y : Outputs("Ys")) {
-      LOG(INFO) << "y: " << y << std::endl;
+      VLOG(4) << "y: " << y << std::endl;
       output_names.push_back(y);
     }
 
@@ -128,7 +127,6 @@ class DlnneEngineOp : public framework::OperatorBase {
     filename << current_path << "/dump/" << engine_key_ << "/" << engine_key_
              << ".onnx";
 
-    // InputIndexToBindIndex_.reserve(20);
     builder = dl::nne::CreateInferBuilder();
     PADDLE_ENFORCE_NE(builder, nullptr, platform::errors::Unavailable(
                                             "nne create builder failed"));
@@ -198,8 +196,6 @@ class DlnneEngineOp : public framework::OperatorBase {
       index++;
       int64_t data_bytes;
       int32_t dtype;
-      // input_buffers[bind_index] =
-      //     this->VarBuffer2voidBuffer(t, data_bytes, dtype);
       auto type = t.type();
       data_bytes = 1;
       void *buffer = nullptr;
@@ -227,7 +223,7 @@ class DlnneEngineOp : public framework::OperatorBase {
         data_bytes = data_bytes * size;
       }
 
-      LOG(INFO) << "buffers_size:" << data_bytes;
+      VLOG(4) << "buffers_size:" << data_bytes;
       cpu_input_buffers[bind_index] =
           input_buffers[bind_index];  // malloc(data_bytes);
       input_shapes[bind_index] = runtime_input_shape;
@@ -254,7 +250,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       for (auto &size : shape) {
         data_bytes = data_bytes * size;
       }
-      LOG(INFO) << "data_bytes: " << data_bytes;
+      VLOG(4) << "data_bytes: " << data_bytes;
       output_bytes.push_back(data_bytes);
     }
 
@@ -272,8 +268,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
 
-      LOG(INFO) << "out_shapes[bind_index] dim:"
-                << out_shapes[bind_index].size();
+      VLOG(4) << "out_shapes[bind_index] dim:" << out_shapes[bind_index].size();
       fluid_t->Resize(framework::make_ddim(out_shapes[bind_index]));
 
       int32_t dtype;
@@ -296,7 +291,7 @@ class DlnneEngineOp : public framework::OperatorBase {
         // copy cpu buffer to gpu buffer
         int64_t total_bytes;
         total_bytes = input_bytes[i];
-        LOG(INFO) << "input_bytes: " << total_bytes;
+        VLOG(4) << "input_bytes: " << total_bytes;
 
         void *gpu_ptr;
         cudaMalloc(&gpu_ptr, total_bytes);
@@ -309,7 +304,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       } else {
         int64_t total_size;
         total_size = output_bytes[i - input_names.size()];
-        LOG(INFO) << "output_bytes: " << total_size;
+        VLOG(4) << "output_bytes: " << total_size;
         void *gpu_ptr;
         cudaMalloc(&gpu_ptr, total_size);
         engine_input_ptr[InputIndexToBindIndex_[i]] = gpu_ptr;

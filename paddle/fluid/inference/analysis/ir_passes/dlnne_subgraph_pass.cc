@@ -128,22 +128,7 @@ std::string replace_name(std::string name, const char *raw,
   }
   return r_name;
 }
-// void GetGraphInputsOutputs(std::set<std::string> name_var_input_nodes,
-//                            std::set<std::string> name_var_output_nodes,
-//                            std::set<std::string> &input_names,
-//                            std::set<std::string> &output_names) {
-//   for (auto name : name_var_output_nodes) {
-//     if (name_var_input_nodes.find(name) == name_var_input_nodes.end()) {
-//       output_names.insert(name);
-//     }
-//   }
 
-//   for (auto name : name_var_input_nodes) {
-//     if (name_var_output_nodes.find(name) == name_var_output_nodes.end()) {
-//       input_names.insert(name);
-//     }
-//   }
-// }
 void DlnneSubgraphPass::CreateDlnneOp(
     framework::ir::Node *node, framework::ir::Graph *graph,
     const std::vector<std::string> &graph_params,
@@ -216,9 +201,6 @@ void DlnneSubgraphPass::CreateDlnneOp(
   }
   std::set<std::string> valid_input_names;
   std::set<std::string> valid_output_names;
-
-  // GetGraphInputsOutputs(name_var_input_nodes, name_var_output_nodes,
-  //                       valid_input_names, valid_output_names);
   for (auto name : name_var_output_nodes) {
     if (name_var_input_nodes.find(name) == name_var_input_nodes.end()) {
       valid_output_names.insert(name);
@@ -318,7 +300,7 @@ void DlnneSubgraphPass::CreateDlnneOp(
     ofstream m_stream;
     m_stream.open(dir_name + "/__model__", ios::out);
 
-    LOG(INFO) << "name_var_desc size:" << name_var_desc.size();
+    VLOG(4) << "name_var_desc size:" << name_var_desc.size();
 
     for (auto &kv : name_var_desc) {
       auto *new_add_var = tmp_dump_main_block->Proto()->add_vars();
