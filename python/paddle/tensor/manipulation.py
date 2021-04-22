@@ -131,7 +131,7 @@ def flip(x, axis, name=None):
     Args:
         x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        axis (list): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
+        axis (list|tuple): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 

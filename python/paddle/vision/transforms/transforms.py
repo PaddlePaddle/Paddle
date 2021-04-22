@@ -86,7 +86,7 @@ class Compose(object):
     together for a dataset transform.
 
     Args:
-        transforms (list): List of transforms to compose.
+        transforms (list|tuple): List/Tuple of transforms to compose.
 
     Returns:
         A compose object which is callable, __call__ for this Compose
@@ -104,7 +104,7 @@ class Compose(object):
 
             for i in range(10):
                 sample = flowers[i]
-                print(sample[0].shape, sample[1])
+                print(sample[0].size, sample[1])
 
     """
 

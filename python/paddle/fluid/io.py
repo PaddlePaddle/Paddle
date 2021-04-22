@@ -1913,7 +1913,7 @@ def load(program, model_path, executor=None, var_list=None):
         model_path(str): The file prefix store the program
         executor(Executor, optional): The executor used for initialize the parameter
                                       When startup program is not run.
-        var_list(list, optional): The Tensor list to load single model file saved with
+        var_list(list|tuple, optional): The Tensor list/tuple to load single model file saved with
                                   [ save_params, save_persistables, save_vars ].
                                   Default: None
 
@@ -2099,7 +2099,7 @@ def load_program_state(model_path, var_list=None):
 
     Args:
         model_path(str): The file prefix store the program
-        var_list(list, optional): The Tensor list to load saved with
+        var_list(list|tuple, optional): The Tensor list/tuple to load saved with
                                   [ save_params, save_persistables, save_vars ].
                                   Default: None.
                                   The var_list is only used to get name,
@@ -2188,8 +2188,8 @@ def load_program_state(model_path, var_list=None):
                     error_str = "Failed to load model/variables `%s`, please make sure " \
                                 "model/variables file is saved with the following APIs: " \
                                 "save_params, save_persistables, save_vars."
-                    filenames = [var.name for var in vars
-                                 ] if filename is None else filename
+                    filenames = [var.name for var in
+                                 vars] if filename is None else filename
                     if raise_error:
                         raise RuntimeError(error_str % filenames)
                     else:

@@ -418,7 +418,7 @@ def cuda_places(device_ids=None):
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
 
     Parameters:
-        device_ids (list or tuple of int, optional): list of GPU device ids.
+        device_ids (list|tuple, optional): A list/tuple of int of GPU device ids.
 
     Returns:
         list of paddle.CUDAPlace: Created GPU place list.

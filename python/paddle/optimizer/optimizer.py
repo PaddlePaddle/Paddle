@@ -55,7 +55,7 @@ class Optimizer(object):
     Args:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
             It can be a float value or any subclass of ``LRScheduler`` .
-        parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
