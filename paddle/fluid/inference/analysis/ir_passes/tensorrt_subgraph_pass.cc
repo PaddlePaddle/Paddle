@@ -322,8 +322,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     opt_input_shape = {};
   }
 
-  const int compile_time_trt_version = TRT_VERSION;
-  const int run_time_trt_version = tensorrt::GetInferLibVersion();
+  auto to_major_version = [&](int full_version) -> float {
+    return (full_version / 100) / 10.0;
+  };
+  const float compile_time_trt_version = to_major_version(TRT_VERSION);
+  const float run_time_trt_version =
+      to_major_version(tensorrt::GetInferLibVersion());
   if (compile_time_trt_version != run_time_trt_version) {
     LOG_FIRST_N(WARNING, 1)
         << "The Paddle Inference library is compiled with "
@@ -331,7 +335,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         << "but the runtime TensorRT you are using is " << run_time_trt_version
         << " version. "
            "This might cause serious compatibility issues. We strongly "
-           "recommend using the same TRT version at runtime";
+           "recommend using the same TRT version at runtime.";
   }
 
   // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
