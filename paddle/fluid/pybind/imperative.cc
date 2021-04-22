@@ -614,7 +614,8 @@ void BindImperative(py::module *m_ptr) {
           return paddle::platform::stream::get_current_stream(deviceId);
         },
         py::return_value_policy::reference);
-  m.def("_get_cuda_flags", [](bool enable_timing, bool blocking, bool interprocess) {
+  m.def("_get_cuda_flags", [](bool enable_timing, bool blocking,
+                              bool interprocess) {
     return platform::get_cuda_flags(enable_timing, blocking, interprocess);
   });
 
@@ -1602,6 +1603,7 @@ void BindImperative(py::module *m_ptr) {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   py::class_<paddle::platform::stream::CUDAStream>(m, "CUDAStream")
+      .def(py::init<platform::CUDAPlace, paddle::platform::stream::Priority>())
       .def("wait_event",
            [](paddle::platform::stream::CUDAStream &self,
               paddle::platform::CudaEvent &event) {
@@ -1628,6 +1630,11 @@ void BindImperative(py::module *m_ptr) {
            [](paddle::platform::CudaEvent &self) { return self.Query(); })
       .def("synchronize",
            [](paddle::platform::CudaEvent &self) { self.Synchronize(); });
+
+  py::enum_<paddle::platform::stream::Priority>(m, "Priority")
+      .value("kHigh", paddle::platform::stream::Priority::kHigh)
+      .value("kNormal", paddle::platform::stream::Priority::kNormal)
+      .export_values();
 #endif
 }
 

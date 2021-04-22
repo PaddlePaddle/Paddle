@@ -17,8 +17,12 @@ from .. import cuda
 
 
 class Stream(core.CUDAStream):
-    def __init__(self):
-        pass
+    def __init__(self, device, priority=None):
+
+        if priority is None:
+            priority = 2
+        assert priority == 1 or priority == 2, "priority must be 1(high) or 2(normal)"
+        super(Stream, self).__init__(device, core_avx.Priority(priority))
 
     def wait_event(self, event):
         super(Stream, self).wait_event(event)
