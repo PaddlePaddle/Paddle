@@ -62,10 +62,6 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
     int64_t size = tensor->numel();
 
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(*engine);
-    }
-
     UniformRealDistribution<T>(
         data, size, ctx.Attr<float>("min"), ctx.Attr<float>("max"),
         static_cast<unsigned int>(ctx.Attr<int>("seed")));
