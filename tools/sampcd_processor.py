@@ -539,9 +539,10 @@ def get_filenames():
         list: the modules pending for check .
 
     '''
-    filenames = []
     global methods  # write
     global whl_error
+    import paddle
+    filenames = []
     methods = []
     whl_error = []
     get_incrementapi()
