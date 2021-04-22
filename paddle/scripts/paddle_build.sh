@@ -227,7 +227,6 @@ function cmake_base() {
     fi
 
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
-    grpc_flag="OFF"
     gloo_flag=${distibuted_flag}
 
     cat <<EOF
@@ -255,7 +254,6 @@ function cmake_base() {
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_GRPC=${grpc_flag}
         -DWITH_PSCORE=${distibuted_flag}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
@@ -292,7 +290,6 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_GRPC=${grpc_flag} \
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=release/v2.8 \
@@ -521,8 +518,7 @@ function run_brpc_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [[ ${WITH_TESTING:-ON} == "ON" \
-        && ${WITH_DISTRIBUTE:-OFF} == "ON" \
-        && ${WITH_GRPC:-OFF} == "OFF" ]] ; then
+        && ${WITH_DISTRIBUTE:-OFF} == "ON" ]] ; then
     cat <<EOF
     ========================================
     Running brpc unit tests ...
