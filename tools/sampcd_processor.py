@@ -201,10 +201,8 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         logging.info('running %s', tfname)
         with open(tfname, 'w') as tempf:
             tempf.write(sampcd)
-        if platform.python_version()[0] == "2":
-            cmd = ["python", tfname]
-        elif platform.python_version()[0] == "3":
-            cmd = ["python3", tfname]
+        if platform.python_version()[0] in ["2", "3"]:
+            cmd = [sys.executable, tfname]
         else:
             print("Error: fail to parse python version!")
             result = False
