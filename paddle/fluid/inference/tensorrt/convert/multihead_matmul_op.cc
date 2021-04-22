@@ -160,7 +160,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
         auto creator = GetPluginRegistry()->getPluginCreator(
             "CustomQKVToContextPluginDynamic", "2");
-        assert(creator != nullptr);
+        PADDLE_ENFORCE_NE(
+            creator, nullptr,
+            platform::errors::InvalidArgument(
+                "fail to get creator of CustomQKVToContextPluginDynamic"));
         int type = static_cast<int>((engine_->WithFp16() == 1)
                                         ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT);

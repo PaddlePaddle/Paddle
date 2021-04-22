@@ -56,13 +56,17 @@ class SkipLayerNormOpConverter : public OpConverter {
     if (engine_->use_oss()) {
       auto creator = GetPluginRegistry()->getPluginCreator(
           "CustomSkipLayerNormPluginDynamic", "2");
-      assert(creator != nullptr);
+      PADDLE_ENFORCE_NE(
+          creator, nullptr,
+          platform::errors::InvalidArgument(
+              "fail to get creator of CustomSkipLayerNormPluginDynamic"));
       int type = static_cast<int>((engine_->WithFp16() == 1)
                                       ? nvinfer1::DataType::kHALF
                                       : nvinfer1::DataType::kFLOAT);
       int ld = input1->getDimensions().d[2];  // hidden dimension
-      assert(ld > 0);
-
+      PADDLE_ENFORCE_GT(ld, 0, platform::errors::InvalidArgument(
+                                   "in CustomSkipLayerNormPluginDynamic hidden "
+                                   "dimension should > 0"));
       if (enable_int8) {
         type = static_cast<int>(nvinfer1::DataType::kHALF);
       }
@@ -86,7 +90,10 @@ class SkipLayerNormOpConverter : public OpConverter {
       auto plugin_layer = engine_->network()->addPluginV2(
           inputs.data(), inputs.size(), *pluginObj);
 
-      assert(plugin_layer != nullptr);
+      PADDLE_ENFORCE_NE(
+          plugin_layer, nullptr,
+          platform::errors::InvalidArgument(
+              "fail to add CustomSkipLayerNormPluginDynamic layer"));
       layer = plugin_layer;
     } else {
       float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));

@@ -149,12 +149,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) return false;
       if (desc.Input("X").size() != 1) {
-        VLOG(1) << "TRT Pool2d expect 1 input, but got "
+        VLOG(3) << "TRT Pool2d expect 1 input, but got "
                 << desc.Input("X").size();
         return false;
       }
       if (desc.Output("Out").size() != 1) {
-        VLOG(1) << "TRT Pool2d has only 1 output, but got "
+        VLOG(3) << "TRT Pool2d has only 1 output, but got "
                 << desc.Output("Out").size();
         return false;
       }
@@ -164,7 +164,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         std::string pool_type =
             BOOST_GET_CONST(std::string, desc.GetAttr("pooling_type"));
         if (pool_type != "max" && pool_type != "avg") {
-          VLOG(1) << "Wrong pool op type, the trt do not support the "
+          VLOG(3) << "Wrong pool op type, the trt do not support the "
                   << pool_type << " pool type.";
           return false;
         }
@@ -180,13 +180,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (paddings.size() > 2 && op_type != "conv2d_fusion") return false;
 
       if (desc.Input("Input").size() != 1) {
-        VLOG(1) << "TRT Conv2d expect 1 input, but got "
+        VLOG(3) << "TRT Conv2d expect 1 input, but got "
                 << desc.Input("Input").size() << " input.";
         return false;
       }
 
       if (desc.Input("Filter").size() != 1) {
-        VLOG(1) << "TRT Conv2d expect 1 filter, but got "
+        VLOG(3) << "TRT Conv2d expect 1 filter, but got "
                 << desc.Input("Filter").size() << " filter.";
         return false;
       }
@@ -194,7 +194,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (desc.HasAttr("enable_int8")) {
         if (op_type == "conv2d" || op_type == "conv2d_fusion") {
           if (!desc.HasAttr("Input_scale")) {
-            VLOG(1) << "Input scale not found. TRT int8"
+            VLOG(3) << "Input scale not found. TRT int8"
                        " requires conv/deconv to have "
                        "input quantization scales.";
             return false;
@@ -209,7 +209,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           const std::vector<int> dilations =
               BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
           if (dilations[0] != 1 || dilations[1] != 1) {
-            VLOG(1) << "In conv2d_transpose, Dilations must be (1, 1) for "
+            VLOG(3) << "In conv2d_transpose, Dilations must be (1, 1) for "
                        "tensorRT, but given ("
                     << dilations[0] << ", " << dilations[1] << ")";
             return false;
@@ -218,7 +218,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       if (desc.Output("Output").size() != 1) {
-        VLOG(1) << "TRT Conv2d expect 1 output, but got "
+        VLOG(3) << "TRT Conv2d expect 1 output, but got "
                 << desc.Output("Output").size() << " output.";
         return false;
       }
@@ -231,7 +231,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() < 3) {
-            VLOG(1)
+            VLOG(3)
                 << "matmul op dims < 3 not supported in tensorrt, but got dims "
                 << shape.size() << ", so jump it.";
             return false;
@@ -320,7 +320,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() != 3) {
-            VLOG(1) << "multiclass_nms op dims != 3 not supported in tensorrt, "
+            VLOG(3) << "multiclass_nms op dims != 3 not supported in tensorrt, "
                        "but got dims "
                     << shape.size() << ", so jump it.";
             return false;
@@ -392,11 +392,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
         if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
           if (out_h <= 0) {
-            VLOG(1) << "out_h must be greater than 0 if scale is not set.";
+            VLOG(3) << "out_h must be greater than 0 if scale is not set.";
             return false;
           }
           if (out_w <= 0) {
-            VLOG(1) << "out_w must be greater than 0 if scale is not set.";
+            VLOG(3) << "out_w must be greater than 0 if scale is not set.";
             return false;
           }
         }
@@ -427,13 +427,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "hard_swish") {
       if (desc.Input("X").size() != 1) {
-        VLOG(1) << "HardSwish op has only 1 input, but got "
+        VLOG(3) << "HardSwish op has only 1 input, but got "
                 << desc.Input("X").size();
         return false;
       }
 
       if (desc.Output("Out").size() != 1) {
-        VLOG(1) << "HardSwish op has only 1 output, but got "
+        VLOG(3) << "HardSwish op has only 1 output, but got "
                 << desc.Output("Out").size();
         return false;
       }
@@ -444,7 +444,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                                                   "Variance"};
       for (unsigned int i = 0; i < bn_inputs.size(); i++) {
         if (desc.Input(bn_inputs[i]).size() != 1) {
-          VLOG(1) << "Invalid " << bn_inputs[i]
+          VLOG(3) << "Invalid " << bn_inputs[i]
                   << "'s size of batch_norm TRT "
                      "converter. Expected 1, received "
                   << desc.Input(bn_inputs[i]).size() << ".";
@@ -453,7 +453,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       if (desc.Output("Y").size() != 1) {
-        VLOG(1) << "Invalid output Y's size of batch_norm TRT "
+        VLOG(3) << "Invalid output Y's size of batch_norm TRT "
                    "converter. Expected 1, received "
                 << desc.Output("Y").size() << ".";
         return false;
@@ -462,7 +462,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "split") {
       if (desc.Input("X").size() != 1) {
-        VLOG(1) << "Invalid input X's size of split TRT converter. "
+        VLOG(3) << "Invalid input X's size of split TRT converter. "
                    "Expected 1, received "
                 << desc.Input("X").size() << ".";
         return false;
@@ -472,7 +472,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       } else {
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis == 0) {
-          VLOG(1) << "Invalid split axis. Split on batch is not supported in "
+          VLOG(3) << "Invalid split axis. Split on batch is not supported in "
                      "TensorRT";
           return false;
         }
@@ -496,7 +496,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (!with_dynamic_shape) {
           for (size_t i = 0; i < axes.size(); i++) {
             if (axes[i] == 0) {
-              VLOG(1) << "Invalid slice axis. Slice on batch axis is not "
+              VLOG(3) << "Invalid slice axis. Slice on batch axis is not "
                          "supported in TensorRT";
               return false;
             }
@@ -507,19 +507,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
       if (desc.Input("X").size() != 1) {
-        VLOG(1) << "The input op's Input(\"X\").size() "
+        VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
                 << desc.Input("X").size() << ".";
         return false;
       }
       if (desc.Input("Y").size() != 1) {
-        VLOG(1) << "The input op's Input(\"Y\").size() "
+        VLOG(3) << "The input op's Input(\"Y\").size() "
                    "should equal to 1, but received Input(\"Y\").size() = "
                 << desc.Input("Y").size() << ".";
         return false;
       }
       if (desc.Output("Out").size() != 1) {
-        VLOG(1) << "The input op's Output(\"Out\").size() "
+        VLOG(3) << "The input op's Output(\"Out\").size() "
                    "should equal to 1, but reveceid Output(\"Out\").size() = "
                 << desc.Output("Out").size() << ".";
         return false;
@@ -528,7 +528,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "stack") {
       if (!with_dynamic_shape) {
-        VLOG(1)
+        VLOG(3)
             << "static shape mode is not supported for TRT stack.\n"
                "You can use the config.SetTRTDynamicShapeInfo(...) interface"
                " to set the shape information to run the dynamic shape "
@@ -539,12 +539,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "fused_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
-        VLOG(1) << "fused_embedding_eltwise_layernorm should run on dynamic "
+        VLOG(3) << "fused_embedding_eltwise_layernorm should run on dynamic "
                    "shape mode.";
         return false;
       }
       if (desc.Input("Ids").size() != desc.Input("Embs").size()) {
-        VLOG(1) << "The id and emb size of fused EmbEltwiseLayerNormOp "
+        VLOG(3) << "The id and emb size of fused EmbEltwiseLayerNormOp "
                    "should be same ";
         return false;
       }
@@ -552,12 +552,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "gelu") {
       if (desc.Input("X").size() != 1) {
-        VLOG(1) << "gelu op has only 1 input, but got "
+        VLOG(3) << "gelu op has only 1 input, but got "
                 << desc.Input("X").size();
         return false;
       }
       if (desc.Output("Out").size() != 1) {
-        VLOG(1) << "gelu op has only 1 output, but got "
+        VLOG(3) << "gelu op has only 1 output, but got "
                 << desc.Output("Out").size();
         return false;
       }
@@ -565,22 +565,22 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "layer_norm") {
       if (desc.Input("X").size() != 1) {
-        VLOG(1) << "input of layer_norm op converter should be 1, got "
+        VLOG(3) << "input of layer_norm op converter should be 1, got "
                 << desc.Input("X").size();
         return false;
       }
       if (desc.Input("Bias").size() != 1) {
-        VLOG(1) << "Bias of layer_norm op converter should be 1, got "
+        VLOG(3) << "Bias of layer_norm op converter should be 1, got "
                 << desc.Input("Bias").size();
         return false;
       }
       if (desc.Input("Scale").size() != 1) {
-        VLOG(1) << "Scale of layer_norm op converter should be 1, got "
+        VLOG(3) << "Scale of layer_norm op converter should be 1, got "
                 << desc.Input("Scale").size();
         return false;
       }
       if (desc.Output("Y").size() != 1) {
-        VLOG(1) << "output of layer_norm op converter should be 1, got "
+        VLOG(3) << "output of layer_norm op converter should be 1, got "
                 << desc.Output("Y").size();
         return false;
       }
@@ -588,13 +588,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "leaky_relu") {
       if (desc.Input("X").size() != 1) {
-        VLOG(1) << "Invalid number of TRT leaky_relu op converter "
+        VLOG(3) << "Invalid number of TRT leaky_relu op converter "
                    "inputs. Expected 1, but received "
                 << desc.Input("X").size();
         return false;
       }
       if (desc.Output("Out").size() != 1) {
-        VLOG(1) << "output of leaky_relu op converter should be 1, got "
+        VLOG(3) << "output of leaky_relu op converter should be 1, got "
                 << desc.Output("Out").size();
         return false;
       }
@@ -603,20 +603,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "pad") {
       const float pad_value = BOOST_GET_CONST(float, desc.GetAttr("pad_value"));
       if (pad_value != 0.0f) {
-        VLOG(1) << "The pad layer of TRT only support zero.";
+        VLOG(3) << "The pad layer of TRT only support zero.";
         return false;
       }
     }
 
     if (op_type == "prelu") {
       if (desc.Input("X").size() != 1) {
-        VLOG(1) << "Invalid input X's size of prelu TRT converter. "
+        VLOG(3) << "Invalid input X's size of prelu TRT converter. "
                    "Expected 1, received "
                 << desc.Input("X").size() << ".";
         return false;
       }
       if (desc.Output("Out").size() != 1) {
-        VLOG(1) << "Invalid output Out's size of prelu TRT converter. "
+        VLOG(3) << "Invalid output Out's size of prelu TRT converter. "
                    "Expected 1, received "
                 << desc.Output("Out").size() << ".";
         return false;
@@ -625,7 +625,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "roi_align") {
       if (!with_dynamic_shape) {
-        VLOG(1) << "TRT roi align plugin only accept the dynamic shape, "
+        VLOG(3) << "TRT roi align plugin only accept the dynamic shape, "
                    "because that "
                    "the roi_align will change the batch size.";
         return false;
@@ -634,7 +634,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "shuffle_channel") {
       if (with_dynamic_shape) {
-        VLOG(1) << "You are running the TRT Dynamic Shape mode, "
+        VLOG(3) << "You are running the TRT Dynamic Shape mode, "
                    "the shuffle_channel op does not support dynamic shape yet";
         return false;
       }
@@ -642,14 +642,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "skip_layernorm") {
       if (!with_dynamic_shape) {
-        VLOG(1) << "the skip_layernorm does not support static shape yet";
+        VLOG(3) << "the skip_layernorm does not support static shape yet";
         return false;
       }
     }
 
     if (op_type == "multihead_matmul") {
       if (!with_dynamic_shape) {
-        VLOG(1) << "the multihead_matmul does not support static shape yet";
+        VLOG(3) << "the multihead_matmul does not support static shape yet";
         return false;
       }
     }
