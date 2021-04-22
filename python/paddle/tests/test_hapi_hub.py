@@ -28,6 +28,7 @@ class TestHub(unittest.TestCase):
     def setUp(self, ):
         self.local_repo = os.path.dirname(os.path.abspath(__file__))
         self.github_repo = 'lyuwenyu/paddlehub_demo:main'
+        self.gitee_repo = 'lyuwenyuL/paddlehub_test:master'
 
     def testLoad(self, ):
         model = hub.load(
@@ -38,12 +39,34 @@ class TestHub(unittest.TestCase):
 
         np.testing.assert_equal(out.shape, [1, 8, 50, 50])
 
+        model = hub.load(
+            self.github_repo, model='MM', source='github', force_reload=True)
+
+        model = hub.load(
+            self.github_repo,
+            model='MM',
+            source='github',
+            force_reload=False,
+            pretrained=True)
+
+        model = hub.load(
+            self.github_repo,
+            model='MM',
+            source='github',
+            force_reload=False,
+            pretrained=False)
+
     def testHelp(self, ):
         docs = hub.help(
             self.local_repo,
             model='MM',
             source='local', )
-        print(docs)
+
+        docs = hub.help(
+            self.github_repo, model='MM', source='github', force_reload=False)
+
+        docs = hub.load(
+            self.github_repo, model='MM', source='github', force_reload=False)
 
     def testList(self, ):
         models = hub.list(
@@ -51,7 +74,12 @@ class TestHub(unittest.TestCase):
             source='local',
             force_reload=False, )
 
-        print(models)
+        models = hub.list(
+            self.github_repo,
+            source='github',
+            force_reload=False, )
+
+        models = hub.list(self.github_repo, source='github', force_reload=False)
 
     def testExcept(self, ):
         with self.assertRaises(ValueError):

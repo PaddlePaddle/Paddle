@@ -155,7 +155,7 @@ def list(repo_dir, source='github', force_reload=False):
         ```python
         import paddle
 
-        paddle.hub.help('lyuwenyu/PaddleClas:hub_L', source='github', force_reload=True)
+        paddle.hub.help('lyuwenyu/paddlehub_demo:main', source='github', force_reload=False)
 
         ```
     """
@@ -199,7 +199,7 @@ def help(repo_dir, model, source='github', force_reload=False):
         ```python
         import paddle
 
-        paddle.hub.help('lyuwenyu/PaddleClas:hub_L', model='ResNet18Test', source='github')
+        paddle.hub.help('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
         ```
     """
     if source not in ('github', 'gitee', 'local'):
@@ -238,7 +238,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     Example:
         ```python
         import paddle
-        paddle.hub.load('lyuwenyu/PaddleClas:hub_L', model='ResNet18Test', source='github')
+        paddle.hub.load('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
         ```
     """
     if source not in ('github', 'gitee', 'local'):
