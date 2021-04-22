@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from paddle.fluid.dygraph.layers import Layer
-import logging
 
 
 class MetaParallelBase(Layer):
