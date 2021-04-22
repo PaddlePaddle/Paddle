@@ -1389,26 +1389,34 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(conv2d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,
                    paddle::operators::CUDNNConvOpKernel<double>,
-                   paddle::operators::CUDNNConvOpKernel<plat::float16>,
-                   paddle::operators::CUDNNConvOpKernel<plat::bfloat16>);
+#if CUDNN_VERSION_MIN(8, 1, 0)
+                   paddle::operators::CUDNNConvOpKernel<plat::bfloat16>,
+#endif
+                   paddle::operators::CUDNNConvOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
                    paddle::operators::CUDNNConvGradOpKernel<double>,
-                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>,
-                   paddle::operators::CUDNNConvGradOpKernel<plat::bfloat16>);
+#if CUDNN_VERSION_MIN(8, 1, 0)
+                   paddle::operators::CUDNNConvGradOpKernel<plat::bfloat16>,
+#endif
+                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(
     conv2d_grad_grad, CUDNN, plat::CUDAPlace,
     paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
     paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
-    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>,
-    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::bfloat16>);
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::bfloat16>,
+#endif
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     depthwise_conv2d_grad_grad,
     paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
     paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
-    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>,
-    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::bfloat16>);
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::bfloat16>,
+#endif
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,
