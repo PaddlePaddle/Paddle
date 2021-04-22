@@ -392,16 +392,19 @@ if os.name == 'nt':
 elif sys.platform == 'darwin':
     ext_modules = []
 
-def find_files(pattern, root):
+def find_files(pattern, root, recursive=False):
     for dirpath, _, files in os.walk(root):
         for filename in fnmatch.filter(files, pattern):
             yield os.path.join(dirpath, filename)
-        break
+        if not recursive:
+            break
 
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
-    ['${BOOST_INCLUDE_DIR}/boost/any.hpp'] + # boost
+    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
+    # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
+    # to `extension/incude`,
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
@@ -438,11 +441,6 @@ class InstallHeaders(Command):
         self.install_dir = None
         self.force = 0
         self.outfiles = []
-        # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
-        # to `extension/incude`,
-        self.data_type_headers = (['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] +
-                             ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] +
-                             ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
 
     def finalize_options(self):
         self.set_undefined_options('install',
@@ -454,10 +452,9 @@ class InstallHeaders(Command):
             install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
         elif 'third_party' not in header:
             # paddle headers
-            if header in self.data_type_headers:
-                install_dir = "paddle/fluid/extension/include"
-            else:
-                install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+            install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+            if 'fluid' in install_dir:
+                install_dir = "paddle/extension/include/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
