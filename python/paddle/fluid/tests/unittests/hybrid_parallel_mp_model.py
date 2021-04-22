@@ -21,7 +21,6 @@ import random
 import paddle.distributed as dist
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-import paddle.fluid.generator as generator
 from paddle.io import DataLoader, Dataset
 import unittest
 
@@ -143,7 +142,7 @@ class TrainDataset(Dataset):
         return np_input_data
 
 
-class TestDistTraning(unittest.TestCase):
+class TestDistMPTraning(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -155,7 +154,20 @@ class TestDistTraning(unittest.TestCase):
         }
         fleet.init(is_collective=True, strategy=strategy)
 
-    def test_mp_model(self):
+    def train_batch(self, batch, model, optimizer, is_mp):
+        output = model(batch)
+        loss = output.mean()
+        loss.backward()  # do backward
+        optimizer.step()  # update parameters
+        optimizer.clear_grad()
+        return loss
+
+    def build_optimizer(self, model):
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
+                                         parameters=model.parameters())
+        return optimizer
+
+    def build_model_optimizer(self):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         mp_id = hcg.get_model_parallel_rank()
@@ -182,31 +194,29 @@ class TestDistTraning(unittest.TestCase):
 
         model_a = SimpleMPNet(vocab_size, hidden_size, inner_size, output_size,
                               np_fc1, np_fc2, mp_id)
-        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
-                                           parameters=model_a.parameters())
+        optimizer_a = self.build_optimizer(model_a)
         model_a = fleet.distributed_model(model_a)
         optimizer_a = fleet.distributed_optimizer(optimizer_a)
 
         model_b = SimpleDPNet(vocab_size, hidden_size, inner_size, output_size,
                               np_fc1, np_fc2)
-        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
-                                           parameters=model_b.parameters())
+        optimizer_b = self.build_optimizer(model_b)
+
+        return model_a, optimizer_a, model_b, optimizer_b, train_data_loader
+
+    def test_mp_model(self):
+        model_a, optimizer_a, model_b, optimizer_b, train_data_loader = self.build_model_optimizer(
+        )
 
         for step, batch in enumerate(train_data_loader):
             if step > 5:
                 return
-            output_a = model_a(batch)
-            loss_a = output_a.mean()
-            loss_a.backward()
-            optimizer_a.step()
-            optimizer_a.clear_grad()
 
-            output_b = model_b(batch)
-            loss_b = output_b.mean()
-            loss_b.backward()
-            optimizer_b.step()
-            optimizer_b.clear_grad()
-            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
+            loss_a = self.train_batch(batch, model_a, optimizer_a, True)
+            loss_b = self.train_batch(batch, model_b, optimizer_b, False)
+
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
 
 
 if __name__ == "__main__":
