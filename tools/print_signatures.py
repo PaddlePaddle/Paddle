@@ -157,11 +157,14 @@ def visit_all_module(mod):
         return
 
     visited_modules.add(mod)
-
-    for member_name in (
-            name
-            for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
-            if not name.startswith("_")):
+    if hasattr(mod, "__all__"):
+        member_names = (name for name in mod.__all__
+                        if not name.startswith("_"))
+    elif mod_name == 'paddle':
+        member_names = dir(mod)
+    else:
+        return
+    for member_name in member_names:
         instance = getattr(mod, member_name, None)
         if instance is None:
             continue
