@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import math
 import numpy
 import six
 import warnings
@@ -1373,6 +1374,10 @@ def range(start, end, step, dtype, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_numel = ceil((end - start) / step)
+
     if not isinstance(start, Variable):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
@@ -1397,7 +1402,7 @@ def range(start, end, step, dtype, name=None):
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
     helper = LayerHelper('range', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
+    out = helper.create_variable_for_type_inference(dtype, shape=[out_numel])
     helper.append_op(
         type='range',
         inputs={'Start': start,
