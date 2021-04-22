@@ -374,22 +374,6 @@ def _ndarray_to_tensor(obj, return_numpy):
         return _to_LodTensor(obj)
 
 
-def _parsed_as_state_dict(obj):
-    if isinstance(obj, dict):
-
-        def condition(obj):
-            return isinstance(obj, (core.Layer, Program, core.VarBase,
-                                    core.LoDTensor))
-
-        for key, value in obj.items():
-            if not isinstance(value, (core.VarBase, core.LoDTensor)):
-                if _contain_x(obj, condition):
-                    return False
-        return True
-
-    return False
-
-
 def _parse_every_object(obj, condition_func, convert_func):
     if condition_func(obj):
         return convert_func(obj)
