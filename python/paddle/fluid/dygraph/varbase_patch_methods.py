@@ -240,6 +240,10 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def gradient(self):
         """
+        .. warning::
+          This API will be deprecated in the future, it is recommended to use
+          :code:`x.grad` which returns the tensor value of the gradient.
+
         Get the Gradient of Current Tensor.
 
         Returns:
@@ -253,10 +257,15 @@ def monkey_patch_varbase():
                 x = paddle.to_tensor(5., stop_gradient=False)
                 y = paddle.pow(x, 4.0)
                 y.backward()
-                print("grad of x: {}".format(x.grad))
+                print("grad of x: {}".format(x.gradient()))
                 # [500.]
 
         """
+        warnings.warn(
+            "Caution! 'x.gradient()' is not recommended and will be deprecated "
+            "in future! We recommend to use 'x.grad' to get the tensor value "
+            "of the gradient.")
+
         if self._grad_ivar() is None:
             return None
 
@@ -337,6 +346,10 @@ def monkey_patch_varbase():
     @property
     def grad(self):
         """
+        .. warning::
+          This API will return the tensor value of the gradient. If you want 
+          to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`.
+
         Get the Gradient of Current Tensor.
 
         Returns:
