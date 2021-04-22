@@ -103,6 +103,13 @@ class TestHub(unittest.TestCase):
             _ = hub.load(
                 self.local_repo, model=123, source='local', force_reload=False)
 
+        with self.assertRaises(RuntimeError):
+            _ = hub.load(
+                self.local_repo,
+                model='123',
+                source='local',
+                force_reload=False)
+
 
 if __name__ == '__main__':
     unittest.main()
