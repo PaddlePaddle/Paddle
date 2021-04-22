@@ -75,7 +75,6 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
         send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm->comm(), stream));
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     std::vector<framework::Tensor> inputs;
     int axis = x->dims().size() - 1;
     auto out_dims = x->dims();
@@ -90,7 +89,8 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
 
     math::ConcatFunctor<platform::CUDADeviceContext, T> functor;
     out->mutable_data<T>(out_dims, place);
-    functor(dev_ctx, inputs, axis, out);
+    auto& dev_ctx2 = ctx.template device_context<platform::CUDADeviceContext>();
+    functor(dev_ctx2, inputs, axis, out);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
