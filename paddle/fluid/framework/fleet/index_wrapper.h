@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/index_dataset.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 
+
 namespace paddle {
 namespace framework {
 
@@ -133,11 +134,19 @@ class GraphIndex : public Index {
   std::vector<std::vector<uint64_t>> get_item_of_path(
       std::vector<int64_t>& paths);
 
+  int update_Jpath_of_item(
+    std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const int J, const double lamd, const int factor);
+
  private:
   GraphMeta meta_;
+
   std::unordered_map<uint64_t, std::vector<int64_t>> item_path_dict_;
   std::unordered_map<int64_t, std::unordered_set<uint64_t>> path_item_set_dict_;
+  
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> tmp_item_path_dict_;
+  std::unordered_map<int64_t, std::unordered_set<uint64_t>> tmp_path_item_set_dict_;
 };
+
 
 using TreePtr = std::shared_ptr<TreeIndex>;
 using GraphPtr = std::shared_ptr<GraphIndex>;

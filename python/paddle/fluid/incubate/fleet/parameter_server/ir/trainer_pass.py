@@ -143,6 +143,8 @@ def distributed_ops_pass(program, config):
 
             inputs_idxs = [-1] * len(inputs)
             outputs_idxs = [-1] * len(outputs)
+            type_cpu = 'cpu'
+            cur_device_attr = ""
 
             for idx, op in enumerate(program.global_block().ops):
                 for i in range(0, len(op.output_names)):
@@ -155,6 +157,9 @@ def distributed_ops_pass(program, config):
                     for out_id, out_var in enumerate(outputs):
                         if out_var.name in ins:
                             outputs_idxs[out_id] = idx
+                if op.has_attr("op_device"):
+                    cur_device_attr = op.attr("op_device") if op.attr(
+                        "op_device") != "" else type_cpu
 
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
                 distributed_idx = max(inputs_idxs) + 1
@@ -169,7 +174,8 @@ def distributed_ops_pass(program, config):
                         "is_distributed": is_distributed,
                         "padding_idx": padding_idx,
                         "table_id": table_id,
-                        "lookup_table_version": op_type
+                        "lookup_table_version": op_type,
+                        "op_device": cur_device_attr
                     })
             else:
                 for i in range(len(inputs_idxs)):
@@ -185,7 +191,8 @@ def distributed_ops_pass(program, config):
                             "is_distributed": is_distributed,
                             "padding_idx": padding_idx,
                             "table_id": table_id,
-                            "lookup_table_version": op_type
+                            "lookup_table_version": op_type,
+                            "op_device": cur_device_attr
                         })
 
     pull_sparse_ops = _get_pull_sparse_ops(program)
@@ -490,7 +497,8 @@ def create_heter_program(program, config, heter_program, heter_ops,
             block_append_op(heter_program, program, heter_block, op)
 
         entrance_vars = block_var_detail[index]["entrance"]
-        add_vars_by_var_list(entrance_vars, program, heter_program, heter_block)
+        add_vars_by_var_list(entrance_vars, program,
+                             heter_program, heter_block)
         exit_vars = block_var_detail[index]["exit"]
         add_vars_by_var_list(exit_vars, program, heter_program, heter_block)
 

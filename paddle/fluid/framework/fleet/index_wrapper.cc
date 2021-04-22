@@ -17,7 +17,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include "paddle/fluid/framework/fleet/index_wrapper.h"
 
@@ -172,6 +171,7 @@ int GraphIndex::load(std::string filename) {
                   << " path: " << graph_item.path_id(i);
         }
         item_path_dict_[item_id] = path_ids;
+
         for (auto& path_id : path_ids) {
           if (path_item_set_dict_.find(path_id) == path_item_set_dict_.end()) {
             std::unordered_set<uint64_t> path_set;
@@ -206,6 +206,109 @@ std::vector<std::vector<uint64_t>> GraphIndex::get_item_of_path(
                                            path_item_set_dict_[path].end()));
   }
   return result;
+}
+
+int GraphIndex::update_Jpath_of_item(
+    std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
+    const int J, const double lamd, const int factor) {
+  std::map<uint64_t, std::vector<std::string>>::iterator item_path;
+  std::unordered_map<uint64_t, std::vector<int64_t>> temp_item_path;
+  std::unordered_map<int64_t, std::unordered_set<uint64_t>> temp_path_item;
+
+  std::pair<int64_t, double> top_path_pro(-1, -1);
+  std::vector<std::pair<int64_t, double>> tmp_path_pro;
+  int64_t path_id;
+  double probility = 0;
+  double item_probility = 0;
+
+  for (int t = 1; t < T + 1; t++) {
+    int path_cnt = 0;
+    int path_cnt_flag = 0;
+    // printf("####### t_th:%d ####### \n",t);
+    for (item_path = item_paths.begin(); item_path != item_paths.end();
+         item_path++) {
+      double sum = 0;
+      uint64_t item_id = item_path->first;
+      // printf("====== item_id:%lu ====== \n",item_id);
+
+      for (int j = 0; j < J; j++) {
+        path_cnt_flag = 0;
+        if (t > 1) {
+          path_id = temp_item_path.find(item_id)->second[j];
+          temp_path_item.find(path_id)->second.erase(item_id);
+          path_cnt_flag = 1;
+          // we mean to update the certain item's Top_jth path
+          // so we erase the item from it's last_loop Top_jth path
+          // and arrage the item in another path, that's
+          // temp_path_item[top_path_pro.first].insert(item_id) in this loop
+
+          // printf("****** last_top_jth_path: path_id:%lu, path_cnt:%d *****
+          // \n", path_id, path_cnt);
+        }
+
+        for (auto& path_pro_i : item_path->second) {
+          std::string top_path = path_pro_i;
+          size_t pos = path_pro_i.find(":");
+          probility = stof(path_pro_i.substr(pos + 1, path_pro_i.size()));
+          item_probility = item_probility + probility;
+        }
+        // printf("item_id:%lu, item_paths_prob:%f \n",item_id, item_probility);
+
+        for (auto& path_pro_i : item_path->second) {
+          if (path_cnt_flag == 1)
+            path_cnt = temp_path_item.find(path_id)->second.size;
+          else
+            path_cnt = 0;
+
+          std::string top_path = path_pro_i;
+          size_t pos = path_pro_i.find(":");
+          path_id = stoi(path_pro_i.substr(0, pos));
+          // path_id=tmp_path_pro[ii].first;
+          // probility=tmp_path_pro[ii].second;
+          int flag = 0;
+          if (temp_item_path.find(item_id) == temp_item_path.end()) {
+            temp_item_path[item_id].push_back(path_id);
+            probility = log(item_probility + sum) -
+                        lamd * ((pow(path_cnt + 1, factor) / factor) -
+                                (pow(path_cnt, factor) / factor));
+            // printf("path_id:%lu, - effProb:%f, - path_cnt:%d
+            // \n",path_id,probility,path_cnt);
+            top_path_pro.first = path_id;
+            top_path_pro.second = probility;
+          } else {
+            for (int i = 0; i < j; i++) {
+              if (temp_item_path[item_id][i] == path_id) {
+                flag = 1;
+              }
+            }
+            if (flag == 0) {
+              probility = log(item_probility + sum) -
+                          lamd * ((pow(path_cnt + 1, factor) / factor) -
+                                  (pow(path_cnt, factor) / factor));
+              // printf("path_id:%lu, - effProb:%f, - path_cnt:%d
+              // \n",path_id,probility,path_cnt);
+
+              if (probility > (top_path_pro.second)) {
+                top_path_pro.first = path_id;
+                top_path_pro.second = probility;
+              }
+              // printf("toper_path_id:%lu, - toper_path_pro=:%f
+              // \n",top_path_pro.first, top_path_pro.second);
+            }
+          }
+        }
+        temp_item_path[item_id][j] = top_path_pro.first;
+        sum = sum + top_path_pro.second;
+        temp_path_item[top_path_pro.first].insert(item_id);
+        // printf("****** item:%lu, top_jth_path:%lu ****** \n",item_id,
+        // top_path_pro.first);
+      }
+    }
+  }
+  // update path_item_graph
+  path_item_set_dict_ = temp_path_item;
+  item_path_dict_ = temp_item_path;
+  return 0;
 }
 
 }  // end namespace framework
