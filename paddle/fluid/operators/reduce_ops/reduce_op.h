@@ -559,8 +559,11 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
-        ctx, framework::GradVarName("Out"));
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    auto input_data_type =
+        (in_dtype >= 0) ? static_cast<framework::proto::VarType::Type>(in_dtype)
+                        : OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
     auto CanMKLDNNReduceGradBeUsed = [&]() {
@@ -590,7 +593,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    int in_dtype = ctx.Attr<int>("in_dtype");
     if (in_dtype >= 0) {
       return framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(in_dtype),

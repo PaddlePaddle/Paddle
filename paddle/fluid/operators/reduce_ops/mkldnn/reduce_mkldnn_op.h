@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -125,24 +126,37 @@ template <typename T>
 class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void RunKernel(const framework::ExecutionContext& ctx,
-                 dnnl::algorithm binary_type, float scale_x,
+                 dnnl::algorithm binary_type, dnnl::algorithm reduction_type, float scale_x,
                  float scale_y) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
+    bool keep_dim = ctx.Attr<bool>("keep_dim");
+    bool reduce_all = ctx.Attr<bool>("reduce_all");
     auto dims = ctx.Attr<std::vector<int>>("dim");
     auto* input_dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
+    const std::string key_pd = platform::CreateKey(dev_ctx, framework::vectorize(output_dx->dims()),
+                                ctx.InputName("X"),
+                                (std::to_string(static_cast<int>(reduction_type)))) + "@fwd_pd";
+    std::shared_ptr<dnnl::reduction::primitive_desc> fwd_pd = std::static_pointer_cast<dnnl::reduction::primitive_desc>(
+        dev_ctx.GetBlob(key_pd));
+    fwd_pd = fwd_pd;
+
+    const auto x_format_tag = platform::GetMKLDNNFormat(fwd_pd->src_desc());
+
+    auto input_dims = CalculateOutputDims(output_dx, input_dy, dims, reduce_all, keep_dim);
+
     output_dx->mutable_data<T>(ctx.GetPlace());
-    output_dx->set_format(getPlainFormatTag(output_dx));
+    output_dx->set_format(x_format_tag);
     output_dx->set_layout(input_dy->layout());
 
     platform::BroadcastDataMKLDNNHandler<T> handler(
         binary_type, dev_ctx, onednn_engine, ctx.GetPlace(), output_dx,
         input_dy, scale_x, scale_y,
-        ctx.InputName(framework::GradVarName("Out")));
+        ctx.InputName(framework::GradVarName("Out")), input_dims);
 
     const auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
     const auto src_dy_memory = handler.AcquireSecondSrcMemory(input_dy);
@@ -159,25 +173,26 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
-    auto tensor_dims_size = tensor->dims().size();
-    PADDLE_ENFORCE_EQ(
-        tensor_dims_size <= 5 && tensor_dims_size >= 1, true,
-        platform::errors::InvalidArgument(
-            "Dims for reduction_grad oneDNN op must be in range <1, 5>"));
+  std::vector<int64_t> CalculateOutputDims(const Tensor* input,
+                                           const Tensor* output,
+                                           std::vector<int>& reduce_dims,
+                                           bool reduce_all,
+                                           bool keep_dim) const {
+    if (keep_dim) return framework::vectorize(output->dims());
 
-    switch (tensor_dims_size) {
-      case 1:
-        return mkldnn::memory::format_tag::a;
-      case 2:
-        return mkldnn::memory::format_tag::ab;
-      case 3:
-        return mkldnn::memory::format_tag::abc;
-      case 4:
-        return mkldnn::memory::format_tag::abcd;
+    if (reduce_all)
+      return std::vector<int64_t>(framework::vectorize(input->dims()).size(),
+                                  1);
+
+    std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
+    for (size_t i = 0; i < reduce_dims.size(); ++i) {
+      reduce_dims[i] = (reduce_dims[i] >= 0)
+                           ? reduce_dims[i]
+                           : input->dims().size() + reduce_dims[i];
+      output_dims[reduce_dims[i]] = 1;
     }
 
-    return mkldnn::memory::format_tag::abcde;
+    return output_dims;
   }
 };
 
