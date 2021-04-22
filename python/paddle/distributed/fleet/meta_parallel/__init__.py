@@ -14,4 +14,3 @@
 
 from .parallel_layers import *
 from .model_parallel import ModelParallel
-from .pipeline_layer import PipelineLayer, LayerDesc

@@ -142,7 +142,7 @@ class HybridCommunicateGroup(object):
 
         # create p2p group
         self.is_first_stage = (self.stage_id == 0)
-        self.is_last_stage = (self.stage_id == (self._num_pipe_parallel - 1))
+        self.is_last_stage = (self.stage_id == (self._pp_degree - 1))
 
         debug_str = "HybridParallelInfo: rank_id: %d, dp_degree: %d, " \
                     "mp_degree: %d, pp_degree: %d" % (self.global_rank, self._dp_degree,
@@ -245,7 +245,7 @@ class HybridCommunicateGroup(object):
         return self.stage_id
 
     def get_pipe_parallel_world_size(self):
-        return self._num_pipe_parallel
+        return self._pp_degree
 
     def get_pipe_parallel_group(self):
         return self._pp_comm_group

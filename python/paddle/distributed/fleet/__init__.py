@@ -21,14 +21,13 @@ from .dataset import *
 from .data_generator import MultiSlotDataGenerator, MultiSlotStringDataGenerator
 from . import metrics
 from .base.topology import CommunicateTopology, HybridCommunicateGroup
-from .meta_parallel import random, layers
-from .meta_parallel.pipeline_layer import PipelineLayer, LayerDesc
+from .meta_parallel import *
 
 __all__ = [
     "DistributedStrategy", "UtilBase", "UserDefinedRoleMaker",
     "PaddleCloudRoleMaker", "Fleet", "MultiSlotDataGenerator",
     "MultiSlotStringDataGenerator", "Role", "CommunicateTopology",
-    "HybridCommunicateGroup", "PipelineLayer", "LayerDesc"
+    "HybridCommunicateGroup"
 ]
 
 fleet = Fleet()
@@ -75,4 +74,3 @@ state_dict = fleet.state_dict
 set_state_dict = fleet.set_state_dict
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
-distributed_scaler = fleet.distributed_scaler

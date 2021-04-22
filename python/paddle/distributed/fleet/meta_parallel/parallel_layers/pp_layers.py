@@ -19,7 +19,7 @@ from paddle.distributed import fleet
 import math
 from ...utils.log_util import logger, layer_to_str
 
-__all__ = ['SegmentLayers', 'LayerDesc', 'PipelineLayer']
+__all__ = ['LayerDesc', 'PipelineLayer']
 
 
 class SegmentLayers(object):
@@ -28,7 +28,7 @@ class SegmentLayers(object):
         self.method = method
         self.num_parts = num_parts
         self.num_items = len(layers_desc)
-        assert self.num_items <= self.num_parts, "layer number should be greater than number of segments"
+        assert self.num_items >= self.num_parts, "layer number should be greater than number of segments"
 
     def do_segment(self):
         if self.method == "uniform":
