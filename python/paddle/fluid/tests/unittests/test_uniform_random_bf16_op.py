@@ -41,9 +41,6 @@ class TestUniformRandomOpBF16(OpTest):
         }
         self.output_hist = output_hist
 
-    def test_check_output(self):
-        self.check_output_customized(self.verify_output)
-
     def verify_output(self, outs):
         if np.array(outs[0]).dtype == np.uint16:
             result = convert_uint16_to_float(np.array(outs[0]))
@@ -54,6 +51,12 @@ class TestUniformRandomOpBF16(OpTest):
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+    def test_check_output(self):
+        outs = self.calc_output(core.CPUPlace())
+        outs = [np.array(out) for out in outs]
+        outs.sort(key=len)
+        self.verify_output(outs)
 
 
 class TestUniformRandomOpBF16AttrTensorList(TestUniformRandomOpBF16):
