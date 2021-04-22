@@ -92,7 +92,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             # test for replace_save_vars/io.load_vars
-            path_vars1 = 'test_replace_save_load_vars_binary1/model'
+            path_vars1 = 'test_replace_save_load_vars_binary_replace_1/lod_tensor'
             self.replace_save_vars(prog, path_vars1)
             # set var to zero
             self.set_zero(prog, place)
@@ -109,7 +109,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
                     self.assertTrue(np.array_equal(new_t, base_t))
             # test for io.save_vars/replace_load_vars
-            path_vars2 = 'test_replace_save_load_vars_binary2/model/'
+            path_vars2 = 'test_replace_save_load_vars_binary_replace_2/model_lodtensor/'
             fluid.io.save_vars(
                 exe, path_vars2, main_program=prog, vars=var_list)
             self.set_zero(prog, place)
@@ -139,7 +139,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             prog = paddle.static.default_main_program()
             exe.run(fluid.default_startup_program())
 
-            dirname = 'test_save_load_lod_tensor1/tensor_'
+            dirname = 'test_paddle_save_load_single_lod_tensor1/tensor_'
             for var in prog.list_vars():
                 if var.persistable and list(
                         var.shape) == [IMAGE_SIZE, OUTPUT_NUM]:
@@ -160,11 +160,11 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             self.assertTrue(np.array_equal(origin, to_array))
 
         with self.assertRaises(NotImplementedError):
-            path = 'test_save_load_error/temp'
+            path = 'test_paddle_save_load_lodtensor_raise_NotImplementedError/temp'
             paddle.save({}, path, use_binary_format=True)
 
         with self.assertRaises(ValueError):
-            path = 'test_save_load_error/temp'
+            path = 'test_paddle_save_load_lodtensor_raise_ValueError/temp'
             with open(path, "w") as f:
                 f.write('\0')
             paddle.load(path)
@@ -175,11 +175,13 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             fluid.core._save_lod_tensor(
-                temp_lod, 'test_save_load_error_not_exist_file/not_exist_file')
+                temp_lod,
+                'test_save_load_error_not_exist_file_1/not_exist_file')
 
         with self.assertRaises(RuntimeError):
             fluid.core._load_lod_tensor(
-                temp_lod, 'test_save_load_error_not_exist_file/not_exist_file')
+                temp_lod,
+                'test_save_load_error_not_exist_file_2/not_exist_file')
 
     def test_save_load_selected_rows(self):
         paddle.enable_static()
@@ -189,7 +191,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         rows = [0, 4, 7]
         row_numel = 12
         selected_rows = fluid.core.SelectedRows(rows, height)
-        path = 'test_paddle_save_load_selected_rows/sr.pdsr'
+        path = 'test_paddle_save_load_single_selected_rows/sr.pdsr'
 
         with self.assertRaises(ValueError):
             paddle.save(selected_rows, path, use_binary_format=True)
@@ -210,8 +212,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             fluid.core._save_selected_rows(
                 selected_rows,
-                'test_paddle_save_load_selected_rows_not_exist_file/temp')
+                'test_paddle_save_load_selected_rows_not_exist_file_1/temp')
         with self.assertRaises(RuntimeError):
             fluid.core._load_selected_rows(
                 selected_rows,
-                'test_paddle_save_load_selected_rows_not_exist_file/temp')
+                'test_paddle_save_load_selected_rows_not_exist_file_2/temp')
