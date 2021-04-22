@@ -53,7 +53,7 @@ class TestConstantInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.ConstantInitializer())
-        num_ops = 2 if dtype in ["float16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
@@ -72,7 +72,7 @@ class TestConstantInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.ConstantInitializer(2.3))
-        num_ops = 2 if dtype in ["float16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
@@ -108,7 +108,7 @@ class TestUniformInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.UniformInitializer())
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -153,7 +153,7 @@ class TestUniformInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.UniformInitializer(-4.2, 3.1, 123))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -174,7 +174,7 @@ class TestUniformInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.UniformInitializer(-4.2, float(i), 123))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op0 = block.ops[0]
         self.assertEqual(init_op0.type, 'uniform_random')
@@ -195,13 +195,11 @@ class TestUniformInitializer(unittest.TestCase):
 
     def test_uniform_initializer_bf16(self):
         """Test uniform initializer with bfloat16
+           No cast operator has been added here
         """
         block = self.test_uniform_initializer_default_value("uint16")
-        self.assertTrue(check_cast_op(block.ops[1]))
         block = self.test_uniform_initializer(dtype="uint16")
-        self.assertTrue(check_cast_op(block.ops[1]))
         block = self.test_uniform_initializer_two_op("uint16")
-        self.assertTrue(check_cast_op(block.ops[1]))
 
 
 class TestNormalInitializer(unittest.TestCase):
@@ -347,7 +345,9 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
 
-    def test_xavier_initializer_supplied_arguments(self, dtype="float32"):
+    def test_xavier_initializer_supplied_arguments(self,
+                                                   dtype="float32",
+                                                   uniform=True):
         """Test the Xavier initializer with supplied arguments
         """
         program = framework.Program()
@@ -359,14 +359,18 @@ class TestXavierInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.XavierInitializer(
-                    fan_in=12, fan_out=23, seed=134))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+                    uniform=uniform, fan_in=12, fan_out=23, seed=134))
+        num_ops = 2 if (dtype == "float16" or (dtype == "uint16" and
+                                               not uniform)) else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'uniform_random')
-        limit = np.sqrt(6.0 / (12 + 23))
-        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        if uniform:
+            self.assertEqual(init_op.type, 'uniform_random')
+            limit = np.sqrt(6.0 / (12 + 23))
+            self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        else:
+            self.assertEqual(init_op.type, 'gaussian_random')
         self.assertEqual(init_op.attr('seed'), 134)
         return block
 
@@ -379,8 +383,12 @@ class TestXavierInitializer(unittest.TestCase):
     def test_xavier_initializer_bf16(self):
         """Test the Xavier initializer with bfloat16
         """
-        block = self.test_xavier_initializer_supplied_arguments("uint16")
-        self.assertTrue(check_cast_op(block.ops[1]))
+        block_uniform = self.test_xavier_initializer_supplied_arguments(
+            "uint16")
+        self.assertEqual(len(block_uniform.ops), 1)
+        block_gaussian = self.test_xavier_initializer_supplied_arguments(
+            "uint16", False)
+        self.assertTrue(check_cast_op(block_gaussian.ops[1]))
 
 
 class TestMSRAInitializer(unittest.TestCase):
@@ -483,7 +491,7 @@ class TestMSRAInitializer(unittest.TestCase):
                 name="param",
                 initializer=initializer.MSRAInitializer(
                     fan_in=12, seed=134))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -503,7 +511,6 @@ class TestMSRAInitializer(unittest.TestCase):
         """Test the MSRA initializer with bfloat16
         """
         block = self.test_msra_initializer_supplied_arguments("uint16")
-        self.assertTrue(check_cast_op(block.ops[1]))
 
 
 class TestBilinearInitializer(unittest.TestCase):

@@ -247,7 +247,7 @@ class UniformInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initializers
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+        if var.dtype == VarDesc.VarType.FP16:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -276,7 +276,7 @@ class UniformInitializer(Initializer):
             },
             stop_gradient=True)
 
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+        if var.dtype == VarDesc.VarType.FP16:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -542,7 +542,8 @@ class XavierInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+        if var.dtype == VarDesc.VarType.FP16 or (
+                var.dtype == VarDesc.VarType.BF16 and not self._uniform):
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -584,7 +585,8 @@ class XavierInitializer(Initializer):
                 },
                 stop_gradient=True)
 
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+        if var.dtype == VarDesc.VarType.FP16 or (
+                var.dtype == VarDesc.VarType.BF16 and not self._uniform):
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -673,7 +675,8 @@ class MSRAInitializer(Initializer):
             self._seed = block.program.random_seed
 
         # to be compatible of fp16 initalizers
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+        if var.dtype == VarDesc.VarType.FP16 or (
+                var.dtype == VarDesc.VarType.BF16 and not self._uniform):
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -715,7 +718,8 @@ class MSRAInitializer(Initializer):
                 },
                 stop_gradient=True)
 
-        if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
+        if var.dtype == VarDesc.VarType.FP16 or (
+                var.dtype == VarDesc.VarType.BF16 and not self._uniform):
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
