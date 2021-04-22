@@ -17,38 +17,39 @@ import json
 import six
 import sys
 import re
+import os
+import glob
 import unittest
 
 import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
+TIME_PATH="time"
+DCGM_PATH="dcgm"
+NET_PATH="net"
+PROFILE_PATH="profile"
 
 def get_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         '--profile_path',
         type=str,
-        default='',
-        help='Input profile file name. If there are multiple file, the format '
-        'should be trainer1=file1,trainer2=file2,ps=file3')
+        default='.',
+        help='Working path that store the monitor data.')
+
     parser.add_argument(
         '--timeline_path',
         type=str,
-        default='',
+        default='.',
         help='Output timeline file name.')
-    parser.add_argument(
-        '--mlnx_perf_path',
-        type=str,
-        default='',
-        help='mlnx_perf input filename.')
-    parser.add_argument(
-        '--dcgm_perf_path',
-        type=str,
-        default='',
-        help='dcgm perf input filename.')
-    args = parser.parse_args()
-    return args
 
+    parser.add_argument(
+        '--gpuPerTrainer',
+        type=int,
+        default=8,
+        help='Gpus per trainer.')
+
+    return parser.parse_args()
 
 class _ChromeTraceFormatter(object):
     def __init__(self):
@@ -144,22 +145,62 @@ class _ChromeTraceFormatter(object):
         else:
             return json.dumps(trace, separators=(',', ':'))
 
-
 class Timeline(object):
-    def __init__(self, profile_dict):
-        self._profile_dict = profile_dict
+    def __init__(self, args):
+        self._args = args
+        self._workPath= self._args.profile_path
+        self._saveFile = self._args.timeline_path
+        self._gpuPerTrainer = self._args.gpuPerTrainer
+
+        self._profile_dict = {}
         self._pid = 0
         self._devices = dict()
         self._mem_devices = dict()
         self._chrome_trace = _ChromeTraceFormatter()
 
-        # self._allocate_pids()
-        # self._allocate_events()
-        # self._allocate_memory_event()
+        self._dcgmPath = os.path.join(self._workPath, DCGM_PATH)
+        self._timePath = os.path.join(self._workPath, TIME_PATH)
+        self._netPath = os.path.join(self._workPath, NET_PATH)
+        self._profilePath = os.path.join(self._workPath, PROFILE_PATH)
+
+        self._timeInfo = {}
+        self._minTimeStamp = 0
+
+    def _add_profile(self):
+        profileFileList = glob.glob(os.path.join(self._profilePath, "*"))
+        for profile in profileFileList:
+            with open(profile, 'rb') as f:
+                profile_s = f.read()
+                profile_pb = profiler_pb2.Profile()
+                profile_pb.ParseFromString(profile_s)
+
+            self._profile_dict[os.path.basename(profile)] = profile_pb
+
+    def _set_timeInfo(self, timeFileNamePrefix="time.txt", sed="."):
+        timeFileNameList = glob.glob(os.path.join(self._timePath, timeFileNamePrefix, sed,"*"))
+        for timeFileName in timeFileNameList:
+            gpuId = int(timeFileName.split(sed)[-1])
+            info={}
+            with open(timeFileName, "r") as rf:
+                for line in rf:
+                    if line.startswith("start time:"):
+                        info["start_time"] = int(float(line.split(":")[-1]) * 1e9)
+
+                        self._minTimeStamp  = min(self._minTimeStamp, info["start_time"])
+
+                    if line.startswith("end time:"):
+                        info["end_time"] = int(float(line.split(":")[-1]) * 1e9)
+            if not info:
+                self._timeInfo[gpuId] = info
+
+    def _align_ts(self, ts):
+        return ts - self._minTimeStamp
+        # return ts
 
     def _allocate_pid(self):
         cur_pid = self._pid
         self._pid += 1
+        # print(cur_pid)
         return cur_pid
 
     def _allocate_pids(self):
@@ -239,7 +280,7 @@ class Timeline(object):
                 # TODO(panyx0718): Chrome tracing only handles ms. However, some
                 # ops takes micro-seconds. Hence, we keep the ns here.
                 self._chrome_trace.emit_region(
-                    event.start_ns, (event.end_ns - event.start_ns) / 1.0, pid,
+                    self._align_ts(event.start_ns), (event.end_ns - event.start_ns) / 1.0, pid,
                     event.sub_device_id, 'Op', event.name, args)
 
     def _allocate_memory_event(self):
@@ -287,25 +328,51 @@ class Timeline(object):
                     i += 1
 
                 self._chrome_trace.emit_counter(
-                    "Memory", "Memory", mem_list[i]['pid'], mem_list[i]['time'],
+                    "Memory", "Memory", mem_list[i]['pid'], self._align_ts(mem_list[i]['time']),
                     0, total_size)
                 i += 1
 
-    def add_mlnx_perf(self, mlnx_perf_path):
-        if mlnx_perf_path == None:
+    def _add_mlnx_perf(self, sed="."):
+        if self._netPath == None:
             return
 
-        # zhangwenhui03: to do Pid
-        self._chrome_trace.emit_pid("tx", self._allocate_pid())
-        self._chrome_trace.emit_pid("rx", self._allocate_pid())
-        with open(mlnx_perf_path, "r") as rf:
-            for line in rf:
-                event_str = json.loads(line.strip())
-                self._chrome_trace._events.append(event_str)
+        netFileNameList = glob.glob(os.path.join(self._netPath,"*"))
 
-    def add_dcgm_perf(self, dcgm_perf_file):
+        for netFileName in netFileNameList:
+            tx_pid = self._allocate_pid()
+            rx_pid = self._allocate_pid()
+
+            trainerId=int(netFileName.split(sed)[-1])
+
+            self._chrome_trace.emit_pid("tx_%d" % trainerId, tx_pid)
+            self._chrome_trace.emit_pid("rx_%d" % trainerId, rx_pid)
+
+            with open(netFileName, "r") as rf:
+                for line in rf:
+                    try:
+                        event_str = json.loads(line.strip())
+                        event_str["pid"] = tx_pid if event_str["name"]=="tx" else rx_pid
+                        # the unit of net is ms, we need ns
+                        event_str["ts"] = self._align_ts(event_str["ts"] * 1e6)
+                        self._chrome_trace._events.append(event_str)
+                    except Exception:
+                        print("warning: invalid record [%s] in [%s]. skip it!" % (line[:-1], netFileName))
+
+    def _add_dcgm_perf(self):
+        if self._dcgmPath == None:
+            return
+
+        dcgmFileNameList = glob.glob(os.path.join(self._dcgmPath,"*"))
+
+        for dcgmFileName in dcgmFileNameList:
+            self._add_one_dcgm_perf(dcgmFileName)
+
+    def _add_one_dcgm_perf(self, dcgm_perf_file, sed="."):
         if dcgm_perf_file == None:
             return
+
+        trainerId=int(dcgm_perf_file.split(sed)[-1])
+        gpuPerTrainer = 8
 
         regex_list = [
             (re.compile(r' +'), ','),
@@ -332,15 +399,15 @@ class Timeline(object):
                                 line = r[0].sub(r[1], line)
 
                             metric_list = line.split(',')
-                            # print(metric_list)
                             for item in metric_list:
                                 if item == "Entity" or item == "TIMESTAMP":
                                     continue
 
-                                metric_pid = self._allocate_pid()
-                                self._chrome_trace.emit_pid(item, metric_pid)
-                                pid_map[item] = metric_pid
-                                # print(pid_map)
+                                for gpuId in range(self._gpuPerTrainer):
+                                    metric_pid = self._allocate_pid()
+                                    name = "%s_%d" % (item, trainerId*self._gpuPerTrainer + gpuId)
+                                    self._chrome_trace.emit_pid(name, metric_pid)
+                                    pid_map[name] = metric_pid
 
                 # process the data line
                 elif line.strip().startswith("GPU"):
@@ -352,81 +419,46 @@ class Timeline(object):
                     record_list = line.split(',')
 
                     gpuId = int(record_list[metric_list.index("Entity")])
+                    # the unit of dcgmn is s, we need ns
                     timestamp = int(float(record_list[metric_list.index(
                         "TIMESTAMP")]) * 1e9)
-                    print(timestamp)
+                    # print(timestamp)
                     if not has_header or len(metric_list) == 0:
                         continue
 
                     for metric, record in zip(metric_list, record_list):
-                        if metric == "Entity" or metric == "TIMESTAMP":
+                        if metric == "Entity" or metric == "TIMESTAMP" or record == "N/A":
                             continue
 
                         di = {}
-                        di['name'] = metric
-                        di['pid'] = pid_map[metric]
-                        di['ts'] = timestamp
-                        di['cat'] = metric
-                        di['tid'] = gpuId
+                        name = "%s_%d" % (metric, trainerId*self._gpuPerTrainer + gpuId)
+                        di['name'] = name
+                        di['pid'] = pid_map[name]
+                        di['ts'] = self._align_ts(timestamp)
+                        di['cat'] = name
+                        di['tid'] = 0
                         di['ph'] = "C"
-                        # print(str(gpuId))
-                        di['args'] = {str(gpuId): float(record)}
-                        # print(di['args'])
+                        di['args'] = {"0": float(record)}
                         self._chrome_trace._events.append(di)
 
                 else:
                     continue
 
     def generate_chrome_trace(self):
-        # self._allocate_pids()
-        # self._allocate_events()
-        # self._allocate_memory_event()
-        return self._chrome_trace.format_to_string()
+        self._add_profile()
+        self._set_timeInfo()
 
+        self._allocate_pids()
+        self._allocate_events()
+        self._allocate_memory_event()
+
+        self._add_mlnx_perf()
+        self._add_dcgm_perf()
+
+        with open(self._saveFile, 'w') as f:
+            f.write(self._chrome_trace.format_to_string())
 
 if __name__ == '__main__':
     args = get_argparse()
-
-    profile_path = '/tmp/profile'
-    if args.profile_path:
-        profile_path = args.profile_path
-
-    timeline_path = '/tmp/timeline'
-    if args.timeline_path:
-        timeline_path = args.timeline_path
-
-    mlnx_perf_path = None
-    if args.mlnx_perf_path:
-        mlnx_perf_path = args.mlnx_perf_path
-
-    dcgm_perf_path = None
-    if args.dcgm_perf_path:
-        dcgm_perf_path = args.dcgm_perf_path
-
-    profile_paths = profile_path.split(',')
-    profile_dict = dict()
-    if len(profile_paths) == 1:
-        with open(profile_path, 'rb') as f:
-            profile_s = f.read()
-            profile_pb = profiler_pb2.Profile()
-            profile_pb.ParseFromString(profile_s)
-        profile_dict['trainer'] = profile_pb
-    else:
-        for profile_path in profile_paths:
-            k, v = profile_path.split('=')
-            with open(v, 'rb') as f:
-                profile_s = f.read()
-                profile_pb = profiler_pb2.Profile()
-                profile_pb.ParseFromString(profile_s)
-            profile_dict[k] = profile_pb
-
-    tl = Timeline(profile_dict)
-
-    with open(timeline_path, 'w') as f:
-        # if mlnx_perf_path is not None:
-        #     tl.add_mlnx_perf(mlnx_perf_path)
-
-        if dcgm_perf_path is not None:
-            tl.add_dcgm_perf(dcgm_perf_path)
-
-        f.write(tl.generate_chrome_trace())
+    tl = Timeline(args)
+    tl.generate_chrome_trace()
