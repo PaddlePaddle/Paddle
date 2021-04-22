@@ -33,7 +33,7 @@ class InterpolateMKLDNNHandler
     : public platform::MKLDNNHandlerT<T, dnnl::resampling_forward> {
  public:
   InterpolateMKLDNNHandler(const dnnl::algorithm algo,
-                           const paddle::platform::MKLDNNDeviceContext& dev_ctx,
+                           const platform::MKLDNNDeviceContext& dev_ctx,
                            const dnnl::engine engine, platform::Place cpu_place,
                            const Tensor* x, Tensor* z,
                            const std::string& uniq_name)
@@ -94,19 +94,32 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
         out_dims = out_size_data;
       }
     } else {
-      float scale;
+      std::vector<float> scale;
+      scale.reserve(3);
       auto scale_tensor = ctx.Input<Tensor>("Scale");
       if (scale_tensor != nullptr) {
         auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
-        scale = scale_data[0];
+        scale.resize(3, scale_data[0]);
+        std::copy(scale_data.begin(), scale_data.end(), scale.begin());
       } else {
-        scale = ctx.Attr<float>("scale");
+        std::string op_type = ctx.Type();
+
+        if (op_type.find("v2") == std::string::npos) {  // v1
+          scale.push_back(ctx.Attr<float>("scale"));
+          scale.push_back(scale[0]);
+          scale.push_back(scale[0]);
+        } else {  // v2
+          std::vector<float> scale_attr = ctx.Attr<std::vector<float>>("scale");
+          scale.resize(3, scale_attr[0]);
+          std::copy(scale_attr.begin(), scale_attr.end(), scale.begin());
+        }
       }
-      if (scale > 0) {
+      if (scale[0] > 0.0f && scale[1] > 0.0f && scale[2] > 0.0f) {
+        int j = 0;
         std::vector<int64_t> in_dhw_vec = framework::vectorize(in_dhw_dims);
         std::transform(
             in_dhw_vec.begin(), in_dhw_vec.end(), out_dims.begin(),
-            [&](int64_t i) -> int { return static_cast<int>(i * scale); });
+            [&](int64_t i) -> int { return static_cast<int>(i * scale[j++]); });
       }
     }
 
@@ -171,4 +184,9 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(nearest_interp, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);
 REGISTER_OP_KERNEL(bilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>);
+
+REGISTER_OP_KERNEL(nearest_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::InterpolateMKLDNNKernel<float>);
+REGISTER_OP_KERNEL(bilinear_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);

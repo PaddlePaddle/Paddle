@@ -1,5 +1,5 @@
 # New custom OP can support Windows/Linux now
-if(WITH_GPU)
+if(WITH_GPU OR APPLE) 
     # GPU custom op tests: compile both .cc and .cu file
     py_test(test_custom_relu_op_setup SRCS test_custom_relu_op_setup.py)
     py_test(test_custom_relu_op_jit SRCS test_custom_relu_op_jit.py)

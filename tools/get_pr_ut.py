@@ -265,8 +265,7 @@ class PRChecker(object):
                         '.cu'):
                     if f.find('test_') != -1 or f.find('_test') != -1:
                         print('PREC {} need check new ut'.format(f))
-                        if current_system != "Windows":
-                            check_added_ut = True
+                        check_added_ut = True
                     elif self.is_only_comment(f):
                         ut_list.append('nomap_comment_placeholder')
                     else:
