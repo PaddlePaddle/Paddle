@@ -58,7 +58,7 @@ set(PYBIND_SRCS
   compatible.cc
   generator_py.cc)
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
+if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
   set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
 endif()
