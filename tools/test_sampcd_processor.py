@@ -271,6 +271,10 @@ class Test_get_wlist(unittest.TestCase):
 class Test_srccoms_extract(unittest.TestCase):
     def setUp(self):
         self.tmpDir = tempfile.mkdtemp()
+        print('tmpDir=', self.tmpDir)
+        self.opsDir = os.path.join(self.tmpDir, 'fluid/layers')
+        os.makedirs(self.opsDir)
+        sys.path.append(self.opsDir)
         sys.path.append(self.tmpDir)
         self.api_pr_spec_filename = os.path.abspath(
             os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec'))
@@ -283,7 +287,7 @@ class Test_srccoms_extract(unittest.TestCase):
             ]))
 
     def tearDown(self):
-        sys.path.remove(self.tmpDir)
+        #sys.path.remove(self.tmpDir)
         shutil.rmtree(self.tmpDir)
         os.remove(self.api_pr_spec_filename)
 
@@ -332,7 +336,7 @@ add_sample_code(globals()["two_plus_two"], """
                 print(2+2)
 """)
 '''
-        pyfilename = os.path.join(self.tmpDir, 'ops.py')
+        pyfilename = os.path.join(self.opsDir, 'ops.py')
         with open(pyfilename, 'w') as pyfile:
             pyfile.write(filecont)
         self.assertTrue(os.path.exists(pyfilename))
@@ -374,7 +378,7 @@ def one_plus_one():
             return 1+1
 
 '''
-        pyfilename = os.path.join(self.tmpDir, 'opo.py')
+        pyfilename = os.path.join(self.tmpDir, 'opo.py')  # not ops.py
         with open(pyfilename, 'w') as pyfile:
             pyfile.write(filecont)
         utsp = importlib.import_module('opo')
@@ -382,10 +386,10 @@ def one_plus_one():
         with open(pyfilename, 'r') as pyfile:
             res, error_methods = srccoms_extract(pyfile, [], methods)
             self.assertTrue(res)
-        self.assertTrue(
-            os.path.exists("samplecode_temp/"
-                           "one_plus_one_example.py"))
-        os.remove("samplecode_temp/" "one_plus_one_example.py")
+        expectedFile = os.path.join("samplecode_temp",
+                                    "one_plus_one_example.py")
+        self.assertTrue(os.path.exists(expectedFile))
+        os.remove(expectedFile)
 
     def test_with_empty_wlist(self):
         """
@@ -429,11 +433,12 @@ def three_plus_three():
             res, error_methods = srccoms_extract(pyfile, ['three_plus_three'],
                                                  methods)
             self.assertTrue(res)
-        self.assertTrue(
-            os.path.exists("samplecode_temp/four_plus_four_example.py"))
-        os.remove("samplecode_temp/" "four_plus_four_example.py")
-        self.assertFalse(
-            os.path.exists("samplecode_temp/three_plus_three_example.py"))
+
+        expectedFile = os.path.join("samplecode_temp",
+                                    "four_plus_four_example.py")
+        self.assertTrue(os.path.exists(expectedFile))
+        os.remove(expectedFile)
+        self.assertFalse(os.path.exists(expectedFile))
 
 
 # https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/layers/ops.py

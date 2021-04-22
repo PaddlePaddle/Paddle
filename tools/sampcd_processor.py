@@ -19,8 +19,8 @@ import multiprocessing
 import math
 import platform
 import inspect
-import paddle
-import paddle.fluid
+#import paddle
+#import paddle.fluid
 import json
 import argparse
 import shutil
@@ -350,7 +350,7 @@ def srccoms_extract(srcfile, wlist, methods):
         api_count = 0
         handled = []
         # get src contents in layers/ops.py
-        if srcfile.name.find("ops.py") != -1:
+        if srcfile.name.find("fluid/layers/ops.py") != -1:
             for i in range(0, len(srcls)):
                 opname = None
                 opres = re.match(r"^(\w+)\.__doc__", srcls[i])
