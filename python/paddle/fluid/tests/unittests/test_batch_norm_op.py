@@ -679,11 +679,9 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
 
 # Test NV Bfloat16. 
 # Execute Test below when compiled with GPU && cudnn version >= 8100
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
 class TestBatchNormBfloat16DataType(unittest.TestCase):
     def test_bfloat16_datatype(self):
-        if core.cudnn_version() >= 8100:
+        if paddle.get_cudnn_version() >= 8100:
             with program_guard(Program(), Program()):
                 paddle.disable_static()
                 batch_norm = paddle.nn.BatchNorm(2)

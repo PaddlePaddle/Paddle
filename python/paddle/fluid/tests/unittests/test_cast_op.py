@@ -74,8 +74,6 @@ class TestCastOp3(op_test.OpTest):
 
 
 # Test FP32->BF16
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
 class TestCaseOp4(unittest.TestCase):
     def copy_bits_from_float_to_uint16(self, f):
         return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
@@ -87,19 +85,20 @@ class TestCaseOp4(unittest.TestCase):
         return new_output
 
     def test_api(self):
-        paddle.disable_static()
-        ipt = np.array([1, 2, 3]).astype('float')
-        data = paddle.to_tensor(ipt)
-        res = paddle.cast(data, core.VarDesc.VarType.BF16)
-        exp = self.convert_fp32_to_uint16(ipt)
+        if paddle.get_cudnn_version() >= 8100:
+            paddle.disable_static()
+            ipt = np.array([1, 2, 3]).astype('float')
+            data = paddle.to_tensor(ipt)
+            res = paddle.cast(data, core.VarDesc.VarType.BF16)
+            exp = self.convert_fp32_to_uint16(ipt)
 
-        self.assertTrue(np.array_equal(res.numpy(), exp))
-        paddle.enable_static()
+            self.assertTrue(np.array_equal(res.numpy(), exp))
+            paddle.enable_static()
+        else:
+            pass
 
 
 # Test BF16->FP32
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
 class TestCaseOp5(unittest.TestCase):
     def copy_bits_from_uint16_to_float(self, f):
         return struct.unpack('<f', struct.pack('<I', f << 16))[0]
@@ -111,14 +110,17 @@ class TestCaseOp5(unittest.TestCase):
         return new_output
 
     def test_api(self):
-        paddle.disable_static()
-        ipt = np.array([1, 2, 3]).astype('uint16')
-        data = paddle.to_tensor(ipt)
-        res = paddle.cast(data, core.VarDesc.VarType.FP32)
-        exp = self.convert_uint16_to_float(ipt)
+        if paddle.get_cudnn_version() >= 8100:
+            paddle.disable_static()
+            ipt = np.array([1, 2, 3]).astype('uint16')
+            data = paddle.to_tensor(ipt)
+            res = paddle.cast(data, core.VarDesc.VarType.FP32)
+            exp = self.convert_uint16_to_float(ipt)
 
-        self.assertTrue(np.array_equal(res.numpy(), exp))
-        paddle.enable_static()
+            self.assertTrue(np.array_equal(res.numpy(), exp))
+            paddle.enable_static()
+        else:
+            pass
 
 
 class TestCastOpError(unittest.TestCase):
