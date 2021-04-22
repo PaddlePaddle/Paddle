@@ -1363,7 +1363,14 @@ REGISTER_OP_KERNEL(
     conv2d_grad_grad, CUDNN, plat::CUDAPlace,
     paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
     paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
-
+// ROCM has limit thread in depthwise_conv.cu and willl result in accuracy issue
+// Use depthwise_conv2d in MIOPEN to resolve this issue
+REGISTER_OP_KERNEL(depthwise_conv2d, CUDNN, plat::CUDAPlace,
+                   paddle::operators::CUDNNConvOpKernel<float>,
+                   paddle::operators::CUDNNConvOpKernel<plat::float16>);
+REGISTER_OP_KERNEL(depthwise_conv2d_grad, CUDNN, plat::CUDAPlace,
+                   paddle::operators::CUDNNConvGradOpKernel<float>,
+                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     depthwise_conv2d_grad_grad,
     paddle::operators::CUDNNConvDoubleGradOpKernel<float>,

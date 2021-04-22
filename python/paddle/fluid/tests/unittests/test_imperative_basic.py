@@ -472,7 +472,7 @@ class TestImperative(unittest.TestCase):
         self.assertEqual("linear_1.b_0", params[3].name)
         self.assertEqual(len(params), 4)
 
-        sublayers = mlp.sublayers(True)
+        sublayers = mlp.sublayers()
         self.assertEqual(mlp._linear1, sublayers[0])
         self.assertEqual(mlp._linear2, sublayers[1])
         self.assertEqual(len(sublayers), 2)

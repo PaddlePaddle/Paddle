@@ -4033,6 +4033,12 @@ class PipelineOptimizer(object):
         """
         Find the post op that has variable named var_name as input.
         """
+        # bugfix for uniform hybrid parallelism
+        if '.cast_fp32' in var_name:
+            var_name = var_name.replace('.cast_fp32', '')
+        if '.cast_fp16' in var_name:
+            var_name = var_name.replace('.cast_fp16', '')
+
         post_ops = self.input_var_to_op[var_name]
         if post_ops == None: return None
         result_op = None
@@ -4114,7 +4120,23 @@ class PipelineOptimizer(object):
             # For LRSched ops, we should put them on all sub-programs to
             # make sure each sub-program update the lr correctly
             op._set_attr(self._op_device_key, "gpu:all")
-        elif op.type == "scale" and self._is_backward_op(op):
+        # bugfix in hybrid parallelism
+        elif op.type == "sum" and self._is_backward_op(op):
+            # For sum ops that compute the sum of @RENAMED@ vars
+            for name in op.desc.input_arg_names():
+                assert '@RENAME@' in name, \
+                    "The op must be sum used to accumulate renamed vars."
+            assert len(op.desc.output_arg_names()) == 1
+            out_name = op.desc.output_arg_names()[0]
+            post_op = self._find_post_op(idx, out_name)
+            assert post_op.has_attr(
+                'op_device'), "{} has no op_device attr for var {}".format(
+                    post_op.type, out_name)
+            device = post_op.attr(self._op_device_key)
+            assert device, "The post op must have op_device set."
+            op._set_attr(self._op_device_key, device)
+        elif (op.type == "cast" or
+              op.type == "scale") and self._is_backward_op(op):
             prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
             op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
         elif op.type == "memcpy" and not self._is_optimize_op(op):
@@ -4249,11 +4271,19 @@ class PipelineOptimizer(object):
         Insert a pair of send and recv ops for every two
         consecutive ops on different devices.
         """
-        extra_index_info = {'index': 0}
-
         # A map from var to device where op takes it as input,
         # avoiding multiple send and recv ops.
         input_var_to_device = dict()
+        # bugfix hybrid parallelism
+        first_optimize_index = None
+        for index, op in enumerate(list(block.ops)):
+            if self._is_optimize_op(op):
+                first_optimize_index = index
+                break
+        extra_index_info = {
+            'index': 0,
+            'first_optimize_index': first_optimize_index
+        }
 
         for index, op in enumerate(list(block.ops)):
             cur_device = op.attr(self._op_device_key)
@@ -4322,7 +4352,7 @@ class PipelineOptimizer(object):
                         ring_id = self._pp_ring_map[pair_key]
 
                     if self.schedule_mode == 'F-then-B':  # F-then-B
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='send_v2',
                             inputs={'X': var},
@@ -4334,7 +4364,7 @@ class PipelineOptimizer(object):
                                 'ring_id': ring_id
                             })
                         extra_index_info['index'] += 1
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
@@ -4349,7 +4379,7 @@ class PipelineOptimizer(object):
                             })
                         extra_index_info['index'] += 1
                     elif self.schedule_mode == '1F1B':  # 1F1B
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='c_sync_calc_stream',
                             inputs={'X': [var]},
@@ -4359,7 +4389,7 @@ class PipelineOptimizer(object):
                                 self._op_role_key: op_role,
                             })
                         extra_index_info['index'] += 1
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='send_v2',
                             inputs={'X': var},
@@ -4371,21 +4401,30 @@ class PipelineOptimizer(object):
                                 'peer': 1,
                             })
                         extra_index_info['index'] += 1
-                        block._insert_op(
-                            index=index + extra_index_info['index'],
+                        insert_index = None
+                        if int(op_role) == int(self._op_role.Backward):
+                            insert_index = extra_index_info[
+                                'first_optimize_index']
+                            new_op_role = self._op_role.Optimize
+                        else:
+                            insert_index = index
+                            new_op_role = self._op_role.Backward
+                        block._insert_op_without_sync(
+                            index=insert_index + extra_index_info['index'],
                             type='c_sync_comm_stream',
                             inputs={'X': [var]},
                             outputs={'Out': [var]},
                             attrs={
                                 self._op_device_key: prev_dev,
-                                self._op_role_key: self._op_role.Backward,
+                                self._op_role_key: new_op_role,
                                 'ring_id': ring_id,
                             })
-                        extra_index_info['index'] += 1
+                        if int(op_role) == int(self._op_role.Forward):
+                            extra_index_info['index'] += 1
                         var_shape = list(var.shape)
                         var_shape[0] = self.micro_batch_size if var_shape[
                             0] < 0 else var_shape[0]
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
@@ -4768,8 +4807,9 @@ class PipelineOptimizer(object):
 
         # Step4: Special Case: process persistable vars that exist in
         # multiple sections
-        self._process_persistable_vars_in_multi_sections(
-            main_program, startup_program, program_list)
+        # FIXME 
+        # self._process_persistable_vars_in_multi_sections(
+        #     main_program, startup_program, program_list)
 
         # Step5: Add sub blocks for section programs
         self._add_sub_blocks(main_block, program_list)

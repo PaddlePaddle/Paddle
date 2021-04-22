@@ -108,6 +108,10 @@ class VarBase {
 
   void ClearGradVarBase() { grad_var_ = nullptr; }
 
+  void SetGradVarBase(VarBase& grad_var) {
+    MutableGradVarBase()->CopyFrom(grad_var, true);
+  }
+
   const std::shared_ptr<VarBase>& MutableGradVarBase() {
     if (grad_var_ == nullptr) {
       if (auto grad_var_wrapper = var_->GetGradVar()) {
@@ -222,23 +226,25 @@ class VarBase {
   void BumpInplaceVersion();
 
   /* Hook related method: now only used for GradVarBase */
-  bool HasHook() const { return var_->HasHook(); }
+  bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }
 
-  int64_t AddHook(std::shared_ptr<VariableWrapperHook>&& hook) {
-    return var_->AddHook(
+  int64_t AddVariableWrapperHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    return var_->AddVariableWrapperHook(
         std::forward<std::shared_ptr<VariableWrapperHook>>(hook));
   }
 
-  bool RemoveHook(const int64_t& hook_id) { return var_->RemoveHook(hook_id); }
-
-  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>& GetHooks()
-      const {
-    return var_->GetHooks();
+  bool RemoveVariableWrapperHook(const int64_t& hook_id) {
+    return var_->RemoveVariableWrapperHook(hook_id);
   }
 
-  void AddMutableHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
-    var_->AddMutableHook(
-        std::forward<std::shared_ptr<InplaceVariableWrapperHook>>(hook));
+  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>&
+  GetVariableWrapperHooks() const {
+    return var_->GetVariableWrapperHooks();
+  }
+
+  void AddVoidHook(std::shared_ptr<std::function<void()>>&& hook) {
+    var_->AddVoidHook(
+        std::forward<std::shared_ptr<std::function<void()>>>(hook));
   }
 
  private:
@@ -279,6 +285,8 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
+
+void ClearNoNeedBufferInputs(OpBase* op);
 
 }  // namespace imperative
 }  // namespace paddle

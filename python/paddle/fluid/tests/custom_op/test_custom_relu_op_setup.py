@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -142,7 +142,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             cmd = 'cd /d {} && python custom_relu_setup.py install'.format(
                 cur_dir)
         else:
-            cmd = 'cd {} && python custom_relu_setup.py install'.format(cur_dir)
+            cmd = 'cd {} && {} custom_relu_setup.py install'.format(
+                cur_dir, sys.executable)
         run_cmd(cmd)
 
         # NOTE(Aurelius84): Normally, it's no need to add following codes for users.

@@ -135,7 +135,8 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
     closure->request(request_idx)
         ->add_params(joint_feature_name.c_str(), joint_feature_name.size());
 
-    PsService_Stub rpc_stub(get_cmd_channel(server_index));
+    GraphPsService_Stub rpc_stub =
+        getServiceStub(get_cmd_channel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
     rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
                      closure->response(request_idx), closure);

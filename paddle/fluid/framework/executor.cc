@@ -454,6 +454,25 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
+    } else if (platform::is_npu_place(place_)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      if (IsFastEagerDeletionModeEnabled()) {
+        VLOG(4) << "Use unsafe fast gc for NPU.";
+        gc.reset(new NPUUnsafeFastGarbageCollector(
+            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Please set FLAGS_fast_eager_deletion_mode=true to use "
+            "GarbageCollector on NPU."));
+        // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
+        VLOG(4) << "Use default stream gc for NPU.";
+        gc.reset(new NPUDefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No NPU gc found in CPU/NPU paddle"));
+#endif
     }
   }
 
