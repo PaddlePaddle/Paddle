@@ -47,6 +47,7 @@ def get_argparse():
         default='',
         help='dcgm perf input filename.')
     args = parser.parse_args()
+    return args
 
 
 class _ChromeTraceFormatter(object):
@@ -152,9 +153,9 @@ class Timeline(object):
         self._mem_devices = dict()
         self._chrome_trace = _ChromeTraceFormatter()
 
-        self._allocate_pids()
-        self._allocate_events()
-        self._allocate_memory_event()
+        # self._allocate_pids()
+        # self._allocate_events()
+        # self._allocate_memory_event()
 
     def _allocate_pid(self):
         cur_pid = self._pid
@@ -330,14 +331,16 @@ class Timeline(object):
                             for r in regex_list:
                                 line = r[0].sub(r[1], line)
 
-                        metric_list = line.split(',')
-                        for item in metric_list:
-                            if item == "Entity" or item == "TIMESTAMP":
-                                continue
+                            metric_list = line.split(',')
+                            # print(metric_list)
+                            for item in metric_list:
+                                if item == "Entity" or item == "TIMESTAMP":
+                                    continue
 
-                            metric_pid = self._allocate_pid()
-                            self._chrome_trace.emit_pid(item, metric_pid)
-                            pid_map[item] = metric_pid
+                                metric_pid = self._allocate_pid()
+                                self._chrome_trace.emit_pid(item, metric_pid)
+                                pid_map[item] = metric_pid
+                                # print(pid_map)
 
                 # process the data line
                 elif line.strip().startswith("GPU"):
@@ -349,9 +352,9 @@ class Timeline(object):
                     record_list = line.split(',')
 
                     gpuId = int(record_list[metric_list.index("Entity")])
-                    timestamp = float(record_list[metric_list.index(
-                        "TIMESTAMP")])
-
+                    timestamp = int(float(record_list[metric_list.index(
+                        "TIMESTAMP")]) * 1e9)
+                    print(timestamp)
                     if not has_header or len(metric_list) == 0:
                         continue
 
@@ -366,17 +369,18 @@ class Timeline(object):
                         di['cat'] = metric
                         di['tid'] = gpuId
                         di['ph'] = "C"
-                        # di['args'] = {"gpu_id": gpu_id}
-
+                        # print(str(gpuId))
+                        di['args'] = {str(gpuId): float(record)}
+                        # print(di['args'])
                         self._chrome_trace._events.append(di)
 
                 else:
                     continue
 
     def generate_chrome_trace(self):
-        self._allocate_pids()
-        self._allocate_events()
-        self._allocate_memory_event()
+        # self._allocate_pids()
+        # self._allocate_events()
+        # self._allocate_memory_event()
         return self._chrome_trace.format_to_string()
 
 
