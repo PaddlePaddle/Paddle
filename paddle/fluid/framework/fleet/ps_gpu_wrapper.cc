@@ -103,12 +103,26 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
 
   timeline.Start();
 
+  threads.clear();
   // merge thread_keys to shard_keys
-  for (size_t i = 0; i < thread_keys_.size(); i++) {
-    gpu_task->batch_add_keys(thread_keys_[i]);
-    for (int j = 0; j < thread_keys_thread_num_; j++) {
-      thread_keys_[i][j].clear();
+  auto merge_ins_func = [this, gpu_task](int shard_num) {
+    for (int i = 0; i < thread_keys_thread_num_; ++i) {
+      gpu_task->batch_add_keys(shard_num, thread_keys_[i][shard_num]);
+      thread_keys_[i][shard_num].clear();
     }
+  };
+
+  // for (size_t i = 0; i < thread_keys_.size(); i++) {
+  //  gpu_task->batch_add_keys(thread_keys_[i]);
+  //  for (int j = 0; j < thread_keys_thread_num_; j++) {
+  //    thread_keys_[i][j].clear();
+  //  }
+  //}
+  for (int i = 0; i < thread_keys_shard_num_; ++i) {
+    threads.push_back(std::thread(merge_ins_func, i));
+  }
+  for (auto& t : threads) {
+    t.join();
   }
   timeline.Pause();
 
@@ -261,6 +275,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
 void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   int device_num = heter_devices_.size();
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
+  gpu_task->Reset();
   BuildTask(gpu_task, table_id, feature_dim);
   platform::Timer timeline;
   timeline.Start();
@@ -273,8 +288,8 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
     size_max = std::max(size_max, feature_keys_count[i]);
   }
   if (HeterPs_) {
-    HeterPs_->show_one_table(0);
-    return;
+    delete HeterPs_;
+    HeterPs_ = nullptr;
   }
   std::vector<std::thread> threads(device_num);
   HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
@@ -295,6 +310,7 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   timeline.Pause();
   VLOG(1) << "GpuPs build table total costs: " << timeline.ElapsedSec()
           << " s.";
+  gpu_task_pool_.Push(gpu_task);
 }
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,

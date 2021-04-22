@@ -75,6 +75,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
 TEST(assign, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx, "assign");
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx, "assign");
 }

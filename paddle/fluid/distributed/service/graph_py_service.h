@@ -54,19 +54,7 @@ class GraphPyService {
   std::vector<std::string> table_feat_conf_feat_dtype;
   std::vector<int32_t> table_feat_conf_feat_shape;
 
-  // std::thread *server_thread, *client_thread;
-
-  // std::shared_ptr<paddle::distributed::PSServer> pserver_ptr;
-
-  // std::shared_ptr<paddle::distributed::PSClient> worker_ptr;
-
  public:
-  // std::shared_ptr<paddle::distributed::PSServer> get_ps_server() {
-  //   return pserver_ptr;
-  // }
-  // std::shared_ptr<paddle::distributed::PSClient> get_ps_client() {
-  //   return worker_ptr;
-  // }
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
   void GetDownpourSparseTableProto(
