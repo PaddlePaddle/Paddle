@@ -38,11 +38,13 @@ else
 fi
 
 # check added ut
-set +e
-cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
-bash $PADDLE_ROOT/tools/check_added_ut_win.sh
-rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
-set -e
+if [ ${WITH_GPU:-OFF} == "ON" ];then
+    set +e
+    cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+    bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+    rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+    set -e
+fi
 
 
 # /*==================Fixed Disabled Windows unittests==============================*/
@@ -224,29 +226,16 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python ${PADDLE_ROOT}/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then
-            set +x
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
-            set -x
         fi
     fi
 
     set +e
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-        UT_list_prec=''
-        re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
-        for case in $UT_list; do
-            flag=$(echo $case|grep -oE $re)
-            if [ -n "$flag" ];then
-                if [ -z "$UT_list_prec" ];then
-                    UT_list_prec=$case
-                else
-                    UT_list_prec=$UT_list_prec'\n'$case
-                fi
-            else
-                echo $case "won't run in PRECISION_TEST mode."
-            fi
-        done
+        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "$UT_list" )
+        UT_list_prec=$(echo "${UT_list_res}" | grep -v 'PRECISION_TEST')
+        echo "${UT_list_res}" | grep 'PRECISION_TEST'
         UT_list=$UT_list_prec
     fi
     set -e

@@ -173,10 +173,9 @@ if(WITH_PSCORE)
     add_definitions(-DPADDLE_WITH_PSCORE)
 endif()
 
-
-if(WITH_GRPC)
-    add_definitions(-DPADDLE_WITH_GRPC)
-endif(WITH_GRPC)
+if(WITH_HETERPS)
+    add_definitions(-DPADDLE_WITH_HETERPS)
+endif()
 
 if(WITH_BRPC_RDMA)
     add_definitions(-DPADDLE_WITH_BRPC_RDMA)

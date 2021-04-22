@@ -75,10 +75,11 @@ class ScopedRNNBase {
                              dropout_state, seed_, state_size);
 
     // ------------------- miopen rnn descriptors ---------------------
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetRNNDescriptor(
-        rnn_desc_.desc(), hidden_size_, num_layers_, miopenRNNlinear,
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetRNNDescriptor_V2(
+        rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
+        miopenRNNlinear,
         is_bidirec_ ? miopenRNNbidirection : miopenRNNunidirection, miopenLSTM,
-        miopenRNNNoBias, miopenRNNdefault, miopen_type));
+        miopenRNNwithBias, miopenRNNdefault, miopen_type));
 
     // ------------------- miopen weights_size ---------------------
     size_t weights_size_;

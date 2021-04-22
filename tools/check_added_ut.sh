@@ -50,19 +50,12 @@ cd prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir >prebuild.log 2>&1
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
-    bash $PADDLE_ROOT/win_cmake.sh
+    bash $PADDLE_ROOT/win_cmake.sh >prec_build.log 2>&1
 fi
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | grep 'test' > $PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | grep 'test' > $PADDLE_ROOT/pr-ut
 cd $PADDLE_ROOT
-echo "================================="
-echo "br-ut"
-cat $PADDLE_ROOT/br-ut
-echo "================================="
-echo "pr-ut"
-cat $PADDLE_ROOT/pr-ut
-echo "================================="
 grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
 if [[ "$SYSTEM" == 'Linux' ]];then
     sort pr-ut |uniq -d > $PADDLE_ROOT/duplicate_ut

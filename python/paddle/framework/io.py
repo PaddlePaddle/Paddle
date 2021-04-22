@@ -593,7 +593,6 @@ def save(obj, path, protocol=2, **configs):
 
     if config.use_binary_format:
         _save_binary_var(obj, path)
-
     else:
         # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
         if config.pickle_protocol is not None:
@@ -606,6 +605,7 @@ def save(obj, path, protocol=2, **configs):
             obj.desc.flush()
             with open(path, "wb") as f:
                 f.write(obj.desc.serialize_to_string())
+
         elif _is_state_dict(obj):
             if in_dygraph_mode():
                 _legacy_save(obj, path, protocol)

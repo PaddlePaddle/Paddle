@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 cmake_policy(VERSION 3.10)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -33,7 +33,8 @@ option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
-# NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON 
+option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
+# NOTE(zhiqiu): WITH_ASCEND_CL can be compile on x86_64, so we can set WITH_ASCEND=OFF and WITH_ASCEND_CL=ON
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
@@ -42,6 +43,9 @@ if (WITH_GPU  AND WITH_XPU)
 endif()
 if (WITH_GPU AND WITH_ASCEND)
     message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
+endif()
+if (WITH_GPU AND WITH_ROCM)
+    message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -61,7 +65,7 @@ if(WITH_MUSL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
 endif()
 
-if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
+if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
 
@@ -99,7 +103,7 @@ if(WIN32)
             endif()
         endforeach(flag_var)
     endif()
-    
+
     # NOTE(Avin0323): Less parallel count result in faster compilation.
     math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
     # windows build turn off warnings, use parallel compiling.
@@ -168,8 +172,6 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization and inference-lib generation" OFF)
 ################################ Internal Configurations #######################################
-option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"         OFF)
-option(WITH_RCCL        "Compile PaddlePaddle with RCCL support"          OFF)
 option(WITH_NV_JETSON   "Compile PaddlePaddle with NV JETSON"             OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
@@ -180,14 +182,15 @@ option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_BOX_PS      "Compile with box_ps support"                   OFF)
 option(WITH_XBYAK       "Compile with xbyak support"                    ON)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
-option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_PSCORE     "Compile with parameter server support"         ${WITH_DISTRIBUTE})
+option(WITH_HETERPS     "Compile with heterps"                          OFF})
 option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
+option(WITH_RCCL   "Compile PaddlePaddle with RCCL support"             ON)
 option(WITH_XPU_BKCL    "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL"   OFF)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
@@ -255,9 +258,6 @@ endif()
 
 if(WITH_BRPC_RDMA)
     message(STATUS "Use brpc with rdma.")
-    if(WITH_GRPC)
-        message(FATAL_ERROR "Can't use grpc with brpc rdma.")
-    endif()
     if(NOT WITH_DISTRIBUTE)
         message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
     endif()
@@ -305,9 +305,9 @@ endif(WITH_ROCM)
 
 if (NOT WITH_ROCM AND WITH_RCCL)
     MESSAGE(WARNING
-        "Disable RCCL when compiling without GPU. Force WITH_RCCL=OFF.")
-    set(WITH_NCCL OFF CACHE STRING
-        "Disable RCCL when compiling without GPU" FORCE)
+        "Disable RCCL when compiling without ROCM. Force WITH_RCCL=OFF.")
+    set(WITH_RCCL OFF CACHE STRING
+        "Disable RCCL when compiling without ROCM" FORCE)
 endif()
 
 if(WITH_RCCL)
