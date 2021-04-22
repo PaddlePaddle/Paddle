@@ -135,6 +135,9 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
     """
 
+    assert core.is_compiled_with_rocm() == False, (
+        "multinomial op is not supported on ROCM yet.")
+
     if in_dygraph_mode():
         return core.ops.multinomial(x, 'num_samples', num_samples,
                                     'replacement', replacement)

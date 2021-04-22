@@ -238,11 +238,16 @@ class NameVisitor(gast.NodeVisitor):
         return new_name_ids
 
     def _is_call_func_name_node(self, node):
+        white_func_names = set(['append', 'extend'])
         if len(self.ancestor_nodes) > 1:
             assert self.ancestor_nodes[-1] == node
             parent_node = self.ancestor_nodes[-2]
             if isinstance(parent_node, gast.Call) and parent_node.func == node:
-                return True
+                # e.g: var_list.append(elem), var_list is also a name_id.
+                should_skip = isinstance(
+                    node, gast.Attribute) and node.attr in white_func_names
+                if not should_skip:
+                    return True
         return False
 
     def _update_name_ids(self, new_name_ids):
@@ -398,10 +403,13 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         ])
 
     def _vars_loaded_before_store(ids_dict):
+        """
+        gast.Param is also a kind of `load` semantic.
+        """
         new_dict = defaultdict(list)
         for k, ctxs in six.iteritems(ids_dict):
             for ctx in ctxs:
-                if isinstance(ctx, gast.Load):
+                if isinstance(ctx, (gast.Load, gast.Param)):
                     new_dict[k].append(ctx)
                 elif isinstance(ctx, gast.Store):
                     break

@@ -25,7 +25,7 @@ __all__ = [
 import numpy as np
 from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode
-from ...fluid import core, dygraph_utils
+from ...fluid import core, dygraph_utils, get_flags
 from ...fluid.layers import nn, utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
@@ -112,10 +112,6 @@ def _conv_nd(x,
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     origin_format = data_format
-    if origin_format == "NHWC" and op_type == "depthwise_conv2d":
-        x = nn.transpose(x, perm=[0, 3, 1, 2])
-        data_format = "NCHW"
-        channel_dim = 1
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
@@ -159,10 +155,6 @@ def _conv_nd(x,
                        'use_mkldnn': use_mkldnn})
         else:
             out = pre_bias
-
-    if origin_format == "NHWC" and op_type == "depthwise_conv2d":
-        out = nn.transpose(out, perm=[0, 2, 3, 1])
-
     return out
 
 
@@ -559,6 +551,13 @@ def conv2d(x,
     if (num_channels == groups and num_channels != 1 and
             num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
+        if core.is_compiled_with_rocm():
+            use_cudnn = True
+        else:
+            use_cudnn = False
+
+    if (core.is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")
+        ["FLAGS_conv2d_disable_cudnn"]):
         use_cudnn = False
 
     return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,

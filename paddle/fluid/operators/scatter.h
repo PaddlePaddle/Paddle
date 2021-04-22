@@ -102,9 +102,13 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
 
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
-    PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
-                      platform::errors::InvalidArgument(
-                          "src shape and dst shape should match"));
+    PADDLE_ENFORCE_EQ(
+        src_dims[i], dst_dims[i],
+        platform::errors::InvalidArgument(
+            "The dimensions of the source tensor and target tensor should"
+            " match, but received source tensor's %d-th dimension is %d,"
+            "target tensor's %d-th dimension is %d.",
+            i, src_dims[i], i, dst_dims[i]));
 
   // slice size
   size_t slice_size = 1;
@@ -146,9 +150,13 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
 
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
-    PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
-                      platform::errors::InvalidArgument(
-                          "src shape and dst shape should match"));
+    PADDLE_ENFORCE_EQ(
+        src_dims[i], dst_dims[i],
+        platform::errors::InvalidArgument(
+            "The dimensions of the source tensor and target tensor should"
+            " match, but received source tensor's %d-th dimension is %d,"
+            "target tensor's %d-th dimension is %d.",
+            i, src_dims[i], i, dst_dims[i]));
 
   // slice size
   size_t slice_size = 1;

@@ -45,6 +45,14 @@ static inline int SizeFromAxis(const int axis, DDim dims) {
   return size;
 }
 
+static inline int SizeOutAxis(const int axis, DDim dims) {
+  int size = 1;
+  for (int i = axis + 1; i < dims.size(); i++) {
+    size *= dims[i];
+  }
+  return size;
+}
+
 template <typename DeviceContext, typename T>
 class SoftmaxKernel : public framework::OpKernel<T> {
  public:

@@ -145,16 +145,21 @@ packages=['paddle',
           'paddle.distributed',
           'paddle.incubate',
           'paddle.incubate.optimizer',
+          'paddle.incubate.checkpoint',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
+          'paddle.distributed.fleet.meta_optimizers.ascend',
+          'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
           'paddle.distributed.fleet.runtime',
           'paddle.distributed.fleet.dataset',
           'paddle.distributed.fleet.data_generator',
           'paddle.distributed.fleet.metrics',
           'paddle.distributed.fleet.proto',
           'paddle.distributed.fleet.utils',
+          'paddle.distributed.fleet.meta_parallel',
+          'paddle.distributed.fleet.meta_parallel.mp_utils',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -172,11 +177,9 @@ packages=['paddle',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
-          'paddle.fluid.contrib.reader',
           'paddle.fluid.contrib.slim',
           'paddle.fluid.contrib.slim.quantization',
           'paddle.fluid.contrib.slim.quantization.imperative',
-          'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.mixed_precision',
           'paddle.fluid.contrib.mixed_precision.bf16',
@@ -184,7 +187,6 @@ packages=['paddle',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
-          'paddle.fluid.incubate.data_generator',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.checkpoint',
           'paddle.fluid.incubate.fleet.base',
@@ -350,10 +352,6 @@ if '${WITH_XPU}' == 'OFF' and '${XPU_SDK_ROOT}' != '':
 
 
 ### New custom op extension mechanism related ###
-# copy libpaddle_custom_op.so to libs on linux
-if sys.platform.startswith('linux'):
-    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
-    package_data['paddle.libs'] += ['libpaddle_custom_op.so']
 
 # copy paddle_custom_op.lib/paddle_custom_op.dll to libs on Windows
 if os.name == 'nt':

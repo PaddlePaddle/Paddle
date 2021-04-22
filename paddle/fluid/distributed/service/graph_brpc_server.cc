@@ -19,7 +19,6 @@
 #include "butil/endpoint.h"
 #include "iomanip"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
 namespace paddle {
@@ -265,7 +264,8 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
   int step = *(int *)(request.params(2).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
-  table->pull_graph_list(start, size, buffer, actual_size, false, step);
+  ((GraphTable *)table)
+      ->pull_graph_list(start, size, buffer, actual_size, false, step);
   cntl->response_attachment().append(buffer.get(), actual_size);
   return 0;
 }
@@ -284,8 +284,8 @@ int32_t GraphBrpcService::graph_random_sample_neighboors(
   int sample_size = *(uint64_t *)(request.params(1).c_str());
   std::vector<std::unique_ptr<char[]>> buffers(node_num);
   std::vector<int> actual_sizes(node_num, 0);
-  table->random_sample_neighboors(node_data, sample_size, buffers,
-                                  actual_sizes);
+  ((GraphTable *)table)
+      ->random_sample_neighboors(node_data, sample_size, buffers, actual_sizes);
 
   cntl->response_attachment().append(&node_num, sizeof(size_t));
   cntl->response_attachment().append(actual_sizes.data(),
@@ -301,7 +301,8 @@ int32_t GraphBrpcService::graph_random_sample_nodes(
   size_t size = *(uint64_t *)(request.params(0).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
-  if (table->random_sample_nodes(size, buffer, actual_size) == 0) {
+  if (((GraphTable *)table)->random_sample_nodes(size, buffer, actual_size) ==
+      0) {
     cntl->response_attachment().append(buffer.get(), actual_size);
   } else
     cntl->response_attachment().append(NULL, 0);
@@ -330,7 +331,7 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
   std::vector<std::vector<std::string>> feature(
       feature_names.size(), std::vector<std::string>(node_num));
 
-  table->get_node_feat(node_ids, feature_names, feature);
+  ((GraphTable *)table)->get_node_feat(node_ids, feature_names, feature);
 
   for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
     for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {

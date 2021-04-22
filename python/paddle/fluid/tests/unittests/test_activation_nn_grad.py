@@ -18,11 +18,34 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
+import paddle
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 
 from decorator_helper import prog_scope
+
+
+class TestTanhDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.tanh(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 class TestReluDoubleGradCheck(unittest.TestCase):

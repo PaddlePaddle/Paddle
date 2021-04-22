@@ -283,10 +283,7 @@ void YoloBoxPlugin::serialize(void* buffer) const {
   SerializeValue(&buffer, input_w_);
 }
 
-void YoloBoxPlugin::destroy() {
-  cudaFree(anchors_device_);
-  delete this;
-}
+void YoloBoxPlugin::destroy() {}
 
 void YoloBoxPlugin::setPluginNamespace(const char* lib_namespace) {
   namespace_ = std::string(lib_namespace);
