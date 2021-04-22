@@ -13,376 +13,225 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 
-#include <algorithm>
-#include <memory>
-#include <utility>
-#include <vector>
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/platform/transform.h"
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-#ifdef __NVCC__
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <nvfunctional>
-#elif defined(__HIPCC__)
-#include <hip/hip_runtime.h>
-#endif
-
-#if (defined PADDLE_CUDA_FP16)
-#include <cuda_fp16.h>
-#include "paddle/fluid/platform/float16.h"
-#endif
-
-#include <thrust/iterator/iterator_adaptor.h>
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#endif
-
-#define MAX_DIMS 10
-#define INT_BITS 32
+#define DEBUG 0
 
 namespace paddle {
 namespace operators {
 
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) CudaAlignedVector {
-  T val[Size];
-};
-
-/* 1. To compensate the lackage of input_tensors dimension;
-*  2. To Merge the dimensions of input_tensors while the consequtive
-* equal-dimensions appears;
-*  3. To Merge the dimension of input_tensors while the consequtive
-* 1-value-dimensions appears;
-*  4. To calculate the strides of each input_tensor. */
-struct DimensionTransform {
-  using vec_t = std::vector<uint64_t>;
-
- private:
-  __inline__ void DimsExtend(int N) {
-    std::reverse(out_dims.begin(), out_dims.end());
-
-    for (auto &in_dim : vec_dims) {
-      std::reverse(in_dim.begin(), in_dim.end());
-
-      if (in_dim.size() < dim_size) {
-        vec_t tmp_dim(dim_size, 1);
-        in_dim.resize(dim_size, 1);
-        uint64_t idx_in = 0, idx_out = 0;
-        do {
-          if (in_dim[idx_in] == out_dims[idx_out] || in_dim[idx_in] == 1) {
-            tmp_dim[idx_out++] = in_dim[idx_in++];
-          } else {
-            idx_out++;
-          }
-        } while (idx_out < dim_size);
-        std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
-      }
-    }
-  }
-
-  template <typename func_t>
-  __inline__ void DimsReorganise(func_t merge_func, int N) {
-    auto VectorReorganise = [](vec_t *vec, int l_idx, int m_idx) {
-      (*vec)[m_idx - 1] =
-          std::accumulate(vec->begin() + l_idx, vec->begin() + m_idx, 1,
-                          std::multiplies<uint64_t>());
-      vec->erase(vec->begin() + l_idx, vec->begin() + m_idx - 1);
-    };
-
-    uint64_t i = 0;
-    while (i < dim_size) {
-      int cnt = 0;
-      int low_idx = i;
-      bool equal_flag = true;
-      do {
-        merge_func(equal_flag, vec_dims, out_dims, i, N);
-        if (equal_flag) {
-          i++;
-          cnt++;
-        } else {
-          break;
-        }
-      } while (i < dim_size);
-
-      if (cnt > 1) {
-        for (auto in_dim : vec_dims) {
-          VectorReorganise(&in_dim, low_idx, i);
-        }
-        VectorReorganise(&out_dims, low_idx, i);
-        dim_size -= --cnt;
-        i -= cnt;
-      } else if (cnt < 1) {
-        i++;
-      }
-    }
-  }
-
- public:
-  DimensionTransform(std::vector<const framework::Tensor *> *ins,
-                     const framework::DDim &dims, int N) {
-    dim_size = dims.size();
-    out_dims = framework::vectorize<uint64_t>(dims);
-    vec_dims.resize(N);
-    for (int j = 0; j < N; ++j) {
-      vec_dims[j] = framework::vectorize<uint64_t>(((*ins)[j])->dims());
-    }
-    DimsExtend(N);
-
-    auto merge_sequential_dims = [](bool &equal, std::vector<vec_t> &in_dims,
-                                    vec_t &out, int i, int num) -> void {
-      for (int j = 1; j < num; ++j) {
-        equal = (in_dims[0][i] == in_dims[j][i]) ? true : false;
-      }
-    };
-
-    auto merge_sequential_one_dims = [](bool &equal,
-                                        std::vector<vec_t> &in_dims, vec_t &out,
-                                        int i, int num) -> void {
-      equal = in_dims[0][i] == 1;
-      if (equal) {
-        for (int j = 1; j < num; ++j) {
-          equal = in_dims[j][i] == out[i];
-        }
-      }
-    };
-    typedef void (*func_t)(bool &, std::vector<vec_t> &, vec_t &, int, int);
-    func_t merge_ptr = merge_sequential_dims;
-    DimsReorganise<func_t>(merge_ptr, N);
-
-    int min_idx = 0;
-    int min_val = std::accumulate(vec_dims[0].begin(), vec_dims[0].end(), 1,
-                                  std::multiplies<uint64_t>());
-    for (int j = 1; j < N; ++j) {
-      int temp = std::accumulate(vec_dims[j].begin(), vec_dims[j].end(), 1,
-                                 std::multiplies<uint64_t>());
-      min_val = min_val > temp ? temp : min_val;
-      min_idx = min_val == temp ? j : min_idx;
-    }
-    std::swap(vec_dims[0], vec_dims[min_idx]);
-
-    merge_ptr = merge_sequential_one_dims;
-    DimsReorganise<func_t>(merge_ptr, N);
-  }
-
-  uint64_t dim_size;
-  vec_t out_dims;
-  std::vector<vec_t> vec_dims;
-};
-
-template <typename index_t>
-struct DivMod {
-  index_t div, mod;
-
-  inline __device__ DivMod(index_t div, index_t mod) : div(div), mod(mod) {}
-};
-
-template <typename IndexT>
-struct FastDivMod {
-  FastDivMod() {}
-
-  explicit FastDivMod(IndexT d) : divisor(d) {
-    for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
-      if ((1 << shift_val) >= divisor) {
-        break;
-      }
-    }
-    uint64_t one_uint64 = 1;
-    uint64_t temp_div =
-        ((one_uint64 << INT_BITS) * ((one_uint64 << shift_val) - divisor)) /
-            divisor +
-        1;
-    multiplier = temp_div;
-  }
-
-  __device__ inline IndexT div(IndexT n) const {
-    IndexT t = __umulhi(n, multiplier);
-    return (t + n) >> shift_val;
-  }
-
-  HOSTDEVICE DivMod<IndexT> divmod(IndexT n) const {
-    IndexT q = div(n);
-    return DivMod<IndexT>(q, n - q * divisor);
-  }
-
-  IndexT divisor;
-  IndexT multiplier;
-  IndexT shift_val;
-};
-
-template <typename merge_t, typename uint64_t = int>
-struct OffsetPreCalculator {
- private:
-  template <typename vec_t>
-  __inline__ void StirdeCalculator(int N, int dim_size, const vec_t &in_dims) {
-    for (int j = 0; j < N; ++j) {
-      for (int i = 0; i < dim_size; ++i) {
-        strides[j][i] = in_dims[j][i] == 1 ? 0 : strides[j][i];
-        strides[j][i] =
-            (i != 0 && strides[j][i] != 0)
-                ? std::accumulate(in_dims[j].begin(), in_dims[j].begin() + i, 1,
-                                  std::multiplies<uint64_t>())
-                : strides[j][i];
-      }
-    }
-  }
-
- public:
-  explicit OffsetPreCalculator(const merge_t &merge_dims) {
-    auto N = merge_dims.vec_dims.size();
-    int dim_size = merge_dims.dim_size;
-    divmoder.resize(dim_size);
-    strides.resize(N, std::vector<uint64_t>(dim_size, 1));
-
-    for (int i = 0; i < dim_size; ++i) {
-      divmoder[i] = FastDivMod<uint64_t>(merge_dims.out_dims[i]);
-    }
-    auto vec_dims = merge_dims.vec_dims;
-    StirdeCalculator<decltype(vec_dims)>(N, dim_size, vec_dims);
-  }
-
-  std::vector<std::vector<uint64_t>> strides;
-  std::vector<FastDivMod<uint64_t>> divmoder;
-};
-
-template <typename T, typename ArgT, typename OffsetT, int nDims, int vec_size,
-          typename IndexT = uint32_t>
-struct StrideVectorLoad {
- private:
-  HOSTDEVICE inline IndexT const get_offset(int tid) {
-    IndexT offset = 0;
-    // #pragma unroll
-    for (int i = 0; i < nDims; ++i) {
-      auto fast_divmoder = divmoders[i].divmod(tid);
-      tid = fast_divmoder.div;
-      offset += fast_divmoder.mod * strides[i];
-    }
-    return offset;
-  }
-
- public:
-  StrideVectorLoad(const OffsetT &offset_calculator, int i) {
-    memcpy(static_cast<void *>(strides), offset_calculator.strides[i].data(),
-           sizeof(uint32_t) * nDims);
-    memcpy(static_cast<void *>(divmoders), offset_calculator.divmoder.data(),
-           sizeof(FastDivMod<uint32_t>) * nDims);
-  }
-
-  HOSTDEVICE inline void operator()(const T *__restrict__ in_data, ArgT *args,
-                                    int tid, int thresh) {
-    if (tid < thresh) {
-      int index = vec_size * tid;
-      // #pragma unroll
-      for (int i = 0; i < vec_size; ++i) {
-        IndexT offset = get_offset(index + i);
-        (*args).val[i + i] = in_data[offset];
-      }
-    }
-  }
-
-  IndexT strides[MAX_DIMS];
-  FastDivMod<IndexT> divmoders[MAX_DIMS];
-};
-
-template <typename T, typename OffsetT, int nDims, int vec_size,
-          typename IndexT = uint32_t>
-struct StrideScalarLoad {
-  explicit StrideScalarLoad(const OffsetT &offset_calculator, int i,
-                            int data_offset)
-      : data_offset(data_offset) {
-    memcpy(static_cast<void *>(strides), offset_calculator.strides[i].data(),
-           sizeof(uint32_t) * nDims);
-    memcpy(static_cast<void *>(divmoders), offset_calculator.divmoder.data(),
-           sizeof(FastDivMod<uint32_t>) * nDims);
-  }
-
-  HOSTDEVICE inline IndexT const get_offset(int tid) {
-    IndexT offset = 0;
-    // #pragma unroll
-    for (int i = 0; i < nDims; ++i) {
-      auto fast_divmoder = divmoders[i].divmod(tid);
-      tid = fast_divmoder.div;
-      offset += fast_divmoder.mod * strides[i];
-    }
-    return offset;
-  }
-
-  HOSTDEVICE inline void operator()(const T *__restrict__ in_data, T *args,
-                                    int tid, int thresh) {
-    if (tid < thresh) {
-      int offset = get_offset(tid + data_offset);
-      *args = in_data[offset];
-    }
-  }
-
-  int data_offset;
-  IndexT strides[MAX_DIMS];
-  FastDivMod<IndexT> divmoders[MAX_DIMS];
-};
-
-template <typename T, typename ArgT>
-struct CommonVectorLoad {
-  HOSTDEVICE inline void operator()(const T *__restrict__ in_data, ArgT *args,
-                                    int tid, int thresh) {
-    if (tid < thresh) {
-      const ArgT *vec_data = reinterpret_cast<const ArgT *>(in_data);
-      *args = vec_data[tid];
-    }
-  }
-};
-
 template <typename T>
-struct CommonScalarLoad {
-  explicit CommonScalarLoad(int data_offset) : data_offset(data_offset) {}
+int GetVectorizedSizeImpl(T *pointer) {
+  uint64_t address = reinterpret_cast<uint64_t>(pointer);
+  constexpr int vec4 = std::alignment_of<CudaAlignedVector<T, 4>>::value;
+  constexpr int vec2 = std::alignment_of<CudaAlignedVector<T, 2>>::value;
+  if (sizeof(T) <= 16) {
+    constexpr int vec8 = std::alignment_of<CudaAlignedVector<T, 8>>::value;
+    if (address % vec8 == 0) return 8;
+  }
+  if (address % vec4 == 0) return 4;
+  if (address % vec2 == 0) return 2;
+  return 1;
+}
 
-  HOSTDEVICE inline void operator()(const T *__restrict__ in_data, T *args,
-                                    int tid, int thresh) {
-    if (tid < thresh) {
-      *args = in_data[tid + data_offset];
-    }
+#if defined(__NVCC__) || defined(__HIPCC__)
+template <typename T, typename ArgT, typename loader_t, int N, int nDims>
+inline __device__ void ScalarizeKernelImpl(const loader_t &in_loaders, T *out,
+                                           int tid, int remain) {
+  T args[N];
+#pragma unroll
+  for (int i = 0; i < N; ++i) {
+    (in_loaders.s_loader[i])(in_loaders.data[i], &args[i], tid, remain);
+  }
+  (*out) = args[0] + args[1];
+}
+
+template <typename T, typename ArgT, typename loader_t, int N, int nDims,
+          int vec_size>
+inline __device__ void VectorizeKernelImpl(const loader_t &in_loaders, T *out,
+                                           int tid, int loop) {
+  ArgT args[N];
+#pragma unroll
+  for (int i = 0; i < N; ++i) {
+    (in_loaders.v_loader[i])(in_loaders.data[i], &args[i], tid, loop);
   }
 
-  int data_offset;
-};
+  if (tid < loop) {
+    ArgT *vec_out = reinterpret_cast<ArgT *>(out);
+#pragma unroll
+    for (int i = 0; i < vec_size; ++i) {
+      args[0].val[i] += args[1].val[i];
+    }
+    vec_out[tid] = args[0];
+  }
+}
 
-template <typename T, typename OffsetT, int N, int vec_size, int nDims>
-struct TensorLoader {
+template <typename T, typename loader_t, int N, int vec_size, int nDims>
+__global__ void CommonElementwiseKernel(const loader_t &in_loaders, T *out,
+                                        int loop, int remain) {
   using ArgT = CudaAlignedVector<T, vec_size>;
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  printf("[tid=%d]\n", tid);
+  VectorizeKernelImpl<T, ArgT, loader_t, N, nDims, vec_size>(in_loaders, out,
+                                                             tid, loop);
+  if (remain) {
+    ScalarizeKernelImpl<T, T, loader_t, N, nDims>(in_loaders, out, tid, remain);
+  }
+}
+#endif
 
-  TensorLoader() {}
-  TensorLoader(std::vector<const framework::Tensor *> *ins,
-               framework::Tensor *out, const OffsetT &offset_pre = nullptr) {
-    auto numel = out->numel();
-    auto remain = numel % vec_size;
-    auto main_len = numel - remain;
+template <typename T, typename OffsetT, int vec_size, int N>
+void CommonElementwiseCore(const framework::ExecutionContext &ctx,
+                           std::vector<const framework::Tensor *> *ins,
+                           framework::Tensor *out, const OffsetT &offset_pre) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+  int numel = out->numel();
+  int loop = numel / vec_size;
+  int remain = numel - loop * vec_size;
+  const int threads = 32;
+  int blocks = (numel + threads - 1) / threads;
+  int dim_size = offset_pre.strides[0].size();
 
-    for (int j = 0; j < N; ++j) {
-      data[j] = (*ins)[j]->data<T>();
+  auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  T *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+  auto stream = dev_ctx.stream();
+  printf(">>>: N = %d\t vec_size=%d\t dim_size=%d\n", N, vec_size, dim_size);
 
-      if ((*ins)[j]->dims() == out->dims()) {
-        v_loader[j] = CommonVectorLoad<T, ArgT>();
-      } else {
-        v_loader[j] =
-            StrideVectorLoad<T, ArgT, OffsetT, nDims, vec_size>(offset_pre, j);
-      }
+  switch (dim_size) {
+    case 2: {
+      const auto loader =
+          TensorLoader<T, OffsetT, N, vec_size, 2>(ins, out, offset_pre);
+      CommonElementwiseKernel<T, decltype(loader), N, vec_size,
+                              2><<<blocks, threads, 0, stream>>>(
+          loader, out_data, loop, remain);
+      break;
+    }
+    case 3: {
+      const auto loader =
+          TensorLoader<T, OffsetT, N, vec_size, 3>(ins, out, offset_pre);
+      CommonElementwiseKernel<T, decltype(loader), N, vec_size,
+                              3><<<blocks, threads, 0, stream>>>(
+          loader, out_data, loop, remain);
+      break;
+    }
+    case 4: {
+      const auto loader =
+          TensorLoader<T, OffsetT, N, vec_size, 4>(ins, out, offset_pre);
+      CommonElementwiseKernel<T, decltype(loader), N, vec_size,
+                              4><<<blocks, threads, 0, stream>>>(
+          loader, out_data, loop, remain);
+      break;
+    }
+    case 5: {
+      const auto loader =
+          TensorLoader<T, OffsetT, N, vec_size, 5>(ins, out, offset_pre);
+      CommonElementwiseKernel<T, decltype(loader), N, vec_size,
+                              5><<<blocks, threads, 0, stream>>>(
+          loader, out_data, loop, remain);
+      break;
+    }
+    default: { ; }
+  }
+#endif
+}
 
-      if (remain) {
-        if ((*ins)[j]->dims() == out->dims()) {
-          s_loader[j] = CommonScalarLoad<T>(main_len);
-        } else {
-          s_loader[j] = StrideScalarLoad<T, OffsetT, nDims, vec_size>(
-              offset_pre, j, main_len);
-        }
-      }
+template <typename T, int vec_size = 1>
+void BroadcastDimsTransform(const framework::ExecutionContext &ctx,
+                            std::vector<const framework::Tensor *> *ins,
+                            framework::Tensor *out) {
+  int input_num = ins->size();
+  const auto merged_dims = DimensionTransform(ins, out->dims(), input_num);
+  const auto offset_pre =
+      OffsetPreCalculator<decltype(merged_dims)>(merged_dims);
+
+#if DEBUG
+  printf("[%s %d]: merged_dims.dim_size == %ld \n", __func__, __LINE__,
+         merged_dims.dim_size);
+  printf("[%s %d]: merged_dims.out_dims == %ld \n", __func__, __LINE__,
+         merged_dims.out_dims.size());
+
+  int dim_size = offset_pre.strides[0].size();
+  std::cout << "[Out]: \t";
+  for (int i = 0; i < dim_size; ++i) {
+    std::cout << merged_dims.out_dims[i] << "\t";
+  }
+  std::cout << std::endl;
+  std::cout << std::endl;
+  for (auto &stride : offset_pre.strides) {
+    std::cout << "[Vec]: \t";
+    for (int i = 0; i < dim_size; ++i) {
+      std::cout << stride[i] << "\t";
+    }
+    std::cout << std::endl;
+  }
+  std::cout << std::endl;
+
+  for (auto &divmod : offset_pre.divmoder) {
+    std::cout << "[DivMod]: \n";
+    for (int i = 0; i < dim_size; ++i) {
+      printf("[divisor=%d\t, multipiler=%d\t, shift=%d]\n", divmod.divisor,
+             divmod.multiplier, divmod.shift_val);
+    }
+    std::cout << std::endl;
+  }
+  std::cout << std::endl;
+#endif
+
+  switch (input_num) {
+    case 2: {
+      CommonElementwiseCore<T, decltype(offset_pre), vec_size, 2>(ctx, ins, out,
+                                                                  offset_pre);
+      break;
+    }
+    case 3: {
+      CommonElementwiseCore<T, decltype(offset_pre), vec_size, 3>(ctx, ins, out,
+                                                                  offset_pre);
+      break;
+    }
+    case 4: {
+      CommonElementwiseCore<T, decltype(offset_pre), vec_size, 4>(ctx, ins, out,
+                                                                  offset_pre);
+      break;
+    }
+    default: { ; }
+  }
+}
+
+template <typename DeviceContext, typename T>
+void BroadcastElementwise(const framework::ExecutionContext &ctx,
+                          std::vector<const framework::Tensor *> *ins,
+                          framework::Tensor *out) {
+  int in_vec_size = 8;
+  T *out_data = out->mutable_data<T>(ctx.GetPlace());
+  int out_vec_size = GetVectorizedSizeImpl<T>(out_data);
+
+  for (auto *in : *ins) {
+    auto temp_size = GetVectorizedSizeImpl(in->data<T>());
+    in_vec_size = in->dims() == out->dims() ? std::min(temp_size, in_vec_size)
+                                            : in_vec_size;
+  }
+  int vec_size = std::min(out_vec_size, in_vec_size);
+  constexpr vec_size = 1;
+
+  switch (vec_size) {
+    case 8: {
+      BroadcastDimsTransform<T, 8>(ctx, ins, out);
+      break;
+    }
+    case 4: {
+      BroadcastDimsTransform<T, 4>(ctx, ins, out);
+      break;
+    }
+    case 2: {
+      BroadcastDimsTransform<T, 2>(ctx, ins, out);
+      break;
+    }
+    default: {
+      BroadcastDimsTransform<T>(ctx, ins, out);
+      break;
     }
   }
-
-  const T *data[N];
-  nvstd::function<void(const T *, ArgT *, int, int)> v_loader[N];
-  nvstd::function<void(const T *, T *, int, int)> s_loader[N];
-};
+}
 
 }  // namespace operators
 }  // namespace paddle
