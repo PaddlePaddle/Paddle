@@ -324,25 +324,52 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
 void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
                                  Scope *scope) {
   platform::RecordEvent record_event("Communicator->RpcRecvSparse");
+  bool training = true;
   auto *send_var = scope->Var(varname);
   auto *tensor = send_var->GetMutable<framework::LoDTensor>();
-  auto dim = tensor->dims()[1];
-  uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
 
-  std::vector<uint64_t> sparse_push_keys(sparse_num);
-  std::iota(sparse_push_keys.begin(), sparse_push_keys.end(), 0);
+  if (platform::is_gpu_place(tensor->place())) {
+#ifdef PADDLE_WITH_CUDA
+    auto dim = tensor->dims()[1];
+    uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
+    std::vector<uint64_t> sparse_push_keys(sparse_num);
+    std::iota(sparse_push_keys.begin(), sparse_push_keys.end(), 0);
 
-  std::vector<float *> push_g_vec;
-  for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
-    push_g_vec.push_back(tensor->data<float>() + i * dim);
+    Variable *temp_var = xpu_temp_scope_->Var(varname);
+    LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
+    temp_tensor->Resize(tensor->dims());
+    float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
+
+    std::vector<float *> push_g_vec;
+    for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
+      push_g_vec.push_back(temp_data + i * dim);
+    }
+
+    auto status = _worker_ptr->pull_sparse(
+        (float **)push_g_vec.data(), table_id,  // NOLINT
+        sparse_push_keys.data(), sparse_push_keys.size(), training);
+    status.wait();
+
+    framework::TensorCopy(*temp_tensor, tensor->place(), tensor);
+#endif
+  } else {
+    auto dim = tensor->dims()[1];
+    uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
+
+    std::vector<uint64_t> sparse_push_keys(sparse_num);
+    std::iota(sparse_push_keys.begin(), sparse_push_keys.end(), 0);
+
+    std::vector<float *> push_g_vec;
+    for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
+      push_g_vec.push_back(tensor->data<float>() + i * dim);
+    }
+
+    auto status = _worker_ptr->pull_sparse(
+        (float **)push_g_vec.data(), table_id,  // NOLINT
+        sparse_push_keys.data(), sparse_push_keys.size(), training);
+    status.wait();
   }
 
-  bool training = true;
-
-  auto status = _worker_ptr->pull_sparse(
-      (float **)push_g_vec.data(), table_id,  // NOLINT
-      sparse_push_keys.data(), sparse_push_keys.size(), training);
-  status.wait();
   return;
 }
 
@@ -909,13 +936,7 @@ void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
     task.wait();
   }
 
-  if (trainer_id_ == 0) {
-    BarrierWithTable(1);
-  }
-
-  if (trainer_id_ != 0) {
-    BarrierWithTable(1);
-  }
+  VLOG(1) << "Finish Dense Param init";
 
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
@@ -936,9 +957,11 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
                                 int table_id) {
   if (trainer_id_ == 0) {
     RpcSendDenseParam(varnames, table_id, *recv_scope_);
+    // BarrierWithTable(1);
     VLOG(1) << "push dense param to table " << table_id
             << " from 0' trainer done";
   } else {
+    // BarrierWithTable(1);
     RpcRecvDense(varnames, table_id, recv_scope_);
     VLOG(1) << "pull dense param to table " << table_id
             << " from 0' trainer done";
