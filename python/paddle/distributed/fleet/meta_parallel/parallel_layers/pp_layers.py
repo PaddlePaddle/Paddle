@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from paddle.fluid.dygraph.layers import Layer
-import paddle
-import paddle.distributed as dist
-from paddle.distributed import fleet
 import math
+import paddle
+from paddle.fluid.dygraph.layers import Layer
+from paddle.distributed import fleet
 from ...utils.log_util import logger, layer_to_str
 
 __all__ = ['LayerDesc', 'PipelineLayer']
@@ -71,8 +69,9 @@ class PipelineLayer(Layer):
         super(PipelineLayer, self).__init__()
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
-        self.device_id = dist.ParallelEnv().device_id
+        import paddle.distributed as dist
 
+        self.device_id = dist.ParallelEnv().device_id
         self.layers = layers
         self._loss_fn = loss_fn
         self._topo = topology
