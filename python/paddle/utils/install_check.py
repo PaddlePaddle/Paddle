@@ -82,6 +82,10 @@ def _run_dygraph_single(use_cuda):
         use_cuda (bool): Whether running with CUDA.
     """
     paddle.disable_static()
+    if use_cuda:
+        paddle.set_device('gpu')
+    else:
+        paddle.set_device('cpu')
     weight_attr = paddle.ParamAttr(
         name="weight", initializer=paddle.nn.initializer.Constant(value=0.5))
     bias_attr = paddle.ParamAttr(
