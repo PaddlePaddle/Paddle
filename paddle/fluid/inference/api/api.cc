@@ -19,7 +19,10 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
+
+DECLARE_string(mklml_dir);
 
 namespace paddle {
 
@@ -153,3 +156,11 @@ std::shared_ptr<framework::Cipher> MakeCipher(const std::string &config_file) {
 #endif
 
 }  // namespace paddle
+
+namespace paddle_infer {
+namespace experimental {
+// Temporarily solve the problem that the path of the gflags dynamic library
+// cannot be passed in.
+void SetMklDynloadDir(const std::string &path) { FLAGS_mklml_dir = path; }
+}
+}

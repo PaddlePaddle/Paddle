@@ -61,6 +61,7 @@ TEST(Predictor, use_gpu) {
 
 TEST(PredictorPool, basic) {
   LOG(INFO) << GetVersion();
+  paddle_infer::experimental::SetMklDynloadDir("");
   UpdateDllFlag("conv_workspace_size_limit", "4000");
   std::string model_dir = FLAGS_infer_model + "/model";
   Config config;

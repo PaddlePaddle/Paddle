@@ -1059,3 +1059,11 @@ static bool CompareTensor(const framework::LoDTensor &a,
 
 }  // namespace inference
 }  // namespace paddle
+
+namespace paddle_infer {
+namespace experimental {
+
+void SetMklDynloadDir(const std::string &path);
+
+}  // namespace experimental
+}  // namespace paddle_infer

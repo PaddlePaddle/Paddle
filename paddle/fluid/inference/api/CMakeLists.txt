@@ -35,7 +35,7 @@ if(WITH_CRYPTO)
               analysis_config zero_copy_tensor trainer_desc_proto paddle_crypto)
 else()
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config zero_copy_tensor trainer_desc_proto)
+              analysis_config zero_copy_tensor trainer_desc_proto dynamic_loader)
 endif()
 
 if(WIN32)
