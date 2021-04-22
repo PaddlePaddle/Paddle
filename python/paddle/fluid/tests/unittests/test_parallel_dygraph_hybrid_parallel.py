@@ -21,20 +21,20 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestHybridParallel(TestMultipleGpus):
-    # def test_hybrid_parallel_mp_layers(self):
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_layers.py')
+    def test_hybrid_parallel_mp_layers(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_layers.py')
 
-    # def test_hybrid_parallel_mp_random(self):
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_random.py')
+    def test_hybrid_parallel_mp_random(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_random.py')
 
-    # def test_hybrid_parallel_mp_model(self):
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_model.py')
+    def test_hybrid_parallel_mp_model(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_model.py')
 
-    # def test_hybrid_parallel_mp_amp(self):
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_amp.py')
+    def test_hybrid_parallel_mp_amp(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_amp.py')
 
-    # def test_hybrid_parallel_mp_clip_grad(self):
-    #     self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
+    def test_hybrid_parallel_mp_clip_grad(self):
+        self.run_mnist_2gpu('hybrid_parallel_mp_clip_grad.py')
 
     def test_hybrid_parallel_pp_layer(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_layer.py')
