@@ -98,6 +98,7 @@ class OptimizerWithMixedPrecision(object):
     def get_loss_scaling(self):
         """Return the real-time loss scaling factor.
         """
+        assert self._loss_scaling is not None, 'Call minimize() before calling get_loss_scaling()'
         return self._loss_scaling
 
     def get_scaled_loss(self):
