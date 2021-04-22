@@ -14,7 +14,6 @@
 import math
 import paddle
 from paddle.fluid.dygraph.layers import Layer
-from paddle.distributed import fleet
 from ...utils.log_util import logger, layer_to_str
 
 __all__ = ['LayerDesc', 'PipelineLayer']
@@ -69,7 +68,10 @@ class PipelineLayer(Layer):
         super(PipelineLayer, self).__init__()
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
+
+        # lazy import
         import paddle.distributed as dist
+        from paddle.distributed import fleet
 
         self.device_id = dist.ParallelEnv().device_id
         self.layers = layers
