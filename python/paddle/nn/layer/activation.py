@@ -925,7 +925,7 @@ class Silu(layers.Layer):
     Silu Activation.
     .. math::
 
-        Silu(x) = \\frac{x}{1 + e^{-x}}
+        Silu(x) = \frac{x}{1 + e^{-x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, or float64.
@@ -943,7 +943,7 @@ class Silu(layers.Layer):
 
             x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
             m = paddle.nn.Silu()
-            out = m(x) # [ 0.7310586 1.7615942 2.8577224, 3.9280552 ]
+            out = m(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
     """
 
     def __init__(self, name=None):

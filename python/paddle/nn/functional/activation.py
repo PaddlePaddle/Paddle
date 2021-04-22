@@ -777,10 +777,9 @@ def silu(x, name=None):
         .. code-block:: python
         import paddle
         import paddle.nn.functional as F
-        import numpy as np
-        paddle.disable_static()
-        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
-        out = F.silu(x) # [ 0.7310586 1.7615942 2.8577224, 3.9280552 ]
+        
+        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+        out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
     """
 
     if in_dygraph_mode():
