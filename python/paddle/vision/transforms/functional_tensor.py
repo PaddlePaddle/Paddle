@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ def _get_image_size(img, data_format):
         _get_image_h_axis(data_format)]
 
 
-def normalize(img, mean, std, data_format='CHW'):
+def normalize(img, mean, std, data_format='HWC'):
     """Normalizes a tensor image given mean and standard deviation.
 
     Args:
@@ -119,7 +119,7 @@ def normalize(img, mean, std, data_format='CHW'):
     return (img - mean) / std
 
 
-def to_grayscale(img, num_output_channels=1, data_format='CHW'):
+def to_grayscale(img, num_output_channels=1, data_format='HWC'):
     """Converts image to grayscale version of image.
 
     Args:
@@ -135,7 +135,8 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
     """
     _assert_image_tensor(img, data_format)
 
-    assert num_output_channels in (1, 3), ""
+    if num_output_channels not in (1, 3):
+        raise ValueError('num_output_channels should be either 1 or 3')
 
     rgb_weights = paddle.to_tensor(
         [0.2989, 0.5870, 0.1140], place=img.place).astype(img.dtype)
@@ -205,7 +206,7 @@ def rotate(img,
            expand=False,
            center=None,
            fill=None,
-           data_format='CHW'):
+           data_format='HWC'):
     """Rotates the image by angle.
 
     Args:
@@ -237,6 +238,8 @@ def rotate(img,
 
     # n, c, h, w = img.shape
     w, h = _get_image_size(img, data_format=data_format)
+
+    img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
 
     # image center is (0, 0) in matrix
     # translate = None
@@ -298,10 +301,12 @@ def rotate(img,
 
     out = _grid_transform(img, grid, mode=interpolation, fill=fill)
 
+    out = out if data_format == 'chw' else out.transpose((0, 2, 3, 1))
+
     return out.squeeze(0)
 
 
-def vflip(img, data_format='CHW'):
+def vflip(img, data_format='HWC'):
     """Vertically flips the given paddle tensor.
 
     Args:
@@ -320,7 +325,7 @@ def vflip(img, data_format='CHW'):
     return img.flip(axis=[h_axis])
 
 
-def hflip(img, data_format='CHW'):
+def hflip(img, data_format='HWC'):
     """Horizontally flips the given paddle.Tensor Image.
 
     Args:
@@ -339,7 +344,7 @@ def hflip(img, data_format='CHW'):
     return img.flip(axis=[w_axis])
 
 
-def crop(img, top, left, height, width, data_format='CHW'):
+def crop(img, top, left, height, width, data_format='HWC'):
     """Crops the given paddle.Tensor Image.
 
     Args:
@@ -363,7 +368,7 @@ def crop(img, top, left, height, width, data_format='CHW'):
         return img[top:top + height, left:left + width, :]
 
 
-def center_crop(img, output_size, data_format='CHW'):
+def center_crop(img, output_size, data_format='HWC'):
     """Crops the given paddle.Tensor Image and resize it to desired size.
 
         Args:
@@ -394,7 +399,7 @@ def center_crop(img, output_size, data_format='CHW'):
         data_format=data_format)
 
 
-def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
+def pad(img, padding, fill=0, padding_mode='constant', data_format='HWC'):
     """
     Pads the given paddle.Tensor on all sides with specified padding mode and fill value.
 
@@ -476,7 +481,7 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
     return img.squeeze(0)
 
 
-def resize(img, size, interpolation='bilinear', data_format='CHW'):
+def resize(img, size, interpolation='bilinear', data_format='HWC'):
     """
     Resizes the image to given size
 

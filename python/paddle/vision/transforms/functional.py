@@ -41,7 +41,7 @@ def _is_pil_image(img):
 
 
 def _is_tensor_image(img):
-    return isinstance(img, paddle.Tensor) and img.ndim == 3
+    return isinstance(img, paddle.Tensor)
 
 
 def _is_numpy_image(img):
@@ -87,7 +87,7 @@ def to_tensor(pic, data_format='CHW'):
     elif _is_numpy_image(pic):
         return F_cv2.to_tensor(pic, data_format)
     else:
-        return pic
+        return pic if data_format.lower() == 'hwc' else pic.transpose((2, 0, 1))
 
 
 def resize(img, size, interpolation='bilinear'):
