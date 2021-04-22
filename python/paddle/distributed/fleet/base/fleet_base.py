@@ -1059,6 +1059,8 @@ class Fleet(object):
         return amp_optimizer
 
     def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.get_loss_scaling()
 
