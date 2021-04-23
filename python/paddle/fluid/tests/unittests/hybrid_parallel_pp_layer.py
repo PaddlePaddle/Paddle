@@ -97,7 +97,8 @@ class AlexNetPipeDesc(PipelineLayer):
             lambda x: x.flatten(),
             LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
         ]
-        super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
+        super(AlexNetPipeDesc, self).__init__(
+            layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
 
 class TestPipeLayerAPI(unittest.TestCase):
