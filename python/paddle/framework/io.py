@@ -348,6 +348,48 @@ def _ndarray_to_tensor(obj, return_numpy):
         return _to_LodTensor(obj)
 
 
+def _save_lod_tensor(tensor, file_name):
+    if not tensor._is_initialized():
+        raise ValueError("The saved tensor is not initialized.")
+    _seek = core._save_lod_tensor(tensor, file_name)
+    # '_seek' is the end position of this tensor in the file.
+    return _seek
+
+
+def _load_lod_tensor(file_name):
+    temp_t = paddle.fluid.core.LoDTensor()
+    # '_seek' is the end position of this tensor in the file.
+    _seek = paddle.fluid.core._load_lod_tensor(temp_t, file_name)
+    return temp_t, _seek
+
+
+def _save_selected_rows(selected_rows, file_name):
+    # '_seek' is the end position of this SelectedRows in the file.
+    if not selected_rows.get_tensor()._is_initialized():
+        raise ValueError("The saved tensor is not initialized.")
+    _seek = core._save_selected_rows(selected_rows, file_name)
+    return _seek
+
+
+def _load_selected_rows(file_name):
+    temp_sr = core.SelectedRows()
+    # '_seek' is the end position of this SelectedRows in the file.
+    _seek = core._load_selected_rows(temp_sr, file_name)
+    return temp_sr, _seek
+
+
+def _save_binary_var(obj, path):
+    if isinstance(obj, core.LoDTensor):
+        _save_lod_tensor(obj, path)
+    elif isinstance(obj, core.SelectedRows):
+        _save_selected_rows(obj, path)
+    else:
+        # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
+        raise NotImplementedError(
+            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".
+            format(type(obj)))
+
+
 def save(obj, path, protocol=2, **configs):
     '''
     Save an object to the specified path.
@@ -447,25 +489,41 @@ def save(obj, path, protocol=2, **configs):
             "Type of `use_binary_format` should be bool, but received {}.".
             format(type(config.use_binary_format)))
 
-    # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
-    if config.pickle_protocol is not None:
-        protocol = config.pickle_protocol
-        warnings.warn(
-            "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
-        )
-    if isinstance(obj, Program):
-        obj.desc.flush()
-        with open(path, "wb") as f:
-            f.write(obj.desc.serialize_to_string())
-    elif _use_legacy(obj):
-        if in_dygraph_mode():
-            _legacy_save(obj, path, protocol)
-        else:
-            _legacy_static_save(obj, path, protocol)
+    if config.use_binary_format:
+        _save_binary_var(obj, path)
     else:
-        # save single variable
-        with open(path, 'wb') as f:
-            _pickle_save(obj, f, protocol)
+        # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
+        if config.pickle_protocol is not None:
+            protocol = config.pickle_protocol
+            warnings.warn(
+                "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
+            )
+        if isinstance(obj, Program):
+            obj.desc.flush()
+            with open(path, "wb") as f:
+                f.write(obj.desc.serialize_to_string())
+        elif _use_legacy(obj):
+            if in_dygraph_mode():
+                _legacy_save(obj, path, protocol)
+            else:
+                _legacy_static_save(obj, path, protocol)
+        else:
+            # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
+            if config.pickle_protocol is not None:
+                protocol = config.pickle_protocol
+                warnings.warn(
+                    "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
+                )
+
+            if _use_legacy(obj):
+                if in_dygraph_mode():
+                    _legacy_save(obj, path, protocol)
+                else:
+                    _legacy_static_save(obj, path, protocol)
+            else:
+                # save single variable
+                with open(path, 'wb') as f:
+                    _pickle_save(obj, f, protocol)
 
 
 def _legacy_save(obj, path, protocol=2):
@@ -675,11 +733,26 @@ def load(path, **configs):
                         raise NotImplementedError(
                             'Only support tensor and state_dict, but received {}.'.
                             format(type(load_result)))
-        except exception_type:
-            with open(path, "rb") as f:
-                program_desc_str = f.read()
-                program = Program.parse_from_string(program_desc_str)
-                return program
+
+        except exception_type as msg_pickle:
+            try:
+                tensor, _ = _load_selected_rows(path)
+                return tensor
+            except:
+                try:
+                    tensor, _ = _load_lod_tensor(path)
+                    return tensor
+                except:
+                    try:
+                        with open(path, "rb") as f:
+                            program_desc_str = f.read()
+                            program = Program.parse_from_string(
+                                program_desc_str)
+                            return program
+                    except:
+                        raise ValueError(
+                            "`paddle.load` can not parse the file:{}.".format(
+                                path))
 
     else:
         load_result = _legacy_load(path, **configs)

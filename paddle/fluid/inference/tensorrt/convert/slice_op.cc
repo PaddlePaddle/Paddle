@@ -44,15 +44,6 @@ class SliceOpConverter : public OpConverter {
     std::vector<int> ends =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
 
-    PADDLE_ENFORCE_EQ(
-        starts.size(), axes.size(),
-        platform::errors::InvalidArgument(
-            "The size of starts must be equal to the size of axes."));
-    PADDLE_ENFORCE_EQ(
-        ends.size(), axes.size(),
-        platform::errors::InvalidArgument(
-            "The size of ends must be equal to the size of axes."));
-
     auto input_dims = input->getDimensions();
     if (!engine_->with_dynamic_shape()) {
       // notice that input shape is [CHW] without batch axis when input has
@@ -62,10 +53,6 @@ class SliceOpConverter : public OpConverter {
       }
       input_dims.d[0] = 1;  // fake batchsize, not useful here
       for (size_t i = 0; i < axes.size(); i++) {
-        // split on batch is not supported in TensorRT
-        PADDLE_ENFORCE_NE(axes[i], 0, platform::errors::InvalidArgument(
-                                          "Invalid slice axis. Slice on batch "
-                                          "axis is not supported in TensorRT"));
         if (starts[i] < 0) {
           starts[i] = std::max(starts[i] + input_dims.d[axes[i]], 0);
         }
