@@ -50,6 +50,7 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<Tensor>("X");
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
 
     // step1: Unsqueeze index
     framework::Tensor tmp_tensor(index->type());
@@ -66,7 +67,7 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     // step2: ZerosLike x in device
-    Tensor zeroslike_xout(x->type());
+    Tensor zeroslike_xout(dx->type());
     zeroslike_xout.Resize(x->dims());
     auto p = zeroslike_xout.mutable_data<T>(ctx.GetPlace());
 
@@ -74,7 +75,6 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
                              zeroslike_xout.numel() * sizeof(T), stream);
 
     // step3: scatter(x_grad)
-    dx->mutable_data<T>(ctx.GetPlace());
     auto runner_scatter = NpuOpRunner(
         "TensorScatterUpdate", {zeroslike_xout, *index, *dout}, {*dx}, {});
     runner_scatter.Run(stream);

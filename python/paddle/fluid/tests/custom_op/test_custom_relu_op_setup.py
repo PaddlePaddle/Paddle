@@ -142,7 +142,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             cmd = 'cd /d {} && python custom_relu_setup.py install'.format(
                 cur_dir)
         else:
-            cmd = 'cd {} && python custom_relu_setup.py install'.format(cur_dir)
+            cmd = 'cd {} && {} custom_relu_setup.py install'.format(
+                cur_dir, sys.executable)
         run_cmd(cmd)
 
         # NOTE(Aurelius84): Normally, it's no need to add following codes for users.

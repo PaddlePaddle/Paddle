@@ -80,8 +80,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       default_scale.mutable_data<T>(framework::make_ddim(axes), place);
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
-      TensorFromVector(std::vector<T>{static_cast<T>(1.0)},
-                       ctx.device_context(), &value);
+      FillNpuTensorWithConstant<T>(&value, static_cast<T>(1.0));
       auto runner =
           NpuOpRunner("FillD", {value}, {default_scale}, {{"dims", axes}});
       runner.Run(stream);
@@ -95,8 +94,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       default_bias.mutable_data<T>(framework::make_ddim(axes), place);
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
-      TensorFromVector(std::vector<T>{static_cast<T>(0)}, ctx.device_context(),
-                       &value);
+      FillNpuTensorWithConstant<T>(&value, static_cast<T>(0));
       auto runner =
           NpuOpRunner("FillD", {value}, {default_bias}, {{"dims", axes}});
       runner.Run(stream);
@@ -251,8 +249,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       default_scale.mutable_data<T>(framework::make_ddim(axes), place);
       Tensor value(x->type());
       value.mutable_data<T>({1}, place);
-      TensorFromVector(std::vector<T>{static_cast<T>(1.0)},
-                       ctx.device_context(), &value);
+      FillNpuTensorWithConstant<T>(&value, static_cast<T>(1.0));
       auto runner =
           NpuOpRunner("FillD", {value}, {default_scale}, {{"dims", axes}});
       runner.Run(stream);

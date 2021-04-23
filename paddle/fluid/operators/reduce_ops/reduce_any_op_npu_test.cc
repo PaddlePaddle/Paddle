@@ -78,6 +78,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(reduce_any, NPU) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<bool>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<bool>(&scope, *ctx);
 }
