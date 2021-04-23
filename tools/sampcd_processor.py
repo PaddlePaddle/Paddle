@@ -253,7 +253,7 @@ def execute_samplecode_test(tfname):
 
     # msg is the returned code execution report
 
-    return result,tfname, msg
+    return result, tfname, msg
 
 
 def single_defcom_extract(start_from, srcls, is_class_begin=False):
