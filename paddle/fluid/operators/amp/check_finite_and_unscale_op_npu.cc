@@ -98,10 +98,6 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
         auto runner_matmul =
             NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
         runner_matmul.Run(stream);
-      } else {
-        // ZerosLike
-        auto runner_zeroslike = NpuOpRunner("ZerosLike", {*x}, {*out}, {});
-        runner_zeroslike.Run(stream);
       }
     }
 
@@ -111,11 +107,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     found_inf_tensor.Resize({1});
     bool* is_found_inf =
         found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
-    if (found_inf_data) {
-      *is_found_inf = true;
-    } else {
-      *is_found_inf = false;
-    }
+    *is_found_inf = found_inf_data;
 
     framework::TensorCopy(
         found_inf_tensor, ctx.GetPlace(),

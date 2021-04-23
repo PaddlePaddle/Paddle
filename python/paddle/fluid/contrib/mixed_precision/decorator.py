@@ -29,6 +29,7 @@ from .amp_nn import check_finite_and_unscale
 from .amp_nn import update_loss_scaling
 import types
 import warnings
+import paddle
 
 __all__ = ["decorate"]
 
