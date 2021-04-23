@@ -196,11 +196,9 @@ class FcOpConverter : public OpConverter {
       // add shuffle after fc
       nvinfer1::Dims reshape_after_fc_dim;
       reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
-      for (int i = 0; i < x_num_col_dims; i++) {
+      for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
         reshape_after_fc_dim.d[i] = 0;
       }
-      auto dim = fc_layer->getOutput(0)->getDimensions();
-      reshape_after_fc_dim.d[x_num_col_dims] = dim.d[x_num_col_dims];
 
       auto* reshape_after_fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
