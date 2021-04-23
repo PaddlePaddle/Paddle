@@ -265,7 +265,7 @@ class TestTensorRegisterHook(unittest.TestCase):
                 base_grad = np.array([5., 9., 13., 19.])
                 # x.grad is changed by x.hook
                 self.assertTrue(
-                    np.array_equal(x.grad, base_grad * 2
+                    np.array_equal(x.grad.numpy(), base_grad * 2
                                    if not removed else base_grad))
 
         # register hook

@@ -50,7 +50,8 @@ class TestPyLayer(unittest.TestCase):
         z2 = paddle.tanh(input2) + paddle.tanh(input2)
         z2.mean().backward()
 
-        self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
+        self.assertTrue(
+            np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10)
 
     def test_simple_pylayer_single_output(self):
         class tanh(PyLayer):
@@ -76,7 +77,8 @@ class TestPyLayer(unittest.TestCase):
         z2 = paddle.tanh(input2)
         z2.mean().backward()
 
-        self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
+        self.assertTrue(
+            np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10)
 
     def test_pylayer_dtype(self):
         class tanh(PyLayer):
