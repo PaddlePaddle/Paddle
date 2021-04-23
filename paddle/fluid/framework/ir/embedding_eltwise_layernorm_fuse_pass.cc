@@ -290,15 +290,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
       ids.push_back(inner_pattern_ins[js[iter]].first->Name());
       embs.push_back(inner_pattern_ins[js[iter]].second->Name());
     }
-    PADDLE_ENFORCE_EQ(ids.size(), 3, platform::errors::InvalidArgument(
-                                         "fused_embedding_eltwise_layernorm "
-                                         "should have 3 inputs, but got %d",
-                                         ids.size()));
-    PADDLE_ENFORCE_EQ(embs.size(), 3,
-                      platform::errors::InvalidArgument(
-                          "fused_embedding_eltwise_layernorm should have 3 "
-                          "embeddings, but got %d",
-                          embs.size()));
+
     OpDesc new_op_desc;
     new_op_desc.SetType("fused_embedding_eltwise_layernorm");
     new_op_desc.SetInput("Ids", ids);

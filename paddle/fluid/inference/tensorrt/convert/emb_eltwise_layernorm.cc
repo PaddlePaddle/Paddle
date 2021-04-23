@@ -106,6 +106,13 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           output_fp16 = 1;
         }
         PADDLE_ENFORCE_EQ(
+            input_num, 3,
+            platform::errors::InvalidArgument(
+                "When using oss and var-len, embedding_eltwise_layernorm op"
+                "should have 3 inputs only, but got %d.",
+                input_num));
+
+        PADDLE_ENFORCE_EQ(
             output_fp16, 1,
             platform::errors::InvalidArgument(
                 "Only Precision::KHalf(fp16) is supported when infering "
