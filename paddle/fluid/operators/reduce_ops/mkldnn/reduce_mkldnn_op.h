@@ -22,6 +22,28 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using platform::to_void_cast;
 
+  inline std::vector<int64_t> CalculateReducedDims(const Tensor* input,
+                                           const Tensor* output,
+                                           std::vector<int>& reduce_dims,
+                                           bool reduce_all,
+                                           bool keep_dim) {
+    if (keep_dim) return framework::vectorize(output->dims());
+
+    if (reduce_all)
+      return std::vector<int64_t>(framework::vectorize(input->dims()).size(),
+                                  1);
+
+    std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
+    for (size_t i = 0; i < reduce_dims.size(); ++i) {
+      reduce_dims[i] = (reduce_dims[i] >= 0)
+                           ? reduce_dims[i]
+                           : input->dims().size() + reduce_dims[i];
+      output_dims[reduce_dims[i]] = 1;
+    }
+
+    return output_dims;
+  }
+
 template <typename T>
 class ReduceMKLDNNKernel : public framework::OpKernel<T> {
  public:
@@ -38,8 +60,8 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
 
-    std::vector<int64_t> output_dims =
-        CalculateOutputDims(input, output, reduce_dims, reduce_all, keep_dim);
+    auto output_dims =
+        CalculateReducedDims(input, output, reduce_dims, reduce_all, keep_dim);
 
     auto input_dims = framework::vectorize(input->dims());
 
@@ -97,29 +119,6 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
               paddle::framework::vectorize<int64_t>(output->dims()))));
     }
   }
-
- private:
-  std::vector<int64_t> CalculateOutputDims(const Tensor* input,
-                                           const Tensor* output,
-                                           std::vector<int>& reduce_dims,
-                                           bool reduce_all,
-                                           bool keep_dim) const {
-    if (keep_dim) return framework::vectorize(output->dims());
-
-    if (reduce_all)
-      return std::vector<int64_t>(framework::vectorize(input->dims()).size(),
-                                  1);
-
-    std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
-    for (size_t i = 0; i < reduce_dims.size(); ++i) {
-      reduce_dims[i] = (reduce_dims[i] >= 0)
-                           ? reduce_dims[i]
-                           : input->dims().size() + reduce_dims[i];
-      output_dims[reduce_dims[i]] = 1;
-    }
-
-    return output_dims;
-  }
 };
 
 template <typename T>
@@ -143,15 +142,22 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
                                 (std::to_string(static_cast<int>(reduction_type)))) + "@fwd_pd";
     std::shared_ptr<dnnl::reduction::primitive_desc> fwd_pd = std::static_pointer_cast<dnnl::reduction::primitive_desc>(
         dev_ctx.GetBlob(key_pd));
-    fwd_pd = fwd_pd;
+
+    PADDLE_ENFORCE_NOT_NULL(
+        fwd_pd, platform::errors::Unavailable(
+                     "Forward primitive descriptor is not available in %s op, cannot deduce memory format tag", ctx.Type()));
 
     const auto x_format_tag = platform::GetMKLDNNFormat(fwd_pd->src_desc());
 
-    auto input_dims = CalculateOutputDims(output_dx, input_dy, dims, reduce_all, keep_dim);
+    PADDLE_ENFORCE_NE(
+        x_format_tag, mkldnn::memory::format_tag::undef,
+        platform::errors::InvalidArgument("Cannot deduce format tag for %s op", ctx.Type()));
 
     output_dx->mutable_data<T>(ctx.GetPlace());
     output_dx->set_format(x_format_tag);
     output_dx->set_layout(input_dy->layout());
+
+    auto input_dims = CalculateReducedDims(output_dx, input_dy, dims, reduce_all, keep_dim);
 
     platform::BroadcastDataMKLDNNHandler<T> handler(
         binary_type, dev_ctx, onednn_engine, ctx.GetPlace(), output_dx,
@@ -170,29 +176,6 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     binary_prim->execute(astream, args);
     astream.wait();
-  }
-
- protected:
-  std::vector<int64_t> CalculateOutputDims(const Tensor* input,
-                                           const Tensor* output,
-                                           std::vector<int>& reduce_dims,
-                                           bool reduce_all,
-                                           bool keep_dim) const {
-    if (keep_dim) return framework::vectorize(output->dims());
-
-    if (reduce_all)
-      return std::vector<int64_t>(framework::vectorize(input->dims()).size(),
-                                  1);
-
-    std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
-    for (size_t i = 0; i < reduce_dims.size(); ++i) {
-      reduce_dims[i] = (reduce_dims[i] >= 0)
-                           ? reduce_dims[i]
-                           : input->dims().size() + reduce_dims[i];
-      output_dims[reduce_dims[i]] = 1;
-    }
-
-    return output_dims;
   }
 };
 

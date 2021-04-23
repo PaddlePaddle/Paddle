@@ -571,18 +571,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
 
       if (dx_dims.size() > 5) return false;  // max 5D tensor is supported
 
-      if (ctx.Attr<bool>("reduce_all") ||
-          ((int)ctx.Attr<std::vector<int>>("dim").size() == dx_dims.size()))
-        return true;
-
-      auto dy_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-
-      // Subtensor must be on rightmost part of the bigger tensor
-      for (int i = 0; i < dy_dims.size(); ++i) {
-        if (dx_dims[dx_dims.size() - dy_dims.size() + i] != dy_dims[i]) {
-          return false;
-        }
-      }
       return true;
     };
     if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
