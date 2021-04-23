@@ -87,8 +87,8 @@ class TestModelParallel(TestDistRunnerBase):
         if dist_strategy:
             fleet.init(is_collective=True)
             strategy = fleet.DistributedStrategy()
-            strategy.model_parallel = True
-            strategy.model_parallel_configs = {'mp_degree': 2}
+            strategy.tensor_parallel = True
+            strategy.tensor_parallel_configs = {'tensor_parallel_degree': 2}
 
         rank = fleet.worker_index() if dist_strategy else None
         avg_cost = create_model(data_in, rank)
