@@ -22,9 +22,6 @@ include(system)
 
 project(paddle CXX C)
 
-include(init)
-include(generic)            # simplify cmake module
-
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
@@ -38,6 +35,10 @@ option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
+# Note(zhouwei): It use option above, so put here
+include(init)
+include(generic)            # simplify cmake module
+
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
 endif()
@@ -104,8 +105,10 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
-    # NOTE(Avin0323): Less parallel count result in faster compilation.
-    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
+    # NOTE(zhouwei25): temporarily change MP to 1 for reducing CPU & memory utilization
+    set(PROCESS_MAX 1)
+    #math(EXPR PROCESS_MAX "${CPU_CORES} * 1 / 2")
+
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -133,6 +136,9 @@ if(WIN32)
 
     foreach(flag_var CMAKE_SHARED_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_LINKER_FLAGS)
         set(${flag_var} "${${flag_var}} /ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
+        if(MSVC_STATIC_CRT)
+            set(${flag_var} "${${flag_var}} /NODEFAULTLIB:MSVCRT.LIB")
+        endif()
     endforeach(flag_var)
 
     if (WITH_WIN_DUMP_DBG)
