@@ -104,6 +104,23 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
+size_t NPUPinnedMaxAllocSize() {
+  // For distributed systems, it requires configuring and limiting
+  // the fraction of memory to use.
+  return FLAGS_fraction_of_cuda_pinned_memory_to_use * CpuTotalPhysicalMemory();
+}
+
+size_t NPUPinnedMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 64 KB.
+  return 1 << 16;
+}
+
+size_t NPUPinnedMaxChunkSize() {
+  // Allow to allocate the maximum chunk size is roughly 1/256 of NPU_PINNED
+  // memory.
+  return NPUPinnedMaxAllocSize() / 256;
+}
+
 #ifdef PADDLE_WITH_XBYAK
 static Xbyak::util::Cpu cpu;
 bool MayIUse(const cpu_isa_t cpu_isa) {

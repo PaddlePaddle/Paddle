@@ -27,10 +27,12 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
+#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
@@ -79,10 +81,11 @@ class AllocatorFacadePrivate {
         InitNaiveBestFitCUDAPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-        VLOG(3) << "npu num: " <<platform::GetNPUDeviceCount();
+        VLOG(3) << "npu num: " << platform::GetNPUDeviceCount();
         for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
         }
+        InitNaiveBestFitNPUPinnedAllocator();
 #endif
         break;
       }
@@ -142,7 +145,7 @@ class AllocatorFacadePrivate {
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
                                                           : allocators_)
                   : zero_size_allocators_);
-        VLOG(3) <<size;
+    VLOG(3) << size;
     auto iter = allocators.find(place);
     PADDLE_ENFORCE_NE(iter, allocators.end(),
                       platform::errors::NotFound(
@@ -207,6 +210,15 @@ class AllocatorFacadePrivate {
   void InitNaiveBestFitNPUAllocator(platform::NPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
+  //  void InitNaiveBestFitNPUPinnedAllocator() {
+  //    allocators_[platform::NPUPinnedPlace()] =
+  //        std::make_shared<paddle::memory::allocation::NPUPinnedAllocator>(platform::NPUPinnedPlace());
+  //  }
+  void InitNaiveBestFitNPUPinnedAllocator() {
+    allocators_[platform::NPUPinnedPlace()] =
+        std::make_shared<paddle::memory::allocation::NPUPinnedAllocator>();
+  }
+
 #endif
 
   class ZeroSizeAllocator : public Allocator {
@@ -304,6 +316,18 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Release(place);
+  //  if (platform::is_npu_pinned_place(place)) {
+  //    return static_cast<uint64_t>(0);
+  //  } else {
+  //    return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */
+  //    1)
+  //        ->Release(place);
+  //  }
+}
+
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const platform::Place& place) {
+  return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 
 }  // namespace allocation
