@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 #include <string>
-#include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -199,16 +198,16 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const framework::ProgramDesc &program,
-    const std::vector<framework::OperatorBase *> &while_ops,
-    const std::vector<framework::OperatorBase *> &while_grad_ops) {
+    const std::vector<OpVariant> &while_ops,
+    const std::vector<OpVariant> &while_grad_ops) {
   std::vector<OpVariant> fwd_ops, bwd_ops;
   fwd_ops.reserve(while_ops.size());
-  for (auto *op : while_ops) {
+  for (auto &op : while_ops) {
     fwd_ops.emplace_back(op);
   }
 
   bwd_ops.reserve(while_grad_ops.size());
-  for (auto *op : while_grad_ops) {
+  for (auto &op : while_grad_ops) {
     bwd_ops.emplace_back(op);
   }
 
