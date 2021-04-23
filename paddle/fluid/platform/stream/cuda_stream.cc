@@ -96,7 +96,7 @@ void CUDAStream::Wait() const {
   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
-CUDAStream& get_current_stream(int deviceId) {
+CUDAStream* get_current_stream(int deviceId) {
   if (deviceId == -1) {
     deviceId = platform::GetCurrentDeviceId();
   }
@@ -111,7 +111,7 @@ CUDAStream& get_current_stream(int deviceId) {
                     ->context()
                     ->Stream()
                     .get();
-  return *stream;
+  return stream;
 }
 
 }  // namespace stream

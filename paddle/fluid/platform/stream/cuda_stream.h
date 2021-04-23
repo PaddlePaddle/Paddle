@@ -124,7 +124,7 @@ class CUDAStream final {
 };
 
 #endif
-CUDAStream& get_current_stream(int deviceId);
+CUDAStream* get_current_stream(int deviceId);
 
 }  // namespace stream
 }  // namespace platform
