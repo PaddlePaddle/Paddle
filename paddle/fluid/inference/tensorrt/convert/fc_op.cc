@@ -160,6 +160,13 @@ class FcOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       // not NCHW layout, but NLP layout with added 'x 1 x 1'
       auto x_dim = X->getDimensions();
+      PADDLE_ENFORCE_LE(
+          x_dim.nbDims - x_num_col_dims, 3,
+          platform::errors::InvalidArgument(
+              "Params and input dims mismatch. Paddle-TRT FC "
+              "converter expects x_dim.nbDims - x_num_col_dims <= 3, but "
+              "x_dim.nbDims = %d, x_num_col_dims = %d.",
+              x_dim.nbDims, x_num_col_dims));
       auto output_name = op_desc.Output("Out").front();
       // add shuffle before fc
       nvinfer1::Dims reshape_before_fc_dim;
