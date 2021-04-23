@@ -50,7 +50,7 @@ class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):
                 dtype='float32',
                 append_batch_size=False)
             if rank == 0:
-                paddle.distributed.send(tindata, dst=0)
+                paddle.distributed.send(tindata, dst=1)
             else:
                 paddle.distributed.recv(tindata, src=0)
             return [tindata]

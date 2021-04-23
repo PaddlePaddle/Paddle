@@ -199,7 +199,8 @@ class TestDistBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-            "GLOG_v": "0",
+            "FLAGS_call_stack_level": "2",
+            "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
             "PADDLE_WITH_GLOO": with_gloo,
             "BACKEND": backend,
@@ -270,7 +271,7 @@ class TestDistBase(unittest.TestCase):
                 np.allclose(
                     result_data, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "sendrecv":
-            result_data = tr0_out[1]
+            result_data = tr1_out[0]
             self.assertTrue(
                 np.allclose(
                     input1, result_data, rtol=1e-05, atol=1e-05))
