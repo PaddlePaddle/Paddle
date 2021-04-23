@@ -1374,9 +1374,10 @@ def range(start, end, step, dtype, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    out_shape = None
     if not isinstance(start, Variable) and not isinstance(
             end, Variable) and not isinstance(step, Variable):
-        out_numel = math.ceil((end - start) / step)
+        out_shape = [math.ceil((end - start) / step)]
 
     if not isinstance(start, Variable):
         with device_guard("cpu"):
@@ -1402,7 +1403,7 @@ def range(start, end, step, dtype, name=None):
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
     helper = LayerHelper('range', **locals())
-    out = helper.create_variable_for_type_inference(dtype, shape=[out_numel])
+    out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
     helper.append_op(
         type='range',
         inputs={'Start': start,
