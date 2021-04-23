@@ -19,7 +19,7 @@ import shutil
 import zipfile
 from paddle.utils.download import get_path_from_url
 
-MASTER_BRANCH = 'main'
+MAIN_BRANCH = 'main'
 DEFAULT_CACHE_DIR = '~/.cache'
 VAR_DEPENDENCY = 'dependencies'
 MODULE_HUBCONF = 'hubconf.py'
@@ -34,6 +34,14 @@ def _remove_if_exists(path):
             shutil.rmtree(path)
 
 
+def _import_module(name, repo_dir):
+    sys.path.insert(0, repo_dir)
+    hub_module = __import__(name)
+    sys.modules.pop(name)
+    sys.path.remove(repo_dir)
+    return hub_module
+
+
 def _git_archive_link(repo_owner, repo_name, branch, source):
     if source == 'github':
         return 'https://github.com/{}/{}/archive/{}.zip'.format(
@@ -44,7 +52,7 @@ def _git_archive_link(repo_owner, repo_name, branch, source):
 
 
 def _parse_repo_info(github):
-    branch = MASTER_BRANCH
+    branch = MAIN_BRANCH
     if ':' in github:
         repo_info, branch = github.split(':')
     else:
@@ -57,7 +65,7 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
     # Setup hub_dir to save downloaded files
     hub_dir = HUB_DIR
     if not os.path.exists(hub_dir):
-        os.makedirs(hub_dir)
+        os.makedirs(hub_dir, exist_ok=True)
     # Parse github/gitee repo information
     repo_owner, repo_name, branch = _parse_repo_info(repo)
     # Github allows branch name with slash '/',
@@ -110,7 +118,7 @@ def _load_entry_from_hubconf(m, name):
     func = getattr(m, name, None)
 
     if func is None or not callable(func):
-        raise RuntimeError('Canot find callable {} in hubconf'.format(name))
+        raise RuntimeError('Cannot find callable {} in hubconf'.format(name))
 
     return func
 
@@ -142,7 +150,7 @@ def list(repo_dir, source='github', force_reload=False):
     Args:
         repo_dir(str): github or local path
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `master` if not specified.
+                tag/branch. The default branch is `main` if not specified.
             local path (str): local repo path
         source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
@@ -153,7 +161,7 @@ def list(repo_dir, source='github', force_reload=False):
         ```python
         import paddle
 
-        paddle.hub.help('lyuwenyu/paddlehub_demo:main', source='github', force_reload=False)
+        paddle.hub.list('lyuwenyu/paddlehub_demo:main', source='github', force_reload=False)
 
         ```
     """
@@ -166,9 +174,7 @@ def list(repo_dir, source='github', force_reload=False):
         repo_dir = _get_cache_or_reload(
             repo_dir, force_reload, True, source=source)
 
-    sys.path.insert(0, repo_dir)
-    hub_module = __import__(MODULE_HUBCONF.split('.')[0])
-    sys.path.remove(repo_dir)
+    hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
     entrypoints = [
         f for f in dir(hub_module)
@@ -185,7 +191,7 @@ def help(repo_dir, model, source='github', force_reload=False):
     Args:
         repo_dir(str): github or local path
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `master` if not specified.
+                tag/branch. The default branch is `main` if not specified.
             local path (str): local repo path
         model (str): model name
         source (str): `github` | `gitee` | `local`, default is `github`
@@ -209,9 +215,7 @@ def help(repo_dir, model, source='github', force_reload=False):
         repo_dir = _get_cache_or_reload(
             repo_dir, force_reload, True, source=source)
 
-    sys.path.insert(0, repo_dir)
-    hub_module = __import__(MODULE_HUBCONF.split('.')[0])
-    sys.path.remove(repo_dir)
+    hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
     entry = _load_entry_from_hubconf(hub_module, model)
 
@@ -225,9 +229,9 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     Args:
         repo_dir(str): github or local path
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `master` if not specified.
+                tag/branch. The default branch is `main` if not specified.
             local path (str): local repo path
-        mdoel (str): model name
+        model (str): model name
         source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional), default is `False`
         **kwargs: parameters using for model
@@ -248,9 +252,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
         repo_dir = _get_cache_or_reload(
             repo_dir, force_reload, True, source=source)
 
-    sys.path.insert(0, repo_dir)
-    hub_module = __import__(MODULE_HUBCONF.split('.')[0])
-    sys.path.remove(repo_dir)
+    hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
     _check_dependencies(hub_module)
 
