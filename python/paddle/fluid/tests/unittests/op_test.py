@@ -1171,7 +1171,9 @@ class OpTest(unittest.TestCase):
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
 
-                if actual_t.dtype == np.uint16 and expect_t.dtype == np.float32:
+                if actual_t.dtype == np.uint16 and expect_t.dtype in [
+                        np.float32, np.float64
+                ]:
                     actual_t = convert_uint16_to_float(actual_t)
                     atol = 0.03
 
@@ -1449,9 +1451,18 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
+        # FIXME: Replace numeric_place with place to calculate numeric_grads.
+        # NOTE(liym27): There is an unknown error when call op.run() on NPUPlace, which
+        # needs to be fixed.
+        if hasattr(self.__class__,
+                   "use_npu") and self.__class__.use_npu == True:
+            numeric_place = paddle.CPUPlace()
+        else:
+            numeric_place = place
+
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
-                place,
+                numeric_place,
                 self.scope,
                 self.op,
                 self.inputs,

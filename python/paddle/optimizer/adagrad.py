@@ -17,8 +17,6 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
-__all__ = ["Adagrad"]
-
 
 class Adagrad(Optimizer):
     r"""

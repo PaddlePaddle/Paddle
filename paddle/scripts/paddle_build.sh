@@ -227,7 +227,6 @@ function cmake_base() {
     fi
 
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
-    grpc_flag="OFF"
     gloo_flag=${distibuted_flag}
 
     cat <<EOF
@@ -238,7 +237,6 @@ function cmake_base() {
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
-        -DWITH_RCCL=${WITH_RCCL:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -250,13 +248,11 @@ function cmake_base() {
         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_GRPC=${grpc_flag}
         -DWITH_PSCORE=${distibuted_flag}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
@@ -264,6 +260,7 @@ function cmake_base() {
         -DLITE_GIT_TAG=release/v2.8
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_STRIP=${WITH_STRIP:-ON}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -276,7 +273,6 @@ EOF
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
-        -DWITH_RCCL=${WITH_RCCL:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -294,7 +290,6 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_GRPC=${grpc_flag} \
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=release/v2.8 \
@@ -302,6 +297,7 @@ EOF
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -523,8 +519,7 @@ function run_brpc_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [[ ${WITH_TESTING:-ON} == "ON" \
-        && ${WITH_DISTRIBUTE:-OFF} == "ON" \
-        && ${WITH_GRPC:-OFF} == "OFF" ]] ; then
+        && ${WITH_DISTRIBUTE:-OFF} == "ON" ]] ; then
     cat <<EOF
     ========================================
     Running brpc unit tests ...
@@ -609,7 +604,7 @@ EOF
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
-            nightly_label=""
+            nightly_label="(NIGHTLY_LABEL)"
         else
             nightly_label="(RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
             echo "========================================="
@@ -687,28 +682,23 @@ EOF
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         paddle version
         # Recovery proxy to avoid failure in later steps
-        set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
         if [ "$mactest_error" != 0 ];then
             show_ut_retry_result
         fi
-        set -x
     fi
 }
 
 function get_precision_ut_mac() {
     on_precision=0
-    set -x
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precison_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then
-            set +x
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
-            set -x
         fi
     fi
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
@@ -850,7 +840,7 @@ function check_approvals_of_unittest() {
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
-                exit 1
+                exit 6
             fi
         fi
     fi
@@ -1830,6 +1820,10 @@ function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
 }
 
+function test_model_benchmark() {
+    bash ${PADDLE_ROOT}/tools/test_model_benchmark.sh
+}
+
 function summary_check_problems() {
     set +x
     local check_style_code=$1
@@ -2023,6 +2017,9 @@ function main() {
         ;;
       test_op_benchmark)
         test_op_benchmark
+        ;;
+      test_model_benchmark)
+        test_model_benchmark
         ;;
       *)
         print_usage

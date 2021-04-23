@@ -39,6 +39,21 @@ __all__ = [
     'switch_case',
     'while_loop',
     'sparse_embedding',
+    'sequence_conv',
+    'sequence_softmax',
+    'sequence_pool',
+    'sequence_concat',
+    'sequence_first_step',
+    'sequence_last_step',
+    'sequence_slice',
+    'sequence_expand',
+    'sequence_expand_as',
+    'sequence_pad',
+    'sequence_unpad',
+    'sequence_reshape',
+    'sequence_scatter',
+    'sequence_enumerate',
+    'sequence_reverse',
 ]
 
 from .common import fc  #DEFINE_ALIAS
@@ -69,3 +84,19 @@ from ...fluid.layers import while_loop  #DEFINE_ALIAS
 
 from ...fluid.input import embedding  #DEFINE_ALIAS
 from ...fluid.contrib.layers import sparse_embedding  #DEFINE_ALIAS
+
+from ...fluid.layers.sequence_lod import sequence_conv
+from ...fluid.layers.sequence_lod import sequence_softmax
+from ...fluid.layers.sequence_lod import sequence_pool
+from ...fluid.layers.sequence_lod import sequence_concat
+from ...fluid.layers.sequence_lod import sequence_first_step
+from ...fluid.layers.sequence_lod import sequence_last_step
+from ...fluid.layers.sequence_lod import sequence_slice
+from ...fluid.layers.sequence_lod import sequence_expand
+from ...fluid.layers.sequence_lod import sequence_expand_as
+from ...fluid.layers.sequence_lod import sequence_pad
+from ...fluid.layers.sequence_lod import sequence_unpad
+from ...fluid.layers.sequence_lod import sequence_reshape
+from ...fluid.layers.sequence_lod import sequence_scatter
+from ...fluid.layers.sequence_lod import sequence_enumerate
+from ...fluid.layers.sequence_lod import sequence_reverse
