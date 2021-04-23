@@ -20,40 +20,29 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
-int GetVectorizedSizeImpl(T *pointer) {
-  uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec4 = std::alignment_of<CudaAlignedVector<T, 4>>::value;
-  constexpr int vec2 = std::alignment_of<CudaAlignedVector<T, 2>>::value;
-  if (sizeof(T) <= 16) {
-    constexpr int vec8 = std::alignment_of<CudaAlignedVector<T, 8>>::value;
-    if (address % vec8 == 0) return 8;
-  }
-  if (address % vec4 == 0) return 4;
-  if (address % vec2 == 0) return 2;
-  return 1;
-}
-
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename ArgT, typename loader_t, int N, int nDims>
-inline __device__ void ScalarizeKernelImpl(const loader_t &in_loaders, T *out,
+inline __device__ void ScalarizeKernelImpl(loader_t *in_loaders, T *out,
                                            int tid, int remain) {
   T args[N];
 #pragma unroll
   for (int i = 0; i < N; ++i) {
-    (in_loaders.s_loader[i])(in_loaders.data[i], &args[i], tid, remain);
+    printf("[%s %d]: tid = %d\n", __func__, __LINE__, tid);
+    (in_loaders->s_loader[i])(in_loaders->data[i], &args[i], tid, remain);
   }
   (*out) = args[0] + args[1];
 }
 
 template <typename T, typename ArgT, typename loader_t, int N, int nDims,
           int vec_size>
-inline __device__ void VectorizeKernelImpl(const loader_t &in_loaders, T *out,
+inline __device__ void VectorizeKernelImpl(loader_t *in_loaders, T *out,
                                            int tid, int loop) {
   ArgT args[N];
 #pragma unroll
   for (int i = 0; i < N; ++i) {
-    (in_loaders.v_loader[i])(in_loaders.data[i], &args[i], tid, loop);
+    printf("[%s %d]: in_loader_flag = %d\n", __func__, __LINE__,
+           in_loaders->init_flag);
+    (in_loaders->v_loader[i])(in_loaders->data[i], &args[i], tid, loop);
   }
 
   if (tid < loop) {
@@ -67,18 +56,19 @@ inline __device__ void VectorizeKernelImpl(const loader_t &in_loaders, T *out,
 }
 
 template <typename T, typename loader_t, int N, int vec_size, int nDims>
-__global__ void CommonElementwiseKernel(const loader_t &in_loaders, T *out,
-                                        int loop, int remain) {
+__global__ void CommonElementwiseKernel(loader_t *in_loaders, T *out, int loop,
+                                        int remain) {
   using ArgT = CudaAlignedVector<T, vec_size>;
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  printf("[tid=%d]\n", tid);
+  printf("[%s %d]: in_loader_flag = %d\n", __func__, __LINE__,
+         in_loaders->init_flag);
   VectorizeKernelImpl<T, ArgT, loader_t, N, nDims, vec_size>(in_loaders, out,
                                                              tid, loop);
   if (remain) {
     ScalarizeKernelImpl<T, T, loader_t, N, nDims>(in_loaders, out, tid, remain);
   }
 }
-#endif
+#endif  //  __NVCC__ || __HIPCC__
 
 template <typename T, typename OffsetT, int vec_size, int N>
 void CommonElementwiseCore(const framework::ExecutionContext &ctx,
@@ -99,40 +89,40 @@ void CommonElementwiseCore(const framework::ExecutionContext &ctx,
 
   switch (dim_size) {
     case 2: {
-      const auto loader =
+      static auto loader =
           TensorLoader<T, OffsetT, N, vec_size, 2>(ins, out, offset_pre);
       CommonElementwiseKernel<T, decltype(loader), N, vec_size,
                               2><<<blocks, threads, 0, stream>>>(
-          loader, out_data, loop, remain);
+          &loader, out_data, loop, remain);
       break;
     }
     case 3: {
-      const auto loader =
+      static auto loader =
           TensorLoader<T, OffsetT, N, vec_size, 3>(ins, out, offset_pre);
       CommonElementwiseKernel<T, decltype(loader), N, vec_size,
                               3><<<blocks, threads, 0, stream>>>(
-          loader, out_data, loop, remain);
+          &loader, out_data, loop, remain);
       break;
     }
     case 4: {
-      const auto loader =
+      static auto loader =
           TensorLoader<T, OffsetT, N, vec_size, 4>(ins, out, offset_pre);
       CommonElementwiseKernel<T, decltype(loader), N, vec_size,
                               4><<<blocks, threads, 0, stream>>>(
-          loader, out_data, loop, remain);
+          &loader, out_data, loop, remain);
       break;
     }
     case 5: {
-      const auto loader =
+      static auto loader =
           TensorLoader<T, OffsetT, N, vec_size, 5>(ins, out, offset_pre);
       CommonElementwiseKernel<T, decltype(loader), N, vec_size,
                               5><<<blocks, threads, 0, stream>>>(
-          loader, out_data, loop, remain);
+          &loader, out_data, loop, remain);
       break;
     }
     default: { ; }
   }
-#endif
+#endif  //  __NVCC__ || __HIPCC__
 }
 
 template <typename T, int vec_size = 1>
@@ -211,7 +201,7 @@ void BroadcastElementwise(const framework::ExecutionContext &ctx,
                                             : in_vec_size;
   }
   int vec_size = std::min(out_vec_size, in_vec_size);
-  constexpr vec_size = 1;
+  // constexpr int vec_size = 1;
 
   switch (vec_size) {
     case 8: {
