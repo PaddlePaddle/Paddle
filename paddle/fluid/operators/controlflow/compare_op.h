@@ -81,19 +81,14 @@ class CompareOpKernel
     auto* z = context.Output<Tensor>("Out");
     int axis = context.Attr<int>("axis");
 
-    if (x->numel() == 1 && y->numel() == 1) {
-      bool* z_data = z->mutable_data<bool>(context.GetPlace());
-      z_data[0] = Functor()(x->data<T>()[0], y->data<T>()[0]);
+    auto x_dims = x->dims();
+    auto y_dims = y->dims();
+    if (x_dims.size() >= y_dims.size()) {
+      ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
+                                                            Functor(), z);
     } else {
-      auto x_dims = x->dims();
-      auto y_dims = y->dims();
-      if (x_dims.size() >= y_dims.size()) {
-        ElementwiseComputeEx<Functor, platform::CPUDeviceContext, T, bool>(
-            context, x, y, axis, Functor(), z);
-      } else {
-        ElementwiseComputeEx<InverseFunctor, platform::CPUDeviceContext, T,
-                             bool>(context, x, y, axis, InverseFunctor(), z);
-      }
+      ElementwiseComputeEx<InverseFunctor, DeviceContext, T, bool>(
+          context, x, y, axis, InverseFunctor(), z);
     }
   }
 };
