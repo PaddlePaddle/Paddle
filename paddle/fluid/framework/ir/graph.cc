@@ -32,8 +32,7 @@ Graph::Graph(const ProgramDesc &program, int64_t start_op_index,
 }
 
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
-    const ProgramDesc &program, u_int64_t start_op_index,
-    u_int64_t end_op_index) {
+    const ProgramDesc &program, int64_t start_op_index, int64_t end_op_index) {
   VLOG(3) << "block in program:" << program_.Size();
   PADDLE_ENFORCE_GE(start_op_index, 0,
                     platform::errors::InvalidArgument(
