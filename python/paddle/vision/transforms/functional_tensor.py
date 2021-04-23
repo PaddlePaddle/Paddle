@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -240,13 +240,6 @@ def rotate(img,
     w, h = _get_image_size(img, data_format=data_format)
 
     img = img if data_format.lower() == 'chw' else img.transpose((0, 3, 1, 2))
-
-    # image center is (0, 0) in matrix
-    # translate = None
-    # if translate is None:
-    #     post_trans = [0, 0]
-    # else:
-    #     post_trans = translate
 
     post_trans = [0, 0]
 

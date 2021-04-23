@@ -304,6 +304,11 @@ class TestTransformsCV2(unittest.TestCase):
         str(transforms.Compose([transforms.Resize((224, 224))]))
 
 
+class TestTransformsPIL(TestTransformsCV2):
+    def get_backend(self):
+        return 'pil'
+
+
 class TestTransformsTensor(TestTransformsCV2):
     def get_backend(self):
         return 'tensor'
