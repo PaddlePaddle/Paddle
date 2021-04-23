@@ -63,7 +63,8 @@ class TestHub(unittest.TestCase):
             0.37345418
         ])
         np.testing.assert_equal(out.shape, [1, 8, 1, 1])
-        np.testing.assert_almost_equal(out.numpy(), gt.reshape(1, 8, 1, 1))
+        np.testing.assert_almost_equal(
+            out.numpy(), gt.reshape(1, 8, 1, 1), decimal=5)
 
     def testHelp(self, ):
         docs1 = hub.help(

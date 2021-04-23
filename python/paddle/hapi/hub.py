@@ -36,9 +36,15 @@ def _remove_if_exists(path):
 
 def _import_module(name, repo_dir):
     sys.path.insert(0, repo_dir)
-    hub_module = __import__(name)
-    sys.modules.pop(name)
+    try:
+        hub_module = __import__(name)
+        sys.modules.pop(name)
+    except ImportError:
+        print('Cannot import `{}`, please make sure `{}`.py in repo root dir'.
+              format(name, name))
+        sys.path.remove(repo_dir)
     sys.path.remove(repo_dir)
+
     return hub_module
 
 
