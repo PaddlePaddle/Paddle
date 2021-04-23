@@ -16,10 +16,12 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef __NVCC__
 #include <cuda.h>
@@ -73,7 +75,9 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
       SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
       same_dims_add(ctx, x, y, z);
     } else {
-      default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+      // default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+      auto dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+      LaunchBroadElementwiseCudaKernel<DeviceContext, T>(dev_ctx, x, y, z);
     }
   }
 };

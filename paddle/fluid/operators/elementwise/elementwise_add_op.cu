@@ -51,6 +51,20 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   }
 };
 
+// template <typename T>
+// struct BroadcastElemwiseAdd<platform::CUDADeviceContext, T> {
+//   void operator()(const framework::ExecutionContext& ctx,
+//                   const framework::Tensor* x, const framework::Tensor* y,
+//                   framework::Tensor* z) {
+//     std::vector<const framework::Tensor*> ins = {x, y};
+//     std::vector<framework::Tensor*> outs = {z};
+//     LaunchBroadElementwiseCudaKernel<T>(
+//         ctx.template device_context<platform::CUDADeviceContext>(), ins,
+//         &outs,
+//         CudaAddFunctor<T>());
+//   }
+// };
+
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
     const T* __restrict__ dout, int size, int vec_size, T* dx, T* dy) {
