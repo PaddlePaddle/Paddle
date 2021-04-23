@@ -35,7 +35,7 @@ class SegmentLayers(object):
         result = [0 for _ in range(num_parts + 1)]
         part_size = math.floor(num_items / num_parts)
         for i in range(num_parts):
-            result[i] = min(part_size * i, num_items)
+            result[i] = int(min(part_size * i, num_items))
         result[num_parts] = num_items
         return result
 
