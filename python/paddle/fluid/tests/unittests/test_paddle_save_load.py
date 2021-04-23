@@ -417,7 +417,7 @@ class TestSaveLoadAny(unittest.TestCase):
 
         self.assertTrue(
             np.array_equal(load_tensor3[0].numpy(), obj3[0].numpy()))
-        self.assertTrue(np.array_equal(load_tensor3[1], obj3[1]))
+        self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
 
         for k, v in state_dict.items():
             self.assertTrue(
@@ -466,7 +466,7 @@ class TestSaveLoadAny(unittest.TestCase):
 
         self.assertTrue(
             np.array_equal(np.array(load_tensor1[0]), obj1[0].numpy()))
-        self.assertTrue(np.array_equal(load_tensor1[1], obj1[1]))
+        self.assertTrue(np.array_equal(np.array(load_tensor1[1]), obj1[1]))
         self.assertTrue(np.array_equal(np.array(load_tensor1[2]), obj1[2][1]))
 
         for i in range(len(load_tensor1)):
@@ -481,7 +481,7 @@ class TestSaveLoadAny(unittest.TestCase):
             isinstance(load_tensor3[0], paddle.fluid.core.LoDTensor))
         self.assertTrue(
             np.array_equal(np.array(load_tensor3[0]), obj3[0].numpy()))
-        self.assertTrue(np.array_equal(load_tensor3[1], obj3[1]))
+        self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
 
         for k, v in state_dict.items():
             self.assertTrue(
@@ -588,9 +588,9 @@ class TestSaveLoadAny(unittest.TestCase):
             self.assertTrue(load_tensor2['epoch'] == 123)
 
             self.assertTrue(isinstance(load_tensor3[0], fluid.core.LoDTensor))
-            self.assertTrue(np.array_equal(load_tensor3[0], obj3[0]))
+            self.assertTrue(np.array_equal(np.array(load_tensor3[0]), obj3[0]))
             self.assertTrue(isinstance(load_tensor3[1], fluid.core.LoDTensor))
-            self.assertTrue(np.array_equal(load_tensor3[1], obj3[1]))
+            self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
 
             for k, v in state_dict.items():
                 self.assertTrue(
@@ -609,7 +609,7 @@ class TestSaveLoadAny(unittest.TestCase):
                         np.array(load_tensor3[2]["opt"][k]), np.array(v)))
 
             self.assertTrue(isinstance(load_tensor4[0], fluid.core.LoDTensor))
-            self.assertTrue(np.array_equal(load_tensor4[0], obj4[0]))
+            self.assertTrue(np.array_equal(np.array(load_tensor4[0]), obj4[0]))
 
             load_array1 = paddle.load(path1, return_numpy=True)
             load_array2 = paddle.load(path2, return_numpy=True)
@@ -649,8 +649,9 @@ class TestSaveLoadAny(unittest.TestCase):
             load_tensor3 = paddle.load(path3, return_numpy=False)
             load_tensor4 = paddle.load(path4, return_numpy=False)
 
-            self.assertTrue(np.array_equal(load_tensor1[0], np.array(obj1[0])))
-            self.assertTrue(np.array_equal(load_tensor1[1], obj1[1]))
+            self.assertTrue(
+                np.array_equal(np.array(load_tensor1[0]), np.array(obj1[0])))
+            self.assertTrue(np.array_equal(np.array(load_tensor1[1]), obj1[1]))
             self.assertTrue(np.array_equal(load_tensor1[2].numpy(), obj1[2][1]))
             for i in range(len(load_tensor1)):
                 self.assertTrue(
