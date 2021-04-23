@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -95,33 +96,22 @@ void CUDAStream::Wait() const {
   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
-// Thread-local current streams
-static thread_local CUDAStream** current_streams = nullptr;
-
-static int device_count = -1;
-
-void InitCudaStreamOnce() {
-  if (current_streams) {
-    return;
-  }
-
-  device_count = GetCUDADeviceCount();
-  current_streams = new CUDAStream*[device_count];
-  return;
-}
-
-CUDAStream* get_current_stream(int deviceId) {
-  InitCudaStreamOnce();
-
+CUDAStream& get_current_stream(int deviceId) {
   if (deviceId == -1) {
     deviceId = platform::GetCurrentDeviceId();
   }
 
-  if (!current_streams[deviceId]) {
-    platform::Place device = CUDAPlace(deviceId);
-    current_streams[deviceId] = new CUDAStream(device, Priority::kNormal);
-  }
-  return current_streams[device_count];
+  auto& pool = platform::DeviceContextPool::Instance();
+
+  platform::Place device = CUDAPlace(deviceId);
+
+  // platform::DeviceContext* dev_ctx = pool.Get(device);
+  // return dev_ctx->stream();
+  auto stream = static_cast<platform::CUDADeviceContext*>(pool.Get(device))
+                    ->context()
+                    ->Stream()
+                    .get();
+  return *stream;
 }
 
 }  // namespace stream
