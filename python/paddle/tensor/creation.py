@@ -68,6 +68,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     .. code-block:: python
 
         import paddle
+
+        print(not_defined_var)  # for test
                 
         type(paddle.to_tensor(1))
         # <class 'paddle.Tensor'>

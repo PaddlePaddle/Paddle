@@ -56,7 +56,6 @@
         }
     ],
     "wlist_temp_api":[
-        "to_tensor",
         "LRScheduler",
         "ReduceOnPlateau",
         "append_LARS",
