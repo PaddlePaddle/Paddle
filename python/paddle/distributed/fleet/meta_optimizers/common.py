@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 
 import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
@@ -77,6 +78,7 @@ class CollectiveHelper(object):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
+
         if rank == 0 and wait_port:
             wait_server_ready(other_endpoints)
 

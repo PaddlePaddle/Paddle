@@ -133,9 +133,9 @@ def init_communicator(program, rank, nranks, wait_port, current_endpoint,
         return
     other_endpoints = endpoints[:]
     other_endpoints.remove(current_endpoint)
+    block = program.global_block()
     if rank == 0 and wait_port:
         wait_server_ready(other_endpoints)
-    block = program.global_block()
     if core.is_compiled_with_cuda():
         nccl_id_var = block.create_var(
             name=fluid.unique_name.generate('nccl_id'),
