@@ -1112,6 +1112,63 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
 
 
+class TestJitSaveLoadFunction(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_static_function(self):
+        @paddle.jit.to_static
+        def fun(inputs):
+            return paddle.tanh(inputs)
+
+        path = 'test_jit_save_load_function_1/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(fun, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+    def test_jit_save_load_function_input_spec(self):
+        @paddle.jit.to_static(input_spec=[
+            InputSpec(
+                shape=[None, 6], dtype='float32', name='x'),
+        ])
+        def fun(inputs):
+            return paddle.nn.functional.relu(inputs)
+
+        path = 'test_jit_save_load_function_2/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(fun, path)
+        load_func = paddle.jit.load(path)
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+    def test_jit_save_load_function_function(self):
+        def fun(inputs):
+            return paddle.tanh(inputs)
+
+        path = 'test_jit_save_load_function_3/func'
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(
+            fun,
+            path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 6], dtype='float32', name='x'),
+            ])
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
 class TestJitSaveLoadDataParallel(unittest.TestCase):
     def verify_inference_correctness(self, layer, path):
         layer.eval()

@@ -1139,8 +1139,11 @@ class TranslatedLayer(layers.Layer):
         programs = _construct_program_holders(model_path, model_filename)
 
         # 2. load layer parameters & buffers
-        persistable_vars = _construct_params_and_buffers(model_path, programs,
-                                                         params_filename)
+        params_filename_path = os.path.join(model_path, params_filename)
+        persistable_vars = {}
+        if os.path.exists(params_filename_path):
+            persistable_vars = _construct_params_and_buffers(
+                model_path, programs, params_filename)
 
         # 3. construct TranslatedLayer object
         translated_layer = TranslatedLayer(programs, persistable_vars)
