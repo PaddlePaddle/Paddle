@@ -818,6 +818,7 @@ class TestSaveLoadLayer(unittest.TestCase):
     def test_save_load_layer(self):
         if six.PY2:
             return
+
         paddle.disable_static()
         inps = paddle.randn([1, IMAGE_SIZE], dtype='float32')
         layer1 = LinearNet()
