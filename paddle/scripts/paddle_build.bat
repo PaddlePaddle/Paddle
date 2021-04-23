@@ -372,6 +372,18 @@ set build_times=1
 :: reset clcache zero stats for collect PR's actual hit rate
 rem clcache.exe -z
 
+rem -------clean up environment again-----------
+taskkill /f /im MSBuild.exe 2>NUL
+taskkill /f /im cl.exe 2>NUL
+taskkill /f /im lib.exe 2>NUL
+taskkill /f /im link.exe 2>NUL
+taskkill /f /im vctip.exe 2>NUL
+taskkill /f /im cvtres.exe 2>NUL
+taskkill /f /im rc.exe 2>NUL
+wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="cvtres.exe" call terminate 2>NUL
+wmic process where name="rc.exe" call terminate 2>NUL
+
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
