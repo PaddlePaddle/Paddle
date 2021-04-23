@@ -938,7 +938,7 @@ class DistributedStrategy(object):
 
     @tensor_parallel_configs.setter
     @is_strict_auto
-    def model_parallel_configs(self, configs):
+    def tensor_parallel_configs(self, configs):
         check_configs_key(self.strategy.tensor_parallel_configs, configs,
                           "tensor_parallel_configs")
         assign_configs_value(self.strategy.tensor_parallel_configs, configs)
