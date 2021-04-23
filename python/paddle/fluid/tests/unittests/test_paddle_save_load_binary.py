@@ -164,7 +164,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             paddle.save({}, path, use_binary_format=True)
 
         with self.assertRaises(ValueError):
-            path = 'test_paddle_save_load_lodtensor_raise_ValueError/temp'
+            path = 'test_paddle_save_load_lodtensor_raise_ValueError_temp'
             with open(path, "w") as f:
                 f.write('\0')
             paddle.load(path)
