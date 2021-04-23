@@ -623,8 +623,8 @@ struct CudaSoftReluGradFunctor : public BaseCudaActiveFunctor<T> {
     CT dout = static_cast<CT>(args[0]);
     CT out = static_cast<CT>(args[1]);
     CT t = static_cast<CT>(threshold);
-    return (out <= -t || out >= t) ? static_cast<T>(0.0f)
-                                   : T(dout * (one - exp(-out)));
+    return (out > -t && out < t) ? T(dout * (one - exp(-out)))
+                                 : static_cast<T>(0.0f);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
@@ -804,6 +804,7 @@ struct CudaTanhShrinkGradFunctor : public BaseCudaActiveFunctor<T> {
 /********************HardShrink Begin********************/
 template <typename T>
 struct CudaHardShrinkFunctor : public BaseCudaActiveFunctor<T> {
+  T zero = static_cast<T>(0.0f);
   float threshold;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -813,14 +814,13 @@ struct CudaHardShrinkFunctor : public BaseCudaActiveFunctor<T> {
   __device__ __forceinline__ T operator()(const T* args) const {
     T x = args[0];
     T t = static_cast<T>(threshold);
-    T temp1 = static_cast<T>(x > t);
-    T temp2 = static_cast<T>(x < -t);
-    return x * (temp1 + temp2);
+    return (x > -t && x < t) ? zero : x;
   }
 };
 
 template <typename T>
 struct CudaHardShrinkGradFunctor : public BaseCudaActiveFunctor<T> {
+  T zero = static_cast<T>(0.0f);
   float threshold;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -830,9 +830,7 @@ struct CudaHardShrinkGradFunctor : public BaseCudaActiveFunctor<T> {
   __device__ __forceinline__ T operator()(const T* args) const {
     T x = args[1];
     T t = static_cast<T>(threshold);
-    T temp1 = static_cast<T>(x > t);
-    T temp2 = static_cast<T>(x < -t);
-    return args[0] * (temp1 + temp2);
+    return (x > -t && x < t) ? zero : args[0];
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -911,7 +909,7 @@ struct CudaSwishGradFunctor : public BaseCudaActiveFunctor<T> {
     CT b = static_cast<CT>(beta);
     CT temp1 = one / (one + exp(-b * x));
     CT out = x * temp1;
-    CT temp2 = temp1 * (one - b * x);
+    CT temp2 = temp1 * (one - b * out);
     return T(dout * (b * out + temp2));
   }
 
