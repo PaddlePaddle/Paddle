@@ -208,22 +208,24 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     details::ShareVarsIntoScope(input_vars, input_var_names, &scope);
     details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
-    auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
-    auto cache_key = framework::ExecutorInfoCache::CacheKey(
-        program, ctx.GetPlace(), start_op_index, end_op_index,
-        /*is_grad*/ false);
-    auto parallel_executor =
-        GetExecutorInfoFromCache(cache_key, &scope, output_var_names);
-    // TODO(Aurelius84): make it only call once
-    parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
+    if (end_op_index > start_op_index) {
+      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto cache_key = framework::ExecutorInfoCache::CacheKey(
+          program, ctx.GetPlace(), start_op_index, end_op_index,
+          /*is_grad*/ false);
+      auto parallel_executor =
+          GetExecutorInfoFromCache(cache_key, &scope, output_var_names);
+      // TODO(Aurelius84): make it only call once
+      parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
 
-    // Step 3. run ops
-    VLOG(3) << "start to call pe.Run()...";
-    auto skip_eager_vars = framework::details::ParseSafeEagerDeletionSkipVars(
-        *program, end_op_index, output_var_names);
-    parallel_executor->RunWithoutFetch(skip_eager_vars);
+      // Step 3. run ops
+      VLOG(3) << "start to call pe.Run()...";
+      auto skip_eager_vars = framework::details::ParseSafeEagerDeletionSkipVars(
+          *program, end_op_index, output_var_names);
+      parallel_executor->RunWithoutFetch(skip_eager_vars);
 
-    VLOG(3) << "successfully to call pe.Run()...";
+      VLOG(3) << "successfully to call pe.Run()...";
+    }
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
 
@@ -291,31 +293,34 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     auto &scope = *(global_inner_scope->kids().front());
 
-    // Step 2. prepare executor and scope
-    auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
-    auto cache_key = framework::ExecutorInfoCache::CacheKey(
-        program, ctx.GetPlace(), start_op_index, end_op_index,
-        /*is_grad*/ true);
-    auto parallel_executor =
-        GetExecutorInfoFromCache(cache_key, &scope, output_grad_var_names);
+    if (end_op_index > start_op_index) {
+      // Step 2. prepare executor and scope
+      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto cache_key = framework::ExecutorInfoCache::CacheKey(
+          program, ctx.GetPlace(), start_op_index, end_op_index,
+          /*is_grad*/ true);
+      auto parallel_executor =
+          GetExecutorInfoFromCache(cache_key, &scope, output_grad_var_names);
 
-    // TODO(Aurelius84): make it only call once
-    parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, output_grad_var_names);
+      // TODO(Aurelius84): make it only call once
+      parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0,
+                                         output_grad_var_names);
 
-    details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
-                                &scope);
-    // Debug info: scope info when run end
-    VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
+      details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
+                                  &scope);
+      // Debug info: scope info when run end
+      VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
-    std::vector<std::string> skip_eager_vars(input_grad_var_names);
-    framework::details::AppendSkipDeletionVars(param_grad_names,
-                                               &skip_eager_vars);
+      std::vector<std::string> skip_eager_vars(input_grad_var_names);
+      framework::details::AppendSkipDeletionVars(param_grad_names,
+                                                 &skip_eager_vars);
 
-    // Step 3. run ops
-    // TODO(Aurelius84): Skip fetch_tensor overhead and just run all ops.
-    VLOG(3) << "start to call pe.Run()...";
-    parallel_executor->RunWithoutFetch(/*skip_eager_vars*/ skip_eager_vars);
-    VLOG(3) << "successfully to call pe.Run()...";
+      // Step 3. run ops
+      // TODO(Aurelius84): Skip fetch_tensor overhead and just run all ops.
+      VLOG(3) << "start to call pe.Run()...";
+      parallel_executor->RunWithoutFetch(/*skip_eager_vars*/ skip_eager_vars);
+      VLOG(3) << "successfully to call pe.Run()...";
+    }
 
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);
