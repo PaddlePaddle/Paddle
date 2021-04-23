@@ -52,6 +52,40 @@ class TestPyLayer(unittest.TestCase):
 
         self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
 
+    def test_simple_pylayer_return_none_with_no_grad(self):
+        class tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x1, x2, func1, func2=paddle.square):
+                ctx.func = func2
+                y1 = func1(x1)
+                y2 = func1(x2)
+                ctx.save_for_backward(y1, y2)
+                return y1, y2
+
+            @staticmethod
+            def backward(ctx, dy1, dy2):
+                y1, y2 = ctx.saved_tensor()
+                re1 = dy1 * (1 - ctx.func(y1))
+                re2 = dy2 * (1 - paddle.square(y2))
+                return re1, None
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input2 = input1.detach().clone()
+        input3 = input1.detach().clone()
+        input4 = input1.detach().clone()
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+        input3.stop_gradient = True
+        input4.stop_gradient = True
+        z = tanh.apply(input1, input3, paddle.tanh, paddle.square)
+        z = z[0] + z[1]
+        z.mean().backward()
+
+        z2 = paddle.tanh(input2) + paddle.tanh(input4)
+        z2.mean().backward()
+
+        self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
+
     def test_simple_pylayer_single_output(self):
         class tanh(PyLayer):
             @staticmethod
