@@ -32,9 +32,11 @@ inline std::vector<int> get_new_shape(
   std::vector<int> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
-        platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
+    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
+                      platform::errors::InvalidArgument(
+                          "The shape of dimension tensor should be [1],"
+                          "but received d%.",
+                          tensor->dims()));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -795,16 +797,22 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale_w = scale_data[0];
-      PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
-                                               "scale  of Op(interpolate) "
-                                               "should be greater than 0."));
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
     } else {
       if (scale.size() > 0) {
         scale_w = scale[0];
 
-        PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
-                                                 "scale  of Op(interpolate) "
-                                                 "should be greater than 0."));
+        PADDLE_ENFORCE_EQ(
+            scale_w > 0, true,
+            platform::errors::InvalidArgument(
+                "The scale_w in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_w));
       }
     }
     if (scale_w > 0.) {
@@ -882,18 +890,34 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
         scale_w = scale_data[0];
       }
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
     } else {
       if (scale.size() > 1) {
         scale_h = scale[0];
         scale_w = scale[1];
 
         PADDLE_ENFORCE_EQ(
-            scale_w > 0 && scale_h > 0, true,
-            platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                              "should be greater than 0."));
+            scale_w > 0, true,
+            platform::errors::InvalidArgument(
+                "The scale_w in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_w));
+        PADDLE_ENFORCE_EQ(
+            scale_h > 0, true,
+            platform::errors::InvalidArgument(
+                "The scale_h in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_h));
       }
     }
     if (scale_h > 0. && scale_w > 0.) {
@@ -998,9 +1022,23 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
         scale_w = scale_data[0];
       }
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0 && scale_d, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
+      PADDLE_ENFORCE_EQ(
+          scale_d > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_d in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_d));
     } else {
       if (scale.size() > 1) {
         scale_d = scale[0];
@@ -1008,9 +1046,23 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
         scale_w = scale[2];
 
         PADDLE_ENFORCE_EQ(
-            scale_w > 0 && scale_h > 0 && scale_d, true,
-            platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                              "should be greater than 0."));
+            scale_w > 0, true,
+            platform::errors::InvalidArgument(
+                "The scale_w in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_w));
+        PADDLE_ENFORCE_EQ(
+            scale_h > 0, true,
+            platform::errors::InvalidArgument(
+                "The scale_h in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_h));
+        PADDLE_ENFORCE_EQ(
+            scale_d > 0, true,
+            platform::errors::InvalidArgument(
+                "The scale_d in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_d));
       }
     }
     if (scale_w > 0. && scale_h > 0. && scale_d > 0.) {
@@ -1102,15 +1154,21 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale_w = scale_data[0];
-    PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
-                                             "scale  of Op(interpolate) "
-                                             "should be greater than 0."));
+    PADDLE_ENFORCE_EQ(
+        scale_w > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+            "should be greater than 0, but received value is %d.",
+            scale_w));
   } else {
     if (scale.size() > 0) {
       scale_w = scale[0];
-      PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
-                                               "scale  of Op(interpolate) "
-                                               "should be greater than 0."));
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
     }
   }
   if (scale_w > 0.) {
@@ -1188,17 +1246,33 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
       scale_h = scale_data[0];
     }
     PADDLE_ENFORCE_EQ(
-        scale_w > 0 && scale_h > 0, true,
-        platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                          "should be greater than 0."));
+        scale_w > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+            "should be greater than 0, but received value is %d.",
+            scale_w));
+    PADDLE_ENFORCE_EQ(
+        scale_h > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+            "should be greater than 0, but received value is %d.",
+            scale_h));
   } else {
     if (scale.size() > 1) {
       scale_h = scale[0];
       scale_w = scale[1];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
     }
   }
   if (scale_h > 0. && scale_w > 0.) {
@@ -1301,18 +1375,46 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
       scale_w = scale_data[0];
     }
     PADDLE_ENFORCE_EQ(
-        scale_w > 0 && scale_h > 0 && scale_d > 0, true,
-        platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                          "should be greater than 0."));
+        scale_w > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+            "should be greater than 0, but received value is %d.",
+            scale_w));
+    PADDLE_ENFORCE_EQ(
+        scale_h > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+            "should be greater than 0, but received value is %d.",
+            scale_h));
+    PADDLE_ENFORCE_EQ(
+        scale_d > 0, true,
+        platform::errors::InvalidArgument(
+            "The scale_d in input 'Scale' Tensor of Operator(interpolate) "
+            "should be greater than 0, but received value is %d.",
+            scale_d));
   } else {
     if (scale.size() > 1) {
       scale_d = scale[0];
       scale_h = scale[1];
       scale_w = scale[2];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0 && scale_d > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
+      PADDLE_ENFORCE_EQ(
+          scale_d > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_d in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_d));
     }
   }
   if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {

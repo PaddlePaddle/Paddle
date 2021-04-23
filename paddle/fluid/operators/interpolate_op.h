@@ -32,9 +32,11 @@ inline std::vector<int> get_new_shape(
   std::vector<int> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
-        platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
+    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
+                      platform::errors::InvalidArgument(
+                          "The shape of dimension tensor should be [1],"
+                          "but received d%.",
+                          tensor->dims()));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);

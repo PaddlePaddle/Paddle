@@ -15,6 +15,7 @@
 from __future__ import print_function
 import os
 import sys
+import atexit
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepadde without -U option
@@ -71,7 +72,6 @@ from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
 from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
 from .incubate import fleet
-from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -255,3 +255,8 @@ def __bootstrap__():
 monkey_patch_variable()
 __bootstrap__()
 monkey_patch_varbase()
+
+# NOTE(zhiqiu): register npu_finalize on the exit of Python,
+# do some clean up manually.
+if core.is_compiled_with_npu():
+    atexit.register(core.npu_finalize)
