@@ -155,6 +155,13 @@ class TestAssignOApi(unittest.TestCase):
             paddle.assign(array, result1)
         self.assertTrue(np.allclose(result1.numpy(), array))
 
+    def test_assign_List(self):
+        paddle.disable_static()
+        l = [1, 2, 3]
+        result = paddle.assign(l)
+        self.assertTrue(np.allclose(result.numpy(), np.array(l)))
+        paddle.enable_static()
+
 
 class TestAssignOpErrorApi(unittest.TestCase):
     def test_errors(self):
