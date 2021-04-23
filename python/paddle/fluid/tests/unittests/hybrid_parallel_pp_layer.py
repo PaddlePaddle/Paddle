@@ -63,8 +63,10 @@ class AlexNet(Layer):
 
 class AlexNetPipe(AlexNet):
     def to_layers(self):
-        layers = [*self.features, lambda x: x.flatten(), self.classifier]
-        return layers
+        feat = [self.features[i] for i in range(len(self.features))]
+        loss_fn = [lambda x: x.flatten(), self.classifier]
+        feat.extend(loss_fn)
+        return feat
 
 
 class AlexNetPipeDesc(PipelineLayer):
