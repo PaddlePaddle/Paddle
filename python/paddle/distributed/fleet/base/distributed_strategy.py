@@ -892,9 +892,9 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.pipeline_configs, configs)
 
     @property
-    def model_parallel(self):
+    def tensor_parallel(self):
         """
-        Indicating whether we are using model parallel parallelism for distributed training.
+        Indicating whether we are using tensor parallel for distributed training.
 
         Examples:
 
@@ -902,27 +902,27 @@ class DistributedStrategy(object):
 
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
-            strategy.model_parallel = True
+            strategy.tensor_parallel = True
 
         """
-        return self.strategy.model_parallel
+        return self.strategy.tensor_parallel
 
-    @model_parallel.setter
+    @tensor_parallel.setter
     @is_strict_auto
-    def model_parallel(self, flag):
+    def tensor_parallel(self, flag):
         if isinstance(flag, bool):
-            self.strategy.model_parallel = flag
+            self.strategy.tensor_parallel = flag
         else:
-            print("WARNING: model_parallel should have value of bool type")
+            print("WARNING: tensor_parallel should have value of bool type")
 
     @property
-    def model_parallel_configs(self):
+    def tensor_parallel_configs(self):
         """
-        Set model_parallel parallelism configurations.
+        Set tensor_parallel configurations.
 
         **Notes**:
-            **Detailed arguments for model_parallel_configs**
-            **mp_degree**: degree of model parallel
+            **Detailed arguments for tensor_parallel_configs**
+            **tensor_parallel_degree**: degree of tensor parallel
 
         Examples:
 
@@ -930,18 +930,18 @@ class DistributedStrategy(object):
 
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
-            strategy.model_parallel = True
-            strategy.model_parallel_configs = {"mp_degree": 12}
+            strategy.tensor_parallel = True
+            strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4}
 
         """
-        return get_msg_dict(self.strategy.model_parallel_configs)
+        return get_msg_dict(self.strategy.tensor_parallel_configs)
 
-    @model_parallel_configs.setter
+    @tensor_parallel_configs.setter
     @is_strict_auto
     def model_parallel_configs(self, configs):
-        check_configs_key(self.strategy.model_parallel_configs, configs,
-                          "model_parallel_configs")
-        assign_configs_value(self.strategy.model_parallel_configs, configs)
+        check_configs_key(self.strategy.tensor_parallel_configs, configs,
+                          "tensor_parallel_configs")
+        assign_configs_value(self.strategy.tensor_parallel_configs, configs)
 
     @property
     def hybrid_configs(self):
