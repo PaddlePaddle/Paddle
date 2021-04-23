@@ -45,6 +45,7 @@ from paddle.framework.dtype import bool
 from paddle.framework.dtype import complex64
 from paddle.framework.dtype import complex128
 from .framework import VarBase as Tensor
+Tensor.__qualname__ = 'Tensor'
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
@@ -256,6 +257,7 @@ from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 
 from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
+from .framework import set_grad_enabled  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS

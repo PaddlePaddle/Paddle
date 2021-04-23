@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,22 @@
 # limitations under the License.
 
 from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
 
-from .distributed_reader import *
+from test_collective_base import TestDistBase
 
-__all__ = []
-__all__ += distributed_reader.__all__
+paddle.enable_static()
+
+
+class TestConcatOp(TestDistBase):
+    def _setup_config(self):
+        pass
+
+    def test_concat(self, col_type="concat"):
+        self.check_with_place("collective_concat_op.py", col_type)
+
+
+if __name__ == '__main__':
+    unittest.main()

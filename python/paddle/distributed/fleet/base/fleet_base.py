@@ -30,6 +30,7 @@ from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import ModelParallel
 from ..meta_optimizers import HybridParallelOptimizer
+from ..meta_optimizers import HybridParallelGradScaler
 
 
 def _inited_runtime_handler_(func):
@@ -1041,6 +1042,28 @@ class Fleet(object):
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
 
+    def _get_amp_optimizer(self):
+        # imitate target optimizer retrieval
+        amp_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'amp_init'):
+                amp_optimizer = optimizer
+                break
+
+        if amp_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'amp_init'):
+                amp_optimizer = self.user_defined_optimizer
+
+        assert amp_optimizer is not None, \
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        return amp_optimizer
+
+    def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
+        amp_optimizer = self._get_amp_optimizer()
+        return amp_optimizer.get_loss_scaling()
+
     def amp_init(self,
                  place,
                  scope=None,
@@ -1101,21 +1124,7 @@ class Fleet(object):
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                     run_example_code()       
         """
-
-        # imitate target optimizer retrieval
-        amp_optimizer = None
-        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
-            if hasattr(optimizer, 'amp_init'):
-                amp_optimizer = optimizer
-                break
-
-        if amp_optimizer is None:
-            if hasattr(self.user_defined_optimizer, 'amp_init'):
-                amp_optimizer = self.user_defined_optimizer
-
-        assert amp_optimizer is not None, \
-            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
-
+        amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
     def _final_strategy(self):
@@ -1327,3 +1336,7 @@ class Fleet(object):
         fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads
+
+    @dygraph_only
+    def distributed_scaler(self, scaler):
+        return HybridParallelGradScaler(scaler, self._hcg)

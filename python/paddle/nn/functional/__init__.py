@@ -58,6 +58,7 @@ from .activation import tanh_  #DEFINE_ALIAS
 from .activation import tanhshrink  #DEFINE_ALIAS
 from .activation import thresholded_relu  #DEFINE_ALIAS
 from .activation import log_softmax  #DEFINE_ALIAS
+from .activation import glu  #DEFINE_ALIAS
 from .common import dropout  #DEFINE_ALIAS
 from .common import dropout2d  #DEFINE_ALIAS
 from .common import dropout3d  #DEFINE_ALIAS
@@ -97,6 +98,7 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import temporal_shift  #DEFINE_ALIAS
 # from .extension import warpctc  #DEFINE_ALIAS
 from .extension import diag_embed  #DEFINE_ALIAS
+from .extension import sequence_mask
 # from .lod import sequence_concat        #DEFINE_ALIAS
 # from .lod import sequence_conv        #DEFINE_ALIAS
 # from .lod import sequence_enumerate        #DEFINE_ALIAS

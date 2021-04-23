@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +13,22 @@
 # limitations under the License.
 
 from __future__ import print_function
-from . import lookup_table_utils
-from .lookup_table_utils import *
-from . import hdfs_utils
-from .hdfs_utils import *
+import unittest
+import numpy as np
+import paddle
 
-__all__ = []
-__all__ += lookup_table_utils.__all__
-__all__ += hdfs_utils.__all__
+from test_collective_base import TestDistBase
+
+paddle.enable_static()
+
+
+class TestSplitOp(TestDistBase):
+    def _setup_config(self):
+        pass
+
+    def test_split(self, col_type="split"):
+        self.check_with_place("collective_split_op.py", col_type)
+
+
+if __name__ == '__main__':
+    unittest.main()
