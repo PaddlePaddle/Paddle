@@ -659,21 +659,8 @@ class BroadcastDataMKLDNNHandler
           y->format(), MKLDNNMemoryFormat::undef,
           platform::errors::InvalidArgument("Wrong format set for Y tensor."));
 
-      //auto src1_tz = std::vector<int64_t>(src0_tz);
       const auto src0_tz = framework::vectorize(x->dims());
       
-
-      // GetExpectedKernelType checks if smaller vector is a subvector with all
-      // the dims in correct order on the rightmost part of the bigger vector,
-      // i.e. a correct vector for broadcasting:
-      //  x = 5, 7, 3, 2, 4, 8
-      //  y = 4, 8
-      //src1_tz.reserve(src0_tz.size());
-//
-      //for (size_t i = src1_tz.size(); i < src0_tz.size(); ++i) {
-      //  src1_tz.insert(src1_tz.begin(), 1L);
-      //}
-
       const auto src0_md = dnnl::memory::desc(
           src0_tz, platform::MKLDNNGetDataType<T>(), x->format());
       const auto src1_md = dnnl::memory::desc(
