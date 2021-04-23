@@ -343,30 +343,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (registry == nullptr) return false;
     }
 
-    if (op_type == "mul") {
-      const int x_num_col_dims =
-          desc.HasAttr("x_num_col_dims")
-              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
-              : (desc.HasAttr("in_num_col_dims")
-                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
-                     : 1);
-      if (x_num_col_dims != 1 && x_num_col_dims != 2) {
-        return false;
-      }
-    }
-
-    if (op_type == "fc") {
-      const int x_num_col_dims =
-          desc.HasAttr("x_num_col_dims")
-              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
-              : (desc.HasAttr("in_num_col_dims")
-                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
-                     : 1);
-      if (x_num_col_dims != 1 && x_num_col_dims != 2) {
-        return false;
-      }
-    }
-
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{"data_layout",   "interp_method",
                                      "align_corners", "scale",
