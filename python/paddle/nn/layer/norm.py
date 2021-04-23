@@ -745,6 +745,19 @@ class BatchNorm1D(_BatchNormBase):
           print(batch_norm_out)
     """
 
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCL',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm1D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
+
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NC' or input == 'NCL':
             self._data_format = 'NCHW'
@@ -924,6 +937,19 @@ class BatchNorm3D(_BatchNormBase):
           print(batch_norm_out)
     """
 
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCDHW',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm3D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
+
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NCDHW':
             self._data_format = 'NCHW'
@@ -1036,7 +1062,7 @@ class SyncBatchNorm(_BatchNormBase):
                  name=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, name)
+                             bias_attr, data_format, None, name)
 
     def forward(self, x):
         # create output
