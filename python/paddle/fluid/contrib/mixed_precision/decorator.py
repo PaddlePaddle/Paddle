@@ -166,6 +166,17 @@ class OptimizerWithMixedPrecision(object):
         train_program = loss.block.program
         self._train_program = train_program
 
+        # NOTE(zhiqiu): _float_status is only used for NPU.
+        if core.is_compiled_with_npu():
+            float_status = paddle.static.data(
+                name="float_status", shape=[8], dtype='float32')
+            self._train_program.global_block().append_op(
+                type="alloc_float_status",
+                outputs={"FloatStatus": float_status}, )
+            self._float_status = float_status
+        else:
+            self._float_status = None
+
         with program_guard(self._train_program, startup_program):
             self._init_amp_var()
 
@@ -403,15 +414,6 @@ class OptimizerWithMixedPrecision(object):
             The scaled loss by scaling factor, the list of optimize ops, and a
             list of scaled parameters and gradients.
         """
-        if core.is_compiled_with_npu():
-            float_status = paddle.static.data(
-                name="float_status", shape=[8], dtype='float32')
-            loss.block.program.global_block().append_op(
-                type="alloc_float_status",
-                outputs={"FloatStatus": float_status}, )
-            self._float_status = float_status
-        else:
-            self._float_status = None
 
         opt_dict = self._optimizer.__class__.__dict__
         if 'minimize' in opt_dict and isinstance(opt_dict['minimize'],
