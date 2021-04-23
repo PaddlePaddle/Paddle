@@ -40,9 +40,11 @@ def _import_module(name, repo_dir):
         hub_module = __import__(name)
         sys.modules.pop(name)
     except ImportError:
-        print('Cannot import `{}`, please make sure `{}`.py in repo root dir'.
-              format(name, name))
         sys.path.remove(repo_dir)
+        raise RuntimeError(
+            'Cannot import `{}`, please make sure `{}`.py in repo root dir'.
+            format(name, name))
+
     sys.path.remove(repo_dir)
 
     return hub_module
