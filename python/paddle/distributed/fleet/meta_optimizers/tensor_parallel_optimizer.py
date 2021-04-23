@@ -20,9 +20,9 @@ from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
 
-class ModelParallelOptimizer(MetaOptimizerBase):
+class TensorParallelOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(ModelParallelOptimizer, self).__init__(optimizer)
+        super(TensorParallelOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
@@ -37,10 +37,10 @@ class ModelParallelOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(ModelParallelOptimizer, self)._set_basic_info(
+        super(TensorParallelOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
-        self.mp_degree = user_defined_strategy.model_parallel_configs[
-            'mp_degree']
+        self.mp_degree = user_defined_strategy.tensor_parallel_configs[
+            'tensor_parallel_degree']
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -51,12 +51,12 @@ class ModelParallelOptimizer(MetaOptimizerBase):
         return False
 
     def _disable_strategy(self, dist_strategy):
-        dist_strategy.model_parallel = False
-        dist_strategy.model_parallel_configs = {}
+        dist_strategy.tensor_parallel = False
+        dist_strategy.tensor_parallel_configs = {}
 
     def _enable_strategy(self, dist_strategy, context):
-        dist_strategy.model_parallel = True
-        dist_strategy.model_parallel_configs = {"mp_degree": 1, }
+        dist_strategy.tensor_parallel = True
+        dist_strategy.tensor_parallel_configs = {"tensor_parallel_degree": 1, }
 
     def _broadcast_params(self, ring_id, mp_mode):
         block = self.startup_program.global_block()

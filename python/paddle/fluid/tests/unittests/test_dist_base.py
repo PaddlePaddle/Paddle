@@ -586,7 +586,7 @@ class TestParallelDyGraphRunnerBase(object):
 
         # 3. init parallel env
         if args.update_method == "nccl2" or "bkcl":
-            fleet.init(is_collective=True, dist_strategy=dist_strategy)
+            fleet.init(is_collective=True, strategy=strategy)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
