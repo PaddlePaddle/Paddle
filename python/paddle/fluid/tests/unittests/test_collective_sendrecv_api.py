@@ -22,14 +22,22 @@ from test_collective_api_base import TestDistBase
 paddle.enable_static()
 
 
-class TestCollectiveReduceAPI(TestDistBase):
+class TestCollectiveSendRecvAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_sendrecv_nccl(self):
+    #def test_sendrecv_nccl(self):
+    #    if paddle.fluid.core.is_compiled_with_cuda():
+    #        self.check_with_place("collective_sendrecv_api.py", "sendrecv",
+    #                              "nccl")
+
+    def test_sendrecv_nccl_dygraph(self):
         if paddle.fluid.core.is_compiled_with_cuda():
-            self.check_with_place("collective_sendrecv_api.py", "sendrecv",
-                                  "nccl")
+            self.check_with_place(
+                "collective_sendrecv_api_dygraph.py",
+                "sendrecv",
+                "nccl",
+                static_mode='0')
 
 
 if __name__ == '__main__':

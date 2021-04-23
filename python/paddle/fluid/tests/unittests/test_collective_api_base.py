@@ -33,7 +33,7 @@ from paddle.fluid import core
 
 
 class TestCollectiveAPIRunnerBase(object):
-    def get_model(self, train_prog, startup_prog, rank):
+    def get_model(self, train_prog, startup_prog, rank, indata=None):
         raise NotImplementedError(
             "get model should be implemented by child class.")
 
@@ -44,7 +44,6 @@ class TestCollectiveAPIRunnerBase(object):
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        result = self.get_model(train_prog, startup_prog, rank)
         paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
@@ -55,16 +54,21 @@ class TestCollectiveAPIRunnerBase(object):
             place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(startup_prog)
         np.random.seed(os.getpid())
         indata = np.random.random((10, 1000)).astype("float32")
-        fetch_list = []
-        for elem in result:
-            fetch_list.append(elem.name)
-        out = exe.run(train_prog,
-                      feed={'tindata': indata},
-                      fetch_list=fetch_list)
+        if args['static_mode']:
+            result = self.get_model(train_prog, startup_prog, rank)
+            exe = fluid.Executor(place)
+            exe.run(startup_prog)
+            fetch_list = []
+            for elem in result:
+                fetch_list.append(elem.name)
+            out = exe.run(train_prog,
+                          feed={'tindata': indata},
+                          fetch_list=fetch_list)
+        else:
+            out = self.get_model(train_prog, startup_prog, rank, indata)
+            #print(out, sys.stderr)
         if six.PY2:
             print(pickle.dumps(out))
         else:
@@ -81,6 +85,7 @@ def runtime_main(test_class, col_type):
     args["col_type"] = col_type
     args["backend"] = os.getenv("BACKEND")
     args["path_id"] = int(os.getenv("PATH_ID"))
+    args["static_mode"] = int(os.getenv("STATIC_MODE"))
     model.run_trainer(args)
 
 
@@ -186,6 +191,7 @@ class TestDistBase(unittest.TestCase):
                          col_type,
                          backend="nccl",
                          path_id="0",
+                         static_mode="1",
                          check_error_log=False,
                          need_envs={}):
         if backend == "nccl" or backend == "bkcl":
@@ -202,6 +208,7 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_call_stack_level": "2",
             "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
+            "STATIC_MODE": static_mode,
             "PADDLE_WITH_GLOO": with_gloo,
             "BACKEND": backend,
             "PATH_ID": path_id
