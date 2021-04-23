@@ -380,6 +380,7 @@ taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+taskkill /f /im test_api_impl.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
