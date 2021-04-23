@@ -77,9 +77,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
             loss = fluid.layers.reduce_mean(z)
-            place = fluid.CPUPlace(
-            ) if not paddle.fluid.core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = fluid.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
             prog = paddle.static.default_main_program()
@@ -132,9 +130,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 OUTPUT_NUM,
                 name='fc_vars', )
             prog = fluid.default_main_program()
-            place = fluid.CPUPlace(
-            ) if not paddle.fluid.core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             prog = paddle.static.default_main_program()
             exe.run(fluid.default_startup_program())
@@ -183,8 +179,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
     def test_save_load_selected_rows(self):
         paddle.enable_static()
-        place = fluid.CPUPlace() if not paddle.fluid.core.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
+        place = fluid.CPUPlace()
         height = 10
         rows = [0, 4, 7]
         row_numel = 12
