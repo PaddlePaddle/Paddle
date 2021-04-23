@@ -48,6 +48,13 @@ class TestHub(unittest.TestCase):
             pretrained=False)
 
         model = hub.load(
+            self.github_repo.split(':')[0],
+            model='MM',
+            source='github',
+            force_reload=False,
+            pretrained=False)
+
+        model = hub.load(
             self.github_repo,
             model='MM',
             source='github',

@@ -78,9 +78,8 @@ def _make_dirs(dirname):
 def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
     # Setup hub_dir to save downloaded files
     hub_dir = HUB_DIR
-    if not os.path.exists(hub_dir):
-        # os.makedirs(hub_dir)
-        _make_dirs(hub_dir)
+
+    _make_dirs(hub_dir)
 
     # Parse github/gitee repo information
     repo_owner, repo_name, branch = _parse_repo_info(repo)
