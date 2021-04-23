@@ -36,7 +36,7 @@ class TestStaticModelParallel(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "static_model_parallel_by_row.py",
-                delta=0,
+                delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
 
@@ -45,7 +45,7 @@ class TestStaticModelParallel(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "static_model_parallel_by_col.py",
-                delta=0,
+                delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
 
@@ -54,7 +54,7 @@ class TestStaticModelParallel(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "static_model_parallel_embedding.py",
-                delta=0,
+                delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
 
