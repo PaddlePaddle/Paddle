@@ -1377,7 +1377,7 @@ def range(start, end, step, dtype, name=None):
     out_shape = None
     if not isinstance(start, Variable) and not isinstance(
             end, Variable) and not isinstance(step, Variable):
-        out_shape = [math.ceil((end - start) / step)]
+        out_shape = [int(math.ceil((end - start) / step))]
 
     if not isinstance(start, Variable):
         with device_guard("cpu"):
