@@ -679,30 +679,27 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
 
 # Test NV Bfloat16. 
 # Execute Test below when compiled with GPU && cudnn version >= 8100
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
 class TestBatchNormBfloat16DataType(unittest.TestCase):
     def test_bfloat16_datatype(self):
-        if paddle.get_cudnn_version() >= 8100:
-            with program_guard(Program(), Program()):
-                paddle.disable_static()
-                batch_norm = paddle.nn.BatchNorm(2)
+        with program_guard(Program(), Program()):
+            paddle.disable_static()
+            batch_norm = paddle.nn.BatchNorm(2)
 
-                # Result using fp32 
-                x = np.random.random(size=(2, 2, 3, 1)).astype("float32")
-                raw_data = paddle.to_tensor(x)
-                bn_out_fp32 = batch_norm(raw_data)
+            # Result using fp32 
+            x = np.random.random(size=(2, 2, 3, 1)).astype("float32")
+            raw_data = paddle.to_tensor(x)
+            bn_out_fp32 = batch_norm(raw_data)
 
-                # Result using bf16
-                data_bf16 = paddle.cast(raw_data, core.VarDesc.VarType.BF16)
-                bn_out_bf16 = batch_norm(data_bf16)
-                out_to_fp32 = paddle.cast(bn_out_bf16,
-                                          core.VarDesc.VarType.FP32)
+            # Result using bf16
+            data_bf16 = paddle.cast(raw_data, core.VarDesc.VarType.BF16)
+            bn_out_bf16 = batch_norm(data_bf16)
+            out_to_fp32 = paddle.cast(bn_out_bf16, core.VarDesc.VarType.FP32)
 
-                self.assertTrue(
-                    np.allclose(
-                        bn_out_fp32, out_to_fp32, atol=1e-1))
-                paddle.enable_static()
-        else:
-            pass
+            self.assertTrue(np.allclose(bn_out_fp32, out_to_fp32, atol=1e-1))
+            paddle.enable_static()
 
 
 if __name__ == '__main__':

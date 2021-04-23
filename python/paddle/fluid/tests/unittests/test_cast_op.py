@@ -74,6 +74,9 @@ class TestCastOp3(op_test.OpTest):
 
 
 # Test FP32->BF16
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
 class TestCaseOp4(unittest.TestCase):
     def copy_bits_from_float_to_uint16(self, f):
         return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
@@ -85,20 +88,20 @@ class TestCaseOp4(unittest.TestCase):
         return new_output
 
     def test_api(self):
-        if paddle.get_cudnn_version() >= 8100:
-            paddle.disable_static()
-            ipt = np.array([1, 2, 3]).astype('float')
-            data = paddle.to_tensor(ipt)
-            res = paddle.cast(data, core.VarDesc.VarType.BF16)
-            exp = self.convert_fp32_to_uint16(ipt)
+        paddle.disable_static()
+        ipt = np.array([1, 2, 3]).astype('float')
+        data = paddle.to_tensor(ipt)
+        res = paddle.cast(data, core.VarDesc.VarType.BF16)
+        exp = self.convert_fp32_to_uint16(ipt)
 
-            self.assertTrue(np.array_equal(res.numpy(), exp))
-            paddle.enable_static()
-        else:
-            pass
+        self.assertTrue(np.array_equal(res.numpy(), exp))
+        paddle.enable_static()
 
 
 # Test BF16->FP32
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
 class TestCaseOp5(unittest.TestCase):
     def copy_bits_from_uint16_to_float(self, f):
         return struct.unpack('<f', struct.pack('<I', f << 16))[0]
@@ -110,17 +113,14 @@ class TestCaseOp5(unittest.TestCase):
         return new_output
 
     def test_api(self):
-        if paddle.get_cudnn_version() >= 8100:
-            paddle.disable_static()
-            ipt = np.array([1, 2, 3]).astype('uint16')
-            data = paddle.to_tensor(ipt)
-            res = paddle.cast(data, core.VarDesc.VarType.FP32)
-            exp = self.convert_uint16_to_float(ipt)
+        paddle.disable_static()
+        ipt = np.array([1, 2, 3]).astype('uint16')
+        data = paddle.to_tensor(ipt)
+        res = paddle.cast(data, core.VarDesc.VarType.FP32)
+        exp = self.convert_uint16_to_float(ipt)
 
-            self.assertTrue(np.array_equal(res.numpy(), exp))
-            paddle.enable_static()
-        else:
-            pass
+        self.assertTrue(np.array_equal(res.numpy(), exp))
+        paddle.enable_static()
 
 
 class TestCastOpError(unittest.TestCase):
