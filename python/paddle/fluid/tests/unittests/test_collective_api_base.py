@@ -269,5 +269,10 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     result_data, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "sendrecv":
+            result_data = tr0_out[1]
+            self.assertTrue(
+                np.allclose(
+                    input1, result_data, rtol=1e-05, atol=1e-05))
         else:
             pass
