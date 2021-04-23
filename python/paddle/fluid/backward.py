@@ -1823,9 +1823,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets(Tensor|list[Tensor]|tuple[Tensor]): The target Tensors
-        inputs(Tensor|list[Tensor]|tuple[Tensor]): The input Tensors
-        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensors
+        targets(Tensor|list[Tensor]): The target Tensors
+        inputs(Tensor|list[Tensor]): The input Tensors
+        target_gradients (Tensor|list[Tensor], optional): The gradient Tensors
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
@@ -1962,9 +1962,9 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets (Tensor|list[Tensor]|tuple[Tensor]): The target Tensors.
-        inputs (Tensor|list[Tensor]|tuple[Tensor]): The input Tensors.
-        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensor
+        targets (Tensor|list[Tensor]): The target Tensors.
+        inputs (Tensor|list[Tensor]): The input Tensors.
+        target_gradients (Tensor|list[Tensor], optional): The gradient Tensor
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
@@ -1992,12 +1992,12 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = paddle.static.gradients([y], x)
             print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
     """
-    check_type(targets, 'targets', (framework.Variable, list, tuple),
+    check_type(targets, 'targets', (framework.Variable, list),
                'paddle.static.gradients')
-    check_type(inputs, 'inputs', (framework.Variable, list, tuple),
+    check_type(inputs, 'inputs', (framework.Variable, list),
                'paddle.static.gradients')
     check_type(target_gradients, 'target_gradients', (
-        framework.Variable, list, tuple, type(None)), 'paddle.static.gradients')
+        framework.Variable, list, type(None)), 'paddle.static.gradients')
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
