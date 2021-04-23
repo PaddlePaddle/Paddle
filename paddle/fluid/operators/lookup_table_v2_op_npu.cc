@@ -59,7 +59,7 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *table_grad_t =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
-    auto *p = table_grad_t->mutable_data<T>(ctx.GetPlace());
+    table_grad_t->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
