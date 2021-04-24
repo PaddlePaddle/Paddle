@@ -58,26 +58,19 @@ class StackOpConverter : public OpConverter {
     }
 
     nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::StackPluginDynamic* plugin =
-          new plugin::StackPluginDynamic(axis, input_num, with_fp16);
-      layer = engine_->AddDynamicPlugin(inputs, input_num, plugin);
-      assert(layer != nullptr);
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    plugin::StackPluginDynamic* plugin =
+        new plugin::StackPluginDynamic(axis, input_num, with_fp16);
+    layer = engine_->AddDynamicPlugin(inputs, input_num, plugin);
+    PADDLE_ENFORCE_NOT_NULL(
+        layer, platform::errors::InvalidArgument(
+                   "trt stack layer in converter could not be created."));
 #else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
+    PADDLE_THROW(platform::errors::Fatal(
+        "You are running the TRT Dynamic Shape mode, need to confirm that "
+        "your TRT version is no less than 6.0"));
 #endif
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the Ernie(Bert) model in static"
-          "shape mode, which is not supported for the time being.\n"
-          "You can use the config.SetTRTDynamicShapeInfo(...) interface"
-          " to set the shape information to run the dynamic shape mode."));
-    }
     auto output_name = op_desc.Output("Y").front();
     RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
     free(inputs);
