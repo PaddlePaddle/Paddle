@@ -633,6 +633,7 @@ def _construct_params_and_buffers(model_path,
                                   append_suffix=True):
     var_info_filename = str(params_filename) + ".info"
     var_info_path = os.path.join(model_path, var_info_filename)
+    params_path = os.path.join(model_path, str(params_filename))
 
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
@@ -654,6 +655,9 @@ def _construct_params_and_buffers(model_path,
             var_dict.update(
                 _load_persistable_vars(model_path, var_info_path, programs[
                     func_name], file_name))
+    elif params_filename is not None and not os.path.exists(params_path):
+        # When saving XX, there is only '*.pdmodel'
+        return dict()
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
@@ -1139,11 +1143,8 @@ class TranslatedLayer(layers.Layer):
         programs = _construct_program_holders(model_path, model_filename)
 
         # 2. load layer parameters & buffers
-        params_filename_path = os.path.join(model_path, params_filename)
-        persistable_vars = {}
-        if os.path.exists(params_filename_path):
-            persistable_vars = _construct_params_and_buffers(
-                model_path, programs, params_filename)
+        persistable_vars = _construct_params_and_buffers(model_path, programs,
+                                                         params_filename)
 
         # 3. construct TranslatedLayer object
         translated_layer = TranslatedLayer(programs, persistable_vars)
