@@ -958,7 +958,7 @@ def split(x,
         return linear_out
 
 
-def send(tensor, dst=0, group=None):
+def send(tensor, dst=0, group=None, use_calc_stream=True):
     """
     Send a tensor to the receiver.
 
@@ -967,6 +967,7 @@ def send(tensor, dst=0, group=None):
             should be float16, float32, float64, int32 or int64.
         dst (int): The destination rank id.
         group (Group): The group instance return by new_group or None for global default group.
+        use_calc_stream (bool): Whether to use calculate stream or communication stream.
     Returns:
         None.
 
@@ -995,8 +996,8 @@ def send(tensor, dst=0, group=None):
 
     op_type = 'send_v2'
     if in_dygraph_mode():
-        return core.ops.send_v2(tensor, 'use_calc_stream', True, 'ring_id',
-                                ring_id, 'peer', dst)
+        return core.ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                'ring_id', ring_id, 'peer', dst)
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'send')
@@ -1008,11 +1009,11 @@ def send(tensor, dst=0, group=None):
         attrs={
             'ring_id': ring_id,
             'peer': dst,
-            'use_calc_stream': True,
+            'use_calc_stream': use_calc_stream,
         })
 
 
-def recv(tensor, src=0, group=None):
+def recv(tensor, src=0, group=None, use_calc_stream=True):
     """
     Receive a tensor to the sender.
 
@@ -1021,6 +1022,7 @@ def recv(tensor, src=0, group=None):
             should be float16, float32, float64, int32 or int64.
         src (int): The source rank id.
         group (Group): The group instance return by new_group or None for global default group.
+        use_calc_stream (bool): Whether to use calculate stream or communication stream.
     Returns:
         None.
 
@@ -1049,9 +1051,9 @@ def recv(tensor, src=0, group=None):
 
     op_type = 'recv_v2'
     if in_dygraph_mode():
-        return core.ops.recv_v2(tensor, 'use_calc_stream', True, 'ring_id',
-                                ring_id, 'peer', src, 'dtype', tensor.dtype,
-                                'out_shape', tensor.shape)
+        return core.ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                'ring_id', ring_id, 'peer', src, 'dtype',
+                                tensor.dtype, 'out_shape', tensor.shape)
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'recv')
@@ -1064,5 +1066,5 @@ def recv(tensor, src=0, group=None):
             'peer': src,
             'out_shape': tensor.shape,
             'dtype': tensor.dtype,
-            'use_calc_stream': True,
+            'use_calc_stream': use_calc_stream,
         })
