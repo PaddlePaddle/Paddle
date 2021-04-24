@@ -383,15 +383,6 @@ class TestJitSaveLoad(unittest.TestCase):
         with self.assertRaises(ValueError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
-    def test_jit_load_model_incomplete(self):
-        model_path = "test_jit_save_load.remove_variables/model"
-        self.train_and_save_model(model_path)
-        # remove `.pdiparams`	
-        var_path = model_path + INFER_PARAMS_SUFFIX
-        os.remove(var_path)
-        with self.assertRaises(ValueError):
-            paddle.jit.load(model_path)
-
     def test_jit_load_no_path(self):
         path = "test_jit_save_load.no_path/model_path"
         with self.assertRaises(ValueError):
