@@ -48,7 +48,7 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
                 name="tindata", shape=[10, 1000], dtype='float32')
             tindata = paddle.split(tindata, 2, axis=0)
             tout_data = []
-            paddle.distributed.all_to_all(tindata, tout_data)
+            paddle.distributed.alltoall(tindata, tout_data)
             return tout_data
 
 
