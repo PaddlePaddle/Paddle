@@ -277,7 +277,7 @@ class TestPyLayer(unittest.TestCase):
 
         input1 = paddle.randn([2, 3]).astype("float64")
         input1.stop_gradient = False
-        z = Layer_bk_one1.apply(input1)
+        z = Layer_bk_one2.apply(input1)
         with self.assertRaises(NotImplementedError):
             with paddle.fluid.dygraph.guard():
                 z.mean().backward()
