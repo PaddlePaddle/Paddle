@@ -268,8 +268,8 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer_bk_one2(PyLayer):
             @staticmethod
-            def forward(ctx, x):
-                return x * 2, x * 5
+            def forward(ctx, x1, x2):
+                return x1 * 2, x2 * 5
 
             @staticmethod
             def backward(ctx, *args):
@@ -277,7 +277,8 @@ class TestPyLayer(unittest.TestCase):
 
         input1 = paddle.randn([2, 3]).astype("float64")
         input1.stop_gradient = False
-        z = Layer_bk_one2.apply(input1)
+        y = Layer_bk_one2.apply(input1, input1)
+        z = y[0] + y[1]
         with self.assertRaises(NotImplementedError):
             with paddle.fluid.dygraph.guard():
                 z.mean().backward()
