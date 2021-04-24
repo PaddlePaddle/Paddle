@@ -957,10 +957,7 @@ def split(x,
         return linear_out
 
 
-def all_to_all(in_tensor_list,
-               out_tensor_list,
-               group=None,
-               use_calc_stream=True):
+def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
     Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
     Args:
