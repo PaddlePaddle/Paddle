@@ -35,12 +35,21 @@ taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
 taskkill /f /im python.exe  2>NUL
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
+taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="python.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -174,11 +183,10 @@ rem ------show summary of current environment----------
 cmake --version
 if "%WITH_GPU%"=="ON" (
     nvcc --version
-    where nvidia-smi
     nvidia-smi
 )
-python %work_dir%\tools\summary_env.py
-%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
+::python %work_dir%\tools\summary_env.py
+::%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
 
 goto :CASE_%1
 
@@ -207,6 +215,7 @@ rem ------PR CI windows check for OPENBLAS/CPU------
 set WITH_MKL=ON
 set WITH_GPU=OFF
 set MSVC_STATIC_CRT=ON
+set retry_times=1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -345,7 +354,7 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*3/5
+for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 set build_times=1
 :build_tp
@@ -380,10 +389,19 @@ taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
 taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
@@ -735,10 +753,21 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
 taskkill /f /im python.exe  2>NUL
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
+taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="python.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
+wmic process where name="rc.exe" call terminate 2>NUL
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
 echo Windows CI run successfully!
 exit /b 0
 
