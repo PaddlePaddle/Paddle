@@ -75,9 +75,7 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
       SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
       same_dims_add(ctx, x, y, z);
     } else {
-      // default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
-      auto dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-      LaunchBroadElementwiseCudaKernel<DeviceContext, T>(dev_ctx, x, y, z);
+      LaunchBroadElementwiseCudaKernel<DeviceContext, T>(ctx, x, y, z);
     }
   }
 };
