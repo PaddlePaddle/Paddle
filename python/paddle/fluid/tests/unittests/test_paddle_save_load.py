@@ -27,6 +27,7 @@ import paddle.fluid as fluid
 from paddle.fluid.optimizer import Adam
 import paddle.fluid.framework as framework
 from test_imperative_base import new_program_scope
+from paddle.optimizer.lr import LRScheduler
 
 BATCH_SIZE = 16
 BATCH_NUM = 4
@@ -262,8 +263,31 @@ class TestSaveLoadAny(unittest.TestCase):
 
     def test_paddle_save_load_v2(self):
         paddle.disable_static()
+
+        class StepDecay(LRScheduler):
+            def __init__(self,
+                         learning_rate,
+                         step_size,
+                         gamma=0.1,
+                         last_epoch=-1,
+                         verbose=False):
+                self.step_size = step_size
+                self.gamma = gamma
+                super(StepDecay, self).__init__(learning_rate, last_epoch,
+                                                verbose)
+
+            def get_lr(self):
+                i = self.last_epoch // self.step_size
+                return self.base_lr * (self.gamma**i)
+
         layer = LinearNet()
-        state_dict = layer.state_dict()
+        inps = paddle.randn([2, IMAGE_SIZE])
+        adam = opt.Adam(
+            learning_rate=StepDecay(0.1, 1), parameters=layer.parameters())
+        y = layer(inps)
+        y.mean().backward()
+        adam.step()
+        state_dict = adam.state_dict()
         path = 'paddle_save_load_v2/model.pdparams'
         with self.assertRaises(TypeError):
             paddle.save(state_dict, path, use_binary_format='False')
@@ -274,9 +298,15 @@ class TestSaveLoadAny(unittest.TestCase):
         paddle.save(state_dict, path)
         load_dict_np = paddle.framework.io._legacy_load(path)
         for k, v in state_dict.items():
-            self.assertTrue(
-                np.array_equal(v.numpy(), load_dict_tensor[k].numpy()))
-            self.assertTrue(np.array_equal(v.numpy(), load_dict_np[k]))
+            if isinstance(v, dict):
+                self.assertTrue(v == load_dict_tensor[k])
+            else:
+                self.assertTrue(
+                    np.array_equal(v.numpy(), load_dict_tensor[k].numpy()))
+                if not np.array_equal(v.numpy(), load_dict_np[k]):
+                    print(v.numpy())
+                    print(load_dict_np[k])
+                self.assertTrue(np.array_equal(v.numpy(), load_dict_np[k]))
 
     def test_single_pickle_var_dygraph(self):
         # enable dygraph mode
@@ -715,6 +745,20 @@ class TestSaveLoadAny(unittest.TestCase):
 
             self.assertTrue(isinstance(load_array4[0], np.ndarray))
             self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+
+    def test_varbase_binary_var(self):
+        paddle.disable_static()
+        varbase = paddle.randn([3, 2], dtype='float32')
+        path = 'test_paddle_save_load_varbase_binary_var/varbase'
+        paddle.save(varbase, path, use_binary_format=True)
+        load_array = paddle.load(path, return_numpy=True)
+        load_tensor = paddle.load(path, return_numpy=False)
+        origin_array = varbase.numpy()
+        load_tensor_array = load_tensor.numpy()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            fluid.core._cuda_synchronize(paddle.CUDAPlace())
+        self.assertTrue(np.array_equal(origin_array, load_array))
+        self.assertTrue(np.array_equal(origin_array, load_tensor_array))
 
 
 class TestSaveLoad(unittest.TestCase):

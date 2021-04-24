@@ -309,12 +309,18 @@ def _is_state_dict(obj):
 
         def condition(obj):
             return isinstance(obj, (core.Layer, Program, core.VarBase,
-                                    core.LoDTensor))
+                                    core.LoDTensor, core.SelectedRows))
 
+        # If the value of a dict is a core.VarBase/LoDTensor or a dict 
+        # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows), 
+        # the dict is considered to be a state_ dict.
         for key, value in obj.items():
-            if not isinstance(value, (core.VarBase, core.LoDTensor)):
-                if _contain_x(value, condition):
-                    return False
+            if isinstance(value, dict):
+                for k, v in value.items():
+                    if _contain_x(v, condition):
+                        return False
+            elif not isinstance(value, (core.VarBase, core.LoDTensor)):
+                return False
         return True
 
     return False
@@ -374,6 +380,12 @@ def _ndarray_to_tensor(obj, return_numpy):
         return _to_LodTensor(obj)
 
 
+def _lod_tensor2varbase(tensor):
+    return_var = _varbase_creator()
+    return_var.value().get_tensor().set(tensor, _current_expected_place())
+    return return_var
+
+
 def _parse_every_object(obj, condition_func, convert_func):
     if condition_func(obj):
         return convert_func(obj)
@@ -426,9 +438,13 @@ def _parse_load_result(obj, return_numpy):
     def ndarray_to_tensor(obj):
         return _ndarray_to_tensor(obj, return_numpy=return_numpy)
 
+    # tuple(name, ndarry) was converted from varbase of paddle2.1, 
+    # and all tuple(name, ndarry) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
         return _parse_every_object(obj, _transformed_from_varbase,
                                    tuple_to_tensor)
+    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0 
+    # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
         return _parse_every_object(obj, _transformed_from_lodtensor,
                                    ndarray_to_tensor)
@@ -469,6 +485,8 @@ def _save_binary_var(obj, path):
         _save_lod_tensor(obj, path)
     elif isinstance(obj, core.SelectedRows):
         _save_selected_rows(obj, path)
+    elif isinstance(obj, core.VarBase):
+        _save_lod_tensor(obj.value().get_tensor(), path)
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
@@ -803,7 +821,12 @@ def load(path, **configs):
             except:
                 try:
                     tensor, _ = _load_lod_tensor(path)
-                    return tensor
+                    if config.return_numpy:
+                        return np.array(tensor)
+                    else:
+                        if in_dygraph_mode():
+                            return _lod_tensor2varbase(tensor)
+                        return tensor
                 except:
                     try:
                         with open(path, "rb") as f:
