@@ -756,7 +756,7 @@ class TestSaveLoadAny(unittest.TestCase):
         origin_array = varbase.numpy()
         load_tensor_array = load_tensor.numpy()
         if paddle.fluid.core.is_compiled_with_cuda():
-            fluid.core._cuda_synchronize(paddle.CUDAPlace())
+            fluid.core._cuda_synchronize(paddle.CUDAPlace(0))
         self.assertTrue(np.array_equal(origin_array, load_array))
         self.assertTrue(np.array_equal(origin_array, load_tensor_array))
 
