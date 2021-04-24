@@ -33,7 +33,7 @@ if (WITH_LITE)
   add_subdirectory(lite)
 endif()
 
-# fluid_modules exclude API-interface of inference/api and inference/capi
+# fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 
 # Adapt to custom op mechanism: Include the header files related to the data type
@@ -61,7 +61,7 @@ if(NOT APPLE)
 endif()
 
 # C inference API
-add_subdirectory(capi)
+add_subdirectory(capi_exp)
 
 if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     add_subdirectory(tests/api)
@@ -118,9 +118,4 @@ if(NOT APPLE AND NOT WIN32)
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake"
     DEPENDS paddle_inference_shared)
   add_custom_target(check_symbol ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol")
-endif()
-
-if(LINUX AND WITH_STRIP)
-  add_custom_command(TARGET paddle_inference_shared POST_BUILD
-    COMMAND ${STRIP_PATH} $<TARGET_FILE:paddle_inference_shared>)
 endif()
