@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 
 import time
-import logging
 import copy
 import os
 
@@ -22,15 +21,10 @@ from numpy import prod
 
 import paddle
 import paddle.fluid as fluid
-from . import pipeline_layer
+from .parallel_layers import pipeline_layer
 from .meta_parallel_base import MetaParallelBase
 from .pp_utils.utils import get_tensor_bytes
 from .pp_utils import utils
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 FLOAT_TYPES = [
     paddle.float16,
