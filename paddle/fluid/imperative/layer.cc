@@ -187,6 +187,7 @@ size_t VarBase::GradOpNum() const {
 }
 
 void VarBase::ClearGradient() {
+  VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
     if (grad_var_->Var().IsType<framework::SelectedRows>()) {
       auto* grad_t =
