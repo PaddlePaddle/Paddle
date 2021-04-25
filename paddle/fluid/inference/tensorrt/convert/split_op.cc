@@ -33,17 +33,7 @@ class SplitOpConverter : public OpConverter {
     size_t output_num = op_desc.Output("Out").size();
 
     // Get Attrs
-    PADDLE_ENFORCE_EQ(input_num, 1UL,
-                      platform::errors::InvalidArgument(
-                          "Invalid input X's size of split TRT converter. "
-                          "Expected 1, received %d.",
-                          input_num));
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
-    // split on batch is not supported in TensorRT
-    PADDLE_ENFORCE_NE(
-        axis, 0,
-        platform::errors::InvalidArgument(
-            "Invalid split axis. Split on batch is not supported in TensorRT"));
 
     std::vector<int> output_lengths =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));

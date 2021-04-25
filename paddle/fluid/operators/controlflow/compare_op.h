@@ -68,7 +68,7 @@ struct NotEqualFunctor {
   }
 };
 
-template <typename DeviceContext, typename Functor>
+template <typename DeviceContext, typename Functor, typename InverseFunctor>
 class CompareOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
@@ -80,21 +80,33 @@ class CompareOpKernel
     auto* y = context.Input<Tensor>("Y");
     auto* z = context.Output<Tensor>("Out");
     int axis = context.Attr<int>("axis");
-    ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
-                                                          Functor(), z);
+
+    auto x_dims = x->dims();
+    auto y_dims = y->dims();
+    if (x_dims.size() >= y_dims.size()) {
+      ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
+                                                            Functor(), z);
+    } else {
+      ElementwiseComputeEx<InverseFunctor, DeviceContext, T, bool>(
+          context, x, y, axis, InverseFunctor(), z);
+    }
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_COMPARE_KERNEL(op_type, dev, functor)                    \
-  REGISTER_OP_##dev##_KERNEL(                                             \
-      op_type, ::paddle::operators::CompareOpKernel<                      \
-                   ::paddle::platform::dev##DeviceContext, functor<int>>, \
-      ::paddle::operators::CompareOpKernel<                               \
-          ::paddle::platform::dev##DeviceContext, functor<int64_t>>,      \
-      ::paddle::operators::CompareOpKernel<                               \
-          ::paddle::platform::dev##DeviceContext, functor<float>>,        \
-      ::paddle::operators::CompareOpKernel<                               \
-          ::paddle::platform::dev##DeviceContext, functor<double>>);
+#define REGISTER_COMPARE_KERNEL(op_type, dev, functor, inverse_functor)       \
+  REGISTER_OP_##dev##_KERNEL(op_type,                                         \
+                             ::paddle::operators::CompareOpKernel<            \
+                                 ::paddle::platform::dev##DeviceContext,      \
+                                 functor<int>, inverse_functor<int>>,         \
+                             ::paddle::operators::CompareOpKernel<            \
+                                 ::paddle::platform::dev##DeviceContext,      \
+                                 functor<int64_t>, inverse_functor<int64_t>>, \
+                             ::paddle::operators::CompareOpKernel<            \
+                                 ::paddle::platform::dev##DeviceContext,      \
+                                 functor<float>, inverse_functor<float>>,     \
+                             ::paddle::operators::CompareOpKernel<            \
+                                 ::paddle::platform::dev##DeviceContext,      \
+                                 functor<double>, inverse_functor<double>>);

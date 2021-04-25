@@ -115,7 +115,7 @@ if(WIN32)
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
         # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling
-        if(WITH_GPU)
+        if(NOT WITH_GPU)
             set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
         endif()
     endforeach(flag_var)
