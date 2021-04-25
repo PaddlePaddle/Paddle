@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
+import abc
 import paddle
 from ...utils import hybrid_parallel_util as hp_util
 
@@ -39,9 +39,10 @@ def get_tensor_bytes(tensor):
     return tensor.numel() * elem_size
 
 
-class Generator(ABC):
+class Generator():
     def __init__(self, micro_batches, stages, stage_id):
-        super().__init__()
+        __metaclass__ = abc.ABCMeta
+
         self.micro_batches = micro_batches
         self.stages = stages
         self.stage_id = stage_id
@@ -52,7 +53,7 @@ class Generator(ABC):
             "must be greater than or equal to {}".format(self.micro_batches,
                                                          self.stages))
 
-    @abstractmethod
+    @abc.abstractmethod
     def generate(self):
         pass
 
