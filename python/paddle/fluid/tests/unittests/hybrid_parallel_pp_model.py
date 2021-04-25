@@ -69,8 +69,10 @@ class TestDistPPTraning(unittest.TestCase):
             pipe_input = paddle.cast(pipe_input, 'float32')
 
             def data_gen():
-                while True:
+                gen = True
+                while gen:
                     yield [pipe_input, 0]
+                    gen = False
 
             loader = paddle.io.DataLoader.from_generator(capacity=5)
             loader.set_batch_generator(data_gen)
