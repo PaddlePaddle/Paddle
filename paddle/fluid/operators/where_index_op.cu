@@ -33,26 +33,27 @@ namespace operators {
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-__global__ void KeGetTrueNum(const T *cond_data, const int64_t numel,
-                             int64_t *true_num_array) {
+__global__ void GetTrueNum(const T *cond_data, const int64_t numel,
+                           int64_t *true_num_array) {
   const int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (int64_t idx = tid; idx < numel; idx += gridDim.x * blockDim.x) {
-    true_num_array[idx] = static_cast<bool>(cond_data[idx]) ? 1 : 0;
+    true_num_array[idx] =
+        static_cast<int64_t>(static_cast<bool>(cond_data[idx]));
   }
 }
 
 template <typename T>
-__global__ void KeSetTrueIndex(int64_t *out_ptr, const T *cond_data,
-                               const int64_t numel, const int64_t *stride_array,
-                               const int64_t rank,
-                               const int64_t *true_num_array) {
+__global__ void SetTrueIndex(int64_t *out_ptr, const T *cond_data,
+                             const int64_t numel, const int64_t *stride_array,
+                             const int64_t rank,
+                             const int64_t *true_num_array) {
   const int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (int64_t idx = tid; idx < numel; idx += gridDim.x * blockDim.x) {
     // true_num_array is calculated by cub::InclusiveSum,
-    // and true_num_array if 1 or 0 before calculated,
-    // so we need substract 1 to get true index
+    // cause the first element of true_num_array is 1,
+    // so we need substract 1 to get true index.
     const int64_t true_index = true_num_array[idx] - 1;
     if (static_cast<bool>(cond_data[idx])) {
       int64_t rank_index = idx;
@@ -83,13 +84,18 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
         memory::Alloc(platform::CPUPlace(), (rank + 1) * sizeof(int64_t));
 
     // "stride_array" is an array and len(stride_array)==rank,
-    // each element is the stride of each dimension(the length from i to i+1)
-    int64_t *d_stride_array = reinterpret_cast<int64_t *>(d_array_mem->ptr());
-    // "true_num_array" is an array and len(stride_array)==numel,
-    // at the beginning, set 1 if condition[i] == true else 0
-    // then calculate prefix sum by cub::InclusiveSum to get prefix true number
-    int64_t *d_true_num_array = d_stride_array + rank;
+    // each element is the stride of each dimension -- the length from i to i+1.
     int64_t *h_stride_array = reinterpret_cast<int64_t *>(h_array_mem->ptr());
+    int64_t *d_stride_array = reinterpret_cast<int64_t *>(d_array_mem->ptr());
+
+    // "true_num_array" is an array and len(stride_array)==numel,
+    // at the beginning,
+    // "true_num_array" will set 1 if condition[i] == true else 0,
+    // then it will be calculated by cub::InclusiveSum,
+    // so that we can get the true number before i as the out index
+    int64_t *d_true_num_array = d_stride_array + rank;
+
+    // the total_true_num is the total number of condition[i] == true
     int64_t *h_total_true_num = h_stride_array + rank;
 
     // alloce cub memory
@@ -99,14 +105,21 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     auto cub_mem = memory::Alloc(dev_ctx, cub_size * sizeof(int64_t));
     void *cub_data = cub_mem->ptr();
 
-    // set d_true_num_array[i]=1 if cond_data[i]=true else 0
+    // set d_true_num_array[i]=1 if cond_data[i]==true else 0
     const int threads = std::min(numel, static_cast<int64_t>(128));
     const int64_t need_grids = (numel + threads - 1) / threads;
     const int grids = std::min(need_grids, static_cast<int64_t>(256));
-    KeGetTrueNum<T><<<grids, threads, 0, dev_ctx.stream()>>>(cond_data, numel,
-                                                             d_true_num_array);
+    GetTrueNum<T><<<grids, threads, 0, dev_ctx.stream()>>>(cond_data, numel,
+                                                           d_true_num_array);
 
-    // calculate prefix sum, get the prefix true number
+    // calculate the inclusive prefix sum of "true_num_array"
+    // to get the index of "out" tensor,
+    // and the total number of cond_data[i]==true.
+    // Example:
+    // condition: F T T F F F T T
+    // before:    0 1 1 0 0 0 1 1
+    // after:     0 1 2 2 2 2 3 4
+    // out:       1 2 6 7
     cub::DeviceScan::InclusiveSum(cub_data, cub_size, d_true_num_array,
                                   d_true_num_array, numel, dev_ctx.stream());
 
@@ -120,6 +133,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
                  rank * sizeof(int64_t), dev_ctx.stream());
 
     // get total ture number and set output size
+    // the last element of cub::InclusiveSum is the total number
     memory::Copy(platform::CPUPlace(), h_total_true_num,
                  BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                  d_true_num_array + numel - 1, sizeof(int64_t),
@@ -135,7 +149,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     }
 
     // using true_num_array and stride_array to calculate the output index
-    KeSetTrueIndex<T><<<grids, threads, 0, dev_ctx.stream()>>>(
+    SetTrueIndex<T><<<grids, threads, 0, dev_ctx.stream()>>>(
         out_data, cond_data, numel, d_stride_array, rank, d_true_num_array);
   }
 };
