@@ -26,10 +26,30 @@ set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
-taskkill /f /im op_function_generator.exe
-wmic process where name="op_function_generator.exe" call terminate
+taskkill /f /im op_function_generator.exe  2>NUL
+taskkill /f /im cmake.exe  2>NUL
+taskkill /f /im MSBuild.exe 2>NUL
+taskkill /f /im CL.exe 2>NUL
+taskkill /f /im Lib.exe 2>NUL
+taskkill /f /im link.exe 2>NUL
+taskkill /f /im vctip.exe 2>NUL
+taskkill /f /im cvtres.exe 2>NUL
+taskkill /f /im rc.exe 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
 taskkill /f /im python.exe  2>NUL
-
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
+taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
+wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
+wmic process where name="cvtres.exe" call terminate 2>NUL
+wmic process where name="rc.exe" call terminate 2>NUL
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -54,6 +74,7 @@ if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
+if not defined retry_times set retry_times=2
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
@@ -162,11 +183,10 @@ rem ------show summary of current environment----------
 cmake --version
 if "%WITH_GPU%"=="ON" (
     nvcc --version
-    where nvidia-smi
     nvidia-smi
 )
-python %work_dir%\tools\summary_env.py
-%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
+::python %work_dir%\tools\summary_env.py
+::%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
 
 goto :CASE_%1
 
@@ -195,6 +215,7 @@ rem ------PR CI windows check for OPENBLAS/CPU------
 set WITH_MKL=ON
 set WITH_GPU=OFF
 set MSVC_STATIC_CRT=ON
+set retry_times=1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -209,6 +230,7 @@ rem ------Build windows avx whl package------
 set WITH_AVX=ON
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
+set retry_times=4
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -220,6 +242,7 @@ rem ------Build windows no-avx whl package------
 set WITH_AVX=OFF
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
+set retry_times=4
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -249,6 +272,8 @@ echo    ========================================
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 set DISTUTILS_USE_SDK=1
+rem Windows 10 Kit bin dir
+set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -342,7 +367,7 @@ if %GENERATOR% == "Ninja" (
 )
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
-    if %build_times% GTR 2 (
+    if %build_times% GTR %retry_times% (
         exit /b 7
     ) else (
         echo Build third_party failed, will retry!
@@ -355,6 +380,28 @@ set build_times=1
 :build_paddle
 :: reset clcache zero stats for collect PR's actual hit rate
 rem clcache.exe -z
+
+rem -------clean up environment again-----------
+taskkill /f /im MSBuild.exe 2>NUL
+taskkill /f /im cl.exe 2>NUL
+taskkill /f /im lib.exe 2>NUL
+taskkill /f /im link.exe 2>NUL
+taskkill /f /im vctip.exe 2>NUL
+taskkill /f /im cvtres.exe 2>NUL
+taskkill /f /im rc.exe 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
+taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
+wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
+wmic process where name="cvtres.exe" call terminate 2>NUL
+wmic process where name="rc.exe" call terminate 2>NUL
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
@@ -369,7 +416,7 @@ if %GENERATOR% == "Ninja" (
 
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
-    if %build_times% GTR 1 (
+    if %build_times% GTR %retry_times% (
         exit /b 7
     ) else (
         echo Build Paddle failed, will retry!
@@ -706,9 +753,21 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="python.exe" call terminate 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
 taskkill /f /im python.exe  2>NUL
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
+taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
+wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
+wmic process where name="cvtres.exe" call terminate 2>NUL
+wmic process where name="rc.exe" call terminate 2>NUL
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
 echo Windows CI run successfully!
 exit /b 0
 

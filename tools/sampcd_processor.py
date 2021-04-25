@@ -19,8 +19,8 @@ import multiprocessing
 import math
 import platform
 import inspect
-import paddle
-import paddle.fluid
+#import paddle
+#import paddle.fluid
 import json
 import argparse
 import shutil
@@ -44,9 +44,7 @@ if logger.handlers:
 else:
     console = logging.StreamHandler()
     logger.addHandler(console)
-console.setFormatter(
-    logging.Formatter(
-        "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
+console.setFormatter(logging.Formatter("%(message)s"))
 
 RUN_ON_DEVICE = 'cpu'
 GPU_ID = 0
@@ -125,29 +123,41 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         name(str): the name of the API.
         msg(str): messages
     """
+    sample_code_filenames = sampcd_extract_to_file(srccom, name, htype, hname)
+    if not sample_code_filenames:
+        return False, name, 'No sample code!'
+
+    results = []
+    msgs = []
+    for tfname in sample_code_filenames:
+        result, msg = execute_samplecode_test(tfname)
+        results.append(result)
+        msgs.append(msg)
+
+    if not all(results):
+        failed_fn = []
+        for i, result in enumerate(results):
+            if not result:
+                failed_fn.append(sample_code_filenames[i])
+        return False, name, 'failed sample codes: ' + ','.join(failed_fn)
+    return True, name, 'success!'
+
+
+def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
+    """
+    Extract sample codes from __doc__, and write them to files.
+
+    Args:
+        srccom(str): the source comment of some API whose
+                     example codes will be extracted and run.
+        name(str): the name of the API.
+        htype(str): the type of hint banners, def/class/method.
+        hname(str): the name of the hint  banners , e.t. def hname.
+
+    Returns:
+        sample_code_filenames(list of str)
+    """
     global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR
-
-    result = True
-    msg = None
-
-    def sampcd_header_print(name, sampcd, htype, hname):
-        """
-        print hint banner headers.
-
-        Args:
-            name(str): the name of the API.
-            sampcd(str): sample code string
-            htype(str): the type of hint banners, def/class/method.
-            hname(str): the name of the hint  banners , e.t. def hname.
-            flushed.
-        """
-        print(htype, " name:", hname)
-        print("-----------------------")
-        print("Sample code ", str(y), " extracted for ", name, "   :")
-        print(sampcd)
-        print("----example code check----\n")
-        print("executing sample code .....")
-        print("execution result:")
 
     sampcd_begins = find_all(srccom, " code-block:: python")
     if len(sampcd_begins) == 0:
@@ -161,11 +171,11 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
                     "Deprecated sample code style:\n\n    Examples:\n\n        >>>codeline\n        >>>codeline\n\n\n ",
                     "Please use '.. code-block:: python' to ",
                     "format sample code.\n")
-                result = False
+                return []
         else:
             print("Error: No sample code!\n")
-            result = False
-
+            return []
+    sample_code_filenames = []
     for y in range(1, len(sampcd_begins) + 1):
         sampcd_begin = sampcd_begins[y - 1]
         sampcd = srccom[sampcd_begin + len(" code-block:: python") + 1:]
@@ -200,37 +210,50 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
 
         tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
             name, '.py' if len(sampcd_begins) == 1 else '_{}.py'.format(y)))
-        logging.info('running %s', tfname)
         with open(tfname, 'w') as tempf:
             tempf.write(sampcd)
-        if platform.python_version()[0] == "2":
-            cmd = ["python", tfname]
-        elif platform.python_version()[0] == "3":
-            cmd = ["python3", tfname]
-        else:
-            print("Error: fail to parse python version!")
-            result = False
-            exit(1)
+        sample_code_filenames.append(tfname)
+    return sample_code_filenames
 
-        subprc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = subprc.communicate()
-        msg = "".join(output.decode(encoding='utf-8'))
-        err = "".join(error.decode(encoding='utf-8'))
 
-        if subprc.returncode != 0:
-            print("\nSample code error found in ", name, ":\n")
-            sampcd_header_print(name, sampcd, htype, hname)
-            print("subprocess return code: ", str(subprc.returncode))
-            print("Error Raised from Sample Code ", name, " :\n")
-            print(err)
-            print(msg)
-            logging.warning('%s error: %s', tfname, err)
-            logging.warning('%s msg: %s', tfname, msg)
-            result = False
-        # msg is the returned code execution report
+def execute_samplecode_test(tfname):
+    result = True
+    msg = None
+    if platform.python_version()[0] in ["2", "3"]:
+        cmd = [sys.executable, tfname]
+    else:
+        print("Error: fail to parse python version!")
+        result = False
+        exit(1)
 
-    return result, name, msg
+    logging.info('running %s', tfname)
+    print("\n----example code check----")
+    print("executing sample code .....", tfname)
+    subprc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = subprc.communicate()
+    msg = "".join(output.decode(encoding='utf-8'))
+    err = "".join(error.decode(encoding='utf-8'))
+
+    if subprc.returncode != 0:
+        print("Sample code error found in ", tfname, ":")
+        print("-----------------------")
+        print(open(tfname).read())
+        print("-----------------------")
+        print("subprocess return code: ", str(subprc.returncode))
+        print("Error Raised from Sample Code ", tfname, " :")
+        print(err)
+        print(msg)
+        print("----example code check failed----\n")
+        logging.warning('%s error: %s', tfname, err)
+        logging.warning('%s msg: %s', tfname, msg)
+        result = False
+    else:
+        print("----example code check success----\n")
+
+    # msg is the returned code execution report
+
+    return result, tfname, msg
 
 
 def single_defcom_extract(start_from, srcls, is_class_begin=False):
@@ -326,7 +349,7 @@ def srccoms_extract(srcfile, wlist, methods):
     if allidx != -1:
         alllist = []
         # get all list for layers/ops.py
-        if srcfile.name.find("ops.py") != -1:
+        if srcfile.name.find("fluid/layers/ops.py") != -1:
             for ai in range(0, len(srcls)):
                 if srcls[ai].startswith("__all__"):
                     lb = srcls[ai].find('[')
@@ -352,7 +375,7 @@ def srccoms_extract(srcfile, wlist, methods):
         api_count = 0
         handled = []
         # get src contents in layers/ops.py
-        if srcfile.name.find("ops.py") != -1:
+        if srcfile.name.find("fluid/layers/ops.py") != -1:
             for i in range(0, len(srcls)):
                 opname = None
                 opres = re.match(r"^(\w+)\.__doc__", srcls[i])
@@ -536,25 +559,24 @@ def run_a_test(tc_filename):
 
 def get_filenames():
     '''
-    this function will get the modules that pending for check.
+    this function will get the sample code files that pending for check.
 
     Returns:
 
-        list: the modules pending for check .
+        dict: the sample code files pending for check .
 
     '''
-    filenames = []
     global methods  # write
     global whl_error
-    methods = []
+    import paddle
     whl_error = []
     get_incrementapi()
-    API_spec = API_DIFF_SPEC_FN
-    with open(API_spec) as f:
+    all_sample_code_filenames = {}
+    with open(API_DIFF_SPEC_FN) as f:
         for line in f.readlines():
             api = line.replace('\n', '')
             try:
-                module = eval(api).__module__
+                api_obj = eval(api)
             except AttributeError:
                 whl_error.append(api)
                 continue
@@ -562,47 +584,12 @@ def get_filenames():
                 logger.warning('line:%s, api:%s', line, api)
                 # paddle.Tensor.<lambda>
                 continue
-            if len(module.split('.')) > 1:
-                filename = '../python/'
-                # work for .so?
-                module_py = '%s.py' % module.split('.')[-1]
-                for i in range(0, len(module.split('.')) - 1):
-                    filename = filename + '%s/' % module.split('.')[i]
-                filename = filename + module_py
-            else:
-                filename = ''
-                logger.warning("WARNING: Exception in getting api:%s module:%s",
-                               api, module)
-            if filename in filenames:
-                continue
-            elif not filename:
-                logger.warning('filename invalid: %s', line)
-                continue
-            elif not os.path.exists(filename):
-                logger.warning('file not exists: %s', filename)
-                continue
-            else:
-                filenames.append(filename)
-            # get all methods
-            method = ''
-            if inspect.isclass(eval(api)):
-                name = api.split('.')[-1]
-            elif inspect.isfunction(eval(api)):
-                name = api.split('.')[-1]
-            elif inspect.ismethod(eval(api)):
-                name = '%s.%s' % (api.split('.')[-2], api.split('.')[-1])
-            else:
-                name = ''
-                logger.warning(
-                    "WARNING: Exception when getting api:%s, line:%s", api,
-                    line)
-            for j in range(2, len(module.split('.'))):
-                method = method + '%s.' % module.split('.')[j]
-            method = method + name
-            if method not in methods:
-                methods.append(method)
-    os.remove(API_spec)
-    return filenames
+            if hasattr(api_obj, '__doc__') and api_obj.__doc__:
+                sample_code_filenames = sampcd_extract_to_file(api_obj.__doc__,
+                                                               api)
+                for tfname in sample_code_filenames:
+                    all_sample_code_filenames[tfname] = api
+    return all_sample_code_filenames
 
 
 def get_api_md5(path):
@@ -744,14 +731,6 @@ if __name__ == '__main__':
     if len(filenames) == 0 and len(whl_error) == 0:
         logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
         exit(0)
-    rm_file = []
-    for f in filenames:
-        for w_file in wlist_file:
-            if f.startswith(w_file):
-                rm_file.append(f)
-                filenames.remove(f)
-    if len(rm_file) != 0:
-        logger.info("REMOVE white files: %s", rm_file)
     logger.info("API_PR is diff from API_DEV: %s", filenames)
 
     threads = multiprocessing.cpu_count()
@@ -759,7 +738,7 @@ if __name__ == '__main__':
         threads = args.threads
     po = multiprocessing.Pool(threads)
     # results = po.map_async(test, divided_file_list)
-    results = po.map_async(run_a_test, filenames)
+    results = po.map_async(execute_samplecode_test, filenames.keys())
     po.close()
     po.join()
 

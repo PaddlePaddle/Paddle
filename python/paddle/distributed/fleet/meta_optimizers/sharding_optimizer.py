@@ -365,8 +365,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                   'w') as f:
             f.writelines(str(main_block.program))
 
-        self._wait()
-
+        if core.is_compiled_with_cuda():
+            self._wait()
         return optimize_ops, params_grads
 
     def _init_comm(self):
