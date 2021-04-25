@@ -160,66 +160,61 @@ class FcOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       // not NCHW layout, but NLP layout with added 'x 1 x 1'
       auto x_dim = X->getDimensions();
-      if (x_dim.nbDims == 3 || x_dim.nbDims == 2) {
-        auto output_name = op_desc.Output("Out").front();
-        // add shuffle before fc
-        nvinfer1::Dims reshape_before_fc_dim;
-        reshape_before_fc_dim.nbDims = x_dim.nbDims + 2;
-        for (int i = 0; i < x_dim.nbDims; i++) {
-          reshape_before_fc_dim.d[i] = 0;
-        }
-        reshape_before_fc_dim.d[x_dim.nbDims] = 1;
-        reshape_before_fc_dim.d[x_dim.nbDims + 1] = 1;
-        auto* reshape_before_fc_layer =
-            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
-        reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
-        reshape_before_fc_layer->setName(
-            ("shuffle_before_fc(Output: " + output_name + ")").c_str());
+      PADDLE_ENFORCE_LE(
+          x_dim.nbDims - x_num_col_dims, 3,
+          platform::errors::InvalidArgument(
+              "Params and input dims mismatch. Paddle-TRT FC "
+              "converter expects x_dim.nbDims - x_num_col_dims <= 3, but "
+              "x_dim.nbDims = %d, x_num_col_dims = %d.",
+              x_dim.nbDims, x_num_col_dims));
+      auto output_name = op_desc.Output("Out").front();
+      // add shuffle before fc
+      nvinfer1::Dims reshape_before_fc_dim;
+      // padding shape "x 1 x 1"
+      int padding_length = 3 - (x_dim.nbDims - x_num_col_dims);
+      reshape_before_fc_dim.nbDims = x_dim.nbDims + padding_length;
+      int cur_dim_index = reshape_before_fc_dim.nbDims - 1;
+      while (padding_length-- > 0) {
+        reshape_before_fc_dim.d[cur_dim_index--] = 1;
+      }
+      while (cur_dim_index >= 0) {
+        reshape_before_fc_dim.d[cur_dim_index--] = 0;
+      }
 
-        // add fc layer
-        auto* fc_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
-            n_output, weight.get(), bias.get());
-        fc_layer->setName(("fc_layer(Output: " + output_name + ")").c_str());
+      auto* reshape_before_fc_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+      reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
+      reshape_before_fc_layer->setName(
+          ("shuffle_before_fc(Output: " + output_name + ")").c_str());
 
-        // add shuffle after fc
-        nvinfer1::Dims reshape_after_fc_dim;
-        if (x_dim.nbDims == 3) {
-          if (x_num_col_dims == 2) {
-            reshape_after_fc_dim.nbDims = 3;
-            reshape_after_fc_dim.d[0] = 0;
-            reshape_after_fc_dim.d[1] = 0;
-            reshape_after_fc_dim.d[2] = 0;
-          } else {
-            reshape_after_fc_dim.nbDims = 2;
-            reshape_after_fc_dim.d[0] = 0;
-            auto dim = fc_layer->getOutput(0)->getDimensions();
-            reshape_after_fc_dim.d[1] = dim.d[1] * dim.d[2];
-          }
-          // x_dim.nbDims == 2
-        } else {
-          reshape_after_fc_dim.nbDims = 2;
-          reshape_after_fc_dim.d[0] = 0;
-          reshape_after_fc_dim.d[1] = 0;
-        }
-        auto* reshape_after_fc_layer =
-            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
-        reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
+      // add fc layer
+      auto* fc_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
+          n_output, weight.get(), bias.get());
+      fc_layer->setName(("fc_layer(Output: " + output_name + ")").c_str());
 
-        if (activation_type == "relu") {
-          reshape_after_fc_layer->setName(
-              ("shuffle_after_fc(Output: " + output_name + ")").c_str());
-          nvinfer1::IActivationLayer* relu_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Activation, *(reshape_after_fc_layer->getOutput(0)),
-              nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer, "relu_after_fc_shuffle",
-                                   {output_name}, test_mode);
-        } else {
-          RreplenishLayerAndOutput(reshape_after_fc_layer, "shuffle_after_fc",
-                                   {output_name}, test_mode);
-        }
+      // add shuffle after fc
+      nvinfer1::Dims reshape_after_fc_dim;
+      reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
+      for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
+        reshape_after_fc_dim.d[i] = 0;
+      }
+
+      auto* reshape_after_fc_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
+      reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
+
+      if (activation_type == "relu") {
+        reshape_after_fc_layer->setName(
+            ("shuffle_after_fc(Output: " + output_name + ")").c_str());
+        nvinfer1::IActivationLayer* relu_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Activation, *(reshape_after_fc_layer->getOutput(0)),
+            nvinfer1::ActivationType::kRELU);
+        RreplenishLayerAndOutput(relu_layer, "relu_after_fc_shuffle",
+                                 {output_name}, test_mode);
       } else {
-        regist_fc(X, n_output, weight, bias);
+        RreplenishLayerAndOutput(reshape_after_fc_layer, "shuffle_after_fc",
+                                 {output_name}, test_mode);
       }
       return;
     }

@@ -34,6 +34,8 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     float _power = 1.0;
+    VLOG(4) << "scale:" << scale << ", bias:" << bias
+            << " ,bias_after_scale:" << bias_after_scale;
     if (bias_after_scale) {
       out->mutable_data<T>(ctx.GetPlace());
       auto runner =
