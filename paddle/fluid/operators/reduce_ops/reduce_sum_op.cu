@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_merge/reduce_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
 namespace paddle {
