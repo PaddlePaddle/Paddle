@@ -74,12 +74,13 @@ class VocabParallelEmbedding(Layer):
         if len(origin_input_shape) == 2:
             x_shard = paddle.squeeze(x_shard, axis=-1)
 
-        emb_out_ = self.embedding(x_shard)
-        emb_out = paddle.distributed.collective._mp_allreduce(
-            emb_out_,
-            group=self.model_parallel_group,
-            use_calc_stream=True,
-            use_model_parallel=True)
+        emb_out = self.embedding(x_shard)
+        if self.world_size > 1:
+            emb_out = paddle.distributed.collective._mp_allreduce(
+                emb_out,
+                group=self.model_parallel_group,
+                use_calc_stream=True,
+                use_model_parallel=True)
         return emb_out
 
 
