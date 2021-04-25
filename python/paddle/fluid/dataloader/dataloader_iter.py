@@ -242,7 +242,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # need to release thread resources on unexpected exit
         if self._blocking_queue:
             self._blocking_queue.close()
-        # NOTE: blocking queue shoule be close firstly for
+        # NOTE: blocking queue should be closed firstly for
         # blocking queue read may hang and _thread_done_event
         # cannot be checked
         self._shutdown_thread()
