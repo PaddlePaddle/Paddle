@@ -117,6 +117,7 @@ class MemEvent {
   std::string annotation_;
 };
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class CudaEvent {
  public:
   CudaEvent() { cudaEventCreateWithFlags(&event_, flags_); }
@@ -160,6 +161,7 @@ static unsigned int get_cuda_flags(bool enable_timing, bool blocking,
       (interprocess ? cudaEventInterprocess : cudaEventDefault);
   return flags;
 }
+#endif
 
 }  // namespace platform
 }  // namespace paddle
