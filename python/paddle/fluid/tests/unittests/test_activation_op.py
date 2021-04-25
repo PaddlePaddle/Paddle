@@ -1051,6 +1051,24 @@ class TestRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestReluBF16(TestActivation):
+    def setUp(self):
+        self.op_type = "relu"
+        self.dtype = core.VarDesc.VarType.BF16
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestReluAPI(unittest.TestCase):
     # test paddle.nn.ReLU, paddle.nn.functional.relu
     def setUp(self):
@@ -2671,6 +2689,31 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish)
+
+
+#------------------ Test BF16 ----------------------
+def create_test_act_bf16_class(parent,
+                               atol=1e-2,
+                               grad_check=True,
+                               grad_atol=0.80):
+    @unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActBF16(parent):
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=atol)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=grad_atol)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "bf16")
+    TestActBF16.__name__ = cls_name
+    globals()[cls_name] = TestActBF16
+
+
+create_test_act_bf16_class(TestReluBF16)
 
 if __name__ == "__main__":
     unittest.main()

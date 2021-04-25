@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -456,7 +457,24 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ===========================    relu register  ============================ */
-REGISTER_ACTIVATION_GPU_KERNEL(relu, Relu, ReluGPUFunctor, ReluGradGPUFunctor);
+REGISTER_OP_CUDA_KERNEL(
+    relu, ops::ActivationGPUKernel<paddle::platform::CUDADeviceContext,
+                                   ops::ReluGPUFunctor<float>>,
+    ops::ActivationGPUKernel<paddle::platform::CUDADeviceContext,
+                             ops::ReluGPUFunctor<double>>,
+    ops::ActivationGPUKernel<plat::CUDADeviceContext,
+                             ops::ReluGPUFunctor<plat::float16>>,
+    ops::ActivationGPUKernel<plat::CUDADeviceContext,
+                             ops::ReluGPUFunctor<plat::bfloat16>>);
+REGISTER_OP_CUDA_KERNEL(
+    relu_grad, ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
+                                            ops::ReluGradGPUFunctor<float>>,
+    ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
+                                 ops::ReluGradGPUFunctor<double>>,
+    ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
+                                 ops::ReluGradGPUFunctor<plat::float16>>,
+    ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
+                                 ops::ReluGradGPUFunctor<plat::bfloat16>>);
 
 REGISTER_OP_CUDA_KERNEL(
     relu_grad_grad,
@@ -465,7 +483,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                     ops::ReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
-                                    ops::ReluGradGradFunctor<plat::float16>>);
+                                    ops::ReluGradGradFunctor<plat::float16>>,
+    ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
+                                    ops::ReluGradGradFunctor<plat::bfloat16>>);
 /* ========================================================================== */
 
 /* ===========================   sqrt register  ============================= */
