@@ -21,10 +21,10 @@ from numpy import prod
 
 import paddle
 import paddle.fluid as fluid
-from .parallel_layers import pipeline_layer
 from .meta_parallel_base import MetaParallelBase
 from .pp_utils.utils import get_tensor_bytes
 from .pp_utils import utils
+from .parallel_layers.pp_layers import PipelineLayer
 
 FLOAT_TYPES = [
     paddle.float16,
@@ -48,11 +48,10 @@ class PipelineParallel(MetaParallelBase):
         self.prev_stage_id = self.stage_id - 1
         self.next_stage_id = self.stage_id + 1
 
-        self._prepare_for_model()
-
         self.use_pipe_parallel = self.hcg.get_pipe_parallel_world_size() > 1
         self.use_data_parallel = self.hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self.hcg.get_model_parallel_world_size() > 1
+        self._prepare_for_model()
 
         self.num_caches = 0
         self.caches = {
@@ -73,8 +72,9 @@ class PipelineParallel(MetaParallelBase):
         self.total_loss = None
 
     def _prepare_for_model(self):
+        self.layers = PipelineLayer(
+            layers=self.layers, num_stages=self.num_stages)
         #TODO: init process group
-        pass
 
     def _allocate_caches(self, num_caches):
         if self.num_caches >= num_caches:
@@ -115,9 +115,6 @@ class PipelineParallel(MetaParallelBase):
                 if type(cmd) not in self._COMMAND_MAP:
                     #FIXME:
                     continue
-                    raise RuntimeError(
-                        f'{self.__class__.__name__} does not understand instruction {repr(cmd)}'
-                    )
 
                 self._apply_cmd = MethodType(self._COMMAND_MAP[type(cmd)], self)
                 self._apply_cmd(**cmd.kwargs)
