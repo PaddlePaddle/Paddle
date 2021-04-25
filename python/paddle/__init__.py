@@ -31,7 +31,21 @@ from .fluid.dygraph import monkey_patch_math_varbase
 monkey_patch_variable()
 monkey_patch_math_varbase()
 import paddle.framework
+from .framework.dtype import dtype as dtype
+from paddle.framework.dtype import uint8
+from paddle.framework.dtype import int8
+from paddle.framework.dtype import int16
+from paddle.framework.dtype import int32
+from paddle.framework.dtype import int64
+from paddle.framework.dtype import float16
+from paddle.framework.dtype import float32
+from paddle.framework.dtype import float64
+from paddle.framework.dtype import bfloat16
+from paddle.framework.dtype import bool
+from paddle.framework.dtype import complex64
+from paddle.framework.dtype import complex128
 from .framework import VarBase as Tensor
+Tensor.__qualname__ = 'Tensor'
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
@@ -137,6 +151,7 @@ from .tensor.manipulation import flip  #DEFINE_ALIAS
 from .tensor.manipulation import unbind  #DEFINE_ALIAS
 from .tensor.manipulation import roll  #DEFINE_ALIAS
 from .tensor.manipulation import chunk  #DEFINE_ALIAS
+from .tensor.manipulation import tolist  #DEFINE_ALIAS
 from .tensor.math import abs  #DEFINE_ALIAS
 from .tensor.math import acos  #DEFINE_ALIAS
 from .tensor.math import asin  #DEFINE_ALIAS
@@ -244,6 +259,7 @@ from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 
 from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
+from .framework import set_grad_enabled  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
@@ -285,6 +301,8 @@ from .hapi import Model
 from .hapi import callbacks
 from .hapi import summary
 from .hapi import flops
+from .hapi import hub
+
 import paddle.text
 import paddle.vision
 

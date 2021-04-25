@@ -467,7 +467,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_use_gpu", &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"), py::arg("device_id") = 0)
       .def("enable_xpu", &AnalysisConfig::EnableXpu,
-           py::arg("l3_workspace_size"))
+           py::arg("l3_workspace_size") = 16 * 1024 * 1024,
+           py::arg("locked") = false, py::arg("autotune") = true,
+           py::arg("autotune_file") = "", py::arg("precision") = "int16",
+           py::arg("adaptive_seqlen") = false)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
@@ -512,6 +515,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("enable_dlnne", &AnalysisConfig::EnableDlnne,
+           py::arg("min_subgraph_size") = 3)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("zero_copy") = false,

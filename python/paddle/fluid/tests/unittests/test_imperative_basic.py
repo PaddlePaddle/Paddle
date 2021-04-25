@@ -296,6 +296,28 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(tmp._grad_ivar() is None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
+    def test_paddle_imperative_set_grad_enabled(self):
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)
+            self.assertTrue(l0.weight._grad_ivar() is None)
+            l1 = fluid.Linear(2, 2)
+            with paddle.set_grad_enabled(False):
+                self.assertTrue(l1.weight.stop_gradient is False)
+                tmp = l1.weight * 2
+                with paddle.set_grad_enabled(True):
+                    tmp2 = l1.weight * 2
+                self.assertTrue(tmp.stop_gradient)
+                self.assertTrue(tmp2.stop_gradient is False)
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp2
+            o = l1(y)
+            o.backward()
+
+            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertTrue(tmp2._grad_ivar() is not None)
+            self.assertTrue(l0.weight._grad_ivar() is not None)
+
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():
@@ -472,7 +494,7 @@ class TestImperative(unittest.TestCase):
         self.assertEqual("linear_1.b_0", params[3].name)
         self.assertEqual(len(params), 4)
 
-        sublayers = mlp.sublayers(True)
+        sublayers = mlp.sublayers()
         self.assertEqual(mlp._linear1, sublayers[0])
         self.assertEqual(mlp._linear2, sublayers[1])
         self.assertEqual(len(sublayers), 2)

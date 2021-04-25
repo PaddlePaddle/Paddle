@@ -75,7 +75,7 @@ def setup(**attr):
 
     .. note::
         
-        1. Currently we support Linux and Windows platfrom. MacOS is supporting...
+        1. Currently we support Linux, MacOS and Windows platfrom.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
            GCC version.
@@ -745,7 +745,7 @@ def load(name,
 
     .. note::
 
-        1. Currently we support Linux and Windows platfrom. MacOS is supporting...
+        1. Currently we support Linux, MacOS and Windows platfrom.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
            GCC version.
