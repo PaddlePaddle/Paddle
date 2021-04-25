@@ -832,18 +832,6 @@ def _mp_allreduce(tensor,
             return core.ops.c_allreduce_sum_(
                 tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
                 "use_model_parallel", use_model_parallel)
-        elif op == ReduceOp.MAX:
-            return core.ops.c_allreduce_max_(
-                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
-                "use_model_parallel", use_model_parallel)
-        elif op == ReduceOp.MIN:
-            return core.ops.c_allreduce_min_(
-                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
-                "use_model_parallel", use_model_parallel)
-        elif op == ReduceOp.PROD:
-            return core.ops.c_allreduce_prod_(
-                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
-                "use_model_parallel", use_model_parallel)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
     else:
