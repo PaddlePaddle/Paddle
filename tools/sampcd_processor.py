@@ -176,7 +176,18 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
     return sample_code_filenames
 
 
-def execute_samplecode_test(tfname):
+def execute_samplecode(tfname):
+    """
+    Execute a sample-code test.
+
+    Args:
+        tfname: the filename of the samplecode.
+    
+    Returns:
+        result: success or not
+        tfname: same as the input argument
+        msg: the stdout output of the samplecode executing.
+    """
     result = True
     msg = None
     if platform.python_version()[0] in ["2", "3"]:
@@ -251,6 +262,15 @@ def get_filenames():
 
 
 def get_api_md5(path):
+    """
+    read the api spec file, and scratch the md5sum value of every api's docstring.
+
+    Args:
+        path: the api spec file. ATTENTION the path relative
+    
+    Returns:
+        api_md5(dict): key is the api's real fullname, value is the md5sum.
+    """
     api_md5 = {}
     API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
                           path)
@@ -395,8 +415,7 @@ if __name__ == '__main__':
     if args.threads:
         threads = args.threads
     po = multiprocessing.Pool(threads)
-    # results = po.map_async(test, divided_file_list)
-    results = po.map_async(execute_samplecode_test, filenames.keys())
+    results = po.map_async(execute_samplecode, filenames.keys())
     po.close()
     po.join()
 

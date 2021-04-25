@@ -26,7 +26,7 @@ from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
 from sampcd_processor import get_wlist
 from sampcd_processor import sampcd_extract_to_file
-from sampcd_processor import execute_samplecode_test
+from sampcd_processor import execute_samplecode
 
 SAMPLECODE_TEMP_DIR = 'samplecode_temp'
 
@@ -54,7 +54,7 @@ class Test_check_indent(unittest.TestCase):
         self.assertEqual(4, check_indent("\thello paddle"))
 
 
-class Test_execute_samplecode_test(unittest.TestCase):
+class Test_execute_samplecode(unittest.TestCase):
     def setUp(self):
         if not os.path.exists(SAMPLECODE_TEMP_DIR):
             os.mkdir(SAMPLECODE_TEMP_DIR)
@@ -72,14 +72,13 @@ class Test_execute_samplecode_test(unittest.TestCase):
         os.remove(self.failedSampleCodeFile)
 
     def test_run_success(self):
-        result, tfname, msg = execute_samplecode_test(
-            self.successSampleCodeFile)
+        result, tfname, msg = execute_samplecode(self.successSampleCodeFile)
         self.assertTrue(result)
         self.assertEqual(self.successSampleCodeFile, tfname)
         self.assertIsNotNone(msg)
 
     def test_run_failed(self):
-        result, tfname, msg = execute_samplecode_test(self.failedSampleCodeFile)
+        result, tfname, msg = execute_samplecode(self.failedSampleCodeFile)
         self.assertFalse(result)
         self.assertEqual(self.failedSampleCodeFile, tfname)
         self.assertIsNotNone(msg)
