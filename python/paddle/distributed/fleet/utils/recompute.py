@@ -25,21 +25,16 @@ logging.basicConfig(
 
 
 def detach_variable(inputs):
-    if isinstance(inputs, tuple):
-        out = []
-        for inp in inputs:
-            if not isinstance(inp, core.VarBase):
-                out.append(inp)
-                continue
+    out = []
+    for inp in inputs:
+        if not isinstance(inp, core.VarBase):
+            out.append(inp)
+            continue
 
-            x = inp.detach()
-            x.stop_gradient = inp.stop_gradient
-            out.append(x)
-        return tuple(out)
-    else:
-        raise RuntimeError(
-            "Only tuple of tensors is supported. Got Unsupported input type: ",
-            type(inputs).__name__)
+        x = inp.detach()
+        x.stop_gradient = inp.stop_gradient
+        out.append(x)
+    return tuple(out)
 
 
 def check_recompute_necessary(inputs):
