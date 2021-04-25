@@ -12,5 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .parallel_layers import *
-from .model_parallel import ModelParallel
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+
+from test_parallel_dygraph_dataparallel import TestMultipleGpus
+
+
+class TestHybridPipeParallel(TestMultipleGpus):
+    def test_hybrid_parallel_pp_layer(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_layer.py')
+
+
+if __name__ == "__main__":
+    unittest.main()
