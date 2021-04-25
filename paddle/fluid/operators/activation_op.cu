@@ -107,6 +107,36 @@ struct CudaSigmoidGradFunctor : public BaseCudaActiveFunctor<T> {
 };
 /********************Sigmoid End********************/
 
+/********************Silu Begin********************/
+template <typename T>
+struct CudaSiluFunctor : public BaseCudaActiveFunctor<T> {
+  // CT means Compute Type
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT one = static_cast<CT>(1.0f);
+
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT x = static_cast<CT>(args[0]);
+    return T(x / (one + exp(-x)));
+  }
+};
+
+template <typename T>
+struct CudaSiluGradFunctor : public BaseCudaActiveFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT one = static_cast<CT>(1.0f);
+
+  __device__ __forceinline__ T operator()(const T* args) const {
+    CT dout = static_cast<CT>(args[0]);
+    CT x = static_cast<CT>(args[1]);
+    CT temp1 = one + exp(-x);
+    CT temp2 = x * exp(-x);
+    return T(dout * ((one / temp1) * (one + temp2 / temp1)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+/********************Silu End********************/
+
 /********************LogSigmoid Begin********************/
 template <typename T>
 struct CudaLogSigmoidFunctor : public BaseCudaActiveFunctor<T> {
@@ -1362,6 +1392,8 @@ REGISTER_OP_CUDA_KERNEL(
 
 REGISTER_ACTIVATION_CUDA_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
                                 CudaSigmoidGradFunctor);
+REGISTER_ACTIVATION_CUDA_KERNEL(silu, Silu, CudaSiluFunctor,
+                                CudaSiluGradFunctor);
 REGISTER_ACTIVATION_CUDA_KERNEL(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,
                                 CudaLogSigmoidGradFunctor);
 REGISTER_ACTIVATION_CUDA_KERNEL(atan, Atan, CudaAtanFunctor,
