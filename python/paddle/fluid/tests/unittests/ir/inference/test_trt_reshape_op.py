@@ -58,6 +58,28 @@ class TRTReshapeTest(InferencePassTest):
 
 class TRTReshapeTest1(TRTReshapeTest):
     def setUp(self):
+        self.bs = 2
+        self.input_shape = [23, 13, 24]
+        self.reshape = [2, 0, -1, 12]
+        self.data_shape = [
+            self.bs, self.input_shape[0], self.input_shape[1],
+            self.input_shape[2]
+        ]
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name='data', shape=self.data_shape, dtype='float32')
+            reshape_out = self.append_reshape(data, self.reshape)
+            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+        self.feeds = {
+            'data': np.random.random(self.data_shape).astype('float32'),
+        }
+        self.trt_parameters = TRTReshapeTest.TensorRTParam(
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+
+class TRTReshapeTest2(TRTReshapeTest):
+    def setUp(self):
         self.bs = 1
         self.input_shape = [14, 48, 27]
         self.reshape = [1, 24, 28, 0]
@@ -73,7 +95,6 @@ class TRTReshapeTest1(TRTReshapeTest):
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
         }
-        self.enable_trt = True
         self.trt_parameters = TRTReshapeTest.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTReshapeTest.DynamicShapeParam({
