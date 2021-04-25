@@ -14,13 +14,13 @@
 
 INCLUDE(ExternalProject)
 
-SET(ZLIB_PREFIX_DIR ${THIRD_PARTY_PATH}/zlib)
-SET(ZLIB_SOURCE_DIR ${THIRD_PARTY_PATH}/zlib/src/extern_zlib)
+SET(ZLIB_PREFIX_DIR  ${THIRD_PARTY_PATH}/zlib)
+SET(ZLIB_SOURCE_DIR  ${THIRD_PARTY_PATH}/zlib/src/extern_zlib)
 SET(ZLIB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/zlib)
-SET(ZLIB_ROOT ${ZLIB_INSTALL_DIR} CACHE FILEPATH "zlib root directory." FORCE)
+SET(ZLIB_ROOT        ${ZLIB_INSTALL_DIR} CACHE FILEPATH "zlib root directory." FORCE)
 SET(ZLIB_INCLUDE_DIR "${ZLIB_INSTALL_DIR}/include" CACHE PATH "zlib include directory." FORCE)
-set(ZLIB_REPOSITORY ${GIT_URL}/madler/zlib.git)
-set(ZLIB_TAG        v1.2.8)
+set(ZLIB_REPOSITORY  ${GIT_URL}/madler/zlib.git)
+set(ZLIB_TAG         v1.2.8)
 
 INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR}) # For zlib code to include its own headers.
 INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include zlib.h.
