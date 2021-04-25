@@ -87,7 +87,7 @@ def to_tensor(pic, data_format='CHW'):
     elif _is_numpy_image(pic):
         return F_cv2.to_tensor(pic, data_format)
     else:
-        return pic if data_format.lower() == 'hwc' else pic.transpose((2, 0, 1))
+        return pic if data_format.lower() == 'chw' else pic.transpose((1, 2, 0))
 
 
 def resize(img, size, interpolation='bilinear'):
