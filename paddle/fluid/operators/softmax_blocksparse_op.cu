@@ -205,7 +205,8 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     // input
     auto *x = ctx.Input<Tensor>("X");
-    auto *layout = ctx.Input<Tensor>("LayOut");
+    auto *rowptr = ctx.Input<Tensor>("LayOutRowPtr");
+    auto *colidx = ctx.Input<Tensor>("LayOutColIndex");
 
     // output
     auto *out = ctx.Output<Tensor>("Out");
@@ -227,13 +228,11 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
     const int axis = -1;
     const int BlockSize = 64;
 
-    int *rowptr = NULL;
-    int *colidx = NULL;
-
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
     BlockSparseSoftmaxForward<T, BlockSize, 4><<<grid, blocks>>>(
-        out_data, x, 1.0, NULL, NULL, rowptr, colidx, seqlen);
+        out_data, x->data<T>(), 1.0, NULL, NULL, 
+        rowptr->data<T>(), colidx->data<T>(), seqlen);
   }
 };
 
@@ -242,7 +241,11 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *x = ctx.Input<Tensor>("Out");
+    auto *rowptr = ctx.Input<Tensor>("LayOutRowPtr");
+    auto *colidx = ctx.Input<Tensor>("LayOutColIndex");
+
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
     auto *dx_data = dx->data<T>();
@@ -261,14 +264,11 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     const int axis = -1;
     const int BlockSize = 64;
 
-    int *rowptr = NULL;
-    int *colidx = NULL;
-
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
     BlockSparseSoftmaxBackward<T, BlockSize, 4><<<grid, blocks>>>(
-        dx_data, dout->data<T>(), x->data<T>(), 1.0, NULL, NULL, rowptr, colidx,
-        seqlen);
+        dx_data, dout->data<T>(), x->data<T>(), 1.0, NULL, NULL, 
+        rowptr->data<T>(), colidx->data<T>(), seqlen);
   }
 };
 
