@@ -79,6 +79,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_allreduce)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
     LIST(REMOVE_ITEM TEST_OPS test_collective_reduce)
+    LIST(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
     LIST(REMOVE_ITEM TEST_OPS test_collective_scatter)
     LIST(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
@@ -878,6 +879,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
     set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_reduce_api PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_reduce PROPERTIES TIMEOUT 120)
     set_tests_properties(test_allreduce PROPERTIES TIMEOUT 120)
     set_tests_properties(test_c_concat PROPERTIES TIMEOUT 120)
@@ -895,6 +897,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
         test_collective_scatter_api
         test_collective_barrier_api
         test_collective_reduce_api
+        test_pipeline_parallel
         test_collective_allreduce_api
         test_new_group_api
         test_collective_broadcast_api
