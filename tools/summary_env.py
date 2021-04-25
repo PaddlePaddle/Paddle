@@ -48,7 +48,7 @@ def get_os_info():
         plat = "macOs"
         ver = platform.mac_ver()[0]
     elif platform.system() == "Linux":
-        plat = distro.linux_distribution()()[0]
+        plat = distro.linux_distribution()[0]
         ver = distro.linux_distribution()[1]
     elif platform.system() == "Windows":
         plat = "Windows"
