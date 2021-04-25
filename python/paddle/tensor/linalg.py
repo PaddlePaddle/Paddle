@@ -178,9 +178,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     or 2-norm, and in general the p-norm for p > 0) of a given tensor.
 
     .. note::
-        This norm API is different from `np.linalg.norm`.
-        This api supports high-order input tensors (rank >= 3), and certain axes need to be pointed out to calculate the norm.
-        But `np.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
+        This norm API is different from `numpy.linalg.norm`.
+        This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
+        But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
         For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
 
     Args:
