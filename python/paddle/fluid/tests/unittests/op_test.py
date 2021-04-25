@@ -132,6 +132,8 @@ def get_numeric_gradient(place,
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
+    elif tensor_to_check_dtype == core.VarDesc.VarType.BF16:
+        tensor_to_check_dtype = np.float32
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
@@ -140,9 +142,10 @@ def get_numeric_gradient(place,
         sum = []
         op.run(scope, place)
         for output_name in output_names:
-            sum.append(
-                np.array(scope.find_var(output_name).get_tensor()).astype(
-                    tensor_to_check_dtype).mean())
+            output_numpy = np.array(scope.find_var(output_name).get_tensor())
+            if tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+                output_numpy = convert_uint16_to_float(output_numpy)
+            sum.append(output_numpy.astype(tensor_to_check_dtype).mean())
         return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
 
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
@@ -152,6 +155,11 @@ def get_numeric_gradient(place,
             numpy_tensor = np.array(tensor).astype(np.float16)
             numpy_tensor = numpy_tensor.flatten()
             return numpy_tensor[i]
+        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+            numpy_tensor = np.array(tensor).astype(np.uint16)
+            numpy_tensor = numpy_tensor.flatten()
+            return struct.unpack('<f', struct.pack('<I', numpy_tensor[i]
+                                                   << 16))[0]
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
@@ -166,6 +174,13 @@ def get_numeric_gradient(place,
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
             numpy_tensor[i] = e
+            numpy_tensor = numpy_tensor.reshape(shape)
+            tensor.set(numpy_tensor, place)
+        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+            numpy_tensor = np.array(tensor).astype(np.uint16)
+            shape = numpy_tensor.shape
+            numpy_tensor = numpy_tensor.flatten()
+            numpy_tensor[i] = np.uint16(copy_bits_from_float_to_uint16(e))
             numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
         elif tensor_to_check_dtype == np.float32:
@@ -1347,6 +1362,8 @@ class OpTest(unittest.TestCase):
                 abs_a[abs_a < 1e-10] = 1e-3
                 abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
                 abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
+            elif self.is_bfloat16_op():
+                abs_a[abs_a < 1e-2] = 1
             else:
                 abs_a[abs_a < 1e-3] = 1
 
