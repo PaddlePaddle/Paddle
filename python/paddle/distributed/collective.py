@@ -397,23 +397,22 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         return
 
     ring_id = 0 if group is None else group.id
-
     if in_dygraph_mode():
         if op == ReduceOp.SUM:
-            return core.ops.c_allreduce_sum(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
+            return core.ops.c_allreduce_sum_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.MAX:
-            return core.ops.c_allreduce_max(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
+            return core.ops.c_allreduce_max_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.MIN:
-            return core.ops.c_allreduce_min(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
+            return core.ops.c_allreduce_min_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.PROD:
-            return core.ops.c_allreduce_prod(tensor, tensor, 'use_calc_stream',
-                                             use_calc_stream, 'ring_id',
-                                             ring_id)
+            return core.ops.c_allreduce_prod_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
+        return out
 
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -692,7 +691,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         })
 
 
-def _c_identity(tensor, group=0):
+def _c_identity(tensor, group=None):
     """
     Return a copy of the tensor, mainly used with model parallel.
 
@@ -704,30 +703,76 @@ def _c_identity(tensor, group=0):
     Returns:
         Tensor.
     """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    if in_dygraph_mode():
+        return core.ops.c_identity(tensor, 'use_calc_stream', True, 'ring_id',
+                                   ring_id, 'use_model_parallel', True)
     op_type = 'c_identity'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-    if in_dygraph_mode():
-        return core.ops.c_identity(out, tensor, 'use_calc_stream', True,
-                                   'ring_id', group, 'use_model_parallel', True)
+
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         '_c_identity')
-    if not isinstance(group, int):
-        raise ValueError("The type of 'group' for _c_identity should be int.")
+
     helper.append_op(
         type=op_type,
         inputs={'X': tensor},
         outputs={'Out': out},
         attrs={
-            'ring_id': group,
+            'ring_id': ring_id,
             'use_calc_stream': True,
             'use_model_parallel': True,
         })
     return out
 
 
-def _c_split(tensor, rank, nranks, group=0):
+def _c_concat(tensor, nranks, group=None):
+    """
+    Return allgather of the tensor, mainly used with model parallel.
+
+    Args:
+        tensor (Tensor): The input Tensor. Its data type
+            should be float16, float32, float64, int32 or int64.
+        group (int): The id of the process group to work on.
+
+    Returns:
+        Tensor.
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    if in_dygraph_mode():
+        return core.ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
+                                 True, 'nranks', nranks, 'use_model_parallel',
+                                 True)
+
+    op_type = 'c_concat'
+    helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        '_c_concat')
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': tensor},
+        outputs={'Out': out},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            'use_model_parallel': True,
+            'nranks': nranks
+        })
+    return out
+
+
+def _c_split(tensor, rank, nranks, group=None):
     """
     Split tensor evenly among all members, mainly used with model parallel.
 
@@ -740,29 +785,69 @@ def _c_split(tensor, rank, nranks, group=0):
     Returns:
         Tensor.
     """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    if in_dygraph_mode():
+        return core.ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
+                                ring_id, 'rank', rank, 'nranks', nranks,
+                                'use_model_parallel', True)
+
     op_type = 'c_split'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-    if in_dygraph_mode():
-        return core.ops.c_split(out, tensor, 'use_calc_stream', True, 'ring_id',
-                                group, 'rank', rank, 'use_model_parallel', True)
+
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         '_c_split')
-    if not isinstance(group, int):
-        raise ValueError("The type of 'group' for _identity should be int.")
+
     helper.append_op(
         type=op_type,
         inputs={'X': tensor},
         outputs={'Out': out},
         attrs={
-            'ring_id': group,
+            'ring_id': ring_id,
             'use_calc_stream': True,
             'rank': rank,
             'nranks': nranks,
             'use_model_parallel': True,
         })
     return out
+
+
+def _mp_allreduce(tensor,
+                  op=ReduceOp.SUM,
+                  group=None,
+                  use_calc_stream=True,
+                  use_model_parallel=True):
+    """[it is same as allreduce above, but it suuports model parallel. And it support inplace startegy]
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    if in_dygraph_mode():
+        if op == ReduceOp.SUM:
+            return core.ops.c_allreduce_sum_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
+                "use_model_parallel", use_model_parallel)
+        elif op == ReduceOp.MAX:
+            return core.ops.c_allreduce_max_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
+                "use_model_parallel", use_model_parallel)
+        elif op == ReduceOp.MIN:
+            return core.ops.c_allreduce_min_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
+                "use_model_parallel", use_model_parallel)
+        elif op == ReduceOp.PROD:
+            return core.ops.c_allreduce_prod_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
+                "use_model_parallel", use_model_parallel)
+        else:
+            raise ValueError("Unknown parameter: {}.".format(op))
+    else:
+        raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
 
 
 def barrier(group=None):
