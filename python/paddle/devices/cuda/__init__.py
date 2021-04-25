@@ -13,11 +13,22 @@
 # limitations under the License.
 
 from . import streams
-from paddle.fluid import core_avx
-
+from paddle.fluid import core, core_avx
 
 
 def current_stream(device=None):
     if device is None:
         device = -1
-    return core_avx._get_current_stream(device)
+    return core._get_current_stream(device)
+
+
+def synchronize(device=None):
+    device_id = -1
+    if device is not None:
+        if isinstance(device, str):
+            device_id = int(device.split(':', 1)[1])
+        elif isinstance(device, core.CUDAPlace) or isinstance(device,
+                                                              core.XPUPlace):
+            device_id = device.get_device_id()
+
+    return core_avx._device_synchronize(device_id)

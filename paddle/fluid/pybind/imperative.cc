@@ -614,9 +614,15 @@ void BindImperative(py::module *m_ptr) {
           return paddle::platform::stream::get_current_stream(deviceId);
         },
         py::return_value_policy::reference);
-  m.def("_get_cuda_flags", [](bool enable_timing, bool blocking,
-                              bool interprocess) {
-    return platform::get_cuda_flags(enable_timing, blocking, interprocess);
+  m.def("_device_synchronize", [](int device_id) {
+    if (device_id == -1) {
+      device_id = paddle::platform::GetCurrentDeviceId();
+    }
+
+    int curr_device_id = paddle::platform::GetCurrentDeviceId();
+    paddle::platform::SetDeviceId(device_id);
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+    paddle::platform::SetDeviceId(curr_device_id);
   });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
@@ -1603,38 +1609,70 @@ void BindImperative(py::module *m_ptr) {
 
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   py::class_<paddle::platform::stream::CUDAStream>(m, "CUDAStream")
-      .def(py::init<platform::CUDAPlace, paddle::platform::stream::Priority>())
+      .def("__init__",
+           [](paddle::platform::stream::CUDAStream &self,
+              platform::CUDAPlace &device, int priority) {
+             if (priority != 1 && priority != 2) {
+               PADDLE_THROW(platform::errors::InvalidArgument(
+                   "Priority should be 1(high) or 2(normal) "));
+             }
+             auto prio = paddle::platform::stream::Priority(priority);
+
+             new (&self) paddle::platform::stream::CUDAStream(device, prio);
+           })
       .def("wait_event",
            [](paddle::platform::stream::CUDAStream &self,
               paddle::platform::CudaEvent &event) {
+             self.WaitEvent(event.GetRawCudaEvent());
+           })
+      .def("wait_stream",
+           [](paddle::platform::stream::CUDAStream &self,
+              paddle::platform::stream::CUDAStream &stream) {
+             auto event = paddle::platform::CudaEvent();
+             event.Record(stream);
+
              self.WaitEvent(event.GetRawCudaEvent());
            })
       .def("query",
            [](paddle::platform::stream::CUDAStream &self) {
              return self.Query();
            })
-      .def("synchronize", [](paddle::platform::stream::CUDAStream &self) {
-        self.Synchronize();
+      .def("synchronize",
+           [](paddle::platform::stream::CUDAStream &self) {
+             self.Synchronize();
+           })
+      .def("record_event", [](paddle::platform::stream::CUDAStream &self,
+                              paddle::platform::CudaEvent *event) {
+        if (event == nullptr) {
+          auto event_tmp = paddle::platform::CudaEvent();
+          event = &event_tmp;
+        }
+        event->Record(self);
+        return event;
 
       });
 
   py::class_<paddle::platform::CudaEvent>(m, "CUDAEvent")
-      .def(py::init<>())
-      .def(py::init<unsigned int>())
+      .def("__init__",
+           [](paddle::platform::CudaEvent &self, bool enable_timing = false,
+              bool blocking = false, bool interprocess = false) {
+             unsigned int flags = platform::get_cuda_flags(
+                 enable_timing, blocking, interprocess);
+             new (&self) paddle::platform::CudaEvent(flags);
+           })
       .def("record",
            [](paddle::platform::CudaEvent &self,
-              paddle::platform::stream::CUDAStream &stream) {
-             self.Record(stream);
+              paddle::platform::stream::CUDAStream *stream) {
+             if (stream == nullptr) {
+               stream = paddle::platform::stream::get_current_stream(-1);
+             }
+             self.Record(*stream);
            })
       .def("query",
            [](paddle::platform::CudaEvent &self) { return self.Query(); })
       .def("synchronize",
            [](paddle::platform::CudaEvent &self) { self.Synchronize(); });
 
-  py::enum_<paddle::platform::stream::Priority>(m, "Priority")
-      .value("kHigh", paddle::platform::stream::Priority::kHigh)
-      .value("kNormal", paddle::platform::stream::Priority::kNormal)
-      .export_values();
 #endif
 }
 
