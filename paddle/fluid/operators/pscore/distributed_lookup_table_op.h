@@ -30,6 +30,7 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
     auto padding_idx = context.Attr<int64_t>("padding_idx");
     auto table_id = context.Attr<int>("table_id");
+    bool is_test = context.Attr<bool>("is_test");
 
     auto embedding_name = context.InputNames("W").front();
     int64_t emb_dim = 0;
@@ -55,7 +56,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(context.GetPlace())) {
       fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
                                     static_cast<uint64_t>(padding_idx),
-                                    context.GetPlace(), &inputs, &outputs);
+                                    context.GetPlace(), !is_test, &inputs,
+                                    &outputs);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");
@@ -93,7 +95,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
       // use fleet->PullSparse
       fleet->PullSparseToTensorSync(static_cast<uint64_t>(table_id), emb_dim,
                                     static_cast<uint64_t>(padding_idx),
-                                    cpu_place, &tmp_input_vec, &tmp_output_vec);
+                                    cpu_place, !is_test, &tmp_input_vec,
+                                    &tmp_output_vec);
 
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {

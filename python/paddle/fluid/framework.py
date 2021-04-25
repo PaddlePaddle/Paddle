@@ -2254,7 +2254,8 @@ class Operator(object):
         'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
         'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
-        'c_wait_comm', 'c_wait_compute'
+        'c_wait_comm', 'c_wait_compute', 'c_gen_hccl_id', 'c_comm_init_hccl',
+        'copy_cross_scope'
     }
 
     def __init__(self,
@@ -3239,10 +3240,7 @@ class Block(object):
             Operator: the insert Operator.
         """
         self._sync_with_cpp()
-        op_desc = self.desc._insert_op(index)
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        self.ops.insert(index, op)
-        return op
+        return self._insert_op_without_sync(index, *args, **kwargs)
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
@@ -6076,7 +6074,8 @@ def device_guard(device=None):
     A context manager that specifies the device on which the OP will be placed.
 
     Args:
-        device(str|None): Specify the device to use in the context. It should be 'cpu' or 'gpu',
+        device(str|None): Specify the device to use in the context. It should be ``cpu``,
+            ``gpu`` or ``gpu:x``, where ``x`` is the index of the GPUs. 
             When it is set to 'cpu' or 'gpu', all OPs created in the context will be
             placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
             single-card, the device index will be the same as the device on which the
@@ -6201,7 +6200,7 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6211,9 +6210,11 @@ def _get_paddle_place(place):
     place = place.lower()
     if (place == "cpu"):
         return core.CPUPlace()
+
     if (place == "device"):
         return core.Place()
 
+    # GPU
     avaliable_gpu_place = re.match(r'gpu:\d+', place)
     if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
         if not core.is_compiled_with_cuda():
@@ -6229,6 +6230,8 @@ def _get_paddle_place(place):
             device_id = place_info_list[1]
             device_id = int(device_id)
             return core.CUDAPlace(device_id)
+
+    # XPU
     avaliable_xpu_place = re.match(r'xpu:\d+', place)
     if avaliable_xpu_place:
         if not core.is_compiled_with_xpu():
@@ -6239,9 +6242,22 @@ def _get_paddle_place(place):
         device_id = place_info_list[1]
         device_id = int(device_id)
         return core.XPUPlace(device_id)
+
+    # NPU
+    avaliable_npu_place = re.match(r'npu:\d+', place)
+    if avaliable_npu_place:
+        if not core.is_compiled_with_npu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with NPU".format(avaliable_npu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.NPUPlace(device_id)
+
     raise ValueError(
-        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
-    )
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace and NPUPlace, but received {}.".
+        format(place))
 
 
 def _get_paddle_place_list(places):
