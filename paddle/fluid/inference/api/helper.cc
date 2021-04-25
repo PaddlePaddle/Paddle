@@ -46,13 +46,9 @@ std::string to_string<std::vector<std::vector<float>>>(
 void RegisterAllCustomOperator() {
   auto &op_meta_info_map = OpMetaInfoMap::Instance();
   const auto &meta_info_map = op_meta_info_map.GetMap();
-  VLOG(1) << "Custom Operator: size of op meta info map - "
-          << meta_info_map.size();
-  // pair: {op_type, OpMetaInfo}
   for (auto &pair : meta_info_map) {
     const auto &all_op_kernels{framework::OperatorWithKernel::AllOpKernels()};
     if (all_op_kernels.find(pair.first) == all_op_kernels.end()) {
-      VLOG(1) << "Register inference custom op: " << pair.first;
       framework::RegisterOperatorWithMetaInfo(pair.second);
     } else {
       LOG(INFO) << "The operator `" << pair.first
