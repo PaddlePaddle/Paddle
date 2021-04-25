@@ -84,7 +84,6 @@ __all__ = [
         'log2',
         'log10',
         'logsumexp',
-        'mul',
         'multiplex',
         'pow',
         'prod',
