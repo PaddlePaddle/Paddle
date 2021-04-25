@@ -123,8 +123,8 @@ class CUDAStream final {
   DISABLE_COPY_AND_ASSIGN(CUDAStream);
 };
 
-#endif
 CUDAStream* get_current_stream(int deviceId);
+#endif
 
 }  // namespace stream
 }  // namespace platform

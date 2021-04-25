@@ -96,6 +96,7 @@ void CUDAStream::Wait() const {
   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 CUDAStream* get_current_stream(int deviceId) {
   if (deviceId == -1) {
     deviceId = platform::GetCurrentDeviceId();
@@ -105,14 +106,13 @@ CUDAStream* get_current_stream(int deviceId) {
 
   platform::Place device = CUDAPlace(deviceId);
 
-  // platform::DeviceContext* dev_ctx = pool.Get(device);
-  // return dev_ctx->stream();
   auto stream = static_cast<platform::CUDADeviceContext*>(pool.Get(device))
                     ->context()
                     ->Stream()
                     .get();
   return stream;
 }
+#endif
 
 }  // namespace stream
 }  // namespace platform
