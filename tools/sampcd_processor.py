@@ -118,8 +118,9 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
         sample_code_filenames(list of str)
     """
     global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR
+    CODE_BLOCK_INTERDUCTORY = "code-block:: python"
 
-    sampcd_begins = find_all(srccom, " code-block:: python")
+    sampcd_begins = find_all(srccom, CODE_BLOCK_INTERDUCTORY)
     if len(sampcd_begins) == 0:
         # detect sample codes using >>> to format and consider this situation as wrong
         print(htype, " name:", hname)
@@ -138,7 +139,7 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
     sample_code_filenames = []
     for y in range(1, len(sampcd_begins) + 1):
         sampcd_begin = sampcd_begins[y - 1]
-        sampcd = srccom[sampcd_begin + len(" code-block:: python") + 1:]
+        sampcd = srccom[sampcd_begin + len(CODE_BLOCK_INTERDUCTORY) + 1:]
         sampcd = sampcd.split("\n")
         # remove starting empty lines
         while sampcd[0].replace(' ', '').replace('\t', '') == '':
