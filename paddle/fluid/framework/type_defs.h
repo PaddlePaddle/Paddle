@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
 
@@ -44,6 +45,9 @@ using Attribute = boost::variant<
     std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
 
 using AttributeMap = std::unordered_map<std::string, Attribute>;
+
+using AttributeTypeMap =
+    std::unordered_map<std::string, paddle::framework::proto::AttrType>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
 using NPUAttribute =

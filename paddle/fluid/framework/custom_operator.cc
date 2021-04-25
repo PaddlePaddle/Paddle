@@ -544,7 +544,7 @@ void RegisterOperatorWithMetaInfo(
 
   info.checker_ = new OpAttrChecker();
   CustomOpMaker custom_maker(op_inputs, op_outputs, op_attrs);
-  custom_maker(info.proto_, info.checker_);
+  custom_maker(info.proto_, info.checker_, info.attrs_type_);
   PADDLE_ENFORCE_EQ(
       info.proto_->IsInitialized(), true,
       platform::errors::PreconditionNotMet(

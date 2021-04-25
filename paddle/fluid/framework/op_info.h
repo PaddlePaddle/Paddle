@@ -48,6 +48,7 @@ class OpInfo {
   InferInplaceOpFN infer_inplace_;
   InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
   DygraphGradOpMakerFN dygraph_grad_op_maker_;
+  AttributeTypeMap* attrs_type_{nullptr};
 
   // NOTE(zjl): this flag is added to check whether
   // the grad maker is the default one.
