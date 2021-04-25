@@ -197,8 +197,7 @@ class TestPyLayer(unittest.TestCase):
         z = Layer_bk_none1.apply(input2)
 
         with self.assertRaises(NotImplementedError):
-            with paddle.fluid.dygraph.guard():
-                z.sum().backward()
+            z.sum().backward()
 
         class Layer_bk_none2(PyLayer):
             @staticmethod
@@ -213,8 +212,7 @@ class TestPyLayer(unittest.TestCase):
         input1.stop_gradient = False
         z = Layer_bk_none2.apply(input1, input1)
         with self.assertRaises(NotImplementedError):
-            with paddle.fluid.dygraph.guard():
-                z.mean().backward()
+            z.mean().backward()
 
         class Layer_bk_one1(PyLayer):
             @staticmethod
@@ -229,8 +227,7 @@ class TestPyLayer(unittest.TestCase):
         input1.stop_gradient = False
         z = Layer_bk_one1.apply(input1)
         with self.assertRaises(NotImplementedError):
-            with paddle.fluid.dygraph.guard():
-                z.mean().backward()
+            z.mean().backward()
 
         class Layer_bk_one2(PyLayer):
             @staticmethod
@@ -245,8 +242,7 @@ class TestPyLayer(unittest.TestCase):
         input1.stop_gradient = False
         z = Layer_bk_one1.apply(input1)
         with self.assertRaises(NotImplementedError):
-            with paddle.fluid.dygraph.guard():
-                z.mean().backward()
+            z.mean().backward()
 
         class Layer_no_bk(PyLayer):
             @staticmethod
@@ -257,10 +253,9 @@ class TestPyLayer(unittest.TestCase):
         input1.stop_gradient = False
         z = Layer_no_bk.apply(input1)
 
-        with self.assertRaises(NotImplementedError):
-            with paddle.fluid.dygraph.guard():
-                z = z[0] + z[1]
-                z.mean().backward()
+        with self.assertRaises(OSError):
+            z = z[0] + z[1]
+            z.mean().backward()
 
         class Layer_bk_match(PyLayer):
             @staticmethod
@@ -275,9 +270,8 @@ class TestPyLayer(unittest.TestCase):
         input1.stop_gradient = False
         z = Layer_bk_match.apply(input1)
         with self.assertRaises(ValueError):
-            with paddle.fluid.dygraph.guard():
-                z = z[0] + z[1]
-                z.mean().backward()
+            z = z[0] + z[1]
+            z.mean().backward()
 
     def test_pylayer_inplace(self):
         class cus_tanh(PyLayer):
