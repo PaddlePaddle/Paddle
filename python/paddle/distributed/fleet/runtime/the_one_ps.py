@@ -77,8 +77,8 @@ class CommonAccessor:
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
-        opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1), (
-            "LearningRate", 1)]
+        opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
+                                          ("LearningRate", 1)]
 
         opt_attr_map = {}
         opt_attr_map["sgd"] = []
