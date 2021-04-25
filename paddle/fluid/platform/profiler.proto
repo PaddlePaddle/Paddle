@@ -21,6 +21,7 @@ message Event {
   enum EventType {
     CPU = 0;
     GPUKernel = 1;
+    NPUKernel = 2;
   }
   optional EventType type = 8;
   optional string name = 1;
@@ -39,6 +40,8 @@ message MemEvent {
     CUDAPlace = 0;
     CPUPlace = 1;
     CUDAPinnedPlace = 2;
+    XPUPlace = 3;
+    NPUPlace = 4;
   }
   optional uint64 start_ns = 1;
   optional uint64 end_ns = 2;

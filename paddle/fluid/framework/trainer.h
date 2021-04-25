@@ -109,13 +109,22 @@ class MultiTrainer : public TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id);
   virtual std::string GetDumpPath(int tid);
 
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+#ifdef PADDLE_WITH_HETERPS
+
+  void MergeDenseParam();
+#endif
+
  protected:
   int thread_num_;
   std::vector<std::thread> threads_;
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<std::string> need_merge_var_names_;
-
+#ifdef PADDLE_WITH_HETERPS
+  std::vector<platform::Place> places_;
+#endif
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
@@ -313,7 +322,6 @@ class PSGPUTrainer : public TrainerBase {
   float scale_datanorm_;
   paddle::platform::Place place_;
   ProgramDesc program_;
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<platform::Place> places_;
@@ -324,7 +332,8 @@ class PSGPUTrainer : public TrainerBase {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(WITH_ASCEND_CL)
 class PipelineTrainer : public TrainerBase {
  public:
   PipelineTrainer() {}
