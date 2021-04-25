@@ -746,7 +746,7 @@ void BindImperative(py::module *m_ptr) {
              // inplace operator for the VarBase self.
              self->BumpInplaceVersion();
            })
-      .def("__getitem__",
+      .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
                  slice_strides, decrease_axis, infer_flags;
