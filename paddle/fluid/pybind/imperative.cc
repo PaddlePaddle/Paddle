@@ -610,6 +610,7 @@ void BindImperative(py::module *m_ptr) {
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
           imperative::SetCurrentTracer(tracer);
         });
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   m.def("_get_current_stream",
         [](int deviceId) {
           return paddle::platform::stream::get_current_stream(deviceId);
@@ -625,6 +626,7 @@ void BindImperative(py::module *m_ptr) {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
     paddle::platform::SetDeviceId(curr_device_id);
   });
+#endif
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase", R"DOC()DOC")
