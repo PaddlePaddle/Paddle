@@ -55,6 +55,7 @@ __all__ = [
     'tanhshrink',
     'thresholded_relu',
     'log_softmax',
+    'softmax_blocksparse',
     'glu',
 ]
 

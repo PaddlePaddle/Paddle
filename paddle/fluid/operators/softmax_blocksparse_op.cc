@@ -73,6 +73,26 @@ class SoftmaxBlockSparseGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    // auto* X = context.Input<framework::Tensor>("X");
+    // auto* Out = context.Output<framework::Tensor>("Out");
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    // auto* Out = context.Input<framework::Tensor>("Out");
+    // auto* dOut =
+    //     context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    // auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+  }
+};
+
 }
 }
 
@@ -86,3 +106,10 @@ REGISTER_OPERATOR(softmax_blocksparse,
                   ops::SoftmaxBlockSparseGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(softmax_blocksparse_grad, ops::SoftmaxBlockSparseGradOp);
+
+REGISTER_OP_CPU_KERNEL(
+    softmax_blocksparse,
+    ops::SoftmaxBlockSparseKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    softmax_blocksparse_grad,
+    ops::SoftmaxBlockSparseGradKernel<paddle::platform::CPUDeviceContext, float>);
