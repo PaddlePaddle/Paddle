@@ -38,7 +38,14 @@ LAYERS = 8
 
 def sequential_model():
     model = paddle.nn.Sequential(
-        *[paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM) for _ in range(LAYERS)],
+        paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM),
+        paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM),
+        paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM),
+        paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM),
+        paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM),
+        paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM),
+        paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM),
+        paddle.nn.Linear(HIDDEN_DIM, HIDDEN_DIM),
         paddle.nn.Linear(HIDDEN_DIM, 1), )
     return model
 
