@@ -20,8 +20,8 @@ import paddle.fluid as fluid
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
-class TestHybridPipeParallel(TestMultipleGpus):
-    def test_hybrid_parallel_pp_layer(self):
+class TestModelParallelLayer(TestMultipleGpus):
+    def test_hybrid_parallel_mp_layer(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_layers.py')
 
 
