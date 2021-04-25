@@ -889,10 +889,14 @@ def _parallel_linear(x,
                      nranks,
                      split_tensor,
                      name,
-                     group=0):
+                     group=None):
     """
     Parallel Linear
     """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
     if axis == 0:
         if split_tensor:
             x = _c_split(x, inner_rank, nranks, group=group)
@@ -931,7 +935,7 @@ def _parallel_linear(x,
             inputs={'X': linear_out},
             outputs={'Out': out},
             attrs={
-                'ring_id': group,
+                'ring_id': ring_id,
                 'use_calc_stream': True,
                 'use_model_parallel': True
             })
@@ -941,7 +945,7 @@ def _parallel_linear(x,
             inputs={'X': linear_out},
             outputs={'Out': out},
             attrs={
-                'ring_id': group,
+                'ring_id': ring_id,
                 'nranks': nranks,
                 'use_calc_stream': True,
                 'use_model_parallel': True
@@ -956,10 +960,14 @@ def _parallel_embedding(x,
                         inner_rank,
                         num_partitions,
                         name,
-                        group=0):
+                        group=None):
     """
     Parallel Embedding
     """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
     origin_num_embeddings = origin_size[0]
     embedding = paddle.nn.Embedding(
         per_part_embeddings,
@@ -997,7 +1005,7 @@ def _parallel_embedding(x,
         inputs={'X': emb_out},
         outputs={'Out': out},
         attrs={
-            'ring_id': group,
+            'ring_id': ring_id,
             'use_calc_stream': True,
             'use_model_parallel': True
         })
@@ -1123,7 +1131,7 @@ def split(x,
             inner_rank,
             num_partitions,
             name,
-            group=0)
+            group=None)
         return emb_out
     else:
         should_split = False
@@ -1159,5 +1167,5 @@ def split(x,
             num_partitions,
             should_split,
             name=name,
-            group=0)
+            group=None)
         return linear_out
