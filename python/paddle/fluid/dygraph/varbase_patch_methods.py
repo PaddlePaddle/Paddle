@@ -26,6 +26,7 @@ from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+import paddle.utils.deprecated as deprecated
 
 
 class TensorHookRemoveHelper(object):
@@ -238,6 +239,10 @@ def monkey_patch_varbase():
                 "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
+    @deprecated(
+        since="2.1.0",
+        reason="Please use x.grad, which returns the tensor value of the gradient."
+    )
     def gradient(self):
         """
         .. warning::
@@ -261,11 +266,6 @@ def monkey_patch_varbase():
                 # [500.]
 
         """
-        warnings.warn(
-            "Caution! 'x.gradient()' is not recommended and will be deprecated "
-            "in future! We recommend to use 'x.grad' to get the tensor value "
-            "of the gradient.")
-
         if self._grad_ivar() is None:
             return None
 
