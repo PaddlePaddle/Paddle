@@ -4352,7 +4352,7 @@ class PipelineOptimizer(object):
                         ring_id = self._pp_ring_map[pair_key]
 
                     if self.schedule_mode == 'F-then-B':  # F-then-B
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='send_v2',
                             inputs={'X': var},
@@ -4364,7 +4364,7 @@ class PipelineOptimizer(object):
                                 'ring_id': ring_id
                             })
                         extra_index_info['index'] += 1
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
@@ -4379,7 +4379,7 @@ class PipelineOptimizer(object):
                             })
                         extra_index_info['index'] += 1
                     elif self.schedule_mode == '1F1B':  # 1F1B
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='c_sync_calc_stream',
                             inputs={'X': [var]},
@@ -4389,7 +4389,7 @@ class PipelineOptimizer(object):
                                 self._op_role_key: op_role,
                             })
                         extra_index_info['index'] += 1
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='send_v2',
                             inputs={'X': var},
@@ -4409,7 +4409,7 @@ class PipelineOptimizer(object):
                         else:
                             insert_index = index
                             new_op_role = self._op_role.Backward
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=insert_index + extra_index_info['index'],
                             type='c_sync_comm_stream',
                             inputs={'X': [var]},
@@ -4424,7 +4424,7 @@ class PipelineOptimizer(object):
                         var_shape = list(var.shape)
                         var_shape[0] = self.micro_batch_size if var_shape[
                             0] < 0 else var_shape[0]
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
@@ -4818,7 +4818,10 @@ class PipelineOptimizer(object):
         place_list = []
         for dev in device_list:
             dev_index = int(dev.split(":")[1])
-            place_list.append(core.CUDAPlace(0))
+            if core.is_compiled_with_cuda():
+                place_list.append(core.CUDAPlace(dev_index % 1))
+            elif core.is_compiled_with_npu():
+                place_list.append(core.NPUPlace(dev_index % 1))
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
@@ -4837,7 +4840,10 @@ class PipelineOptimizer(object):
             self._accumulate_gradients(real_block)
             real_block._sync_with_cpp()
 
-        place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        if core.is_compiled_with_cuda():
+            place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        elif core.is_compiled_with_npu():
+            place_id = int(os.getenv("FLAGS_selected_npus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
