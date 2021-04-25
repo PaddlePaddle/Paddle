@@ -972,13 +972,13 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         None.
     Examples:
         .. code-block:: python
+            # required: distributed
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             out_tensor_list = []
-            if paddle.distributed.ParallelEnv().local_rank == 0:
+            if paddle.distributed.ParallelEnv().rank == 0:
                 np_data1 = np.array([[1, 2, 3], [4, 5, 6]])
                 np_data2 = np.array([[7, 8, 9], [10, 11, 12]])
             else:
@@ -995,11 +995,12 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     op_type = 'alltoall'
     temp = paddle.concat(in_tensor_list, axis=0)
     helper = LayerHelper(op_type, **locals())
+    nranks = len(in_tensor_list)
     out = helper.create_variable_for_type_inference(
         dtype=in_tensor_list[0].dtype)
     if in_dygraph_mode():
-        core.ops.alltoall(temp, out, 'use_calc_stream', use_calc_stream,
-                          'ring_id', ring_id)
+        core.ops.alltoall_(temp, out, 'use_calc_stream', use_calc_stream,
+                           'ring_id', ring_id)
     else:
         if not isinstance(in_tensor_list, list):
             raise ValueError("The type of 'in_tensor_list' for all_to_all "
@@ -1023,3 +1024,4 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
                 'ring_id': group,
                 'use_calc_stream': use_calc_stream,
             })
+    out_tensor_list.extend(paddle.split(out, nranks, 0))
