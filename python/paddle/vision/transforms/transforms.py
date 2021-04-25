@@ -50,7 +50,7 @@ def _get_image_size(img):
     elif F._is_numpy_image(img):
         return img.shape[:2][::-1]
     elif F._is_tensor_image(img):
-        return img.shape[:-1][::-1]  # h w c
+        return img.shape[1:][::-1]  # chw
     else:
         raise TypeError("Unexpected type {}".format(type(img)))
 

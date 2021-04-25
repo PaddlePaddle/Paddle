@@ -314,12 +314,13 @@ class TestTransformsTensor(TestTransformsCV2):
         return 'tensor'
 
     def create_image(self, shape):
-        return paddle.to_tensor(np.random.rand(*shape))
+        return paddle.to_tensor(np.random.rand(*shape)).transpose(
+            (2, 0, 1))  # hwc->chw
 
     def do_transform(self, trans):
-        trans.transforms.insert(0, transforms.ToTensor(data_format='HWC'))
+        trans.transforms.insert(0, transforms.ToTensor(data_format='CHW'))
+        trans.transforms.append(transforms.Transpose(order=(1, 2, 0)))
         dataset_folder = DatasetFolder(self.data_dir, transform=trans)
-
         for _ in dataset_folder:
             pass
 
@@ -330,10 +331,70 @@ class TestTransformsTensor(TestTransformsCV2):
         trans = transforms.Compose([
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
-            transforms.Transpose(),
             normalize,
         ])
         self.do_transform(trans)
+
+    def test_grayscale(self):
+        trans = transforms.Compose([transforms.Grayscale()])
+        self.do_transform(trans)
+
+        trans_gray = transforms.Grayscale()
+        fake_img = self.create_image((500, 400, 3))
+        fake_img_gray = trans_gray(fake_img)
+
+        np.testing.assert_equal(self.get_shape(fake_img_gray)[1], 500)
+        np.testing.assert_equal(self.get_shape(fake_img_gray)[2], 400)
+
+        trans_gray3 = transforms.Grayscale(3)
+        fake_img = self.create_image((500, 400, 3))
+        fake_img_gray = trans_gray3(fake_img)
+
+    def test_normalize(self):
+        normalize = transforms.Normalize(mean=0.5, std=0.5)
+        trans = transforms.Compose([normalize])
+        self.do_transform(trans)
+
+    def test_pad(self):
+        trans = transforms.Compose([transforms.Pad(2)])
+        self.do_transform(trans)
+
+        fake_img = self.create_image((200, 150, 3))
+        trans_pad = transforms.Compose([transforms.Pad(10)])
+        fake_img_padded = trans_pad(fake_img)
+        np.testing.assert_equal(self.get_shape(fake_img_padded), (3, 220, 170))
+        trans_pad1 = transforms.Pad([1, 2])
+        trans_pad2 = transforms.Pad([1, 2, 3, 4])
+        img = trans_pad1(fake_img)
+        img = trans_pad2(img)
+
+    def test_random_crop(self):
+        trans = transforms.Compose([
+            transforms.RandomCrop(200),
+            transforms.RandomCrop((140, 160)),
+        ])
+        self.do_transform(trans)
+
+        trans_random_crop1 = transforms.RandomCrop(224)
+        trans_random_crop2 = transforms.RandomCrop((140, 160))
+
+        fake_img = self.create_image((500, 400, 3))
+        fake_img_crop1 = trans_random_crop1(fake_img)
+        fake_img_crop2 = trans_random_crop2(fake_img_crop1)
+
+        np.testing.assert_equal(self.get_shape(fake_img_crop1), (3, 224, 224))
+
+        np.testing.assert_equal(self.get_shape(fake_img_crop2), (3, 140, 160))
+
+        trans_random_crop_same = transforms.RandomCrop((140, 160))
+        img = trans_random_crop_same(fake_img_crop2)
+
+        trans_random_crop_bigger = transforms.RandomCrop(
+            (180, 200), pad_if_needed=True)
+        img = trans_random_crop_bigger(img)
+
+        trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
+        img = trans_random_crop_pad(img)
 
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
@@ -410,11 +471,11 @@ class TestFunctional(unittest.TestCase):
             F.to_tensor(fake_img, data_format=1)
 
         with self.assertRaises(ValueError):
-            fake_img = paddle.rand((100, 100, 3))
+            fake_img = paddle.rand((3, 100, 100))
             F.pad(fake_img, 1, padding_mode='symmetric')
 
         with self.assertRaises(TypeError):
-            fake_img = paddle.rand((100, 100, 3))
+            fake_img = paddle.rand((3, 100, 100))
             F.resize(fake_img, {1: 1})
 
         with self.assertRaises(TypeError):
@@ -486,7 +547,7 @@ class TestFunctional(unittest.TestCase):
     def test_center_crop(self):
         np_img = (np.random.rand(28, 24, 3)).astype('uint8')
         pil_img = Image.fromarray(np_img)
-        tensor_img = F.to_tensor(pil_img, data_format='HWC')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW')
 
         np_cropped_img = F.center_crop(np_img, 4)
         pil_cropped_img = F.center_crop(pil_img, 4)
@@ -495,19 +556,22 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_almost_equal(np_cropped_img,
                                        np.array(pil_cropped_img))
         np.testing.assert_almost_equal(np_cropped_img,
-                                       tensor_cropped_img.numpy())
+                                       tensor_cropped_img.numpy().transpose(
+                                           (1, 2, 0)))
 
     def test_pad(self):
         np_img = (np.random.rand(28, 24, 3)).astype('uint8')
         pil_img = Image.fromarray(np_img)
-        tensor_img = F.to_tensor(pil_img, 'HWC')
+        tensor_img = F.to_tensor(pil_img, 'CHW')
 
         np_padded_img = F.pad(np_img, [1, 2], padding_mode='reflect')
         pil_padded_img = F.pad(pil_img, [1, 2], padding_mode='reflect')
         tensor_padded_img = F.pad(tensor_img, [1, 2], padding_mode='reflect')
 
         np.testing.assert_almost_equal(np_padded_img, np.array(pil_padded_img))
-        np.testing.assert_almost_equal(np_padded_img, tensor_padded_img.numpy())
+        np.testing.assert_almost_equal(np_padded_img,
+                                       tensor_padded_img.numpy().transpose(
+                                           (1, 2, 0)))
 
         tensor_padded_img = F.pad(tensor_img, 1, padding_mode='reflect')
         tensor_padded_img = F.pad(tensor_img, [1, 2, 1, 2],
@@ -520,7 +584,7 @@ class TestFunctional(unittest.TestCase):
     def test_resize(self):
         np_img = (np.zeros([28, 24, 3])).astype('uint8')
         pil_img = Image.fromarray(np_img)
-        tensor_img = F.to_tensor(pil_img, 'HWC')
+        tensor_img = F.to_tensor(pil_img, 'CHW')
 
         np_reseized_img = F.resize(np_img, 40)
         pil_reseized_img = F.resize(pil_img, 40)
@@ -530,9 +594,11 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_almost_equal(np_reseized_img,
                                        np.array(pil_reseized_img))
         np.testing.assert_almost_equal(np_reseized_img,
-                                       tensor_reseized_img.numpy())
+                                       tensor_reseized_img.numpy().transpose(
+                                           (1, 2, 0)))
         np.testing.assert_almost_equal(np_reseized_img,
-                                       tensor_reseized_img2.numpy())
+                                       tensor_reseized_img2.numpy().transpose(
+                                           (1, 2, 0)))
 
         gray_img = (np.zeros([28, 32])).astype('uint8')
         gray_resize_img = F.resize(gray_img, 40)
@@ -590,10 +656,12 @@ class TestFunctional(unittest.TestCase):
         rotated_np_img = F.rotate(np_img, 80, expand=True)
         rotated_pil_img = F.rotate(pil_img, 80, expand=True)
 
-        tensor_img_hwc = F.to_tensor(pil_img, 'HWC')
-        rotated_tensor_img1 = F.rotate(tensor_img_hwc, 80, expand=True)
+        tensor_img = F.to_tensor(pil_img, 'CHW')
+
+        rotated_tensor_img1 = F.rotate(tensor_img, 80, expand=True)
+
         rotated_tensor_img2 = F.rotate(
-            tensor_img_hwc,
+            tensor_img,
             80,
             interpolation='bilinear',
             center=(10, 10),
@@ -601,7 +669,8 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
-        np.testing.assert_equal(rotated_np_img.shape, rotated_tensor_img1.shape)
+        np.testing.assert_equal(rotated_np_img.shape,
+                                rotated_tensor_img1.transpose((1, 2, 0)).shape)
 
     def test_rotate1(self):
         np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
