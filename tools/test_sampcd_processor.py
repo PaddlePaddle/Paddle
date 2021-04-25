@@ -22,12 +22,13 @@ import sys
 import importlib
 from sampcd_processor import find_all
 from sampcd_processor import check_indent
-from sampcd_processor import sampcd_extract_and_run
-from sampcd_processor import single_defcom_extract
-from sampcd_processor import srccoms_extract
 from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
 from sampcd_processor import get_wlist
+from sampcd_processor import sampcd_extract_to_file
+from sampcd_processor import execute_samplecode
+
+SAMPLECODE_TEMP_DIR = 'samplecode_temp'
 
 
 class Test_find_all(unittest.TestCase):
@@ -53,107 +54,95 @@ class Test_check_indent(unittest.TestCase):
         self.assertEqual(4, check_indent("\thello paddle"))
 
 
-class Test_sampcd_extract_and_run(unittest.TestCase):
+class Test_execute_samplecode(unittest.TestCase):
     def setUp(self):
-        if not os.path.exists('samplecode_temp/'):
-            os.mkdir('samplecode_temp/')
+        if not os.path.exists(SAMPLECODE_TEMP_DIR):
+            os.mkdir(SAMPLECODE_TEMP_DIR)
+        self.successSampleCodeFile = os.path.join(SAMPLECODE_TEMP_DIR,
+                                                  'samplecode_success.py')
+        with open(self.successSampleCodeFile, 'w') as f:
+            f.write('print(1+1)')
+        self.failedSampleCodeFile = os.path.join(SAMPLECODE_TEMP_DIR,
+                                                 'samplecode_failed.py')
+        with open(self.failedSampleCodeFile, 'w') as f:
+            f.write('print(1/0)')
 
-    def test_run_a_defs_samplecode(self):
+    def tearDown(self):
+        os.remove(self.successSampleCodeFile)
+        os.remove(self.failedSampleCodeFile)
+
+    def test_run_success(self):
+        result, tfname, msg = execute_samplecode(self.successSampleCodeFile)
+        self.assertTrue(result)
+        self.assertEqual(self.successSampleCodeFile, tfname)
+        self.assertIsNotNone(msg)
+        self.assertLess(msg.find('skipped'), 0)
+
+    def test_run_failed(self):
+        result, tfname, msg = execute_samplecode(self.failedSampleCodeFile)
+        self.assertFalse(result)
+        self.assertEqual(self.failedSampleCodeFile, tfname)
+        self.assertIsNotNone(msg)
+        self.assertLess(msg.find('skipped'), 0)
+
+    def test_testcases_skipped(self):
+        ...
+        tfname = os.path.join(SAMPLECODE_TEMP_DIR, 'samplecode_skipped.py')
+        with open(tfname, 'w') as f:
+            f.write("# required: distributed\nprint(1/0)")
+        result, _, msg = execute_samplecode(tfname)
+        self.assertTrue(result)
+        self.assertGreaterEqual(msg.find('skipped'), 0)
+        os.remove(tfname)
+
+
+class Test_sampcd_extract_to_file(unittest.TestCase):
+    def setUp(self):
+        if not os.path.exists(SAMPLECODE_TEMP_DIR):
+            os.mkdir(SAMPLECODE_TEMP_DIR)
+
+    def tearDown(self):
+        shutil.rmtree(SAMPLECODE_TEMP_DIR)
+
+    def test_1_samplecode(self):
         comments = """
         Examples:
             .. code-block:: python
+
                 print(1+1)
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertTrue(res)
-        self.assertEqual(funcname, name)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual(
+            [os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example.py')],
+            sample_code_filenames)
 
-    def test_run_a_def_no_code(self):
+    def test_no_samplecode(self):
         comments = """
         placeholder
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertFalse(res)
-        self.assertEqual(funcname, name)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([], sample_code_filenames)
 
-    def test_run_a_def_raise_expection(self):
+    def test_2_samplecodes(self):
         comments = """
         placeholder
         Examples:
             .. code-block:: python
+
                 print(1/0)
+
+            .. code-block:: python
+
+                print(1+1)
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertFalse(res)
-        self.assertEqual(funcname, name)
-
-
-class Test_single_defcom_extract(unittest.TestCase):
-    def test_extract_from_func(self):
-        defstr = '''
-import os
-def foo():
-            """
-            foo is a function.
-            """
-            pass
-def bar():
-            pass
-'''
-        comm = single_defcom_extract(
-            2, defstr.splitlines(True), is_class_begin=False)
-        self.assertEqual("            foo is a function.\n", comm)
-        pass
-
-    def test_extract_from_func_with_no_docstring(self):
-        defstr = '''
-import os
-def bar():
-            pass
-'''
-        comm = single_defcom_extract(
-            2, defstr.splitlines(True), is_class_begin=False)
-        self.assertEqual('', comm)
-        pass
-
-    def test_extract_from_class(self):
-        defstr = r'''
-import os
-class Foo():
-            """
-            Foo is a class.
-            second line.
-            """
-            pass
-            def bar():
-                pass
-def foo():
-            pass
-'''
-        comm = single_defcom_extract(
-            2, defstr.splitlines(True), is_class_begin=True)
-        rcomm = """            Foo is a class.
-            second line.
-"""
-        self.assertEqual(rcomm, comm)
-        pass
-
-    def test_extract_from_class_with_no_docstring(self):
-        defstr = '''
-import os
-class Foo():
-            pass
-            def bar():
-                pass
-def foo():
-            pass
-'''
-        comm = single_defcom_extract(
-            0, defstr.splitlines(True), is_class_begin=True)
-        self.assertEqual('', comm)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([
+            os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_1.py'),
+            os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_2.py')
+        ], sample_code_filenames)
 
 
 class Test_get_api_md5(unittest.TestCase):
@@ -266,181 +255,6 @@ class Test_get_wlist(unittest.TestCase):
             "../python/paddle/verison.py",
         ], wlist_file)
         self.assertCountEqual(["deformable_conv"], gpu_not_white)
-
-
-class Test_srccoms_extract(unittest.TestCase):
-    def setUp(self):
-        self.tmpDir = tempfile.mkdtemp()
-        print('tmpDir=', self.tmpDir)
-        self.opsDir = os.path.join(self.tmpDir, 'fluid/layers')
-        os.makedirs(self.opsDir)
-        sys.path.append(self.opsDir)
-        sys.path.append(self.tmpDir)
-        self.api_pr_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec'))
-        with open(self.api_pr_spec_filename, 'w') as f:
-            f.write("\n".join([
-                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "one_plus_one"))""",
-                """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "two_plus_two"))""",
-                """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "three_plus_three"))""",
-                """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "four_plus_four"))""",
-            ]))
-
-    def tearDown(self):
-        #sys.path.remove(self.tmpDir)
-        shutil.rmtree(self.tmpDir)
-        os.remove(self.api_pr_spec_filename)
-
-    def test_from_ops_py(self):
-        filecont = '''
-def add_sample_code(obj, docstr):
-    pass
-
-__unary_func__ = [
-    'exp',
-]
-
-__all__ = []
-__all__ += __unary_func__
-__all__ += ['one_plus_one']
-
-def exp():
-    pass
-add_sample_code(globals()["exp"], r"""
-Examples:
-    .. code-block:: python
-
-        # import paddle
-        # x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        # out = paddle.exp(x)
-        out = [0.67032005, 0.81873075, 1.10517092, 1.34985881]
-        print(out)
-        # [0.67032005 0.81873075 1.10517092 1.34985881]
-""")
-
-def one_plus_one():
-            return 1+1
-
-one_plus_one.__doc__ = """
-            placeholder
-
-            Examples:
-            .. code-block:: python
-                print(1+1)
-"""
-
-__all__ += ['two_plus_two']
-def two_plus_two():
-            return 2+2
-add_sample_code(globals()["two_plus_two"], """
-            Examples:
-            .. code-block:: python
-                print(2+2)
-""")
-'''
-        pyfilename = os.path.join(self.opsDir, 'ops.py')
-        with open(pyfilename, 'w') as pyfile:
-            pyfile.write(filecont)
-        self.assertTrue(os.path.exists(pyfilename))
-        utsp = importlib.import_module('ops')
-        print('testing srccoms_extract from ops.py')
-        methods = ['one_plus_one', 'two_plus_two', 'exp']
-        # os.remove("samplecode_temp/" "one_plus_one_example.py")
-        self.assertFalse(
-            os.path.exists("samplecode_temp/"
-                           "one_plus_one_example.py"))
-        with open(pyfilename, 'r') as pyfile:
-            res, error_methods = srccoms_extract(pyfile, [], methods)
-            self.assertTrue(res)
-        self.assertTrue(
-            os.path.exists("samplecode_temp/"
-                           "one_plus_one_example.py"))
-        os.remove("samplecode_temp/" "one_plus_one_example.py")
-        self.assertTrue(
-            os.path.exists("samplecode_temp/"
-                           "two_plus_two_example.py"))
-        os.remove("samplecode_temp/" "two_plus_two_example.py")
-        self.assertTrue(os.path.exists("samplecode_temp/" "exp_example.py"))
-        os.remove("samplecode_temp/" "exp_example.py")
-
-    def test_from_not_ops_py(self):
-        filecont = '''
-__all__ = [
-        'one_plus_one'
-]
-
-def one_plus_one():
-            """
-            placeholder
-
-            Examples:
-            .. code-block:: python
-                print(1+1)
-            """
-            return 1+1
-
-'''
-        pyfilename = os.path.join(self.tmpDir, 'opo.py')  # not ops.py
-        with open(pyfilename, 'w') as pyfile:
-            pyfile.write(filecont)
-        utsp = importlib.import_module('opo')
-        methods = ['one_plus_one']
-        with open(pyfilename, 'r') as pyfile:
-            res, error_methods = srccoms_extract(pyfile, [], methods)
-            self.assertTrue(res)
-        expectedFile = os.path.join("samplecode_temp",
-                                    "one_plus_one_example.py")
-        self.assertTrue(os.path.exists(expectedFile))
-        os.remove(expectedFile)
-
-    def test_with_empty_wlist(self):
-        """
-        see test_from_ops_py
-        """
-        pass
-
-    def test_with_wlist(self):
-        filecont = '''
-__all__ = [
-        'four_plus_four',
-        'three_plus_three'
-        ]
-
-def four_plus_four():
-            """
-            placeholder
-
-            Examples:
-            .. code-block:: python
-                print(4+4)
-            """
-            return 4+4
-def three_plus_three():
-            """
-            placeholder
-
-            Examples:
-            .. code-block:: python
-                print(3+3)
-            """
-            return 3+3
-
-'''
-        pyfilename = os.path.join(self.tmpDir, 'three_and_four.py')
-        with open(pyfilename, 'w') as pyfile:
-            pyfile.write(filecont)
-        utsp = importlib.import_module('three_and_four')
-        methods = ['four_plus_four', 'three_plus_three']
-        with open(pyfilename, 'r') as pyfile:
-            res, error_methods = srccoms_extract(pyfile, ['three_plus_three'],
-                                                 methods)
-            self.assertTrue(res)
-
-        expectedFile = os.path.join("samplecode_temp",
-                                    "four_plus_four_example.py")
-        self.assertTrue(os.path.exists(expectedFile))
-        os.remove(expectedFile)
-        self.assertFalse(os.path.exists(expectedFile))
 
 
 # https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/layers/ops.py

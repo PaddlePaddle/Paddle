@@ -290,10 +290,20 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
       ids.push_back(inner_pattern_ins[js[iter]].first->Name());
       embs.push_back(inner_pattern_ins[js[iter]].second->Name());
     }
+
     OpDesc new_op_desc;
     new_op_desc.SetType("fused_embedding_eltwise_layernorm");
     new_op_desc.SetInput("Ids", ids);
     new_op_desc.SetInput("Embs", embs);
+
+    new_op_desc.SetInput("WordId", {ids[0]});
+    new_op_desc.SetInput("PosId", {ids[1]});
+    new_op_desc.SetInput("SentId", {ids[2]});
+
+    new_op_desc.SetInput("WordEmbedding", {embs[0]});
+    new_op_desc.SetInput("PosEmbedding", {embs[1]});
+    new_op_desc.SetInput("SentEmbedding", {embs[2]});
+
     new_op_desc.SetInput("Bias", {end_pattern_biases[k]->Name()});
     new_op_desc.SetInput("Scale", {end_pattern_scales[k]->Name()});
     new_op_desc.SetOutput("Out", {end_pattern_out[k]->Name()});
