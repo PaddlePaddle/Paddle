@@ -27,7 +27,12 @@ class TestCollectiveReduceAPI(TestDistBase):
         pass
 
     def test_reduce_nccl(self):
-        self.check_with_place("collective_reduce_api.py", "reduce", "nccl")
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.check_with_place("collective_reduce_api.py", "reduce", "nccl")
+
+    def test_reduce_bkcl(self):
+        if paddle.fluid.core.is_compiled_with_xpu():
+            self.check_with_place("collective_reduce_api.py", "reduce", "bkcl")
 
     def test_reduce_gloo(self):
         self.check_with_place("collective_reduce_api.py", "reduce", "gloo", "1")

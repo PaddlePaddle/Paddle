@@ -28,10 +28,12 @@ def _create_regularization_of_grad(param, grad, regularization=None):
     Function helper of append_regularization_ops.
     """
     # If no gradient or no regularization is specified,  then we don't need to do anything
-    if grad is None or (param.regularizer is None and regularization is None):
+    if grad is None or ((not hasattr(param, 'regularizer') or (
+            hasattr(param, 'regularizer') and param.regularizer is None)) and
+                        regularization is None):
         return grad
     regularization_term = None
-    if param.regularizer is not None:
+    if hasattr(param, 'regularizer') and param.regularizer is not None:
         # Add variable for regularization term in grad block
         regularization_term = param.regularizer(param, grad, grad.block)
     elif regularization is not None:
@@ -213,7 +215,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         Returns:
             new variable for weight decay
         """
-        assert isinstance(param, framework.Parameter)
+        assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
         inputs = {"X": [param]}
@@ -320,7 +322,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         Returns:
             new variable for weight decay
         """
-        assert isinstance(param, framework.Parameter)
+        assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
         if framework.in_dygraph_mode():

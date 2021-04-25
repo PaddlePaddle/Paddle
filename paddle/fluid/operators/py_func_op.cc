@@ -178,9 +178,10 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
 class PyFuncOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(!ctx->IsRuntime(), true,
-                      platform::errors::InvalidArgument(
-                          "Infer shape cannot be called in runtime."));
+    PADDLE_ENFORCE_EQ(
+        !ctx->IsRuntime(), true,
+        platform::errors::InvalidArgument("Shape inference cannot be called at "
+                                          "run time in 'py_func' operator."));
   }
 };
 
