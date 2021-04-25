@@ -132,7 +132,7 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
 }
 
 template <typename T, int BlockSize, int NnzBlockMax>
-__global__ void BlockSparseSoftmaxBackward(T *dst, T *grad, const T *src, T scale,
+__global__ void BlockSparseSoftmaxBackward(T *dst, const T *grad, const T *src, T scale,
                                            const int *layout_rowptr,
                                            const int *layout_colidx,
                                            int seq_length) {
@@ -268,7 +268,7 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
     BlockSparseSoftmaxBackward<T, BlockSize, 4><<<grid, blocks>>>(
-        dx_data, dout->data<T>(), x->data<T>(), 1.0, NULL, NULL, 
+        dx_data, dout->data<T>(), x->data<T>(), 1.0, 
         rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
   }
 };
@@ -278,13 +278,6 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-#ifdef PADDLE_WITH_HIP
-// MIOPEN do not support double
-REGISTER_OP_CUDA_KERNEL(sparse_softmax, ops::SoftmaxBlockSparseKernel<float>)
-REGISTER_OP_CUDA_KERNEL(sparse_softmax_grad,
-                        ops::SoftmaxBlockSparseKernel<float>);
-#else
-REGISTER_OP_CUDA_KERNEL(sparse_softmax, ops::SoftmaxBlockSparseKernel<float>);
-// REGISTER_OP_CUDA_KERNEL(sparse_softmax_grad,
-//                    ops::SoftmaxBlockSparseKernel<float>);
-#endif
+REGISTER_OP_CUDA_KERNEL(softmax_blocksparse, ops::SoftmaxBlockSparseKernel<float>);
+REGISTER_OP_CUDA_KERNEL(softmax_blocksparse_grad,
+                   ops::SoftmaxBlockSparseGradKernel<float>);
