@@ -631,6 +631,18 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
+    def test_tensor_str_shape_with_zero(self):
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.ones((10, 10))
+        y = paddle.fluid.layers.where(x == 0)
+        a_str = str(y)
+
+        expected = '''Tensor(shape=[0, 2], dtype=int64, place=CPUPlace, stop_gradient=True,
+       [])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.rand([1])

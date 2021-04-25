@@ -68,7 +68,7 @@ TEST(BlockingQueue, SenderBlockingTest) {
       ++send_count;
     }
   });
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(1500));
   q.Close();
   sender.join();
   EXPECT_EQ(send_count, queue_cap);

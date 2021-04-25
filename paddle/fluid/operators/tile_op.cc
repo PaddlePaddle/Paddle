@@ -286,7 +286,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::TileGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TileGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TileGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     tile, ops::TileKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TileKernel<paddle::platform::CUDADeviceContext, double>,
