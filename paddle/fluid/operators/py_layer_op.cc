@@ -67,13 +67,20 @@ void RunPyObject(py::object *py_object,
                 result_tuple[i].cast<std::shared_ptr<imperative::VarBase>>();
             *(*outs)[i] = result_var->Var();
           } catch (py::cast_error &) {
-            PADDLE_THROW(platform::errors::Unimplemented(
+            PADDLE_THROW(platform::errors::InvalidArgument(
                 "The output of `PyLayer.backward` should be `Tensor`."));
           }
         } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
+          PADDLE_THROW(platform::errors::InvalidArgument(
               "The %dth input tensor of forward needs gradient and the "
               "corresponding gradient cannot be None.",
+              i));
+        }
+      } else {
+        if (Py_None != result_tuple[i].ptr()) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The %dth input tensor of forward do not need gradient and the "
+              "corresponding gradient should be `None`.",
               i));
         }
       }
@@ -86,14 +93,18 @@ void RunPyObject(py::object *py_object,
               py_result.cast<std::shared_ptr<imperative::VarBase>>();
           *((*outs)[0]) = result_var->Var();
         } catch (py::cast_error &) {
-          PADDLE_THROW(platform::errors::Unimplemented(
+          PADDLE_THROW(platform::errors::InvalidArgument(
               "The output of `PyLayer.backward` should be `Tensor`."));
         }
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(platform::errors::InvalidArgument(
             "The input tensor of forward needs gradient, so the output of "
             "`PyLayer.backward` can not be `None`."));
       }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The input tensor of forward do not need gradient, so the output of "
+          "`PyLayer.backward` should be `None`."));
     }
   }
 }
