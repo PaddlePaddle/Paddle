@@ -12,14 +12,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import streams
 from paddle.fluid import core, core_avx
+
+from . import streams
+from .streams import *
+
+__all__ = [
+    'current_stream',
+    'synchronize',
+]
+
+__all__ += streams.__all__
 
 
 def current_stream(device=None):
-    if device is None:
-        device = -1
-    return core._get_current_stream(device)
+    '''
+    Return the current CUDA stream by the device.
+
+    Parameters:
+        device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from. 
+        If device is None, the device is the current device. Default: None.
+    
+    Returns:
+        CUDAStream: the stream o the device.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            s1 = paddle.devices.cuda.current_stream()
+
+            s2 = paddle.devices.cuda.current_stream(0)
+
+            s3 = paddle.devices.cuda.current_stream(paddle.CUDAPlace(0))
+
+    '''
+
+    device_id = -1
+
+    if device is not None:
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.CUDAPlace):
+            device_id = device.get_device_id()
+        else:
+            raise ValueError("device type must be int or paddle.CUDAPlace")
+
+    return core_avx._get_current_stream(device_id)
 
 
 def synchronize(device=None):
