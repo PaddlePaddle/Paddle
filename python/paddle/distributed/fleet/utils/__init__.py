@@ -14,3 +14,4 @@
 
 from .fs import LocalFS, HDFSClient
 from .ps_util import DistributedInfer
+from .recompute import recompute
