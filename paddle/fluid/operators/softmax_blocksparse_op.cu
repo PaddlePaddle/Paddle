@@ -65,8 +65,8 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
       int xidx = threadIdx.x + j * WarpSize;
 
       if (AttnMode == true) {
-        if (srcptr[xidx] == 0.0) {
-          srcdata[didx] = -std::numeric_limits<T>::infinity();// * scale + kp_mask;
+        if (std::abs(attnptr[xidx]) < std::numeric_limits<T>::epsilon()) {
+          srcdata[didx] = -std::numeric_limits<T>::infinity() * scale + datakp_mask;
         } else {
           srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
         }

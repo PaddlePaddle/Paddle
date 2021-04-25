@@ -51,6 +51,9 @@ class SoftmaxBlockSparseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("LayOutRowPtr", "Layout csr format row pointer.");
     AddInput("LayOutColIndex", "Layout csr format column index.");
     AddOutput("Out", "Softmax of input tensor.");
+    AddComment(R"DOC(
+Block Sparse Softmax Operator.
+)DOC");
   }
 };
 

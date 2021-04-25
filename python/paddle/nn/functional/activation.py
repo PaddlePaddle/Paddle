@@ -932,6 +932,11 @@ def softmax_(x, axis=-1, dtype=None, name=None):
     return softmax(x, axis, dtype, name)
 
 
+def softmax_blocksparse(x, layout_rowptr, layout_colindex, axis=-1, name=None):
+    if in_dygraph_mode():
+        return core.ops.softmax_blocksparse(x, layout_rowptr, layout_colindex)
+
+
 def softplus(x, beta=1, threshold=20, name=None):
     r"""
     softplus activation
