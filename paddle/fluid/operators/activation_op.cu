@@ -1390,6 +1390,40 @@ REGISTER_OP_CUDA_KERNEL(
                              ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
+/* ==========================   softrelu register  ============================
+ */
+REGISTER_OP_CUDA_KERNEL(
+    soft_relu,
+    ops::ActivationKernel<plat::CUDADeviceContext, ops::SoftReluFunctor<float>>,
+    ops::ActivationKernel<plat::CUDADeviceContext,
+                          ops::SoftReluFunctor<double>>,
+    ops::ActivationKernel<plat::CUDADeviceContext,
+                          ops::SoftReluFunctor<plat::float16>>);
+REGISTER_OP_CUDA_KERNEL(
+    soft_relu_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
+                                              ops::SoftReluGradFunctor<float>>,
+    ops::ActivationGradKernel<plat::CUDADeviceContext,
+                              ops::SoftReluGradFunctor<double>>,
+    ops::ActivationGradKernel<plat::CUDADeviceContext,
+                              ops::SoftReluGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ==========================   swish register  ============================ */
+REGISTER_OP_CUDA_KERNEL(
+    swish,
+    ops::ActivationKernel<plat::CUDADeviceContext, ops::SwishFunctor<float>>,
+    ops::ActivationKernel<plat::CUDADeviceContext, ops::SwishFunctor<double>>,
+    ops::ActivationKernel<plat::CUDADeviceContext,
+                          ops::SwishFunctor<plat::float16>>);
+REGISTER_OP_CUDA_KERNEL(
+    swish_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
+                                          ops::SwishGradFunctor<float>>,
+    ops::ActivationGradKernel<plat::CUDADeviceContext,
+                              ops::SwishGradFunctor<double>>,
+    ops::ActivationGradKernel<plat::CUDADeviceContext,
+                              ops::SwishGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
 REGISTER_ACTIVATION_CUDA_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
                                 CudaSigmoidGradFunctor);
 REGISTER_ACTIVATION_CUDA_KERNEL(silu, Silu, CudaSiluFunctor,
@@ -1427,8 +1461,6 @@ REGISTER_ACTIVATION_CUDA_KERNEL(log10, Log10, CudaLog10Functor,
                                 CudaLog10GradFunctor);
 REGISTER_ACTIVATION_CUDA_KERNEL(brelu, BRelu, CudaBReluFunctor,
                                 CudaBReluGradFunctor);
-REGISTER_ACTIVATION_CUDA_KERNEL(soft_relu, SoftRelu, CudaSoftReluFunctor,
-                                CudaSoftReluGradFunctor);
 REGISTER_ACTIVATION_CUDA_KERNEL(stanh, STanh, CudaSTanhFunctor,
                                 CudaSTanhGradFunctor);
 REGISTER_ACTIVATION_CUDA_KERNEL(softplus, Softplus, CudaSoftplusFunctor,
@@ -1444,8 +1476,6 @@ REGISTER_ACTIVATION_CUDA_KERNEL(hard_shrink, HardShrink, CudaHardShrinkFunctor,
 REGISTER_ACTIVATION_CUDA_KERNEL(hard_sigmoid, HardSigmoid,
                                 CudaHardSigmoidFunctor,
                                 CudaHardSigmoidGradFunctor);
-REGISTER_ACTIVATION_CUDA_KERNEL(swish, Swish, CudaSwishFunctor,
-                                CudaSwishGradFunctor);
 REGISTER_ACTIVATION_CUDA_KERNEL(thresholded_relu, ThresholdedRelu,
                                 CudaThresholdedReluFunctor,
                                 CudaThresholdedReluGradFunctor);
