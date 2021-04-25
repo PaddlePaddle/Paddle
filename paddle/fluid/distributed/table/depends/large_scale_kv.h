@@ -305,7 +305,7 @@ class ValueBlock {
   }
 
  public:
-  std::unordered_map<uint64_t, VALUE *>
+  robin_hood::unordered_map<uint64_t, VALUE *>
       values_[DOWNPOUR_SPARSE_SHARD_BUCKET_NUM];
   size_t value_length_ = 0;
   std::hash<uint64_t> _hasher;
