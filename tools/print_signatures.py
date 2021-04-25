@@ -27,7 +27,6 @@ import pydoc
 import hashlib
 import platform
 import functools
-import paddle
 
 member_dict = collections.OrderedDict()
 
@@ -189,6 +188,7 @@ def visit_all_module(mod):
 
 
 if __name__ == '__main__':
+    import paddle
     modules = sys.argv[1].split(",")
     for m in modules:
         visit_all_module(importlib.import_module(m))
