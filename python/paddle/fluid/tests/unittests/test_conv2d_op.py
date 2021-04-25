@@ -173,60 +173,9 @@ def create_test_cudnn_bf16_class(parent, grad_check=True):
         "core is not compiled with CUDA and cudnn version need larger than 8.1.0"
     )
     class TestConv2DCUDNNBF16(parent):
-        def setUp(self):
-            self.op_type = "conv2d"
+        def init_kernel_type(self):
             self.use_cudnn = True
-            self.exhaustive_search = False
-            self.use_cuda = False
-            self.use_mkldnn = False
-            self.fuse_relu_before_depthwise_conv = False
-            self.data_format = "AnyLayout"
-            self.dtype = core.VarDesc.VarType.BF16
-            self.init_kernel_type()
-            self.init_group()
-            self.init_dilation()
-            self.init_test_case()
-
-            conv2d_param = {
-                'stride': self.stride,
-                'pad': self.pad,
-                'dilation': self.dilations
-            }
-
-            input = np.random.random(self.input_size).astype(np.float32)
-            if not self.has_cuda():
-                self.fuse_relu_before_depthwise_conv = False
-            if self.fuse_relu_before_depthwise_conv:
-                input = input - 0.5
-                input -= (input < 0) * 0.1
-                input += (input >= 0) * 0.1
-                input2 = np.maximum(input, 0.0)
-            else:
-                input2 = input
-            filter = np.random.uniform(-1, 1,
-                                       self.filter_size).astype(np.float32)
-
-            output, _, _, _, _ = conv2d_forward_naive(input2, filter,
-                                                      self.groups, conv2d_param)
-            output = output.astype(np.float32)
-
-            self.inputs = {
-                'Input': OpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
-            }
-            self.attrs = {
-                'strides': self.stride,
-                'paddings': self.pad,
-                'groups': self.groups,
-                'dilations': self.dilations,
-                'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
-                'data_format': self.data_format,
-                'fuse_relu_before_depthwise_conv':
-                self.fuse_relu_before_depthwise_conv,
-                'exhaustive_search': self.exhaustive_search
-            }
-            self.outputs = {'Output': output}
+            self.dtype = np.uint16
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
