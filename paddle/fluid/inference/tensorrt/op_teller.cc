@@ -122,6 +122,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
+      "reshape",
+      "reshape2",
   };
 };
 
@@ -343,6 +345,30 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (registry == nullptr) return false;
     }
 
+    if (op_type == "mul") {
+      const int x_num_col_dims =
+          desc.HasAttr("x_num_col_dims")
+              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              : (desc.HasAttr("in_num_col_dims")
+                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     : 1);
+      if (x_num_col_dims != 1 && x_num_col_dims != 2) {
+        return false;
+      }
+    }
+
+    if (op_type == "fc") {
+      const int x_num_col_dims =
+          desc.HasAttr("x_num_col_dims")
+              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              : (desc.HasAttr("in_num_col_dims")
+                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     : 1);
+      if (x_num_col_dims != 1 && x_num_col_dims != 2) {
+        return false;
+      }
+    }
+
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{"data_layout",   "interp_method",
                                      "align_corners", "scale",
@@ -400,6 +426,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
       if (spatial_scale <= 0.f) return false;
     }
+<<<<<<< HEAD
+    if (op_type == "reshape" || op_type == "reshape2") {
+      if (!desc.HasAttr("shape")) {
+        return false;
+      } else {
+        std::vector<int> shape =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+        if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
+    }
+=======
 
     if (op_type == "hard_swish") {
       if (desc.Input("X").size() != 1) {
@@ -630,6 +667,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+>>>>>>> fb7590d487431ba3b7b26bd3e0267c7194a127ff
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
