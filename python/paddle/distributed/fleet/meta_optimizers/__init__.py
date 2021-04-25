@@ -26,3 +26,5 @@ from .lamb_optimizer import LambOptimizer
 from .fp16_allreduce_optimizer import FP16AllReduceOptimizer
 from .sharding_optimizer import ShardingOptimizer
 from .dygraph_optimizer import HybridParallelOptimizer
+from .dygraph_optimizer import HybridParallelGradScaler
+from .tensor_parallel_optimizer import TensorParallelOptimizer

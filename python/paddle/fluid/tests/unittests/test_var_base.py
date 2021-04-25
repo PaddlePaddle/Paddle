@@ -502,6 +502,15 @@ class TestVarBase(unittest.TestCase):
                 np.array_equal(var.numpy(),
                                fluid.framework._var_base_to_np(var)))
 
+    def test_var_base_as_np(self):
+        with fluid.dygraph.guard():
+            var = fluid.dygraph.to_variable(self.array)
+            self.assertTrue(np.array_equal(var.numpy(), np.array(var)))
+            self.assertTrue(
+                np.array_equal(
+                    var.numpy(), np.array(
+                        var, dtype=np.float32)))
+
     def test_if(self):
         with fluid.dygraph.guard():
             var1 = fluid.dygraph.to_variable(np.array([[[0]]]))
@@ -618,6 +627,18 @@ class TestVarBase(unittest.TestCase):
 
         expected = '''Tensor(shape=[], dtype=bool, place=CPUPlace, stop_gradient=True,
        False)'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str_shape_with_zero(self):
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.ones((10, 10))
+        y = paddle.fluid.layers.where(x == 0)
+        a_str = str(y)
+
+        expected = '''Tensor(shape=[0, 2], dtype=int64, place=CPUPlace, stop_gradient=True,
+       [])'''
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()

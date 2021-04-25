@@ -199,7 +199,7 @@ class Conv1D(_ConvNd):
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -226,7 +226,7 @@ class Conv1D(_ConvNd):
 
         .. math::
 
-            L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
+            L_{out}&= \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1 \\
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -258,7 +258,7 @@ class Conv1D(_ConvNd):
             of conv1d. If it is set to None or one attribute of ParamAttr, conv1d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            and the :math:`std` is :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
         bias_attr (ParamAttr or bool, optional): The attribute for the bias of conv1d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv1d
@@ -368,7 +368,7 @@ class Conv1DTranspose(_ConvNd):
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -404,7 +404,7 @@ class Conv1DTranspose(_ConvNd):
           so for conv1d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`L_{out} = L^\prime_{out}`;
           else, the :math:`L_{out}` of the output size must between :math:`L^\prime_{out}`
-          and :math:`L^\prime_{out} + stride`. conv1d_transpose can compute the kernel size automatically.
+          and :math:`L^\prime_{out} + stride`.
 
     Args:
         in_channels(int): The number of channels in the input image.
@@ -540,7 +540,7 @@ class Conv2D(_ConvNd):
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -578,7 +578,7 @@ class Conv2D(_ConvNd):
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
-            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -603,9 +603,9 @@ class Conv2D(_ConvNd):
 
         ..  math::
 
-           H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
+           H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
 
-           W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+           W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
 
     Examples:
 
@@ -696,7 +696,7 @@ class Conv2DTranspose(_ConvNd):
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -710,7 +710,7 @@ class Conv2DTranspose(_ConvNd):
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by the convolution.
-        kernel_size(int|list|uple): The kernel size. If kernel_size is a tuple,
+        kernel_size(int|list|tuple): The kernel size. If kernel_size is a tuple,
             it must contain two integers, (kernel_size_H, kernel_size_W).
             Otherwise, the kernel will be a square.
         stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
@@ -851,7 +851,7 @@ class Conv3D(_ConvNd):
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
@@ -889,7 +889,7 @@ class Conv3D(_ConvNd):
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
-            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv3d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv3d
@@ -914,11 +914,11 @@ class Conv3D(_ConvNd):
 
         ..  math::
 
-           D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
+           D_{out}&= \frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
 
-           H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+           H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
 
-           W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
+           W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
 
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
@@ -1010,7 +1010,7 @@ class Conv3DTranspose(_ConvNd):
     
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
