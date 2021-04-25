@@ -617,7 +617,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   // This function can only be executed once per process.
   static std::once_flag custom_operators_registered;
   std::call_once(custom_operators_registered,
-                 []() { paddle::RegisterAllCustomOperator(); });
+                 []() { inference::RegisterAllCustomOperator(); });
 
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;
