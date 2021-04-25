@@ -25,7 +25,7 @@ using Tensor = framework::Tensor;
 
 template <typename T, int BlockSize, int NnzBlockMax, bool KpMode = false,
           bool AttnMode = false>
-__global__ void BlockSparseSoftmaxForward(T *softmax, T *src, T scale,
+__global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
                                           const T *kp_mask, const T *attn_mask,
                                           const int *layout_rowptr,
                                           const int *layout_colidx,
@@ -66,7 +66,7 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, T *src, T scale,
 
       if (AttnMode == true) {
         if (srcptr[xidx] == 0.0) {
-          srcdata[didx] = -std::numeric_limits<T>::infinity() * scale + kp_mask;
+          srcdata[didx] = -std::numeric_limits<T>::infinity();// * scale + kp_mask;
         } else {
           srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
         }
@@ -132,7 +132,7 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, T *src, T scale,
 }
 
 template <typename T, int BlockSize, int NnzBlockMax>
-__global__ void BlockSparseSoftmaxBackward(T *dst, T *grad, T *src, T scale,
+__global__ void BlockSparseSoftmaxBackward(T *dst, T *grad, const T *src, T scale,
                                            const int *layout_rowptr,
                                            const int *layout_colidx,
                                            int seq_length) {
@@ -207,6 +207,7 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<Tensor>("X");
     auto *rowptr = ctx.Input<Tensor>("LayOutRowPtr");
     auto *colidx = ctx.Input<Tensor>("LayOutColIndex");
+    int num_block = rowptr->dims()[0] - 1;
 
     // output
     auto *out = ctx.Output<Tensor>("Out");
@@ -218,21 +219,21 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
     // const int rank = x_dims.size();
     // const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
 
+    const int BlockSize = 64;
+
     const int num_batch = x_dims[0];
     const int num_nnz = x_dims[1];
     const int block_size = x_dims[2];
 
-    const int num_block = l_dims[1];
     const int seqlen = num_block * BlockSize;
 
     const int axis = -1;
-    const int BlockSize = 64;
 
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
     BlockSparseSoftmaxForward<T, BlockSize, 4><<<grid, blocks>>>(
         out_data, x->data<T>(), 1.0, NULL, NULL, 
-        rowptr->data<T>(), colidx->data<T>(), seqlen);
+        rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
   }
 };
 
@@ -243,6 +244,7 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<Tensor>("Out");
     auto *rowptr = ctx.Input<Tensor>("LayOutRowPtr");
     auto *colidx = ctx.Input<Tensor>("LayOutColIndex");
+    int num_block = rowptr->dims()[0] - 1;
 
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
@@ -254,23 +256,27 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     // const int rank = x_dims.size();
     // const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
 
+    const int BlockSize = 64;
+
     const int num_batch = x_dims[0];
     const int num_nnz = x_dims[1];
     const int block_size = x_dims[2];
-
-    const int num_block = l_dims[1];
     const int seqlen = num_block * BlockSize;
 
     const int axis = -1;
-    const int BlockSize = 64;
 
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
     BlockSparseSoftmaxBackward<T, BlockSize, 4><<<grid, blocks>>>(
         dx_data, dout->data<T>(), x->data<T>(), 1.0, NULL, NULL, 
-        rowptr->data<T>(), colidx->data<T>(), seqlen);
+        rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
   }
 };
+
+}
+}
+
+namespace ops = paddle::operators;
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
@@ -282,5 +288,3 @@ REGISTER_OP_CUDA_KERNEL(sparse_softmax, ops::SoftmaxBlockSparseKernel<float>);
 // REGISTER_OP_CUDA_KERNEL(sparse_softmax_grad,
 //                    ops::SoftmaxBlockSparseKernel<float>);
 #endif
-}
-}

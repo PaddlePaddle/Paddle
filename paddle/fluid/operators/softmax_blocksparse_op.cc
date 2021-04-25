@@ -1,10 +1,8 @@
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "unordered_set"
 #include <iostream>
 
@@ -28,6 +26,24 @@ class SoftmaxBlockSparseOp : public framework::OperatorWithKernel {
   }
 };
 
+class SoftmaxBlockSparseGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->SetOutputDim(framework::GradVarName("X"),
+                      ctx->GetInputDim(framework::GradVarName("Out")));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
+};
+
 class SoftmaxBlockSparseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -42,13 +58,12 @@ template <typename T>
 class SoftmaxBlockSparseGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("softmax_blocksparse_grad");
     op->SetInput("Out", this->Output("Out"));
-    op->SetInput("LayOutRowPtr", "Layout csr format row pointer.");
-    op->SetInput("LayOutColIndex", "Layout csr format column index.");
+    op->SetInput("LayOutRowPtr", this->Input("LayOutRowPtr"));
+    op->SetInput("LayOutColIndex", this->Input("LayOutColIndex"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
