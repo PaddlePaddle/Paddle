@@ -1331,10 +1331,8 @@ REGISTER_OP_CUDA_KERNEL(
                                    ops::CudaExpFunctor<float>>,
     ops::ActivationCudaKernel<plat::CUDADeviceContext,
                               ops::CudaExpFunctor<double>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaExpFunctor<int>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaExpFunctor<int64_t>>,
+    ops::ActivationKernel<plat::CUDADeviceContext, ops::ExpFunctor<int>>,
+    ops::ActivationKernel<plat::CUDADeviceContext, ops::ExpFunctor<int64_t>>,
     ops::ActivationCudaKernel<plat::CUDADeviceContext,
                               ops::CudaExpFunctor<plat::float16>>);
 REGISTER_OP_CUDA_KERNEL(
@@ -1361,6 +1359,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::LogDoubleGradKernel<plat::CUDADeviceContext,
                              ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
+
 REGISTER_ACTIVATION_CUDA_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
                                 CudaSigmoidGradFunctor);
 REGISTER_ACTIVATION_CUDA_KERNEL(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,
