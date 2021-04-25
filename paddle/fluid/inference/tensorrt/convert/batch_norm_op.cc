@@ -38,38 +38,6 @@ class BatchNormOpConverter : public OpConverter {
     VLOG(3) << "convert a fluid batch norm op to tensorrt batch_norm";
 
     framework::OpDesc op_desc(op, nullptr);
-    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Invalid input X's size of batch_norm TRT converter. "
-                          "Expected 1, received %d.",
-                          op_desc.Input("X").size()));
-    PADDLE_ENFORCE_EQ(op_desc.Input("Bias").size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Invalid input Bias's size of batch_norm TRT "
-                          "converter. Expected 1, received %d.",
-                          op_desc.Input("Bias").size()));  // Bias is a weight
-    PADDLE_ENFORCE_EQ(op_desc.Input("Mean").size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Invalid input Mean's size of batch_norm TRT "
-                          "converter. Expected 1, received %d.",
-                          op_desc.Input("Mean").size()));  // Mean is a weight
-    PADDLE_ENFORCE_EQ(op_desc.Input("Scale").size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Invalid input Scale's size of batch_norm TRT "
-                          "converter. Expected 1, received %d.",
-                          op_desc.Input("Scale").size()));  // Scale is a weight
-    PADDLE_ENFORCE_EQ(
-        op_desc.Input("Variance").size(), 1,
-        platform::errors::InvalidArgument(
-            "Invalid input Variance's size of batch_norm TRT converter. "
-            "Expected 1, received %d.",
-            op_desc.Input("Variance").size()));  // Variance is a weight
-    PADDLE_ENFORCE_EQ(op_desc.Output("Y").size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Invalid output Y's size of batch_norm TRT "
-                          "converter. Expected 1, received %d.",
-                          op_desc.Output("Y").size()));
-
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     // Declare weights
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());

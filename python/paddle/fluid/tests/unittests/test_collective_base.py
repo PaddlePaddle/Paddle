@@ -274,6 +274,11 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "identity":
+            need_result1 = input1
+            need_result2 = input2
+            self.assertTrue(np.allclose(tr0_out, need_result1, rtol=0, atol=0))
+            self.assertTrue(np.allclose(tr1_out, need_result2, rtol=0, atol=0))
         elif col_type == "reduce_slicegather":
             slicesize = input1.shape[0] // 2
             tmp10 = input1[0:slicesize]
