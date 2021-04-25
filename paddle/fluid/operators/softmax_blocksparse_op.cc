@@ -1,10 +1,10 @@
+#include <iostream>
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/platform/place.h"
 #include "unordered_set"
-#include <iostream>
 
 namespace paddle {
 namespace operators {
@@ -18,6 +18,14 @@ class SoftmaxBlockSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
+  // framework::OpKernelType GetExpectedKernelType(
+  //     const framework::ExecutionContext& ctx) const override {
+  //   auto data_type =
+  //       OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X",
+  //       "LayOutRowPtr", "LayOutColIndex");
+  //   return framework::OpKernelType(data_type, ctx.device_context());
+  // }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
@@ -61,6 +69,7 @@ template <typename T>
 class SoftmaxBlockSparseGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("softmax_blocksparse_grad");
@@ -73,7 +82,7 @@ class SoftmaxBlockSparseGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -82,34 +91,32 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // auto* Out = context.Input<framework::Tensor>("Out");
     // auto* dOut =
     //     context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    // auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    // auto* dX =
+    // context.Output<framework::Tensor>(framework::GradVarName("X"));
   }
 };
-
 }
 }
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(softmax_blocksparse,
-                  ops::SoftmaxBlockSparseOp,
-                  ops::SoftmaxBlockSparseOpMaker,
-                  ops::SoftmaxBlockSparseGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SoftmaxBlockSparseGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    softmax_blocksparse, ops::SoftmaxBlockSparseOp,
+    ops::SoftmaxBlockSparseOpMaker,
+    ops::SoftmaxBlockSparseGradOpMaker<paddle::framework::OpDesc>,
+    ops::SoftmaxBlockSparseGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(softmax_blocksparse_grad, ops::SoftmaxBlockSparseGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    softmax_blocksparse,
-    ops::SoftmaxBlockSparseKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    softmax_blocksparse_grad,
-    ops::SoftmaxBlockSparseGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(softmax_blocksparse,
+                       ops::SoftmaxBlockSparseKernel<float>);
+REGISTER_OP_CPU_KERNEL(softmax_blocksparse_grad,
+                       ops::SoftmaxBlockSparseGradKernel<float>);

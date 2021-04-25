@@ -66,7 +66,8 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
 
       if (AttnMode == true) {
         if (std::abs(attnptr[xidx]) < std::numeric_limits<T>::epsilon()) {
-          srcdata[didx] = -std::numeric_limits<T>::infinity() * scale + datakp_mask;
+          srcdata[didx] =
+              -std::numeric_limits<T>::infinity() * scale + datakp_mask;
         } else {
           srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
         }
@@ -132,8 +133,8 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
 }
 
 template <typename T, int BlockSize, int NnzBlockMax>
-__global__ void BlockSparseSoftmaxBackward(T *dst, const T *grad, const T *src, T scale,
-                                           const int *layout_rowptr,
+__global__ void BlockSparseSoftmaxBackward(T *dst, const T *grad, const T *src,
+                                           T scale, const int *layout_rowptr,
                                            const int *layout_colidx,
                                            int seq_length) {
   // constants
@@ -232,8 +233,8 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
     BlockSparseSoftmaxForward<T, BlockSize, 4><<<grid, blocks>>>(
-        out_data, x->data<T>(), 1.0, NULL, NULL, 
-        rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
+        out_data, x->data<T>(), 1.0, NULL, NULL, rowptr->data<int32_t>(),
+        colidx->data<int32_t>(), seqlen);
   }
 };
 
@@ -268,16 +269,16 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
     BlockSparseSoftmaxBackward<T, BlockSize, 4><<<grid, blocks>>>(
-        dx_data, dout->data<T>(), x->data<T>(), 1.0, 
-        rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
+        dx_data, dout->data<T>(), x->data<T>(), 1.0, rowptr->data<int32_t>(),
+        colidx->data<int32_t>(), seqlen);
   }
 };
-
 }
 }
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(softmax_blocksparse, ops::SoftmaxBlockSparseKernel<float>);
+REGISTER_OP_CUDA_KERNEL(softmax_blocksparse,
+                        ops::SoftmaxBlockSparseKernel<float>);
 REGISTER_OP_CUDA_KERNEL(softmax_blocksparse_grad,
-                   ops::SoftmaxBlockSparseGradKernel<float>);
+                        ops::SoftmaxBlockSparseGradKernel<float>);
