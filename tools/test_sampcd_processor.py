@@ -76,12 +76,24 @@ class Test_execute_samplecode(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(self.successSampleCodeFile, tfname)
         self.assertIsNotNone(msg)
+        self.assertLess(msg.find('skipped'), 0)
 
     def test_run_failed(self):
         result, tfname, msg = execute_samplecode(self.failedSampleCodeFile)
         self.assertFalse(result)
         self.assertEqual(self.failedSampleCodeFile, tfname)
         self.assertIsNotNone(msg)
+        self.assertLess(msg.find('skipped'), 0)
+
+    def test_testcases_skipped(self):
+        ...
+        tfname = os.path.join(SAMPLECODE_TEMP_DIR, 'samplecode_skipped.py')
+        with open(tfname, 'w') as f:
+            f.write("# required: distributed\nprint(1/0)")
+        result, _, msg = execute_samplecode(tfname)
+        self.assertTrue(result)
+        self.assertGreaterEqual(msg.find('skipped'), 0)
+        os.remove(tfname)
 
 
 class Test_sampcd_extract_to_file(unittest.TestCase):

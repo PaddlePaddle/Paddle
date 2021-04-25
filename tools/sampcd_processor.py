@@ -198,6 +198,14 @@ def execute_samplecode(tfname):
         result = False
         exit(1)
 
+    # check required envisonment
+    with open(tfname, 'r') as f:
+        for line in f.readlines():
+            if re.match(r'#\s*required\s*:\s*(distributed|gpu|skip)', line):
+                result = True
+                return result, tfname, '{} is skipped. cause: {}'.format(tfname,
+                                                                         line)
+
     logging.info('running %s', tfname)
     print("\n----example code check----")
     print("executing sample code .....", tfname)
