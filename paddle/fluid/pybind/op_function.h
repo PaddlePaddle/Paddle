@@ -629,7 +629,7 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
   return result;
 }
 
-static inline unsigned int64_t GetUnsignedLongFromArgs(
+static inline unsigned long GetUnsignedLongFromArgs(  // NOLINT
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false) {
   PyObject* item = PyTuple_GET_ITEM(args, arg_idx);
