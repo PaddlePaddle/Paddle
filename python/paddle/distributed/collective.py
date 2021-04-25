@@ -974,15 +974,15 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.distributed import init_parallel_env
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().rank == 0:
-                data = paddle.to_tensor([7, 8, 9])
-                paddle.distributed.send(data, dst=1)
-            else:
-                data = paddle.to_tensor([1,2,3])
-                paddle.distributed.recv(data, src=0)
-            out = data.numpy()
+            #from paddle.distributed import init_parallel_env
+            #init_parallel_env()
+            #if paddle.distributed.ParallelEnv().rank == 0:
+            #    data = paddle.to_tensor([7, 8, 9])
+            #    paddle.distributed.send(data, dst=1)
+            #else:
+            #    data = paddle.to_tensor([1,2,3])
+            #    paddle.distributed.recv(data, src=0)
+            #out = data.numpy()
     """
     if group is not None and not group.is_member():
         return
@@ -1023,15 +1023,15 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.distributed import init_parallel_env
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().rank == 0:
-                data = paddle.to_tensor([7, 8, 9])
-                paddle.distributed.send(data, dst=1)
-            else:
-                data = paddle.to_tensor([1,2,3])
-                paddle.distributed.recv(data, src=0)
-            out = data.numpy()
+            #from paddle.distributed import init_parallel_env
+            #init_parallel_env()
+            #if paddle.distributed.ParallelEnv().rank == 0:
+            #    data = paddle.to_tensor([7, 8, 9])
+            #    paddle.distributed.send(data, dst=1)
+            #else:
+            #    data = paddle.to_tensor([1,2,3])
+            #    paddle.distributed.recv(data, src=0)
+            #out = data.numpy()
     """
     if group is not None and not group.is_member():
         return
