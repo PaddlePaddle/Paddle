@@ -142,6 +142,12 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(y.dtype, core.VarDesc.VarType.COMPLEX64)
                 self.assertEqual(y.shape, [2])
 
+                x = paddle.randn([3, 4])
+                x_array = np.array(x)
+                self.assertEqual(x_array.shape, x.numpy().shape)
+                self.assertEqual(x_array.dtype, x.numpy().dtype)
+                self.assertTrue(np.array_equal(x_array, x.numpy()))
+
                 with self.assertRaises(TypeError):
                     paddle.to_tensor('test')
                 with self.assertRaises(TypeError):
