@@ -541,5 +541,27 @@ class TestChangeShapeAfterAssign(TestTensorShapeBasic):
         self.expected_slice_op_num = 2
 
 
+def dyfunc_with_static_convert_var_shape(x):
+    # Note: this will create `batch_size__static_convert_var_shape_suffix_0` firstly.
+    batch_size = x.shape[0]
+    if len(x.shape) < 1:
+        res = x
+    else:
+        # Test for correctly to find `batch_size__static_convert_var_shape_suffix_0` in
+        # deeply nested scope.
+        res = fluid.layers.fill_constant(
+            value=8, shape=[batch_size], dtype="int32")
+
+    return res
+
+
+class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
+    def test(self):
+        x_spec = paddle.static.InputSpec(shape=[None, 10])
+        func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])
+        # Call this function to trigger program translation.
+        func.concrete_program
+
+
 if __name__ == '__main__':
     unittest.main()

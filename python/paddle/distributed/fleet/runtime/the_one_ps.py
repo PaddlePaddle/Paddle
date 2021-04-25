@@ -150,7 +150,8 @@ class CommonAccessor:
         oop = None
 
         for op in optimizer_ops:
-            if op.input("Param")[0] == param_name:
+            if ("Param" in op.input_names) and (
+                    op.input("Param")[0] == param_name):
                 oop = op
                 break
 
@@ -452,6 +453,17 @@ class TheOnePSRuntime(RuntimeBase):
         worker = self._get_fleet_proto(is_server=False, is_sync=is_sync)
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
 
+        dist_strategy = self.context["valid_strategy"]
+        use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
+        if use_ps_gpu:
+            main_program = self.context['loss'].block.program
+            if not main_program._fleet_opt:
+                main_program._fleet_opt = {}
+            main_program._fleet_opt["use_ps_gpu"] = True
+            gpus_env = os.getenv("FLAGS_selected_gpus")
+            main_program._fleet_opt[
+                "worker_places"] = [int(s) for s in gpus_env.split(",")]
+
         def sync_strategy_envs():
             kwargs = {}
             kwargs[
@@ -740,6 +752,11 @@ class TheOnePSRuntime(RuntimeBase):
             downpour_server = DownpourServer()
 
             service = Service()
+            dist_strategy = self.context["valid_strategy"]
+            use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
+            if use_ps_gpu:
+                service.server_class = "PsLocalServer"
+                service.client_class = "PsLocalClient"
             downpour_server.set_service_param(service)
 
             tables = _get_tables()
@@ -767,7 +784,7 @@ class TheOnePSRuntime(RuntimeBase):
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
 
-        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("server: \n{}".format(proto_txt))
 

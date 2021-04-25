@@ -407,7 +407,8 @@ class RandomResizedCrop(BaseTransform):
 
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
-        scale (list|tuple): Range of size of the origin size cropped. Default: (0.08, 1.0)
+        scale (list|tuple): Scale range of the cropped image before resizing, relatively to the origin 
+            image. Default: (0.08, 1.0)
         ratio (list|tuple): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
         interpolation (int|str, optional): Interpolation method. Default: 'bilinear'. when use pil backend, 
             support method are as following: 

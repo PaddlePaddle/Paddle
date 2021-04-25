@@ -78,6 +78,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
  **/
 #define MIOPEN_DNN_ROUTINE_EACH(__macro)                  \
   __macro(miopenGetVersion);                              \
+  __macro(miopenOpTensor);                                \
   __macro(miopenSet4dTensorDescriptor);                   \
   __macro(miopenSetTensorDescriptor);                     \
   __macro(miopenInitConvolutionNdDescriptor);             \
@@ -116,7 +117,9 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenPoolingForward);                          \
   __macro(miopenPoolingBackward);                         \
   __macro(miopenSoftmaxBackward);                         \
+  __macro(miopenSoftmaxBackward_V2);                      \
   __macro(miopenSoftmaxForward);                          \
+  __macro(miopenSoftmaxForward_V2);                       \
   __macro(miopenCreateDropoutDescriptor);                 \
   __macro(miopenDestroyDropoutDescriptor);                \
   __macro(miopenRestoreDropoutDescriptor);                \
@@ -125,6 +128,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenCreateRNNDescriptor);                     \
   __macro(miopenDestroyRNNDescriptor);                    \
   __macro(miopenSetRNNDescriptor);                        \
+  __macro(miopenSetRNNDescriptor_V2);                     \
   __macro(miopenGetRNNParamsSize);                        \
   __macro(miopenGetRNNWorkspaceSize);                     \
   __macro(miopenGetRNNTrainingReserveSize);               \

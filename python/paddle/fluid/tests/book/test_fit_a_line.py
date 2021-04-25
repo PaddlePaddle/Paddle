@@ -26,7 +26,7 @@ import os
 paddle.enable_static()
 
 
-def train(use_cuda, save_dirname, is_local):
+def train(use_cuda, save_dirname, is_local, use_bf16):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -37,6 +37,8 @@ def train(use_cuda, save_dirname, is_local):
     avg_cost = fluid.layers.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    if use_bf16:
+        paddle.static.amp.rewrite_program_bf16(fluid.default_main_program())
     sgd_optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 20
@@ -133,14 +135,17 @@ def infer(use_cuda, save_dirname=None):
         print("ground truth: ", test_label)
 
 
-def main(use_cuda, is_local=True):
+def main(use_cuda, is_local=True, use_bf16=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+
+    if use_bf16 and not fluid.core.is_compiled_with_mkldnn():
         return
 
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, save_dirname, is_local)
+    train(use_cuda, save_dirname, is_local, use_bf16)
     infer(use_cuda, save_dirname)
 
 
@@ -152,6 +157,12 @@ class TestFitALine(unittest.TestCase):
     def test_cuda(self):
         with self.program_scope_guard():
             main(use_cuda=True)
+
+    @unittest.skipIf(not fluid.core.supports_bfloat16(),
+                     "place does not support BF16 evaluation")
+    def test_bf16(self):
+        with self.program_scope_guard():
+            main(use_cuda=False, use_bf16=True)
 
     @contextlib.contextmanager
     def program_scope_guard(self):

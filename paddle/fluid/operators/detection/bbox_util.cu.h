@@ -66,7 +66,8 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
   // Determine temporary device storage requirements
   size_t temp_storage_bytes = 0;
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
+      nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num, 0,
+      sizeof(T) * 8, ctx.stream());
   // Allocate temporary storage
   auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
@@ -74,7 +75,7 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
       d_temp_storage->ptr(), temp_storage_bytes, keys_in, keys_out, idx_in,
-      idx_out, num);
+      idx_out, num, 0, sizeof(T) * 8, ctx.stream());
 }
 
 template <typename T>
@@ -275,14 +276,18 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
 
   const T *boxes = proposals.data<T>();
   auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
-  framework::Vector<uint64_t> mask(boxes_num * col_blocks);
-  NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes,
-                                 mask.CUDAMutableData(BOOST_GET_CONST(
-                                     platform::CUDAPlace, ctx.GetPlace())),
-                                 pixel_offset);
+  auto mask_ptr = memory::Alloc(ctx, boxes_num * col_blocks * sizeof(uint64_t));
+  uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
+
+  NMSKernel<<<blocks, threads, 0, ctx.stream()>>>(
+      boxes_num, nms_threshold, boxes, mask_dev, pixel_offset);
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
+
+  std::vector<uint64_t> mask_host(boxes_num * col_blocks);
+  memory::Copy(platform::CPUPlace(), mask_host.data(), place, mask_dev,
+               boxes_num * col_blocks * sizeof(uint64_t), ctx.stream());
 
   std::vector<int> keep_vec;
   int num_to_keep = 0;
@@ -293,7 +298,7 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
     if (!(remv[nblock] & (1ULL << inblock))) {
       ++num_to_keep;
       keep_vec.push_back(i);
-      uint64_t *p = &mask[0] + i * col_blocks;
+      uint64_t *p = mask_host.data() + i * col_blocks;
       for (int j = nblock; j < col_blocks; j++) {
         remv[j] |= p[j];
       }

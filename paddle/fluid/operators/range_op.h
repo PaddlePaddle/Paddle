@@ -34,7 +34,7 @@ void GetSize(T start, T end, T step, int64_t* size) {
   if (start > end) {
     PADDLE_ENFORCE_LT(step, 0,
                       platform::errors::InvalidArgument(
-                          "step should be less than 0 while start > end."));
+                          "The step should be less than 0 while start > end."));
   }
 
   *size = std::is_integral<T>::value

@@ -17,10 +17,19 @@ import numpy
 import warnings
 from paddle import Tensor
 
-__all__ = [
-    'LRScheduler', 'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay',
-    'InverseTimeDecay', 'PolynomialDecay', 'LinearWarmup', 'ExponentialDecay',
-    'MultiStepDecay', 'StepDecay', 'LambdaDecay', 'ReduceOnPlateau',
+__all__ = [ #noqa
+    'LRScheduler',
+    'NoamDecay',
+    'PiecewiseDecay',
+    'NaturalExpDecay',
+    'InverseTimeDecay',
+    'PolynomialDecay',
+    'LinearWarmup',
+    'ExponentialDecay',
+    'MultiStepDecay',
+    'StepDecay',
+    'LambdaDecay',
+    'ReduceOnPlateau',
     'CosineAnnealingDecay'
 ]
 
@@ -786,9 +795,8 @@ class LinearWarmup(LRScheduler):
                 self.last_epoch) / float(self.warmup_steps) + self.start_lr
         else:
             if isinstance(self.learning_rate, LRScheduler):
-                lr_value = self.learning_rate()
-                self.learning_rate.step()
-                return lr_value
+                self.learning_rate.step(self.last_epoch - self.warmup_steps)
+                return self.learning_rate()
 
             return self.learning_rate
 

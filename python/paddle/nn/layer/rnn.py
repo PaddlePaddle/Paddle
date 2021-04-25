@@ -1053,7 +1053,8 @@ class RNNBase(LayerList):
                 initial_states,
                 paddle.fluid.framework.Variable) else initial_states
 
-        if self.could_use_cudnn:
+        if self.could_use_cudnn and (not fluid.core.is_compiled_with_rocm() or
+                                     sequence_length is None):
             # Add CPU kernel and dispatch in backend later
             return self._cudnn_impl(inputs, initial_states, sequence_length)
 

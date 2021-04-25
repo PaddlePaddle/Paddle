@@ -981,12 +981,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (conv backward in this case) choose
      * the memory format preferred for best performance
      */
-    // TODO: NHWC is preferred starting from oneDNN 2.1 . Any may crash
-    auto chosen_memory_format =
-        platform::MayIUse(platform::cpu_isa_t::avx512_core) &&
-                is_conv3d == false
-            ? MKLDNNMemoryFormat::nhwc
-            : MKLDNNMemoryFormat::any;
+    auto chosen_memory_format = MKLDNNMemoryFormat::any;
     weights_format = MKLDNNMemoryFormat::any;
 
     auto src_md = platform::MKLDNNMemDesc(

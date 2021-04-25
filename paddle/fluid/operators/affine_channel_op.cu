@@ -71,7 +71,11 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
     const T* bias_d = bias->data<T>();
     T* y_d = y->data<T>();
 
+#ifdef PADDLE_WITH_HIP
+    int block = 256;
+#else
     int block = 1024;
+#endif  // PADDLE_WITH_HIP
     int grid = (num + block - 1) / block;
 
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
@@ -153,7 +157,11 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
     T* ds_d = dscale ? dscale->mutable_data<T>(ctx.GetPlace()) : nullptr;
     T* db_d = dbias ? dbias->mutable_data<T>(ctx.GetPlace()) : nullptr;
 
+#ifdef PADDLE_WITH_HIP
+    const int block = 256;
+#else
     const int block = 1024;
+#endif  // PADDLE_WITH_HIP
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     int grid1 = (num + block - 1) / block;

@@ -129,9 +129,9 @@ class TestROIAlignOp(OpTest):
 
             roi_width = roi_xmax - roi_xmin
             roi_height = roi_ymax - roi_ymin
-            if not self.aligned:
-                roi_width = max(roi_width, 1)
-                roi_height = max(roi_height, 1)
+            roi_width = max(roi_width, 1)
+            roi_height = max(roi_height, 1)
+
             bin_size_h = float(roi_height) / float(self.pooled_height)
             bin_size_w = float(roi_width) / float(self.pooled_width)
             roi_bin_grid_h = self.sampling_ratio if self.sampling_ratio > 0 else \

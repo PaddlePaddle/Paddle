@@ -160,7 +160,7 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
                   const Tensor* tensor_dout, Tensor* tensor_dx,
                   Tensor* tensor_dy,
                   const paddle::framework::ExecutionContext& ctx) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     if (1 == tensor_dout->dims().size()) {
       auto dout = framework::EigenVector<T>::Flatten(*tensor_dout);
 

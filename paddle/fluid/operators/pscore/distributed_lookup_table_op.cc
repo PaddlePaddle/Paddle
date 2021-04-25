@@ -119,6 +119,11 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
 
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training.")
+        .SetDefault(false);
+
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.
 This operator is used to perform lookup on parameter W,

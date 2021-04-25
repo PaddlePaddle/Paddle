@@ -54,11 +54,6 @@ void SkipLayerNormPluginDynamic::terminate() {
 nvinfer1::DimsExprs SkipLayerNormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) {
-  PADDLE_ENFORCE_EQ(
-      inputs[0].nbDims, 5,
-      platform::errors::InvalidArgument(
-          "The Input dim of the SkipLayernorm should be 5, but it's (%d) now.",
-          inputs[0].nbDims));
   return inputs[0];
 }
 

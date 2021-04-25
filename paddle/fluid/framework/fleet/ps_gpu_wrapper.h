@@ -14,8 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
 
 #include <atomic>
 #include <ctime>
@@ -26,7 +25,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
@@ -42,6 +40,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/service/communicator.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -219,7 +220,7 @@ class PSGPUWrapper {
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
-  int multi_node_{1};
+  int multi_node_{0};
   int node_size_;
   std::vector<ncclComm_t> inner_comms_;
   std::vector<ncclComm_t> inter_comms_;

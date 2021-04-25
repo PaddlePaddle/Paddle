@@ -48,18 +48,37 @@ class TestSetValueBase(unittest.TestCase):
 
 
 class TestSetValueApi(TestSetValueBase):
-    def test_api(self):
+    def _run_static(self):
+        paddle.enable_static()
         with paddle.static.program_guard(self.program):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             self._call_setitem(x)
 
         exe = paddle.static.Executor(paddle.CPUPlace())
         out = exe.run(self.program, fetch_list=[x])
+        paddle.disable_static()
+        return out
+
+    def _run_dynamic(self):
+        paddle.disable_static()
+        x = paddle.ones(shape=self.shape, dtype=self.dtype)
+        self._call_setitem(x)
+        out = x.numpy()
+        paddle.enable_static()
+        return out
+
+    def test_api(self):
+        static_out = self._run_static()
+        dynamic_out = self._run_dynamic()
         self._get_answer()
+
+        error_msg = "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
         self.assertTrue(
-            (self.data == out).all(),
-            msg="\nExpected res = \n{}, \n\nbut received : \n{}".format(
-                self.data, out))
+            (self.data == static_out).all(),
+            msg=error_msg.format("static", self.data, static_out))
+        self.assertTrue(
+            (self.data == dynamic_out).all(),
+            msg=error_msg.format("dynamic", self.data, dynamic_out))
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
@@ -104,6 +123,23 @@ class TestSetValueItemSlice4(TestSetValueApi):
 
     def _get_answer(self):
         self.data[0:, 1:2, :] = self.value
+
+
+class TestSetValueItemSliceInWhile(TestSetValueApi):
+    def _call_setitem(self, x):
+        def cond(i, x):
+            return i < 1
+
+        def body(i, x):
+            x[i] = self.value
+            i = i + 1
+            return i, x
+
+        i = paddle.zeros(shape=(1, ), dtype='int32')
+        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+
+    def _get_answer(self):
+        self.data[0] = self.value
 
 
 # 1.2.2 step > 1
@@ -671,6 +707,20 @@ class TestSetValueValueShape4(TestSetValueApi):
         self.data[0] = self.value
 
 
+class TestSetValueValueShape5(TestSetValueApi):
+    def set_value(self):
+        self.value = np.array([3, 3, 3]).astype(self.dtype)
+
+    def set_shape(self):
+        self.shape = [3, 4]
+
+    def _call_setitem(self, x):
+        x[:, 0] = paddle.assign(self.value)  # x is Paddle.Tensor
+
+    def _get_answer(self):
+        self.data[:, 0] = self.value
+
+
 # 4. Test error
 class TestError(TestSetValueBase):
     def _value_type_error(self):
@@ -717,6 +767,7 @@ class TestError(TestSetValueBase):
             exe.run(program)
 
     def test_error(self):
+        paddle.enable_static()
         with paddle.static.program_guard(self.program):
             self._value_type_error()
             self._dtype_error()
