@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/gather_op_v2.h"
+#include "paddle/fluid/operators/collective/c_gather_op.h"
 
 namespace paddle {
 namespace operators {
 
-class GatherOpV2 : public framework::OperatorWithKernel {
+class CGatherOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GatherV2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GatherV2");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "c_gather");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_gather");
     int root_id = ctx->Attrs().Get<int>("root");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     int nranks = ctx->Attrs().Get<int>("nranks");
@@ -61,7 +61,7 @@ class GatherOpV2 : public framework::OperatorWithKernel {
   }
 };
 
-class GatherOpV2Maker : public framework::OpProtoAndCheckerMaker {
+class CGatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) tensor to be gathered.");
@@ -88,10 +88,10 @@ Gather tensors from all participators.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(gather_v2, ops::GatherOpV2, ops::GatherOpV2Maker);
+REGISTER_OP_WITHOUT_GRADIENT(c_gather, ops::CGatherOp, ops::CGatherOpMaker);
 
-REGISTER_OP_CPU_KERNEL(gather_v2, ops::CGatherOpV2CPUKernel<float>,
-                       ops::GatherOpV2CPUKernel<double>,
-                       ops::GatherOpV2CPUKernel<int>,
-                       ops::GatherOpV2CPUKernel<int64_t>,
-                       ops::GatherOpV2CPUKernel<plat::float16>);
+REGISTER_OP_CPU_KERNEL(c_gather, ops::CGatherOpCPUKernel<float>,
+                       ops::CGatherOpCPUKernel<double>,
+                       ops::CGatherOpCPUKernel<int>,
+                       ops::CGatherOpCPUKernel<int64_t>,
+                       ops::CGatherOpCPUKernel<plat::float16>);

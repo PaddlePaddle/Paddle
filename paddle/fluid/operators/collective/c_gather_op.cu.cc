@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/gather_op_v2.h"
+#include "paddle/fluid/operators/collective/c_gather_op.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class GatherOpV2CUDAKernel : public framework::OpKernel<T> {
+class CGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
@@ -46,18 +46,16 @@ class GatherOpV2CUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         root_id, 0,
         platform::errors::InvalidArgument(
-            "The root_id (%d) for gather_op_v2 must be non-negative.",
-            root_id));
+            "The root_id (%d) for c_gather must be non-negative.", root_id));
     PADDLE_ENFORCE_LT(
         root_id, nranks,
         platform::errors::InvalidArgument(
-            "The root_id (%d) for gather_op_v2 must be less than nranks (%d).",
+            "The root_id (%d) for c_gather must be less than nranks (%d).",
             root_id, nranks));
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
-            "The ring_id (%d) for gather_op_v2 must be non-negative.",
-            ring_id));
+            "The ring_id (%d) for c_gather must be non-negative.", ring_id));
 
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -101,8 +99,8 @@ class GatherOpV2CUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(gather_v2, ops::GatherOpV2CUDAKernel<float>,
-                        ops::GatherOpV2CUDAKernel<double>,
-                        ops::GatherOpV2CUDAKernel<int>,
-                        ops::GatherOpV2CUDAKernel<int64_t>,
-                        ops::GatherOpV2CUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(c_gather, ops::CGatherOpCUDAKernel<float>,
+                        ops::CGatherOpCUDAKernel<double>,
+                        ops::CGatherOpCUDAKernel<int>,
+                        ops::CGatherOpCUDAKernel<int64_t>,
+                        ops::CGatherOpCUDAKernel<plat::float16>);
