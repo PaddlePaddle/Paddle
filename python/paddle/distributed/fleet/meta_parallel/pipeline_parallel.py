@@ -40,14 +40,13 @@ class PipelineParallel(MetaParallelBase):
         self.use_pipe_parallel = self._hcg.get_pipe_parallel_world_size() > 1
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
-        #self._prepare_for_model()
 
         self.num_caches = 0
         self.caches = {
-            'inputs': [],  # input and activations received
+            'inputs': [],
             'labels': [],
-            'outputs': [],  # activations
-            'backward_tensors': [],  # tensor for backward
+            'outputs': [],
+            'backward_tensors': [],
         }
         self.recv_cache = None
         self.grad_tensors = None
@@ -99,8 +98,6 @@ class PipelineParallel(MetaParallelBase):
         self._layers.train()
         self.total_loss = None
 
-        #cmds = pcg.TrainGenerator(self.accumulate_steps, self.num_stages,
-        #                          self.stage_id)
         minibatch_cmds = utils.TrainGenerator(self.accumulate_steps,
                                               self.num_stages, self.stage_id)
         self._train(minibatch_cmds)
@@ -113,9 +110,6 @@ class PipelineParallel(MetaParallelBase):
                 if type(cmd) not in self._COMMAND_MAP:
                     #FIXME:
                     continue
-                    raise RuntimeError(
-                        f'{self.__class__.__name__} does not understand instruction {repr(cmd)}'
-                    )
 
                 self._apply_cmd = MethodType(self._COMMAND_MAP[type(cmd)], self)
                 self._apply_cmd(**cmd.kwargs)
@@ -138,7 +132,6 @@ class PipelineParallel(MetaParallelBase):
         if mp_rank == 0:
             data = next(self.data_iter)
         if self.use_model_parallel:
-            #FIXME: broadcast across mp groups
             data = paddle.distributed.broadcast(
                 data, group=self._hcg.get_model_parallel_group())
         return data
@@ -149,35 +142,8 @@ class PipelineParallel(MetaParallelBase):
         else:
             inputs = self.caches['inputs'][cache_id].clone()
 
-        ## collect the partitioned input from the previous stage
-        #if self.use_model_parallel and self.stage_id != 0:
-        #    part_input = PartitionedTensor.from_meta(
-        #        meta=inputs[0],
-        #        local_part=inputs[1],
-        #        group=self.grid.get_slice_parallel_group())
-
-        #    inputs = tuple([part_input.full(), inputs[2]])
-        #    inputs[0].stop_gradient = False
-        #    # skip mask
-        #    #inputs[1].requires_grad = True
-        #    part_input = None
-        #    self.caches['inputs'][cache_id] = inputs
-
-        # Zero out the gradients each time we use the tensor because only the data in
-        # tensor changes across batches
         self._clear_grads(inputs)
         outputs = self._layers.forward(inputs)
-
-        ## Partition the outputs if we are not the last stage
-        #if self.use_model_parallel and self.stage_id != (self.num_stages - 1):
-        #    part = PartitionedTensor(
-        #        tensor=outputs[0], group=self.grid.get_slice_parallel_group())
-        #    # Clear the large output data, but save the computation graph
-        #    outputs[0].data = paddle.zeros(1)
-        #    self.caches['output_tensors'][cache_id] = outputs[0]
-        #    # Inject the partitioned tensor into the output before sending
-        #    outputs = tuple([part.to_meta(), part.data(), outputs[1]])
-        #    part = None
 
         self.caches['outputs'][cache_id] = outputs
 
@@ -203,16 +169,7 @@ class PipelineParallel(MetaParallelBase):
 
         outputs = self.caches['outputs'][cache_id]
 
-        ## Reconstruct if we previously partitioned the output. We must be
-        ## careful to also restore the computational graph of the tensors we partitioned.
-        #if self.use_model_parallel:
-        #    # Already restored from partition
-        #    self.caches['output_tensors'][cache_id].data = outputs[0]
-        #    outputs = tuple(
-        #        [self.caches['output_tensors'][cache_id], outputs[1]])
-
         grad_tensors = self.grad_tensors
-        # This handles either a single tensor or tuple of tensors.
         if isinstance(outputs, tuple):
             out_tensors = [t for t in outputs if t.dtype in FLOAT_TYPES]
             assert len(out_tensors) == len(grad_tensors)
@@ -222,8 +179,6 @@ class PipelineParallel(MetaParallelBase):
             paddle.autograd.backward(
                 tensors=[outputs], grad_tensors=[grad_tensors])
 
-        # Free up the memory from the output of forward()
-        # self.caches['output_tensors'][cache_id] = None
         self.caches['outputs'][cache_id] = None
         grad_tensors = None
 
@@ -365,11 +320,6 @@ class PipelineParallel(MetaParallelBase):
             inputs = [None] * len(self.recv_cache)
             for idx, d in enumerate(self.recv_cache):
                 assert isinstance(d, paddle.Tensor)
-                #if self.use_model_parallel and idx == 0 and buffer.dtype != torch.long:
-                #    if self.meta_buffer is None:
-                #        self.meta_buffer = paddle.zeros(
-                #            buffer.size(), dtype=torch.long, device=self.device)
-                #    buffer = self.meta_buffer
 
                 paddle.distributed.recv(d, self.prev_stage_id)
                 inputs[idx] = d.clone().detach()
@@ -383,19 +333,6 @@ class PipelineParallel(MetaParallelBase):
 
     def _recv_gradients(self, cache_id):
         outputs = self.caches['outputs'][cache_id]
-        # XXX these shapes are hardcoded for Megatron
-        # Restore partitioned output if it was partitioned and we are sending full gradients
-        #if self.use_model_parallel:
-        #    part_output = PartitionedTensor.from_meta(
-        #        meta=outputs[0],
-        #        local_part=outputs[1],
-        #        group=self.grid.get_slice_parallel_group())
-        #    outputs[0].data = part_output.full()
-        #    outputs = tuple([outputs[0], outputs[2]])
-        #    # save for backward
-        #    self.pipe_caches['outputs'][buffer_id] = outputs
-
-        # Allocate gradient if necessary
         if self.grad_tensors is None:
             if isinstance(outputs, paddle.Tensor):
                 s = list(outputs.shape)
@@ -419,7 +356,6 @@ class PipelineParallel(MetaParallelBase):
 
     def _step(self, lr_kwargs=None):
         self._modifying_grad = True
-        #self._take_model_step(lr_kwargs)
         self.optimizer.step()
         self.optimizer.clear_gradients()
         self._modifying_grad = False
@@ -465,18 +401,11 @@ class PipelineParallel(MetaParallelBase):
         state_dict = paddle.load(self.model_path)
         self._layers.set_state_dict(state_dict)
 
-    # A map of PipeInstruction types to methods. Each method will be executed with the
-    # kwargs provided to the PipeInstruction from the utilsr.
     _COMMAND_MAP = {
         utils.Optimize: _step,
         #utils.ReduceGrads: _allreduce_grads,
-        #utils.LoadMicroBatch: _load_micro_batch,
         utils.Forward: _forward,
         utils.Backward: _backward,
-        #utils.SendActivation: _send_activations,
-        #utils.RecvActivation: _recv_activations,
-        #utils.SendGrad: _send_gradients,
-        #utils.RecvGrad: _recv_gradients,
     }
 
     def _pre_forward(self, *inputs, **kwargs):
