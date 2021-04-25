@@ -49,9 +49,9 @@ namespace distributed {
 
 enum Mode { training, infer };
 
-static const int DOWNPOUR_SPARSE_SHARD_BUCKET_NUM_BITS = 6;
-static const size_t DOWNPOUR_SPARSE_SHARD_BUCKET_NUM =
-    (size_t)1 << DOWNPOUR_SPARSE_SHARD_BUCKET_NUM_BITS;
+static const int SPARSE_SHARD_BUCKET_NUM_BITS = 6;
+static const size_t SPARSE_SHARD_BUCKET_NUM =
+    (size_t)1 << SPARSE_SHARD_BUCKET_NUM_BITS;
 
 struct VALUE {
   explicit VALUE(size_t length)
@@ -282,11 +282,11 @@ class ValueBlock {
 
   float GetThreshold() { return threshold_; }
   size_t compute_bucket(size_t hash) {
-    if (DOWNPOUR_SPARSE_SHARD_BUCKET_NUM == 1) {
+    if (SPARSE_SHARD_BUCKET_NUM == 1) {
       return 0;
     } else {
       return hash >>
-             (sizeof(size_t) * 8 - DOWNPOUR_SPARSE_SHARD_BUCKET_NUM_BITS);
+             (sizeof(size_t) * 8 - SPARSE_SHARD_BUCKET_NUM_BITS);
     }
   }
 
@@ -306,7 +306,7 @@ class ValueBlock {
 
  public:
   robin_hood::unordered_map<uint64_t, VALUE *>
-      values_[DOWNPOUR_SPARSE_SHARD_BUCKET_NUM];
+      values_[SPARSE_SHARD_BUCKET_NUM];
   size_t value_length_ = 0;
   std::hash<uint64_t> _hasher;
 
