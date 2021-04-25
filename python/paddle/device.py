@@ -119,28 +119,7 @@ def get_cudnn_version():
         return _cudnn_version
 
 
-def set_device(device):
-    """
-    Paddle supports running calculations on various types of devices, including CPU, GPU and XPU.
-    They are represented by string identifiers. This function can specify the global device
-    which the OP will run.
-
-    Parameters:
-        device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
-            index of the GPUs or XPUs. 
-
-    Examples:
-
-     .. code-block:: python
-            
-        import paddle
-
-        paddle.set_device("cpu")
-        x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
-        x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
-        data = paddle.stack([x1,x2], axis=1)
-    """
+def _convert_to_place(device):
     lower_device = device.lower()
     if lower_device == 'cpu':
         place = core.CPUPlace()
@@ -183,7 +162,32 @@ def set_device(device):
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
+    return place
 
+
+def set_device(device):
+    """
+    Paddle supports running calculations on various types of devices, including CPU, GPU and XPU.
+    They are represented by string identifiers. This function can specify the global device
+    which the OP will run.
+
+    Parameters:
+        device(str): This parameter determines the specific running device.
+            It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
+            index of the GPUs or XPUs. 
+
+    Examples:
+
+     .. code-block:: python
+            
+        import paddle
+
+        paddle.set_device("cpu")
+        x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
+        x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
+        data = paddle.stack([x1,x2], axis=1)
+    """
+    place = _convert_to_place(device)
     framework._set_expected_place(place)
     return place
 

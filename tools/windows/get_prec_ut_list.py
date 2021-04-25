@@ -37,6 +37,9 @@ def get_prec_ut_list(all_test_cases, prec_test_cases):
 
 
 if __name__ == '__main__':
+    # get prec cases lists
+    with open('ut_list', 'r') as f:
+        prec_test_cases = f.read()
     all_test_cases = sys.argv[1]
-    prec_test_cases = sys.argv[2]
+    #prec_test_cases = sys.argv[2]
     get_prec_ut_list(all_test_cases, prec_test_cases)

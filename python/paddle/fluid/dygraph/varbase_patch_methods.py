@@ -434,6 +434,9 @@ def monkey_patch_varbase():
     def __bool__(self):
         return self.__nonzero__()
 
+    def __array__(self, dtype=None):
+        return self.numpy().astype(dtype)
+
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
@@ -442,7 +445,7 @@ def monkey_patch_varbase():
         ("gradient", gradient), ("register_hook", register_hook),
         ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
-        ("__name__", "Tensor")):
+        ("__name__", "Tensor"), ("__array__", __array__)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
