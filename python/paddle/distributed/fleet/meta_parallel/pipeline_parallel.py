@@ -36,22 +36,11 @@ FLOAT_TYPES = [
 class PipelineParallel(MetaParallelBase):
     def __init__(self, layers, hcg, strategy):
         super(PipelineParallel, self).__init__(layers, hcg, strategy)
-        self.layers = layers
-        self.hcg = hcg
-        self.strategy = strategy
 
-        self.micro_batch_size = strategy.pipeline_configs['micro_batch_size']
-        self.accumulate_steps = strategy.pipeline_configs['accumulate_steps']
-
-        self.num_stages = self.hcg.get_pipe_parallel_world_size()
-        self.stage_id = self.hcg.get_stage_id()
-        self.prev_stage_id = self.stage_id - 1
-        self.next_stage_id = self.stage_id + 1
-
-        self.use_pipe_parallel = self.hcg.get_pipe_parallel_world_size() > 1
-        self.use_data_parallel = self.hcg.get_data_parallel_world_size() > 1
-        self.use_model_parallel = self.hcg.get_model_parallel_world_size() > 1
-        self._prepare_for_model()
+        self.use_pipe_parallel = self._hcg.get_pipe_parallel_world_size() > 1
+        self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
+        self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
+        #self._prepare_for_model()
 
         self.num_caches = 0
         self.caches = {
@@ -72,8 +61,17 @@ class PipelineParallel(MetaParallelBase):
         self.total_loss = None
 
     def _prepare_for_model(self):
-        self.layers = PipelineLayer(
-            layers=self.layers, num_stages=self.num_stages)
+        self.micro_batch_size = self._strategy.pipeline_configs[
+            'micro_batch_size']
+        self.accumulate_steps = self._strategy.pipeline_configs[
+            'accumulate_steps']
+
+        self.num_stages = self._hcg.get_pipe_parallel_world_size()
+        self.stage_id = self._hcg.get_stage_id()
+        self.prev_stage_id = self.stage_id - 1
+        self.next_stage_id = self.stage_id + 1
+        self._layers = PipelineLayer(
+            layers=self._layers, num_stages=self.num_stages)
         #TODO: init process group
 
     def _allocate_caches(self, num_caches):
@@ -98,7 +96,7 @@ class PipelineParallel(MetaParallelBase):
                 "For pipe stages other than the first and the last one, "
                 "the data_iter must be None.")
         self.data_iter = data_iter
-        self.layers.train()
+        self._layers.train()
         self.total_loss = None
 
         #cmds = pcg.TrainGenerator(self.accumulate_steps, self.num_stages,
@@ -115,6 +113,9 @@ class PipelineParallel(MetaParallelBase):
                 if type(cmd) not in self._COMMAND_MAP:
                     #FIXME:
                     continue
+                    raise RuntimeError(
+                        f'{self.__class__.__name__} does not understand instruction {repr(cmd)}'
+                    )
 
                 self._apply_cmd = MethodType(self._COMMAND_MAP[type(cmd)], self)
                 self._apply_cmd(**cmd.kwargs)
@@ -127,7 +128,7 @@ class PipelineParallel(MetaParallelBase):
 
     def _get_data(self):
         if self.use_model_parallel:
-            mp_rank = self.hcg.get_model_parallel_rank()
+            mp_rank = self._hcg.get_model_parallel_rank()
         else:
             mp_rank = 0
 
@@ -139,7 +140,7 @@ class PipelineParallel(MetaParallelBase):
         if self.use_model_parallel:
             #FIXME: broadcast across mp groups
             data = paddle.distributed.broadcast(
-                data, group=self.hcg.get_model_parallel_group())
+                data, group=self._hcg.get_model_parallel_group())
         return data
 
     def _forward(self, cache_id):
@@ -165,7 +166,7 @@ class PipelineParallel(MetaParallelBase):
         # Zero out the gradients each time we use the tensor because only the data in
         # tensor changes across batches
         self._clear_grads(inputs)
-        outputs = self.layers.forward(inputs)
+        outputs = self._layers.forward(inputs)
 
         ## Partition the outputs if we are not the last stage
         #if self.use_model_parallel and self.stage_id != (self.num_stages - 1):
@@ -457,12 +458,12 @@ class PipelineParallel(MetaParallelBase):
         return buffers
 
     def save_state_dict(self, model_path):
-        state_dict = self.layers.state_dict()
+        state_dict = self._layers.state_dict()
         paddle.save(state_dict, model_path)
 
     def load_state_dict(self, model_path):
         state_dict = paddle.load(self.model_path)
-        self.layers.set_state_dict(state_dict)
+        self._layers.set_state_dict(state_dict)
 
     # A map of PipeInstruction types to methods. Each method will be executed with the
     # kwargs provided to the PipeInstruction from the utilsr.
