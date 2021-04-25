@@ -19,8 +19,6 @@ import multiprocessing
 import math
 import platform
 import inspect
-#import paddle
-#import paddle.fluid
 import json
 import argparse
 import shutil
@@ -28,8 +26,8 @@ import re
 import logging
 """
 please make sure to run in the tools path
-usage: python sample_test.py {arg1} 
-arg1: the first arg defined running in gpu version or cpu version
+usage: python sample_test.py {cpu or gpu} 
+    {cpu or gpu}: running in cpu version or gpu version
 
 for example, you can run cpu version python2 testing like this:
 
@@ -130,7 +128,7 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     results = []
     msgs = []
     for tfname in sample_code_filenames:
-        result, msg = execute_samplecode_test(tfname)
+        result, _, msg = execute_samplecode_test(tfname)
         results.append(result)
         msgs.append(msg)
 

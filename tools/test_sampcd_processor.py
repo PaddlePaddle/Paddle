@@ -28,6 +28,10 @@ from sampcd_processor import srccoms_extract
 from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
 from sampcd_processor import get_wlist
+from sampcd_processor import sampcd_extract_to_file
+from sampcd_processor import execute_samplecode_test
+
+SAMPLECODE_TEMP_DIR = 'samplecode_temp'
 
 
 class Test_find_all(unittest.TestCase):
@@ -53,45 +57,94 @@ class Test_check_indent(unittest.TestCase):
         self.assertEqual(4, check_indent("\thello paddle"))
 
 
-class Test_sampcd_extract_and_run(unittest.TestCase):
+class Test_execute_samplecode_test(unittest.TestCase):
     def setUp(self):
-        if not os.path.exists('samplecode_temp/'):
-            os.mkdir('samplecode_temp/')
+        if not os.path.exists(SAMPLECODE_TEMP_DIR):
+            os.mkdir(SAMPLECODE_TEMP_DIR)
+        self.successSampleCodeFile = os.path.join(SAMPLECODE_TEMP_DIR,
+                                                  'samplecode_success.py')
+        with open(self.successSampleCodeFile, 'w') as f:
+            f.write('print(1+1)')
+        self.failedSampleCodeFile = os.path.join(SAMPLECODE_TEMP_DIR,
+                                                 'samplecode_failed.py')
+        with open(self.failedSampleCodeFile, 'w') as f:
+            f.write('print(1/0)')
 
-    def test_run_a_defs_samplecode(self):
+    def tearDown(self):
+        os.remove(self.successSampleCodeFile)
+        os.remove(self.failedSampleCodeFile)
+
+    def test_run_success(self):
+        result, tfname, msg = execute_samplecode_test(
+            self.successSampleCodeFile)
+        self.assertTrue(result)
+        self.assertEqual(self.successSampleCodeFile, tfname)
+        self.assertIsNotNone(msg)
+
+    def test_run_failed(self):
+        result, tfname, msg = execute_samplecode_test(self.failedSampleCodeFile)
+        self.assertFalse(result)
+        self.assertEqual(self.failedSampleCodeFile, tfname)
+        self.assertIsNotNone(msg)
+
+
+class Test_sampcd_extract_to_file(unittest.TestCase):
+    def setUp(self):
+        if not os.path.exists(SAMPLECODE_TEMP_DIR):
+            os.mkdir(SAMPLECODE_TEMP_DIR)
+
+    def tearDown(self):
+        shutil.rmtree(SAMPLECODE_TEMP_DIR)
+
+    def test_1_samplecode(self):
         comments = """
         Examples:
             .. code-block:: python
+
                 print(1+1)
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertTrue(res)
-        self.assertEqual(funcname, name)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual(
+            [os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example.py')],
+            sample_code_filenames)
 
-    def test_run_a_def_no_code(self):
+    def test_no_samplecode(self):
         comments = """
         placeholder
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertFalse(res)
-        self.assertEqual(funcname, name)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([], sample_code_filenames)
 
-    def test_run_a_def_raise_expection(self):
+    def test_2_samplecodes(self):
         comments = """
         placeholder
         Examples:
             .. code-block:: python
+
                 print(1/0)
+
+            .. code-block:: python
+
+                print(1+1)
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertFalse(res)
-        self.assertEqual(funcname, name)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([
+            os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_1.py'),
+            os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_2.py')
+        ], sample_code_filenames)
 
 
 class Test_single_defcom_extract(unittest.TestCase):
+    def setUp(self):
+        if not os.path.exists(SAMPLECODE_TEMP_DIR):
+            os.mkdir(SAMPLECODE_TEMP_DIR)
+
+    def tearDown(self):
+        shutil.rmtree(SAMPLECODE_TEMP_DIR)
+
     def test_extract_from_func(self):
         defstr = '''
 import os
@@ -270,6 +323,9 @@ class Test_get_wlist(unittest.TestCase):
 
 class Test_srccoms_extract(unittest.TestCase):
     def setUp(self):
+        if not os.path.exists(SAMPLECODE_TEMP_DIR):
+            os.mkdir(SAMPLECODE_TEMP_DIR)
+
         self.tmpDir = tempfile.mkdtemp()
         print('tmpDir=', self.tmpDir)
         self.opsDir = os.path.join(self.tmpDir, 'fluid/layers')
@@ -287,9 +343,9 @@ class Test_srccoms_extract(unittest.TestCase):
             ]))
 
     def tearDown(self):
-        #sys.path.remove(self.tmpDir)
         shutil.rmtree(self.tmpDir)
         os.remove(self.api_pr_spec_filename)
+        shutil.rmtree(SAMPLECODE_TEMP_DIR)
 
     def test_from_ops_py(self):
         filecont = '''
@@ -346,22 +402,20 @@ add_sample_code(globals()["two_plus_two"], """
         print('testing srccoms_extract from ops.py')
         methods = ['one_plus_one', 'two_plus_two', 'exp']
         # os.remove("samplecode_temp/" "one_plus_one_example.py")
-        self.assertFalse(
-            os.path.exists("samplecode_temp/"
-                           "one_plus_one_example.py"))
+        tfname = os.path.join(SAMPLECODE_TEMP_DIR, "one_plus_one_example.py")
+        self.assertFalse(os.path.exists(tfname))
         with open(pyfilename, 'r') as pyfile:
             res, error_methods = srccoms_extract(pyfile, [], methods)
             self.assertTrue(res)
-        self.assertTrue(
-            os.path.exists("samplecode_temp/"
-                           "one_plus_one_example.py"))
-        os.remove("samplecode_temp/" "one_plus_one_example.py")
-        self.assertTrue(
-            os.path.exists("samplecode_temp/"
-                           "two_plus_two_example.py"))
-        os.remove("samplecode_temp/" "two_plus_two_example.py")
-        self.assertTrue(os.path.exists("samplecode_temp/" "exp_example.py"))
-        os.remove("samplecode_temp/" "exp_example.py")
+        tfname = os.path.join(SAMPLECODE_TEMP_DIR, "one_plus_one_example.py")
+        self.assertTrue(os.path.exists(tfname))
+        os.remove(tfname)
+        tfname = os.path.join(SAMPLECODE_TEMP_DIR, "two_plus_two_example.py")
+        self.assertTrue(os.path.exists(tfname))
+        os.remove(tfname)
+        tfname = os.path.join(SAMPLECODE_TEMP_DIR, "exp_example.py")
+        self.assertTrue(os.path.exists(tfname))
+        os.remove(tfname)
 
     def test_from_not_ops_py(self):
         filecont = '''
@@ -388,7 +442,7 @@ def one_plus_one():
         with open(pyfilename, 'r') as pyfile:
             res, error_methods = srccoms_extract(pyfile, [], methods)
             self.assertTrue(res)
-        expectedFile = os.path.join("samplecode_temp",
+        expectedFile = os.path.join(SAMPLECODE_TEMP_DIR,
                                     "one_plus_one_example.py")
         self.assertTrue(os.path.exists(expectedFile))
         os.remove(expectedFile)
@@ -436,7 +490,7 @@ def three_plus_three():
                                                  methods)
             self.assertTrue(res)
 
-        expectedFile = os.path.join("samplecode_temp",
+        expectedFile = os.path.join(SAMPLECODE_TEMP_DIR,
                                     "four_plus_four_example.py")
         self.assertTrue(os.path.exists(expectedFile))
         os.remove(expectedFile)
