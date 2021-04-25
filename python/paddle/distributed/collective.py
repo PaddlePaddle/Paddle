@@ -973,20 +973,14 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
-            paddle.disable_static()
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([7, 8, 9])
-            else:
-                np_data = np.array([1, 2, 3])
-            data = paddle.to_tensor(np_data1)
-            if paddle.distributed.ParallelEnv().local_rank == 0:
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
                 paddle.distributed.send(data, dst=1)
             else:
+                data = paddle.to_tensor([1,2,3])
                 paddle.distributed.recv(data, src=0)
             out = data.numpy()
     """
@@ -1028,20 +1022,14 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
-            paddle.disable_static()
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([7, 8, 9])
-            else:
-                np_data = np.array([1, 2, 3])
-            data = paddle.to_tensor(np_data1)
-            if paddle.distributed.ParallelEnv().local_rank == 0:
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
                 paddle.distributed.send(data, dst=1)
             else:
+                data = paddle.to_tensor([1,2,3])
                 paddle.distributed.recv(data, src=0)
             out = data.numpy()
     """
