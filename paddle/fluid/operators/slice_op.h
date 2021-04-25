@@ -479,43 +479,40 @@ class SliceGradKernel : public framework::OpKernel<T> {
               d_input);
         }
       } else if (need_pad_num == 1) {
-        // only need padding one dimension, we can reduce dimension
-        // only the padding dimension is available for us
-        /*
-        how to reduce dimension(5 to 3 for example):
-        before(D=5):
-        in_dims:        [x1,  x2,  x3,  x4,  x5]
-        padding.first:  [0,   0,   a,   0,  0]
-        padding.second: [0,   0,   b,   0,  0]
-                            | |
-                            V V
-        after(D=3):
-        reshaped_in_dims:        [x1*x2,  x3,  x4*x5]
-        reshaped_padding.first:  [0,      a,     0]
-        reshaped_padding.second: [0,      b,     0]
-        */
+        // only need padding one dimension, we can reduce dimension.
+        // only the padding dimension is available for us.
+        // How to reduce dimension(5 to 3 for example):
+        // before(D=5):
+        // in_dims:        [x1,  x2,  x3,  x4,  x5]
+        // padding.first:  [0,   0,   a,   0,  0]
+        // padding.second: [0,   0,   b,   0,  0]
+        //                     | |
+        //                     V V
+        // after(D=3):
+        // reshaped_in_dims:        [x1*x2,  x3,  x4*x5]
+        // reshaped_padding.first:  [0,      a,     0]
+        // reshaped_padding.second: [0,      b,     0]
 
         if (pad_dim == D - 1) {
           // only last dimension need padding,
           // reshape the dimension of tensor in 2: [preceding, padding]
-          std::vector<int64_t> in_dims_toreshape(2, 1),
-              out_dims_toreshape(2, 1);
+          std::vector<int64_t> in_tore_shape(2, 1), out_tore_shape(2, 1);
           Eigen::array<std::pair<int64_t, int64_t>, 2> reshaped_padding;
 
           // first dimension is the accumulate of preceding dimension
           for (int i = 0; i < pad_dim; i++) {
-            in_dims_toreshape[0] *= in_dims[i];
-            out_dims_toreshape[0] *= out_dims[i];
+            in_tore_shape[0] *= in_dims[i];
+            out_tore_shape[0] *= out_dims[i];
           }
           // second dimension is the padding dimension
-          in_dims_toreshape[1] = in_dims[pad_dim];
-          out_dims_toreshape[1] = out_dims[pad_dim];
+          in_tore_shape[1] = in_dims[pad_dim];
+          out_tore_shape[1] = out_dims[pad_dim];
 
           // convert array from std::vector to DDim
           framework::DDim reshaped_in_dims =
-              framework::make_ddim(in_dims_toreshape);
+              framework::make_ddim(in_tore_shape);
           framework::DDim reshaped_out_dims =
-              framework::make_ddim(out_dims_toreshape);
+              framework::make_ddim(out_tore_shape);
 
           // after reshape: the first dimension do not need padding,
           // set padding[0] zero
@@ -530,24 +527,23 @@ class SliceGradKernel : public framework::OpKernel<T> {
           // only first dimension need padding,
           // reshape the dimension of tensor in 2: [padding, succeeding]
           // similar to (D - 1)
-          std::vector<int64_t> in_dims_toreshape(2, 1),
-              out_dims_toreshape(2, 1);
+          std::vector<int64_t> in_tore_shape(2, 1), out_tore_shape(2, 1);
           Eigen::array<std::pair<int64_t, int64_t>, 2> reshaped_padding;
 
           // first dimension is the padding dimension
-          in_dims_toreshape[0] = in_dims[pad_dim];
-          out_dims_toreshape[0] = out_dims[pad_dim];
+          in_tore_shape[0] = in_dims[pad_dim];
+          out_tore_shape[0] = out_dims[pad_dim];
           // sencond dimension is the accumulate of succeeding dimension
           for (size_t i = pad_dim + 1; i < D; i++) {
-            in_dims_toreshape[1] *= in_dims[i];
-            out_dims_toreshape[1] *= out_dims[i];
+            in_tore_shape[1] *= in_dims[i];
+            out_tore_shape[1] *= out_dims[i];
           }
 
           // convert array from std::vector to DDim
           framework::DDim reshaped_in_dims =
-              framework::make_ddim(in_dims_toreshape);
+              framework::make_ddim(in_tore_shape);
           framework::DDim reshaped_out_dims =
-              framework::make_ddim(out_dims_toreshape);
+              framework::make_ddim(out_tore_shape);
 
           // after reshape:
           // the first dimension is the previous padding dimension
@@ -562,29 +558,28 @@ class SliceGradKernel : public framework::OpKernel<T> {
           // other dimension need padding
           // reshape the dimension of tensor in 3:
           // [preceding, padding, succeeding]
-          std::vector<int64_t> in_dims_toreshape(3, 1),
-              out_dims_toreshape(3, 1);
+          std::vector<int64_t> in_tore_shape(3, 1), out_tore_shape(3, 1);
           Eigen::array<std::pair<int64_t, int64_t>, 3> reshaped_padding;
 
           // first dimension is the accumulate of preceding dimension
           for (int i = 0; i < pad_dim; i++) {
-            in_dims_toreshape[0] *= in_dims[i];
-            out_dims_toreshape[0] *= out_dims[i];
+            in_tore_shape[0] *= in_dims[i];
+            out_tore_shape[0] *= out_dims[i];
           }
           // second dimension is the padding dimension
-          in_dims_toreshape[1] = in_dims[pad_dim];
-          out_dims_toreshape[1] = out_dims[pad_dim];
+          in_tore_shape[1] = in_dims[pad_dim];
+          out_tore_shape[1] = out_dims[pad_dim];
           // third dimension is the accumulate of succeeding dimension
           for (size_t i = pad_dim + 1; i < D; i++) {
-            in_dims_toreshape[2] *= in_dims[i];
-            out_dims_toreshape[2] *= out_dims[i];
+            in_tore_shape[2] *= in_dims[i];
+            out_tore_shape[2] *= out_dims[i];
           }
 
           // convert array from std::vector to DDim
           framework::DDim reshaped_in_dims =
-              framework::make_ddim(in_dims_toreshape);
+              framework::make_ddim(in_tore_shape);
           framework::DDim reshaped_out_dims =
-              framework::make_ddim(out_dims_toreshape);
+              framework::make_ddim(out_tore_shape);
 
           // after reshape:
           // the first dimension do not need padding, set padding[0] zero
