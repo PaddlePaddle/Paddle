@@ -13,4 +13,6 @@
 # limitations under the License.
 
 from . import weight_norm_hook
+from . import spectral_norm_hook
 from .weight_norm_hook import weight_norm, remove_weight_norm
+from .spectral_norm_hook import spectral_norm

@@ -20,6 +20,7 @@ from .functional import extension
 from .layer import common
 from .layer import rnn
 from .utils import weight_norm_hook
+from .utils import spectral_norm_hook
 
 from . import initializer
 
@@ -29,6 +30,7 @@ __all__ += extension.__all__
 __all__ += common.__all__
 __all__ += rnn.__all__
 __all__ += weight_norm_hook.__all__
+__all__ += spectral_norm_hook.__all__
 
 # TODO: define alias in nn directory
 from .clip import ClipGradByGlobalNorm  #DEFINE_ALIAS
