@@ -93,6 +93,10 @@ def set_printoptions(precision=None,
 def _to_sumary(var):
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
 
+    # Handle tensor of shape contains 0, like [0, 2], [3, 0, 3]
+    if np.prod(var.shape) == 0:
+        return np.array([])
+
     if len(var.shape) == 0:
         return var
     elif len(var.shape) == 1:
