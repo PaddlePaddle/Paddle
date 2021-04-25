@@ -19,6 +19,7 @@ import pickle
 import warnings
 import functools
 from collections import OrderedDict
+import inspect
 
 import six
 import paddle
@@ -506,7 +507,7 @@ def _build_load_path_and_config(path, config):
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
     """
-    Saves input Layer as ``paddle.jit.TranslatedLayer``
+    Saves input Layer or function as ``paddle.jit.TranslatedLayer``
     format model, which can be used for inference or fine-tuning after loading.
 
     It will save the translated program and all related persistable
@@ -523,7 +524,7 @@ def save(layer, path, input_spec=None, **configs):
       - Other C++ inference APIs
 
     Args:
-        layer (Layer): The Layer to be saved.
+        layer (Layer|function): The Layer or function to be saved.
         path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
         input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward
             method, which can be described by InputSpec or example Tensor. If None, all input variables of
@@ -543,6 +544,7 @@ def save(layer, path, input_spec=None, **configs):
     Examples:
         .. code-block:: python
 
+            # example 1: save layer
             import numpy as np
             import paddle
             import paddle.nn as nn
@@ -609,6 +611,28 @@ def save(layer, path, input_spec=None, **configs):
             # save
             path = "example_model/linear"
             paddle.jit.save(layer, path)
+
+            # example 2: save function
+            import paddle
+            from paddle.static import InputSpec
+
+
+            def save_function():
+                @paddle.jit.to_static
+                def fun(inputs):
+                    return paddle.tanh(inputs)
+
+                path = 'test_jit_save_load_function_1/func'
+                inps = paddle.rand([3, 6])
+                origin = fun(inps)
+
+                paddle.jit.save(fun, path)
+                load_func = paddle.jit.load(path)
+
+                load_result = load_func(inps)
+                print((load_result - origin).abs().max() < 1e-10)
+                
+            save_function()
     """
 
     # 1. input build & check
@@ -618,7 +642,8 @@ def save(layer, path, input_spec=None, **configs):
             "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
         )
 
-    if not callable(layer):
+    if not (isinstance(layer, Layer) or inspect.isfunction(layer) or isinstance(
+            layer, StaticFunction)):
         raise TypeError(
             "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
             % type(layer))
@@ -803,7 +828,7 @@ def save(layer, path, input_spec=None, **configs):
     # but we can save these information in `jit.save` without changing the original
     # storage to improve user experience. So we save extra information into
     # file `***.pdiparams.info`
-    if isinstance(layer, Layer):
+    if isinstance(layer, Layer) and extra_var_info:
         with scope_guard(scope):
             extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
             with open(extra_var_info_path, 'wb') as f:
