@@ -19,7 +19,7 @@ import shutil
 import zipfile
 from paddle.utils.download import get_path_from_url
 
-MAIN_BRANCH = 'main'
+DEFAULT_BRANCH = 'main'
 DEFAULT_CACHE_DIR = '~/.cache'
 VAR_DEPENDENCY = 'dependencies'
 MODULE_HUBCONF = 'hubconf.py'
@@ -59,12 +59,12 @@ def _git_archive_link(repo_owner, repo_name, branch, source):
             repo_owner, repo_name, branch)
 
 
-def _parse_repo_info(github):
-    branch = MAIN_BRANCH
-    if ':' in github:
-        repo_info, branch = github.split(':')
+def _parse_repo_info(repo, source):
+    branch = 'main' if source == 'github' else 'master'
+    if ':' in repo:
+        repo_info, branch = repo.split(':')
     else:
-        repo_info = github
+        repo_info = repo
     repo_owner, repo_name = repo_info.split('/')
     return repo_owner, repo_name, branch
 
@@ -84,7 +84,7 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
     _make_dirs(hub_dir)
 
     # Parse github/gitee repo information
-    repo_owner, repo_name, branch = _parse_repo_info(repo)
+    repo_owner, repo_name, branch = _parse_repo_info(repo, source)
     # Github allows branch name with slash '/',
     # this causes confusion with path on both Linux and Windows.
     # Backslash is not allowed in Github branch name so no need to
