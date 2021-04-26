@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
 
 namespace paddle {

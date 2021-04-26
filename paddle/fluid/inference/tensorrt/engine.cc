@@ -18,16 +18,14 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <string>
 
+#include "cuda_runtime_api.h"  // NOLINT
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
-namespace plugin {
-class PluginTensorRT;
-}  // namespace plugin
 
 int TensorRTEngine::runtime_batch_ = 1;
 
@@ -353,6 +351,13 @@ nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
     plugin::PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
   return network()->addPluginExt(inputs, num_inputs, *plugin);
+}
+
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    plugin::PluginTensorRTV2Ext *plugin) {
+  owned_plugin_v2ext_.emplace_back(plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 
 void TensorRTEngine::freshDeviceId() {

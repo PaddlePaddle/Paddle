@@ -26,7 +26,25 @@ import sys
 paddle.enable_static()
 
 
-def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
+def get_place(target):
+    if target == "cuda":
+        return fluid.CUDAPlace(0)
+    elif target == "xpu":
+        return fluid.XPUPlace(0)
+    elif target == "cpu":
+        return fluid.CPUPlace()
+    else:
+        raise ValueError(
+            "Target `{0}` is not on the support list: `cuda`, `xpu` and `cpu`.".
+            format(target))
+
+
+def train(target,
+          is_sparse,
+          is_parallel,
+          save_dirname,
+          is_local=True,
+          use_bf16=False):
     PASS_NUM = 100
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
@@ -88,12 +106,14 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         raise NotImplementedError()
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    if use_bf16:
+        paddle.static.amp.rewrite_program_bf16(fluid.default_main_program())
     sgd_optimizer.minimize(avg_cost)
 
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    place = get_place(target)
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(
         feed_list=[first_word, second_word, third_word, forth_word, next_word],
@@ -143,13 +163,12 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(target, save_dirname=None):
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    place = get_place(target)
     exe = fluid.Executor(place)
-
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
         # Use fluid.io.load_inference_model to obtain the inference program desc,
@@ -211,10 +230,12 @@ def infer(use_cuda, save_dirname=None):
 
         infer_config = fluid.core.NativeConfig()
         infer_config.model_dir = 'word2vec.inference.model'
-        infer_config.use_gpu = use_cuda
-        if use_cuda:
+        if target == "cuda":
+            infer_config.use_gpu = True
             infer_config.device = 0
             infer_config.fraction_of_gpu_memory = 0.15
+        elif target == "xpu":
+            infer_config.use_xpu = True
         compiled_program = fluid.compiler.CompiledProgram(inference_program)
         compiled_program._with_inference_optimize(infer_config)
         assert compiled_program._is_inference is True
@@ -222,11 +243,16 @@ def infer(use_cuda, save_dirname=None):
         np_data = np.array(results[0])
         infer_out = infer_outputs[0].data.float_data()
         for a, b in zip(np_data[0], infer_out):
-            assert np.isclose(a, b), "a: {}, b: {}".format(a, b)
+            assert np.isclose(a, b, rtol=5e-5), "a: {}, b: {}".format(a, b)
 
 
-def main(use_cuda, is_sparse, is_parallel):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+def main(target, is_sparse, is_parallel, use_bf16):
+    if target == "cuda" and not fluid.core.is_compiled_with_cuda():
+        return
+    if target == "xpu" and not fluid.core.is_compiled_with_xpu():
+        return
+
+    if use_bf16 and not fluid.core.is_compiled_with_mkldnn():
         return
 
     if not is_parallel:
@@ -234,8 +260,13 @@ def main(use_cuda, is_sparse, is_parallel):
     else:
         save_dirname = None
 
-    train(use_cuda, is_sparse, is_parallel, save_dirname)
-    infer(use_cuda, save_dirname)
+    if target == "xpu":
+        # This model cannot be trained with xpu temporarily,
+        # so only inference is turned on.
+        train("cpu", is_sparse, is_parallel, save_dirname)
+    else:
+        train(target, is_sparse, is_parallel, save_dirname, use_bf16=use_bf16)
+    infer(target, save_dirname)
 
 
 FULL_TEST = os.getenv('FULL_TEST',
@@ -247,10 +278,11 @@ class W2VTest(unittest.TestCase):
     pass
 
 
-def inject_test_method(use_cuda, is_sparse, is_parallel):
-    fn_name = "test_{0}_{1}_{2}".format("cuda" if use_cuda else "cpu", "sparse"
-                                        if is_sparse else "dense", "parallel"
-                                        if is_parallel else "normal")
+def inject_test_method(target, is_sparse, is_parallel, use_bf16=False):
+    fn_name = "test_{0}_{1}_{2}{3}".format(target, "sparse"
+                                           if is_sparse else "dense", "parallel"
+                                           if is_parallel else "normal", "_bf16"
+                                           if use_bf16 else "")
 
     def __impl__(*args, **kwargs):
         prog = fluid.Program()
@@ -258,12 +290,10 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
-                main(
-                    use_cuda=use_cuda,
-                    is_sparse=is_sparse,
-                    is_parallel=is_parallel)
+                main(target, is_sparse, is_parallel, use_bf16)
 
-    if (not fluid.core.is_compiled_with_cuda() or use_cuda) and is_sparse:
+    if (not fluid.core.is_compiled_with_cuda() or
+            target == "cuda") and is_sparse:
         fn = __impl__
     else:
         # skip the other test when on CI server
@@ -273,10 +303,11 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
     setattr(W2VTest, fn_name, fn)
 
 
-for use_cuda in (False, True):
+for target in ("cuda", "cpu", "xpu"):
     for is_sparse in (False, True):
         for is_parallel in (False, ):
-            inject_test_method(use_cuda, is_sparse, is_parallel)
+            inject_test_method(target, is_sparse, is_parallel)
+inject_test_method("cpu", False, False, use_bf16=True)
 
 if __name__ == '__main__':
     unittest.main()

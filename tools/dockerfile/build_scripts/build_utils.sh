@@ -102,6 +102,9 @@ function do_cpython_build {
     if [ -e ${prefix}/bin/python3.8 ]; then
         ln -s python3.8 ${prefix}/bin/python
     fi
+    if [ -e ${prefix}/bin/python3.9 ]; then
+        ln -s python3.9 ${prefix}/bin/python
+    fi
     # NOTE Make libpython shared library visible to python calls below
     LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python get-pip.py
     LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/pip install wheel==0.32.2
@@ -130,6 +133,12 @@ function build_cpython {
 
 function build_cpythons {
     for py_ver in $@; do
+        if [ ${py_ver} == "2.7.15" ]; then
+            GET_PIP_URL="https://bootstrap.pypa.io/2.7/get-pip.py"
+        elif [ ${py_ver} == "3.5.1" ]  ;then
+            GET_PIP_URL="https://bootstrap.pypa.io/3.5/get-pip.py"
+        fi
+
         check_var $GET_PIP_URL
         curl -sLO $GET_PIP_URL
         build_cpython $py_ver

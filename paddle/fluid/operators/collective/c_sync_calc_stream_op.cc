@@ -16,35 +16,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
-class CSyncCalcStreamOp : public framework::OperatorBase {
+class CSyncCalcStreamOp : public framework::OperatorWithKernel {
  public:
-  CSyncCalcStreamOp(const std::string& type,
-                    const framework::VariableNameMap& inputs,
-                    const framework::VariableNameMap& outputs,
-                    const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on gpu place only for now."));
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx->stream()));
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
-#endif
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -61,10 +45,46 @@ Call calculation stream synchronization.
   }
 };
 
+template <typename T>
+class CSyncCalcStreamCudaKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
+
+    auto place = ctx.GetPlace();
+    auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(dev_ctx->stream()));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx->stream()));
+#endif
+
+#elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on npu place only for now."));
+
+    auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(dev_ctx->stream()));
+
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
+#endif
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_sync_calc_stream, ops::CSyncCalcStreamOp,
-                  ops::CSyncCalcStreamOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream, ops::CSyncCalcStreamOp,
+                             ops::CSyncCalcStreamOpMaker);
+
+REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream,
+                        ops::CSyncCalcStreamCudaKernel<float>);

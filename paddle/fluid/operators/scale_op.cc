@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
-
 #include <string>
 
 namespace paddle {
@@ -129,6 +128,8 @@ REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::bfloat16>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,

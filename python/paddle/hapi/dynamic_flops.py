@@ -121,7 +121,7 @@ def count_convNd(m, x, y):
     bias_ops = 1 if m.bias is not None else 0
     total_ops = int(y.numel()) * (
         x.shape[1] / m._groups * kernel_ops + bias_ops)
-    m.total_ops += total_ops
+    m.total_ops += abs(int(total_ops))
 
 
 def count_leaky_relu(m, x, y):
@@ -135,15 +135,14 @@ def count_bn(m, x, y):
     nelements = x.numel()
     if not m.training:
         total_ops = 2 * nelements
-
-    m.total_ops += int(total_ops)
+    m.total_ops += abs(int(total_ops))
 
 
 def count_linear(m, x, y):
     total_mul = m.weight.shape[0]
     num_elements = y.numel()
     total_ops = total_mul * num_elements
-    m.total_ops += int(total_ops)
+    m.total_ops += abs(int(total_ops))
 
 
 def count_avgpool(m, x, y):
@@ -161,8 +160,7 @@ def count_adap_avgpool(m, x, y):
     kernel_ops = total_add + total_div
     num_elements = y.numel()
     total_ops = kernel_ops * num_elements
-
-    m.total_ops += int(total_ops)
+    m.total_ops += abs(int(total_ops))
 
 
 def count_zero_ops(m, x, y):
@@ -173,7 +171,7 @@ def count_parameters(m, x, y):
     total_params = 0
     for p in m.parameters():
         total_params += p.numel()
-    m.total_params[0] = int(total_params)
+    m.total_params[0] = abs(int(total_params))
 
 
 def count_io_info(m, x, y):

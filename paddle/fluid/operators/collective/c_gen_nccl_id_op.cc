@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string>
 
-#include "glog/logging.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -28,6 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
   for (size_t i = 0; i < nccl_ids->size(); ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -66,6 +66,9 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
+    std::string endpoint = Attr<std::string>("endpoint");
+    int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
 
@@ -75,14 +78,28 @@ class CGenNCCLIdOp : public framework::OperatorBase {
           Attr<std::vector<std::string>>("other_endpoints");
       platform::SendBroadCastCommID(endpoint_list, &nccl_ids);
     } else {
-      std::string endpoint = Attr<std::string>("endpoint");
-      platform::RecvBroadCastCommID(endpoint, &nccl_ids);
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
     }
 
     CopyNCCLIDToVar(nccl_ids, func, scope);
     scope.DeleteScope(&local_scope);
   }
 };
+
+#else
+class CGenNCCLIdOp : public framework::OperatorBase {
+ public:
+  CGenNCCLIdOp(const std::string& type,
+               const framework::VariableNameMap& inputs,
+               const framework::VariableNameMap& outputs,
+               const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {}
+};
+
+#endif
 
 class CGenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:

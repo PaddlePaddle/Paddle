@@ -39,9 +39,9 @@ class Graph;
 
 namespace paddle {
 namespace platform {
-#if defined(PADDLE_WITH_NCCL)
-class NCCLContextMap;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class NCCLCommunicator;
+class NCCLContextMap;
 #elif defined(PADDLE_WITH_XPU_BKCL)
 class BKCLContextMap;
 class BKCLCommunicator;
@@ -117,7 +117,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   void CreateIsolatedVarNode(ir::Graph *result, ir::Node *var_node) const;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   mutable platform::NCCLContextMap *nccl_ctxs_{nullptr};
   mutable platform::NCCLCommunicator *multi_nccl_ctxs_{nullptr};
 #elif defined(PADDLE_WITH_XPU_BKCL)

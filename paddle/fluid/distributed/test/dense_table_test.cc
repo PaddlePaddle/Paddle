@@ -13,23 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <ThreadPool.h>
-
-#include <unistd.h>
-#include <string>
-#include <thread>  // NOLINT
-
-#include "google/protobuf/text_format.h"
+#include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/table/common_dense_table.h"
-#include "paddle/fluid/distributed/table/common_sparse_table.h"
-#include "paddle/fluid/distributed/table/sparse_geo_table.h"
-#include "paddle/fluid/distributed/table/table.h"
 
 namespace paddle {
 namespace distributed {
 
 // CommonDenseTable + Adam
+class Table;
+
 TEST(CommonDenseTable, Adam) {
   int fea_dim = 10;
   int trainers = 2;

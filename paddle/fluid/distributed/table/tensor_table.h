@@ -22,11 +22,20 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+class Executor;
+class Scope;
+struct ExecutorPrepareContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace distributed {
@@ -43,15 +52,15 @@ class TensorTable : public Table {
 
   int32_t push_dense(const float *values, size_t num) override { return 0; }
 
-  int32_t pull_sparse(float *values, const uint64_t *keys,
-                      size_t num) override {
+  int32_t pull_sparse(float *values,
+                      const PullSparseValue &pull_value) override {
     return 0;
   }
   int32_t push_sparse(const uint64_t *keys, const float *values,
                       size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
 
   virtual void *get_shard(size_t shard_idx) { return 0; }
 
@@ -93,15 +102,15 @@ class DenseTensorTable : public TensorTable {
   DenseTensorTable() {}
   virtual ~DenseTensorTable() {}
 
-  int32_t pull_sparse(float *values, const uint64_t *keys,
-                      size_t num) override {
+  int32_t pull_sparse(float *values,
+                      const PullSparseValue &pull_value) override {
     return 0;
   }
   int32_t push_sparse(const uint64_t *keys, const float *values,
                       size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
 
   virtual void *get_shard(size_t shard_idx) { return 0; }
 
@@ -149,15 +158,15 @@ class GlobalStepTable : public DenseTensorTable {
   GlobalStepTable() {}
   virtual ~GlobalStepTable() {}
 
-  int32_t pull_sparse(float *values, const uint64_t *keys,
-                      size_t num) override {
+  int32_t pull_sparse(float *values,
+                      const PullSparseValue &pull_value) override {
     return 0;
   }
   int32_t push_sparse(const uint64_t *keys, const float *values,
                       size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
 
   virtual void *get_shard(size_t shard_idx) { return 0; }
 

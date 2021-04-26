@@ -44,10 +44,18 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
     T* seq_data = seq->mutable_data<T>(context.GetPlace());
 
+#ifdef PADDLE_WITH_HIP
+    hipLaunchKernelGGL(
+        HIP_KERNEL_NAME(SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>),
+        dim3(num_seq), dim3(PADDLE_CUDA_NUM_THREADS), 0, context.stream(),
+        seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
+        scales, seq_width);
+#else
     SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
         num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
         seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
         scales, seq_width);
+#endif
   }
 };
 

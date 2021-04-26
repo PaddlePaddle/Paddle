@@ -83,6 +83,7 @@ typedef enum {
   avx512_core_vnni,
   avx512_mic,
   avx512_mic_4ops,
+  avx512_bf16,
 } cpu_isa_t;  // Instruction set architecture
 
 // May I use some instruction

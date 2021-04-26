@@ -14,11 +14,10 @@
 
 from .optimizer import Optimizer
 from .adam import Adam
+from ..fluid import core
 from ..fluid import framework
 from ..fluid.dygraph import base as imperative_base
 import paddle
-
-__all__ = ['AdamW']
 
 
 class AdamW(Adam):
@@ -58,7 +57,7 @@ class AdamW(Adam):
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
         apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
-            will be updated. It only works when we want to specify tensors.
+            will be updated with weight decay. It only works when we want to specify tensors.
             Default: None.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
@@ -182,8 +181,16 @@ class AdamW(Adam):
                 decay_coeff = 1.0 - learning_rate * self._coeff
                 self._lr_to_coeff[learning_rate] = decay_coeff
 
-            scaled_param = param * decay_coeff
-            paddle.fluid.layers.assign(input=scaled_param, output=param)
+            find_master = (self._multi_precision and
+                           param.dtype == core.VarDesc.VarType.FP16)
+            if find_master:
+                master_weight = self._master_weights[param.name]
+                scaled_param = master_weight * decay_coeff
+                paddle.fluid.layers.assign(
+                    input=scaled_param, output=master_weight)
+            else:
+                scaled_param = param * decay_coeff
+                paddle.fluid.layers.assign(input=scaled_param, output=param)
 
     def _append_optimize_op(self, block, param_and_grad):
         self._append_decoupled_weight_decay(block, param_and_grad)

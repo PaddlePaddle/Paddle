@@ -35,6 +35,22 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
 
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+namespace paddle {
+namespace framework {
+class Executor;
+class ProgramDesc;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
 DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
@@ -43,6 +59,7 @@ using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
 class HeterService;
+
 typedef int32_t (HeterService::*serviceHandlerFunc)(
     const PsRequestMessage& request, PsResponseMessage& response,
     brpc::Controller* cntl);
@@ -136,7 +153,7 @@ class HeterServer {
   virtual ~HeterServer() {}
 
   void Stop() {
-    VLOG(0) << "HeterServer Stop()";
+    VLOG(3) << "HeterServer Stop()";
     std::unique_lock<std::mutex> lock(mutex_);
     stoped_ = true;
     cv_.notify_all();

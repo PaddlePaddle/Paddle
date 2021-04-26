@@ -76,6 +76,7 @@ class SSUM : public SparseOptimizer {
     auto blas = GetBlas<float>();
     for (auto x : offsets) {
       auto id = keys[x];
+      if (!block->GetEntry(id)) continue;
       auto* value = block->Get(id);
       float* param = value + param_offset;
       blas.VADD(update_numel, update_values + x * update_numel, param, param);
@@ -105,10 +106,10 @@ class SSGD : public SparseOptimizer {
     auto blas = GetBlas<float>();
     for (auto x : offsets) {
       auto id = keys[x];
+      if (!block->GetEntry(id)) continue;
       auto* value = block->Get(id);
 
       float learning_rate = *(global_learning_rate_) * (value + lr_offset)[0];
-      VLOG(4) << "SSGD LearningRate: " << learning_rate;
       float* param = value + param_offset;
 
       std::vector<float> grads;
@@ -161,9 +162,9 @@ class SAdam : public SparseOptimizer {
     auto blas = GetBlas<float>();
     for (auto x : offsets) {
       auto id = keys[x];
+      if (!block->GetEntry(id)) continue;
       auto* values = block->Get(id);
       float lr_ = *(global_learning_rate_) * (values + lr_offset)[0];
-      VLOG(4) << "SAdam LearningRate: " << lr_;
       float* param = values + param_offset;
       float* moment1 = values + m1_offset;
       float* moment2 = values + m2_offset;

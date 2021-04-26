@@ -58,6 +58,7 @@ class CommonAccessor:
     def __init__(self):
         self.accessor_class = ""
         self.table_name = None
+        self.entry = None
         self.attrs = []
         self.params = []
         self.dims = []
@@ -92,6 +93,24 @@ class CommonAccessor:
         self.opt_attr_map = opt_attr_map
         self.opt_input_map = opt_input_map
         self.opt_init_map = opt_init_map
+
+    def parse_entry(self, varname, o_main_program):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
+
+        for op in o_main_program.global_block().ops:
+            if not is_distributed_sparse_op(op) and not is_sparse_op(op):
+                continue
+
+            param_name = op.input("W")[0]
+
+            if param_name == varname and op.type == "lookup_table":
+                self.entry = op.attr('entry')
+                break
+
+            if param_name == varname and op.type == "lookup_table_v2":
+                self.entry = "none"
+                break
 
     def get_shard(self, total_dim, shard_num, pserver_id):
         # remainder = total_dim % shard_num
@@ -131,7 +150,8 @@ class CommonAccessor:
         oop = None
 
         for op in optimizer_ops:
-            if op.input("Param")[0] == param_name:
+            if ("Param" in op.input_names) and (
+                    op.input("Param")[0] == param_name):
                 oop = op
                 break
 
@@ -188,6 +208,8 @@ class CommonAccessor:
         if self.table_name:
             attrs += "table_name: \"{}\" ".format(self.table_name)
 
+        if self.entry:
+            attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
 
@@ -431,6 +453,17 @@ class TheOnePSRuntime(RuntimeBase):
         worker = self._get_fleet_proto(is_server=False, is_sync=is_sync)
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
 
+        dist_strategy = self.context["valid_strategy"]
+        use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
+        if use_ps_gpu:
+            main_program = self.context['loss'].block.program
+            if not main_program._fleet_opt:
+                main_program._fleet_opt = {}
+            main_program._fleet_opt["use_ps_gpu"] = True
+            gpus_env = os.getenv("FLAGS_selected_gpus")
+            main_program._fleet_opt[
+                "worker_places"] = [int(s) for s in gpus_env.split(",")]
+
         def sync_strategy_envs():
             kwargs = {}
             kwargs[
@@ -655,36 +688,31 @@ class TheOnePSRuntime(RuntimeBase):
                 use_origin_program=True,
                 split_dense_table=self.role_maker.
                 _is_heter_parameter_server_mode)
+
             tables = []
             for idx, (name, ctx) in enumerate(send_ctx.items()):
-                table = Table()
-                table.id = ctx.table_id()
-
-                if ctx.is_tensor_table():
+                if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
                     continue
 
+                table = Table()
+                table.id = ctx.table_id()
+                common = CommonAccessor()
+
                 if ctx.is_sparse():
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
                     table.type = "PS_SPARSE_TABLE"
+                    table.shard_num = 256
 
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
                         table.table_class = "CommonSparseTable"
-                    table.shard_num = 256
-                else:
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
-                    table.type = "PS_DENSE_TABLE"
-                    table.table_class = "CommonDenseTable"
-                    table.shard_num = 256
 
-                common = CommonAccessor()
-                if ctx.is_sparse():
                     common.table_name = self.compiled_strategy.grad_name_to_param_name[
                         ctx.origin_varnames()[0]]
                 else:
+                    table.type = "PS_DENSE_TABLE"
+                    table.table_class = "CommonDenseTable"
+                    table.shard_num = 256
                     common.table_name = "MergedDense"
 
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
@@ -692,6 +720,10 @@ class TheOnePSRuntime(RuntimeBase):
                                           ctx.sections()[1] if ctx.is_sparse()
                                           else ctx.sections()[0],
                                           self.compiled_strategy)
+
+                if ctx.is_sparse():
+                    common.parse_entry(common.table_name,
+                                       self.origin_main_program)
 
                 if is_sync:
                     common.sync = "true"
@@ -720,6 +752,11 @@ class TheOnePSRuntime(RuntimeBase):
             downpour_server = DownpourServer()
 
             service = Service()
+            dist_strategy = self.context["valid_strategy"]
+            use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
+            if use_ps_gpu:
+                service.server_class = "PsLocalServer"
+                service.client_class = "PsLocalClient"
             downpour_server.set_service_param(service)
 
             tables = _get_tables()
@@ -747,7 +784,7 @@ class TheOnePSRuntime(RuntimeBase):
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
 
-        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("server: \n{}".format(proto_txt))
 
@@ -946,7 +983,8 @@ class TheOnePSRuntime(RuntimeBase):
                                            feeded_var_names,
                                            target_vars,
                                            main_program=None,
-                                           export_for_deployment=True):
+                                           export_for_deployment=True,
+                                           mode=0):
         """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
@@ -983,10 +1021,25 @@ class TheOnePSRuntime(RuntimeBase):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(executor, dirname, program)
+            self._ps_inference_save_persistables(executor, dirname, program,
+                                                 mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
 
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
+
+    def _shrink(self, threshold):
+        import paddle.distributed.fleet as fleet
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            sparses = self.compiled_strategy.get_the_one_recv_context(
+                is_dense=False,
+                split_dense_table=self.role_maker.
+                _is_heter_parameter_server_mode,
+                use_origin_program=True)
+
+            for id, names in sparses.items():
+                self._worker.shrink_sparse_table(id, threshold)
+        fleet.util.barrier()

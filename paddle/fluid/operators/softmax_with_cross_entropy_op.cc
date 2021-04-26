@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -53,6 +54,10 @@ class SoftmaxWithCrossEntropyOpMaker
         "(bool, default: false), A flag to indicate whether to interpretant "
         "the given labels as soft labels.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "softmax_switch",
+        "(bool, default: true), A flag to indicate whether to do softmax ")
+        .SetDefault(true);
     AddAttr<bool>(
         "numeric_stable_mode",
         "(bool, default: true), A flag to indicate whether to use more "
@@ -312,3 +317,10 @@ REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
                        ops::SoftmaxWithCrossEntropyGradKernel<float>,
                        ops::SoftmaxWithCrossEntropyGradKernel<double>);
+REGISTER_OP_VERSION(softmax_with_cross_entropy)
+    .AddCheckpoint(
+        R"ROC(
+              Add a new attribute [softmax_switch] )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "softmax_switch", "A flag to indicate whether to do softmax",
+            true));

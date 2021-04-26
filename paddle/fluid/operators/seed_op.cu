@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda.h>
 #include "paddle/fluid/operators/seed_op.h"
 
 namespace paddle {

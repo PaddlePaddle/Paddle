@@ -177,7 +177,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void DisableGpu();
 
-  void EnableXpu(int l3_workspace_size = 0xfffc00);
+  void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
+                 bool autotune = true, const std::string& autotune_file = "",
+                 const std::string& precision = "int16",
+                 bool adaptive_seqlen = false);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -185,11 +188,23 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
+  /// \brief A boolean state telling whether the XPU is turned on.
+  ///
+  /// \return bool Whether the XPU is turned on.
+  ///
+  bool use_xpu() const { return use_xpu_; }
+  ///
   /// \brief Get the GPU device id.
   ///
   /// \return int The GPU device id.
   ///
-  int gpu_device_id() const { return device_id_; }
+  int gpu_device_id() const { return gpu_device_id_; }
+  ///
+  /// \brief Get the XPU device id.
+  ///
+  /// \return int The XPU device id.
+  ///
+  int xpu_device_id() const { return xpu_device_id_; }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -347,6 +362,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether to use the TensorRT DLA.
   ///
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
+
+  void EnableDlnne(int min_subgraph_size = 3);
+  bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
@@ -579,7 +597,8 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // GPU related.
   bool use_gpu_{false};
-  int device_id_{0};
+  int gpu_device_id_{0};
+  int xpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
 
   bool use_cudnn_{false};
@@ -613,6 +632,10 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> optim_input_shape_{};
   std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
+
+  // dlnne related.
+  bool use_dlnne_{false};
+  int dlnne_min_subgraph_size_{3};
 
   // memory reuse related.
   bool enable_memory_optim_{false};
@@ -648,6 +671,11 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_xpu_{false};
   int xpu_l3_workspace_size_;
+  bool xpu_locked_;
+  bool xpu_autotune_;
+  std::string xpu_autotune_file_;
+  std::string xpu_precision_;
+  bool xpu_adaptive_seqlen_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

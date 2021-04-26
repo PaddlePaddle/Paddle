@@ -13,15 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include <algorithm>
-#include <deque>
-#include <fstream>
-#include <iosfwd>
-#include <ostream>
 #include <stack>
-#include <unordered_map>
-#include <unordered_set>
-#include "paddle/fluid/framework/ir/graph_traits.h"
 
 DEFINE_string(print_sub_graph_dir, "",
               "FLAGS_print_sub_graph_dir is used "

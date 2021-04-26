@@ -31,6 +31,17 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
+namespace google {
+namespace protobuf {
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+namespace paddle {
+namespace distributed {
+class PSEnvironment;
+}  // namespace distributed
+}  // namespace paddle
+
 namespace paddle {
 namespace framework {
 class Executor;
@@ -46,6 +57,7 @@ namespace paddle {
 namespace distributed {
 
 class Table;
+
 using paddle::distributed::PsRequestMessage;
 using paddle::distributed::PsResponseMessage;
 

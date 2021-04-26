@@ -13,7 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/delete_quant_dequant_op_pass.h"
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

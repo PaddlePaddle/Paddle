@@ -120,12 +120,12 @@ def init_parallel_env():
         )
         return
 
-    # 1. gpu check
-    if not core.is_compiled_with_cuda():
+    # 1. gpu xpu check, must be gpu or xpu
+    if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
         raise NotImplementedError(
             "Cannot initialize parallel environment in CPU-only version, now only "
-            "supports initializing the GPU parallel environment. Please recompile "
-            "or reinstall paddle with GPU support.")
+            "supports initializing the GPU and XPU parallel environment. Please recompile "
+            "or reinstall paddle with GPU or XPU support.")
 
     # 2. check env
     def _check_var_exists(var_name):
@@ -135,7 +135,11 @@ def init_parallel_env():
                              "environment variable %s is needed, but not set." %
                              var_name)
 
-    _check_var_exists("FLAGS_selected_gpus")
+    if core.is_compiled_with_cuda():
+        _check_var_exists("FLAGS_selected_gpus")
+    elif core.is_compiled_with_xpu():
+        _check_var_exists('FLAGS_selected_xpus')
+
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
@@ -176,11 +180,19 @@ def init_parallel_env():
     # directly, if they want to switch default place,
     # they need to call a function to change default place,
     # here just set correctly place to users
-    place = core.CUDAPlace(parallel_env.device_id)
+    if core.is_compiled_with_cuda():
+        place = core.CUDAPlace(parallel_env.device_id)
+    elif core.is_compiled_with_xpu():
+        place = core.XPUPlace(parallel_env.device_id)
     _set_expected_place(place)
 
-    # init nccl context
-    parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
+    # init nccl or bkcl context
+    if core.is_compiled_with_cuda():
+        parallel_helper._set_parallel_ctx(
+            core.NCCLParallelContext(strategy, place))
+    elif core.is_compiled_with_xpu():
+        parallel_helper._set_parallel_ctx(
+            core.BKCLParallelContext(strategy, place))
     parallel_helper._init_parallel_ctx()
 
     # 5: init gloo context (step 2: gloo init)

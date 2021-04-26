@@ -70,7 +70,7 @@ struct ScaleLossGradFunctor {
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       OutT cast_coeff = static_cast<OutT>(coeff_);
       auto stream = static_cast<platform::CUDADeviceContext *>(ctx_)->stream();
       memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), out_data,
@@ -95,7 +95,7 @@ void ScaleLossGradOpHandle::RunImpl() {
       local_exec_scopes_[0]->FindVar(var_name)->GetMutable<LoDTensor>();
   tensor->Resize(make_ddim({1}));
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_,
                             this->dev_ctxes_.at(place_));
   this->RunAndRecordEvent([&] { framework::VisitDataType(out_dtype_, func); });

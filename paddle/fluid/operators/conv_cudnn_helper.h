@@ -203,7 +203,6 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool has_got_workspace_size = true;
-    bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
     algo_t algo;
@@ -227,7 +226,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     }
 #endif
 
-    if (!exhaustive && !deterministic) {
+    if (!exhaustive_search && !deterministic) {
 #if CUDNN_VERSION >= 7001
       int perf_count;
       int best_algo_idx = 0;
@@ -337,7 +336,6 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                      bool deterministic,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
-    bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
     bool has_got_workspace_size = true;
@@ -361,7 +359,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     }
 #endif
 
-    if (!exhaustive && !deterministic) {
+    if (!exhaustive_search && !deterministic) {
 #if CUDNN_VERSION >= 7001
       int perf_count;
       int best_algo_idx = 0;

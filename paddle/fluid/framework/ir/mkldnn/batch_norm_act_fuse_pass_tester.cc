@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/mkldnn/batch_norm_act_fuse_pass.h"
-#include "paddle/fluid/framework/ir/mkldnn/pass_test_util.h"
+#include "paddle/fluid/framework/ir/pass_test_util.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/program_desc.h"

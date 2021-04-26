@@ -378,7 +378,8 @@ void BindPaddlePlace(py::module *m) {
   py::enum_<PaddlePlace>(*m, "PaddlePlace")
       .value("UNK", PaddlePlace::kUNK)
       .value("CPU", PaddlePlace::kCPU)
-      .value("GPU", PaddlePlace::kGPU);
+      .value("GPU", PaddlePlace::kGPU)
+      .value("XPU", PaddlePlace::kXPU);
 }
 
 void BindPaddlePredictor(py::module *m) {
@@ -407,6 +408,7 @@ void BindNativeConfig(py::module *m) {
   py::class_<NativeConfig, PaddlePredictor::Config>(*m, "NativeConfig")
       .def(py::init<>())
       .def_readwrite("use_gpu", &NativeConfig::use_gpu)
+      .def_readwrite("use_xpu", &NativeConfig::use_xpu)
       .def_readwrite("device", &NativeConfig::device)
       .def_readwrite("fraction_of_gpu_memory",
                      &NativeConfig::fraction_of_gpu_memory)
@@ -465,10 +467,15 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_use_gpu", &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"), py::arg("device_id") = 0)
       .def("enable_xpu", &AnalysisConfig::EnableXpu,
-           py::arg("l3_workspace_size"))
+           py::arg("l3_workspace_size") = 16 * 1024 * 1024,
+           py::arg("locked") = false, py::arg("autotune") = true,
+           py::arg("autotune_file") = "", py::arg("precision") = "int16",
+           py::arg("adaptive_seqlen") = false)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
+      .def("use_xpu", &AnalysisConfig::use_xpu)
       .def("gpu_device_id", &AnalysisConfig::gpu_device_id)
+      .def("xpu_device_id", &AnalysisConfig::xpu_device_id)
       .def("memory_pool_init_size_mb",
            &AnalysisConfig::memory_pool_init_size_mb)
       .def("fraction_of_gpu_memory_for_pool",
@@ -508,6 +515,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("enable_dlnne", &AnalysisConfig::EnableDlnne,
+           py::arg("min_subgraph_size") = 3)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("zero_copy") = false,
@@ -539,7 +548,10 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const std::string &pass) {
              self.pass_builder()->DeletePass(pass);
            })
-      .def("pass_builder", &AnalysisConfig::pass_builder,
+      .def("pass_builder",
+           [](AnalysisConfig &self) {
+             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
+           },
            py::return_value_policy::reference);
 }
 

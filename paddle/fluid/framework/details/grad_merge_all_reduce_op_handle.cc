@@ -13,16 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 
-#include <algorithm>
-
-#include "paddle/fluid/framework/details/container_cast.h"
-#include "paddle/fluid/framework/details/reduce_and_gather.h"
-#include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
-
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 DECLARE_bool(sync_nccl_allreduce);
 #endif
 
@@ -30,7 +21,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 GradMergeAllReduceOpHandle::GradMergeAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
@@ -77,7 +68,7 @@ std::string GradMergeAllReduceOpHandle::Name() const {
   return "grad_merge_all_reduce";
 }
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 FusedGradMergeAllReduceOpHandle::FusedGradMergeAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,

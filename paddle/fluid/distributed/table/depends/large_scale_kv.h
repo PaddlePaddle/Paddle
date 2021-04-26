@@ -28,6 +28,7 @@
 
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/depends/initializers.h"
+#include "paddle/fluid/distributed/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
@@ -47,42 +48,63 @@ namespace distributed {
 
 enum Mode { training, infer };
 
-template <typename T>
-inline bool entry(const int count, const T threshold);
-
-template <>
-inline bool entry<std::string>(const int count, const std::string threshold) {
-  return true;
-}
-
-template <>
-inline bool entry<int>(const int count, const int threshold) {
-  return count >= threshold;
-}
-
-template <>
-inline bool entry<float>(const int count, const float threshold) {
-  UniformInitializer uniform = UniformInitializer({"0", "0", "1"});
-  return uniform.GetValue() >= threshold;
-}
-
 struct VALUE {
   explicit VALUE(size_t length)
       : length_(length),
-        count_(1),
+        count_(0),
         unseen_days_(0),
-        seen_after_last_save_(true),
-        is_entry_(true) {
-    data_.resize(length);
+        need_save_(false),
+        is_entry_(false) {
+    data_ = new float[length];
+    memset(data_, 0, sizeof(float) * length);
+  }
+
+  VALUE(const VALUE &value) {
+    length_ = value.length_;
+    count_ = value.count_;
+    unseen_days_ = value.unseen_days_;
+    need_save_ = value.need_save_;
+    is_entry_ = value.is_entry_;
+    data_ = new float[length_];
+    memcpy(data_, value.data_, sizeof(float) * length_);
+  }
+
+  VALUE &operator=(const VALUE &value) {
+    if (this != &value) {
+      delete[] data_;
+      length_ = value.length_;
+      count_ = value.count_;
+      unseen_days_ = value.unseen_days_;
+      need_save_ = value.need_save_;
+      is_entry_ = value.is_entry_;
+
+      data_ = new float[length_];
+      memcpy(data_, value.data_, sizeof(float) * length_);
+    }
+    return *this;
+  }
+
+  ~VALUE() {
+    delete[] data_;
+    data_ = nullptr;
   }
 
   size_t length_;
-  std::vector<float> data_;
   int count_;
-  int unseen_days_;
-  bool seen_after_last_save_;
-  bool is_entry_;
+  int unseen_days_;  // use to check knock-out
+  bool need_save_;   // whether need to save
+  bool is_entry_;    // whether knock-in
+  float *data_;
 };
+
+inline bool count_entry(VALUE *value, int threshold) {
+  return value->count_ >= threshold;
+}
+
+inline bool probility_entry(VALUE *value, float threshold) {
+  UniformInitializer uniform = UniformInitializer({"uniform", "0", "0", "1"});
+  return uniform.GetValue() >= threshold;
+}
 
 class ValueBlock {
  public:
@@ -96,27 +118,29 @@ class ValueBlock {
         value_dims_(value_dims),
         value_offsets_(value_offsets),
         value_idx_(value_idx) {
-    for (int x = 0; x < value_dims.size(); ++x) {
+    for (size_t x = 0; x < value_dims.size(); ++x) {
       value_length_ += value_dims[x];
     }
 
     // for Entry
     {
-      if (entry_attr == "none") {
-        has_entry_ = false;
+      auto slices = string::split_string<std::string>(entry_attr, ":");
+      if (slices[0] == "none") {
+        entry_func_ = std::bind(&count_entry, std::placeholders::_1, 0);
+        threshold_ = 0;
+      } else if (slices[0] == "count_filter_entry") {
+        threshold_ = std::stoi(slices[1]);
         entry_func_ =
-            std::bind(entry<std::string>, std::placeholders::_1, "none");
+            std::bind(&count_entry, std::placeholders::_1, threshold_);
+      } else if (slices[0] == "probability_entry") {
+        threshold_ = std::stof(slices[1]);
+        entry_func_ =
+            std::bind(&probility_entry, std::placeholders::_1, threshold_);
       } else {
-        has_entry_ = true;
-        auto slices = string::split_string<std::string>(entry_attr, "&");
-        if (slices[0] == "count_filter") {
-          int threshold = std::stoi(slices[1]);
-          entry_func_ = std::bind(entry<int>, std::placeholders::_1, threshold);
-        } else if (slices[0] == "probability") {
-          float threshold = std::stof(slices[1]);
-          entry_func_ =
-              std::bind(entry<float>, std::placeholders::_1, threshold);
-        }
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Not supported Entry Type : %s, Only support [CountFilterEntry, "
+            "ProbabilityEntry]",
+            slices[0]));
       }
     }
 
@@ -134,6 +158,9 @@ class ValueBlock {
         } else if (slices[0] == "uniform_random") {
           initializers_.emplace_back(
               std::make_shared<UniformInitializer>(slices));
+        } else if (slices[0] == "truncated_gaussian_random") {
+          initializers_.emplace_back(
+              std::make_shared<TruncatedGaussianInitializer>(slices));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s can not be supported", attr));
@@ -144,59 +171,109 @@ class ValueBlock {
 
   ~ValueBlock() {}
 
-  float *Init(const uint64_t &id) {
-    auto value = std::make_shared<VALUE>(value_length_);
-    for (int x = 0; x < value_names_.size(); ++x) {
-      initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
-                                 value_dims_[x]);
-    }
-    values_[id] = value;
-    return value->data_.data();
-  }
-
   std::vector<float *> Get(const uint64_t &id,
-                           const std::vector<std::string> &value_names) {
+                           const std::vector<std::string> &value_names,
+                           const std::vector<int> &value_dims) {
     auto pts = std::vector<float *>();
     pts.reserve(value_names.size());
     auto &values = values_.at(id);
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
-      pts.push_back(values->data_.data() +
+      PADDLE_ENFORCE_EQ(
+          value_dims[i], value_dims_[i],
+          platform::errors::InvalidArgument("value dims is not match"));
+      pts.push_back(values.data_ +
                     value_offsets_.at(value_idx_.at(value_names[i])));
     }
     return pts;
   }
 
-  float *Get(const uint64_t &id) {
-    auto pts = std::vector<std::vector<float> *>();
-    auto &values = values_.at(id);
-
-    return values->data_.data();
-  }
-
-  float *InitFromInitializer(const uint64_t &id) {
-    if (Has(id)) {
-      if (has_entry_) {
-        Update(id);
-      }
-      return Get(id);
+  // pull
+  float *Init(const uint64_t &id, const bool with_update = true,
+              const int counter = 1) {
+    if (!Has(id)) {
+      values_.emplace(std::make_pair(id, VALUE(value_length_)));
     }
-    return Init(id);
+
+    auto &value = values_.at(id);
+
+    if (with_update) {
+      AttrUpdate(&value, counter);
+    }
+
+    return value.data_;
   }
 
-  bool GetEntry(const uint64_t &id) {
-    auto value = values_.at(id);
-    return value->is_entry_;
+
+  VALUE *InitGet(const uint64_t &id, const bool with_update = true,
+                 const int counter = 1) {
+    if (!Has(id)) {
+      values_.emplace(std::make_pair(id, VALUE(value_length_)));
+    }
+
+    auto &value = values_.at(id);
+
+    if (with_update) {
+      AttrUpdate(&value, counter);
+    }
+
+    return &value;
   }
 
-  void Update(const uint64_t id) {
-    auto value = values_.at(id);
+  void AttrUpdate(VALUE *value, const int counter) {
+    // update state
     value->unseen_days_ = 0;
-    auto count = ++value->count_;
+    value->count_ += counter;
 
     if (!value->is_entry_) {
-      value->is_entry_ = entry_func_(count);
+      value->is_entry_ = entry_func_(value);
+      if (value->is_entry_) {
+        // initialize
+        for (size_t x = 0; x < value_names_.size(); ++x) {
+          initializers_[x]->GetValue(value->data_ + value_offsets_[x],
+                                     value_dims_[x]);
+        }
+        value->need_save_ = true;
+      }
+    } else {
+      value->need_save_ = true;
     }
+
+    return;
   }
+
+  // dont jude if (has(id))
+  float *Get(const uint64_t &id) {
+    auto &value = values_.at(id);
+    return value.data_;
+  }
+
+  // for load, to reset count, unseen_days
+  VALUE *GetValue(const uint64_t &id) { return &values_.at(id); }
+
+  bool GetEntry(const uint64_t &id) {
+    auto &value = values_.at(id);
+    return value.is_entry_;
+  }
+
+  void SetEntry(const uint64_t &id, const bool state) {
+    auto &value = values_.at(id);
+    value.is_entry_ = state;
+  }
+
+  void Shrink(const int threshold) {
+    for (auto iter = values_.begin(); iter != values_.end();) {
+      auto &value = iter->second;
+      value.unseen_days_++;
+      if (value.unseen_days_ >= threshold) {
+        iter = values_.erase(iter);
+      } else {
+        ++iter;
+      }
+    }
+    return;
+  }
+
+  float GetThreshold() { return threshold_; }
 
  private:
   bool Has(const uint64_t id) {
@@ -209,7 +286,7 @@ class ValueBlock {
   }
 
  public:
-  std::unordered_map<uint64_t, std::shared_ptr<VALUE>> values_;
+  robin_hood::unordered_map<uint64_t, VALUE> values_;
   size_t value_length_ = 0;
 
  private:
@@ -218,10 +295,11 @@ class ValueBlock {
   const std::vector<int> &value_offsets_;
   const std::unordered_map<std::string, int> &value_idx_;
 
-  bool has_entry_ = false;
-  std::function<bool(uint64_t)> entry_func_;
+  std::function<bool(VALUE *)> entry_func_;
   std::vector<std::shared_ptr<Initializer>> initializers_;
+  float threshold_;
 };
 
 }  // namespace distributed
 }  // namespace paddle
+

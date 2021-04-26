@@ -60,6 +60,9 @@ static nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger* logger) {
 static nvinfer1::IPluginRegistry* GetPluginRegistry() {
   return static_cast<nvinfer1::IPluginRegistry*>(dy::getPluginRegistry());
 }
+static int GetInferLibVersion() {
+  return static_cast<int>(dy::getInferLibVersion());
+}
 #endif
 
 // A logger for create TensorRT infer builder.
@@ -67,8 +70,11 @@ class NaiveLogger : public nvinfer1::ILogger {
  public:
   void log(nvinfer1::ILogger::Severity severity, const char* msg) override {
     switch (severity) {
-      case Severity::kINFO:
+      case Severity::kVERBOSE:
         VLOG(3) << msg;
+        break;
+      case Severity::kINFO:
+        VLOG(2) << msg;
         break;
       case Severity::kWARNING:
         LOG(WARNING) << msg;

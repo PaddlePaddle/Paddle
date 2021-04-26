@@ -20,15 +20,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace platform {
 struct bfloat16;
-struct float16;
-struct complex64;
 struct complex128;
+struct complex64;
+struct float16;
 }  // namespace platform
 }  // namespace paddle
 

@@ -168,18 +168,11 @@ struct CudnnRNNCache {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateRNNDescriptor(&rnn_desc_));
 
-#if CUDNN_VERSION >= 6000
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_, hidden_size_, num_layers_, dropout_desc_,
         CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
         CUDNN_RNN_ALGO_STANDARD, cudnn_type));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
-        rnn_desc_, hidden_size_, num_layers_, dropout_desc_, CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        cudnn_type));
-#endif
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateFilterDescriptor(&w_desc_));

@@ -121,6 +121,13 @@ class SliceOp : public framework::OperatorWithKernel {
           start = std::max(start, 0);
           end = std::max(end, 0);
           end = std::min(end, dim_value);
+
+          PADDLE_ENFORCE_LE(start, dim_value,
+                            platform::errors::InvalidArgument(
+                                "start should be less than or equal to the "
+                                "dimension value, but received "
+                                "start = %d, shape[%d] = %d.",
+                                starts[i], axes[i], out_dims[axes[i]]));
           PADDLE_ENFORCE_GT(end, start,
                             platform::errors::InvalidArgument(
                                 "end should greater than start, but received "

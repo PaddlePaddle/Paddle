@@ -15,24 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/communicator.h"
 
 #include <google/protobuf/text_format.h>
-#include <paddle/fluid/framework/program_desc.h>
-
-#include <algorithm>
-#include <chrono>  // NOLINT
-#include <map>
-#include <thread>  // NOLINT
-#include <unordered_set>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/distributed/table/table.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
@@ -52,7 +39,7 @@ inline double GetCurrentUS() {
 Communicator::Communicator() {}
 
 void Communicator::init_gflag(const std::string &gflags) {
-  VLOG(0) << "Init With Gflags:" << gflags;
+  VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
     flags.push_back("-max_body_size=314217728");
@@ -290,7 +277,7 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   auto dim = tensor->value().dims()[1];
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
-                 [&](int id) { return static_cast<uint64_t>(id); });
+                 [&](int64_t id) { return static_cast<uint64_t>(id); });
 
   for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
     push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
@@ -333,9 +320,11 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
     push_g_vec.push_back(tensor->data<float>() + i * dim);
   }
 
+  bool training = true;
+
   auto status = _worker_ptr->pull_sparse(
       (float **)push_g_vec.data(), table_id,  // NOLINT
-      sparse_push_keys.data(), sparse_push_keys.size());
+      sparse_push_keys.data(), sparse_push_keys.size(), training);
   status.wait();
   return;
 }
@@ -385,6 +374,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
   if (batches == 0) {
     return;
   }
+  platform::RecordEvent record_event("Communicator->SendGlobalStep");
   auto &table_id = ctx.table_id;
   size_t request_call_num = _worker_ptr->get_server_nums();
 
@@ -788,6 +778,7 @@ void SyncCommunicator::BarrierRecv() {
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
+  platform::RecordEvent record_event("GeoCommunicator->Send");
   waiting_ = false;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
@@ -1024,6 +1015,7 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
 
 std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     const std::string &send_varname) {
+  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds");
   size_t merge_num = 0, wait_times = 0;
   std::unordered_set<int64_t> sparse_ids;
   while (merge_num < static_cast<size_t>(max_merge_var_num_)) {

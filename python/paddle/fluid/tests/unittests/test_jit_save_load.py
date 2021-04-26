@@ -158,6 +158,22 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
         return x_out, y_out, loss
 
 
+class LinearNetMultiInput1(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetMultiInput1, self).__init__()
+        self._linear1 = Linear(in_size, out_size)
+        self._linear2 = Linear(in_size, out_size)
+
+    @declarative(input_spec=(InputSpec(
+        [None, 8], dtype='float32'), InputSpec(
+            [None, 8], dtype='float32')))
+    def forward(self, x, y):
+        x_out = self._linear1(x)
+        y_out = self._linear2(y)
+        loss = fluid.layers.mean(x_out + y_out)
+        return x_out, y_out, loss
+
+
 class MultiLoadingLinearNet(fluid.dygraph.Layer):
     def __init__(self, size, model_path):
         super(MultiLoadingLinearNet, self).__init__()
@@ -219,6 +235,16 @@ class LinearNetWithDictInput(paddle.nn.Layer):
         out = self._linear(img['img'])
         # not return loss to avoid prune output
         loss = paddle.nn.functional.cross_entropy(out, label['label'])
+        return out
+
+
+class LinearNetWithDictInputNoPrune(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithDictInputNoPrune, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    def forward(self, img):
+        out = self._linear(img['img'] + img['img2'])
         return out
 
 
@@ -443,6 +469,30 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
         self.assertEqual(len(loaded_net._input_spec()), 1)
 
 
+class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
+    def test_dict_input(self):
+        net = LinearNetWithDictInputNoPrune(8, 8)
+
+        path = "test_jit_save_load_with_dict_input_no_prune/model"
+        # prune inputs
+        paddle.jit.save(
+            layer=net,
+            path=path,
+            input_spec=[{
+                'img': InputSpec(
+                    shape=[None, 8], dtype='float32', name='img'),
+                'img2': InputSpec(
+                    shape=[None, 8], dtype='float32', name='img2')
+            }])
+
+        img = paddle.randn(shape=[4, 8], dtype='float32')
+        img2 = paddle.randn(shape=[4, 8], dtype='float32')
+        loaded_net = paddle.jit.load(path)
+        loaded_out = loaded_net(img, img2)
+
+        self.assertEqual(len(loaded_net._input_spec()), 2)
+
+
 class TestSaveLoadWithInputSpec(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -500,6 +550,42 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         model_path = "multi_inout.output_spec2/model"
         output_spec = net.forward.outputs[:1]
         paddle.jit.save(net, model_path, [input_x], output_spec=output_spec)
+        # 2. load again
+        infer_layer2 = paddle.jit.load(model_path)
+        # 3. predict
+        pred_xx = infer_layer2(x)
+
+        # 4. assert pred_x == pred_xx
+        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
+
+    def test_multi_in_out1(self):
+        net = LinearNetMultiInput1(8, 8)
+
+        model_path = "multi_inout1.output_spec1/model"
+        # 1. check inputs and outputs
+        self.assertTrue(len(net.forward.inputs) == 2)
+        input_x = net.forward.inputs[0]
+        input_y = net.forward.inputs[1]
+        self.assertTrue(input_x.shape == (-1, 8))
+        self.assertTrue(input_y.shape == (-1, 8))
+
+        # 2. prune loss
+        output_spec = net.forward.outputs[:2]
+        paddle.jit.save(net, model_path, output_spec=output_spec)
+
+        # 3. load to infer
+        infer_layer = paddle.jit.load(model_path)
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        y = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        # 4. predict
+        pred_x, pred_y = infer_layer(x, y)
+
+        # 1. prune y and loss
+        model_path = "multi_inout1.output_spec2/model"
+        output_spec = net.forward.outputs[:1]
+        paddle.jit.save(net, model_path, (input_x, ), output_spec=output_spec)
         # 2. load again
         infer_layer2 = paddle.jit.load(model_path)
         # 3. predict

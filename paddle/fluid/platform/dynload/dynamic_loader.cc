@@ -36,6 +36,13 @@ DEFINE_string(nccl_dir, "",
               "For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
+DEFINE_string(hccl_dir, "",
+              "Specify path for loading hccl library, such as libhccl.so. "
+              "For instance, "
+              "/usr/local/Ascend/ascend-toolkit/latest/fwkacllib/lib64/. If "
+              "default, "
+              "dlopen will search hccl from LD_LIBRARY_PATH");
+
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 
 DEFINE_string(
@@ -55,7 +62,7 @@ DEFINE_string(miopen_dir, "",
 
 DEFINE_string(rocm_dir, "",
               "Specify path for loading rocm library, such as librocblas, "
-              "libcurand, libcusolver. For instance, /opt/rocm/lib. "
+              "libmiopen, libhipsparse. For instance, /opt/rocm/lib. "
               "If default, dlopen will search rocm from LD_LIBRARY_PATH");
 
 DEFINE_string(rccl_dir, "",
@@ -264,7 +271,7 @@ void* GetCublasDsoHandle() {
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cublas_lib, true,
                                     {cuda_lib_path});
-#elif PADDLE_WITH_HIP
+#elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
@@ -292,7 +299,7 @@ void* GetCUDNNDsoHandle() {
       "CUDNN version.");
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib, true,
                                     {cuda_lib_path}, win_warn_meg);
-#elif PADDLE_WITH_HIP
+#elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false,
@@ -316,7 +323,7 @@ void* GetCurandDsoHandle() {
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_curand_lib, true,
                                     {cuda_lib_path});
-#elif PADDLE_WITH_HIP
+#elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
@@ -337,8 +344,8 @@ void* GetCusolverDsoHandle() {
 void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
-#elif PADDLE_WITH_HIP
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprtc.so");
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
@@ -347,8 +354,8 @@ void* GetNVRTCDsoHandle() {
 void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
-#elif PADDLE_WITH_HIP
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhip_hcc.so");
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
@@ -369,15 +376,42 @@ void* GetWarpCTCDsoHandle() {
 }
 
 void* GetNCCLDsoHandle() {
+#ifdef PADDLE_WITH_HIP
+  std::string warning_msg(
+      "You may need to install 'rccl' from ROCM official website: "
+      "https://rocmdocs.amd.com/en/latest/Installation_Guide/"
+      "Installation-Guide.html before install PaddlePaddle.");
+#else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "
       "https://developer.nvidia.com/nccl/nccl-download"
+      "before install PaddlePaddle.");
+#endif
+
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", true, {},
+                                    warning_msg);
+#elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true, {},
+                                    warning_msg);
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", true, {},
+                                    warning_msg);
+#endif
+}
+void* GetHCCLDsoHandle() {
+  std::string warning_msg(
+      "You may need to install 'hccl2' from Huawei official website: "
       "before install PaddlePaddle.");
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", true, {},
                                     warning_msg);
 #elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
   return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true);
+
+#elif defined(PADDLE_WITH_ASCEND_CL)
+  return GetDsoHandleFromSearchPath(FLAGS_hccl_dir, "libhccl.so", true, {},
+                                    warning_msg);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", true, {},
                                     warning_msg);
@@ -405,15 +439,7 @@ void* GetMKLMLDsoHandle() {
 }
 
 void* GetOpDsoHandle(const std::string& dso_name) {
-#if defined(__APPLE__) || defined(__OSX__)
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Create custom cpp op outside framework do not support Apple."));
-#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Create custom cpp op outside framework do not support Windows."));
-#else
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
-#endif
 }
 
 void* GetNvtxDsoHandle() {

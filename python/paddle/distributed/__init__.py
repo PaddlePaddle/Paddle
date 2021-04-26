@@ -25,6 +25,9 @@ from paddle.distributed.fleet.dataset import *
 from . import collective
 from .collective import *
 
+from .entry_attr import ProbabilityEntry
+from .entry_attr import CountFilterEntry
+
 # start multiprocess apis
 __all__ = ["spawn"]
 
@@ -36,6 +39,18 @@ __all__ += [
     "ParallelEnv",
     "InMemoryDataset",
     "QueueDataset",
+]
+
+# dataset reader
+__all__ += [
+    "InMemoryDataset",
+    "QueueDataset",
+]
+
+# entry for embedding
+__all__ += [
+    "ProbabilityEntry",
+    "CountFilterEntry",
 ]
 
 # collective apis

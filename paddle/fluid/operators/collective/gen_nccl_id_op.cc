@@ -19,19 +19,22 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
 
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
   for (size_t i = 0; i < nccl_ids->size(); ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -191,6 +194,20 @@ class GenNCCLIdOp : public framework::OperatorBase {
     }
   }
 };
+
+#else
+class GenNCCLIdOp : public framework::OperatorBase {
+ public:
+  GenNCCLIdOp(const std::string& type, const framework::VariableNameMap& inputs,
+              const framework::VariableNameMap& outputs,
+              const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {}
+};
+
+#endif
 
 class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:

@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
@@ -26,6 +26,7 @@ namespace paddle {
 struct MkldnnQuantizerConfig;
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
+extern const std::vector<std::string> kDlnneSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
@@ -33,6 +34,8 @@ PassStrategy *AnalysisConfig::pass_builder() const {
     if (use_gpu_) {
       LOG(INFO) << "Create GPU IR passes";
       pass_builder_.reset(new GpuPassStrategy);
+    } else if (use_xpu_) {
+      pass_builder_.reset(new XpuPassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -69,11 +72,11 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 }
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   int device_id) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
-  device_id_ = device_id;
+  gpu_device_id_ = device_id;
 #else
   LOG(ERROR) << "Please compile with gpu to EnableGpu()";
   use_gpu_ = false;
@@ -93,9 +96,17 @@ void AnalysisConfig::DisableFCPadding() {
   Update();
 }
 
-void AnalysisConfig::EnableXpu(int l3_workspace_size) {
+void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
+                               bool autotune, const std::string &autotune_file,
+                               const std::string &precision,
+                               bool adaptive_seqlen) {
   use_xpu_ = true;
   xpu_l3_workspace_size_ = l3_workspace_size;
+  xpu_locked_ = locked;
+  xpu_autotune_ = autotune;
+  xpu_autotune_file_ = autotune_file;
+  xpu_precision_ = precision;
+  xpu_adaptive_seqlen_ = adaptive_seqlen;
   Update();
 }
 
@@ -115,7 +126,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // GPU related.
   CP_MEMBER(use_gpu_);
   CP_MEMBER(use_cudnn_);
-  CP_MEMBER(device_id_);
+  CP_MEMBER(gpu_device_id_);
+  CP_MEMBER(xpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
   CP_MEMBER(enable_memory_optim_);
@@ -131,6 +143,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_oss_);
+  // Dlnne related
+  CP_MEMBER(use_dlnne_);
+  CP_MEMBER(dlnne_min_subgraph_size_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -154,6 +169,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(use_xpu_);
   CP_MEMBER(xpu_l3_workspace_size_);
+  CP_MEMBER(xpu_locked_);
+  CP_MEMBER(xpu_autotune_);
+  CP_MEMBER(xpu_autotune_file_);
+  CP_MEMBER(xpu_precision_);
+  CP_MEMBER(xpu_adaptive_seqlen_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -174,8 +194,14 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(thread_local_stream_);
 
   if (use_gpu_) {
+    PADDLE_ENFORCE_EQ(use_xpu_, false,
+                      platform::errors::InvalidArgument(
+                          "Only one choice can be made between CPU and XPU."));
     pass_builder_.reset(new GpuPassStrategy(
         *static_cast<GpuPassStrategy *>(other.pass_builder())));
+  } else if (use_xpu_) {
+    pass_builder_.reset(new XpuPassStrategy(
+        *static_cast<XpuPassStrategy *>(other.pass_builder())));
   } else {
     pass_builder_.reset(new CpuPassStrategy(
         *static_cast<CpuPassStrategy *>(other.pass_builder())));
@@ -202,10 +228,25 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
       pass_builder_->DeletePass(ps);
     }
   }
+  if (use_dlnne_) {
+    auto all_passes = kDlnneSubgraphPasses;
+    auto other_passes = other.pass_builder()->AllPasses();
+    // We should sort them, because the user may call the SwitchIrDebug
+    // interface, which will change the pass.
+    std::sort(all_passes.begin(), all_passes.end());
+    std::sort(other_passes.begin(), other_passes.end());
+    std::vector<std::string> deleted_passes;
+    std::set_difference(all_passes.begin(), all_passes.end(),
+                        other_passes.begin(), other_passes.end(),
+                        std::inserter(deleted_passes, deleted_passes.begin()));
+    for (auto ps : deleted_passes) {
+      pass_builder_->DeletePass(ps);
+    }
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_cudnn_ = use_gpu_;
 #else
   LOG(ERROR) << "Please compile with CUDA first to use cuDNN";
@@ -252,6 +293,10 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
   if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
+    LOG(INFO) << "Hardware support for BFLOAT16"
+              << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
+                      ? " is enabled"
+                      : " is disabled. Simulation will be used");
   } else {
     LOG(INFO) << "CPU does not support BFLOAT16 calculations";
     use_mkldnn_bfloat16_ = false;
@@ -275,7 +320,7 @@ void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
     AnalysisConfig::Precision precision_mode, bool use_static,
     bool use_calib_mode) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
     return;
@@ -294,6 +339,12 @@ void AnalysisConfig::EnableTensorRtEngine(
   LOG(ERROR)
       << "To use TensorRT engine, please compile inference lib with GPU first.";
 #endif
+}
+
+void AnalysisConfig::EnableDlnne(int min_subgraph_size) {
+  use_dlnne_ = true;
+  dlnne_min_subgraph_size_ = min_subgraph_size;
+  Update();
 }
 
 void AnalysisConfig::SetTRTDynamicShapeInfo(
@@ -333,6 +384,12 @@ void AnalysisConfig::Update() {
         // Append after the Affine_channel_conv_fuse pass.
         pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
       }
+    } else if (use_xpu()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between CPU and XPU."));
+      pass_builder_.reset(new XpuPassStrategy);
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
@@ -341,7 +398,13 @@ void AnalysisConfig::Update() {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
           *static_cast<GpuPassStrategy *>(pass_builder_.get())));
-
+    } else if (use_xpu()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(), false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between CPU and XPU."));
+      pass_builder_.reset(new XpuPassStrategy(
+          *static_cast<XpuPassStrategy *>(pass_builder_.get())));
     } else {
       pass_builder_.reset(new CpuPassStrategy(
           *static_cast<CpuPassStrategy *>(pass_builder_.get())));
@@ -358,8 +421,16 @@ void AnalysisConfig::Update() {
       pass_builder()->AppendPass(pass);
     }
   }
+  LOG(INFO) << "use_dlnne_:" << use_dlnne_ << std::endl;
+  if (use_dlnne_) {
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kDlnneSubgraphPasses) {
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
   if (use_gpu() && use_cudnn_) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!enable_ir_optim_) {
       LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
     } else {
@@ -420,19 +491,16 @@ void AnalysisConfig::Update() {
   }
 
   if (use_xpu_) {
-#ifndef LITE_SUBGRAPH_WITH_XPU
-    PADDLE_THROW(platform::errors::Unavailable(
-        "You tried to use an XPU device, but Paddle was not compiled "
-        "with XPU-runtime."));
-#endif
-    if (!use_lite_) {
-      LOG(WARNING) << "Because XPU currently only works in Paddle-Lite "
-                      "subgraph mode, please make sure you have enabled it.";
-    }
+#if (defined LITE_SUBGRAPH_WITH_XPU) || (defined PADDLE_WITH_XPU)
     PADDLE_ENFORCE_EQ(use_gpu_, false,
                       platform::errors::Unavailable(
                           "Currently, XPU and GPU cannot be enabled in the "
                           "same analysis configuration."));
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use an XPU device, but Paddle was not compiled "
+        "with XPU-runtime."));
+#endif
   }
 
   if (ir_debug_) {
@@ -448,13 +516,17 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << use_gpu_;
   ss << use_fc_padding_;
-  ss << device_id_;
+  ss << gpu_device_id_;
+  ss << xpu_device_id_;
   ss << memory_pool_init_size_mb_;
 
   ss << use_tensorrt_;
   ss << tensorrt_workspace_size_;
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
+
+  ss << use_dlnne_;
+  ss << dlnne_min_subgraph_size_;
 
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
@@ -489,6 +561,11 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_lite_;
   ss << use_xpu_;
   ss << xpu_l3_workspace_size_;
+  ss << xpu_locked_;
+  ss << xpu_autotune_;
+  ss << xpu_autotune_file_;
+  ss << xpu_precision_;
+  ss << xpu_adaptive_seqlen_;
 
   ss << thread_local_stream_;
 
@@ -503,11 +580,11 @@ void AnalysisConfig::SetCpuMathLibraryNumThreads(
 }
 
 float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
   size_t gpu_total, gpu_available;
-  platform::SetDeviceId(device_id_);
+  platform::SetDeviceId(gpu_device_id_);
   platform::GpuMemoryUsage(&gpu_available, &gpu_total);
   double total_gpu_memory = gpu_total / 1024. / 1024.;
   float fraction_of_gpu_memory =
@@ -548,7 +625,7 @@ NativeConfig AnalysisConfig::ToNativeConfig() const {
   config.prog_file = prog_file_;
   config.param_file = params_file_;
   config.use_gpu = use_gpu_;
-  config.device = device_id_;
+  config.device = gpu_device_id_;
   config.fraction_of_gpu_memory = fraction_of_gpu_memory_for_pool();
   config.specify_input_name = specify_input_name_;
   return config;

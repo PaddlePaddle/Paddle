@@ -25,19 +25,16 @@ class TensorRTMatMulDims2Test(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[24, 24], dtype="float32")
+            data = fluid.data(name="data", shape=[24, 24], dtype="float32")
             matmul_out = fluid.layers.matmul(
                 x=data,
                 y=data,
-                transpose_x = self.transpose_x,
-                transpose_y = self.transpose_y,
-                alpha = self.alpha)
+                transpose_x=self.transpose_x,
+                transpose_y=self.transpose_y,
+                alpha=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
 
-        self.feeds = {
-            "data": np.ones([24, 24]).astype("float32"),
-        }
+        self.feeds = {"data": np.ones([24, 24]).astype("float32"), }
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulDims2Test.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
@@ -65,14 +62,12 @@ class TensorRTMatMulTest(InferencePassTest):
             matmul_out = fluid.layers.matmul(
                 x=data,
                 y=data,
-                transpose_x = self.transpose_x,
-                transpose_y = self.transpose_y,
-                alpha = self.alpha)
+                transpose_x=self.transpose_x,
+                transpose_y=self.transpose_y,
+                alpha=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
 
-        self.feeds = {
-            "data": np.ones([1, 6, 24, 24]).astype("float32"),
-        }
+        self.feeds = {"data": np.ones([1, 6, 24, 24]).astype("float32"), }
         self.enable_trt = True
         self.trt_parameters = TensorRTMatMulTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)

@@ -119,6 +119,8 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
         use_cudnn = True
     else:
         use_cudnn = False
+    if core.is_compiled_with_rocm():
+        use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
 
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
             isinstance(out_shape, Variable)):

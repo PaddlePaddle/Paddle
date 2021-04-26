@@ -146,4 +146,10 @@ std::string UpdateDllFlag(const char *name, const char *value) {
   return ret;
 }
 
+#ifdef PADDLE_WITH_CRYPTO
+std::shared_ptr<framework::Cipher> MakeCipher(const std::string &config_file) {
+  return framework::CipherFactory::CreateCipher(config_file);
+}
+#endif
+
 }  // namespace paddle

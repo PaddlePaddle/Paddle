@@ -56,7 +56,10 @@ class SlicePluginTRTTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            atol = 1e-5
+            if self.trt_parameters.precision == AnalysisConfig.Precision.Half:
+                atol = 1e-3
+            self.check_output_with_option(use_gpu[i], atol)
 
 
 #negative starts && ends

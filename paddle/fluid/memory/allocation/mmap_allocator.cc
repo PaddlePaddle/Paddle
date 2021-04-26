@@ -22,6 +22,9 @@
 #include <random>
 #include <string>
 
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {

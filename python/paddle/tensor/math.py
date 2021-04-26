@@ -1554,10 +1554,10 @@ def clip(x, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-        x (Tensor): An N-D Tensor with data type float32 or float64.
-        min (float32|Tensor): The lower bound with type ``float32`` or a ``Tensor``
+        x (Tensor): An N-D Tensor with data type float32, float64, int32 or int64.
+        min (float|int|Tensor): The lower bound with type ``float`` , ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        max (float32|Tensor): The upper bound with type ``float32`` or a ``Tensor``
+        max (float|int|Tensor): The upper bound with type ``float``, ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -1582,16 +1582,24 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
-    fmin = float(np.finfo(np.float32).min)
-    fmax = float(np.finfo(np.float32).max)
+    x_dtype = str(x.dtype)
+    if x_dtype == 'paddle.int32':
+        min_ = np.iinfo(np.int32).min
+        max_ = np.iinfo(np.int32).max - 2**7
+    elif x_dtype == 'paddle.int64':
+        min_ = np.iinfo(np.int64).min
+        max_ = np.iinfo(np.int64).max - 2**39
+    else:
+        min_ = float(np.finfo(np.float32).min)
+        max_ = float(np.finfo(np.float32).max)
 
     if in_dygraph_mode():
         if isinstance(min, Variable):
             min = min.numpy().item(0)
         if isinstance(max, Variable):
             max = max.numpy().item(0)
-        min = fmin if min is None else min
-        max = fmax if max is None else max
+        min = min_ if min is None else min
+        max = max_ if max is None else max
         return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
@@ -1605,10 +1613,10 @@ def clip(x, min=None, max=None, name=None):
             check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
                         'clip', '(When the type of max in clip is Variable.)')
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'clip')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip')
 
     inputs = {'X': x}
-    attrs = {'min': fmin, 'max': fmax}
+    attrs = {'min': min_, 'max': max_}
 
     if isinstance(min, Variable):
         min.stop_gradient = True

@@ -35,6 +35,7 @@ namespace paddle {
 namespace framework {
 
 class Scope;
+
 namespace details {
 struct VarHandleBase;
 }  // namespace details
@@ -156,8 +157,8 @@ class OpHandleBase {
   std::vector<Scope *> local_exec_scopes_;
   bool skip_running_ = false;
 
-#ifdef PADDLE_WITH_CUDA
-  std::unordered_map<int, cudaEvent_t> events_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::unordered_map<int, gpuEvent_t> events_;
 #endif
 
   DISABLE_COPY_AND_ASSIGN(OpHandleBase);

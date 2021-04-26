@@ -21,13 +21,27 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+#include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 
+namespace brpc {
+class Channel;
+class Controller;
+}  // namespace brpc
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+
 namespace paddle {
 namespace distributed {
+
+struct Region;
 
 class DownpourPsClientService : public PsService {
  public:
@@ -101,7 +115,8 @@ class BrpcPsClient : public PSClient {
   }
   virtual int32_t create_client2client_connection(
       int pserver_timeout_ms, int pserver_connect_timeout_ms, int max_retry);
-  virtual std::future<int32_t> shrink(uint32_t table_id) override;
+  virtual std::future<int32_t> shrink(uint32_t table_id,
+                                      const std::string threshold) override;
   virtual std::future<int32_t> load(const std::string &epoch,
                                     const std::string &mode) override;
   virtual std::future<int32_t> load(uint32_t table_id, const std::string &epoch,
@@ -133,7 +148,8 @@ class BrpcPsClient : public PSClient {
 
   virtual std::future<int32_t> pull_sparse(float **select_values,
                                            size_t table_id,
-                                           const uint64_t *keys, size_t num);
+                                           const uint64_t *keys, size_t num,
+                                           bool is_training);
 
   virtual std::future<int32_t> print_table_stat(uint32_t table_id);
 
@@ -155,8 +171,21 @@ class BrpcPsClient : public PSClient {
   virtual int32_t recv_and_save_table(const uint64_t table_id,
                                       const std::string &path);
 
- private:
+ protected:
+  virtual size_t get_server_nums() { return _server_channels.size(); }
+  inline brpc::Channel *get_sparse_channel(size_t server_id) {
+    return _server_channels[server_id][0].get();
+  }
+  inline brpc::Channel *get_dense_channel(size_t server_id) {
+    return _server_channels[server_id][1].get();
+  }
+  inline brpc::Channel *get_cmd_channel(size_t server_id) {
+    return _server_channels[server_id][2].get();
+  }
   virtual int32_t initialize() override;
+
+ private:
+  // virtual int32_t initialize() override;
 
   inline uint32_t dense_dim_per_shard(uint32_t dense_dim_total,
                                       uint32_t shard_num) {
@@ -168,16 +197,6 @@ class BrpcPsClient : public PSClient {
 
   std::future<int32_t> send_save_cmd(uint32_t table_id, int cmd_id,
                                      const std::vector<std::string> &param);
-
-  inline brpc::Channel *get_sparse_channel(size_t server_id) {
-    return _server_channels[server_id][0].get();
-  }
-  inline brpc::Channel *get_dense_channel(size_t server_id) {
-    return _server_channels[server_id][1].get();
-  }
-  inline brpc::Channel *get_cmd_channel(size_t server_id) {
-    return _server_channels[server_id][2].get();
-  }
 
   bool _running = false;
   bool _flushing = false;
@@ -204,8 +223,6 @@ class BrpcPsClient : public PSClient {
                                                  const float **update_values,
                                                  size_t num,
                                                  void *done) override;
-
-  virtual size_t get_server_nums() { return _server_channels.size(); }
 
  private:
   int32_t start_client_service();

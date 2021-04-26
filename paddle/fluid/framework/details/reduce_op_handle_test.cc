@@ -40,7 +40,7 @@ struct TestReduceOpHandle {
   std::vector<p::Place> gpu_list_;
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
@@ -48,7 +48,7 @@ struct TestReduceOpHandle {
     for (size_t j = 0; j < ctxs_.size(); ++j) {
       ctxs_[j]->Wait();
     }
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
@@ -58,7 +58,7 @@ struct TestReduceOpHandle {
   void InitCtxOnGpu(bool use_gpu) {
     use_gpu_ = use_gpu;
     if (use_gpu) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -83,7 +83,7 @@ struct TestReduceOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       nccl_ctxs_.reset(nullptr);
 #endif
     }
@@ -104,7 +104,7 @@ struct TestReduceOpHandle {
 
     nodes.emplace_back(new ir::Node("node"));
     if (use_gpu_) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
                                           gpu_list_, nccl_ctxs_.get()));
 #else
@@ -112,7 +112,7 @@ struct TestReduceOpHandle {
           platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
     } else {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
                                           gpu_list_, nccl_ctxs_.get()));
 #else
@@ -296,7 +296,7 @@ TEST(ReduceTester, TestCPUReduceTestLodTensor) {
   test_op.InitReduceOp(out_scope_idx);
   test_op.TestReduceLodTensors(out_scope_idx);
 }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 TEST(ReduceTester, TestGPUReduceTestSelectedRows) {
   TestReduceOpHandle test_op;

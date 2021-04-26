@@ -19,6 +19,12 @@
 
 namespace paddle {
 namespace framework {
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
 
 void AddVarToScope(Scope* param_scope, const std::string& name,

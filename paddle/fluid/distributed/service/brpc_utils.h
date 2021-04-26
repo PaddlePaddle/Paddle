@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <netdb.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -27,6 +28,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/port.h"
+
+namespace butil {
+class IOBuf;
+class IOBufBytesIterator;
+}  // namespace butil
 
 namespace grpc {
 class ByteBuffer;
@@ -81,6 +87,8 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
 void DeserializeSelectedRows(framework::Variable* var, const VarMsg& msg,
                              butil::IOBufBytesIterator& iobuf,
                              const platform::DeviceContext& ctx);
+
+std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port);
 
 }  // namespace distributed
 }  // namespace paddle

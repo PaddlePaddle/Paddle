@@ -33,6 +33,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
+namespace distributed {
+class HeterRequestHandler;
+class HeterServer;
+}  // namespace distributed
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 class Executor;
 class ProgramDesc;

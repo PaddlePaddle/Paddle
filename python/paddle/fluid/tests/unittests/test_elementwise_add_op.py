@@ -381,6 +381,16 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
         self.axis = 2
 
 
+class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 1, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 3, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = 0
+
+
 class TestElementwiseAddOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -580,6 +590,23 @@ class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
             self.shape, self.dtype)
         self.grad_x = np.real(self.grad_out)
         self.grad_y = self.grad_out
+
+
+class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
+    def test_static_add(self):
+        paddle.enable_static()
+        a = 1.5
+        b = paddle.full([4, 5, 6], True, dtype='bool')
+        c = a + b
+        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+        paddle.enable_static()
+
+    def test_dygraph_add(self):
+        paddle.disable_static()
+        a = 1.5
+        b = paddle.full([4, 5, 6], True, dtype='bool')
+        c = a + b
+        self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
 
 if __name__ == '__main__':

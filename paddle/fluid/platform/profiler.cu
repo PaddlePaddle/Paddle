@@ -12,7 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -31,6 +38,21 @@ static void ForEachDevice(std::function<void(int)> func) {
 }
 
 void DummyKernelAndEvent() {
+#ifdef PADDLE_WITH_HIP
+  for (int i = 0; i < 5; i++) {
+    ForEachDevice([](int d) {
+      platform::SetDeviceId(d);
+      hipStream_t stream;
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream));
+      Mark("_cuda_startup_");
+      int *ptr;
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&ptr, sizeof(int)));
+      hipLaunchKernelGGL(DummyKernel, dim3(1), dim3(1), 0, stream, ptr);
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipFree(ptr));
+    });
+  }
+#else
   for (int i = 0; i < 5; i++) {
     ForEachDevice([](int d) {
       platform::SetDeviceId(d);
@@ -44,6 +66,7 @@ void DummyKernelAndEvent() {
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaFree(ptr));
     });
   }
+#endif
 }
 
 }  // namespace platform

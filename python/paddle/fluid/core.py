@@ -270,6 +270,10 @@ if avx_supported():
         from .core_avx import _load_static_dict
         from .core_avx import _save_dygraph_dict
         from .core_avx import _load_dygraph_dict
+        from .core_avx import _save_lod_tensor
+        from .core_avx import _load_lod_tensor
+        from .core_avx import _save_selected_rows
+        from .core_avx import _load_selected_rows
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
         from .core_avx import _promote_types_if_complex_exists
@@ -279,6 +283,7 @@ if avx_supported():
             from .core_avx import _set_process_signal_handler
             from .core_avx import _throw_error_if_process_failed
             from .core_avx import _convert_to_tensor_list
+            from .core_avx import _array_to_share_memory_tensor
             from .core_avx import _cleanup_mmap_fds
             from .core_avx import _remove_tensor_list_mmap_fds
     except Exception as e:
@@ -324,6 +329,10 @@ if load_noavx:
         from .core_noavx import _load_static_dict
         from .core_noavx import _save_dygraph_dict
         from .core_noavx import _load_dygraph_dict
+        from .core_noavx import _save_lod_tensor
+        from .core_noavx import _load_lod_tensor
+        from .core_noavx import _save_selected_rows
+        from .core_noavx import _load_selected_rows
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
         from .core_noavx import _promote_types_if_complex_exists
@@ -333,6 +342,7 @@ if load_noavx:
             from .core_noavx import _set_process_signal_handler
             from .core_noavx import _throw_error_if_process_failed
             from .core_noavx import _convert_to_tensor_list
+            from .core_noavx import _array_to_share_memory_tensor
             from .core_noavx import _cleanup_mmap_fds
             from .core_noavx import _remove_tensor_list_mmap_fds
     except Exception as e:

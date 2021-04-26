@@ -192,7 +192,6 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.fuse_elewise_add_act_ops = False
             build_strategy.fuse_relu_depthwise_conv = False
             build_strategy.fuse_all_optimizer_ops = False
-            build_strategy.fuse_all_reduce_ops = False
             build_strategy.memory_optimize = False
             build_strategy.enable_inplace = False
             build_strategy.enable_sequential_execution = False

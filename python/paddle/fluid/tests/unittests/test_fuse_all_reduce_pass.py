@@ -22,6 +22,8 @@ import paddle
 import unittest
 import os
 
+paddle.enable_static()
+
 
 class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
     @classmethod
@@ -36,6 +38,8 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
                                     optimizer=None,
                                     fuse_all_optimizer_ops=False):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
+            return
+        if use_device == DeviceType.XPU and not core.is_compiled_with_xpu():
             return
 
         feed_dict_data = None
@@ -83,11 +87,15 @@ class TestFuseAllReduceOps(TestFuseAllReduceOpsBase):
 
     def test_simple_fc_with_fuse_all_reduce(self):
         self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.CUDA)
+        self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.XPU)
         self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.CPU)
 
     def test_batchnorm_fc_with_fuse_all_reduce(self):
         self._decorate_compare_fused_all_reduce(fc_with_batchnorm,
                                                 DeviceType.CUDA)
+        # TODO(wangxi): xpu batch_norm op only support dim = 4
+        # self._decorate_compare_fused_all_reduce(fc_with_batchnorm,
+        #                                         DeviceType.XPU)
         self._decorate_compare_fused_all_reduce(fc_with_batchnorm,
                                                 DeviceType.CPU)
 
@@ -127,6 +135,8 @@ class TestFuseAllReduceOpsWithSparseGrad(TestFuseAllReduceOpsBase):
     def test_simple_bow_net_with_fuse_all_reduce(self):
         model = partial(bow_net, dict_dim=self.word_dict_len, is_sparse=True)
         self._decorate_compare_fused_all_reduce(model, DeviceType.CUDA)
+        # TODO(wangxi): xpu sum op only support LodTensor for now
+        # self._decorate_compare_fused_all_reduce(model, DeviceType.XPU)
         self._decorate_compare_fused_all_reduce(model, DeviceType.CPU)
 
 

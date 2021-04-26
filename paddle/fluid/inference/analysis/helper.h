@@ -25,7 +25,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -244,7 +243,7 @@ static std::string GetTrtEngineSerializedData(
   if (FileExists(trt_serialized_path)) {
     VLOG(3) << "Trt serialized file: " << trt_serialized_path
             << "is found here";
-    std::ifstream infile(trt_serialized_path, std::ios::in);
+    std::ifstream infile(trt_serialized_path, std::ios::binary);
     std::stringstream buffer;
     buffer << infile.rdbuf();
     std::string trt_engine_serialized_data(buffer.str());
@@ -256,7 +255,7 @@ static std::string GetTrtEngineSerializedData(
 static void SaveTrtEngineSerializedDataToFile(
     const std::string &trt_serialized_path,
     const std::string &engine_serialized_data) {
-  std::ofstream outfile(trt_serialized_path);
+  std::ofstream outfile(trt_serialized_path, std::ios::binary);
   outfile << engine_serialized_data;
   outfile.close();
 }

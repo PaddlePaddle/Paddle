@@ -50,6 +50,8 @@ class ParallelContext {
 
   virtual void Init() = 0;
 
+  virtual void InitWithRingID(int ring_id) = 0;
+
   virtual void AllReduceByStream(const framework::Variable& src,
                                  framework::Variable* dst, int ring_id,
                                  bool use_calc_stream) = 0;
@@ -64,7 +66,12 @@ class ParallelContext {
   // if CPU, should do nothing.
   virtual void WaitComm(int ring_id) = 0;
 
+  // synchorize compute stream
+  virtual void SynchronizeCompute() = 0;
+
   inline int GetNRings() const { return strategy_.nrings_; }
+
+  inline int64_t GetNRanks() const { return strategy_.nranks_; }
 
  protected:
   ParallelStrategy strategy_;

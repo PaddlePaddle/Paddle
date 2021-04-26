@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_vector.h>
 #include "paddle/fluid/framework/array.h"
 #endif
@@ -103,7 +103,7 @@ class UnStackGradKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < axis; ++i) pre *= dim[i];
     for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     int total_num = pre * n * post;
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
 
@@ -156,14 +156,14 @@ class UnStackKernel : public framework::OpKernel<T> {
     int post = total_num / (n * pre);
 
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     thrust::device_vector<T *> device_dx_vec(dx_datas);
     auto dx_data_arr = device_dx_vec.data().get();
 #else
     auto dx_data_arr = dx_datas.data();
 #endif
     StackGradFunctorForRange(dev_ctx, dx_data_arr, dy_data, total_num, n, post);
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     // Wait() must be called because device_dx_vec may be destructed before
     // kernel ends
     dev_ctx.Wait();

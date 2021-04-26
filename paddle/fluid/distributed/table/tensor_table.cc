@@ -13,14 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/tensor_table.h"
-#include <chrono>  // NOLINT
-#include <map>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-#include "paddle/fluid/distributed/common/utils.h"
+
 DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {

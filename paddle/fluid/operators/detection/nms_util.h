@@ -130,7 +130,7 @@ static inline framework::Tensor VectorToTensor(
 template <class T>
 framework::Tensor NMS(const platform::DeviceContext& ctx,
                       framework::Tensor* bbox, framework::Tensor* scores,
-                      T nms_threshold, float eta) {
+                      T nms_threshold, float eta, bool pixel_offset = true) {
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];
@@ -144,13 +144,15 @@ framework::Tensor NMS(const platform::DeviceContext& ctx,
   int selected_num = 0;
   T adaptive_threshold = nms_threshold;
   const T* bbox_data = bbox->data<T>();
+  bool normalized = pixel_offset ? false : true;
   while (sorted_indices.size() != 0) {
     int idx = sorted_indices.back().second;
     bool flag = true;
     for (int kept_idx : selected_indices) {
       if (flag) {
-        T overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
-                                      bbox_data + kept_idx * box_size, false);
+        T overlap =
+            JaccardOverlap<T>(bbox_data + idx * box_size,
+                              bbox_data + kept_idx * box_size, normalized);
         flag = (overlap <= adaptive_threshold);
       } else {
         break;

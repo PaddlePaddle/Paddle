@@ -102,6 +102,12 @@ class Hogwild(DeviceWorker):
         # when opt_info is None or empty dict, it should return
         if not opt_info:
             return
+        downpour = trainer_desc.downpour_param
+        hogwild = trainer_desc.hogwild_param
+        if opt_info["stat_var_names"]:
+            for i in opt_info["stat_var_names"]:
+                hogwild.stat_var_names.extend([i])
+                downpour.stat_var_names.extend([i])
 
         from paddle.fluid.incubate.fleet.parameter_server import version
 
@@ -109,8 +115,6 @@ class Hogwild(DeviceWorker):
             return
 
         program_configs = opt_info["program_configs"]
-        downpour = trainer_desc.downpour_param
-        hogwild = trainer_desc.hogwild_param
 
         for pid in program_configs:
             if pid == program_id:
@@ -161,10 +165,6 @@ class Hogwild(DeviceWorker):
             sparse_table.emb_dim = -1
             # not use hard code click
             sparse_table.label_var_name = ""
-        if opt_info["stat_var_names"]:
-            for i in opt_info["stat_var_names"]:
-                hogwild.stat_var_names.extend([i])
-                downpour.stat_var_names.extend([i])
 
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
@@ -413,15 +413,30 @@ class Section(DeviceWorker):
         section_param = trainer_desc.section_param
         section_param.num_microbatches = pipeline_opt["num_microbatches"]
         section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
+        section_param.pipeline_stage = pipeline_opt["pipeline_stage"]
+        section_param.num_pipeline_stages = pipeline_opt["num_pipeline_stages"]
+        schedule_mode_str = pipeline_opt["schedule_mode"]
+        # F-then-B scheduler which runs Forward phase for all microbatches,
+        # then runs Backward phase for all microbatches.
+        # 1F1B scheduler, which runs forward phase and backward phase altertively
+        # after startup phase.
+        assert schedule_mode_str in ["F-then-B", "1F1B"], (
+            "The schedule mode "
+            "for pipeline must be one of F-then-B or 1F1B")
+        schedule_mode = 0 if schedule_mode_str == "F-then-B" else 1
+        section_param.schedule_mode = schedule_mode
         cfg = section_param.section_config
         program = pipeline_opt["section_program"]
-        cfg.program_desc.ParseFromString(program["program"]._get_desc()
+        cfg.program_desc.ParseFromString(program._get_desc()
                                          .serialize_to_string())
         # TODO: why does not work
         # cfg.program_desc.CopyFrom(program.program._get_desc())
         place = pipeline_opt["place"]
         place_id = pipeline_opt["place_id"]
-        assert isinstance(place, core.CUDAPlace)
+        if core.is_compiled_with_cuda():
+            assert isinstance(place, core.CUDAPlace)
+        elif core.is_compiled_with_npu():
+            assert isinstance(place, core.NPUPlace)
         cfg.place = cfg.CUDAPlace
         cfg.place_id = place_id
 
