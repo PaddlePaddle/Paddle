@@ -1036,8 +1036,10 @@ def assign(x, output=None):
     The OP copies the :attr:`x` to the :attr:`output`.
  
     Parameters:
-        x (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
-            float16, float32, float64, int32 and int64.
+        x (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
+            or scalar. Its data type supports float16, float32, float64, int32, int64, and bool.
+            Note: the float64 data will be converted to float32 because of current platform protobuf
+            data limitation.
         output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
  
@@ -1058,5 +1060,6 @@ def assign(x, output=None):
           result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
-    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+    check_type(x, 'x', (Variable, numpy.ndarray, list, tuple, float, int, bool),
+               'assign')
     return tensor.assign(x, output)

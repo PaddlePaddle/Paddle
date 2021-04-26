@@ -62,6 +62,7 @@ class GradScaler(AmpScaler):
             scaled = scaler.scale(loss)  # scale the loss 
             scaled.backward()            # do backward
             scaler.minimize(optimizer, scaled)  # update parameters     
+            optimizer.clear_grad()
     """
 
     def __init__(self,
@@ -105,6 +106,7 @@ class GradScaler(AmpScaler):
                 scaled = scaler.scale(loss)  # scale the loss 
                 scaled.backward()            # do backward
                 scaler.minimize(optimizer, scaled)  # update parameters  
+                optimizer.clear_grad()
         """
         return super(GradScaler, self).scale(var)
 
@@ -140,5 +142,6 @@ class GradScaler(AmpScaler):
                 scaled = scaler.scale(loss)  # scale the loss 
                 scaled.backward()            # do backward
                 scaler.minimize(optimizer, scaled)  # update parameters  
+                optimizer.clear_grad()
         """
         return super(GradScaler, self).minimize(optimizer, *args, **kwargs)

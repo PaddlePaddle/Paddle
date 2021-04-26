@@ -166,6 +166,11 @@ void IRPassManager::CreatePasses(Argument *argument,
       // run fp16.
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
+    } else if (pass_name == "dlnne_subgraph_pass") {
+      pass->Set("min_subgraph_size",
+                new int(argument->dlnne_min_subgraph_size()));
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool enable_int8 =
@@ -183,6 +188,12 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->xpu_l3_workspace_size()));
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
+      pass->Set("locked", new bool(argument->xpu_locked()));
+      pass->Set("autotune", new bool(argument->xpu_autotune()));
+      pass->Set("autotune_file",
+                new std::string(argument->xpu_autotune_file()));
+      pass->Set("precision", new std::string(argument->xpu_precision()));
+      pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
