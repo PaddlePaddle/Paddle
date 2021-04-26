@@ -999,8 +999,8 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     out = helper.create_variable_for_type_inference(
         dtype=in_tensor_list[0].dtype)
     if in_dygraph_mode():
-        core.ops.alltoall_(temp, out, 'use_calc_stream', use_calc_stream,
-                           'ring_id', ring_id)
+        core.ops.alltoall_(temp, 'use_calc_stream', use_calc_stream, 'ring_id',
+                           ring_id)
     else:
         if not isinstance(in_tensor_list, list):
             raise ValueError("The type of 'in_tensor_list' for all_to_all "
