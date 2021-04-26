@@ -246,25 +246,25 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
       BlockSparseSoftmaxForward<
           T, BlockSize, NnzBlockMax, true,
           true><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
-          out_data, x->data<T>(), 1.0, kp_mask->data<T>(), attn_mask->data<T>(),
+          out_data, x->data<T>(), scale, kp_mask->data<T>(), attn_mask->data<T>(),
           rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
     } else if ((kp_mode == true) && (attn_mode == false)) {
       BlockSparseSoftmaxForward<
           T, BlockSize, NnzBlockMax, true,
           false><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
-          out_data, x->data<T>(), 1.0, kp_mask->data<T>(), NULL,
+          out_data, x->data<T>(), scale, kp_mask->data<T>(), NULL,
           rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
     } else if ((kp_mode == false) && (attn_mode == true)) {
       BlockSparseSoftmaxForward<
           T, BlockSize, NnzBlockMax, false,
           true><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
-          out_data, x->data<T>(), 1.0, NULL, attn_mask->data<T>(),
+          out_data, x->data<T>(), scale, NULL, attn_mask->data<T>(),
           rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
     } else {
       BlockSparseSoftmaxForward<
           T, BlockSize, NnzBlockMax, false,
           false><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
-          out_data, x->data<T>(), 1.0, NULL, NULL, rowptr->data<int32_t>(),
+          out_data, x->data<T>(), scale, NULL, NULL, rowptr->data<int32_t>(),
           colidx->data<int32_t>(), seqlen);
     }
   }
@@ -279,6 +279,8 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     auto *colidx = ctx.Input<Tensor>("layout_colindex");
 
     int num_block = rowptr->dims()[0] - 1;
+
+    T scale = ctx.Attr<T>("scale");
 
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -304,7 +306,7 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     BlockSparseSoftmaxBackward<
         T, BlockSize,
         NnzBlockMax><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
-        dx_data, dout->data<T>(), x->data<T>(), 1.0, rowptr->data<int32_t>(),
+        dx_data, dout->data<T>(), x->data<T>(), scale, rowptr->data<int32_t>(),
         colidx->data<int32_t>(), seqlen);
   }
 };

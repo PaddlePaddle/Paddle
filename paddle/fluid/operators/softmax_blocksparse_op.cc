@@ -64,7 +64,7 @@ class SoftmaxBlockSparseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("scale", "Scale factor").SetDefault(1.0);
     AddAttr<bool>("kp_mask_mode", "Kp mask mode").SetDefault(false);
     AddInput("kp_mask", "Kp mask");
-    AddAttr<bool>("attm_mask_mode", "Attn mask mode").SetDefault(false);
+    AddAttr<bool>("attn_mask_mode", "Attn mask mode").SetDefault(false);
     AddInput("attn_mask", "Attn mask");
     AddOutput("Out", "Softmax of input tensor.");
     AddComment(R"DOC(
