@@ -132,6 +132,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::bfloat16>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex64>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex128>);
 REGISTER_OP_CUDA_KERNEL(
@@ -141,6 +142,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::bfloat16>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::complex64>,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::complex128>);
 REGISTER_OP_CUDA_KERNEL(
@@ -150,6 +152,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext,
+                                        plat::bfloat16>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext,
                                         plat::complex64>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext,
@@ -161,5 +165,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::bfloat16>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex64>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex128>);

@@ -537,6 +537,27 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "run test when gpu is availble.")
+class TestElementwiseAddBfloat16Dtype(unittest.TestCase):
+    def test_bfloat16_datatype(self):
+        paddle.disable_static()
+        # Result using float32
+        x_fp32 = paddle.to_tensor([2, 3, 4], 'float32')
+        y_fp32 = paddle.to_tensor([1, 5, 2], 'float32')
+        res_fp32 = paddle.add(x_fp32, y_fp32)
+        exp = paddle.cast(res_fp32, core.VarDesc.VarType.BF16)
+
+        # Result using bfloat16
+        x_bf16 = paddle.cast(x_fp32, core.VarDesc.VarType.BF16)
+        y_bf16 = paddle.cast(y_fp32, core.VarDesc.VarType.BF16)
+        res = paddle.add(x_bf16, y_bf16)
+        print(res)
+        print(exp)
+        self.assertTrue(np.array_equal(res.numpy(), exp.numpy()))
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
