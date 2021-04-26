@@ -28,56 +28,81 @@ template <typename T, int BlockSize, int NnzBlockMax, bool KpMode = false,
 __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
                                           const T *kp_mask, const T *attn_mask,
                                           const int *layout_rowptr,
-                                          const int *layout_colidx,
-                                          int seq_length) {
+                                          const int *layout_colindex,
+                                          int seq_len) {
   // constants
   const int WarpSize = 32;
   const int BlockSize2 = BlockSize * BlockSize;
 
   // current thread related info
   const int cur = blockIdx.x * blockDim.y + threadIdx.y;
-  const int cur_batch = cur / seq_length;
-  const int cur_seq = cur % seq_length;
+  const int cur_batch = cur / seq_len;
+  const int cur_seq = cur % seq_len;
   const int cur_seqb = cur / BlockSize;
   const int cur_inb = cur % BlockSize;
 
   // number of nnz block in cur_seqb
   const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
 
-  T srcdata[BlockSize * NnzBlockMax / WarpSize];
-  T attndata[BlockSize * NnzBlockMax / WarpSize];
+  T srcdata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
+  T attndata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
 
   // read kp mask
   T datakp_mask = (KpMode == true) ? kp_mask[cur] : 0;
 
   // read tensor data, attn mask
-  for (int i = 0; i < cur_nnzb; i++) {
-    // BlockSize = 64, 32
-    const T *srcptr = src + layout_rowptr[cur_seqb] * BlockSize2 +
-                      i * BlockSize2 + cur_inb * BlockSize;
-    const T *attnptr =
-        attn_mask + cur_seq * seq_length + layout_colidx[cur_seqb] * BlockSize;
-
-    const int IterPerBlock = BlockSize / WarpSize;
-#pragma unroll
-    for (int j = 0; j < IterPerBlock; j++) {
-      int didx = i * IterPerBlock + j;
-      int xidx = threadIdx.x + j * WarpSize;
-
-      if (AttnMode == true) {
-        if (std::abs(attnptr[xidx]) < std::numeric_limits<T>::epsilon()) {
-          srcdata[didx] =
-              -std::numeric_limits<T>::infinity() * scale + datakp_mask;
+  if (BlockSize == 1) {  // BlockSize = 1
+    const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
+    const T *srcptr = src + layout_rowptr[cur_seqb];
+    const T *attnptr = attn_mask + cur_seqb * seq_len;
+    const int *colindex = layout_colindex + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        if (AttnMode == true) {
+          if (std::abs(attnptr[colindex[xidx]]) <
+              std::numeric_limits<T>::epsilon()) {
+            srcdata[didx] =
+                -std::numeric_limits<T>::infinity() * scale + datakp_mask;
+          } else {
+            srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
+          }
         } else {
           srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
         }
       } else {
-        srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
+        srcdata[didx] = -std::numeric_limits<T>::infinity();
       }
+    }
+  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
 
-      // if (threadIdx.x==0 && threadIdx.y==0 && blockIdx.x==0){
-      //     printf("%d, %d, %f\n", xidx, didx, srcptr[xidx]);
-      // }
+    for (int i = 0; i < cur_nnzb; i++) {
+      const T *srcptr = src + layout_rowptr[cur_seqb] * BlockSize2 +
+                        i * BlockSize2 + cur_inb * BlockSize;
+      const T *attnptr =
+          attn_mask + cur_seq * seq_len + layout_colindex[cur_seqb] * BlockSize;
+      const int IterPerBlock = BlockSize / WarpSize;
+#pragma unroll
+      for (int j = 0; j < IterPerBlock; j++) {
+        int didx = i * IterPerBlock + j;
+        int xidx = threadIdx.x + j * WarpSize;
+
+        if (AttnMode == true) {
+          if (std::abs(attnptr[xidx]) < std::numeric_limits<T>::epsilon()) {
+            srcdata[didx] =
+                -std::numeric_limits<T>::infinity() * scale + datakp_mask;
+          } else {
+            srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
+          }
+        } else {
+          srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
+        }
+
+        // if (threadIdx.x==0 && threadIdx.y==0 && blockIdx.x==0){
+        //     printf("%d, %d, %f\n", xidx, didx, srcptr[xidx]);
+        // }
+      }
     }
   }
   // if (threadIdx.x==0 && threadIdx.y==0 && blockIdx.x==1){
@@ -88,7 +113,7 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
 
   // max value
   T max_value = srcdata[0];
-  const int kIteration = cur_nnzb * BlockSize / WarpSize;
+  const int kIteration = (cur_nnzb * BlockSize + WarpSize - 1) / WarpSize;
 #pragma unroll
   for (int it = 1; it < kIteration; ++it) {
     max_value = (max_value > srcdata[it]) ? max_value : srcdata[it];
@@ -135,16 +160,16 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
 template <typename T, int BlockSize, int NnzBlockMax>
 __global__ void BlockSparseSoftmaxBackward(T *dst, const T *grad, const T *src,
                                            T scale, const int *layout_rowptr,
-                                           const int *layout_colidx,
-                                           int seq_length) {
+                                           const int *layout_colindex,
+                                           int seq_len) {
   // constants
   const int WarpSize = 32;
   const int BlockSize2 = BlockSize * BlockSize;
 
   // current thread related info
   const int cur = blockIdx.x * blockDim.y + threadIdx.y;
-  const int cur_batch = cur / seq_length;
-  const int cur_seq = cur % seq_length;
+  const int cur_batch = cur / seq_len;
+  const int cur_seq = cur % seq_len;
   const int cur_seqb = cur / BlockSize;
   const int cur_inb = cur % BlockSize;
 
@@ -235,37 +260,38 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
     const int num_nnz = x_dims[1];
     const int block_size = x_dims[2];
 
-    const int seqlen = num_block * BlockSize;
+    const int seq_len = num_block * BlockSize;
 
     const int axis = -1;
 
     const dim3 blocks(32, 4, 1);
-    const int grid = num_batch * seqlen / (32 * 4);
+    const int grid = num_batch * seq_len / (32 * 4);
 
     if ((kp_mode == true) && (attn_mode == true)) {
       BlockSparseSoftmaxForward<
           T, BlockSize, NnzBlockMax, true,
           true><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
-          out_data, x->data<T>(), scale, kp_mask->data<T>(), attn_mask->data<T>(),
-          rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
+          out_data, x->data<T>(), scale, kp_mask->data<T>(),
+          attn_mask->data<T>(), rowptr->data<int32_t>(),
+          colidx->data<int32_t>(), seq_len);
     } else if ((kp_mode == true) && (attn_mode == false)) {
       BlockSparseSoftmaxForward<
           T, BlockSize, NnzBlockMax, true,
           false><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
           out_data, x->data<T>(), scale, kp_mask->data<T>(), NULL,
-          rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
+          rowptr->data<int32_t>(), colidx->data<int32_t>(), seq_len);
     } else if ((kp_mode == false) && (attn_mode == true)) {
       BlockSparseSoftmaxForward<
           T, BlockSize, NnzBlockMax, false,
           true><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
           out_data, x->data<T>(), scale, NULL, attn_mask->data<T>(),
-          rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
+          rowptr->data<int32_t>(), colidx->data<int32_t>(), seq_len);
     } else {
       BlockSparseSoftmaxForward<
           T, BlockSize, NnzBlockMax, false,
           false><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
           out_data, x->data<T>(), scale, NULL, NULL, rowptr->data<int32_t>(),
-          colidx->data<int32_t>(), seqlen);
+          colidx->data<int32_t>(), seq_len);
     }
   }
 };
@@ -297,17 +323,17 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     const int num_batch = x_dims[0];
     const int num_nnz = x_dims[1];
     const int block_size = x_dims[2];
-    const int seqlen = num_block * BlockSize;
+    const int seq_len = num_block * BlockSize;
 
     const int axis = -1;
 
     const dim3 blocks(32, 4, 1);
-    const int grid = num_batch * seqlen / (32 * 4);
+    const int grid = num_batch * seq_len / (32 * 4);
     BlockSparseSoftmaxBackward<
         T, BlockSize,
         NnzBlockMax><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
         dx_data, dout->data<T>(), x->data<T>(), scale, rowptr->data<int32_t>(),
-        colidx->data<int32_t>(), seqlen);
+        colidx->data<int32_t>(), seq_len);
   }
 };
 }
