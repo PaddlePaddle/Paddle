@@ -201,8 +201,8 @@ rem ------PR CI windows check for MKL/GPU----------
 :CASE_wincheck_mkl
 set WITH_MKL=ON
 set WITH_GPU=ON
-set MSVC_STATIC_CRT=ON
 set WITH_AVX=ON
+set MSVC_STATIC_CRT=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -216,8 +216,8 @@ rem ------PR CI windows check for OPENBLAS/CPU------
 :CASE_wincheck_openblas
 set WITH_MKL=OFF
 set WITH_GPU=OFF
-set MSVC_STATIC_CRT=OFF
 set WITH_AVX=OFF
+set MSVC_STATIC_CRT=ON
 set retry_times=1
 
 call :cmake || goto cmake_error
