@@ -143,6 +143,7 @@ register_unity_group(cc
     lod_reset_op.cc
     lod_tensor_to_array_op.cc
     log_softmax_op.cc
+    softmax_blocksparse_op.cc
     lookup_table_dequant_op.cc
     lrn_op.cc
     mkldnn/lrn_mkldnn_op.cc
@@ -431,6 +432,7 @@ register_unity_group(cu
 register_unity_group(cu
     lod_reset_op.cu
     log_softmax_op.cu
+    softmax_blocksparse_op.cu
     lrn_op.cu
     lstm_unit_op.cu
     dot_op.cu

@@ -232,7 +232,9 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
 
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
-    BlockSparseSoftmaxForward<T, BlockSize, 4><<<grid, blocks>>>(
+    BlockSparseSoftmaxForward<
+        T, BlockSize,
+        4><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
         out_data, x->data<T>(), 1.0, NULL, NULL, rowptr->data<int32_t>(),
         colidx->data<int32_t>(), seqlen);
   }
@@ -245,10 +247,10 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<Tensor>("Out");
     auto *rowptr = ctx.Input<Tensor>("LayOutRowPtr");
     auto *colidx = ctx.Input<Tensor>("LayOutColIndex");
+
     int num_block = rowptr->dims()[0] - 1;
 
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
     auto *dx_data = dx->data<T>();
@@ -268,7 +270,9 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
 
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
-    BlockSparseSoftmaxBackward<T, BlockSize, 4><<<grid, blocks>>>(
+    BlockSparseSoftmaxBackward<
+        T, BlockSize,
+        4><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
         dx_data, dout->data<T>(), x->data<T>(), 1.0, rowptr->data<int32_t>(),
         colidx->data<int32_t>(), seqlen);
   }

@@ -14,7 +14,10 @@ class SoftmaxBlockSparseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    return UnaryOpUnchangedInferShapeCheckAxis(ctx);
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Out");
+
+    // return UnaryOpUnchangedInferShapeCheckAxis(ctx);
   }
 
  protected:
@@ -83,7 +86,7 @@ class SoftmaxBlockSparseGradOpMaker : public framework::SingleGradOpMaker<T> {
 };
 
 template <typename T>
-class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
+class SoftmaxBlockSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // auto* X = context.Input<framework::Tensor>("X");
@@ -92,7 +95,7 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
+class SoftmaxBlockSparseGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // auto* Out = context.Input<framework::Tensor>("Out");
@@ -106,7 +109,6 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
 }
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
     softmax_blocksparse, ops::SoftmaxBlockSparseOp,
@@ -117,6 +119,6 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(softmax_blocksparse_grad, ops::SoftmaxBlockSparseGradOp);
 
 REGISTER_OP_CPU_KERNEL(softmax_blocksparse,
-                       ops::SoftmaxBlockSparseKernel<float>);
+                       ops::SoftmaxBlockSparseCPUKernel<float>);
 REGISTER_OP_CPU_KERNEL(softmax_blocksparse_grad,
-                       ops::SoftmaxBlockSparseGradKernel<float>);
+                       ops::SoftmaxBlockSparseGradCPUKernel<float>);
