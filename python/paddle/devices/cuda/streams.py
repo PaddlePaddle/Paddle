@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paddle.fluid import core_avx, core
-from .. import cuda
 
 from paddle.fluid.core import CUDAStream as Stream
 from paddle.fluid.core import CUDAEvent as Event

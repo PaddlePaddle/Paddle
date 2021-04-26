@@ -35,5 +35,15 @@ class TestCurrentStream(unittest.TestCase):
             self.assertRaises(ValueError, cuda.current_stream, "gpu:0")
 
 
+class TestSynchronize(unittest.TestCase):
+    def test_synchronize(self):
+        if paddle.is_compiled_with_cuda():
+            self.assertIsNone(cuda.synchronize())
+            self.assertIsNone(cuda.synchronize(0))
+            self.assertIsNone(cuda.synchronize(paddle.CUDAPlace(0)))
+
+            self.assertRaises(ValueError, cuda.synchronize, "gpu:0")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -63,12 +63,32 @@ def current_stream(device=None):
 
 
 def synchronize(device=None):
+    '''
+    Wait for the compute on the given CUDA device to finish.
+
+    Parameters:
+        device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
+        If device is None, the device is the current device. Default: None.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.devices.cuda.synchronize()
+            paddle.devices.cuda.synchronize(0)
+            paddle.devices.cuda.synchronize(paddle.CUDAPlace(0))
+
+    '''
+
     device_id = -1
+
     if device is not None:
-        if isinstance(device, str):
-            device_id = int(device.split(':', 1)[1])
-        elif isinstance(device, core.CUDAPlace) or isinstance(device,
-                                                              core.XPUPlace):
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.CUDAPlace):
             device_id = device.get_device_id()
+        else:
+            raise ValueError("device type must be int or paddle.CUDAPlace")
 
     return core_avx._device_synchronize(device_id)
