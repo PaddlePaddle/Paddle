@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fs import LocalFS, HDFSClient
-from .ps_util import DistributedInfer
-from .recompute import recompute
+from __future__ import print_function
+
+import unittest
+import paddle.fluid as fluid
+
+from test_parallel_dygraph_dataparallel import TestMultipleGpus
+
+
+class TestPipelineParallel(TestMultipleGpus):
+    def test_pipeline_parallel(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_model.py')
+
+
+if __name__ == "__main__":
+    unittest.main()
