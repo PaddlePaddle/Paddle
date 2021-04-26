@@ -1183,9 +1183,8 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             should be float16, float32, float64, int32 or int64.
         out_tensor_list (Tensor): A list of output Tensors. The data type of its elements should be the same as the
             data type of the input Tensors.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
     Returns:
         None.
     Examples:
@@ -1205,6 +1204,8 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             data1 = paddle.to_tensor(np_data1)
             data2 = paddle.to_tensor(np_data2)
             paddle.distributed.all_to_all([data1, data2], out_tensor_list)
+            # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
+            # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
     """
     if group is not None and not group.is_member():
         return
@@ -1244,7 +1245,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
             })
     out_tensor_list.extend(paddle.split(out, nranks, 0))
 
-    
+
 def send(tensor, dst=0, group=None, use_calc_stream=True):
     """
     Send a tensor to the receiver.
