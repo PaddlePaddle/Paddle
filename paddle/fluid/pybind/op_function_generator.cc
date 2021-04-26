@@ -479,10 +479,12 @@ std::string GenerateOpFunctionsBody(
   }
   if (outs_num == 0) {
     return_str = "NULL";
+  } else if (outs_num == 1) {
+    return_str = "MakeReturnPyObject(" + return_str + ")";
   } else {
-    return_str = "(PyObject*)Py_BuildValue(\"O\", MakeReturnPyObject(" +
+    return_str = "MakeReturnPyObject(" +
                  paddle::string::Sprintf(RETURN_TUPLE_TEMPLATE, return_str) +
-                 "))";
+                 ")";
   }
   std::string function_args = "";
   if (input_args == "") {

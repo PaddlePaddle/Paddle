@@ -176,6 +176,7 @@ static inline void HandleViewBetweenInputAndOutput(
 }
 
 extern PyTypeObject* g_VarBase_PyType;
+extern PyTypeObject* g_VarType_PyType;
 
 static inline void ConstructAttrMapFromPyArgs(
     const std::string& op_type, PyObject* args, ssize_t attr_start,
@@ -194,7 +195,12 @@ static inline void ConstructAttrMapFromPyArgs(
     const char* key_prt;
     obj = PyTuple_GET_ITEM(args, arg_pos);
     if (PyUnicode_Check(obj)) {
+#if PY_MAJOR_VERSION < 3
+      key_len = PyUnicode_GET_DATA_SIZE(obj);
+      key_prt = PyUnicode_AS_DATA(obj);
+#else
       key_prt = PyUnicode_AsUTF8AndSize(obj, &key_len);
+#endif
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument (position %d) must be str, but got "
@@ -214,8 +220,9 @@ static inline void ConstructAttrMapFromPyArgs(
 
     switch (iter->second) {
       case paddle::framework::proto::AttrType::INT:
-        if (PyLong_Check(obj)) {
-          attrs[key] = (int)PyLong_AsLong(obj);  // NOLINT
+        if (PyLong_Check(obj) ||
+            PyObject_IsInstance(obj, (PyObject*)g_VarType_PyType)) {  // NOLINT
+          attrs[key] = (int)PyLong_AsLong(obj);                       // NOLINT
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s(): argument (position %d) must be "
@@ -255,7 +262,9 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<int> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyList_GetItem(obj, i);
-            if (PyLong_Check(item)) {
+            if (PyLong_Check(item) ||
+                PyObject_IsInstance(obj,
+                                    (PyObject*)g_VarType_PyType)) {  // NOLINT
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -272,7 +281,9 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<int> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
-            if (PyLong_Check(item)) {
+            if (PyLong_Check(item) ||
+                PyObject_IsInstance(obj,
+                                    (PyObject*)g_VarType_PyType)) {  // NOLINT
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -436,8 +447,9 @@ static inline void ConstructAttrMapFromPyArgs(
         }
         break;
       case paddle::framework::proto::AttrType::LONG:
-        if (PyLong_Check(obj)) {
-          attrs[key] = (int64_t)PyLong_AsLong(obj);  // NOLINT
+        if (PyLong_Check(obj) ||
+            PyObject_IsInstance(obj, (PyObject*)g_VarType_PyType)) {  // NOLINT
+          attrs[key] = (int64_t)PyLong_AsLong(obj);                   // NOLINT
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s(): argument (position %d) must be "
@@ -453,7 +465,9 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<int64_t> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyList_GetItem(obj, i);
-            if (PyLong_Check(item)) {
+            if (PyLong_Check(item) ||
+                PyObject_IsInstance(obj,
+                                    (PyObject*)g_VarType_PyType)) {  // NOLINT
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -470,7 +484,9 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<int64_t> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
-            if (PyLong_Check(item)) {
+            if (PyLong_Check(item) ||
+                PyObject_IsInstance(obj,
+                                    (PyObject*)g_VarType_PyType)) {  // NOLINT
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -544,7 +560,11 @@ static inline std::shared_ptr<imperative::VarBase> GetVarBaseFromArgs(
   ::pybind11::detail::instance* inst =
       (::pybind11::detail::instance*)PyTuple_GET_ITEM(args, arg_idx);
 
-  if (inst == nullptr) {
+  if (PyTuple_Check((PyObject*)inst)) {  // NOLINT
+    inst = (::pybind11::detail::instance*)PyTuple_GET_ITEM(inst, 0);
+  }
+
+  if (inst == nullptr || (PyObject*)inst == Py_None) {  // NOLINT
     if (!dispensable) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be Tensor, but got None",
@@ -656,31 +676,25 @@ static inline unsigned long GetUnsignedLongFromArgs(  // NOLINT
 
 static inline PyObject* MakeReturnPyObject(
     const std::shared_ptr<paddle::imperative::VarBase>& out) {
-  ::pybind11::detail::instance* result;
-  result = (::pybind11::detail::instance*)g_VarBase_PyType->tp_alloc(
-      g_VarBase_PyType, 0);
-  if (result != NULL) {
-    result->simple_layout = 1;
-    *((std::shared_ptr<paddle::imperative::VarBase>*)
-          result->simple_value_holder) = out;
-  }
-  return (PyObject*)result;  // NOLINT
+  return ::pybind11::detail::type_caster_base<imperative::VarBase>::cast_holder(
+             ::pybind11::detail::holder_helper<
+                 std::shared_ptr<imperative::VarBase>>::get(out),
+             &out)
+      .ptr();
 }
 
 static inline PyObject* MakeReturnPyObject(
     const std::vector<std::shared_ptr<imperative::VarBase>>& out) {
   PyObject* result = PyList_New((Py_ssize_t)out.size());
 
-  ::pybind11::detail::instance* item = NULL;
   for (size_t i = 0; i < out.size(); i++) {
-    item = (::pybind11::detail::instance*)g_VarBase_PyType->tp_alloc(
-        g_VarBase_PyType, 0);
-    if (item != NULL) {
-      item->simple_layout = 1;
-      *((std::shared_ptr<paddle::imperative::VarBase>*)
-            item->simple_value_holder) = out[i];
-    }
-    PyList_SET_ITEM(result, (Py_ssize_t)i, (PyObject*)item);  // NOLINT
+    PyList_SET_ITEM(
+        result, (Py_ssize_t)i,
+        ::pybind11::detail::type_caster_base<imperative::VarBase>::cast_holder(
+            ::pybind11::detail::holder_helper<
+                std::shared_ptr<imperative::VarBase>>::get(out[i]),
+            &out[i])
+            .ptr());  // NOLINT
   }
 
   return result;
