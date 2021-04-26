@@ -15,6 +15,26 @@
 # limitations under the License.
 
 
+function check_whl {
+    bash -x paddle/scripts/paddle_build.sh build
+    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
+    pip uninstall -y paddlepaddle_gpu
+    pip install build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
+
+    mkdir -p /tmp/pr && mkdir -p /tmp/develop
+    unzip build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl -d /tmp/pr
+
+    git checkout -b develop
+    unzip build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl -d /tmp/develop
+
+    diff_whl=`diff /tmp/pr/paddlepaddle_gpu-0.0.0.dist-info/RECORD /tmp/develop/paddlepaddle_gpu-0.0.0.dist-info/RECORD|wc -l`
+    if [ ${diff_whl} -eq 0 ];then
+        echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
+        exit 0
+    fi
+}
+
 function compile_install_paddle {
     export CUDA_ARCH_NAME=Auto
     export PY_VERSION=3.7
@@ -23,11 +43,7 @@ function compile_install_paddle {
     export WITH_TENSORRT=OFF
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
-    bash -x paddle/scripts/paddle_build.sh build
-    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
-    pip uninstall -y paddlepaddle_gpu
-    pip install build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
-    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
+    check_whl
 }
 
 function prepare_data {
