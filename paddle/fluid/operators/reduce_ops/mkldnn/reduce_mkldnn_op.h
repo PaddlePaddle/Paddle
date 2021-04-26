@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -22,27 +22,26 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using platform::to_void_cast;
 
-  inline std::vector<int64_t> CalculateReducedDims(const Tensor* input,
-                                           const Tensor* output,
-                                           std::vector<int>& reduce_dims,
-                                           bool reduce_all,
-                                           bool keep_dim) {
-    if (keep_dim) return framework::vectorize(output->dims());
+inline std::vector<int64_t> CalculateReducedDims(const Tensor* input,
+                                                 const Tensor* output,
+                                                 std::vector<int>& reduce_dims,
+                                                 bool reduce_all,
+                                                 bool keep_dim) {
+  if (keep_dim) return framework::vectorize(output->dims());
 
-    if (reduce_all)
-      return std::vector<int64_t>(framework::vectorize(input->dims()).size(),
-                                  1);
+  if (reduce_all)
+    return std::vector<int64_t>(framework::vectorize(input->dims()).size(), 1);
 
-    std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
-    for (size_t i = 0; i < reduce_dims.size(); ++i) {
-      reduce_dims[i] = (reduce_dims[i] >= 0)
-                           ? reduce_dims[i]
-                           : input->dims().size() + reduce_dims[i];
-      output_dims[reduce_dims[i]] = 1;
-    }
-
-    return output_dims;
+  std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
+  for (size_t i = 0; i < reduce_dims.size(); ++i) {
+    reduce_dims[i] = (reduce_dims[i] >= 0)
+                         ? reduce_dims[i]
+                         : input->dims().size() + reduce_dims[i];
+    output_dims[reduce_dims[i]] = 1;
   }
+
+  return output_dims;
+}
 
 template <typename T>
 class ReduceMKLDNNKernel : public framework::OpKernel<T> {
@@ -125,8 +124,8 @@ template <typename T>
 class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void RunKernel(const framework::ExecutionContext& ctx,
-                 dnnl::algorithm binary_type, dnnl::algorithm reduction_type, float scale_x,
-                 float scale_y) const {
+                 dnnl::algorithm binary_type, dnnl::algorithm reduction_type,
+                 float scale_x, float scale_y) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
@@ -137,27 +136,40 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto* input_dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    const std::string key_pd = platform::CreateKey(dev_ctx, framework::vectorize(output_dx->dims()),
-                                ctx.InputName("X"),
-                                (std::to_string(static_cast<int>(reduction_type)))) + "@fwd_pd";
-    std::shared_ptr<dnnl::reduction::primitive_desc> fwd_pd = std::static_pointer_cast<dnnl::reduction::primitive_desc>(
-        dev_ctx.GetBlob(key_pd));
+    mkldnn::memory::format_tag x_format_tag;
+    auto input_dims =
+        CalculateReducedDims(output_dx, input_dy, dims, reduce_all, keep_dim);
 
-    PADDLE_ENFORCE_NOT_NULL(
-        fwd_pd, platform::errors::Unavailable(
-                     "Forward primitive descriptor is not available in %s op, cannot deduce memory format tag", ctx.Type()));
+    if (input_dims != framework::vectorize(output_dx->dims())) {
+      const std::string key_pd =
+          platform::CreateKey(
+              dev_ctx, framework::vectorize(output_dx->dims()),
+              ctx.InputName("X"),
+              (std::to_string(static_cast<int>(reduction_type)))) +
+          "@fwd_pd";
+      std::shared_ptr<dnnl::reduction::primitive_desc> fwd_pd =
+          std::static_pointer_cast<dnnl::reduction::primitive_desc>(
+              dev_ctx.GetBlob(key_pd));
 
-    const auto x_format_tag = platform::GetMKLDNNFormat(fwd_pd->src_desc());
+      PADDLE_ENFORCE_NOT_NULL(
+          fwd_pd, platform::errors::Unavailable(
+                      "Forward primitive descriptor is not available in %s op, "
+                      "cannot deduce memory format tag",
+                      ctx.Type()));
 
-    PADDLE_ENFORCE_NE(
-        x_format_tag, mkldnn::memory::format_tag::undef,
-        platform::errors::InvalidArgument("Cannot deduce format tag for %s op", ctx.Type()));
+      x_format_tag = platform::GetMKLDNNFormat(fwd_pd->src_desc());
+
+      PADDLE_ENFORCE_NE(x_format_tag, mkldnn::memory::format_tag::undef,
+                        platform::errors::InvalidArgument(
+                            "Cannot deduce format tag for %s op", ctx.Type()));
+    } else {  // fwd descriptor not available because reorder was used instead
+              // of reduction
+      x_format_tag = getPlainFormatTag(output_dx);
+    }
 
     output_dx->mutable_data<T>(ctx.GetPlace());
     output_dx->set_format(x_format_tag);
     output_dx->set_layout(input_dy->layout());
-
-    auto input_dims = CalculateReducedDims(output_dx, input_dy, dims, reduce_all, keep_dim);
 
     platform::BroadcastDataMKLDNNHandler<T> handler(
         binary_type, dev_ctx, onednn_engine, ctx.GetPlace(), output_dx,
@@ -176,6 +188,28 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     binary_prim->execute(astream, args);
     astream.wait();
+  }
+
+ protected:
+  mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
+    auto tensor_dims_size = tensor->dims().size();
+    PADDLE_ENFORCE_EQ(
+        tensor_dims_size <= 5 && tensor_dims_size >= 1, true,
+        platform::errors::InvalidArgument(
+            "Dims for reduction_grad oneDNN op must be in range <1, 5>"));
+
+    switch (tensor_dims_size) {
+      case 1:
+        return mkldnn::memory::format_tag::a;
+      case 2:
+        return mkldnn::memory::format_tag::ab;
+      case 3:
+        return mkldnn::memory::format_tag::abc;
+      case 4:
+        return mkldnn::memory::format_tag::abcd;
+    }
+
+    return mkldnn::memory::format_tag::abcde;
   }
 };
 

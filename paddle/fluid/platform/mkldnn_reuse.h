@@ -639,7 +639,8 @@ class BroadcastDataMKLDNNHandler
                              const mkldnn::engine engine,
                              platform::Place cpu_place, const Tensor* x,
                              const Tensor* y, float scale_x, float scale_y,
-                             const std::string& uniq_name, std::vector<int64_t>& input_dims)
+                             const std::string& uniq_name,
+                             std::vector<int64_t>& input_dims)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
@@ -660,7 +661,7 @@ class BroadcastDataMKLDNNHandler
           platform::errors::InvalidArgument("Wrong format set for Y tensor."));
 
       const auto src0_tz = framework::vectorize(x->dims());
-      
+
       const auto src0_md = dnnl::memory::desc(
           src0_tz, platform::MKLDNNGetDataType<T>(), x->format());
       const auto src1_md = dnnl::memory::desc(
