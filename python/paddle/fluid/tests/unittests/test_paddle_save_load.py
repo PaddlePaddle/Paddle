@@ -914,7 +914,6 @@ class TestSaveLoadLayer(unittest.TestCase):
             paddle.load(path)
         # dygraph
         paddle.disable_static()
-
         loaded_layer = paddle.load(path)
         loaded_result = [l(inps) for l in loaded_layer]
         for i in range(len(origin)):
