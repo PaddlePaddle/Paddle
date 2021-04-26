@@ -96,8 +96,8 @@ void CUDAStream::Wait() const {
   PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 CUDAStream* get_current_stream(int deviceId) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (deviceId == -1) {
     deviceId = platform::GetCurrentDeviceId();
   }
@@ -111,8 +111,12 @@ CUDAStream* get_current_stream(int deviceId) {
                     ->Stream()
                     .get();
   return stream;
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot visit cuda current stream."));
+  return nullptr;
 #endif
+}
 
 }  // namespace stream
 }  // namespace platform

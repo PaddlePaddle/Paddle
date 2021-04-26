@@ -117,8 +117,8 @@ class MemEvent {
   std::string annotation_;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class CudaEvent {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
  public:
   CudaEvent() { cudaEventCreateWithFlags(&event_, flags_); }
 
@@ -151,17 +151,23 @@ class CudaEvent {
  private:
   unsigned int flags_ = cudaEventDefault;
   gpuEvent_t event_;
+#endif
 };
 
 static unsigned int get_cuda_flags(bool enable_timing, bool blocking,
                                    bool interprocess) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   unsigned int flags =
       (blocking ? cudaEventBlockingSync : cudaEventDefault) |
       (enable_timing ? cudaEventDefault : cudaEventDisableTiming) |
       (interprocess ? cudaEventInterprocess : cudaEventDefault);
   return flags;
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot get the cuda event flags."));
+  return 0;
 #endif
+}
 
 }  // namespace platform
 }  // namespace paddle

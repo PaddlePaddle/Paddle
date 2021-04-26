@@ -33,8 +33,9 @@ enum class Priority : uint8_t {
   kHigh = 0x1,
   kNormal = 0x2,
 };
-
+#endif
 class CUDAStream final {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
  public:
   CUDAStream() = default;
   explicit CUDAStream(const Place& place,
@@ -119,12 +120,11 @@ class CUDAStream final {
 #endif
   Priority priority_{Priority::kNormal};
   std::unique_ptr<StreamCallbackManager<gpuStream_t>> callback_manager_;
-
+#endif
   DISABLE_COPY_AND_ASSIGN(CUDAStream);
 };
 
 CUDAStream* get_current_stream(int deviceId);
-#endif
 
 }  // namespace stream
 }  // namespace platform

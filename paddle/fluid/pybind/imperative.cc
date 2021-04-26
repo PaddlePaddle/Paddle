@@ -610,13 +610,19 @@ void BindImperative(py::module *m_ptr) {
         [](const std::shared_ptr<imperative::Tracer> &tracer) {
           imperative::SetCurrentTracer(tracer);
         });
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   m.def("_get_current_stream",
         [](int deviceId) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           return paddle::platform::stream::get_current_stream(deviceId);
+#else
+          PADDLE_THROW(platform::errors::Unavailable(
+              "Paddle is not compiled with CUDA. Cannot visit cuda current "
+              "stream."));
+#endif
         },
         py::return_value_policy::reference);
   m.def("_device_synchronize", [](int device_id) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (device_id == -1) {
       device_id = paddle::platform::GetCurrentDeviceId();
     }
@@ -625,8 +631,11 @@ void BindImperative(py::module *m_ptr) {
     paddle::platform::SetDeviceId(device_id);
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
     paddle::platform::SetDeviceId(curr_device_id);
-  });
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with CUDA. Cannot visit device synchronize."));
 #endif
+  });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase", R"DOC()DOC")
@@ -1692,24 +1701,28 @@ void BindImperative(py::module *m_ptr) {
           return imperative::PyLayerApply(place, cls, args, kwargs);
         });
 
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   py::class_<paddle::platform::stream::CUDAStream>(m, "CUDAStream")
-      .def("__init__",
-           [](paddle::platform::stream::CUDAStream &self,
-              platform::CUDAPlace &device, int priority) {
-             if (priority != 1 && priority != 2) {
-               PADDLE_THROW(platform::errors::InvalidArgument(
-                   "Priority should be 1(high) or 2(normal) "));
-             }
-             auto prio = paddle::platform::stream::Priority(priority);
+      .def("__init__", [](paddle::platform::stream::CUDAStream &self,
+                          platform::CUDAPlace &device, int priority) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        if (priority != 1 && priority != 2) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Priority should be 1(high) or 2(normal) "));
+        }
+        auto prio = paddle::platform::stream::Priority(priority);
 
-             new (&self) paddle::platform::stream::CUDAStream(device, prio);
-           })
-      .def("wait_event",
-           [](paddle::platform::stream::CUDAStream &self,
-              paddle::platform::CudaEvent &event) {
-             self.WaitEvent(event.GetRawCudaEvent());
-           })
+        new (&self) paddle::platform::stream::CUDAStream(device, prio);
+#else
+            PADDLE_THROW(platform::errors::Unavailable(
+        "Class CUDAStream can only be initialized on the GPU platform."));
+#endif
+      });
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  m.def("wait_event",
+        [](paddle::platform::stream::CUDAStream &self,
+           paddle::platform::CudaEvent &event) {
+          self.WaitEvent(event.GetRawCudaEvent());
+        })
       .def("wait_stream",
            [](paddle::platform::stream::CUDAStream &self,
               paddle::platform::stream::CUDAStream &stream) {
@@ -1736,23 +1749,34 @@ void BindImperative(py::module *m_ptr) {
         return event;
 
       });
+#endif
 
   py::class_<paddle::platform::CudaEvent>(m, "CUDAEvent")
       .def("__init__",
-           [](paddle::platform::CudaEvent &self, bool enable_timing = false,
-              bool blocking = false, bool interprocess = false) {
+           [](paddle::platform::CudaEvent &self, bool enable_timing,
+              bool blocking, bool interprocess) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
              unsigned int flags = platform::get_cuda_flags(
                  enable_timing, blocking, interprocess);
              new (&self) paddle::platform::CudaEvent(flags);
-           })
-      .def("record",
-           [](paddle::platform::CudaEvent &self,
-              paddle::platform::stream::CUDAStream *stream) {
-             if (stream == nullptr) {
-               stream = paddle::platform::stream::get_current_stream(-1);
-             }
-             self.Record(*stream);
-           })
+#else
+             PADDLE_THROW(platform::errors::Unavailable(
+                 "Class CUDAEvent can only be initialized on the GPU "
+                 "platform."));
+
+#endif
+           },
+           py::arg("enable_timing") = false, py::arg("blocking") = false,
+           py::arg("interprocess") = false);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  m.def("record",
+        [](paddle::platform::CudaEvent &self,
+           paddle::platform::stream::CUDAStream *stream) {
+          if (stream == nullptr) {
+            stream = paddle::platform::stream::get_current_stream(-1);
+          }
+          self.Record(*stream);
+        })
       .def("query",
            [](paddle::platform::CudaEvent &self) { return self.Query(); })
       .def("synchronize",
