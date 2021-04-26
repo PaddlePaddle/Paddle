@@ -111,12 +111,12 @@ void EagerDeletionOpHandle::CallOnce() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  if (vars_.size() != var_infos_.size() ||
-      pre_scope_ != local_exec_scopes_[0]) {
-    pre_scope_ = scope_;
-    VLOG(3) << "call once with var_infos_.size: " << var_infos_.size();
-    CallOnce();
-  }
+  // if (vars_.size() != var_infos_.size() ||
+  //     pre_scope_ != local_exec_scopes_[0]) {
+  //   pre_scope_ = scope_;
+  VLOG(3) << "call once with var_infos_.size: " << var_infos_.size();
+  CallOnce();
+  // }
 
   platform::RecordEvent record_event(Name());
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
