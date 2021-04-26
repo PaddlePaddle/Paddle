@@ -387,6 +387,7 @@ class Timeline(object):
         netFileNameList = self._netFileReader.getFileListByGroup(groupId)
 
         if not netFileNameList:
+            logging.warning("we can not find any net data file in this group [%d] !" % groupId)
             return
 
         dcgm_data = self._dcgmFileReader.parseFileByGroup(groupId)
@@ -504,7 +505,7 @@ class netFileReader(FileReader):
         trainerId = self._getTrainerId(fileName)
 
         if not os.path.exists(fileName):
-            logging.warning(fileName + ' not found')
+            logging.warning(fileName + ' not found!')
             return
 
         with open(fileName, 'r') as fp:
