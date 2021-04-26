@@ -206,9 +206,17 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     // input
     auto *x = ctx.Input<Tensor>("X");
-    auto *rowptr = ctx.Input<Tensor>("LayOutRowPtr");
-    auto *colidx = ctx.Input<Tensor>("LayOutColIndex");
+    auto *rowptr = ctx.Input<Tensor>("layout_rowptr");
+    auto *colidx = ctx.Input<Tensor>("layout_colindex");
     int num_block = rowptr->dims()[0] - 1;
+
+    T scale = ctx.Attr<T>("scale");
+
+    bool kp_mode = ctx.Attr<bool>("kp_mask_mode");
+    bool attn_mode = ctx.Attr<bool>("attn_mask_mode");
+    auto *kp_mask = (kp_mode == true) ? ctx.Input<Tensor>("kp_mask") : NULL;
+    auto *attn_mask =
+        (attn_mode == true) ? ctx.Input<Tensor>("attn_mask") : NULL;
 
     // output
     auto *out = ctx.Output<Tensor>("Out");
@@ -221,6 +229,7 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
     // const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
 
     const int BlockSize = 64;
+    const int NnzBlockMax = 8;
 
     const int num_batch = x_dims[0];
     const int num_nnz = x_dims[1];
@@ -232,11 +241,32 @@ class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
 
     const dim3 blocks(32, 4, 1);
     const int grid = num_batch * seqlen / (32 * 4);
-    BlockSparseSoftmaxForward<
-        T, BlockSize,
-        4><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
-        out_data, x->data<T>(), 1.0, NULL, NULL, rowptr->data<int32_t>(),
-        colidx->data<int32_t>(), seqlen);
+
+    if ((kp_mode == true) && (attn_mode == true)) {
+      BlockSparseSoftmaxForward<
+          T, BlockSize, NnzBlockMax, true,
+          true><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
+          out_data, x->data<T>(), 1.0, kp_mask->data<T>(), attn_mask->data<T>(),
+          rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
+    } else if ((kp_mode == true) && (attn_mode == false)) {
+      BlockSparseSoftmaxForward<
+          T, BlockSize, NnzBlockMax, true,
+          false><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
+          out_data, x->data<T>(), 1.0, kp_mask->data<T>(), NULL,
+          rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
+    } else if ((kp_mode == false) && (attn_mode == true)) {
+      BlockSparseSoftmaxForward<
+          T, BlockSize, NnzBlockMax, false,
+          true><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
+          out_data, x->data<T>(), 1.0, NULL, attn_mask->data<T>(),
+          rowptr->data<int32_t>(), colidx->data<int32_t>(), seqlen);
+    } else {
+      BlockSparseSoftmaxForward<
+          T, BlockSize, NnzBlockMax, false,
+          false><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
+          out_data, x->data<T>(), 1.0, NULL, NULL, rowptr->data<int32_t>(),
+          colidx->data<int32_t>(), seqlen);
+    }
   }
 };
 
@@ -245,8 +275,8 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *x = ctx.Input<Tensor>("Out");
-    auto *rowptr = ctx.Input<Tensor>("LayOutRowPtr");
-    auto *colidx = ctx.Input<Tensor>("LayOutColIndex");
+    auto *rowptr = ctx.Input<Tensor>("layout_rowptr");
+    auto *colidx = ctx.Input<Tensor>("layout_colindex");
 
     int num_block = rowptr->dims()[0] - 1;
 
@@ -260,6 +290,7 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     // const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
 
     const int BlockSize = 64;
+    const int NnzBlockMax = 8;
 
     const int num_batch = x_dims[0];
     const int num_nnz = x_dims[1];
@@ -272,7 +303,7 @@ class SoftmaxBlockSparseGradKernel : public framework::OpKernel<T> {
     const int grid = num_batch * seqlen / (32 * 4);
     BlockSparseSoftmaxBackward<
         T, BlockSize,
-        4><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
+        NnzBlockMax><<<grid, blocks, 0, ctx.cuda_device_context().stream()>>>(
         dx_data, dout->data<T>(), x->data<T>(), 1.0, rowptr->data<int32_t>(),
         colidx->data<int32_t>(), seqlen);
   }

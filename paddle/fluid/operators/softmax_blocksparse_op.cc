@@ -25,7 +25,7 @@ class SoftmaxBlockSparseOp : public framework::OperatorWithKernel {
   //     const framework::ExecutionContext& ctx) const override {
   //   auto data_type =
   //       OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X",
-  //       "LayOutRowPtr", "LayOutColIndex");
+  //       "layout_rowptr", "layout_colindex");
   //   return framework::OpKernelType(data_type, ctx.device_context());
   // }
 
@@ -59,8 +59,15 @@ class SoftmaxBlockSparseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Input tensor.");
-    AddInput("LayOutRowPtr", "Layout csr format row pointer.");
-    AddInput("LayOutColIndex", "Layout csr format column index.");
+    AddInput("layout_rowptr", "Layout csr format row pointer.");
+    AddInput("layout_colindex", "Layout csr format column index.");
+    AddAttr<float>("scale", "Scale factor").SetDefault(1.0);
+    AddAttr<bool>("kp_mask_mode", "Kp mask mode").SetDefault(false);
+    ;
+    AddInput("kp_mask", "Kp mask");
+    AddAttr<bool>("attm_mask_mode", "Attn mask mode").SetDefault(false);
+    ;
+    AddInput("attn_mask", "Attn mask");
     AddOutput("Out", "Softmax of input tensor.");
     AddComment(R"DOC(
 Block Sparse Softmax Operator.
@@ -77,8 +84,8 @@ class SoftmaxBlockSparseGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("softmax_blocksparse_grad");
     op->SetInput("Out", this->Output("Out"));
-    op->SetInput("LayOutRowPtr", this->Input("LayOutRowPtr"));
-    op->SetInput("LayOutColIndex", this->Input("LayOutColIndex"));
+    op->SetInput("layout_rowptr", this->Input("layout_rowptr"));
+    op->SetInput("layout_colindex", this->Input("layout_colindex"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
