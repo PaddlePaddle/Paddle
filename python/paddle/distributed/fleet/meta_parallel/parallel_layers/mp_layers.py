@@ -18,7 +18,6 @@ from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
-from .layers_help import identity_in_model_parallel, gather_in_model_parallel, reduce_in_model_parallel, scatter_in_model_parallel
 
 __all__ = [
     'VocabParallelEmbedding', 'ColumnParallelLinear', 'RowParallelLinear'
@@ -75,8 +74,13 @@ class VocabParallelEmbedding(Layer):
         if len(origin_input_shape) == 2:
             x_shard = paddle.squeeze(x_shard, axis=-1)
 
-        emb_out_ = self.embedding(x_shard)
-        emb_out = reduce_in_model_parallel(emb_out_)
+        emb_out = self.embedding(x_shard)
+        if self.world_size > 1:
+            emb_out = paddle.distributed.collective._mp_allreduce(
+                emb_out,
+                group=self.model_parallel_group,
+                use_calc_stream=True,
+                use_model_parallel=True)
         return emb_out
 
 
@@ -123,11 +127,16 @@ class ColumnParallelLinear(Layer):
             self.bias = None
 
     def forward(self, x):
-        input_parallel = identity_in_model_parallel(x)
+        # use inner api to process identity
+        input_parallel = paddle.distributed.collective._c_identity(
+            x, group=self.model_parallel_group)
         output_parallel = F.linear(
             input_parallel, self.weight, self.bias, name=self.name)
         if self.gather_output:
-            output = gather_in_model_parallel(output_parallel)
+            output = paddle.distributed.collective._c_concat(
+                output_parallel,
+                nranks=self.world_size,
+                group=self.model_parallel_group)
         else:
             output = output_parallel
         return output
@@ -182,9 +191,18 @@ class RowParallelLinear(Layer):
             input_parallel = x
         else:
             # split last dim
-            input_parallel = scatter_in_model_parallel(x)
+            input_parallel = paddle.distributed.collective._c_split(
+                x,
+                rank=self.rank,
+                nranks=self.world_size,
+                group=self.model_parallel_group)
 
         output_parallel = F.linear(input_parallel, self.weight, name=self.name)
-        output_ = reduce_in_model_parallel(output_parallel)
+        output_ = paddle.distributed.collective._mp_allreduce(
+            output_parallel,
+            group=self.model_parallel_group,
+            use_calc_stream=True,
+            use_model_parallel=True)
+
         output = output_ + self.bias if self.bias is not None else output_
         return output
