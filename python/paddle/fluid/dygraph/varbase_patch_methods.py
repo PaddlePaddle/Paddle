@@ -26,6 +26,7 @@ from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+import paddle.utils.deprecated as deprecated
 
 
 class TensorHookRemoveHelper(object):
@@ -238,8 +239,16 @@ def monkey_patch_varbase():
                 "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
+    @deprecated(
+        since="2.1.0",
+        reason="Please use x.grad, which returns the tensor value of the gradient."
+    )
     def gradient(self):
         """
+        .. warning::
+          This API will be deprecated in the future, it is recommended to use
+          :code:`x.grad` which returns the tensor value of the gradient.
+
         Get the Gradient of Current Tensor.
 
         Returns:
@@ -253,7 +262,7 @@ def monkey_patch_varbase():
                 x = paddle.to_tensor(5., stop_gradient=False)
                 y = paddle.pow(x, 4.0)
                 y.backward()
-                print("grad of x: {}".format(x.grad))
+                print("grad of x: {}".format(x.gradient()))
                 # [500.]
 
         """
@@ -337,10 +346,28 @@ def monkey_patch_varbase():
     @property
     def grad(self):
         """
-        The alias of gradient().
-        """
+        .. warning::
+          This API will return the tensor value of the gradient. If you want 
+          to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`.
 
-        return self.gradient()
+        Get the Gradient of Current Tensor.
+
+        Returns:
+            Tensor: the gradient of current Tensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                x = paddle.to_tensor(5., stop_gradient=False)
+                y = paddle.pow(x, 4.0)
+                y.backward()
+                print("grad of x: {}".format(x.grad))
+                # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
+
+        """
+        return self._grad_ivar()
 
     def clear_grad(self):
         """
