@@ -368,7 +368,7 @@ def insert_reduce_ops(block,
     for var in reduce_vars:
 
         root_id = get_grad_device(var, shard)
-        assert root_id >= 0, "root id should be a positive int".format(var)
+        assert root_id >= 0, "root id should be a positive int"
         block._insert_op_without_sync(
             insert_idx,
             type='c_reduce_sum',

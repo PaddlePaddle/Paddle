@@ -392,7 +392,7 @@ def adjust_hue(img, hue_factor):
     cv2 = try_import('cv2')
 
     if not (-0.5 <= hue_factor <= 0.5):
-        raise ValueError('hue_factor is not in [-0.5, 0.5].'.format(hue_factor))
+        raise ValueError('hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor))
 
     dtype = img.dtype
     img = img.astype(np.uint8)
