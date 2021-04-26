@@ -1363,7 +1363,7 @@ class OpTest(unittest.TestCase):
                 abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
                 abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
             elif self.is_bfloat16_op():
-                abs_a[abs_a < 1e-2] = 1
+                abs_a[abs_a < 3e-3] = 1
             else:
                 abs_a[abs_a < 1e-3] = 1
 

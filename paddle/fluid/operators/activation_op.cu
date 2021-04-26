@@ -457,6 +457,9 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ===========================    relu register  ============================ */
+#ifdef PADDLE_WITH_HIP
+REGISTER_ACTIVATION_GPU_KERNEL(relu, Relu, ReluGPUFunctor, ReluGradGPUFunctor);
+#else
 REGISTER_OP_CUDA_KERNEL(
     relu, ops::ActivationGPUKernel<paddle::platform::CUDADeviceContext,
                                    ops::ReluGPUFunctor<float>>,
@@ -475,6 +478,7 @@ REGISTER_OP_CUDA_KERNEL(
                                  ops::ReluGradGPUFunctor<plat::float16>>,
     ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
                                  ops::ReluGradGPUFunctor<plat::bfloat16>>);
+#endif
 
 REGISTER_OP_CUDA_KERNEL(
     relu_grad_grad,
