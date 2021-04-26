@@ -28,17 +28,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename index_t>
-struct DivMod {
-  index_t div, mod;
-
-  HOSTDEVICE inline DivMod(index_t div, index_t mod) : div(div), mod(mod) {}
-};
-
 template <typename IndexT>
 struct FastDivMod {
-  FastDivMod() {}
+  using divmod_t = CudaAlignedVector<IndexT, 2>;
 
+  FastDivMod() {}
   explicit FastDivMod(IndexT d) : divisor(d) {
     for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
       IndexT shift_limit = 1 << shift_val;
@@ -52,14 +46,15 @@ struct FastDivMod {
     multiplier = temp_div;
   }
 
-  __device__ inline IndexT div(IndexT n) const {
+  __device__ __forceinline__ IndexT div(IndexT n) const {
     IndexT t = __umulhi(n, multiplier);
     return (t + n) >> shift_val;
   }
 
-  __device__ DivMod<IndexT> divmod(IndexT n) const {
+  __device__ __forceinline__ divmod_t divmod(IndexT n) {
     IndexT q = div(n);
-    return DivMod<IndexT>(q, n - q * divisor);
+    divmod_t result = {q, n - q * divisor};
+    return result;
   }
 
   IndexT divisor;
@@ -72,7 +67,8 @@ struct FastDivMod {
 * equal-dimensions appears;
 *  3. To Merge the dimension of input_tensors while the consequtive
 * 1-value-dimensions appears;
-*  4. To calculate the strides of each input_tensor. */
+*  4. To calculate the strides of each input_tensor.
+*/
 struct DimensionTransform {
   using vec_t = std::vector<uint64_t>;
   typedef void (*func_t)(bool &, std::vector<vec_t> &, vec_t &, int, int);
@@ -275,8 +271,8 @@ struct DataFetch {
 #pragma unroll(nDims)
     for (int i = 0; i < nDims; ++i) {
       auto fast_divmoder = divmoders[i].divmod(idx);
-      idx = fast_divmoder.div;
-      offset += fast_divmoder.mod * strides[in_idx][i];
+      idx = fast_divmoder.val[0];
+      offset += fast_divmoder.val[1] * strides[in_idx][i];
     }
     return offset;
   }
@@ -319,7 +315,6 @@ struct DataFetch {
 };
 #endif
 
-// #if 0
 // #if defined(__NVCC__) || defined(__HIPCC__)
 // template <typename T, typename ArgT, typename OffsetT, int nDims, int
 // vec_size,
@@ -453,7 +448,6 @@ struct DataFetch {
 //   nvstd::function<void(const T *, ArgT *, int)> v_loader[N];
 //   nvstd::function<void(const T *, T *, int)> s_loader[N];
 // };
-// #endif
 // #endif
 
 }  // namespace operators
