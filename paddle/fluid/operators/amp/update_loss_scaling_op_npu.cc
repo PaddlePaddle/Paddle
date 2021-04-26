@@ -150,7 +150,9 @@ class LazyZerosNPU {
       if (found_inf_vec[0]) {
         VLOG(4) << "-- UpdateLossScaling: Find infinite grads. --";
 
+        auto place = dev_ctx.GetPlace();
         auto stream = dev_ctx.stream();
+        out->mutable_data<T>(place);
         auto runner_zeros = NpuOpRunner("ZerosLike", {*out}, {*out});
         runner_zeros.Run(stream);
       }
