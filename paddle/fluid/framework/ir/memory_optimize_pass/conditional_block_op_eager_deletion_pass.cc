@@ -56,13 +56,13 @@ class ConditionalOpEagerDeletionPass : public Pass {
       auto all_ops = graph->OriginProgram().Block(0).AllOps();
       if (ifelse_ops.empty()) {
         for (auto *op : all_ops) {
-          if (op->Type() == "while") {
+          if (op->Type() == "conditional_block") {
             ifelse_ops.emplace_back(op);
           }
         }
       } else if (ifelse_grad_ops.empty()) {
         for (auto *op : all_ops) {
-          if (op->Type() == "while_grad") {
+          if (op->Type() == "conditional_block_grad") {
             ifelse_grad_ops.emplace_back(op);
           }
         }
