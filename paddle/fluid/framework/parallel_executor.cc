@@ -684,6 +684,49 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   SetReaderOpDeviceInfoOfGraphs(final_graphs);
 }
 
+ParallelExecutor::ParallelExecutor(const platform::Place &place, Scope *scope,
+                                   const ExecutionStrategy &exec_strategy,
+                                   const BuildStrategy &build_strategy,
+                                   ir::Graph *graph)
+    : member_(new ParallelExecutorPrivate({place}, scope)) {
+  VLOG(1) << "Step 1: InitExecutorPrivateMemberInfo";
+  InitExecutorPrivateMemberInfo(exec_strategy, build_strategy,
+                                /*device_count*/ 1, *graph);
+
+  VLOG(1) << "Step 2: CreateLocalScopes";
+  CreateLocalScopes(scope, /*local_scope*/ {scope}, /*create_new*/ false);
+
+  VLOG(1) << "Step 3: CompileGraphWithBuildStrategy";
+  std::vector<ir::Graph *> graphs = {graph};  // fake devices graph, not used
+  std::vector<ir::Graph *> async_graphs =
+      CompileGraphWithBuildStrategy(graph, &graphs, /*loss_var_name*/ "");
+
+  VLOG(1) << "Step 4: ApplyMemoryOptimizePass";
+  graph = member_->ApplyMemoryOptimizePass(graph);
+
+  VLOG(1) << "Step 5: CreateVariableInfos";
+  std::vector<details::VariableInfo> var_infos;
+  CreateVariableInfos(&var_infos, graph);
+
+  VLOG(1) << "Step 6: CreateLocalExecScopes";
+  std::unordered_map<Scope *, Scope *> scope_map =
+      CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ false);
+
+  VLOG(1) << "Step 7: CreateSSAGraphExecutor";
+  std::vector<ir::Graph *> final_graphs =
+      CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
+
+  VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
+  if (!member_->build_strategy_.async_mode_) {
+    member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+        std::move(var_infos), member_->places_, std::move(member_->executor_)));
+  }
+
+  VLOG(1) << "Step 8: ReSetOpScopeMaOfGraphs";
+  ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
+}
+
 void ParallelExecutor::BCastParamsToDevices(
     const std::vector<std::string> &vars, int trainer_id) const {
   VLOG(3) << "BCastParamsToDevices";
