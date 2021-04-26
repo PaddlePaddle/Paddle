@@ -24,6 +24,7 @@ from functools import reduce
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
+import paddle.compat as cpt
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
@@ -32,7 +33,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_ta
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
-CLIP_OP_NAME_SCOPE = "@CLIP"
+CLIP_OP_NAME_SCOPE = "gradient_clip"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -93,7 +94,7 @@ def delete_optimizer_pass(program, config):
     return program
 
 
-def distributed_ops_pass(program, config):
+def distributed_ops_pass(program, config, use_ps_gpu=False):
     trainer_id = config.get_role_id()
     send_ctx = config.get_the_one_send_context(
         split_dense_table=config.is_heter_ps_mode)
@@ -109,7 +110,7 @@ def distributed_ops_pass(program, config):
                 pull_sparse_ops[param_name] = ops
         return pull_sparse_ops
 
-    def _pull_sparse_fuse(_program, pull_sparse_ops):
+    def _pull_sparse_fuse(_program, pull_sparse_ops, use_ps_gpu):
         for param, ops in pull_sparse_ops.items():
             all_ops = program.global_block().ops
             op_idxs = [all_ops.index(op) for op in ops]
@@ -159,18 +160,31 @@ def distributed_ops_pass(program, config):
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
                 distributed_idx = max(inputs_idxs) + 1
 
-                program.global_block()._insert_op(
-                    index=distributed_idx,
-                    type="distributed_lookup_table",
-                    inputs={"Ids": inputs,
-                            'W': w},
-                    outputs={"Outputs": outputs},
-                    attrs={
-                        "is_distributed": is_distributed,
-                        "padding_idx": padding_idx,
-                        "table_id": table_id,
-                        "lookup_table_version": op_type
-                    })
+                if use_ps_gpu:
+                    program.global_block()._insert_op(
+                        index=distributed_idx,
+                        type="pull_box_sparse",
+                        inputs={"Ids": inputs,
+                                'W': w},
+                        outputs={"Out": outputs},
+                        attrs={
+                            "size": w.shape[1],
+                            "is_distributed": True,
+                            "is_sparse": True
+                        })
+                else:
+                    program.global_block()._insert_op(
+                        index=distributed_idx,
+                        type="distributed_lookup_table",
+                        inputs={"Ids": inputs,
+                                'W': w},
+                        outputs={"Outputs": outputs},
+                        attrs={
+                            "is_distributed": is_distributed,
+                            "padding_idx": padding_idx,
+                            "table_id": table_id,
+                            "lookup_table_version": op_type
+                        })
             else:
                 for i in range(len(inputs_idxs)):
                     distributed_idx = op_idxs[i] + 1
@@ -189,7 +203,7 @@ def distributed_ops_pass(program, config):
                         })
 
     pull_sparse_ops = _get_pull_sparse_ops(program)
-    _pull_sparse_fuse(program, pull_sparse_ops)
+    _pull_sparse_fuse(program, pull_sparse_ops, use_ps_gpu)
     return program
 
 
@@ -305,6 +319,54 @@ def fake_init_ops_pass(program, config):
     sparse_tables = _get_sparse_table_names()
     _fake_init_sparsetable(sparse_tables)
 
+    return program
+
+
+def ps_gpu_pass(program):
+    def _add_push_box_sparse_op(program):
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        for op in program.global_block().ops:
+            if op.type != "pull_box_sparse":
+                continue
+            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+                op.desc, cpt.to_text(set()), [])
+            for op_desc in grad_op_desc:
+                new_op_desc = program.global_block().desc.append_op()
+                new_op_desc.copy_from(op_desc)
+                new_op_desc._set_attr(op_role_attr_name, backward)
+
+    def _remove_lookup_table_grad_op_and_var(program):
+        lookup_table_grad_var = {}
+        remove_op_index = []
+        remove_var = []
+        for idx, op in list(enumerate(program.global_block().ops)):
+            if op.type == "lookup_table_grad":
+                for name in op.output("W@GRAD"):
+                    lookup_table_grad_var[name] = 1
+                    remove_op_index.append(idx)
+                    remove_var.append(name)
+                for name in op.input("W"):
+                    lookup_table_grad_var[name] = 1
+
+        for idx, op in list(enumerate(program.global_block().ops)):
+            if op.type == "pull_box_sparse":
+                continue
+            for key_name in op.input_names:
+                for var in op.input(key_name):
+                    if var in lookup_table_grad_var:
+                        remove_op_index.append(idx)
+                        break
+
+        remove_op_index = list(set(remove_op_index))
+        remove_op_index.sort(reverse=True)
+        for idx in remove_op_index:
+            program.global_block()._remove_op(idx)
+        for name in remove_var:
+            program.global_block()._remove_var(name)
+
+    _add_push_box_sparse_op(program)
+    _remove_lookup_table_grad_op_and_var(program)
     return program
 
 

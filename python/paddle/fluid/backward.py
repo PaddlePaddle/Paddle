@@ -115,7 +115,7 @@ class ProgramStats(object):
         updated_min_idx = min_idx
         while idx_ > pre_segment_end_idx:
             if is_amp_cast(self.ops[idx_]):
-                _logger.debug("found amp-cast op: {}, : {}".format(self.ops[
+                _logger.info("found amp-cast op: {}, : {}".format(self.ops[
                     idx_].desc.type(), self.ops[idx_].desc.input_arg_names()[
                         0]))
                 updated_min_idx = idx_
@@ -155,7 +155,7 @@ class ProgramStats(object):
         sorted_checkpoints = []
         for name in checkpoints_name:
             if name not in self.var_op_deps:
-                _logger.debug(
+                _logger.info(
                     "Recompute Optimizer: deleted %s from checkpoints, because it is not used in paddle program."
                     % name)
             elif self.var_op_deps[name]["var_as_output_ops"] == []:
@@ -233,6 +233,8 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
+            if desc.has_attr('op_device'):
+                new_op_desc._set_attr('op_device', desc.attr('op_device'))
             result_descs.append(new_op_desc)
     return result_descs
 
@@ -252,6 +254,8 @@ def _add_descs_to_block(descs, block):
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
+        if desc.has_attr('op_device'):
+            new_op_desc._set_attr('op_device', desc.attr('op_device'))
         result_descs.append(new_op_desc)
     return result_descs
 
@@ -784,7 +788,6 @@ def _append_backward_ops_with_checkpoints_(
         start_idx = 0
         pre_segment_end_idx = -1
         while True:
-            _logger.debug("FW op range[0] - [{}]".format(len(ops)))
             if start_idx >= len(checkpoints_name) - 1:
                 break
             # min_idx: checkpoint_1' s input op
@@ -797,6 +800,9 @@ def _append_backward_ops_with_checkpoints_(
                 min_idx = program_stat._update_segment_start(
                     min_idx, pre_segment_end_idx)
                 segments.append([min_idx, max_idx + 1])
+            else:
+                _logger.info("Could not recompute op range [{}] - [{}] ".format(
+                    min_idx, max_idx + 1))
 
             start_idx += 1
 
@@ -806,15 +812,15 @@ def _append_backward_ops_with_checkpoints_(
         recompute_segments = segments
 
     for i, (idx1, idx2) in enumerate(recompute_segments):
-        _logger.debug("recompute segment[{}]".format(i))
-        _logger.debug("segment start op: [{}]: [{}]".format(ops[idx1].desc.type(
+        _logger.info("recompute segment[{}]".format(i))
+        _logger.info("segment start op: [{}]: [{}]".format(ops[idx1].desc.type(
         ), ops[idx1].desc.input_arg_names()))
-        _logger.debug("segment end op: [{}]: [{}]".format(ops[
+        _logger.info("segment end op: [{}]: [{}]".format(ops[
             idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()))
-        _logger.debug("recompute segment[{}]".format(i))
-        _logger.debug("segment start op: [{}]: [{}]".format(ops[idx1].desc.type(
+        _logger.info("recompute segment[{}]".format(i))
+        _logger.info("segment start op: [{}]: [{}]".format(ops[idx1].desc.type(
         ), ops[idx1].desc.input_arg_names()))
-        _logger.debug("segment end op: [{}]: [{}]".format(ops[
+        _logger.info("segment end op: [{}]: [{}]".format(ops[
             idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()))
 
     # 2) go through all forward ops and induct all variables that will be hold in memory
@@ -825,9 +831,7 @@ def _append_backward_ops_with_checkpoints_(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
 
     cross_vars = set(vars_should_be_hold) - set(checkpoints_name)
-    _logger.debug("found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format( \
-    len(cross_vars), cross_vars))
-    _logger.debug("found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format( \
+    _logger.info("found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format( \
     len(cross_vars), cross_vars))
 
     # b. output of seed op should be kept in memory
@@ -843,6 +847,7 @@ def _append_backward_ops_with_checkpoints_(
     vars_in_memory = vars_should_be_hold + checkpoints_name
 
     max_calculated_op_position = len(ops)
+    device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
     if recompute_segments == []:
         gap_ops = ops[0:max_calculated_op_position]
         for op in reversed(gap_ops):
@@ -852,6 +857,11 @@ def _append_backward_ops_with_checkpoints_(
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+            # Set device for grad_op according to forward Op
+            if op.desc.has_attr(device_attr_name):
+                op_device = op.desc.attr(device_attr_name)
+                for op_desc in grad_op_desc:
+                    op_desc._set_attr(device_attr_name, op_device)
             added_descs = _add_descs_to_block(grad_op_desc, local_block)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
@@ -866,6 +876,11 @@ def _append_backward_ops_with_checkpoints_(
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+            # Set device for grad_op according to forward Op
+            if op.desc.has_attr(device_attr_name):
+                op_device = op.desc.attr(device_attr_name)
+                for op_desc in grad_op_desc:
+                    op_desc._set_attr(device_attr_name, op_device)
             added_descs = _add_descs_to_block(grad_op_desc, local_block)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
@@ -888,6 +903,17 @@ def _append_backward_ops_with_checkpoints_(
                     continue
                 if name not in var_name_dict:
                     var_name_dict[name] = name + var_suffix
+
+                    # we should create the rename var in subprog, otherwise its VarType will be BOOL
+                    ref_var = block.program.global_block().var(name)
+                    block.create_var(
+                        name=var_name_dict[name],
+                        shape=ref_var.shape,
+                        dtype=ref_var.dtype,
+                        type=ref_var.type,
+                        persistable=ref_var.persistable,
+                        stop_gradient=ref_var.stop_gradient)
+
         # 3.a. add ops in current recompute_segment as forward recomputation ops
         buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,
                                                   vars_in_memory)

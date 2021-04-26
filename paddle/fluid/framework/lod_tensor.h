@@ -14,16 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <glog/logging.h>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#ifdef PADDLE_WITH_CUDA
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#endif
-
-#include <glog/logging.h>
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -259,6 +254,10 @@ void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
 LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
 
 LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
+
+void SerializeToStream(std::ostream& os, const LoDTensor& tensor);
+
+void DeserializeFromStream(std::ifstream& os, LoDTensor* tensor);
 
 }  // namespace framework
 }  // namespace paddle

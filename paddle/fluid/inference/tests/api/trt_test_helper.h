@@ -148,6 +148,7 @@ void delete_cache_files(std::string path) {
       remove(file_rm.c_str());
     }
   }
+  remove(path.c_str());
 }
 
 }  // namespace inference

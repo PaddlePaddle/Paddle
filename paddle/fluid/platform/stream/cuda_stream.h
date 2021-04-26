@@ -101,7 +101,7 @@ class CUDAStream final {
   cudaStream_t stream_{nullptr};
 #endif
   Priority priority_{Priority::kNormal};
-  std::unique_ptr<StreamCallbackManager> callback_manager_;
+  std::unique_ptr<StreamCallbackManager<gpuStream_t>> callback_manager_;
 
   DISABLE_COPY_AND_ASSIGN(CUDAStream);
 };

@@ -183,7 +183,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
@@ -481,7 +481,7 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
@@ -581,7 +581,7 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;

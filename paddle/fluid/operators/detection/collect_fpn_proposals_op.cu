@@ -14,6 +14,7 @@ limitations under the License. */
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
 #endif
 
 #include <paddle/fluid/memory/allocation/allocator.h>
@@ -141,29 +142,18 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // Determine temporary device storage requirements
     size_t temp_storage_bytes = 0;
-#ifdef PADDLE_WITH_HIP
-    hipcub::DeviceRadixSort::SortPairsDescending<T, int>(
-        nullptr, temp_storage_bytes, concat_scores.data<T>(), keys_out, idx_in,
-        idx_out, total_roi_num);
-#else
     cub::DeviceRadixSort::SortPairsDescending<T, int>(
         nullptr, temp_storage_bytes, concat_scores.data<T>(), keys_out, idx_in,
-        idx_out, total_roi_num);
-#endif
+        idx_out, total_roi_num, 0, sizeof(T) * 8, dev_ctx.stream());
     // Allocate temporary storage
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-// Run sorting operation
-// sort score to get corresponding index
-#ifdef PADDLE_WITH_HIP
-    hipcub::DeviceRadixSort::SortPairsDescending<T, int>(
-        d_temp_storage->ptr(), temp_storage_bytes, concat_scores.data<T>(),
-        keys_out, idx_in, idx_out, total_roi_num);
-#else
+    // Run sorting operation
+    // sort score to get corresponding index
     cub::DeviceRadixSort::SortPairsDescending<T, int>(
         d_temp_storage->ptr(), temp_storage_bytes, concat_scores.data<T>(),
-        keys_out, idx_in, idx_out, total_roi_num);
-#endif
+        keys_out, idx_in, idx_out, total_roi_num, 0, sizeof(T) * 8,
+        dev_ctx.stream());
     index_out_t.Resize({real_post_num});
     Tensor sorted_rois;
     sorted_rois.mutable_data<T>({real_post_num, kBBoxSize}, dev_ctx.GetPlace());
@@ -185,29 +175,19 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         out_id_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     // Determine temporary device storage requirements
     temp_storage_bytes = 0;
-#ifdef PADDLE_WITH_HIP
-    hipcub::DeviceRadixSort::SortPairs<int, int>(
-        nullptr, temp_storage_bytes, sorted_batch_id.data<int>(), out_id_data,
-        batch_idx_in, index_out_t.data<int>(), real_post_num);
-#else
     cub::DeviceRadixSort::SortPairs<int, int>(
         nullptr, temp_storage_bytes, sorted_batch_id.data<int>(), out_id_data,
-        batch_idx_in, index_out_t.data<int>(), real_post_num);
-#endif
+        batch_idx_in, index_out_t.data<int>(), real_post_num, 0,
+        sizeof(int) * 8, dev_ctx.stream());
     // Allocate temporary storage
     d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-// Run sorting operation
-// sort batch_id to get corresponding index
-#ifdef PADDLE_WITH_HIP
-    hipcub::DeviceRadixSort::SortPairs<int, int>(
-        d_temp_storage->ptr(), temp_storage_bytes, sorted_batch_id.data<int>(),
-        out_id_data, batch_idx_in, index_out_t.data<int>(), real_post_num);
-#else
+    // Run sorting operation
+    // sort batch_id to get corresponding index
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, sorted_batch_id.data<int>(),
-        out_id_data, batch_idx_in, index_out_t.data<int>(), real_post_num);
-#endif
+        out_id_data, batch_idx_in, index_out_t.data<int>(), real_post_num, 0,
+        sizeof(int) * 8, dev_ctx.stream());
 
     GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
 
@@ -221,8 +201,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
 
     // get length-based lod by batch ids
-    GetLengthLoD<<<blocks, threads>>>(real_post_num, out_id_data,
-                                      length_lod_data);
+    GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
+        real_post_num, out_id_data, length_lod_data);
     std::vector<int> length_lod_cpu(lod_size);
     memory::Copy(platform::CPUPlace(), length_lod_cpu.data(), place,
                  length_lod_data, sizeof(int) * lod_size, dev_ctx.stream());

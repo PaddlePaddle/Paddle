@@ -103,7 +103,7 @@ void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
 
 template <typename T>
 void TestMainLoop() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::vector<platform::Place> places{platform::CPUPlace(),
                                       platform::CUDAPlace(0),
                                       platform::CUDAPinnedPlace()};

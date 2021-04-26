@@ -18,6 +18,7 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distribu
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
+import paddle
 """
     high level unit test for distribute fleet.
 """
@@ -112,23 +113,21 @@ class FleetDistRunnerBase(object):
 
     def build_optimizer(self, avg_cost, strategy):
         use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
+        grad_clip = None
         if use_grad_clip:
             # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
             if use_grad_clip == 1:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByValue(2.0))
+                grad_clip = paddle.nn.ClipGradByValue(min=-5.0, max=5.0)
             elif use_grad_clip == 2:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByNorm(2.0))
+                grad_clip = paddle.nn.ClipGradByNorm(2.0)
             elif use_grad_clip == 3:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByGlobalNorm(2.0))
+                grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
 
         use_decay = int(os.getenv("USE_DECAY", "0"))
         if use_decay:
             scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=LEARNING_RATE, gamma=0.999, verbose=True)
-            optimizer = fluid.optimizer.SGD(scheduler)
+            optimizer = fluid.optimizer.SGD(scheduler, grad_clip=grad_clip)
             """
             # learning rate decay method before 2.0
             optimizer = fluid.optimizer.SGD(
@@ -139,7 +138,7 @@ class FleetDistRunnerBase(object):
                     staircase=True)) 
             """
         else:
-            optimizer = fluid.optimizer.SGD(LEARNING_RATE)
+            optimizer = fluid.optimizer.SGD(LEARNING_RATE, grad_clip=grad_clip)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

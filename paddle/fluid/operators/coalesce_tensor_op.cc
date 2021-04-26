@@ -289,7 +289,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, double>);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     coalesce_tensor,
     ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext,
@@ -297,6 +297,16 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, double>);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+REGISTER_OP_XPU_KERNEL(
+    coalesce_tensor,
+    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext,
+                                plat::float16>,
+    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, int>,
+    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, double>);
 #endif
 
 REGISTER_OP_VERSION(coalesce_tensor)

@@ -23,7 +23,7 @@ from ..layer_helper import LayerHelper
 from sys import version_info
 
 
-def convert_to_list(value, n, name, dtype=np.int):
+def convert_to_list(value, n, name, dtype=int):
     """
     Converts a single numerical type or iterable of numerical
     types into an numerical type list.

@@ -18,7 +18,10 @@ import astor
 import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
+
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 
 
@@ -116,12 +119,13 @@ class ListTransformer(gast.NodeTransformer):
     def _transform_slice_to_tensor_write(self, node):
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
+
         target_name = target_node.value.id
         slice_node = target_node.slice
 
         if isinstance(slice_node, gast.Slice):
             pass
-        elif isinstance(slice_node, gast.Index):
+        elif slice_is_num(target_node):
             value_code = ast_to_source_code(node.value)
             i = "paddle.cast(" \
                 "x=paddle.jit.dy2static.to_static_variable({})," \

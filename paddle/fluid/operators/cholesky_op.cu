@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_WITH_HIP
+// HIP not support cusolver
+
 #include <thrust/device_vector.h>
 #include <algorithm>
 #include <vector>
@@ -164,3 +167,5 @@ REGISTER_OP_CUDA_KERNEL(
     cholesky_grad,
     ops::CholeskyGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CholeskyGradKernel<paddle::platform::CUDADeviceContext, double>);
+
+#endif  // not PADDLE_WITH_HIP

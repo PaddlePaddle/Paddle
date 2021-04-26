@@ -36,11 +36,13 @@ include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
+include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/include")
 
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
+link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
 if (WIN32)
@@ -145,12 +147,12 @@ if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags protobuf  xxhash
+      glog gflags protobuf xxhash cryptopp
       ${EXTERNAL_LIB})
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf  xxhash ${EXTERNAL_LIB})
+      glog gflags_static libprotobuf xxhash cryptopp-static ${EXTERNAL_LIB})
   set(DEPS ${DEPS} shlwapi.lib)
 endif(NOT WIN32)
 

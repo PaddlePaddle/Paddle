@@ -16,13 +16,28 @@ limitations under the License. */
 #include <thrust/execution_policy.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/argsort_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
+#ifdef __HIPCC__
+namespace rocprim {
+namespace detail {
+template <>
+struct radix_key_codec_base<paddle::platform::float16>
+    : radix_key_codec_integral<paddle::platform::float16, uint16_t> {};
+}  // namespace detail
+}  // namespace rocprim
+#else
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
@@ -30,6 +45,7 @@ struct NumericTraits<paddle::platform::float16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t,
                  paddle::platform::float16> {};
 }  // namespace cub
+#endif
 
 namespace paddle {
 namespace operators {
@@ -139,7 +155,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
                               cub::CountingInputIterator<IndType>>
       segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
 
-  cudaError_t err;
+  gpuError_t err;
   if (descending) {
     err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
         nullptr, temp_storage_bytes, inp, sorted_out_ptr,

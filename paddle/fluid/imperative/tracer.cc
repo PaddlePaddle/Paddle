@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -38,7 +39,7 @@ void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
   VLOG(6) << "Set current tracer: " << g_current_tracer;
 }
 
-static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
+void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   for (const auto& pair : outs) {
     for (const auto& var : pair.second) {
       // NOTE(zhiqiu): this happends when None output are passed from python
@@ -134,6 +135,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const platform::Place& place, bool trace_backward,
                      const std::map<std::string, std::string>& inplace_map) {
   platform::RecordEvent op_type_record_event(type);
+  platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
@@ -162,6 +164,23 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   try {
+    if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
+    } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+      platform::SetXPUDeviceId(
+          BOOST_GET_CONST(platform::XPUPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with XPU if use XPUPlace."));
+#endif
+    }
+
     OpBase::Run(*op, new_ins, outs, attrs, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
@@ -199,22 +218,6 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 }
 
 void Tracer::SetExpectedPlace(platform::Place place) {
-  // NOTE(wangxi): set device id before launch device kernel
-  if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU if use CUDAPlace."));
-#endif
-  } else if (platform::is_xpu_place(place)) {
-#ifdef PADDLE_WITH_XPU
-    platform::SetXPUDeviceId(BOOST_GET_CONST(platform::XPUPlace, place).device);
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with XPU if use XPUPlace."));
-#endif
-  }
   expected_place_ = place;
 }
 

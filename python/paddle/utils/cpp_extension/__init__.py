@@ -25,6 +25,5 @@ from . import cpp_extension
 from . import extension_utils
 
 __all__ = [
-    'CppExtension', 'CUDAExtension', 'BuildExtension', 'load', 'setup',
-    'get_build_directory'
+    'CppExtension', 'CUDAExtension', 'load', 'setup', 'get_build_directory'
 ]

@@ -447,9 +447,6 @@ class HDFSClient(FS):
             configs,
             time_out=5 * 60 * 1000,  # ms
             sleep_inter=1000):  # ms
-        # Raise exception if JAVA_HOME not exists.
-        java_home = os.environ["JAVA_HOME"]
-
         self.pre_commands = []
         hadoop_bin = '%s/bin/hadoop' % hadoop_home
         self.pre_commands.append(hadoop_bin)

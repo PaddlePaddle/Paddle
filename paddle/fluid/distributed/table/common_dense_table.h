@@ -47,15 +47,12 @@ class CommonDenseTable : public DenseTable {
   virtual int32_t set_global_lr(float* lr) override;
 
   int32_t load(const std::string& path, const std::string& param) override {
-    VLOG(0) << "Dense table may load by "
-               "paddle.distributed.fleet.init_server";
+    VLOG(0) << "WARNING: dense variables will load on No.0 trainer";
     return 0;
   }
 
   int32_t save(const std::string& path, const std::string& param) override {
-    VLOG(0)
-        << "Dense table may be saved by "
-           "paddle.distributed.fleet.save_persistables/save_inference_model";
+    VLOG(0) << "WARNING: dense variables will save on No.0 trainer";
     return 0;
   }
 

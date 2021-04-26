@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "thrust/pair.h"
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {
@@ -118,6 +118,12 @@ class HeterComm {
     std::vector<Node> nodes_;
   };
 
+  struct CopyTask {
+    Path* path;
+    int step;
+    CopyTask(Path* path_, int step_) : path(path_), step(step_) {}
+  };
+
   struct LocalStorage {
     LocalStorage() {}
     void init(int size, int dev_id) {
@@ -160,9 +166,10 @@ class HeterComm {
   void create_storage(
       int start_index, int end_index, int keylen, int vallen,
       std::vector<std::shared_ptr<memory::Allocation>>& local_strorage);
-  void walk_to_src(int start_index, int end_index, char* src_val);
-  void walk_to_dest(int start_index, int end_index, char* src_key,
-                    char* src_val);
+  void walk_to_dest(int start_index, int gpu_num, int* h_left, int* h_right,
+                    KeyType* src_key, GradType* src_val);
+  void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
+                   ValType* src_val);
 
  private:
   using Table = HashTable<KeyType, ValType>;
@@ -175,7 +182,7 @@ class HeterComm {
   std::vector<std::vector<Path>> path_;
   std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};
-  int multi_node_{1};
+  int multi_node_{0};
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;

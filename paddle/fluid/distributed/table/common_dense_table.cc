@@ -94,7 +94,7 @@ int32_t CommonDenseTable::initialize_optimizer() {
   } else {
     VLOG(0) << "init optimizer failed";
   }
-  VLOG(0) << "init optimizer " << name << " done";
+  VLOG(3) << "init optimizer " << name << " done";
   return 0;
 }
 
@@ -120,6 +120,7 @@ int32_t CommonDenseTable::push_dense_param(const float* values, size_t num) {
 }
 
 int32_t CommonDenseTable::pour() {
+  pull_reservoir_.avg();
   _push_dense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
   pull_reservoir_.reset();
   return 0;

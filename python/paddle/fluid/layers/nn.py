@@ -491,7 +491,7 @@ def embedding(input,
     helper = LayerHelper('embedding', **locals())
     check_variable_and_dtype(input, 'input', ['int64'],
                              'fluid.layers.embedding')
-    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+    check_dtype(dtype, 'dtype', ['uint16', 'float16', 'float32', 'float64'],
                 'fluid.layers.embedding')
 
     if is_distributed:
@@ -1524,6 +1524,10 @@ def conv2d(input,
             not use_cudnn):
         l_type = 'depthwise_conv2d'
 
+    if (num_channels == groups and num_filters % num_channels == 0 and
+            core.is_compiled_with_rocm()):
+        l_type = 'depthwise_conv2d'
+
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
@@ -1602,6 +1606,10 @@ def conv2d(input,
         default_initializer=_get_default_param_initializer())
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
+
+    if (core.is_compiled_with_cuda() and paddle.fluid.get_flags(
+            "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+        use_cudnn = False
 
     helper.append_op(
         type=l_type,
@@ -6137,9 +6145,9 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64',
-                 'bool'], 'reshape')
+    check_variable_and_dtype(x, 'x', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'uint16'
+    ], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
@@ -9256,6 +9264,9 @@ def affine_grid(theta, out_shape, name=None):
                                  'affine_grid')
     else:
         attrs['output_shape'] = out_shape
+    if core.is_compiled_with_rocm():
+        # ROCM platform do not have MIOPEN kernel for affine_grid
+        attrs['use_cudnn'] = False
 
     helper.append_op(
         type='affine_grid',
@@ -9507,8 +9518,8 @@ def pow(x, factor=1.0, name=None):
             y_2 = fluid.layers.pow(x, factor=factor_tensor)
             # y_2 is x^{3.0}
     """
-    check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'],
-                             'pow')
+    check_variable_and_dtype(
+        x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'pow')
 
     helper = LayerHelper('pow', **locals())
     inputs = {'X': x}
@@ -9933,7 +9944,7 @@ def flatten(x, axis=1, name=None):
 
     Args:
         x (Variable): A tensor of rank >= axis. A tensor with type float32,
-                      float64, int8, int32, int64.
+                      float64, int8, int32, int64, uint8.
         axis (int): Indicate up to which input dimensions (exclusive) should
                     be flattened to the outer dimension of the output.
                     The value for axis must be in the range [0, R], where R
@@ -9955,14 +9966,17 @@ def flatten(x, axis=1, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
             # x shape is [4, 4, 3]
             out = fluid.layers.flatten(x=x, axis=2)
             # out shape is [16, 3]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+        'flatten')
     helper = LayerHelper('flatten', **locals())
 
     if not (isinstance(x, Variable)):
@@ -10318,7 +10332,8 @@ def expand(x, expand_times, name=None):
     inputs = {"X": [x]}
     attrs = {}
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'expand')
     check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
         raise ValueError(
@@ -11354,9 +11369,11 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        x, 'x', ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+        op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        y, 'y', ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+        op_type)
 
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
@@ -11428,8 +11445,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         return dygraph_utils._append_activation_in_dygraph(out)
 
     check_variable_and_dtype(x, "x", [
-        'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64',
-        'uint8'
+        'float16', 'uint16', 'float32', 'float64', 'int8', 'int16', 'int32',
+        'int64', 'uint8'
     ], "scale")
     inputs = {'X': [x]}
     attrs = {
@@ -13334,7 +13351,7 @@ def shuffle_channel(x, group, name=None):
 
 
 @templatedoc()
-def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
+def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     """
 
     **Temporal Shift Operator**
@@ -13348,6 +13365,8 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It can be "NCHW" or "NHWC". Default: "NCHW".
 
     Returns:
         out(Tensor): The temporal shifting result is a tensor with the
@@ -13365,6 +13384,13 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             input = paddle.randn([6, 4, 2, 2])
             out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
+                         "Received Attr(data_format): {}.".format(data_format))
+    if in_dygraph_mode():
+        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
+                                       shift_ratio, 'data_format', data_format)
+
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
     check_type(seg_num, 'seg_num', int, 'temporal_shift')
@@ -13375,16 +13401,15 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     if not isinstance(seg_num, int):
         raise TypeError("seg_num must be int type.")
 
-    if in_dygraph_mode():
-        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
-                                       shift_ratio)
-
     helper.append_op(
         type="temporal_shift",
         inputs={"X": x},
         outputs={"Out": out},
-        attrs={"seg_num": seg_num,
-               "shift_ratio": shift_ratio})
+        attrs={
+            "seg_num": seg_num,
+            "shift_ratio": shift_ratio,
+            "data_format": data_format
+        })
     return out
 
 

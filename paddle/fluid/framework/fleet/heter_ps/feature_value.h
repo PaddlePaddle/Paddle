@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 #include <iostream>
 

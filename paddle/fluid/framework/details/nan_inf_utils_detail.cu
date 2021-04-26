@@ -82,7 +82,7 @@ __device__ __forceinline__ void PrintNanInfKernel(const T* value,
   }
   __syncthreads;
 
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
   if (true && hipThreadIdx_x == 0) {
     printf("In block %d, there has %u,%u,%u nan,inf,num\n", hipBlockIdx_x,
            nan_count, inf_count, num_count);
@@ -156,7 +156,7 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
                             "op_var2gpu_str, but now failed",
                             op_var));
 
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
       PADDLE_ENFORCE_CUDA_SUCCESS(
           hipMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
                          hipMemcpyHostToDevice, dev_ctx->stream()));
@@ -176,11 +176,16 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
     }
   }
 
+#ifdef __HIPCC__
+  // HIP will throw GPU memory access fault if threads > 256
+  const size_t threads = 256;
+#else
   const size_t threads = 1024;
+#endif
   size_t blocks =
       std::min(static_cast<size_t>(128),
                static_cast<size_t>((tensor_.numel() + threads - 1) / threads));
-#ifdef PADDLE_WITH_HIP
+#ifdef __HIPCC__
   hipLaunchKernelGGL(CheckNanInfKernel, dim3(blocks), dim3(threads), 0,
                      dev_ctx->stream(), tensor_.data<T>(), tensor_.numel(),
                      print_num, gpu_str_ptr);

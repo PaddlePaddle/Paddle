@@ -86,6 +86,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "simplify_with_basic_ops_pass",           //
       "embedding_eltwise_layernorm_fuse_pass",  //
       "multihead_matmul_fuse_pass_v2",          //
+      "multihead_matmul_fuse_pass_v3",          //
       "skip_layernorm_fuse_pass",               //
       "conv_bn_fuse_pass",                      //
       "unsqueeze2_eltwise_fuse_pass",           //
@@ -107,6 +108,15 @@ const std::vector<std::string> kTRTSubgraphPasses({
 #endif
 #endif
       "transpose_flatten_concat_fuse_pass",
+});
+
+const std::vector<std::string> kDlnneSubgraphPasses({
+    "is_test_pass",                  //
+    "simplify_with_basic_ops_pass",  //
+    "conv_bn_fuse_pass",             //
+    "depthwise_conv_bn_fuse_pass",   //
+    "shuffle_channel_detect_pass",   //
+    "dlnne_subgraph_pass",           //
 });
 
 const std::vector<std::string> kLiteSubgraphPasses({
@@ -230,6 +240,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_leaky_relu_mkldnn_fuse_pass",           //
              "conv_relu6_mkldnn_fuse_pass",                //
              "conv_swish_mkldnn_fuse_pass",                //
+             "conv_hard_swish_mkldnn_fuse_pass",           //
              "scale_matmul_fuse_pass",                     //
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_fuse_pass",         //

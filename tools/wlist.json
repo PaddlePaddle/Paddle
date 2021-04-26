@@ -286,9 +286,7 @@
         "BilinearTensorProduct",
         "GroupNorm",
         "SpectralNorm",
-        "TreeConv"
-    ],
-    "wlist_temp":[
+        "TreeConv",
         "prroi_pool",
         "ChunkEvaluator",
         "EditDistance",

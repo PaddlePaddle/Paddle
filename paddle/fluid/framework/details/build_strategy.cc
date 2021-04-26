@@ -161,9 +161,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
-#else
-    LOG(WARNING) << "fusion_group is not enabled for Windows/MacOS now, and "
-                    "only effective when running with CUDA GPU.";
 #endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
@@ -265,12 +262,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (FLAGS_use_mkldnn) {
       AppendPass(pass_name);
     } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
-      LOG(WARNING)
-          << "mkldnn_enabled_op_types specify the operator type list to "
-             "use MKLDNN acceleration. It is null in default, means "
-             "that all the operators supported by MKLDNN will be "
-             "accelerated. And it should not be set when "
-             "FLAGS_use_mkldnn=false.";
+      VLOG(1) << "mkldnn_enabled_op_types specify the operator type list to "
+                 "use MKLDNN acceleration. It is null in default, means "
+                 "that all the operators supported by MKLDNN will be "
+                 "accelerated. And it should not be set when "
+                 "FLAGS_use_mkldnn=false.";
     }
 #else
     PADDLE_ENFORCE_NE(FLAGS_use_mkldnn, true,
@@ -403,26 +399,26 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
               << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (use_device != p::kCUDA) {
-        LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
-                        "GPU, skipped.";
+        VLOG(1) << "fuse_relu_depthwise_conv_pass is only supported on "
+                   "GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fusion_group_pass") {
       pass->Set<bool>("use_gpu", new bool((use_device == p::kCUDA)));
       if (use_device != p::kCUDA) {
-        LOG(WARNING) << "fusion_group_pass is only supported on GPU, skipped.";
+        VLOG(1) << "fusion_group_pass is only supported on GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_act_pass") {
       if (use_device != p::kCUDA) {
-        LOG(WARNING) << "fuse_bn_act_pass is only supported on "
-                        "GPU, skipped.";
+        VLOG(1) << "fuse_bn_act_pass is only supported on "
+                   "GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_add_act_pass") {
       if (use_device != p::kCUDA) {
-        LOG(WARNING) << "fuse_bn_add_act_pass is only supported on "
-                        "GPU, skipped.";
+        VLOG(1) << "fuse_bn_add_act_pass is only supported on "
+                   "GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "mkldnn_placement_pass") {

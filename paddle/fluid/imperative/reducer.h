@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <ThreadPool.h>
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -27,6 +27,7 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -153,11 +154,20 @@ class Reducer {
 
   void MarkGroupReady(size_t group_index);
 
+  void FusedAllReduceSchedule(const int run_order, Group& group,  // NOLINT
+                              const int curr_group_index);
+
   void FinalizeBackward();
 
   std::vector<std::vector<size_t>> RebuildGruops();
 
-  inline bool NeedRebuildGroup() { return !has_rebuilt_group_; }
+  inline bool NeedRebuildGroup() {
+    return !has_rebuilt_group_ && !find_unused_vars_;
+  }
+
+  void ProcessUnusedDenseVars();
+
+  bool HasGrad(size_t var_index);
 
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
@@ -186,7 +196,27 @@ class Reducer {
   std::vector<size_t> unused_vars_;
   bool has_marked_unused_vars_{false};
   bool find_unused_vars_{false};
-  bool all_group_ready_{false};
+  bool groups_need_finalize_{false};
+#ifdef PADDLE_WITH_XPU_BKCL
+  // comm_pool_ is used for scheduling allreduce in multi Kunlun cards training.
+  std::unique_ptr<::ThreadPool> comm_pool_{nullptr};
+  uint32_t comm_op_count_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+#endif
+
+  // it just for checking hook, each parameter can only trigger one hook
+  std::vector<bool> vars_marked_ready_;
+
+  // Following variables are to help control flow.
+  // local_used_vars_ uses 0/1 to indicate whether the
+  // var is used in iteration. After the end of the
+  // iteration, global_used_vars_ is obtained synchronously
+  // globally. Choose whether to update the local
+  // gradient according to the global_used_vars_.
+  std::vector<int> local_used_vars_;
+  // global_used_vars_ is used in comm stream to avoid wait
+  framework::Variable global_used_vars_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(

@@ -68,7 +68,7 @@ std::vector<paddle::DataType> InferDtype(paddle::DataType x_dtype) {
   return {x_dtype, paddle::DataType::FLOAT64, paddle::DataType::INT32};
 }
 
-PD_BUILD_OP("multi_out")
+PD_BUILD_OP(multi_out)
     .Inputs({"X"})
     .Outputs({"Out", "Fake_float64", "ZFake_int32"})
     .SetKernelFn(PD_KERNEL(MultiOutCPU))

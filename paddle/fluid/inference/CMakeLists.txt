@@ -33,8 +33,12 @@ if (WITH_LITE)
   add_subdirectory(lite)
 endif()
 
-# fluid_modules exclude API-interface of inference/api and inference/capi
+# fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying file
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 
 add_subdirectory(api)
 
@@ -57,7 +61,7 @@ if(NOT APPLE)
 endif()
 
 # C inference API
-add_subdirectory(capi)
+add_subdirectory(capi_exp)
 
 if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     add_subdirectory(tests/api)
@@ -73,7 +77,8 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
-    ${mkldnn_quantizer_src_file})
+    ${mkldnn_quantizer_src_file}
+    ${PADDLE_CUSTOM_OP_SRCS})
 
 # shared inference library deps
 set(SHARED_INFERENCE_DEPS ${fluid_modules} analysis_predictor)

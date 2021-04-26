@@ -47,9 +47,6 @@ DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
-DEFINE_bool(fast_check_nan_inf, false,
-            "Fast checking NAN/INF after each operation. It will be a little"
-            "bit slow, much faster than check_nan_inf");
 
 namespace paddle {
 namespace framework {
@@ -193,7 +190,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
       PADDLE_THROW(platform::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
           "reinstall Paddle with CUDA support.",
@@ -211,6 +208,16 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
       platform::SetXPUDeviceId(dev_id);
+#endif
+    } else if (platform::is_npu_place(place)) {
+#ifndef PADDLE_WITH_ASCEND_CL
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with NPU support.",
+          place));
+#else
+      auto dev_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
+      platform::SetNPUDeviceId(dev_id);
 #endif
     }
 
@@ -1167,25 +1174,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
 #endif
-  }
-
-  if (FLAGS_fast_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
-      // only check inserted vars,
-      // please see executor.py for details of fast_check_nan_inf
-      if (vname.rfind("debug_var") == 0) {
-        VLOG(3) << "debugging nan/inf in var " << vname;
-
-        auto* var = exec_scope.FindVar(vname);
-        if (var == nullptr) continue;
-        if (var->IsType<framework::LoDTensor>()) {
-          CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-        } else if (var->IsType<framework::SelectedRows>()) {
-          CheckTensorNANOrInf(type_, vname,
-                              var->Get<framework::SelectedRows>().value());
-        }
-      }
-    }
+#if defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+    VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+#endif
   }
 
   if (FLAGS_check_nan_inf) {
@@ -1244,7 +1236,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       }
     }
   }
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+  VLOG(3) << "op type:" << type_
+          << ", expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_MKLDNN
@@ -1261,6 +1254,16 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   if (kernel_iter == kernels.end() &&
       is_xpu_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing XPU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (kernel_iter == kernels.end() &&
+      is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing NPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();

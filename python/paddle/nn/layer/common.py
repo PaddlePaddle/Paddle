@@ -35,7 +35,15 @@ __all__ = [
     'Dropout3D',
     'Bilinear',
     'AlphaDropout',
+    'Unfold',
 ]
+
+
+def _npairs(x, n):
+    if isinstance(x, (paddle.Tensor, list)):
+        return x
+    x = [x] * (n * 2)
+    return x
 
 
 class Linear(layers.Layer):
@@ -571,7 +579,7 @@ class Bilinear(layers.Layer):
 
     .. math::
 
-      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,size-1
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,outfeatures-1
 
       out = out + b
 
@@ -579,7 +587,7 @@ class Bilinear(layers.Layer):
      - :math:`x1`: the first input contains in1_features elements, shape is [batch_size, in1_features].
      - :math:`x2`: the second input contains in2_features elements, shape is [batch_size, in2_features].
      - :math:`W_{i}`: the i-th learned weight, shape is [in1_features, in2_features], and learned weight's shape is [out_features, in1_features, in2_features].
-     - :math:`out_{i}`: the i-th element of out, shape is [batch_size, out_features].
+     - :math:`out_{i}`: the i-th element of out, shape is [batch_size], and out's shape is [batch_size, out_features].
      - :math:`b`: the learned bias, shape is [1, out_features].
      - :math:`x2^\mathrm{T}`: the transpose of :math:`x2`.
 
@@ -915,7 +923,8 @@ class Pad1D(layers.Layer):
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -968,7 +977,7 @@ class Pad1D(layers.Layer):
                  data_format="NCL",
                  name=None):
         super(Pad1D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 1)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -996,8 +1005,9 @@ class Pad2D(layers.Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
@@ -1051,7 +1061,7 @@ class Pad2D(layers.Layer):
                  data_format="NCHW",
                  name=None):
         super(Pad2D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 2)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -1079,7 +1089,8 @@ class Pad3D(layers.Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -1134,7 +1145,7 @@ class Pad3D(layers.Layer):
                  data_format="NCDHW",
                  name=None):
         super(Pad3D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 3)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -1219,7 +1230,7 @@ class Embedding(layers.Layer):
     For specific usage, refer to code examples. It implements the function of the Embedding Layer.
     This layer is used to lookup embeddings vector of ids provided by :attr:`x` .
     It automatically constructs a 2D embedding matrix based on the
-    input :attr:`num_embeddings` and attr:`embedding_dim`.
+    input :attr:`num_embeddings` and :attr:`embedding_dim`.
 
     The shape of output Tensor is generated by appending an emb_size dimension to the
     last dimension of the input Tensor shape.
@@ -1231,9 +1242,9 @@ class Embedding(layers.Layer):
 
         Case 1:
 
-        input is a Tensor. padding_idx = -1
-            input.data = [[1, 3], [2, 4], [4, 127]
-            input.shape = [3, 2]
+        x is a Tensor. padding_idx = -1
+            x.data = [[1, 3], [2, 4], [4, 127]
+            x.shape = [3, 2]
         Given size = [128, 16]
         output is a Tensor:
             out.shape = [3, 2, 16]
@@ -1251,7 +1262,7 @@ class Embedding(layers.Layer):
     Parameters:
         num_embeddings (int): Just one element which indicate the size
             of the dictionary of embeddings.
-        embedding_dim:  Just one element which indicate the size of each embedding vector respectively.
+        embedding_dim (int):  Just one element which indicate the size of each embedding vector respectively.
         padding_idx(int|long|None): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
@@ -1260,9 +1271,7 @@ class Embedding(layers.Layer):
         sparse(bool): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizer does not support sparse update,
-            such as :ref:`api_optimizer_AdadeltaOptimizer` , :ref:`api_optimizer_AdamaxOptimizer` ,
-            :ref:`api_optimizer_DecayedAdagradOptimizer` , :ref:`api_optimizer_FtrlOptimizer` ,
-            :ref:`api_optimizer_LambOptimizer` and :ref:`api_optimizer_LarsMomentumOptimizer` .
+            such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these case, sparse must be False. Default: False.
         weight_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
@@ -1372,3 +1381,73 @@ class Embedding(layers.Layer):
         if self._name is not None:
             main_str += ', name={_name}'
         return main_str.format(**self.__dict__)
+
+
+class Unfold(layers.Layer):
+    """
+    This op returns a col buffer of sliding local blocks of input x, also known
+    as im2col for batched 2D image tensors. For each block under the convolution filter,
+    all element will be rearranged as a column. While the convolution filter sliding over
+    the input feature map, a series of such columns will be formed.
+
+    For each input :math:`x` with shape [N, C, H, W], the output shape [N, Cout, Lout]
+    can be calculated as following.
+
+    See ``paddle.nn.functional.unfold`` for more details.
+
+    
+    Parameters:
+        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        strides(int|list):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [sride, stride].
+                                  For default, strides will be [1, 1].
+        paddings(int|list):       The paddings of each dimension, should be
+                                  [padding_top, padding_left, padding_bottom, padding_right]
+                                  or [padding_h, padding_w] or an integer padding.
+                                  If [padding_h, padding_w] was given, it will expanded to
+                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
+                                  padding was given, [padding, padding, padding, padding] will
+                                  be used. For default, paddings will be [0, 0, 0, 0]
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            x = paddle.randn((100,3,224,224))
+            unfold = nn.Unfold(kernel_sizes=[3, 3])
+            result = unfold(x)
+            print(result)
+   """
+
+    def __init__(self,
+                 kernel_sizes,
+                 dilations=1,
+                 paddings=0,
+                 strides=1,
+                 name=None):
+        super(Unfold, self).__init__()
+
+        self.kernel_sizes = kernel_sizes
+        self.dilations = dilations
+        self.paddings = paddings
+        self.strides = strides
+        self.name = name
+
+    def forward(self, input):
+        return F.unfold(input, self.kernel_sizes, self.dilations, self.paddings,
+                        self.strides, self.name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.\
+                format(self.kernel_sizes, self.dilations, self.paddings, self.strides, name_str)

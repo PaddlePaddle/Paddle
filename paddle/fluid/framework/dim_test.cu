@@ -34,7 +34,12 @@ TEST(Dim, Equality) {
 
   // construct a Dim on the GPU
   thrust::device_vector<paddle::framework::Dim<2>> t(2);
+#ifdef PADDLE_WITH_HIP
+  hipLaunchKernelGGL(test, dim3(1), dim3(1), 0, 0,
+                     thrust::raw_pointer_cast(t.data()));
+#else
   test<<<1, 1>>>(thrust::raw_pointer_cast(t.data()));
+#endif
   a = t[0];
   EXPECT_EQ(a[0], 5);
   EXPECT_EQ(a[1], 6);
@@ -55,7 +60,12 @@ TEST(Dim, Equality) {
 
   // dynamic access on GPU
   thrust::device_vector<int64_t> r(1);
+#ifdef PADDLE_WITH_HIP
+  hipLaunchKernelGGL(dyn_idx_gpu, dim3(1), dim3(1), 0, 0,
+                     thrust::raw_pointer_cast(r.data()));
+#else
   dyn_idx_gpu<<<1, 1>>>(thrust::raw_pointer_cast(r.data()));
+#endif
   int64_t res = r[0];
   EXPECT_EQ(res, 6);
 }
