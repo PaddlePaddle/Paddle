@@ -1324,5 +1324,19 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
 
+class TestCrossEntropyFAPIError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_LabelValue():
+                input_data = paddle.rand(shape=[20, 100])
+                label_data = paddle.randint(0, 100, shape=[5, 1], dtype="int64")
+                label_data[0] = 255
+                paddle.nn.functional.cross_entropy(
+                    input=input_data, label=label_data)
+
+            self.assertRaises(ValueError, test_LabelValue)
+
+
 if __name__ == "__main__":
     unittest.main()
