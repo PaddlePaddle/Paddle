@@ -68,13 +68,6 @@ class ExecutorInfoCache {
       return ss.str();
     }
 
-    bool operator==(const CacheKey& rhs) const {
-      return (program_desc_ == rhs.program_desc_ &&
-              start_op_index_ == rhs.start_op_index_ &&
-              end_op_index_ == rhs.end_op_index_ && is_grad_ == rhs.is_grad_ &&
-              device_type_ == rhs.device_type_);
-    }
-
     const ProgramDesc* program_desc_;
     const platform::Place& place_;
     int64_t start_op_index_;
@@ -83,6 +76,7 @@ class ExecutorInfoCache {
     platform::DeviceType device_type_;
   };
 
+  using KeyType = size_t;
   using ValueType =
       std::pair<std::shared_ptr<ParallelExecutor>, std::shared_ptr<ir::Graph>>;
 
@@ -120,30 +114,38 @@ class ExecutorInfoCache {
   static ExecutorInfoCache& Instance();
 
   ValueType GetMutable(const CacheKey& key) {
+    auto key_val = key_hash_func_(key);
     PADDLE_ENFORCE_EQ(
-        Has(key), true,
+        Has(key_val), true,
         platform::errors::NotFound("%s doesn't exist in ExecutorInfoCache",
                                    key.DebugString()));
-    return info_map_[key];
+    return info_map_[key_val];
   }
 
   bool Has(const CacheKey& key) const {
+    auto key_val = key_hash_func_(key);
+    return Has(key_val);
+  }
+
+  bool Has(const KeyType& key) const {
     return info_map_.find(key) != info_map_.end();
   }
 
   void Insert(const CacheKey& key, ValueType value) {
+    auto key_val = key_hash_func_(key);
     PADDLE_ENFORCE_EQ(
-        Has(key), false,
+        Has(key_val), false,
         platform::errors::NotFound("%s has existed in ExecutorInfoCache",
                                    key.DebugString()));
-    info_map_.insert({key, value});
+    info_map_.insert({key_val, value});
   }
 
  private:
   ExecutorInfoCache() = default;
   DISABLE_COPY_AND_ASSIGN(ExecutorInfoCache);
 
-  std::unordered_map<CacheKey, ValueType, KeyHasher> info_map_;
+  KeyHasher key_hash_func_;
+  std::unordered_map<KeyType, ValueType> info_map_;
 };
 
 std::shared_ptr<ParallelExecutor> GetExecutorInfoFromCache(

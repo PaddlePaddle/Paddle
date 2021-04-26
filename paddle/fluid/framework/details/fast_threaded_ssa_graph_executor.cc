@@ -226,7 +226,6 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
-  VLOG(3) << "Enter RunOpAsync with op: " << op->Node()->Op()->Type();
   this->pool_.enqueue([=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);
