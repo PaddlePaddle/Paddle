@@ -150,7 +150,6 @@ rem ------pre install python requirement----------
 where python
 where pip
 pip install wheel --user
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 pip install -r %work_dir%\python\requirements.txt --user
 
 if %ERRORLEVEL% NEQ 0 (
@@ -194,12 +193,15 @@ echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
 echo "wincheck_mkl: run Windows MKL/GPU/UnitTest CI tasks on Windows"
 echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
+echo "build_avx_whl: build Windows avx whl package on Windows"
+echo "build_no_avx_whl: build Windows no avx whl package on Windows"
 exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
 :CASE_wincheck_mkl
 set WITH_MKL=ON
 set WITH_GPU=ON
+set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
 
 call :cmake || goto cmake_error
@@ -212,8 +214,9 @@ goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
 :CASE_wincheck_openblas
-set WITH_MKL=ON
+set WITH_MKL=OFF
 set WITH_GPU=OFF
+set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
 set retry_times=1
 
@@ -496,6 +499,12 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
+
+pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+if %ERRORLEVEL% NEQ 0 (
+    echo pip install unittest requirements.txt failed!
+    exit /b 7
+)
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
