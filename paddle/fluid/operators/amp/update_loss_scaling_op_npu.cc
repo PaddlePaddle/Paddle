@@ -150,11 +150,9 @@ class LazyZerosNPU {
       if (found_inf_vec[0]) {
         VLOG(4) << "-- UpdateLossScaling: Find infinite grads. --";
 
-        auto place = dev_ctx.GetPlace();
         auto stream = dev_ctx.stream();
-        auto g = out->mutable_data<T>(place);
-        platform::NPUMemsetAsync(static_cast<void*>(g), 0,
-                                 out->numel() * sizeof(T), stream);
+        auto runner_zeros = NpuOpRunner("ZerosLike", {*out}, {*out});
+        runner_zeros.Run(stream);
       }
     }
   }
