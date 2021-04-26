@@ -69,6 +69,8 @@ class Sequential(Layer):
     def __getitem__(self, name):
         if isinstance(name, slice):
             return self.__class__(*(list(self._sub_layers.values())[name]))
+        elif isinstance(name, str):
+            return self._sub_layers[name]
         else:
             if name >= len(self._sub_layers):
                 raise IndexError('index {} is out of range'.format(name))

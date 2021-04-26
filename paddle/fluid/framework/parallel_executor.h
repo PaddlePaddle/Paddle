@@ -113,7 +113,8 @@ class ParallelExecutor {
 
   void InitExecutorPrivateMemberInfo(const ExecutionStrategy &exec_strategy,
                                      const BuildStrategy &build_strategy,
-                                     size_t device_count, ir::Graph *graph);
+                                     size_t device_count,
+                                     const ir::Graph &graph);
 
   void CreateLocalScopes(Scope *global_scope,
                          const std::vector<Scope *> &local_scopes,
@@ -137,7 +138,7 @@ class ParallelExecutor {
       const ExecutionStrategy &exec_strategy,
       std::vector<ir::Graph *> *async_graphs, ir::Graph *graph);
 
-  void ReSetOpScopeMapOfGraphs(
+  void ResetOpHandleScopeMapOfGraphs(
       const std::vector<ir::Graph *> &final_graphs,
       const std::unordered_map<Scope *, Scope *> &scope_map);
 

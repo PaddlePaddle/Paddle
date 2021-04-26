@@ -117,8 +117,8 @@ class ParallelExecutorPrivate {
    *
    *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of fed
    *                                       variables, so we do not need to skip
-  *                                       them.
-    */
+   *                                       them.
+   */
   inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
     if (mem_opt_var_infos_.size() == 0) {
       VLOG(4) << "The mem_opt_var_infos_ is empty, maybe no memory "
@@ -630,20 +630,16 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
-  // Step1. Initialize necessary info of member_ with strategy.
+  // Initialize necessary info of member_ with strategy.
   InitExecutorPrivateMemberInfo(exec_strategy, build_strategy, places.size(),
-                                graph);
+                                *graph);
 
-  // Step 2. Create local scopes
+  // Step 1. Create local scopes and Clone graph into multi device
   CreateLocalScopes(scope, local_scopes, /*create_new*/ true);
-
-  // Step 3. Clone graph into multi device
   std::vector<ir::Graph *> graphs = CloneGraphToMultiDevices(graph);
-
-  // Step 4. Prepare NCCL/BKCL communicators
   PrepareNCCLCommunicator(scope);
 
-  // Step 5. broadcast parameters from the 0th device to others:
+  // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
     if (member_->build_strategy_.num_trainers_ > 1) {
       // 1. num_tariners would be grater than 1 for nccl distributed training.
@@ -655,30 +651,25 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
     return false;
   };
-  // Bcast Parameters to all GPUs
   if (need_broadcast()) {
     BCastParamsToDevices(bcast_vars, member_->build_strategy_.trainer_id_);
   }
 
-  // Step 6. Convert main_program to SSA form and dependency graph. Also, insert
+  // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
-
-  // Step 7. Apply memory optimization pass
   graph = member_->ApplyMemoryOptimizePass(graph);
   async_graphs[0] = graph;
 
-  // Step 8. Create vars in each scope. Passes may also create new vars.
+  // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
   CreateVariableInfos(&var_infos, graph);
-
-  // Step 9. Create local execution scopes
   std::unordered_map<Scope *, Scope *> scope_map =
       CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ true);
 
-  // Step 10. Create SSAGraph executor
+  // Step 4. Create SSAGraph executor
   std::vector<ir::Graph *> final_graphs =
       CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
@@ -689,83 +680,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         std::move(var_infos), member_->places_, std::move(member_->executor_)));
   }
 
-  // Step 11. Set scope_map of op from each graph
-  ReSetOpScopeMapOfGraphs(final_graphs, scope_map);
-
-  // Step 12. Set ReaderOpDeviceInfo for each graph
+  ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
   SetReaderOpDeviceInfoOfGraphs(final_graphs);
-}
-
-ParallelExecutor::ParallelExecutor(const platform::Place &place, Scope *scope,
-                                   const ExecutionStrategy &exec_strategy,
-                                   const BuildStrategy &build_strategy,
-                                   ir::Graph *graph)
-    : member_(new ParallelExecutorPrivate({place}, scope)) {
-  // Step1. Initialize necessary info of member_ with strategy.
-  VLOG(1) << "Step 1: InitExecutorPrivateMemberInfo";
-  InitExecutorPrivateMemberInfo(exec_strategy, build_strategy,
-                                /*device_count*/ 1, graph);
-
-  // Step 2. Create local scopes
-  // NOTE(Aurelius84): In this case, PE will use scope as local_scope to easily
-  // shared
-  // variables with it.
-  VLOG(1) << "Step 2: CreateLocalScopes";
-  CreateLocalScopes(scope, /*local_scope*/ {scope}, /*create_new*/ false);
-
-  // Step 3. Apply BuildStrategy to compile graph.
-  VLOG(1) << "Step 3: CompileGraphWithBuildStrategy";
-  std::vector<ir::Graph *> graphs = {graph};  // fake devices graph, not used
-  std::vector<ir::Graph *> async_graphs =
-      CompileGraphWithBuildStrategy(graph, &graphs, /*loss_var_name*/ "");
-
-  // Step 4: Apply memory optimization pass
-  VLOG(1) << "Step 4: ApplyMemoryOptimizePass";
-  graph = member_->ApplyMemoryOptimizePass(graph);
-
-  // Step 5. Create vars in each scope. Passes may also create new vars.
-  //         skip control vars and empty vars
-  VLOG(1) << "Step 5: CreateVariableInfos";
-  CreateVariableInfos(&var_infos_, graph);
-
-  // Step 6. Create local execution scopes
-  // TODO(Aurelius84): We can create scope_map dicrectly with {scope: scope}
-  VLOG(1) << "Step 6: CreateLocalExecScopes";
-  std::unordered_map<Scope *, Scope *> scope_map =
-      CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ false);
-
-  // Step 7. Create SSAGraph executor
-  VLOG(1) << "Step 7: CreateSSAGraphExecutor";
-  std::vector<ir::Graph *> final_graphs =
-      CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
-
-  // TODO(Aurelus84): In Dy2Stat, Scope is created and passed from Python
-  // every time, it is managed by RunProgramOp. Considering a better way
-  // to decrease the overhead of frequently destructuring Scope.
-
-  // VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
-  // if (!member_->build_strategy_.async_mode_) {
-  //   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-  //       exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-  //       std::move(var_infos), member_->places_,
-  //       std::move(member_->executor_)));
-  // }
-
-  // Step 8. Set scope_map of op from each graph
-  VLOG(1) << "Step 8: ReSetOpScopeMapOfGraphs";
-  ReSetOpScopeMapOfGraphs(final_graphs, scope_map);
-}
-
-void ParallelExecutor::PrepareLocalExeScopes(Scope *scope) {
-  for (auto &info : var_infos_) {
-    auto var = scope->FindVar(info.name_);
-    if (var != nullptr) {
-      VLOG(2) << info.name_
-              << " has been initialized beforehand in global scope, skipped";
-      continue;
-    }
-    InitializeVariable(scope->Var(info.name_), info.type_);
-  }
 }
 
 void ParallelExecutor::BCastParamsToDevices(
@@ -1174,7 +1090,7 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 
 void ParallelExecutor::InitExecutorPrivateMemberInfo(
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
-    size_t device_count, ir::Graph *graph) {
+    size_t device_count, const ir::Graph &graph) {
   member_->use_device_ = exec_strategy.use_device_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
@@ -1226,7 +1142,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
   member_->build_strategy_.enable_parallel_graph_ =
-      EnableParallelGraphExecution(*graph, exec_strategy,
+      EnableParallelGraphExecution(graph, exec_strategy,
                                    member_->build_strategy_);
   if (member_->build_strategy_.enable_parallel_graph_) {
     LOG(INFO) << "The Executor would execute the graph by ParallelGraph "
@@ -1532,7 +1448,7 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
   return final_graphs;
 }
 
-void ParallelExecutor::ReSetOpScopeMapOfGraphs(
+void ParallelExecutor::ResetOpHandleScopeMapOfGraphs(
     const std::vector<ir::Graph *> &final_graphs,
     const std::unordered_map<Scope *, Scope *> &scope_map) {
   PADDLE_ENFORCE_GE(

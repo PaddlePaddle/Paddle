@@ -42,6 +42,10 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
+if (WITH_DLNNE)
+    add_subdirectory(dlnne)
+endif()
+
 if (WITH_LITE)
     add_subdirectory(lite)
 endif()
@@ -194,4 +198,8 @@ endif()
 
 if(WITH_ASCEND_CL)
 cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry gelu_op scope device_context enforce executor)
+endif()
+
+if (WITH_GPU OR WITH_ASCEND_CL)
+cc_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc DEPS op_registry copy_cross_scope_op scope device_context enforce executor)
 endif()
