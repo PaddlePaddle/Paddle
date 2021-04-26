@@ -117,8 +117,8 @@ class ParallelExecutorPrivate {
    *
    *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of fed
    *                                       variables, so we do not need to skip
-  *                                       them.
-    */
+   *                                       them.
+   */
   inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
     if (mem_opt_var_infos_.size() == 0) {
       VLOG(4) << "The mem_opt_var_infos_ is empty, maybe no memory "
@@ -169,7 +169,7 @@ class ParallelExecutorPrivate {
             platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
             platform::errors::PreconditionNotMet(
                 "PaddlePaddle failed to get NCCL unique ID. It may due to your "
-                "system setting or NCCL library error, please debug on NCCL"));
+                "system settings or NCCL library error, please debug on NCCL"));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
@@ -662,7 +662,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   graph = member_->ApplyMemoryOptimizePass(graph);
   async_graphs[0] = graph;
 
-  // Step 8. Create vars in each scope. Passes may also create new vars.
+  // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
   std::vector<details::VariableInfo> var_infos;
   CreateVariableInfos(&var_infos, graph);
