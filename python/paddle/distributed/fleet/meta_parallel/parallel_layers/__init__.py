@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .mp_layers import *
+from .tp_layers import *
 from .pp_layers import *
 from .random import *

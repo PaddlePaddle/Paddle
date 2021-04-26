@@ -93,7 +93,7 @@ class HybridParallelOptimizer:
 
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and self._is_mp:
-            logger.warning("using ClipGradByGlobalNorm in ModelParallel, the origin " \
+            logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
                   "optmizer'grad clip will be changed.")
             self._inner_opt._grad_clip = HybridParallelClipGrad(
                 self._inner_opt._grad_clip, hcg)

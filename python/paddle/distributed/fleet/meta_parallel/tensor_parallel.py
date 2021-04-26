@@ -18,9 +18,9 @@ from ..utils.hybrid_parallel_util import *
 from ..utils.log_util import logger
 
 
-class ModelParallel(MetaParallelBase):
+class TensorParallel(MetaParallelBase):
     def __init__(self, layers, hcg, **kwargs):
-        super(ModelParallel, self).__init__(layers, hcg, **kwargs)
+        super(TensorParallel, self).__init__(layers, hcg, **kwargs)
 
     def _prepare_for_model(self):
         logger.info("start broadcast mp parameters")
