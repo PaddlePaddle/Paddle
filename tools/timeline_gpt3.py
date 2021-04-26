@@ -24,6 +24,7 @@ import pandas
 import tempfile
 import platform
 import pandas as pd
+import logging
 
 import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
@@ -214,12 +215,10 @@ class Timeline(object):
 
     def _align_ts(self, ts):
         return ts - self._minTimeStamp
-        # return ts
 
     def _allocate_pid(self):
         cur_pid = self._pid
         self._pid += 1
-        # print(cur_pid)
         return cur_pid
 
     def _allocate_pids(self, gpuId):
@@ -382,7 +381,7 @@ class Timeline(object):
                         event_str["ts"] = self._align_ts(event_str["ts"] * 1e6)
                         self._chrome_trace._events.append(event_str)
                     except Exception:
-                        print("warning: invalid record [%s] in [%s]. skip it!" % (line[:-1], netFileName))
+                        logging.warning("invalid record [%s] in [%s]. skip it!" % (line[:-1], netFileName))
 
     def dumpChromeTraceByGroup(self, groupId):
         netFileNameList = self._netFileReader.getFileListByGroup(groupId)
@@ -423,8 +422,6 @@ class Timeline(object):
                     pid_map[metric].append(metric_pid)
 
             gpuDcgmData = dcgm_data[dcgm_data['Entity'].isin([gpuId])]
-            # gpuDcgmData.info()
-            # gpuDcgmData.to_csv("log.log", na_rep='NULL')
 
             for index, row in gpuDcgmData.iterrows():
                 for metric, parameteList in dcgmMetricParameterMap.items():
@@ -451,7 +448,7 @@ class Timeline(object):
             resultFileName = os.path.join(self._saveFilePath, "result_groupID_%d_gpuID_%d.json" % (groupId, gpuId))
             with open(resultFileName, 'w') as f:
                 f.write(self._chrome_trace.format_to_string())
-                print("dump %s sucessfully!" % resultFileName)
+                logging.info("dump [%s] sucessfully!" % resultFileName)
 
     def generate_chrome_trace(self):
         self._set_timeInfo()
@@ -507,7 +504,7 @@ class netFileReader(FileReader):
         trainerId = self._getTrainerId(fileName)
 
         if not os.path.exists(fileName):
-            WARN(fileName + ' not found')
+            logging.warning(fileName + ' not found')
             return
 
         with open(fileName, 'r') as fp:
@@ -545,7 +542,7 @@ class netFileReader(FileReader):
 class dcgmFileReader(FileReader):
     def parseAllFile(self):
         file_list = glob.glob(os.path.join(self._dataPath, "*.*"))
-        print ("total file num is %d !" % len(file_list))
+        logging.info("total file num is %d !" % len(file_list))
         if not file_list:
             return None
 
@@ -585,7 +582,7 @@ class dcgmFileReader(FileReader):
         trainerId = self._getTrainerId(fileName)
 
         if not os.path.exists(fileName):
-            WARN(fileName + ' not found')
+            logging.warning(fileName + ' not found')
             return
 
         regex_list = [
@@ -617,7 +614,6 @@ class dcgmFileReader(FileReader):
 
                 for r in regex_list:
                     line = r[0].sub(r[1], line)
-                # print(line)
 
                 # csv_tempfile.write(bytes(line + "\n", encoding='UTF-8'))
                 csv_tempfile.write(bytes(line + "\n"))
@@ -631,19 +627,8 @@ class dcgmFileReader(FileReader):
 
         return dcgm
 
-def test_dcgmFileReader():
-    args = get_argparse()
-
-    reader = dcgmFileReader(os.path.join(args.profile_path, DCGM_PATH))
-    data = reader.parseAllFile()
-
-    print(data)
-    data.info()
-    data.to_csv("log.log", na_rep='NULL')
-
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.NOTSET)
     args = get_argparse()
     tl = Timeline(args)
     tl.generate_chrome_trace()
-
-    # test_dcgmFileReader()
