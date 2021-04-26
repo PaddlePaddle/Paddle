@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
@@ -34,7 +33,9 @@ namespace operators {
 */
 template <typename T>
 struct CudaAddFunctor {
-  inline HOSTDEVICE T operator()(T args[]) const { return args[0] + args[1]; }
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return args[0] + args[1];
+  }
 };
 
 template <typename T>

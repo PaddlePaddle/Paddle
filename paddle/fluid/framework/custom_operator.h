@@ -28,5 +28,8 @@ void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name);
 void RegisterOperatorWithMetaInfoMap(
     const paddle::OpMetaInfoMap& op_meta_info_map);
 
+// Interface for selective register custom op.
+void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos);
+
 }  // namespace framework
 }  // namespace paddle

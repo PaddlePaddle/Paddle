@@ -19,6 +19,8 @@ import collections
 import numpy as np
 from itertools import product
 from functools import reduce
+from ..utils.log_util import logger
+
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 _HYBRID_PARALLEL_GROUP = None
@@ -118,6 +120,7 @@ class HybridCommunicateGroup(object):
 
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
+        self.stage_id = self._get_pipe_parallel_id()
 
         assert self._check_vaild_topo(
         ), "Here is an unreasonable topogy setting. world_size: {}, but" \
@@ -129,12 +132,24 @@ class HybridCommunicateGroup(object):
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
+
+        # create comm group for pipe parallel
+        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
+
+        # create global group for check inf_nan / clip global norm
+        self._check_group, self._check_comm_group = self._set_check_group(
+            "data")
+
+        # create p2p group
+        self.is_first_stage = (self.stage_id == 0)
+        self.is_last_stage = (self.stage_id == (self._pp_degree - 1))
+
         debug_str = "HybridParallelInfo: rank_id: %d, dp_degree: %d, " \
-                    "mp_degree: %d, pp_degree: %d\n" % (self.global_rank, self._dp_degree,
+                    "mp_degree: %d, pp_degree: %d" % (self.global_rank, self._dp_degree,
                     self._mp_degree,self._pp_degree)
-        debug_str += "dp_group: %s, mp_group: %s" % (self._dp_group,
-                                                     self._mp_group)
-        print(debug_str, file=sys.stderr)
+        debug_str += "dp_group: %s, mp_group: %s, pp_group: %s, check/clip group: %s" % (
+            self._dp_group, self._mp_group, self._pp_group, self._check_group)
+        logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
@@ -161,6 +176,22 @@ class HybridCommunicateGroup(object):
             comm_group = paddle.distributed.new_group(ranks=group)
             if self.global_rank in group:
                 parallel_group = group
+                parallel_comm_group = comm_group
+
+        assert len(parallel_group) > 0
+        assert parallel_comm_group is not None
+
+        return parallel_group, parallel_comm_group
+
+    def _set_check_group(self, parallel_method="data"):
+        parallel_group = []
+        parallel_comm_group = None
+        parallel_size = self._topo.get_dim(parallel_method)
+        for idx in range(parallel_size):
+            parallel_groups = self._topo.get_axis_list(parallel_method, idx)
+            comm_group = paddle.distributed.new_group(ranks=parallel_groups)
+            if self.global_rank in parallel_groups:
+                parallel_group = parallel_groups
                 parallel_comm_group = comm_group
 
         assert len(parallel_group) > 0
@@ -205,3 +236,20 @@ class HybridCommunicateGroup(object):
 
     def get_model_parallel_group_src_rank(self):
         return self._mp_comm_group.ranks[0]
+
+    # pipeline parallel message
+    def _get_pipe_parallel_id(self):
+        return self._topo.get_coord(self.global_rank).pipe
+
+    def get_stage_id(self):
+        return self.stage_id
+
+    def get_pipe_parallel_world_size(self):
+        return self._pp_degree
+
+    def get_pipe_parallel_group(self):
+        return self._pp_comm_group
+
+    # check parallel group
+    def get_check_parallel_group(self):
+        return self._check_comm_group
