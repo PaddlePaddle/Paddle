@@ -226,7 +226,7 @@ def _parse_save_config(configs):
     return inner_config
 
 
-def _process_layer(obj):
+def _process_layer(obj, if_collect=True):
     def is_layer(obj):
         return isinstance(obj, core.Layer)
 
@@ -242,16 +242,21 @@ def _process_layer(obj):
 
                 self.names.add(varbase.name)
 
-        collector = Collector()
-        _dfs(layer.__dict__, is_varbase, collector)
-        _dfs(layer.__dict__, is_layer, collect_varname)
-        if collector.names:
-            layer.__LayerParameterNameSet = collector.names
-        return layer
+        if if_collect:
+            collector = Collector()
+            _dfs(layer.__dict__, is_varbase, collector)
+            _dfs(layer.__dict__, is_layer, collect_varname)
+            if collector.names:
+                layer.__Layer_Parameter_NameSet = collector.names
+            return layer
+        else:
+            _dfs(layer.__dict__, is_layer, collect_varname)
+            if hasattr(layer, '__Layer_Parameter_NameSet'):
+                delattr(layer, '__Layer_Parameter_NameSet')
 
-    layer = _parse_every_object(obj, is_layer, collect_varname)
+    _dfs(obj, is_layer, collect_varname)
 
-    return layer
+    return obj
 
 
 def _pickle_save(obj, f, protocol):
@@ -265,7 +270,7 @@ def _pickle_save(obj, f, protocol):
                          format(protocol))
 
     # preprocess layer:
-    obj = _process_layer(obj)
+    _process_layer(obj)
 
     def reudce_varbase(self):
         data = self.numpy()
@@ -312,6 +317,7 @@ def _pickle_save(obj, f, protocol):
             pickler.dispatch_table[ParamBase] = reudce_varbase
 
             pickler.dump(obj)
+    _process_layer(obj, False)
 
 
 def _contain_x(obj, condition_func):
@@ -473,7 +479,7 @@ def _parse_load_result(obj, return_numpy):
         return isinstance(obj, core.Layer)
 
     def parse_layer(obj):
-        name_set = getattr(obj, '__LayerParameterNameSet', set())
+        name_set = getattr(obj, '__Layer_Parameter_NameSet', set())
         if name_set:
 
             def if_transformed_from_varbase(obj):
@@ -486,8 +492,8 @@ def _parse_load_result(obj, return_numpy):
                 obj.__dict__, if_transformed_from_varbase, tuple_to_tensor)
             obj.__dict__.update(temp_dict)
 
-        if hasattr(obj, '__LayerParameterNameSet'):
-            delattr(obj, '__LayerParameterNameSet')
+        if hasattr(obj, '__Layer_Parameter_NameSet'):
+            delattr(obj, '__Layer_Parameter_NameSet')
         _dfs(obj.__dict__, is_layer, parse_layer)
         return obj
 
