@@ -35,12 +35,21 @@ taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
 taskkill /f /im python.exe  2>NUL
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
+taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="python.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -141,7 +150,6 @@ rem ------pre install python requirement----------
 where python
 where pip
 pip install wheel --user
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 pip install -r %work_dir%\python\requirements.txt --user
 
 if %ERRORLEVEL% NEQ 0 (
@@ -174,11 +182,10 @@ rem ------show summary of current environment----------
 cmake --version
 if "%WITH_GPU%"=="ON" (
     nvcc --version
-    where nvidia-smi
     nvidia-smi
 )
-python %work_dir%\tools\summary_env.py
-%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
+::python %work_dir%\tools\summary_env.py
+::%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
 
 goto :CASE_%1
 
@@ -186,12 +193,15 @@ echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
 echo "wincheck_mkl: run Windows MKL/GPU/UnitTest CI tasks on Windows"
 echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
+echo "build_avx_whl: build Windows avx whl package on Windows"
+echo "build_no_avx_whl: build Windows no avx whl package on Windows"
 exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
 :CASE_wincheck_mkl
 set WITH_MKL=ON
 set WITH_GPU=ON
+set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
 
 call :cmake || goto cmake_error
@@ -204,9 +214,11 @@ goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
 :CASE_wincheck_openblas
-set WITH_MKL=ON
+set WITH_MKL=OFF
 set WITH_GPU=OFF
+set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
+set retry_times=1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -345,7 +357,7 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*3/5
+for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 set build_times=1
 :build_tp
@@ -380,10 +392,19 @@ taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
 taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
@@ -478,6 +499,12 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
+
+pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+if %ERRORLEVEL% NEQ 0 (
+    echo pip install unittest requirements.txt failed!
+    exit /b 7
+)
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -735,10 +762,21 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
+taskkill /f /im mspdbsrv.exe 2>NUL
+taskkill /f /im csc.exe 2>NUL
 taskkill /f /im python.exe  2>NUL
+taskkill /f /im nvcc.exe 2>NUL
+taskkill /f /im cicc.exe 2>NUL
+taskkill /f /im ptxas.exe 2>NUL
+taskkill /f /im test_api_impl.exe 2>NUL
+taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="python.exe" call terminate 2>NUL
+wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
+wmic process where name="rc.exe" call terminate 2>NUL
+wmic process where name="CL.exe" call terminate 2>NUL
+wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
 echo Windows CI run successfully!
 exit /b 0
 

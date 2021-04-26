@@ -37,7 +37,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   int place_id = section_config.place_id();
 #if (defined PADDLE_WITH_NCCL)
   place_ = platform::CUDAPlace(place_id);
-#elif (defined WITH_ASCEND_CL)
+#elif (defined WITH_ASCEND_CL)  // NOLINT
   place_ = platform::NPUPlace(place_id);
 #endif
   worker_ = DeviceWorkerFactory::CreateDeviceWorker(
