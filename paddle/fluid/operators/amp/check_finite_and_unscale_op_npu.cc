@@ -24,12 +24,19 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+// NOTE(zhiqiu): The CheckFiniteAndUnscaleNPUKernel is different from CUDA.
+// On NPU, we do not really check the data of input tensors,
+// but use NPUGetFloatStatus to check whether the nan/inf occurs on device,
+// and clear it after this op.
+// Which may leads to wrong result if the input tensors is not calculated
+// on NPU device, but got from other way, for example, feeding.
 template <typename T>
 class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     const auto xs = ctx.MultiInput<framework::Tensor>("X");
     const auto* scale = ctx.Input<framework::Tensor>("Scale");
+    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
 
@@ -56,58 +63,60 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     runner_inverse.Run(stream);
     tmp_inverse_out = &inverse_out;
 
-    size_t x_size = xs.size();
-    for (size_t i = 0; i < x_size; ++i) {
+    // NOTE(zhiqiu):
+    Tensor tmp;
+    tmp.mutable_data<float>({8}, ctx.GetPlace());
+
+    // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
+    // tmp is only placeholder.
+    auto runner_float_status =
+        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
+                    {{"message", std::string("check_nan_and_inf")}});
+    runner_float_status.Run(stream);
+
+    Tensor sum;
+    sum.mutable_data<float>({1}, ctx.GetPlace());
+    auto runner_reduce_sum =
+        NpuOpRunner("ReduceSumD", {*float_status}, {sum},
+                    {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
+    runner_reduce_sum.Run(stream);
+
+    std::vector<float> sum_vec;
+    TensorToVector(
+        sum, ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        &sum_vec);
+    found_inf_data = (sum_vec[0] > 1);
+
+    VLOG(4) << "found_inf_data:" << found_inf_data;
+
+    for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
-
-      // step2: CheckNumerics
-      // CheckNumerics runs on the Ascend AI CPU, which delivers poor
-      // performance.
-      Tensor check_xout(x->type());
-      check_xout.Resize(x->dims());
-      check_xout.mutable_data<T>(ctx.GetPlace());
-      try {
-        auto runner_checknumerics =
-            NpuOpRunner("CheckNumerics", {*x}, {check_xout},
-                        {{"message", std::string("check_nan_and_inf")}});
-        runner_checknumerics.Run(stream);
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .Wait();
-      } catch (platform::EnforceNotMet& exception) {
-        LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-        found_inf_data = true;
-      } catch (...) {
-        LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-        found_inf_data = true;
-      }
-
       if (!found_inf_data) {
         // MatMul
         auto runner_matmul =
             NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
         runner_matmul.Run(stream);
-      } else {
-        // ZerosLike
-        auto runner_zeroslike = NpuOpRunner("ZerosLike", {*x}, {*out}, {});
-        runner_zeroslike.Run(stream);
-      }  // end if
-    }    // end for
+      }
+    }
 
     // set found_inf to true
-    if (found_inf_data) {
-      Tensor found_inf_tensor;
-      found_inf_tensor.Resize({1});
-      bool* is_found_inf =
-          found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
-      *is_found_inf = true;
+    VLOG(4) << "found overflow:" << found_inf_data;
+    Tensor found_inf_tensor;
+    found_inf_tensor.Resize({1});
+    bool* is_found_inf =
+        found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
+    *is_found_inf = found_inf_data;
 
-      framework::TensorCopy(
-          found_inf_tensor, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), found_inf);
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-    }
+    framework::TensorCopy(
+        found_inf_tensor, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), found_inf);
+    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
+
+    auto runner_clear_status =
+        NpuOpRunner("NPUClearFloatStatus", {*float_status}, {tmp});
+    runner_clear_status.Run(stream);
   }
 };
 

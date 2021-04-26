@@ -15,6 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/optimizers/adam_op.h"
 
@@ -122,8 +123,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     FillNpuTensorWithConstant<T>(&beta2_tensor, beta2);
 
     Tensor epsilon_tensor(framework::proto::VarType::FP32);
-    epsilon_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&epsilon_tensor, epsilon);
+    TensorFromVector(std::vector<T>{epsilon},
+                     ctx.template device_context<platform::DeviceContext>(),
+                     &epsilon_tensor);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
