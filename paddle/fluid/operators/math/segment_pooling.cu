@@ -42,8 +42,6 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids, T* summed_ids,
     T sum = T(0);
     for (Index j = 0; j < actual_height; j++) {
       Index current_segment_id = segment_ids[dim_index_base + j];
-      // Note(ZHUI): following check may cause
-      // cudaErrorLaunchOutOfResources.
       PADDLE_ENFORCE(current_segment_id >= last_segment_id,
                      "the segment ids should be sorted, but got "
                      "segment_ids[%d]:%d > segment_ids[%d]:%d.",
@@ -317,8 +315,6 @@ class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
     auto h = ArrangeHelper<IndexT>(input.numel(), segment_ids.dims()[0],
                                    output->dims()[0]);
     auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
-    VLOG(0) << "config.block_per_grid:" << config.block_per_grid.x;
-    VLOG(0) << "config.thread_per_block:" << config.thread_per_block.x;
     if (pooltype == "MEAN") {
       SegmentMeanKernel<
           T, IndexT, IndexT(8)><<<config.block_per_grid.x,
