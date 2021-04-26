@@ -168,7 +168,7 @@ def declarative(function=None, input_spec=None):
 
     Args:
         function (callable): callable imperative function.
-        input_spec(list[InputSpec]): list of InputSpec to specific the shape/dtype/name
+        input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
             information of each input Tensor.
 
     Returns:
@@ -525,7 +525,7 @@ def save(layer, path, input_spec=None, **configs):
     Args:
         layer (Layer): The Layer to be saved.
         path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward
+        input_spec (list[InputSpec|Tensor]|tuple[InputSpec|Tensor], optional): Describes the input of the saved model's forward
             method, which can be described by InputSpec or example Tensor. If None, all input variables of
             the original Layer's forward method would be the inputs of the saved model. Default None.
         **configs (dict, optional): Other save configuration options for compatibility. We do not
@@ -654,7 +654,7 @@ def save(layer, path, input_spec=None, **configs):
                 raise ValueError(
                     "If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is %s."
                     % type(input_spec))
-        if not isinstance(input_spec, list):
+        if not isinstance(input_spec, (list, tuple)):
             raise TypeError(
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
