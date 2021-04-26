@@ -34,9 +34,20 @@ visited_modules = set()
 
 
 def md5(doc):
-    hash = hashlib.md5()
-    hash.update(str(doc).encode('utf-8'))
-    return hash.hexdigest()
+    try:
+        hash = hashlib.md5()
+        if platform.python_version()[0] == "2":
+            hash.update(str(doc))
+        else:
+            hash.update(str(doc).encode('utf-8'))
+        md5sum = hash.hexdigest()
+    except UnicodeDecodeError as e:
+        md5sum = None
+        print(
+            "Error occurred when `md5({})`, discard it.".format(str(e), doc),
+            file=sys.stderr)
+
+    return md5sum
 
 
 def get_functools_partial_spec(func):
