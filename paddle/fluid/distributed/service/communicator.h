@@ -555,7 +555,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
  private:
   // geo push num
-  int cur_merge_num_;
+  std::atomic_int cur_merge_num_;
   // parameter for delta calc and send
   std::shared_ptr<Scope> delta_scope_;
   // parameter for storage the pserver param after last recv
