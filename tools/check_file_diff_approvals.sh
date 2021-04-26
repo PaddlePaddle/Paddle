@@ -84,6 +84,7 @@ function run_test_sampcd_processor() {
     CUR_PWD=$(pwd)
     cd ${PADDLE_ROOT}/tools
     python test_sampcd_processor.py
+    python test_print_signatures.py
     cd ${CUR_PWD}
 }
 

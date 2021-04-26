@@ -29,7 +29,9 @@ from paddle.fluid.dygraph import parallel_helper
 from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import ModelParallel
+from ..meta_parallel import PipelineParallel
 from ..meta_optimizers import HybridParallelOptimizer
+from ..meta_optimizers import HybridParallelGradScaler
 
 
 def _inited_runtime_handler_(func):
@@ -779,6 +781,9 @@ class Fleet(object):
         elif self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL:
             distributed_model = ModelParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
+            distributed_model = PipelineParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
         return distributed_model
 
     @dygraph_only
@@ -1058,6 +1063,8 @@ class Fleet(object):
         return amp_optimizer
 
     def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.get_loss_scaling()
 
@@ -1333,3 +1340,7 @@ class Fleet(object):
         fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads
+
+    @dygraph_only
+    def distributed_scaler(self, scaler):
+        return HybridParallelGradScaler(scaler, self._hcg)

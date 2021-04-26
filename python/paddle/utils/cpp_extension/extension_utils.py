@@ -612,10 +612,32 @@ def find_paddle_includes(use_cuda=False):
 
     if OS_NAME.startswith('darwin'):
         # NOTE(Aurelius84): Ensure to find std v1 headers correctly.
-        std_v1_includes = '/Library/Developer/CommandLineTools/usr/include/c++/v1/'
-        include_dirs.append(std_v1_includes)
+        std_v1_includes = find_clang_cpp_include()
+        if std_v1_includes is not None and os.path.exists(std_v1_includes):
+            include_dirs.append(std_v1_includes)
 
     return include_dirs
+
+
+def find_clang_cpp_include(compiler='clang'):
+    std_v1_includes = None
+    try:
+        compiler_version = subprocess.check_output([compiler, "--version"])
+        if six.PY3:
+            compiler_version = compiler_version.decode()
+        infos = compiler_version.split("\n")
+        for info in infos:
+            if "InstalledDir" in info:
+                v1_path = info.split(':')[-1].strip()
+                if v1_path and os.path.exists(v1_path):
+                    std_v1_includes = os.path.join(
+                        os.path.dirname(v1_path), 'include/c++/v1')
+    except Exception:
+        # Just raise warnings because the include dir is not required.
+        warnings.warn(
+            "Failed to search `include/c++/v1/` include dirs. Don't worry because it's not required."
+        )
+    return std_v1_includes
 
 
 def find_cuda_libraries():

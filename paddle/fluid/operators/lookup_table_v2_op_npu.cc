@@ -55,19 +55,19 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
-
     auto *output_grad_t =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *table_grad_t =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
-    auto *p = table_grad_t->mutable_data<T>(ctx.GetPlace());
+    table_grad_t->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    platform::NPUMemsetAsync(static_cast<void *>(p), 0,
-                             table_grad_t->numel() * sizeof(T), stream);
+    auto runner_zeros =
+        NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
+    runner_zeros.Run(stream);
 
     // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
     // can be different tensor, but in cann 20.2+, it does inplace operation.
@@ -86,9 +86,11 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     lookup_table_v2,
     ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext,
                                 paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     lookup_table_v2_grad, ops::LookupTableV2GradNPUKernel<float>,
+    ops::LookupTableV2GradNPUKernel<int>,
     ops::LookupTableV2GradNPUKernel<paddle::platform::float16>);
