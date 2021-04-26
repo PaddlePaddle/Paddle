@@ -42,26 +42,28 @@ __global__ void FusedFillIf(T** outs, const size_t xs_size,
   const int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
   // copy starts array from global memory to shared memory
-  extern __shared__ int64_t starts_s[];
+  extern __shared__ int64_t s_starts[];
   for (int i = threadIdx.x; i <= xs_size; i += blockDim.x) {
-    starts_s[i] = starts[i];
+    s_starts[i] = starts[i];
   }
   __syncthreads();
 
-  const int64_t total_num = starts_s[xs_size];
+  const int64_t total_num = s_starts[xs_size];
   int out_index = 0;
 
   for (int64_t id = tid; id < total_num; id += blockDim.x * gridDim.x) {
     // get the "out" index of "id"
+    // For example:
+    // id = 15, starts = [0, 10, 10, 20, 30]
+    // because 10 <= id < 20 ==>
+    // the id element locate in the 3rd tensor (notice the 2nd tensor size is 0)
     int next_out_index = out_index;
-    while (id < starts_s[next_out_index]) next_out_index++;
-    // avoid some tensor's numel is zero
-    while (id >= starts_s[next_out_index]) next_out_index++;
+    while (id >= s_starts[next_out_index]) next_out_index++;
     out_index = next_out_index - 1;
 
     // get data pointer and index
     T* out_data = outs[out_index];
-    int64_t idx = id - starts_s[out_index];
+    int64_t idx = id - s_starts[out_index];
 
     // set value
     out_data[idx] = value;
@@ -93,48 +95,51 @@ class LazyZeros<platform::CUDADeviceContext, T> {
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
     size_t xs_size = xs.size();
+    const auto& cpu_place = platform::CPUPlace();
     // alloc each tensor's start index and copy to device
-    auto starts_h_tensor =
-        memory::Alloc(platform::CPUPlace(), (xs_size + 1) * sizeof(int64_t));
-    int64_t* starts_h = reinterpret_cast<int64_t*>(starts_h_tensor->ptr());
+    auto h_in_starts_mem =
+        memory::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
+    int64_t* h_starts = reinterpret_cast<int64_t*>(h_in_starts_mem->ptr());
 
-    auto starts_d_tensor =
+    auto d_in_starts_mem =
         memory::Alloc(dev_ctx, (xs_size + 1) * sizeof(int64_t));
-    int64_t* starts_d = reinterpret_cast<int64_t*>(starts_d_tensor->ptr());
+    int64_t* d_starts = reinterpret_cast<int64_t*>(d_in_starts_mem->ptr());
 
-    starts_h[0] = 0;
+    // the start index value of each tensor is
+    // the sum of previous tensor's size. For example:
+    // outs = [10, 0, 10, 10] ==> starts = [0, 10, 10, 20, 30]
+    h_starts[0] = 0;
     for (int i = 0; i < xs_size; i++) {
-      // the start index value of each tensor is
-      // the sum of previous tensor's size
-      starts_h[i + 1] = starts_h[i] + outs[i]->numel();
+      h_starts[i + 1] = h_starts[i] + outs[i]->numel();
     }
     memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 starts_d, platform::CPUPlace(), starts_h,
-                 (xs_size + 1) * sizeof(int64_t), dev_ctx.stream());
+                 d_starts, cpu_place, h_starts, (xs_size + 1) * sizeof(int64_t),
+                 dev_ctx.stream());
 
     // copy each tensor of "outs" data address array to device
-    auto outs_addr_h_tensor =
-        memory::Alloc(platform::CPUPlace(), xs_size * sizeof(T*));
-    T** outs_addr_h = reinterpret_cast<T**>(outs_addr_h_tensor->ptr());
+    auto h_out_addrs_tensor = memory::Alloc(cpu_place, xs_size * sizeof(T*));
+    T** h_out_addrs = reinterpret_cast<T**>(h_out_addrs_tensor->ptr());
 
-    auto outs_addr_d_tensor = memory::Alloc(dev_ctx, xs_size * sizeof(T*));
-    T** outs_addr_d = reinterpret_cast<T**>(outs_addr_d_tensor->ptr());
+    auto d_out_addrs_tensor = memory::Alloc(dev_ctx, xs_size * sizeof(T*));
+    T** d_out_addrs = reinterpret_cast<T**>(d_out_addrs_tensor->ptr());
 
     for (size_t i = 0; i < xs_size; ++i) {
-      outs_addr_h[i] = outs[i]->mutable_data<T>(dev_ctx.GetPlace());
+      h_out_addrs[i] = outs[i]->mutable_data<T>(dev_ctx.GetPlace());
     }
     memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 outs_addr_d, platform::CPUPlace(), outs_addr_h,
-                 xs_size * sizeof(T*), dev_ctx.stream());
+                 d_out_addrs, cpu_place, h_out_addrs, xs_size * sizeof(T*),
+                 dev_ctx.stream());
 
     // launch cuda kernel
-    int64_t total_num = starts_h[xs_size];
-    int64_t block = std::min(static_cast<int64_t>(1024), total_num);
-    int64_t block_num = block * 50;  // each thread deal with 50 data
-    int64_t grid = (total_num + block_num - 1) / block_num;
-    FusedFillIf<
-        T><<<grid, block, (xs_size + 1) * sizeof(int64_t), dev_ctx.stream()>>>(
-        outs_addr_d, xs_size, starts_d, static_cast<T>(0), found_inf_data);
+    int64_t total_num = h_starts[xs_size];
+    int64_t threads_per_block = std::min(static_cast<int64_t>(1024), total_num);
+    int64_t elements_per_block =
+        threads_per_block * 50;  // each thread deal with 50 data
+    int64_t blocks_per_grid =
+        (total_num + elements_per_block - 1) / elements_per_block;
+    FusedFillIf<T><<<blocks_per_grid, threads_per_block,
+                     (xs_size + 1) * sizeof(int64_t), dev_ctx.stream()>>>(
+        d_out_addrs, xs_size, d_starts, static_cast<T>(0), found_inf_data);
   }
 };
 
