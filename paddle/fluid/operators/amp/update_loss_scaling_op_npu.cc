@@ -165,17 +165,35 @@ class LazyZerosNPU {
     }*/
     for (size_t i = 0; i < xs.size(); ++i) {
       auto* out = outs[i];
-      int num = out->numel();
+      // int num = out->numel();
       if (found_inf_vec[0]) {
         VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
-        auto out_dims = out->dims();
-        std::vector<T> init;
-        for (int64_t i = 0; i < num; ++i) {
-          init.push_back(static_cast<T>(0));
-        }
+        // auto out_dims = out->dims();
+        // std::vector<T> init;
+        // for (int64_t i = 0; i < num; ++i) {
+        //   init.push_back(static_cast<T>(0));
+        // }
 
-        TensorFromVector(init, dev_ctx, out);
-        out->Resize(out_dims);
+        // TensorFromVector(init, dev_ctx, out);
+        // out->Resize(out_dims);
+
+        // std::vector<int> axes;
+        // for (auto i = 0; i < out_dims.size(); ++i) {
+        //   axes.push_back(out_dims[i]);
+        // }
+
+        // Tensor value(out->type());
+        // auto place = dev_ctx.GetPlace();
+        // auto stream = dev_ctx.stream();
+        // value.mutable_data<T>({1}, place);
+        // FillNpuTensorWithConstant<T>(&value, static_cast<T>(0.0));
+        // auto runner =
+        //     NpuOpRunner("FillD", {value}, {*out}, {{"dims",
+        //     framework::vectorize(out_dims)}});
+
+        auto stream = dev_ctx.stream();
+        auto runner_zeros = NpuOpRunner("ZerosLike", {*out}, {*out});
+        runner_zeros.Run(stream);
       }
     }
   }
