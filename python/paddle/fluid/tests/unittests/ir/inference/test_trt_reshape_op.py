@@ -73,6 +73,7 @@ class TRTReshapeTest1(TRTReshapeTest):
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
         }
+        self.enable_trt = True
         self.trt_parameters = TRTReshapeTest.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
@@ -95,6 +96,7 @@ class TRTReshapeTest2(TRTReshapeTest):
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
         }
+        self.enable_trt = True
         self.trt_parameters = TRTReshapeTest.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTReshapeTest.DynamicShapeParam({
