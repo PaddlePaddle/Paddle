@@ -40,7 +40,7 @@ CLASS_NUM = 10
 if six.PY2:
     LARGE_PARAM = 2**2
 else:
-    LARGE_PARAM = 2**26
+    LARGE_PARAM = 2**2
 
 
 def random_batch_reader():
@@ -69,6 +69,40 @@ class LinearNet(nn.Layer):
 
     def forward(self, x):
         return self._linear(x)
+
+
+class Layer_save_load_1(paddle.nn.Layer):
+    def __init__(self):
+        super(Layer_save_load_1, self).__init__()
+        self.l1 = LinearNet()
+        self.l2 = paddle.nn.Linear(CLASS_NUM, CLASS_NUM)
+        self.l3 = ('xxx', np.ones([3, 2], dtype=np.int))
+
+    def forward(self, x):
+        y = self.l1(x)
+        y = self.l2(y)
+        if isinstance(self.l3, tuple):
+            if self.l3[0] == 'xxx' and np.array_equal(
+                    self.l3[1], np.ones(
+                        [3, 2], dtype=np.int)):
+                return y
+        raise ValueError("load fail")
+
+
+class Layer_save_load_2(paddle.nn.Layer):
+    def __init__(self):
+        super(Layer_save_load_2, self).__init__()
+        self.l1 = Layer_save_load_1()
+        self.l3 = ('xxx', np.ones([3, 2], dtype=np.int))
+
+    def forward(self, x):
+        y = self.l1(x)
+        if isinstance(self.l3, tuple):
+            if self.l3[0] == 'xxx' and np.array_equal(
+                    self.l3[1], np.ones(
+                        [3, 2], dtype=np.int)):
+                return y
+        raise ValueError("load fail")
 
 
 class LayerWithLargeParameters(paddle.nn.Layer):
@@ -866,8 +900,8 @@ class TestSaveLoadLayer(unittest.TestCase):
 
         paddle.disable_static()
         inps = paddle.randn([1, IMAGE_SIZE], dtype='float32')
-        layer1 = LinearNet()
-        layer2 = LinearNet()
+        layer1 = Layer_save_load_1()
+        layer2 = Layer_save_load_2()
         layer1.eval()
         layer2.eval()
         origin = (layer1(inps), layer2(inps))

@@ -21,6 +21,7 @@ import six
 import warnings
 import sys
 import numpy as np
+import copy
 
 if not six.PY2:
     import copyreg
@@ -225,6 +226,34 @@ def _parse_save_config(configs):
     return inner_config
 
 
+def _process_layer(obj):
+    def is_layer(obj):
+        return isinstance(obj, core.Layer)
+
+    def is_varbase(obj):
+        return isinstance(obj, core.VarBase)
+
+    def collect_varname(layer):
+        class Collector:
+            def __init__(self):
+                self.names = set()
+
+            def __call__(self, varbase):
+
+                self.names.add(varbase.name)
+
+        collector = Collector()
+        _dfs(layer.__dict__, is_varbase, collector)
+        _dfs(layer.__dict__, is_layer, collect_varname)
+        if collector.names:
+            layer.__LayerParameterNameSet = collector.names
+        return layer
+
+    layer = _parse_every_object(obj, is_layer, collect_varname)
+
+    return layer
+
+
 def _pickle_save(obj, f, protocol):
     # TODO(weixin):add support for BytesIO.
     if not isinstance(protocol, int):
@@ -234,6 +263,9 @@ def _pickle_save(obj, f, protocol):
     if protocol < 2 or protocol > 4:
         raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
                          format(protocol))
+
+    # preprocess layer:
+    obj = _process_layer(obj)
 
     def reudce_varbase(self):
         data = self.numpy()
@@ -289,8 +321,8 @@ def _contain_x(obj, condition_func):
 
     if condition_func(obj):
         return True
-    elif type(obj) in (dict, collections.OrderedDict, list, tuple):
-        if type(obj) in (dict, collections.OrderedDict):
+    elif isinstance(obj, (dict, list, tuple)):
+        if isinstance(obj, (dict)):
             keys = list(obj.keys())
         else:
             keys = range(len(obj))
@@ -300,8 +332,29 @@ def _contain_x(obj, condition_func):
             if flag:
                 return True
         return flag
+    elif isinstance(obj, set):
+        return _contain_x(list(obj))
     else:
         return False
+
+
+def _dfs(obj, condition_func, action_func):
+    if condition_func(obj):
+        action_func(obj)
+        return
+    elif isinstance(obj, (dict, list, tuple)):
+        if isinstance(obj, (dict)):
+            keys = list(obj.keys())
+        else:
+            keys = range(len(obj))
+        for key in keys:
+            _dfs(obj[key], condition_func, action_func)
+
+    elif isinstance(obj, set):
+        for value in obj:
+            _dfs(value, condition_func, action_func)
+    else:
+        return
 
 
 def _is_state_dict(obj):
@@ -420,8 +473,22 @@ def _parse_load_result(obj, return_numpy):
         return isinstance(obj, core.Layer)
 
     def parse_layer(obj):
-        temp_dict = _parse_load_result(obj.__dict__, False)
-        obj.__dict__.update(temp_dict)
+        name_set = getattr(obj, '__LayerParameterNameSet', set())
+        if name_set:
+
+            def if_transformed_from_varbase(obj):
+                return _transformed_from_varbase(obj) and obj[0] in name_set
+
+            def tuple_to_tensor(obj):
+                return _tuple_to_tensor(obj, return_numpy=False)
+
+            temp_dict = _parse_every_object(
+                obj.__dict__, if_transformed_from_varbase, tuple_to_tensor)
+            obj.__dict__.update(temp_dict)
+
+        if hasattr(obj, '__LayerParameterNameSet'):
+            delattr(obj, '__LayerParameterNameSet')
+        _dfs(obj.__dict__, is_layer, parse_layer)
         return obj
 
     if _contain_x(obj, is_layer):
@@ -430,7 +497,7 @@ def _parse_load_result(obj, return_numpy):
                 "Layer can only be loaded in dynamic graph mode, but now in static graph mode."
             )
 
-        _parse_every_object(obj, is_layer, parse_layer)
+        _dfs(obj, is_layer, parse_layer)
 
     def tuple_to_tensor(obj):
         return _tuple_to_tensor(obj, return_numpy=return_numpy)
@@ -563,7 +630,7 @@ def save(obj, path, protocol=2, **configs):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [224, 10]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
 
             # save/load tensor
@@ -763,7 +830,7 @@ def load(path, **configs):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [224, 10]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
 
             # save/load tensor
