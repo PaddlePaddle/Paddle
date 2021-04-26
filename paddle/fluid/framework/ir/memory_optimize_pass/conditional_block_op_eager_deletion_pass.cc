@@ -53,17 +53,11 @@ class ConditionalOpEagerDeletionPass : public Pass {
 
       auto all_ops = graph->OriginProgram().Block(0).AllOps();
       if (ifelse_ops.empty()) {
-        for (auto *op : all_ops) {
-          if (op->Type() == "conditional_block") {
-            ifelse_ops.emplace_back(op);
-          }
-        }
+        operators::AppendOpVariantByOpName(all_ops, ifelse_ops,
+                                           std::string("conditional_block"));
       } else if (ifelse_grad_ops.empty()) {
-        for (auto *op : all_ops) {
-          if (op->Type() == "conditional_block_grad") {
-            ifelse_grad_ops.emplace_back(op);
-          }
-        }
+        operators::AppendOpVariantByOpName(
+            all_ops, ifelse_grad_ops, std::string("conditional_block_grad"));
       } else {
         PADDLE_THROW("One of ifelse_ops or ifelse_grad_ops should be empty.");
       }

@@ -73,5 +73,9 @@ class OpVariant {
       op_;
 };
 
+void AppendOpVariantByOpName(const std::vector<framework::OpDesc *> &op_descs,
+                             std::vector<OpVariant> *result_ops,
+                             const std::string &candidate_op_name);
+
 }  // namespace operators
 }  // namespace paddle

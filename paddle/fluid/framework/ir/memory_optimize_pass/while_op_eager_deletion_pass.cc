@@ -54,17 +54,11 @@ class WhileOpEagerDeletionPass : public ir::Pass {
 
       auto all_ops = graph->OriginProgram().Block(0).AllOps();
       if (while_ops.empty()) {
-        for (auto *op : all_ops) {
-          if (op->Type() == "while") {
-            while_ops.emplace_back(op);
-          }
-        }
+        operators::AppendOpVariantByOpName(all_ops, while_ops,
+                                           std::string("while"));
       } else if (while_grad_ops.empty()) {
-        for (auto *op : all_ops) {
-          if (op->Type() == "while_grad") {
-            while_grad_ops.emplace_back(op);
-          }
-        }
+        operators::AppendOpVariantByOpName(all_ops, while_grad_ops,
+                                           std::string("while_grad"));
       } else {
         PADDLE_THROW("One of while_ops or while_grad_ops should be empty.");
       }
