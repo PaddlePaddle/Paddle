@@ -1,15 +1,14 @@
-# New custom OP can support Windows/Linux now
-if(WITH_GPU OR APPLE) 
-    # GPU custom op tests: compile both .cc and .cu file
+# New custom OP can support Windows/Linux/Mac now
+if(WITH_GPU OR APPLE)
     py_test(test_custom_relu_op_setup SRCS test_custom_relu_op_setup.py)
     py_test(test_custom_relu_op_jit SRCS test_custom_relu_op_jit.py)
     py_test(test_custom_relu_model SRCS test_custom_relu_model.py)
-
-    # Compiling shared library will cost some time, but running process is very fast.
-    set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
-    set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
-    set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
 endif()
+
+# Compiling shared library will cost some time, but running process is very fast.
+set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
+set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
+set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
 
 # CPU custom op tests: only compile .cc file
 py_test(test_dispatch_jit SRCS test_dispatch_jit.py)

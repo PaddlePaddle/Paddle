@@ -14,13 +14,13 @@
 
 import os
 
+import paddle
 from utils import paddle_includes, extra_compile_args, IS_MAC
 from paddle.utils.cpp_extension import CUDAExtension, setup, CppExtension
 
-# Mac-CI don't support GPU
-Extension = CppExtension if IS_MAC else CUDAExtension
+Extension = CUDAExtension if paddle.is_compiled_with_cuda() else CppExtension
 sources = ['custom_relu_op.cc', 'custom_relu_op_dup.cc']
-if not IS_MAC:
+if IS_MAC:
     sources.append('custom_relu_op.cu')
 
 # custom_relu_op_dup.cc is only used for multi ops test,

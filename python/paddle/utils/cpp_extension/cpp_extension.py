@@ -26,7 +26,7 @@ from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension
 from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
 from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
 from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
-from .extension_utils import clean_object_if_change_cflags, _reset_so_rpath
+from .extension_utils import clean_object_if_change_cflags, _reset_so_rpath, _get_fluid_path
 from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
 
 from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
@@ -470,8 +470,8 @@ class BuildExtension(build_ext, object):
 
                 include_regex = re.compile(r'((\-|\/)I.*)')
                 include_list = [
-                    m.group(1)
-                    for m in (include_regex.match(elem) for elem in cmd) if m
+                    m.group(1) for m in (include_regex.match(elem)
+                                         for elem in cmd) if m
                 ]
 
                 assert len(src_list) == 1 and len(obj_list) == 1
@@ -611,7 +611,7 @@ class BuildExtension(build_ext, object):
             msg = (
                 'It seems that the VC environment is activated but DISTUTILS_USE_SDK is not set.'
                 'This may lead to multiple activations of the VC env.'
-                'Please set `DISTUTILS_USE_SDK=1` and try again.')
+                'Please run `set DISTUTILS_USE_SDK=1` and try again.')
             raise UserWarning(msg)
 
     def _record_op_info(self):
@@ -802,9 +802,6 @@ def load(name,
 
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
-    # Will load shared library from 'path' on windows
-    if IS_WINDOWS:
-        os.environ['path'] = build_directory + ';' + os.environ['path']
 
     log_v("build_directory: {}".format(build_directory), verbose)
 
@@ -827,6 +824,12 @@ def load(name,
 
     # write setup.py file and compile it
     build_base_dir = os.path.join(build_directory, name)
+
+    # Will load shared library from 'path' on windows
+    if IS_WINDOWS:
+        os.environ['path'] = _get_fluid_path(
+        ) + ';' + build_base_dir + ';' + os.environ['path']
+
     _write_setup_file(name, sources, file_path, build_base_dir,
                       extra_include_paths, extra_cxx_cflags, extra_cuda_cflags,
                       extra_ldflags, verbose)

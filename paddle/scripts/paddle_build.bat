@@ -54,7 +54,7 @@ wmic process where name="python.exe" call terminate 2>NUL
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined BRANCH set BRANCH=develop
-if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
+if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 if not defined WITH_GPU set WITH_GPU=ON
@@ -82,9 +82,6 @@ rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
 del build\CMakeCache.txt
-
-: set CI_SKIP_CPP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 if "%WITH_CACHE%"=="OFF" (
     rmdir build /s/q
@@ -134,59 +131,6 @@ cd /d build
 dir .
 dir %cache_dir%
 dir paddle\fluid\pybind\Release
-
-rem ------initialize the python environment------
-if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
-
-rem ToDo: virtual environment can't be deleted safely, some process not exit when task is canceled
-rem Now use system python environment temporarily
-rem %PYTHON_EXECUTABLE% -m pip install virtualenv
-rem %PYTHON_EXECUTABLE% -m virtualenv paddle_winci
-rem call paddle_winci\Scripts\activate.bat
-
-rem ------pre install python requirement----------
-where python
-where pip
-pip install wheel --user
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
-pip install -r %work_dir%\python\requirements.txt --user
-
-if %ERRORLEVEL% NEQ 0 (
-    echo pip install requirements.txt failed!
-    exit /b 7
-)
-
-rem ------pre install clcache and init config----------
-rem pip install clcache --user
-pip uninstall -y clcache
-:: set USE_CLCACHE to enable clcache
-rem set USE_CLCACHE=1
-:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
-rem set CLCACHE_HARDLINK=1
-:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
-rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
-:: set maximum cache size to 20G
-rem clcache.exe -M 21474836480
-
-:: install ninja if GENERATOR is Ninja
-if %GENERATOR% == "Ninja" (
-    pip install ninja
-    if %errorlevel% NEQ 0 (
-        echo pip install ninja failed!
-        exit /b 7
-    )
-)
-
-rem ------show summary of current environment----------
-cmake --version
-if "%WITH_GPU%"=="ON" (
-    nvcc --version
-    nvidia-smi
-)
-::python %work_dir%\tools\summary_env.py
-::%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
 
 goto :CASE_%1
 
@@ -262,6 +206,53 @@ goto:success
 rem "Other configurations are added here"
 rem :CASE_wincheck_others
 rem call ...
+
+rem ------initialize the python environment------
+if %WITH_PYTHON% == "OFF" (
+    if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
+    set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+    set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
+
+    rem ------pre install python requirement----------
+    where python
+    where pip
+    pip install wheel --user
+    pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+    pip install -r %work_dir%\python\requirements.txt --user
+
+    if %ERRORLEVEL% NEQ 0 (
+        echo pip install requirements.txt failed!
+        exit /b 7
+    )
+)
+
+rem ------pre install clcache and init config----------
+rem pip install clcache --user
+pip uninstall -y clcache
+:: set USE_CLCACHE to enable clcache
+rem set USE_CLCACHE=1
+:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
+rem set CLCACHE_HARDLINK=1
+:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
+rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+:: set maximum cache size to 20G
+rem clcache.exe -M 21474836480
+
+rem install ninja if GENERATOR is Ninja
+if %GENERATOR% == "Ninja" (
+    pip install ninja
+    if %errorlevel% NEQ 0 (
+        echo pip install ninja failed!
+        exit /b 7
+    )
+)
+
+rem ------show summary of current GPU environment----------
+cmake --version
+if "%WITH_GPU%"=="ON" (
+    nvcc --version
+    nvidia-smi
+)
 
 rem ---------------------------------------------------------------------------------------------
 :cmake
@@ -496,6 +487,9 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
+
+: set CI_SKIP_CPP_TEST if only *.py changed
+git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%

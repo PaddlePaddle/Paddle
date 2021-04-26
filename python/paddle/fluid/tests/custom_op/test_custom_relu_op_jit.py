@@ -34,7 +34,7 @@ if os.name == 'nt' and os.path.isfile(file):
 # not a new op, if you want to test only one op, remove this
 # source file
 sources = ['custom_relu_op.cc', 'custom_relu_op_dup.cc']
-if not IS_MAC:
+if IS_MAC:
     sources.append('custom_relu_op.cu')
 
 custom_module = load(
@@ -115,7 +115,7 @@ class TestJITLoad(unittest.TestCase):
 
         caught_exception = False
         # MAC-CI don't support GPU
-        if IS_MAC:
+        if not paddle.is_compiled_with_cuda():
             return
         try:
             x = np.random.uniform(-1, 1, [4, 8]).astype('int32')
@@ -126,7 +126,7 @@ class TestJITLoad(unittest.TestCase):
                 "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32_t`"
                 in str(e))
             self.assertTrue(
-                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu:50" in
+                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in
                 str(e))
         self.assertTrue(caught_exception)
 

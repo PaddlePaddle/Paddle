@@ -298,7 +298,7 @@ if avx_supported():
                 "WARNING: AVX is supported on local machine, but you have installed "
                 "paddlepaddle without avx core. Hence, no_avx core which has worse "
                 "preformance will be imported.\nYou could reinstall paddlepaddle by "
-                "'python -m pip install -U paddlepaddle-gpu[==version]' or rebuild "
+                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' or rebuild "
                 "paddlepaddle WITH_AVX=ON to get better performance.\n"
                 "The original error is: %s\n" % cpt.get_exception_message(e))
             load_noavx = True
@@ -350,12 +350,19 @@ if load_noavx:
             sys.stderr.write(
                 'Error: Can not import noavx core while this file exists: ' +
                 current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
+        elif avx_supported():
+            sys.stderr.write(
+                "Error: AVX is support on your machine, but you have installed "
+                "paddlepaddle without avx core, you should reinstall paddlepaddle by "
+                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version]\n"
+            )
         else:
             sys.stderr.write(
                 "Error: AVX is not support on your machine, but you have installed "
-                "paddlepaddle with avx core, you should reinstall paddlepaddle by "
-                "'python -m pip install -U paddlepaddle-gpu[==version] -f "
-                "https://paddlepaddle.org.cn/whl/stable_noavx.html'\n")
+                "paddlepaddle without no_avx core, you should reinstall paddlepaddle by "
+                "'python -m pip install --force-reinstall paddlepaddle-gpu[==version] -f "
+                "https://paddlepaddle.org.cn/whl/mkl/stable/noavx.html or "
+                "https://paddlepaddle.org.cn/whl/openblas/stable/noavx.html\n")
         raise e
 
 
