@@ -121,7 +121,8 @@ def get_path_from_url(url,
                       root_dir,
                       md5sum=None,
                       check_exist=True,
-                      decompress=True):
+                      decompress=True,
+                      use_wget=False):
     """ Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
@@ -150,7 +151,7 @@ def get_path_from_url(url,
         logger.info("Found {}".format(fullpath))
     else:
         if ParallelEnv().current_endpoint in unique_endpoints:
-            fullpath = _download(url, root_dir, md5sum)
+            fullpath = _download(url, root_dir, md5sum, use_wget)
         else:
             while not os.path.exists(fullpath):
                 time.sleep(1)
@@ -163,7 +164,7 @@ def get_path_from_url(url,
     return fullpath
 
 
-def _download(url, path, md5sum=None):
+def _download(url, path, md5sum=None, use_wget=False):
     """
     Download from url, save to path.
 
@@ -186,26 +187,35 @@ def _download(url, path, md5sum=None):
 
         logger.info("Downloading {} from {}".format(fname, url))
 
-        req = requests.get(url, stream=True)
-        if req.status_code != 200:
-            raise RuntimeError("Downloading from {} failed with code "
-                               "{}!".format(url, req.status_code))
-
         # For protecting download interupted, download to
         # tmp_fullname firstly, move tmp_fullname to fullname
         # after download finished
         tmp_fullname = fullname + "_tmp"
-        total_size = req.headers.get('content-length')
-        with open(tmp_fullname, 'wb') as f:
-            if total_size:
-                with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
+
+        if use_wget:
+            r = os.system('wget {} -O {} '.format(url, tmp_fullname))
+            if r == 32512:
+                raise RuntimeError("wget command not found")
+            elif r != 0:
+                raise RuntimeError("Downloading from {} failed with code,"
+                                   "{}!".format(url, r))
+        else:
+            req = requests.get(url, stream=True)
+            if req.status_code != 200:
+                raise RuntimeError("Downloading from {} failed with code "
+                                   "{}!".format(url, req.status_code))
+            total_size = req.headers.get('content-length')
+            with open(tmp_fullname, 'wb') as f:
+                if total_size:
+                    with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
+                        for chunk in req.iter_content(chunk_size=1024):
+                            f.write(chunk)
+                            pbar.update(1)
+                else:
                     for chunk in req.iter_content(chunk_size=1024):
-                        f.write(chunk)
-                        pbar.update(1)
-            else:
-                for chunk in req.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
+                        if chunk:
+                            f.write(chunk)
+
         shutil.move(tmp_fullname, fullname)
 
     return fullname

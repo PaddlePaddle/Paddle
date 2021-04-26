@@ -17,6 +17,7 @@ from __future__ import print_function
 
 import unittest
 import os
+import sys
 
 import paddle
 from paddle.hapi import hub
@@ -28,6 +29,7 @@ class TestHub(unittest.TestCase):
     def setUp(self, ):
         self.local_repo = os.path.dirname(os.path.abspath(__file__))
         self.github_repo = 'lyuwenyu/paddlehub_demo:main'
+        self.gitee_repo = 'lyuwenyuL/paddlehub_test:master'
 
     def testLoad(self, ):
         model = hub.load(
@@ -96,6 +98,13 @@ class TestHub(unittest.TestCase):
             force_reload=False, )
 
         assert models1 == models2 == ['MM'], ''
+
+    @unittest.skipIf(sys.platform != 'linux', 'make sure have wget')
+    def testGitee(self, ):
+        _ = hub.list(
+            self.gitee_repo,
+            source='gitee',
+            force_reload=True, )
 
     def testExcept(self, ):
         with self.assertRaises(ValueError):
