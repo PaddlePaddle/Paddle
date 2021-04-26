@@ -169,7 +169,7 @@ class ParallelExecutorPrivate {
             platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
             platform::errors::PreconditionNotMet(
                 "PaddlePaddle failed to get NCCL unique ID. It may due to your "
-                "system setting or NCCL library error, please debug on NCCL"));
+                "system settings or NCCL library error, please debug on NCCL"));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
