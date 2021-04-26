@@ -70,11 +70,13 @@ class DecodeJpegOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "Diagonal values of square matrix. It is a tensor with rank 1.");
+             "A one dimensional uint8 tensor containing the raw bytes "
+             "of the JPEG image. It is a tensor with rank 1.");
     AddOutput("Out", "The output tensor of DecodeJpeg op");
     AddComment(R"DOC(
-This operator initializes a tensor with random integers sampled from a
-uniform distribution. The random result is in set [low, high).
+This operator decode a JPEG image into a 3 dimensional RGB Tensor.
+Optionally converts the image to the desired format. The values of 
+the output tensor are uint8 between 0 and 255.
 )DOC");
     AddAttr<std::string>(
         "mode",

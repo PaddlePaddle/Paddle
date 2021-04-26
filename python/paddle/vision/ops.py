@@ -810,9 +810,9 @@ def read_file(filename, name=None):
             fake_img = (np.random.random(
                         (400, 300, 3)) * 255).astype('uint8')
 
-            cv2.imwrite(os.path.join('fake.jpg'), fake_img)
+            cv2.imwrite('fake.jpg', fake_img)
 
-            img_bytes = paddle.vision.ops.read_file(img_path)
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
             
             print(img_bytes.shape)
 
@@ -857,9 +857,9 @@ def decode_jpeg(x, mode='unchanged', name=None):
             fake_img = (np.random.random(
                         (400, 300, 3)) * 255).astype('uint8')
 
-            cv2.imwrite(os.path.join('fake.jpg'), fake_img)
+            cv2.imwrite('fake.jpg', fake_img)
 
-            img_bytes = paddle.vision.ops.read_file(img_path)
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
             img = paddle.vision.ops.decode_jpeg(img_bytes)
 
             print(img.shape)
