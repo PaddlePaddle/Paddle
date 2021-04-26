@@ -216,19 +216,24 @@ struct ReduceConfig {
     if (left_dim.size()) left_num = left_strides[0] * x_dim[left_dim[0]];
   }
 
-  int getReduceType() {
+  void SetReduceType() {
     int rank = x_dim.size();
     int reduce_rank = reduce_dim.size();
     if (rank == reduce_rank) {
       reduce_type = static_cast<int>(ReduceType::kReduceAll);
+      printf("this is reduce alll \n");
     } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
+      printf("this is reduce LastDim \n");
     } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 0) {
       reduce_type = static_cast<int>(ReduceType::kReduceFirstDim);
+      printf("this is reduce FirstDim \n");
     } else {
       reduce_type = static_cast<int>(ReduceType::kReduceCommon);
+      printf("this is reduce reduceAny \n");
     }
   }
+
   void setBlockDim() {
     int block_num = detail::GetDesiredBlockDim(reduce_num);
     // init
@@ -475,7 +480,17 @@ static void launchReduceKernel(const Tx* x_data, Ty* y_data,
   }
 
   if (config.should_reduce_ny()) {
-    switch (rank) { CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1);); }
+    constexpr int kRank = 2;
+    constexpr int kReduceRank = 1;
+    ReduceKernel_m<Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, 128, kRank,
+                   kReduceRank><<<config.grid_, config.block_, 0, stream>>>(
+        y_data, y_data, reducer, detail::IdentityFunctor<Ty>(), init,
+        config.reduce_num, config.grid_.y, config.grid_.y, config.reduce_type,
+        detail::Array<int, kRank>::From(config.x_strides),
+        detail::Array<int, kReduceRank>::From(config.reduce_dim),
+        detail::Array<int, kReduceRank>::From(config.reduce_strides),
+        detail::Array<int, kRank - kReduceRank>::From(config.left_dim),
+        detail::Array<int, kRank - kReduceRank>::From(config.left_strides));
   }
 
 #undef CUB_REDUCE_RANK_CASE
@@ -491,6 +506,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
   // update Reduce_dim and x_dim
   config.updateReduceDim();
   config.UpdateStrides();
+  config.SetReduceType();
   // malloc
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>(x.place());
@@ -523,6 +539,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
     CUB_BLOCK_DIM_CASE(4);
     CUB_BLOCK_DIM_CASE(2);
   }
+#undef CUB_BLOCK_DIM_CASE
 }
 
 template <typename Tx, typename ReduceOp, typename TransformOp>
