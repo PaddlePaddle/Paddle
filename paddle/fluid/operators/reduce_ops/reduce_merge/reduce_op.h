@@ -237,9 +237,10 @@ struct ReduceConfig {
   void setBlockDim() {
     int block_num = detail::GetDesiredBlockDim(reduce_num);
     // init
-    reduce_ny = false;
+    need_reduce_ny = false;
     dim3 block(block_num, 1);
     dim3 grid(left_num, 1);
+    block_size_reduce_ny = reduce_num;
     if (reduce_type == ReduceType::kReduceFirstDim) {
       int device_id = platform::GetCurrentDeviceId();
       int max_mp = platform::GetCUDAMultiProcessors(device_id);
@@ -253,7 +254,7 @@ struct ReduceConfig {
           detail::GetLastPow2(reduce_ny / (max_threads / reduce_nx));
       if (max_threads / reduce_nx >= 2 && reduce_ny > 512 &&
           block_size_reduce_ny > 1) {
-        reduce_ny = true;
+        need_reduce_ny = true;
         block.x = 32;
         block.y = 1;
         grid.x = (reduce_nx + block.x - 1) / block.x;
@@ -268,9 +269,11 @@ struct ReduceConfig {
     }
     block_ = block;
     grid_ = grid;
+    printf("block %d %d grid %d %d %d blocking_size %d reduce_num \n", block_.x,
+           block_.y, grid.x, grid.y, block_size_reduce_ny, reduce_num);
   }
 
-  bool should_reduce_ny() { return reduce_ny; }
+  bool should_reduce_ny() { return need_reduce_ny; }
 
   std::vector<int> reduce_dims_origin;
   std::vector<int> reduce_dim;
@@ -283,7 +286,7 @@ struct ReduceConfig {
   int reduce_num;
   int left_num;
   int block_size_reduce_ny;
-  bool reduce_ny;
+  bool need_reduce_ny;
   dim3 block_;
   dim3 grid_;
 };
@@ -312,7 +315,7 @@ __device__ void ReduceLastDim(const Tx* x, Ty* y, ReduceOp reducer,
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
 __device__ void ReduceFirstDim(const Tx* x, Ty* y, ReduceOp reducer,
-                               TransformOp transformer, Ty init, int nx, int ny,
+                               TransformOp transformer, Ty init, int ny, int nx,
                                int block_size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int idy = blockIdx.y * block_size;
@@ -443,7 +446,12 @@ static void launchReduceKernel(const Tx* x_data, Ty* y_data,
         detail::Array<int, kRank - kReduceRank>::From(config.left_dim),      \
         detail::Array<int, kRank - kReduceRank>::From(config.left_strides)); \
   } break
-
+  printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+  printf(
+      "reduce_num %d; left_num %d; block_size_reduce_ny %d; reduce_type %d;\n",
+      config.reduce_num, config.left_num, config.block_size_reduce_ny,
+      config.reduce_type);
+  printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
   // launch CUB::Reduce
   if (config.reduce_type == static_cast<int>(ReduceType::kReduceAll)) {
     cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
@@ -460,6 +468,7 @@ static void launchReduceKernel(const Tx* x_data, Ty* y_data,
 
     return;
   }
+
   detail::CheckReduceRankIsValid(reduce_rank, rank);
   switch (rank) {
     CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1););
@@ -479,13 +488,15 @@ static void launchReduceKernel(const Tx* x_data, Ty* y_data,
     CUB_RANK_CASE(9, CUB_REDUCE_RANK_CASE(4); CUB_REDUCE_RANK_CASE(5););
   }
 
+  if (sizeof(Tx) != sizeof(Ty)) printf("error tx != ty\n");
   if (config.should_reduce_ny()) {
     constexpr int kRank = 2;
     constexpr int kReduceRank = 1;
+    printf("%d %d blocking_size, reduce_ny\n", config.grid_.y, config.left_num);
     ReduceKernel_m<Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, 128, kRank,
-                   kReduceRank><<<config.grid_, config.block_, 0, stream>>>(
+                   kReduceRank><<<config.grid_.x, config.block_.x, 0, stream>>>(
         y_data, y_data, reducer, detail::IdentityFunctor<Ty>(), init,
-        config.reduce_num, config.grid_.y, config.grid_.y, config.reduce_type,
+        config.grid_.y, config.left_num, config.grid_.y, config.reduce_type,
         detail::Array<int, kRank>::From(config.x_strides),
         detail::Array<int, kReduceRank>::From(config.reduce_dim),
         detail::Array<int, kReduceRank>::From(config.reduce_strides),
