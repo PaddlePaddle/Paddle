@@ -195,7 +195,7 @@ void BindGraphIndex(py::module* m) {
              return self.get_item_of_path(paths);
            })
       .def("update_Jpath_of_item",
-           [](GraphIndex& self, std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const int J, const double lamd, const int factor){
+           [](GraphIndex& self, std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const uint64_t J, const double lamd, const int factor){
              return self.update_Jpath_of_item(item_paths, T, J, lamd, factor);
       });
 }

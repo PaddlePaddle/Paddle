@@ -209,11 +209,11 @@ std::vector<std::vector<uint64_t>> GraphIndex::get_item_of_path(
 }
 
 int GraphIndex::update_Jpath_of_item(
-    std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
-    const int J, const double lamd, const int factor) {
+    std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,    
+    const uint64_t J, const double lamd, const int factor) {
   std::map<uint64_t, std::vector<std::string>>::iterator item_path;
-  std::unordered_map<uint64_t, std::vector<int64_t>> temp_item_path[0] =
-      std::vector<int64_t>{J};
+  std::unordered_map<uint64_t, std::vector<int64_t>> temp_item_path; //[0] =
+     // std::vector<int64_t>{J};
   std::unordered_map<int64_t, std::unordered_map<uint64_t, uint64_t>>
       temp_path_item;
   std::pair<int64_t, std::vector<double>> top_path_pro(-1, {2});
@@ -225,20 +225,23 @@ int GraphIndex::update_Jpath_of_item(
   // T loops
   for (int t = 1; t < T + 1; t++) {
     printf("####### t_th:%d ####### \n", t);
-    // each item
-    for (item_path = item_paths.begin(); item_path != item_paths.end();
+    // loop each item_path for topJ
+    
+    for (item_path = item_paths.begin(); item_path != item_paths.end();   
          item_path++) {
       double sum = 0;
       uint64_t item_id = item_path->first;
-      printf("====== item_id:%lu ====== \n", item_id);
-      temp_item_path[item_id] = std::vector<int64_t>{J};
+      printf("====== item_id:%lu ====== \n", item_id);  
+      if (temp_item_path.find(item_id)==temp_item_path.end()){
+        temp_item_path[item_id] = std::vector<int64_t>();
+      }
 
       // we mean to update the certain item's Top_jth path
       // so we erase the item from it's last_loop Top_jth path
       // and arrage the item in another path,
       // that's temp_path_item[top_path_pro.first][item_id] in this item_Top_jth
       // loop
-      for (int j = 0; j < J; j++) {
+      for (uint64_t j = 0; j < J; j++) {
         if (t > 1) {
           path_id = temp_item_path.find(item_id)->second[j];
           temp_path_item.find(path_id)->second.find(item_id)->second -=
@@ -248,38 +251,51 @@ int GraphIndex::update_Jpath_of_item(
         }
 
         for (auto& path_pro_i : item_path->second) {
-          if (temp_path_item.find(path_id) != temp_path_item.end()) {
-            path_cnt = temp_path_item.find(path_id)->second.size();
-          } else {
-            path_cnt = 0;
-          }
-
           std::string top_path = path_pro_i;
           size_t pos = path_pro_i.find(":");
           path_id = stoi(path_pro_i.substr(0, pos));
+         
+         // to get the path_cnt
+          if (temp_path_item.find(path_id) != temp_path_item.end()) {
+            path_cnt = temp_path_item.find(path_id)->second.size();
+          } 
+           // no item in the path_id
+          else {
+            path_cnt = 1;
+            if(temp_item_path[item_id].size()>=(j+1)){
+              temp_item_path[item_id][j]=path_id;
+            }
+            else{
+              temp_item_path[item_id].push_back(path_id);
+            }
+            temp_path_item[path_id][item_id]=1;
+          }
+
           item_probility = stof(path_pro_i.substr(pos + 1, path_pro_i.size()));
           int flag = 0;
-          if (temp_item_path.find(item_id) == temp_item_path.end()) {
-            temp_item_path[item_id] = std::vector<int64_t>{J};
+          // item_id appear in temp_item_path for the first time; arrange in;
+          if (temp_item_path.find(item_id)->second.size()==0) {
+            temp_item_path[item_id].push_back(path_id);
             probility = log(item_probility + sum) -
                         lamd * ((pow(path_cnt + 1, factor) / factor) -
                                 (pow(path_cnt, factor) / factor));
-            printf("path_id:%lu, - effProb:%f, - path_cnt:%d \n", path_id,
+            printf("#####firstIn_path_id#####,path_id:%lu, - effProb:%f, - path_cnt:%d \n", path_id,
                    probility, path_cnt);
+            // first pathId has the toppest pathPro
             top_path_pro.first = path_id;
             top_path_pro.second[0] = item_probility;
             top_path_pro.second[1] = probility;
           } else {
-            for (int i = 0; i < j; i++) {
+            for (uint64_t i = 0; i < j; i++) {  // not first path? find if appeared in former(j-1) paths
               if (temp_item_path[item_id][i] == path_id) {
-                flag = 1;
+                flag = 1; // appeared. pass
               }
             }
-            if (flag == 0) {
+            if (flag == 0) {  // not appeared. compare to find the top_path_pro;
               probility = log(item_probility + sum) -
                           lamd * ((pow(path_cnt + 1, factor) / factor) -
                                   (pow(path_cnt, factor) / factor));
-              printf("path_id:%lu, - effProb:%f, - path_cnt:%d \n", path_id,
+              printf("#####cur_path_id#####, path_id:%lu, - effProb:%f, - path_cnt:%d \n", path_id,
                      probility, path_cnt);
 
               if (probility > (top_path_pro.second[1])) {
@@ -288,7 +304,7 @@ int GraphIndex::update_Jpath_of_item(
                 top_path_pro.second[1] = probility;
               }
               printf(
-                  "toper_path_id:%lu, - toper_path_pre_pro=:%f , - "
+                  "#####cur_topPro_path_id#####, toper_path_id:%lu, - toper_path_pre_pro=:%f , - "
                   "toper_path_eff_pro=:%f \n",
                   top_path_pro.first, top_path_pro.second[0],
                   top_path_pro.second[1]);
@@ -296,7 +312,15 @@ int GraphIndex::update_Jpath_of_item(
           }
         }
         printf("111111");
-        temp_item_path[item_id][j] = top_path_pro.first;
+        // long unsigned int
+
+        if(temp_item_path[item_id].size()>=(j+1)){
+          temp_item_path[item_id][j]=top_path_pro.first;
+        }
+        else{
+          temp_item_path[item_id].push_back(top_path_pro.first);
+        }
+
         printf("111111");
         sum = sum + top_path_pro.second[0];
         printf("111111");
@@ -311,7 +335,7 @@ int GraphIndex::update_Jpath_of_item(
           printf("222222");
         }
         printf("111111");
-        temp_path_item.find(path_id)->second.find(item_id)->second += 1;
+        // temp_path_item.find(path_id)->second.find(item_id)->second += 1;
         printf("****** item:%lu, top_jth_path:%lu ****** \n", item_id,
                top_path_pro.first);
       }

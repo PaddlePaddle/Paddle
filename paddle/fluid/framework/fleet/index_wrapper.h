@@ -135,7 +135,7 @@ class GraphIndex : public Index {
       std::vector<int64_t>& paths);
 
   int update_Jpath_of_item(
-    std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const int J, const double lamd, const int factor);
+    std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const uint64_t J, const double lamd, const int factor);
 
  private:
   GraphMeta meta_;
