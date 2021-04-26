@@ -40,8 +40,8 @@ __global__ void CheckFiniteAndUnscale(const T** xs, const MT* scale,
 
   const int64_t num = s_starts[size];
   int xs_index = 0;
-  bool t_found_inf = false;
-  const MT t_scale = *scale;
+  bool local_found_inf = false;
+  const MT local_scale = *scale;
   for (int64_t idx = tid; idx < num; idx += gridDim.x * blockDim.x) {
     // get the "out" index of "id"
     // For example:
@@ -59,16 +59,16 @@ __global__ void CheckFiniteAndUnscale(const T** xs, const MT* scale,
     int64_t in_idx = idx - s_starts[xs_index];
 
     // Unscale
-    MT val = static_cast<MT>(in[in_idx]) * t_scale;
+    MT val = static_cast<MT>(in[in_idx]) * local_scale;
     T narrow_val = static_cast<T>(val);
     out[in_idx] = narrow_val;
 
     // CheckFinite
     if (!isfinite(narrow_val)) {
-      t_found_inf = true;
+      local_found_inf = true;
     }
   }
-  if (t_found_inf) {
+  if (local_found_inf) {
     *found_inf = true;
   }
 }
