@@ -227,10 +227,12 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                     #       add CPUPlace guard here to make sure tensor will be
                     #       operated only on CPU if multiprocessing_context is not
                     #       spawn context
-                    if isinstance(multiprocessing_context, multiprocessing.context.SpawnContext):
+                    if isinstance(multiprocessing_context,
+                                  multiprocessing.context.SpawnContext):
                         batch = fetcher.fetch(indices)
                     else:
-                        with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
+                        with paddle.fluid.dygraph.guard(
+                                place=paddle.CPUPlace()):
                             batch = fetcher.fetch(indices)
             except Exception as e:
                 if isinstance(
@@ -245,8 +247,8 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
                     tensor_list = [
-                        core._array_to_share_memory_tensor(b)
-                        if isinstance(b, np.ndarray) else b._share_memory()
+                        core._array_to_share_memory_tensor(b) if
+                        isinstance(b, np.ndarray) else b.cpu()._share_memory()
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))
