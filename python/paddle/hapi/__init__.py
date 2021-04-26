@@ -15,6 +15,7 @@
 from . import logger
 from . import callbacks
 from . import model_summary
+from . import hub
 
 from . import model
 from .model import *

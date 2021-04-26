@@ -718,7 +718,8 @@ void BindImperative(py::module *m_ptr) {
                {
                  // Release gil and do tracing
                  py::gil_scoped_release release;
-                 tracer->TraceOp("set_value", ins, outs, std::move(attrs));
+                 tracer->TraceOp("set_value", ins, outs, std::move(attrs),
+                                 {{"Input", "Out"}});
                }
              } else {
                auto self_numpy = TensorToPyArray(*self_tensor);
@@ -745,7 +746,7 @@ void BindImperative(py::module *m_ptr) {
              // inplace operator for the VarBase self.
              self->BumpInplaceVersion();
            })
-      .def("__getitem__",
+      .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
                  slice_strides, decrease_axis, infer_flags;
@@ -1487,7 +1488,7 @@ void BindImperative(py::module *m_ptr) {
                  allow_ops);
              imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
                  block_ops);
-             VLOG(4) << "AMP operators changed, "
+             VLOG(5) << "AMP operators changed, "
                      << imperative::AmpOperators::Instance();
            })
       .def("_get_amp_op_list",
