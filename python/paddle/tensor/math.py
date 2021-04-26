@@ -1986,7 +1986,7 @@ def tanh(x, name=None):
 def tanh_(x, name=None):
     r"""
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_tanh`.
+    Please refer to :ref:`api_paddle_tensor_math_tanh`.
     """
     return core.ops.tanh_(x)
 
