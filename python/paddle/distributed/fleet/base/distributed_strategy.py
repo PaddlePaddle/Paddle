@@ -892,6 +892,58 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.pipeline_configs, configs)
 
     @property
+    def tensor_parallel(self):
+        """
+        Indicating whether we are using tensor parallel for distributed training.
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.tensor_parallel = True
+
+        """
+        return self.strategy.tensor_parallel
+
+    @tensor_parallel.setter
+    @is_strict_auto
+    def tensor_parallel(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.tensor_parallel = flag
+        else:
+            print("WARNING: tensor_parallel should have value of bool type")
+
+    @property
+    def tensor_parallel_configs(self):
+        """
+        Set tensor_parallel configurations.
+
+        **Notes**:
+            **Detailed arguments for tensor_parallel_configs**
+            **tensor_parallel_degree**: degree of tensor parallel
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.tensor_parallel = True
+            strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4}
+
+        """
+        return get_msg_dict(self.strategy.tensor_parallel_configs)
+
+    @tensor_parallel_configs.setter
+    @is_strict_auto
+    def tensor_parallel_configs(self, configs):
+        check_configs_key(self.strategy.tensor_parallel_configs, configs,
+                          "tensor_parallel_configs")
+        assign_configs_value(self.strategy.tensor_parallel_configs, configs)
+
+    @property
     def hybrid_configs(self):
         """
         Dynamic graph hybrid parallel strategy configuration. Three-way hybrid parallelism 

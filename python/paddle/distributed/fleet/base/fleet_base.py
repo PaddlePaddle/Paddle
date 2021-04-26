@@ -29,6 +29,7 @@ from paddle.fluid.dygraph import parallel_helper
 from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import ModelParallel
+from ..meta_parallel import PipelineParallel
 from ..meta_optimizers import HybridParallelOptimizer
 from ..meta_optimizers import HybridParallelGradScaler
 
@@ -779,6 +780,9 @@ class Fleet(object):
                 find_unused_parameters)
         elif self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL:
             distributed_model = ModelParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
+            distributed_model = PipelineParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
         return distributed_model
 

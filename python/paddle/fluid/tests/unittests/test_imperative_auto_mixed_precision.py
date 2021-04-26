@@ -106,6 +106,20 @@ class TestAutoCast(unittest.TestCase):
 
         self.assertRaises(ValueError, func)
 
+    def test_amp_guard_upsupported_fp16_op(self):
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard(True):
+                out_fp16 = conv2d(data)
+                out_fp32 = paddle.expand_as(
+                    out_fp16, out_fp16)  # expand_as_v2 has no fp16 kernel
+
+        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
+        self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+
 
 class TestAmpScaler(unittest.TestCase):
     def test_scale(self):

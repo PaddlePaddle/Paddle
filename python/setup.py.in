@@ -159,7 +159,8 @@ packages=['paddle',
           'paddle.distributed.fleet.proto',
           'paddle.distributed.fleet.utils',
           'paddle.distributed.fleet.meta_parallel',
-          'paddle.distributed.fleet.meta_parallel.mp_utils',
+          'paddle.distributed.fleet.meta_parallel.pp_utils',
+          'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -392,15 +393,22 @@ if os.name == 'nt':
 elif sys.platform == 'darwin':
     ext_modules = []
 
-def find_files(pattern, root):
+def find_files(pattern, root, recursive=False):
     for dirpath, _, files in os.walk(root):
-      for filename in fnmatch.filter(files, pattern):
-          yield os.path.join(dirpath, filename)
+        for filename in fnmatch.filter(files, pattern):
+            yield os.path.join(dirpath, filename)
+        if not recursive:
+            break
 
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension')) +  # extension
-    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')))  # boost
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
+    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
+    # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
+    # to `extension/incude`,
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
@@ -440,35 +448,18 @@ class InstallHeaders(Command):
                                    ('install_headers', 'install_dir'),
                                    ('force', 'force'))
 
-    def copy_data_type_headers(self):
-        # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
-        # to `extension/incude`,
-        data_type_headers = (['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] + 
-                             ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] + 
-                             ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
-
-        install_dir = os.path.join(self.install_dir, "paddle/fluid/extension/include")
-        if not os.path.exists(install_dir):
-            self.mkpath(install_dir)
-        for header in data_type_headers:
-            self.copy_file(header, install_dir)
-
     def mkdir_and_copy_file(self, header):
         if 'pb.h' in header:
             install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+            if 'fluid' in install_dir:
+                install_dir = "paddle/extension/include/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['eigen3/src/extern_eigen3', 'boost/src/extern_boost',
-                       'dlpack/src/extern_dlpack/include',
-                       'install/protobuf/include',
-                       'install/gflags/include',
-                       'install/glog/include', 'install/xxhash/include',
-                       'install/mkldnn/include',
-                       'threadpool/src/extern_threadpool']
+            patterns = ['boost/src/extern_boost', 'install/mkldnn/include']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
@@ -484,7 +475,6 @@ class InstallHeaders(Command):
         for header in hdrs:
             (out, _) = self.mkdir_and_copy_file(header)
             self.outfiles.append(out)
-        self.copy_data_type_headers()
 
     def get_inputs(self):
         return self.distribution.headers or []

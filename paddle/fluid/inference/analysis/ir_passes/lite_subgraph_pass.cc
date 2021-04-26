@@ -245,6 +245,11 @@ void LiteSubgraphPass::SetUpEngine(
   bool use_xpu = Get<bool>("use_xpu");
   int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
+  bool locked = Get<bool>("locked");
+  bool autotune = Get<bool>("autotune");
+  std::string autotune_file = Get<std::string>("autotune_file");
+  std::string precision = Get<std::string>("precision");
+  bool adaptive_seqlen = Get<bool>("adaptive_seqlen");
 
   lite_api::TargetType target_type;
   if (use_gpu) {
@@ -282,6 +287,11 @@ void LiteSubgraphPass::SetUpEngine(
   };
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;
   config.xpu_l3_workspace_size = xpu_l3_workspace_size;
+  config.locked = locked;
+  config.autotune = autotune;
+  config.autotune_file = autotune_file;
+  config.precision = precision;
+  config.adaptive_seqlen = adaptive_seqlen;
   if (dump_model) {
     lite::StrToBinaryFile("./model.bin", config.model);
     lite::StrToBinaryFile("./param.bin", config.param);
