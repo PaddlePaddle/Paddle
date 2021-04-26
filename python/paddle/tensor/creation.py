@@ -1036,8 +1036,10 @@ def assign(x, output=None):
     The OP copies the :attr:`x` to the :attr:`output`.
  
     Parameters:
-        x (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple, list or scalar,
-            its data type supports float16, float32, float64, int32, int64, and bool.
+        x (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
+            or scalar. Its data type supports float16, float32, float64, int32, int64, and bool.
+            Note: the float64 data will be converted to float32 because of current platform protobuf
+            data limitation.
         output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
  
