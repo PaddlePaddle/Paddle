@@ -348,6 +348,49 @@ def monkey_patch_varbase():
         """
         self.clear_gradient()
 
+    def item(self, *args):
+        """
+        Convert one element Tensor to a Python scalar.
+
+        Args:
+            *args(int): The input coordinates. If it's single int, the data in the corresponding order of flattened Tensor will be returned.
+                Default: None, and it must be in the case where Tensor has only one element.
+
+        Returns(Python scalar): A Python scalar, whose dtype is corresponds to the dtype of Tensor.
+
+        Raises:
+            ValueError: If the Tensor has more than one element, there must be coordinates.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                x = paddle.to_tensor(1)
+                print(x.item())             #1
+                print(type(x.item()))       #<class 'int'>
+
+                x = paddle.to_tensor(1.0)
+                print(x.item())             #1.0
+                print(type(x.item()))       #<class 'float'>
+
+                x = paddle.to_tensor(True)
+                print(x.item())             #True
+                print(type(x.item()))       #<class 'bool'>
+
+                x = paddle.to_tensor(1+1j)
+                print(x.item())             #(1+1j)
+                print(type(x.item()))       #<class 'complex'>
+
+                x = paddle.to_tensor([[1.1, 2.2, 3.3]])
+                print(x.item(2))            #3.3
+                print(x.item(0, 2))         #3.3
+
+                x = paddle.to_tensor([1, 2])
+                x.item()               #ValueError: only one element tensor can be converted to Python scalar when no input coordinates.
+        """
+        return self._getitem_from_offset(*args).item()
+
     @property
     def inplace_version(self):
         """
@@ -435,7 +478,30 @@ def monkey_patch_varbase():
         return self.__nonzero__()
 
     def __array__(self, dtype=None):
-        return self.numpy().astype(dtype)
+        """
+        Returns a numpy array shows the value of current Tensor.
+        
+        Returns:
+            ndarray: The numpy value of current Tensor.
+
+        Returns type:
+            ndarray: dtype is same as current Tensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import numpy as np
+                x = paddle.randn([2, 2])
+                x_array = np.array(x)
+
+                print(type(x_array))      #<class 'numpy.ndarray'>
+                print(x_array.shape)      #(2, 2)
+        """
+        array = self.numpy()
+        if dtype:
+            array = array.astype(dtype)
+        return array
 
     def __getitem__(self, item):
         def contain_tensor(item):
@@ -471,7 +537,7 @@ def monkey_patch_varbase():
         ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor"), ("__array__", __array__),
-        ("__getitem__", __getitem__)):
+        ("__getitem__", __getitem__), ("item", item)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.

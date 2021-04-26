@@ -142,6 +142,74 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(y.dtype, core.VarDesc.VarType.COMPLEX64)
                 self.assertEqual(y.shape, [2])
 
+                paddle.set_default_dtype('float32')
+                x = paddle.randn([3, 4])
+                x_array = np.array(x)
+                self.assertEqual(x_array.shape, x.numpy().shape)
+                self.assertEqual(x_array.dtype, x.numpy().dtype)
+                self.assertTrue(np.array_equal(x_array, x.numpy()))
+
+                x = paddle.to_tensor(1.0)
+                self.assertEqual(x.item(), 1.0)
+                self.assertTrue(isinstance(x.item(), float))
+
+                x = paddle.randn([3, 2, 2])
+                self.assertTrue(isinstance(x.item(5), float))
+                self.assertTrue(isinstance(x.item(1, 0, 1), float))
+                self.assertEqual(x.item(5), x.item(1, 0, 1))
+                self.assertTrue(
+                    np.array_equal(x.item(1, 0, 1), x.numpy().item(1, 0, 1)))
+
+                x = paddle.to_tensor([[1.111111, 2.222222, 3.333333]])
+                self.assertEqual(x.item(0, 2), x.item(2))
+                self.assertAlmostEqual(x.item(2), 3.333333)
+                self.assertTrue(isinstance(x.item(0, 2), float))
+
+                x = paddle.to_tensor(1.0, dtype='float64')
+                self.assertEqual(x.item(), 1.0)
+                self.assertTrue(isinstance(x.item(), float))
+
+                x = paddle.to_tensor(1.0, dtype='float16')
+                self.assertEqual(x.item(), 1.0)
+                self.assertTrue(isinstance(x.item(), float))
+
+                x = paddle.to_tensor(1, dtype='uint8')
+                self.assertEqual(x.item(), 1)
+                print(type(x.item()))
+                self.assertTrue(isinstance(x.item(), int))
+
+                x = paddle.to_tensor(1, dtype='int8')
+                self.assertEqual(x.item(), 1)
+                self.assertTrue(isinstance(x.item(), int))
+
+                x = paddle.to_tensor(1, dtype='int16')
+                self.assertEqual(x.item(), 1)
+                self.assertTrue(isinstance(x.item(), int))
+
+                x = paddle.to_tensor(1, dtype='int32')
+                self.assertEqual(x.item(), 1)
+                self.assertTrue(isinstance(x.item(), int))
+
+                x = paddle.to_tensor(1, dtype='int64')
+                self.assertEqual(x.item(), 1)
+                self.assertTrue(isinstance(x.item(), long if six.PY2 else int))
+
+                x = paddle.to_tensor(True)
+                self.assertEqual(x.item(), True)
+                self.assertTrue(isinstance(x.item(), bool))
+
+                x = paddle.to_tensor(1 + 1j)
+                self.assertEqual(x.item(), 1 + 1j)
+                self.assertTrue(isinstance(x.item(), complex))
+
+                with self.assertRaises(ValueError):
+                    paddle.randn([3, 2, 2]).item()
+                with self.assertRaises(ValueError):
+                    paddle.randn([3, 2, 2]).item(18)
+                with self.assertRaises(ValueError):
+                    paddle.randn([3, 2, 2]).item(1, 2)
+                with self.assertRaises(ValueError):
+                    paddle.randn([3, 2, 2]).item(2, 1, 2)
                 with self.assertRaises(TypeError):
                     paddle.to_tensor('test')
                 with self.assertRaises(TypeError):
