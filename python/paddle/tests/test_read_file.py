@@ -23,13 +23,16 @@ from paddle.vision.ops import read_file, decode_jpeg
 
 
 class TestReadFile(unittest.TestCase):
-    def test_read_file_decode_jpeg(self):
+    def setUp(self):
+        fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
+        cv2.imwrite('fake.jpg', fake_img)
+
+    def tearDown(self):
+        os.remove('fake.jpg')
+
+    def read_file_decode_jpeg(self):
         if not paddle.is_compiled_with_cuda():
             return
-
-        fake_img = (np.random.random((400, 300, 3)) * 255).astype('uint8')
-
-        cv2.imwrite('fake.jpg', fake_img)
 
         img_bytes = read_file('fake.jpg')
 
@@ -39,8 +42,27 @@ class TestReadFile(unittest.TestCase):
         img = decode_jpeg(img_bytes)
 
         img_cv2 = cv2.imread('fake.jpg')
+        if paddle.in_dynamic_mode():
+            print(img.shape, img_cv2.shape)
 
-        np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
+            np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
+        else:
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(paddle.static.default_main_program(),
+                          fetch_list=[img])
+
+            np.testing.assert_equal(out[0].shape,
+                                    img_cv2.transpose(2, 0, 1).shape)
+
+    def test_read_file_decode_jpeg_dynamic(self):
+        self.read_file_decode_jpeg()
+
+    def test_read_file_decode_jpeg_static(self):
+        paddle.enable_static()
+        self.read_file_decode_jpeg()
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

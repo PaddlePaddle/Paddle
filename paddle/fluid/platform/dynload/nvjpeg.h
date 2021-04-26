@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
 #include <nvjpeg.h>
 #include <mutex>  // NOLINT
 
@@ -48,3 +49,5 @@ NVJPEG_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVJPEG_WRAP);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
+
+#endif
