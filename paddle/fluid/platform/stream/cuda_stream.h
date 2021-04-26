@@ -95,6 +95,15 @@ class CUDAStream final {
   void Destroy();
 
   bool Query() const {
+#ifdef PADDLE_WITH_HIP
+    hipError_t err = hipStreamQuery(stream_);
+    if (err == hipSuccess) {
+      return true;
+    }
+    if (err == hipErrorNotReady) {
+      return false;
+    }
+#else
     cudaError_t err = cudaStreamQuery(stream_);
     if (err == cudaSuccess) {
       return true;
@@ -102,13 +111,18 @@ class CUDAStream final {
     if (err == cudaErrorNotReady) {
       return false;
     }
+#endif
 
     PADDLE_ENFORCE_CUDA_SUCCESS(err);
     return false;
   }
 
   void Synchronize() const {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
+#endif
   }
 
  private:
