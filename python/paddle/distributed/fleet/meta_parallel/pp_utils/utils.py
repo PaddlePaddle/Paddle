@@ -16,7 +16,21 @@ import abc
 import paddle
 from ...utils import hybrid_parallel_util as hp_util
 
-__all__ = ['get_tensor_bytes', ]
+__all__ = [
+    'get_tensor_bytes',
+    'is_float_tensor',
+]
+
+FLOAT_TYPES = [
+    paddle.float16,
+    paddle.float32,
+    paddle.float64,
+]
+
+
+def is_float_tensor(tensor):
+    """Is a float tensor"""
+    return tensor.dtype in FLOAT_TYPES
 
 
 def get_tensor_bytes(tensor):

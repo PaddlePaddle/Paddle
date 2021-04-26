@@ -22,15 +22,9 @@ from numpy import prod
 import paddle
 import paddle.fluid as fluid
 from .meta_parallel_base import MetaParallelBase
-from .pp_utils.utils import get_tensor_bytes
+from .pp_utils.utils import get_tensor_bytes, is_float_tensor
 from .pp_utils import utils
 from .parallel_layers.pp_layers import PipelineLayer
-
-FLOAT_TYPES = [
-    paddle.float16,
-    paddle.float32,
-    paddle.float64,
-]
 
 
 class PipelineParallel(MetaParallelBase):
