@@ -236,7 +236,7 @@ def _update_input_info(inputs):
     if isinstance(inputs, Input):
         shapes = [list(inputs.shape)]
         dtypes = [inputs.dtype]
-    elif isinstance(inputs, list):
+    elif isinstance(inputs, (list, tuple)):
         shapes = [list(input.shape) for input in inputs]
         dtypes = [input.dtype for input in inputs]
     elif isinstance(inputs, dict):
@@ -895,12 +895,12 @@ class Model(object):
     Args:
         network (paddle.nn.Layer): The network is an instance of
             paddle.nn.Layer.
-        inputs (InputSpec|list|dict|None): `inputs`, entry points of network,
-            could be a InputSpec instance, or lits of InputSpec instances,
+        inputs (InputSpec|list|tuple|dict|None): `inputs`, entry points of network,
+            could be a InputSpec instance, or list/tuple of InputSpec instances,
             or dict ({name: InputSpec}), and it couldn't be None in static
             graph.
-        labels (InputSpec|list|None): `labels`, entry points of network,
-            could be a InputSpec instnace or lits of InputSpec instances,
+        labels (InputSpec|list|tuple|None): `labels`, entry points of network,
+            could be a InputSpec instnace or list/tuple of InputSpec instances,
             or None. For static graph, if labels is required in loss,
             labels must be set. Otherwise, it could be None.
 
@@ -994,9 +994,10 @@ class Model(object):
         self.stop_training = False
 
         if not in_dygraph_mode():
-            if not isinstance(inputs, (list, dict, Input)):
+            if not isinstance(inputs, (list, tuple, dict, Input)):
                 raise TypeError(
-                    "'inputs' must be list or dict, and couldn't be None.")
+                    "'inputs' must be list or tuple or dict, and couldn't be None."
+                )
         elif inputs:
             self._input_info = _update_input_info(inputs)
 
