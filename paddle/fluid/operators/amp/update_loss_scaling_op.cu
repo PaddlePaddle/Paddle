@@ -117,11 +117,11 @@ class LazyZeros<platform::CUDADeviceContext, T> {
                  dev_ctx.stream());
 
     // copy each tensor of "outs" data address array to device
-    auto h_out_addrs_tensor = memory::Alloc(cpu_place, xs_size * sizeof(T*));
-    T** h_out_addrs = reinterpret_cast<T**>(h_out_addrs_tensor->ptr());
+    auto h_out_addrs_mem = memory::Alloc(cpu_place, xs_size * sizeof(T*));
+    T** h_out_addrs = reinterpret_cast<T**>(h_out_addrs_mem->ptr());
 
-    auto d_out_addrs_tensor = memory::Alloc(dev_ctx, xs_size * sizeof(T*));
-    T** d_out_addrs = reinterpret_cast<T**>(d_out_addrs_tensor->ptr());
+    auto d_out_addrs_mem = memory::Alloc(dev_ctx, xs_size * sizeof(T*));
+    T** d_out_addrs = reinterpret_cast<T**>(d_out_addrs_mem->ptr());
 
     for (size_t i = 0; i < xs_size; ++i) {
       h_out_addrs[i] = outs[i]->mutable_data<T>(dev_ctx.GetPlace());
