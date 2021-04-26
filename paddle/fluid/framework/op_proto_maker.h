@@ -49,8 +49,7 @@ class OpProtoAndCheckerMaker {
   static const char *OpCreationCallstackAttrName() { return "op_callstack"; }
   static const char *OpDeviceAttrName() { return "op_device"; }
 
-  void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker,
-                  AttributeTypeMap *attrs_type);
+  void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
   virtual void Make() = 0;
 
@@ -92,7 +91,6 @@ class OpProtoAndCheckerMaker {
     attr->set_comment(comment);
     attr->set_generated(generated);
     attr->set_type(AttrTypeID<T>());
-    (*attrs_type_)[name] = AttrTypeID<T>();
     return op_checker_->AddAttrChecker<T>(name);
   }
 
@@ -104,7 +102,6 @@ class OpProtoAndCheckerMaker {
 
   proto::OpProto *proto_;
   OpAttrChecker *op_checker_;
-  AttributeTypeMap *attrs_type_;
   bool validated_{false};
 };
 }  // namespace framework

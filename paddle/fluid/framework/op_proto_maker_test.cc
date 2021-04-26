@@ -35,9 +35,8 @@ class TestAttrProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
 TEST(ProtoMaker, DuplicatedAttr) {
   paddle::framework::proto::OpProto op_proto;
   paddle::framework::OpAttrChecker op_checker;
-  paddle::framework::AttributeTypeMap attrs_type;
   TestAttrProtoMaker proto_maker;
-  ASSERT_THROW(proto_maker(&op_proto, &op_checker, &attrs_type),
+  ASSERT_THROW(proto_maker(&op_proto, &op_checker),
                paddle::platform::EnforceNotMet);
 }
 
@@ -52,8 +51,7 @@ class TestInOutProtoMaker : public paddle::framework::OpProtoAndCheckerMaker {
 TEST(ProtoMaker, DuplicatedInOut) {
   paddle::framework::proto::OpProto op_proto;
   paddle::framework::OpAttrChecker op_checker;
-  paddle::framework::AttributeTypeMap attrs_type;
   TestAttrProtoMaker proto_maker;
-  ASSERT_THROW(proto_maker(&op_proto, &op_checker, &attrs_type),
+  ASSERT_THROW(proto_maker(&op_proto, &op_checker),
                paddle::platform::EnforceNotMet);
 }

@@ -614,7 +614,8 @@ int main(int argc, char* argv[]) {
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.ops failed!\"));\n"
-      << "  }\n"
+      << "  }\n\n"
+      << "  init_ops_attrtype_map();"
       << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";

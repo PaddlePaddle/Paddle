@@ -61,11 +61,9 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
 }
 
 void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
-                                        OpAttrChecker* attr_checker,
-                                        AttributeTypeMap* attrs_type) {
+                                        OpAttrChecker* attr_checker) {
   proto_ = proto;
   op_checker_ = attr_checker;
-  attrs_type_ = attrs_type;
   Make();
   op_checker_->RecordExplicitCheckerNum();
 

@@ -35,6 +35,11 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
+std::unordered_map<
+    std::string,
+    std::unordered_map<std::string, paddle::framework::proto::AttrType>>
+    ops_attrtype_map;
+
 static inline std::shared_ptr<imperative::VarBase> CastPyHandleToVarBase(
     const std::string& op_type, const std::string& arg_name, int arg_idx,
     const py::handle& handle, bool dispensable = false) {
@@ -186,8 +191,7 @@ static inline void ConstructAttrMapFromPyArgs(
       platform::errors::InvalidArgument(
           "The number of arguments for arributes should be even."));
 
-  auto attr_type_map =
-      paddle::framework::OpInfoMap::Instance().Get(op_type).attrs_type_;
+  auto attr_type_map = &ops_attrtype_map[op_type];
 
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end + 1; arg_pos += 2) {
@@ -245,7 +249,13 @@ static inline void ConstructAttrMapFromPyArgs(
       case paddle::framework::proto::AttrType::STRING:
         if (PyUnicode_Check(obj)) {
           Py_ssize_t size;
-          const char* data = PyUnicode_AsUTF8AndSize(obj, &size);
+          const char* data;
+#if PY_MAJOR_VERSION < 3
+          size = PyUnicode_GET_DATA_SIZE(obj);
+          data = PyUnicode_AS_DATA(obj);
+#else
+          data = PyUnicode_AsUTF8AndSize(obj, &size);
+#endif
           attrs[key] = std::string(data, (size_t)size);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -354,7 +364,13 @@ static inline void ConstructAttrMapFromPyArgs(
             item = PyList_GetItem(obj, i);
             if (PyUnicode_Check(item)) {
               Py_ssize_t size;
-              const char* data = PyUnicode_AsUTF8AndSize(item, &size);
+              const char* data;
+#if PY_MAJOR_VERSION < 3
+              size = PyUnicode_GET_DATA_SIZE(item);
+              data = PyUnicode_AS_DATA(item);
+#else
+              data = PyUnicode_AsUTF8AndSize(item, &size);
+#endif
               value.emplace_back(std::string(data, (size_t)size));  // NOLINT
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -373,7 +389,13 @@ static inline void ConstructAttrMapFromPyArgs(
             item = PyTuple_GetItem(obj, i);
             if (PyUnicode_Check(item)) {
               Py_ssize_t size;
-              const char* data = PyUnicode_AsUTF8AndSize(item, &size);
+              const char* data;
+#if PY_MAJOR_VERSION < 3
+              size = PyUnicode_GET_DATA_SIZE(item);
+              data = PyUnicode_AS_DATA(item);
+#else
+              data = PyUnicode_AsUTF8AndSize(item, &size);
+#endif
               value.emplace_back(std::string(data, (size_t)size));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -723,6 +745,20 @@ static inline PyObject* MakeReturnPyObject(const std::tuple<Args...>& out) {
   TupleVarBasesResult<decltype(out), sizeof...(Args)>::Run(out, result);
 
   return result;
+}
+
+void init_ops_attrtype_map() {
+  auto op_info_map = paddle::framework::OpInfoMap::Instance().map();
+  for (auto iter = op_info_map.begin(); iter != op_info_map.end(); ++iter) {
+    auto op_proto = iter->second.proto_;
+    if (op_proto == nullptr) {
+      continue;
+    }
+    auto attrs_proto = op_proto->attrs();
+    for (auto& attr : attrs_proto) {
+      ops_attrtype_map[iter->first][attr.name()] = attr.type();
+    }
+  }
 }
 
 }  // namespace pybind
