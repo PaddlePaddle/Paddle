@@ -16,7 +16,7 @@ from __future__ import print_function
 
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_, device_guard
+from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_, device_guard, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
@@ -74,6 +74,42 @@ def _print_warning_in_static_mode(api_name):
     warnings.warn(
         "In static mode, {}_() is the same as {}() and does not perform inplace operation.".
         format(api_name, api_name))
+
+
+@dygraph_only
+def tolist(x):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function translate the paddle.Tensor to python list.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to translate to list
+
+    Returns:
+        list: A list that contain the same value of current Tensor.
+
+    Returns type:
+        list: dtype is same as current Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            t = paddle.to_tensor([0,1,2,3,4])
+            expectlist = t.tolist()
+            print(expectlist)   #[0, 1, 2, 3, 4]
+
+            expectlist = paddle.tolist(t)
+            print(expectlist)   #[0, 1, 2, 3, 4]
+
+    """
+    return x.numpy().tolist()
+
+
+setattr(core.VarBase, 'tolist', tolist)
 
 
 def concat(x, axis=0, name=None):
@@ -212,7 +248,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     Args:
         x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float32,
-                      float64, int8, int32, int64.
+                      float64, int8, int32, int64, uint8.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
@@ -249,7 +285,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The input x should be a Tensor")
 
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+        'flatten')
     helper = LayerHelper('flatten', **locals())
 
     x_dim = len(x.shape)
@@ -1431,7 +1468,8 @@ def expand(x, shape, name=None):
                     'Elements in shape must be 1-D Tensors or integers.')
 
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'expand')
     check_type(shape, 'shape', (list, tuple, Variable), 'expand')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
         raise ValueError("When the data type of input 'x' for expand is bool, "

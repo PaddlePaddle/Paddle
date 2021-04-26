@@ -134,8 +134,17 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.pp_degree,
             self.dp_degree, )
 
-        self.hybrid_dp = self.user_defined_strategy.sharding_configs[
-            "hybrid_dp"]
+        # FIXME (JZ-LIANG) deprecated hybrid_dp
+        if self.user_defined_strategy.sharding_configs["hybrid_dp"]:
+            logging.warning(
+                "[hybrid_dp] API setting is deprecated. Now when dp_degree >= 2, its will be in hybrid dp mode automatically"
+            )
+            assert self.dp_degree >= 1
+        if self.dp_degree > 1:
+            self.hybrid_dp = True
+        else:
+            self.hybrid_dp = False
+
         # NOTE (JZ-LIANG) 
         # there 2 kind of modes for gradient-merge and hybrid-dp in mixed parallism [sharding] and [pipeline].
         # we distinguish this two modes since the gm/hybrid-dp related allreduce should be insert in different place according different mode to have best performance:
@@ -356,8 +365,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                   'w') as f:
             f.writelines(str(main_block.program))
 
-        self._wait()
-
+        if core.is_compiled_with_cuda():
+            self._wait()
         return optimize_ops, params_grads
 
     def _init_comm(self):

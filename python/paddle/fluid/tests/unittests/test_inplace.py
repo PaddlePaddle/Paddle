@@ -177,7 +177,7 @@ class TestDygraphInplace(unittest.TestCase):
             var_d = var_c**2
             loss = var_d.sum()
             loss.backward()
-            grad_var_a_inplace = var_a.grad
+            grad_var_a_inplace = var_a.grad.numpy()
 
         with paddle.fluid.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
@@ -188,7 +188,7 @@ class TestDygraphInplace(unittest.TestCase):
             var_d = var_c**2
             loss = var_d.sum()
             loss.backward()
-            grad_var_a = var_a.grad
+            grad_var_a = var_a.grad.numpy()
 
         self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
 
@@ -209,7 +209,7 @@ class TestDygraphInplace(unittest.TestCase):
             loss = var_d.sum()
 
             loss.backward()
-            grad_var_a_inplace = var_a.grad
+            grad_var_a_inplace = var_a.grad.numpy()
 
         with paddle.fluid.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
@@ -224,7 +224,7 @@ class TestDygraphInplace(unittest.TestCase):
             loss = var_d.sum()
 
             loss.backward()
-            grad_var_a = var_a.grad
+            grad_var_a = var_a.grad.numpy()
         self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
 
 

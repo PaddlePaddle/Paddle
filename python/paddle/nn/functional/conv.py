@@ -25,7 +25,7 @@ __all__ = [
 import numpy as np
 from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode
-from ...fluid import core, dygraph_utils
+from ...fluid import core, dygraph_utils, get_flags
 from ...fluid.layers import nn, utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
@@ -414,7 +414,7 @@ def conv2d(x,
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -441,8 +441,8 @@ def conv2d(x,
 
         ..  math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type 
@@ -551,6 +551,13 @@ def conv2d(x,
     if (num_channels == groups and num_channels != 1 and
             num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
+        if core.is_compiled_with_rocm():
+            use_cudnn = True
+        else:
+            use_cudnn = False
+
+    if (core.is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")
+        ["FLAGS_conv2d_disable_cudnn"]):
         use_cudnn = False
 
     return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
@@ -620,7 +627,7 @@ def conv1d_transpose(x,
           so for conv1d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`L_{out} = L^\prime_{out}`;
           else, the :math:`L_{out}` of the output size must between :math:`L^\prime_{out}`
-          and :math:`L^\prime_{out} + stride`. conv1d_transpose can compute the kernel size automatically.
+          and :math:`L^\prime_{out} + stride`.
 
     Args:
         x(Tensor): 3-D tensor with [N, C, L] or [N, L, C] format,
@@ -650,10 +657,7 @@ def conv1d_transpose(x,
             Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain one integer, `(feature_length)`. None if use
-            filter_size, padding, and stride to calculate output_size.
-            If output_size and filter_size are specified at the same time, They
-            should follow the formula above. Default: None. output_size and filter_size
-            should not be None at the same time.
+            filter_size(shape of weight), padding, and stride to calculate output_size.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCL"`, `"NLC"`.
             The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
@@ -847,7 +851,7 @@ def conv2d_transpose(x,
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -886,8 +890,7 @@ def conv2d_transpose(x,
           If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
           else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
           and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
-          conv2d_transpose can compute the kernel size automatically.
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`.
 
     Args:
         x(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
@@ -922,10 +925,7 @@ def conv2d_transpose(x,
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_height, image_width). None if use
-            filter_size, padding, and stride to calculate output_size.
-            If output_size is specified, output_size and filter_size (weight)'s shape 
-            should follow the formula above. Default: None. output_size and filter_size 
-            should not be None at the same time.
+            filter_size(shape of weight), padding, and stride to calculate output_size.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -1083,7 +1083,7 @@ def conv3d(x,
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
@@ -1239,7 +1239,7 @@ def conv3d_transpose(x,
 
     ..  math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
@@ -1282,8 +1282,7 @@ def conv3d_transpose(x,
           size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
           the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
           and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
-          conv3d_transpose can compute the kernel size automatically.
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`.
 
     Args:
         x(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type 
@@ -1319,10 +1318,8 @@ def conv3d_transpose(x,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
         output_size(int|list|tuple, optional): The output image size. If output size is a
-            tuple, it must contain three integers, (image_depth, image_height, image_width). This
-            parameter only works when filter_size is None. If output_size and filter_size are 
-            specified at the same time, They should follow the formula above. Default: None. 
-            Output_size and filter_size should not be None at the same time.
+            tuple, it must contain three integers, (image_depth, image_height, image_width).
+            None if use filter_size(shape of weight), padding, and stride to calculate output_size.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:

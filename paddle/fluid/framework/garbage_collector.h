@@ -117,13 +117,36 @@ class StreamGarbageCollector : public GarbageCollector {
 
  private:
   gpuStream_t stream_;
-  std::unique_ptr<platform::StreamCallbackManager> callback_manager_;
+  std::unique_ptr<platform::StreamCallbackManager<gpuStream_t>>
+      callback_manager_;
 };
 
 class CUDAPinnedGarbageCollector : public GarbageCollector {
  public:
   CUDAPinnedGarbageCollector(const platform::CUDAPinnedPlace &place,
                              size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+class NPUDefaultStreamGarbageCollector : public GarbageCollector {
+ public:
+  NPUDefaultStreamGarbageCollector(const platform::NPUPlace &place,
+                                   size_t max_memory_size);
+
+  void Wait() const override;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class NPUUnsafeFastGarbageCollector : public GarbageCollector {
+ public:
+  NPUUnsafeFastGarbageCollector(const platform::NPUPlace &place,
+                                size_t max_memory_size);
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
