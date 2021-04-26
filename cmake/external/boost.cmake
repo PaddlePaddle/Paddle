@@ -61,4 +61,3 @@ add_library(boost INTERFACE)
 
 add_dependencies(boost ${BOOST_PROJECT})
 set(Boost_INCLUDE_DIR ${BOOST_INCLUDE_DIR})
-
