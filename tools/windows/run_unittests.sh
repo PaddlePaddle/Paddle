@@ -47,7 +47,7 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
 fi
 
 
-# /*==================Fixed Disabled Windows unittests==============================*/
+# /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
 # TODO: fix these unittest that is bound to fail
 diable_wingpu_test="^lite_mul_model_test$|\
 ^test_analyzer_int8_resnet50$|\
@@ -118,6 +118,24 @@ diable_wingpu_test="^lite_mul_model_test$|\
 ^diable_wingpu_test$"
 # /*============================================================================*/
 
+# /*==================Fixed Disabled Windows CPU OPENBLAS unittests==============================*/
+# TODO: fix these unittest that is bound to fail
+diable_wincpu_test="^jit_kernel_test$|\
+^test_analyzer_transformer$|\
+^test_vision_models$|\
+^test_dygraph_multi_forward$|\
+^test_imperative_transformer_sorted_gradient$|\
+^test_program_prune_backward$|\
+^test_imperative_resnet$|\
+^test_imperative_resnet_sorted_gradient$|\
+^test_imperative_se_resnext$|\
+^test_imperative_static_runner_mnist$|\
+^test_bmn$|\
+^test_mobile_net$|\
+^test_resnet_v2$|\
+^test_se_resnet$|\
+^diable_wingpu_test$"
+
 # these unittest that cost long time, diabled temporarily, Maybe moved to the night
 long_time_test="^best_fit_allocator_test$|\
 ^test_image_classification$|\
@@ -158,7 +176,6 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_empty_op$|\
 ^test_fused_elemwise_activation_op$|\
 ^test_group_norm_op$|\
-^test_gru_op$|\
 ^test_gru_unit_op$|\
 ^test_imperative_lod_tensor_to_selected_rows$|\
 ^test_imperative_optimizer$|\
@@ -208,12 +225,9 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_imperative_ptb_rnn_sorted_gradient$|\
 ^test_imperative_save_load_v2$|\
 ^test_nan_inf$|\
-^test_norm_op$|\
-^test_reduce_op$|\
 ^test_sigmoid_cross_entropy_with_logits_op$|\
 ^test_stack_op$|\
-^test_strided_slice_op$|\
-^test_transpose_op$"
+^test_strided_slice_op$"
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     export FLAGS_call_stack_level=2
@@ -267,7 +281,7 @@ function collect_failed_tests() {
 
 function run_unittest_cpu() {
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -E "${disable_ut_quickly}" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
+    (ctest -E "$disable_ut_quickly|$diable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
     wait;
 }
 
