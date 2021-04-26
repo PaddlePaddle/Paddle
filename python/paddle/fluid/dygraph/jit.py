@@ -523,6 +523,10 @@ def save(layer, path, input_spec=None, **configs):
       - ``paddle.static.load_inference_model``
       - Other C++ inference APIs
 
+    .. note::
+        When using ``paddle.jit.save`` to save a function, parameters will not be saved. If you have to 
+        save the parameter, please pass the Layer containing function and parameter to ``paddle.jit.save``.
+
     Args:
         layer (Layer|function): The Layer or function to be saved.
         path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
