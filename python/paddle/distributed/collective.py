@@ -1080,10 +1080,12 @@ def split(x,
             import paddle
             from paddle.distributed import init_parallel_env
 
+            # required: gpu
+
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             data = paddle.randint(0, 8, shape=[10,4])
-            emb_out = padle.distributed.split(
+            emb_out = paddle.distributed.split(
                 data,
                 (8, 8),
                 operation="embedding",
