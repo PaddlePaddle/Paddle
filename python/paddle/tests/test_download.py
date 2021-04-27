@@ -16,6 +16,7 @@ import unittest
 
 from paddle.utils.download import get_weights_path_from_url
 from paddle.utils.download import get_path_from_url
+from paddle.utils.download import git_clone_from_url
 
 
 class TestDownload(unittest.TestCase):
@@ -69,6 +70,21 @@ class TestDownload(unittest.TestCase):
         ]
         for url in urls:
             get_path_from_url(url, root_dir='./test')
+
+
+class TestGitclone(unittest.TestCase):
+    def test_git_clone_from_url(self, ):
+        giturl = 'https://github.com/lyuwenyu/paddlehub_demo.git'
+        branch = 'main'
+        repo_dir = './test/lyuwenyu_paddlehub_demo_main'
+
+        git_clone_from_url(giturl, repo_dir, branch=None, check_exist=False)
+        git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=False)
+        git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=True)
+
+    def test_errors(self, ):
+        with self.assertRaises(RuntimeError):
+            git_clone_from_url('xx', 'xx', branch=None, check_exist=False)
 
 
 if __name__ == '__main__':
