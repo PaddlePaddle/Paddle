@@ -244,8 +244,9 @@ from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
 from .framework import DataParallel  # noqa: F401
 
-from .framework import set_default_dtype  # noqa: F401
-from .framework import get_default_dtype  # noqa: F401
+from .framework import set_default_dtype  #DEFINE_ALIAS
+from .framework import get_default_dtype  #DEFINE_ALIAS
+from .framework import set_grad_enabled  #DEFINE_ALIAS
 
 from .tensor.search import index_sample  # noqa: F401
 from .tensor.stat import mean  # noqa: F401

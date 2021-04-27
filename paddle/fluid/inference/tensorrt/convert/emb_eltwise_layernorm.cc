@@ -34,8 +34,17 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     VLOG(4) << "convert fluid EmbEltwiseLayerNorm op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
-    auto id_names = op_desc.Input("Ids");
-    auto emb_names = op_desc.Input("Embs");
+    auto word_id_name = op_desc.Input("WordId").front();
+    auto pos_id_name = op_desc.Input("PosId").front();
+    auto sent_id_name = op_desc.Input("SentId").front();
+    auto word_emb_name = op_desc.Input("WordEmbedding").front();
+    auto pos_emb_name = op_desc.Input("PosEmbedding").front();
+    auto sent_emb_name = op_desc.Input("SentEmbedding").front();
+    std::vector<std::string> id_names = {word_id_name, pos_id_name,
+                                         sent_id_name};
+    std::vector<std::string> emb_names = {word_emb_name, pos_emb_name,
+                                          sent_emb_name};
+
     int input_num = id_names.size();
 
     // Declare inputs
@@ -92,6 +101,12 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         output_fp16 = 1;
       }
       PADDLE_ENFORCE_EQ(
+          input_num, 3,
+          platform::errors::InvalidArgument(
+              "When using oss and var-len, embedding_eltwise_layernorm op"
+              "should have 3 inputs only, but got %d.",
+              input_num));
+      PADDLE_ENFORCE_EQ(
           output_fp16, 1,
           platform::errors::InvalidArgument(
               "Only Precision::KHalf(fp16) is supported when infering "
@@ -125,15 +140,15 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_ptr->fields = fields.data();
 
       std::vector<nvinfer1::ITensor*> plugin_inputs;
-      plugin_inputs.emplace_back(engine_->GetITensor(
-          engine_->network()->getInput(0)->getName()));  // word_embedding,
-                                                         // eval_placeholder_0
-      plugin_inputs.emplace_back(engine_->GetITensor(
-          engine_->network()->getInput(1)->getName()));  // sent_embedding,
-                                                         // eval_placeholder_1
-      plugin_inputs.emplace_back(engine_->GetITensor(
-          engine_->network()->getInput(2)->getName()));  // cu_seqlens,
-                                                         // eval_placeholder_2
+      plugin_inputs.emplace_back(
+          engine_->GetITensor(word_id_name));  // word_embedding,
+                                               // eval_placeholder_0
+      plugin_inputs.emplace_back(
+          engine_->GetITensor(sent_id_name));  // sent_embedding,
+                                               // eval_placeholder_1
+      plugin_inputs.emplace_back(
+          engine_->GetITensor(pos_id_name));  // cu_seqlens,
+                                              // eval_placeholder_2
       auto max_seqlen_tensor =
           engine_->GetITensor(engine_->network()->getInput(3)->getName());
       auto* shuffle_layer =

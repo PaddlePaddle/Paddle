@@ -16,8 +16,6 @@
 import paddle.fluid as fluid
 from paddle.fluid import core
 
-__all__ = ['seed', 'get_cuda_rng_state', 'set_cuda_rng_state']
-
 
 def seed(seed):
     """
