@@ -314,6 +314,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._workers_done_event = self._multiprocessing_context.Event()
         self._thread_done_event = threading.Event()
 
+        is_spawn = isinstance(self._multiprocessing_context,
+                              multiprocessing.context.SpawnContext)
         for i in range(self._num_workers):
             indices_queue = self._multiprocessing_context.Queue()
             self._indices_queues.append(indices_queue)
@@ -323,7 +325,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                       self._data_queue, self._workers_done_event,
                       self._auto_collate_batch, self._collate_fn,
                       self._worker_init_fn, i, self._num_workers,
-                      self._use_shared_memory, self._multiprocessing_context))
+                      self._use_shared_memory, is_spawn))
             worker.daemon = True
             worker.start()
             self._workers.append(worker)
