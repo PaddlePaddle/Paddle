@@ -562,7 +562,6 @@ class PSGPUWorker : public HogwildWorker {
   void ResetStat();
 
  protected:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   void PushGradients();
   void DumpParam();
   void CopySparseTable();
@@ -639,7 +638,8 @@ class PSGPUWorker : public HogwildWorker {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(WITH_ASCEND_CL)
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}

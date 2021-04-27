@@ -418,7 +418,7 @@ def cuda_places(device_ids=None):
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
 
     Parameters:
-        device_ids (list or tuple of int, optional): list of GPU device ids.
+        device_ids (list|tuple, optional): A list/tuple of int of GPU device ids.
 
     Returns:
         list of paddle.CUDAPlace: Created GPU place list.
@@ -429,6 +429,8 @@ def cuda_places(device_ids=None):
             import paddle
             import paddle.static as static
 
+            # required: gpu
+            
             paddle.enable_static()
 
             cuda_places = static.cuda_places()
@@ -2254,7 +2256,8 @@ class Operator(object):
         'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
         'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
-        'c_wait_comm', 'c_wait_compute'
+        'c_wait_comm', 'c_wait_compute', 'c_gen_hccl_id', 'c_comm_init_hccl',
+        'copy_cross_scope'
     }
 
     def __init__(self,
@@ -3239,10 +3242,7 @@ class Block(object):
             Operator: the insert Operator.
         """
         self._sync_with_cpp()
-        op_desc = self.desc._insert_op(index)
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        self.ops.insert(index, op)
-        return op
+        return self._insert_op_without_sync(index, *args, **kwargs)
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
@@ -5023,6 +5023,9 @@ class Program(object):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op._set_attr('is_test', True)
+                if op.type() == "batch_norm":
+                    # Remove the output ReserveSpace of batch_norm if exists.
+                    op.remove_output("ReserveSpace")
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
@@ -6076,7 +6079,8 @@ def device_guard(device=None):
     A context manager that specifies the device on which the OP will be placed.
 
     Args:
-        device(str|None): Specify the device to use in the context. It should be 'cpu' or 'gpu',
+        device(str|None): Specify the device to use in the context. It should be ``cpu``,
+            ``gpu`` or ``gpu:x``, where ``x`` is the index of the GPUs. 
             When it is set to 'cpu' or 'gpu', all OPs created in the context will be
             placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
             single-card, the device index will be the same as the device on which the

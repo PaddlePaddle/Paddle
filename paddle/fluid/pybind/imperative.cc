@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
+#include "paddle/fluid/imperative/py_layer_fwd.h"
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -717,7 +718,8 @@ void BindImperative(py::module *m_ptr) {
                {
                  // Release gil and do tracing
                  py::gil_scoped_release release;
-                 tracer->TraceOp("set_value", ins, outs, std::move(attrs));
+                 tracer->TraceOp("set_value", ins, outs, std::move(attrs),
+                                 {{"Input", "Out"}});
                }
              } else {
                auto self_numpy = TensorToPyArray(*self_tensor);
@@ -744,7 +746,7 @@ void BindImperative(py::module *m_ptr) {
              // inplace operator for the VarBase self.
              self->BumpInplaceVersion();
            })
-      .def("__getitem__",
+      .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
                  slice_strides, decrease_axis, infer_flags;
@@ -1339,22 +1341,28 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly(
-          "shape",
-          [](imperative::VarBase &self) {
-            if (self.Var().IsType<framework::LoDTensor>()) {
-              return framework::vectorize<int>(
-                  self.Var().Get<framework::LoDTensor>().dims());
-            } else if (self.Var().IsType<framework::SelectedRows>()) {
-              return framework::vectorize<int>(
-                  self.Var().Get<framework::SelectedRows>().value().dims());
-            } else {
-              VLOG(2) << "It is meaningless to get shape of "
-                         "variable type "
-                      << GetTypeName(self);
-              return std::vector<int>();
-            }
-          })
+      .def_property_readonly("shape",
+                             [](imperative::VarBase &self) {
+                               if (self.Var().IsType<framework::LoDTensor>()) {
+                                 return framework::vectorize<int>(
+                                     self.Var()
+                                         .Get<framework::LoDTensor>()
+                                         .dims());
+                               } else if (self.Var()
+                                              .IsType<
+                                                  framework::SelectedRows>()) {
+                                 return framework::vectorize<int>(
+                                     self.Var()
+                                         .Get<framework::SelectedRows>()
+                                         .value()
+                                         .dims());
+                               } else {
+                                 VLOG(2) << "It is meaningless to get shape of "
+                                            "variable type "
+                                         << GetTypeName(self);
+                                 return std::vector<int>();
+                               }
+                             })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.
@@ -1480,7 +1488,7 @@ void BindImperative(py::module *m_ptr) {
                  allow_ops);
              imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
                  block_ops);
-             VLOG(4) << "AMP operators changed, "
+             VLOG(5) << "AMP operators changed, "
                      << imperative::AmpOperators::Instance();
            })
       .def("_get_amp_op_list",
@@ -1643,6 +1651,29 @@ void BindImperative(py::module *m_ptr) {
            &imperative::BKCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
+  m.def("pylayer_apply",
+        [](const platform::CPUPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::CUDAPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::XPUPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::CUDAPinnedPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
 }
 
 }  // namespace pybind
