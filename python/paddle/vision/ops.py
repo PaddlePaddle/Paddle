@@ -454,13 +454,13 @@ def deform_conv2d(x,
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
         bias (Tensor, optional): The bias with shape [M,].
-        stride (int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|list|tuple, optional): The padding size. If padding is a tuple, it must
+        padding (int|list|tuple, optional): The padding size. If padding is a list/tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
         deformable_groups (int): The number of deformable group partitions.
@@ -644,13 +644,13 @@ class DeformConv2D(Layer):
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
         kernel_size(int|list|tuple): The size of the convolving kernel.
-        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
-        padding (int|list|tuple, optional): The padding size. If padding is a tuple, it must
+        padding (int|list|tuple, optional): The padding size. If padding is a list/tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
         deformable_groups (int): The number of deformable group partitions.
