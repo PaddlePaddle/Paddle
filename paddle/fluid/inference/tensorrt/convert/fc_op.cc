@@ -160,6 +160,12 @@ class FcOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       // not NCHW layout, but NLP layout with added 'x 1 x 1'
       auto x_dim = X->getDimensions();
+      if (engine_->use_oss() && engine_->with_ernie() && x_dim.nbDims == 4 &&
+          x_dim.d[2] == 1 && x_dim.d[3] == 1 && x_num_col_dims == 2) {
+        // fc which is just after self attention
+        regist_fc(X, n_output, weight, bias);
+        return;
+      }
       PADDLE_ENFORCE_LE(
           x_dim.nbDims - x_num_col_dims, 3,
           platform::errors::InvalidArgument(

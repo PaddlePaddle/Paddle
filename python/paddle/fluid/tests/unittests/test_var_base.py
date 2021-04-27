@@ -65,7 +65,8 @@ class TestVarBase(unittest.TestCase):
                 y = clone_x**2
                 y.backward()
                 self.assertTrue(
-                    np.array_equal(x.grad, np.array([2.4]).astype('float32')))
+                    np.array_equal(x.grad.numpy(),
+                                   np.array([2.4]).astype('float32')))
                 y = x.cpu()
                 self.assertEqual(y.place.__repr__(), "CPUPlace")
                 if core.is_compiled_with_cuda():
@@ -260,14 +261,14 @@ class TestVarBase(unittest.TestCase):
 
             y = x**2
             y.backward()
-            self.assertTrue(np.array_equal(x.grad, [20.0]))
+            self.assertTrue(np.array_equal(x.grad.numpy(), [20.0]))
             self.assertEqual(detach_x.grad, None)
 
             detach_x.stop_gradient = False  # Set stop_gradient to be False, supported auto-grad
             z = 3 * detach_x**2
             z.backward()
-            self.assertTrue(np.array_equal(x.grad, [20.0]))
-            self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
+            self.assertTrue(np.array_equal(x.grad.numpy(), [20.0]))
+            self.assertTrue(np.array_equal(detach_x.grad.numpy(), [60.0]))
 
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
             with self.assertRaises(RuntimeError):

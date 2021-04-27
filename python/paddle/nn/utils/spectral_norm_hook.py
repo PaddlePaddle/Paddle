@@ -124,7 +124,6 @@ class SpectralNorm(object):
         setattr(layer, fn.name, weight * 1.0)
         layer.register_buffer(fn.name + "_u", u)
         layer.register_buffer(fn.name + "_v", v)
-
         layer.register_forward_pre_hook(fn)
         return fn
 
