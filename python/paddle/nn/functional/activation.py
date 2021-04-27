@@ -49,7 +49,7 @@ __all__ = [
     'softshrink',
     'softsign',
     'sigmoid',
-    'silu'
+    'silu',
     'swish',
     'tanh',
     'tanh_',
