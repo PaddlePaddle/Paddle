@@ -150,11 +150,44 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         self.dtype = np.uint16
         self.init_kernel_type()
 
-    def _get_array(self, rows, row_numel):
-        array = np.ones((len(rows), row_numel)).astype('float32')
-        for i in range(len(rows)):
-            array[i] *= rows[i]
-        return convert_float_to_uint16(array)
+    def check_input_and_optput(self,
+                               scope,
+                               place,
+                               inplace,
+                               w1_has_data=False,
+                               w2_has_data=False,
+                               w3_has_data=False):
+
+        self.create_selected_rows(scope, place, "W1", w1_has_data)
+        self.create_selected_rows(scope, place, "W2", w2_has_data)
+        self.create_selected_rows(scope, place, "W3", w3_has_data)
+
+        # create Out Variable
+        if inplace:
+            out_var_name = "W1"
+        else:
+            out_var_name = "Out"
+        out = scope.var(out_var_name).get_selected_rows()
+
+        # create and run sum operator
+        sum_op = Operator("sum", X=["W1", "W2", "W3"], Out=out_var_name)
+        sum_op.run(scope, place)
+
+        has_data_w_num = 0
+        for has_data in [w1_has_data, w2_has_data, w3_has_data]:
+            if has_data:
+                has_data_w_num += 1
+
+        if has_data_w_num > 0:
+            self.assertEqual(len(out.rows()), 7)
+            self.assertTrue(
+                np.array_equal(
+                    np.array(out.get_tensor()),
+                    convert_float_to_uint16(
+                        self._get_array(self.rows, self.row_numel) *
+                        has_data_w_num)))
+        else:
+            self.assertEqual(len(out.rows()), 0)
 
 
 class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
@@ -340,4 +373,6 @@ create_test_sum_fp16_class(TestSelectedRowsSumOp)
 create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
 
 if __name__ == "__main__":
+    from paddle import enable_static
+    enable_static()
     unittest.main()
