@@ -45,10 +45,10 @@ class PipelineParallel(MetaParallelBase):
         self.recv_cache = None
         self.grad_tensors = None
 
-        self.meta_buffer = None
+        #self.meta_buffer = None
 
         self.send_meta = True
-        self.first_gradient_send = True
+        #self.first_gradient_send = True
 
         self.current_loss = paddle.to_tensor(0.0)
         self.total_loss = None
@@ -101,10 +101,7 @@ class PipelineParallel(MetaParallelBase):
         self._allocate_caches(self.num_stages)
         for microbatch_cmds in minibatch_cmds:
             for cmd in microbatch_cmds:
-                if type(cmd) not in self._COMMAND_MAP:
-                    #FIXME:
-                    continue
-
+                assert type(cmd) in self._COMMAND_MAP
                 self._apply_cmd = MethodType(self._COMMAND_MAP[type(cmd)], self)
                 self._apply_cmd(**cmd.kwargs)
 
@@ -114,23 +111,11 @@ class PipelineParallel(MetaParallelBase):
                                              "with pipeline parallel now.")
         self._modifying_grad = False
 
-    def _get_data(self):
-        if self.use_model_parallel:
-            mp_rank = self._hcg.get_model_parallel_rank()
-        else:
-            mp_rank = 0
-
-        data = None
-
-        # mp rank 0 loads the data and broadcat it to others.
-        if mp_rank == 0:
-            data = next(self.data_iter)
-        if self.use_model_parallel:
-            data = paddle.distributed.broadcast(
-                data, group=self._hcg.get_model_parallel_group())
-        return data
-
     def _forward(self, cache_id):
+        # load data
+        self._load_micro_batch(cache_id)
+        if self.stage_id != 0: self._recv_activations(cache_id)
+
         if isinstance(self.caches['inputs'][cache_id], tuple):
             inputs = tuple(t.clone() for t in self.caches['inputs'][cache_id])
         else:
@@ -154,12 +139,15 @@ class PipelineParallel(MetaParallelBase):
                     ]
                 for idx, v in enumerate(self.current_loss):
                     self.total_loss[idx] += v.detach()
+        if self.stage_id != self.num_stages - 1:
+            self._send_activations(cache_id)
 
     def _backward(self, cache_id):
         assert self.optimizer is not None
         if self.stage_id == self.num_stages - 1:
             paddle.autograd.backward(self.current_loss)
             return
+        self._recv_gradients(cache_id)
 
         outputs = self.caches['outputs'][cache_id]
 
@@ -175,6 +163,24 @@ class PipelineParallel(MetaParallelBase):
 
         self.caches['outputs'][cache_id] = None
         grad_tensors = None
+        if self.stage_id != 0: self._send_gradients(cache_id)
+
+    def _get_data(self):
+        if self.use_model_parallel:
+            mp_rank = self._hcg.get_model_parallel_rank()
+        else:
+            mp_rank = 0
+
+        data = None
+
+        # mp rank 0 loads the data and broadcat it to others.
+        if mp_rank == 0:
+            data = next(self.data_iter)
+        if self.use_model_parallel and (self.stage_id == 0 or
+                                        self.stage_id == self.num_stages - 1):
+            paddle.distributed.broadcast(
+                data, group=self._hcg.get_model_parallel_group())
+        return data
 
     def _load_micro_batch(self, cache_id):
         inputs = self._get_data()
@@ -182,17 +188,18 @@ class PipelineParallel(MetaParallelBase):
         if self.stage_id == 0:
             data = None
             if isinstance(inputs[0], paddle.Tensor):
-                data = inputs[0].clone().detach()
-                data.stop_gradient = data.dtype == paddle.float32
+                #data = inputs[0].clone().detach()
+                #data.stop_gradient = data.dtype == paddle.float32
+                data = inputs[0]
             else:
                 assert isinstance(inputs[0], tuple)
                 # Assume list or tuple
                 data = []
                 for d in inputs[0]:
                     assert isinstance(d, paddle.Tensor)
-                    d = d.clone().detach()
-                    d.stop_gradient = d.dtype == paddle.float32
-                    loaded.append(d)
+                    #d = d.clone().detach()
+                    #d.stop_gradient = d.dtype == paddle.float32
+                    data.append(d)
                 data = tuple(data)
             self.caches['inputs'][cache_id] = data
 
@@ -204,7 +211,7 @@ class PipelineParallel(MetaParallelBase):
                 label = []
                 for l in inputs[1]:
                     assert isinstance(l, paddle.Tensor)
-                    l = l.detach()
+                    #l = l.detach()
                     label.append(l)
                 label = tuple(label)
             self.caches['labels'][cache_id] = label
@@ -402,20 +409,5 @@ class PipelineParallel(MetaParallelBase):
         utils.Backward: _backward,
     }
 
-    def _pre_forward(self, *inputs, **kwargs):
-        pass
-
     def forward(self, *inputs, **kwargs):
         raise RuntimeError("Call train_batch for pipeline instead of forward.")
-
-    def _post_forward(self, output):
-        pass
-
-    def _pre_backward(self, loss):
-        pass
-
-    def backward_impl(self, loss, parameters):
-        pass
-
-    def _post_backward(self, loss):
-        pass
