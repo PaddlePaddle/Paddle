@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#define _LOCALDEBUG_
+
+#ifndef _LOCALDEBUG_
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
@@ -22,6 +26,55 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
+#endif
+
+
+#ifdef _LOCALDEBUG_
+
+#include <iostream>
+#include <limits>
+
+namespace platform {
+
+template <typename T>
+__forceinline__ __device__ T CudaShuffleXorSync(unsigned mask,
+                                                T val,
+                                                int width = warpSize) {
+#if defined(PADDLE_WITH_HIP) || CUDA_VERSION < 9000
+  return __shfl_xor(val, width);
+#else
+  return __shfl_xor_sync(mask, val, width);
+#endif
+}
+}
+
+template <typename T, int BatchSize, int WarpSize>
+__device__ __forceinline__ void WarpReduceSum(T *sum) {
+#pragma unroll
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2) {
+#pragma unroll
+    for (int i = 0; i < BatchSize; ++i) {
+      T sum_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+      sum[i] = sum[i] + sum_val;
+    }
+  }
+}
+
+template <typename T, int BatchSize, int WarpSize>
+__device__ __forceinline__ void WarpReduceMax(T *sum) {
+#pragma unroll
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2) {
+#pragma unroll
+    for (int i = 0; i < BatchSize; ++i) {
+      T max_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+      sum[i] = max(sum[i], max_val);
+    }
+  }
+}
+
+#endif
+
 
 template <typename T, int BlockSize, int NnzBlockMax, bool KpMode = false,
           bool AttnMode = false>
@@ -225,6 +278,8 @@ __global__ void BlockSparseSoftmaxBackward(T *dst, const T *grad, const T *src,
   }
 }
 
+#ifndef _LOCALDEBUG_
+
 template <typename T>
 class SoftmaxBlockSparseKernel : public framework::OpKernel<T> {
  public:
@@ -345,3 +400,108 @@ REGISTER_OP_CUDA_KERNEL(softmax_blocksparse,
                         ops::SoftmaxBlockSparseKernel<float>);
 REGISTER_OP_CUDA_KERNEL(softmax_blocksparse_grad,
                         ops::SoftmaxBlockSparseGradKernel<float>);
+
+#endif
+
+#ifdef _LOCALDEBUG_
+
+int main() {
+  const int BlockSize = 64;
+
+  float *a;
+  float *out;
+  float *d_a, *d_out;
+
+  const int MB = 2;
+  const int NB = 4;
+
+  const int seqlen = MB * BlockSize;
+
+  int layout[MB][NB];
+  for (int i = 0; i < MB; i++) {
+    for (int j = 0; j < NB; j++) {
+      layout[i][j] = 0;
+    }
+  }
+  layout[0][0] = 1;
+  layout[0][3] = 1;
+  layout[1][0] = 1;
+  layout[1][1] = 1;
+
+  int rowptr[MB + 1];
+  rowptr[0] = 0;
+  for (int i = 0; i < MB; i++) {
+    rowptr[i + 1] = rowptr[i];
+    for (int j = 0; j < NB; j++) {
+      rowptr[i + 1] += layout[i][j];
+    }
+  }
+
+  int colidx[rowptr[MB]];
+  int idx = 0;
+  for (int i = 0; i < MB; i++) {
+    for (int j = 0; j < NB; j++) {
+      if (layout[i][j] == 1) {
+        colidx[idx] = j;
+        idx += 1;
+      }
+    }
+  }
+
+  for (int i = 0; i < MB + 1; i++) {
+    std::cout << rowptr[i] << " ";
+  }
+  std::cout << std::endl;
+
+  for (int i = 0; i < rowptr[MB]; i++) {
+    std::cout << colidx[i] << " ";
+  }
+  std::cout << std::endl;
+
+  int N = rowptr[MB] * BlockSize * BlockSize;
+
+  a = (float *)malloc(sizeof(float) * N);
+  out = (float *)malloc(sizeof(float) * N);
+  for (int i = 0; i < N; i++) {
+    a[i] = i + 1;
+  }
+
+  int *d_rowptr;
+  int *d_colidx;
+  cudaMalloc((void **)&d_rowptr, sizeof(int) * (MB + 1));
+  cudaMalloc((void **)&d_colidx, sizeof(int) * rowptr[MB]);
+  cudaMemcpy(d_rowptr, rowptr, sizeof(int) * (MB + 1), cudaMemcpyHostToDevice);
+  cudaMemcpy(
+      d_colidx, colidx, sizeof(int) * rowptr[MB], cudaMemcpyHostToDevice);
+
+  // Allocate device memory
+  cudaMalloc((void **)&d_a, sizeof(float) * N);
+  cudaMalloc((void **)&d_out, sizeof(float) * N);
+
+  // Transfer data from host to device memory
+  cudaMemcpy(d_a, a, sizeof(float) * N, cudaMemcpyHostToDevice);
+
+  printf("Kernel start \n");
+
+  dim3 blocks(32, 4, 1);
+  int grid = MB * BlockSize / 4;
+
+  BlockSparseSoftmaxForward<float, BlockSize, 4><<<grid, blocks>>>(
+      d_out, d_a, 1.0, NULL, NULL, d_rowptr, d_colidx, seqlen);
+
+  // BlockSparseSoftmaxBackward<float, BlockSize, 4><<<grid, blocks>>>(
+  //     NULL, NULL, NULL, 1.0, d_rowptr, d_colidx, seqlen);
+
+  printf("Kernel end \n");
+
+  cudaMemcpy(out, d_out, sizeof(float) * N, cudaMemcpyDeviceToHost);
+
+  // Cleanup after kernel execution
+  cudaFree(d_out);
+  free(a);
+  // free(out);
+
+  return 0;
+}
+
+#endif
