@@ -41,8 +41,8 @@ def _import_module(name, repo_dir):
     except ImportError:
         sys.path.remove(repo_dir)
         raise RuntimeError(
-            'Cannot import `{}`, please make sure `{}`.py in repo root dir'.
-            format(name, name))
+            'Please make sure config exists or repo error messages above fixed when importing'
+        )
 
     sys.path.remove(repo_dir)
 
