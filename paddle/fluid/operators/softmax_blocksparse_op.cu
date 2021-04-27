@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define _LOCALDEBUG_
+// #define _LOCALDEBUG_
 
 #ifndef _LOCALDEBUG_
 
@@ -29,7 +29,6 @@ using Tensor = framework::Tensor;
 
 #endif
 
-
 #ifdef _LOCALDEBUG_
 
 #include <iostream>
@@ -38,8 +37,7 @@ using Tensor = framework::Tensor;
 namespace platform {
 
 template <typename T>
-__forceinline__ __device__ T CudaShuffleXorSync(unsigned mask,
-                                                T val,
+__forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
                                                 int width = warpSize) {
 #if defined(PADDLE_WITH_HIP) || CUDA_VERSION < 9000
   return __shfl_xor(val, width);
@@ -74,7 +72,6 @@ __device__ __forceinline__ void WarpReduceMax(T *sum) {
 }
 
 #endif
-
 
 template <typename T, int BlockSize, int NnzBlockMax, bool KpMode = false,
           bool AttnMode = false>
@@ -152,8 +149,8 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
           srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
         }
 
-        // if (threadIdx.x==0 && threadIdx.y==0 && blockIdx.x==0){
-        //     printf("%d, %d, %f\n", xidx, didx, srcptr[xidx]);
+        // if (threadIdx.x==1 && threadIdx.y==0 && blockIdx.x==63){
+        //     printf("%d, %d, %f\n", didx, xidx, srcptr[xidx]);
         // }
       }
     }
@@ -194,18 +191,29 @@ __global__ void BlockSparseSoftmaxForward(T *softmax, const T *src, T scale,
   //}
 
   // compute softmax and write out
-  for (int i = 0; i < cur_nnzb; i++) {
-    // BlockSize = 64, 32
-    T *softmaxptr = softmax + layout_rowptr[cur_seqb] * BlockSize2 +
-                    i * BlockSize2 + cur_inb * BlockSize;
-    const int IterPerBlock = BlockSize / WarpSize;
-    for (int j = 0; j < IterPerBlock; j++) {
-      int didx = i * IterPerBlock + j;
-      int xidx = threadIdx.x + j * WarpSize;
-      softmaxptr[xidx] = srcdata[didx] / sum;
-      //   if (threadIdx.x==0){
-      //       printf("%f\n", xptr[xidx]);
-      //   }
+  if (BlockSize == 1) {  // BlockSize = 1
+    const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
+    T *softmaxptr = softmax + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        softmaxptr[xidx] = srcdata[didx] / sum;
+      }
+    }
+  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
+    for (int i = 0; i < cur_nnzb; i++) {
+      T *softmaxptr = softmax + layout_rowptr[cur_seqb] * BlockSize2 +
+                      i * BlockSize2 + cur_inb * BlockSize;
+      const int IterPerBlock = BlockSize / WarpSize;
+      for (int j = 0; j < IterPerBlock; j++) {
+        int didx = i * IterPerBlock + j;
+        int xidx = threadIdx.x + j * WarpSize;
+        softmaxptr[xidx] = srcdata[didx] / sum;
+        //   if (threadIdx.x==0){
+        //       printf("%f\n", xptr[xidx]);
+        //   }
+      }
     }
   }
 }
@@ -229,26 +237,39 @@ __global__ void BlockSparseSoftmaxBackward(T *dst, const T *grad, const T *src,
   // number of nnz block in cur_seqb
   const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
 
-  T srcdata[BlockSize * NnzBlockMax / WarpSize];
-  T graddata[BlockSize * NnzBlockMax / WarpSize];
+  T srcdata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
+  T graddata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
 
   // read tensor data, attn mask
-  for (int i = 0; i < cur_nnzb; i++) {
-    // BlockSize = 64, 32
-    const T *srcptr = src + layout_rowptr[cur_seqb] * BlockSize2 +
-                      i * BlockSize2 + cur_inb * BlockSize;
-    const T *gradptr = grad + layout_rowptr[cur_seqb] * BlockSize2 +
-                       i * BlockSize2 + cur_inb * BlockSize;
-
-    const int IterPerBlock = BlockSize / WarpSize;
-#pragma unroll
-    for (int j = 0; j < IterPerBlock; j++) {
-      int didx = i * IterPerBlock + j;
-      int xidx = threadIdx.x + j * WarpSize;
+  if (BlockSize == 1) {  // BlockSize = 1
+    const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
+    const T *srcptr = src + layout_rowptr[cur_seqb];
+    const T *gradptr = grad + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
       srcdata[didx] = srcptr[xidx];
       graddata[didx] = gradptr[xidx];
     }
+
+  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
+    for (int i = 0; i < cur_nnzb; i++) {
+      // BlockSize = 64, 32
+      const T *srcptr = src + layout_rowptr[cur_seqb] * BlockSize2 +
+                        i * BlockSize2 + cur_inb * BlockSize;
+      const T *gradptr = grad + layout_rowptr[cur_seqb] * BlockSize2 +
+                         i * BlockSize2 + cur_inb * BlockSize;
+      const int IterPerBlock = BlockSize / WarpSize;
+#pragma unroll
+      for (int j = 0; j < IterPerBlock; j++) {
+        int didx = i * IterPerBlock + j;
+        int xidx = threadIdx.x + j * WarpSize;
+        srcdata[didx] = srcptr[xidx];
+        graddata[didx] = gradptr[xidx];
+      }
+    }
   }
+
   //   if (threadIdx.x==0){
   //       printf("%f\n", xptr[xidx]);
   //   }
@@ -262,18 +283,30 @@ __global__ void BlockSparseSoftmaxBackward(T *dst, const T *grad, const T *src,
   WarpReduceSum<T, 1, WarpSize>(&sum);
 
   // compute softmax and write out
-  for (int i = 0; i < cur_nnzb; i++) {
-    // BlockSize = 64, 32
-    T *dstptr = dst + layout_rowptr[cur_seqb] * BlockSize2 + i * BlockSize2 +
-                cur_inb * BlockSize;
-    const int IterPerBlock = BlockSize / WarpSize;
-    for (int j = 0; j < IterPerBlock; j++) {
-      int didx = i * IterPerBlock + j;
-      int xidx = threadIdx.x + j * WarpSize;
-      dstptr[xidx] = scale * srcdata[didx] * (graddata[didx] - sum);
-      //   if (threadIdx.x==0){
-      //       printf("%f\n", xptr[xidx]);
-      //   }
+  if (BlockSize == 1) {  // BlockSize = 1
+    const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
+    T *dstptr = dst + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        dstptr[xidx] = srcdata[didx] / sum;
+      }
+    }
+  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
+    for (int i = 0; i < cur_nnzb; i++) {
+      // BlockSize = 64, 32
+      T *dstptr = dst + layout_rowptr[cur_seqb] * BlockSize2 + i * BlockSize2 +
+                  cur_inb * BlockSize;
+      const int IterPerBlock = BlockSize / WarpSize;
+      for (int j = 0; j < IterPerBlock; j++) {
+        int didx = i * IterPerBlock + j;
+        int xidx = threadIdx.x + j * WarpSize;
+        dstptr[xidx] = scale * srcdata[didx] * (graddata[didx] - sum);
+        //   if (threadIdx.x==0){
+        //       printf("%f\n", xptr[xidx]);
+        //   }
+      }
     }
   }
 }
@@ -412,13 +445,15 @@ int main() {
   float *out;
   float *d_a, *d_out;
 
+  const int Batch = 2;
   const int MB = 2;
   const int NB = 4;
+  const int MBB = MB * Batch;
 
   const int seqlen = MB * BlockSize;
 
-  int layout[MB][NB];
-  for (int i = 0; i < MB; i++) {
+  int layout[MBB][NB];
+  for (int i = 0; i < MBB; i++) {
     for (int j = 0; j < NB; j++) {
       layout[i][j] = 0;
     }
@@ -427,19 +462,22 @@ int main() {
   layout[0][3] = 1;
   layout[1][0] = 1;
   layout[1][1] = 1;
+  layout[2][0] = 1;
+  layout[2][2] = 1;
+  layout[3][1] = 1;
 
-  int rowptr[MB + 1];
+  int rowptr[MBB + 1];
   rowptr[0] = 0;
-  for (int i = 0; i < MB; i++) {
+  for (int i = 0; i < MBB; i++) {
     rowptr[i + 1] = rowptr[i];
     for (int j = 0; j < NB; j++) {
       rowptr[i + 1] += layout[i][j];
     }
   }
 
-  int colidx[rowptr[MB]];
+  int colidx[rowptr[MBB]];
   int idx = 0;
-  for (int i = 0; i < MB; i++) {
+  for (int i = 0; i < MBB; i++) {
     for (int j = 0; j < NB; j++) {
       if (layout[i][j] == 1) {
         colidx[idx] = j;
@@ -448,17 +486,17 @@ int main() {
     }
   }
 
-  for (int i = 0; i < MB + 1; i++) {
+  for (int i = 0; i < MBB + 1; i++) {
     std::cout << rowptr[i] << " ";
   }
   std::cout << std::endl;
 
-  for (int i = 0; i < rowptr[MB]; i++) {
+  for (int i = 0; i < rowptr[MBB]; i++) {
     std::cout << colidx[i] << " ";
   }
   std::cout << std::endl;
 
-  int N = rowptr[MB] * BlockSize * BlockSize;
+  int N = rowptr[MBB] * BlockSize * BlockSize;
 
   a = (float *)malloc(sizeof(float) * N);
   out = (float *)malloc(sizeof(float) * N);
@@ -468,11 +506,11 @@ int main() {
 
   int *d_rowptr;
   int *d_colidx;
-  cudaMalloc((void **)&d_rowptr, sizeof(int) * (MB + 1));
-  cudaMalloc((void **)&d_colidx, sizeof(int) * rowptr[MB]);
-  cudaMemcpy(d_rowptr, rowptr, sizeof(int) * (MB + 1), cudaMemcpyHostToDevice);
-  cudaMemcpy(
-      d_colidx, colidx, sizeof(int) * rowptr[MB], cudaMemcpyHostToDevice);
+  cudaMalloc((void **)&d_rowptr, sizeof(int) * (MBB + 1));
+  cudaMalloc((void **)&d_colidx, sizeof(int) * rowptr[MBB]);
+  cudaMemcpy(d_rowptr, rowptr, sizeof(int) * (MBB + 1), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_colidx, colidx, sizeof(int) * rowptr[MBB],
+             cudaMemcpyHostToDevice);
 
   // Allocate device memory
   cudaMalloc((void **)&d_a, sizeof(float) * N);
@@ -484,13 +522,13 @@ int main() {
   printf("Kernel start \n");
 
   dim3 blocks(32, 4, 1);
-  int grid = MB * BlockSize / 4;
+  int grid = MBB * BlockSize / 4;
 
   BlockSparseSoftmaxForward<float, BlockSize, 4><<<grid, blocks>>>(
       d_out, d_a, 1.0, NULL, NULL, d_rowptr, d_colidx, seqlen);
 
-  // BlockSparseSoftmaxBackward<float, BlockSize, 4><<<grid, blocks>>>(
-  //     NULL, NULL, NULL, 1.0, d_rowptr, d_colidx, seqlen);
+  BlockSparseSoftmaxBackward<float, BlockSize, 4><<<grid, blocks>>>(
+      NULL, NULL, NULL, 1.0, d_rowptr, d_colidx, seqlen);
 
   printf("Kernel end \n");
 
