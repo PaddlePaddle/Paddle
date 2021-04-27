@@ -20,6 +20,7 @@ import numpy as np
 import unittest
 from test_softmax_op import stable_softmax
 from test_softmax_with_cross_entropy_op import cross_entropy
+from paddle.fluid import Program, program_guard
 
 
 def stable_softmax(x):
