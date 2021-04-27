@@ -1426,7 +1426,7 @@ def cross_entropy(input,
                 out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
             else:
-                for label_val in label:
+                for label_val in label.flatten():
                     if label_val < 0 or label_val >= input.shape[-1]:
                         raise ValueError(
                             'Expected 0 <= label_value < class_dimension({}), but got label_value {}'.
