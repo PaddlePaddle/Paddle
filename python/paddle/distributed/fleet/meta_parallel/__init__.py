@@ -12,4 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .mp_utils import *
+from .parallel_layers import *
+from .model_parallel import ModelParallel
+from .pipeline_parallel import PipelineParallel

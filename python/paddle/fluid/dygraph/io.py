@@ -413,6 +413,23 @@ class _ProgramHolder(object):
         # Therefore, in order to reuse the method of backward.py, build the program here.
         program = _build_program_by_desc(program_desc_copy)
 
+        # 3. Add the outputs which is only used for training and not saved in
+        # inference program.
+        for block_idx in six.moves.range(program.num_blocks):
+            block = program.block(block_idx)
+            for op in block.ops:
+                if op.type == "batch_norm":
+                    if "ReserveSpace" not in op.output_names or len(
+                            op.output("ReserveSpace")) == 0:
+                        reserve_space = block.create_var(
+                            name=unique_name.generate_with_ignorable_key(
+                                ".".join(["reserve_space", 'tmp'])),
+                            dtype=block.var(op.input("X")[0]).dtype,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=True)
+                        op.desc.set_output("ReserveSpace", [reserve_space.name])
+
         targets = []
         for out in self._output_descs:
             targets.append(program.global_block().var(out.name()))

@@ -775,5 +775,76 @@ class TestError(TestSetValueBase):
         self._broadcast_mismatch()
 
 
+# 5. Test backward
+
+
+class Model(paddle.nn.Layer):
+    def __init__(self):
+        super(Model, self).__init__()
+        self.conv = paddle.nn.Conv2D(12, 12, 3)
+
+    def forward(self, x, y):
+        x = self.conv(x)
+        y = self.conv(y)
+        var = y.flatten()
+
+        x[0, :, 0, 0] = var
+        loss = paddle.mean(x)
+        return loss, var, x
+
+
+class TestBackward(unittest.TestCase):
+    def test_static(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+
+        x_np = np.random.random(size=(4, 4)).astype('float32')
+        y_np = np.random.random(size=(4, 4)).astype('float32')
+        label_np = np.random.randint(2, size=(4, 1)).astype('int64')
+
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
+            y = paddle.static.data(name="y", shape=[4, 4], dtype='float32')
+
+            label = paddle.static.data(
+                name="label", shape=[4, 1], dtype='int64')
+
+            z = paddle.add(x, y)
+            var = y[0, :]
+            z[0, :] = var
+
+            prediction = paddle.static.nn.fc(x=z, size=2, activation='softmax')
+
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction, label=label)
+            loss = paddle.mean(cost)
+            sgd = paddle.optimizer.SGD(learning_rate=0.01)
+            sgd.minimize(loss)
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe.run(startup_program)
+
+        var_grad, z_grad = exe.run(
+            main_program,
+            feed={"x": x_np,
+                  "y": y_np,
+                  "label": label_np},
+            fetch_list=[var.name + "@GRAD", z.name + "@GRAD"])
+
+        self.assertTrue((var_grad == z_grad[0, :]).all())
+
+    def test_dynamic(self):
+        paddle.disable_static()
+        model = Model()
+        x = paddle.ones([1, 12, 3, 3]).astype("float32")
+        y = paddle.ones([1, 12, 3, 3]).astype("float32")
+        loss, var, x = model(x, y)
+        loss.backward()
+
+        self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
+        self.assertTrue((var.grad == x.grad[0, :, 0, 0]).all())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -17,7 +17,12 @@ math functions
 from __future__ import print_function
 import numpy as np
 
-from paddle.common_ops_import import *
+from paddle.common_ops_import import VarDesc
+from paddle.common_ops_import import dygraph_only
+from paddle.common_ops_import import OpProtoHolder
+from paddle.common_ops_import import templatedoc
+from paddle.common_ops_import import dygraph_utils
+
 from paddle.tensor import cast
 import paddle
 from ..fluid import layers
@@ -29,108 +34,30 @@ from .manipulation import _print_warning_in_static_mode
 
 # TODO: define math functions
 # yapf: disable
-from ..fluid.layers import abs    #DEFINE_ALIAS
-from ..fluid.layers import acos    #DEFINE_ALIAS
-from ..fluid.layers import asin    #DEFINE_ALIAS
-from ..fluid.layers import ceil    #DEFINE_ALIAS
-from ..fluid.layers import cos    #DEFINE_ALIAS
-from ..fluid.layers import tan    #DEFINE_ALIAS
-from ..fluid.layers import sinh    #DEFINE_ALIAS
-from ..fluid.layers import cosh    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
-from ..fluid.layers import exp    #DEFINE_ALIAS
-from ..fluid.layers import floor    #DEFINE_ALIAS
-from ..fluid.layers import log    #DEFINE_ALIAS
-from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_max    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_min    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
-from ..fluid.layers import round    #DEFINE_ALIAS
-from ..fluid.layers import rsqrt    #DEFINE_ALIAS
-from ..fluid.layers import scale    #DEFINE_ALIAS
-from ..fluid.layers import square    #DEFINE_ALIAS
-from ..fluid.layers import stanh    #DEFINE_ALIAS
-from ..fluid.layers import atan    #DEFINE_ALIAS
-from ..fluid.layers import erf    #DEFINE_ALIAS
-from ..fluid.layers import sqrt    #DEFINE_ALIAS
-from ..fluid.layers import sin    #DEFINE_ALIAS
+from ..fluid.layers import abs    # noqa: F401
+from ..fluid.layers import acos    # noqa: F401
+from ..fluid.layers import asin    # noqa: F401
+from ..fluid.layers import ceil    # noqa: F401
+from ..fluid.layers import cos    # noqa: F401
+from ..fluid.layers import tan    # noqa: F401
+from ..fluid.layers import sinh    # noqa: F401
+from ..fluid.layers import cosh    # noqa: F401
+from ..fluid.layers import exp    # noqa: F401
+from ..fluid.layers import floor    # noqa: F401
+from ..fluid.layers import log    # noqa: F401
+from ..fluid.layers import reciprocal    # noqa: F401
+from ..fluid.layers import round    # noqa: F401
+from ..fluid.layers import rsqrt    # noqa: F401
+from ..fluid.layers import scale    # noqa: F401
+from ..fluid.layers import square    # noqa: F401
+from ..fluid.layers import stanh    # noqa: F401
+from ..fluid.layers import atan    # noqa: F401
+from ..fluid.layers import erf    # noqa: F401
+from ..fluid.layers import sqrt    # noqa: F401
+from ..fluid.layers import sin    # noqa: F401
 
-from ..fluid.layers import multiplex    #DEFINE_ALIAS
+from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
-
-
-__all__ = [
-        'abs',
-        'acos',
-        'all',
-        'any',
-        'asin',
-        'atan',
-        'ceil',
-        'cos',
-        'cosh',
-        'cumsum',
-        'exp',
-        'floor',
-        'increment',
-        'log',
-        'log2',
-        'log10',
-        'logsumexp',
-        'mul',
-        'multiplex',
-        'pow',
-        'prod',
-        'reciprocal',
-        'round',
-        'rsqrt',
-        'scale',
-        'sign',
-        'sin',
-        'sinh',
-        'sqrt',
-        'square',
-        'stanh',
-        'sum',
-        'tanh',
-        'tanh_',
-        'add_n',
-        'max',
-        'maximum',
-        'min',
-        'minimum',
-        'mm',
-        'divide',
-        'floor_divide',
-        'remainder',
-        'mod',
-        'floor_mod',
-        'multiply',
-        'add',
-        'subtract',
-        'atan',
-        'logsumexp',
-        'inverse',
-        'log1p',
-        'erf',
-        'addmm',
-        'clip',
-        'trace',
-        'kron',
-        'isfinite',
-        'isinf',
-        'isnan',
-        'broadcast_shape',
-        'conj'
-]
-# yapf: enable.
 
 _supported_int_dtype_ = [
     VarDesc.VarType.UINT8,
@@ -472,8 +399,8 @@ def remainder(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-mod = remainder  #DEFINE_ALIAS
-floor_mod = remainder  #DEFINE_ALIAS
+mod = remainder  # noqa: F841
+floor_mod = remainder  # noqa: F841
 
 
 def multiply(x, y, name=None):
@@ -1475,10 +1402,10 @@ def clip(x, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-        x (Tensor): An N-D Tensor with data type float32 or float64.
-        min (float32|Tensor): The lower bound with type ``float32`` or a ``Tensor``
+        x (Tensor): An N-D Tensor with data type float32, float64, int32 or int64.
+        min (float|int|Tensor): The lower bound with type ``float`` , ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        max (float32|Tensor): The upper bound with type ``float32`` or a ``Tensor``
+        max (float|int|Tensor): The upper bound with type ``float``, ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -1503,16 +1430,24 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
-    fmin = float(np.finfo(np.float32).min)
-    fmax = float(np.finfo(np.float32).max)
+    x_dtype = str(x.dtype)
+    if x_dtype == 'paddle.int32':
+        min_ = np.iinfo(np.int32).min
+        max_ = np.iinfo(np.int32).max - 2**7
+    elif x_dtype == 'paddle.int64':
+        min_ = np.iinfo(np.int64).min
+        max_ = np.iinfo(np.int64).max - 2**39
+    else:
+        min_ = float(np.finfo(np.float32).min)
+        max_ = float(np.finfo(np.float32).max)
 
     if in_dygraph_mode():
         if isinstance(min, Variable):
             min = min.numpy().item(0)
         if isinstance(max, Variable):
             max = max.numpy().item(0)
-        min = fmin if min is None else min
-        max = fmax if max is None else max
+        min = min_ if min is None else min
+        max = max_ if max is None else max
         return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
@@ -1526,10 +1461,10 @@ def clip(x, min=None, max=None, name=None):
             check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
                         'clip', '(When the type of max in clip is Variable.)')
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'clip')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip')
 
     inputs = {'X': x}
-    attrs = {'min': fmin, 'max': fmax}
+    attrs = {'min': min_, 'max': max_}
 
     if isinstance(min, Variable):
         min.stop_gradient = True

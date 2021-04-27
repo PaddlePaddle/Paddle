@@ -248,8 +248,9 @@ class TestMulNet3_2(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        self.assertTrue(np.allclose(
+            npu_pred, cpu_pred, atol=1e-5))  # atol needed on cann 20.3
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),

@@ -86,6 +86,44 @@ class NpuOpRunner {
 
 aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype);
 
+aclrtStream GetCurrentNPUStream(int device_id = -1);
+
+template <typename T>
+void FillNpuTensorWithConstant(Tensor *tensor, T val) {
+  PADDLE_ENFORCE_EQ(
+      tensor->IsInitialized(), true,
+      platform::errors::InvalidArgument("The tensor should be initialized."));
+  PADDLE_ENFORCE_EQ(
+      platform::is_npu_place(tensor->place()), true,
+      platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
+  // do async for better performance
+  if (typeid(float) == typeid(T) || typeid(platform::float16) == typeid(T)) {
+    Tensor tmp(tensor->type());
+    tmp.Resize(tensor->dims());
+    tmp.mutable_data<T>(tensor->place());
+    auto stream = GetCurrentNPUStream(
+        BOOST_GET_CONST(platform::NPUPlace, tensor->place()).device);
+    platform::NPUMemsetAsync(tmp.data<void>(), 0, tmp.numel() * sizeof(T),
+                             stream);
+    auto runner = NpuOpRunner("Power", {tmp}, {*tensor},
+                              {{"power", static_cast<float>(1)},
+                               {"scale", static_cast<float>(0)},
+                               {"shift", static_cast<float>(val)}});
+    runner.Run(stream);
+  } else {
+    T *array = new T[tensor->numel()];
+    for (unsigned int i = 0; i < tensor->numel(); ++i) {
+      array[i] = static_cast<T>(val);
+    }
+    std::vector<T> vec(tensor->numel(), static_cast<T>(val));
+    // do sync copy
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, tensor->place()),
+                 tensor->data<void>(), platform::CPUPlace(), array,
+                 tensor->numel() * sizeof(T), nullptr);
+    delete[] array;
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle
 #endif

@@ -121,5 +121,65 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
+ public:
+  void RunKernel(const framework::ExecutionContext& ctx,
+                 dnnl::algorithm binary_type, float scale_x,
+                 float scale_y) const {
+    const auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& onednn_engine = dev_ctx.GetEngine();
+
+    auto dims = ctx.Attr<std::vector<int>>("dim");
+    auto* input_dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    output_dx->mutable_data<T>(ctx.GetPlace());
+    output_dx->set_format(getPlainFormatTag(output_dx));
+    output_dx->set_layout(input_dy->layout());
+
+    platform::BroadcastDataMKLDNNHandler<T> handler(
+        binary_type, dev_ctx, onednn_engine, ctx.GetPlace(), output_dx,
+        input_dy, scale_x, scale_y,
+        ctx.InputName(framework::GradVarName("Out")));
+
+    const auto src_dx_memory = handler.AcquireSrcMemory(output_dx);
+    const auto src_dy_memory = handler.AcquireSecondSrcMemory(input_dy);
+    const auto binary_prim = handler.AcquireForwardPrimitive();
+
+    const std::unordered_map<int, dnnl::memory> args = {
+        {DNNL_ARG_SRC_0, *src_dx_memory},
+        {DNNL_ARG_SRC_1, *src_dy_memory},
+        {DNNL_ARG_DST, *src_dx_memory}};
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    binary_prim->execute(astream, args);
+    astream.wait();
+  }
+
+ protected:
+  mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) const {
+    auto tensor_dims_size = tensor->dims().size();
+    PADDLE_ENFORCE_EQ(
+        tensor_dims_size <= 5 && tensor_dims_size >= 1, true,
+        platform::errors::InvalidArgument(
+            "Dims for reduction_grad oneDNN op must be in range <1, 5>"));
+
+    switch (tensor_dims_size) {
+      case 1:
+        return mkldnn::memory::format_tag::a;
+      case 2:
+        return mkldnn::memory::format_tag::ab;
+      case 3:
+        return mkldnn::memory::format_tag::abc;
+      case 4:
+        return mkldnn::memory::format_tag::abcd;
+    }
+
+    return mkldnn::memory::format_tag::abcde;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
