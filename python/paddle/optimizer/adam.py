@@ -316,7 +316,7 @@ class Adam(Optimizer):
         else:
             attrs['beta2'] = self._beta2
         if isinstance(self._epsilon, Variable):
-            inputs['Beta2Tensor'] = self._epsilon
+            inputs['EpsilonTensor'] = self._epsilon
         else:
             attrs['epsilon'] = self._epsilon
 
