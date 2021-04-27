@@ -1284,7 +1284,7 @@ struct CudaELUGradFunctor : public BaseActivationFunctor<T> {
     MPType temp_x_pos = static_cast<MPType>(x > zero);
     MPType temp_x_neg = static_cast<MPType>(x <= zero);
     return static_cast<T>(
-        dout * (temp_a_pos * temp_x_pos + temp_a_pos * temp_a_neg * a * exp(x) +
+        dout * (temp_a_pos * temp_x_pos + temp_a_pos * temp_x_neg * a * exp(x) +
                 temp_a_neg * temp_x_pos * (one + a * exp(x))));
   }
 
