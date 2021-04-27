@@ -336,7 +336,7 @@ def yolo_box(x,
         import paddle
         import numpy as np
 
-	x = np.random.random([2, 14, 8, 8]).astype('float32')
+        x = np.random.random([2, 14, 8, 8]).astype('float32')
         img_size = np.ones((2, 2)).astype('int32')
 
         x = paddle.to_tensor(x)
