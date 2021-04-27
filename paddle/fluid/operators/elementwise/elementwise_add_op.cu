@@ -1,10 +1,10 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
+Licensed under the Apache License, Version 2.1 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.1
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
@@ -38,6 +39,12 @@ struct CudaAddFunctor {
   }
 };
 
+// TODO(limingshu): Need to be refined.
+template <typename T>
+struct BCudaAddFunctor {
+  __device__ __forceinline__ void operator()(T* a, T* b) { *a += *b; }
+};
+
 template <typename T>
 struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
@@ -48,6 +55,18 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(
         ctx.template device_context<platform::CUDADeviceContext>(), ins, &outs,
         CudaAddFunctor<T>());
+  }
+};
+
+template <typename T>
+struct BroadcastElemwiseAdd<platform::CUDADeviceContext, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* out) {
+    std::vector<const framework::Tensor*> ins = {x, y};
+    LaunchBroadcastElementwiseCudaKernel<T>(
+        ctx.template device_context<platform::CUDADeviceContext>(), ins, out,
+        BCudaAddFunctor<T>());
   }
 };
 

@@ -23,7 +23,6 @@ limitations under the License. */
 #define MAX_TENSORS 4
 
 #define INT_BITS 32
-#define DEBUG_OPT 0
 
 namespace paddle {
 namespace operators {
@@ -162,16 +161,7 @@ struct DimensionTransform {
 
     func_t merge_ptr = merge_sequential_dims;
     DimsReorganise<func_t>(merge_ptr, N);
-#if DEBUG_OPT
-    std::cout << std::endl;
-    for (auto &vec_dim : vec_dims) {
-      std::cout << "[1. Dims]: \t";
-      for (auto &x : vec_dim) {
-        std::cout << x << "\t";
-      }
-      std::cout << std::endl;
-    }
-#endif
+
     int min_idx = 0;
     int min_val = std::accumulate(vec_dims[0].begin(), vec_dims[0].end(), 1,
                                   std::multiplies<uint64_t>());
@@ -222,40 +212,23 @@ struct OffsetPreCalculator {
       divmoders[i] = FastDivMod<uint64_t>(merge_dims.out_dims[i]);
     }
     StirdeCalculator<decltype(vec_dims)>(N, dim_size, vec_dims);
-
-#if DEBUG_OPT
-    for (auto &stride : strides) {
-      std::cout << "[11. strides]: \t";
-      for (auto &x : stride) {
-        std::cout << x << "\t";
-      }
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-
-    printf("[22. divmoders]: \n");
-    for (int i = 0; i < dim_size; ++i) {
-      printf("[divisor=%ld, shift=%ld, multiplier=%ld]\n", divmoders[i].divisor,
-             divmoders[i].shift_val, divmoders[i].multiplier);
-    }
-    printf("\n");
-    std::cout << std::endl;
-#endif
   }
   std::vector<std::vector<IndexT>> strides;
   std::vector<FastDivMod<uint64_t>> divmoders;
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T, typename OffsetT, int N, int vec_size, int nDims,
-          typename IndexT = uint32_t>
+template <typename T, typename FuncT, typename OffsetT, int N, int vec_size,
+          int nDims, typename IndexT = uint32_t>
 struct DataFetch {
   using ArgT = CudaAlignedVector<T, vec_size>;
+  using ScalarT = CudaAlignedVector<T, 1>;
 
   DataFetch() {}
   HOSTDEVICE DataFetch(const std::vector<const framework::Tensor *> &ins,
-                       const OffsetT &offset_pre, T *out_data, int data_offset)
-      : out_data(out_data), data_offset(data_offset) {
+                       const OffsetT &offset_pre, T *out_data, int data_offset,
+                       FuncT func)
+      : out_data(out_data), data_offset(data_offset), func(func) {
     for (int j = 0; j < N; ++j) {
       in_data[j] = ins[j]->data<T>();
       memcpy(strides[j], offset_pre.strides[j].data(),
@@ -290,11 +263,11 @@ struct DataFetch {
     }
   }
 
-  __device__ __forceinline__ void load_scalar(T args[], int tid) {
+  __device__ __forceinline__ void load_scalar(ScalarT args[], int tid) {
 #pragma unroll
     for (int j = 0; j < N; ++j) {
       auto offset = get_offset(tid + data_offset, j);
-      args[j] = in_data[j][offset];
+      args[j].val[0] = in_data[j][offset];
     }
   }
 
@@ -303,10 +276,11 @@ struct DataFetch {
     vec_out[tid] = args[0];
   }
 
-  __device__ __forceinline__ void store_scalar(T args[], int tid) {
-    out_data[data_offset + tid] = args[0];
+  __device__ __forceinline__ void store_scalar(ScalarT args[], int tid) {
+    out_data[data_offset + tid] = args[0].val[0];
   }
 
+  FuncT func;
   T *out_data;
   const T *__restrict__ in_data[nDims];
   uint32_t data_offset;
@@ -314,141 +288,6 @@ struct DataFetch {
   FastDivMod<uint64_t> divmoders[nDims];
 };
 #endif
-
-// #if defined(__NVCC__) || defined(__HIPCC__)
-// template <typename T, typename ArgT, typename OffsetT, int nDims, int
-// vec_size,
-//           typename IndexT = uint32_t>
-// struct StrideVectorLoad {
-//  private:
-//   __device__ inline IndexT const get_offset(int tid) {
-//     IndexT offset = 0;
-
-// #pragma unroll
-//     for (int i = 0; i < nDims; ++i) {
-//       auto fast_divmoder = divmoders[i].divmod(tid);
-//       tid = fast_divmoder.div;
-//       offset += fast_divmoder.mod * strides[i];
-//     }
-//     return offset;
-//   }
-
-//  public:
-//   HOSTDEVICE StrideVectorLoad(const OffsetT &offset_calculator, int i) {
-//     memcpy(static_cast<void *>(strides), offset_calculator.strides[i].data(),
-//            sizeof(uint32_t) * nDims);
-//     memcpy(static_cast<void *>(divmoders), offset_calculator.divmoder.data(),
-//            sizeof(FastDivMod<uint32_t>) * nDims);
-//   }
-
-//   __device__ inline void operator()(const T *__restrict__ in_data, ArgT
-//   *args,
-//                                     int tid) {
-//     int index = vec_size * tid;
-
-// #pragma unroll
-//     for (int i = 0; i < vec_size; ++i) {
-//       IndexT offset = get_offset(index + i);
-//       (*args).val[i + i] = in_data[offset];
-//     }
-//   }
-
-//   IndexT strides[MAX_DIMS];
-//   FastDivMod<IndexT> divmoders[MAX_DIMS];
-// };
-
-// template <typename T, typename OffsetT, int nDims, int vec_size,
-//           typename IndexT = uint32_t>
-// struct StrideScalarLoad {
-//   explicit HOSTDEVICE StrideScalarLoad(const OffsetT &offset_calculator, int
-//   i,
-//                                        int data_offset)
-//       : data_offset(data_offset) {
-//     memcpy(static_cast<void *>(strides), offset_calculator.strides[i].data(),
-//            sizeof(uint32_t) * nDims);
-//     memcpy(static_cast<void *>(divmoders), offset_calculator.divmoder.data(),
-//            sizeof(FastDivMod<uint32_t>) * nDims);
-//   }
-
-//   __device__ inline IndexT const get_offset(int tid) {
-//     IndexT offset = 0;
-
-// #pragma unroll
-//     for (int i = 0; i < nDims; ++i) {
-//       auto fast_divmoder = divmoders[i].divmod(tid);
-//       tid = fast_divmoder.div;
-//       offset += fast_divmoder.mod * strides[i];
-//     }
-//     return offset;
-//   }
-
-//   __device__ inline void operator()(const T *__restrict__ in_data, T *args,
-//                                     int tid) {
-//     int offset = get_offset(tid + data_offset);
-//     *args = in_data[offset];
-//   }
-
-//   int data_offset;
-//   IndexT strides[MAX_DIMS];
-//   FastDivMod<IndexT> divmoders[MAX_DIMS];
-// };
-
-// template <typename T, typename ArgT>
-// struct CommonVectorLoad {
-//   __device__ inline void operator()(const T *__restrict__ in_data, ArgT
-//   *args,
-//                                     int tid) {
-//     const ArgT *vec_data = reinterpret_cast<const ArgT *>(in_data);
-//     *args = vec_data[tid];
-//   }
-// };
-
-// template <typename T>
-// struct CommonScalarLoad {
-//   explicit CommonScalarLoad(int data_offset) : data_offset(data_offset) {}
-
-//   __device__ inline void operator()(const T *__restrict__ in_data, T *args,
-//                                     int tid) {
-//     *args = in_data[tid + data_offset];
-//   }
-//   int data_offset;
-// };
-
-// template <typename T, typename OffsetT, int N, int vec_size, int nDims>
-// struct TensorLoaderBK {
-//   using ArgT = CudaAlignedVector<T, vec_size>;
-
-//   HOSTDEVICE TensorLoaderBK(const std::vector<const framework::Tensor *>
-//   &ins,
-//                           const OffsetT &offset_pre, framework::Tensor *out,
-//                           int vec_len, int remain) {
-//     for (int j = 0; j < N; ++j) {
-//       data[j] = ins[j]->data<T>();
-
-//       if (ins[j]->dims() == out->dims()) {
-//         v_loader[j] = CommonVectorLoad<T, ArgT>();
-//       } else {
-//         v_loader[j] =
-//             StrideVectorLoad<T, ArgT, OffsetT, nDims, vec_size>(offset_pre,
-//             j);
-//       }
-
-//       if (remain) {
-//         if (ins[j]->dims() == out->dims()) {
-//           s_loader[j] = CommonScalarLoad<T>(vec_len);
-//         } else {
-//           s_loader[j] = StrideScalarLoad<T, OffsetT, nDims, vec_size>(
-//               offset_pre, j, vec_len);
-//         }
-//       }
-//     }
-//   }
-
-//   const T *data[N];
-//   nvstd::function<void(const T *, ArgT *, int)> v_loader[N];
-//   nvstd::function<void(const T *, T *, int)> s_loader[N];
-// };
-// #endif
 
 }  // namespace operators
 }  // namespace paddle

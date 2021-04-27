@@ -62,6 +62,13 @@ struct SameDimsElemwiseAdd {
                   framework::Tensor *z);
 };
 
+template <typename DeviceContext, typename T, class Enable = void>
+struct BroadcastElemwiseAdd {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z);
+};
+
 template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
@@ -75,7 +82,13 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
       SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
       same_dims_add(ctx, x, y, z);
     } else {
-      LaunchBroadElementwiseCudaKernel<DeviceContext, T>(ctx, x, y, z);
+      BroadcastElemwiseAdd<DeviceContext, T> broadcast_add;
+      broadcast_add(ctx, x, y, z);
+      // if (platform::is_gpu_place(ctx.GetPlace())) {
+      //   LaunchBroadElementwiseCudaKernel<DeviceContext, T>(ctx, x, y, z);
+      // } else {
+      //   default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+      // }
     }
   }
 };
