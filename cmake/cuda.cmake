@@ -1,3 +1,4 @@
+#test
 if(NOT WITH_GPU)
     return()
 endif()
