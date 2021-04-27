@@ -48,5 +48,85 @@ struct EigenBroadcastGrad {
                    const Array& reduce_dims, const Array2& reshape_dims);
 };
 
+template <typename EigenDevice, typename T, int Rank>
+struct EigenConstant {
+  using Type = Eigen::TensorMap<
+      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, Type out, const T value);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenScale {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& in,
+                   const T scale, const T bias, const bool bias_after_scale);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenErf {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& in);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenErfGrad {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType din, const InType& in,
+                   const InType& dout);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenRankLoss {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& label,
+                   const InType& left, const InType& right);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenRankLossGrad {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void EvalLeft(const EigenDevice& dev, OutType dleft,
+                       const InType& dout, const InType& label,
+                       const InType& left, const InType& right);
+  static void EvalRight(const EigenDevice& dev, OutType dright,
+                        const InType& dout, const InType& label,
+                        const InType& left, const InType& right);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenL1Norm {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<
+      T, Eigen::Sizes<>, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& in);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenL1NormGrad {
+  using Array = Eigen::DSizes<Eigen::DenseIndex, 1>;
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType din, const InType& dout,
+                   const InType& in, const Array& bcast);
+};
+
 }  // namespace operators
 }  // namespace paddle
