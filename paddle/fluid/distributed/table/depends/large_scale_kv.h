@@ -26,7 +26,6 @@
 #include <vector>
 #include "gflags/gflags.h"
 
-#include "butil/object_pool.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/depends/initializers.h"
 #include "paddle/fluid/distributed/thirdparty/round_robin.h"
@@ -49,10 +48,6 @@ namespace distributed {
 
 enum Mode { training, infer };
 
-static const int SPARSE_SHARD_BUCKET_NUM_BITS = 6;
-static const size_t SPARSE_SHARD_BUCKET_NUM = (size_t)1
-                                              << SPARSE_SHARD_BUCKET_NUM_BITS;
-
 struct VALUE {
   explicit VALUE(size_t length)
       : length_(length),
@@ -60,16 +55,46 @@ struct VALUE {
         unseen_days_(0),
         need_save_(false),
         is_entry_(false) {
-    data_.resize(length);
-    memset(data_.data(), 0, sizeof(float) * length);
+    data_ = new float[length];
+    memset(data_, 0, sizeof(float) * length);
+  }
+
+  VALUE(const VALUE &value) {
+    length_ = value.length_;
+    count_ = value.count_;
+    unseen_days_ = value.unseen_days_;
+    need_save_ = value.need_save_;
+    is_entry_ = value.is_entry_;
+    data_ = new float[length_];
+    memcpy(data_, value.data_, sizeof(float) * length_);
+  }
+
+  VALUE &operator=(const VALUE &value) {
+    if (this != &value) {
+      delete[] data_;
+      length_ = value.length_;
+      count_ = value.count_;
+      unseen_days_ = value.unseen_days_;
+      need_save_ = value.need_save_;
+      is_entry_ = value.is_entry_;
+
+      data_ = new float[length_];
+      memcpy(data_, value.data_, sizeof(float) * length_);
+    }
+    return *this;
+  }
+
+  ~VALUE() {
+    delete[] data_;
+    data_ = nullptr;
   }
 
   size_t length_;
-  std::vector<float> data_;
   int count_;
   int unseen_days_;  // use to check knock-out
   bool need_save_;   // whether need to save
   bool is_entry_;    // whether knock-in
+  float *data_;
 };
 
 inline bool count_entry(VALUE *value, int threshold) {
@@ -151,12 +176,12 @@ class ValueBlock {
                            const std::vector<int> &value_dims) {
     auto pts = std::vector<float *>();
     pts.reserve(value_names.size());
-    auto values = GetValue(id);
+    auto &values = values_.at(id);
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
       PADDLE_ENFORCE_EQ(
           value_dims[i], value_dims_[i],
           platform::errors::InvalidArgument("value dims is not match"));
-      pts.push_back(values->data_.data() +
+      pts.push_back(values.data_ +
                     value_offsets_.at(value_idx_.at(value_names[i])));
     }
     return pts;
@@ -165,45 +190,33 @@ class ValueBlock {
   // pull
   float *Init(const uint64_t &id, const bool with_update = true,
               const int counter = 1) {
-    size_t hash = _hasher(id);
-    size_t bucket = compute_bucket(hash);
-
-    auto &table = values_[bucket];
-    auto res = table.find(id);
-
-    VALUE *value = nullptr;
-    if (res == table.end()) {
-      value = butil::get_object<VALUE>(value_length_);
-
-      table[id] = value;
-
-    } else {
-      value = res->second;
+    if (!Has(id)) {
+      values_.emplace(std::make_pair(id, VALUE(value_length_)));
     }
+
+    auto &value = values_.at(id);
 
     if (with_update) {
-      AttrUpdate(value, counter);
+      AttrUpdate(&value, counter);
     }
-    return value->data_.data();
+
+    return value.data_;
   }
+
 
   VALUE *InitGet(const uint64_t &id, const bool with_update = true,
                  const int counter = 1) {
-    size_t hash = _hasher(id);
-    size_t bucket = compute_bucket(hash);
-
-    auto &table = values_[bucket];
-    auto res = table.find(id);
-
-    VALUE *value = nullptr;
-    if (res == table.end()) {
-      value = butil::get_object<VALUE>(value_length_);
-      // value = _alloc.acquire(value_length_);
-      table[id] = value;
-    } else {
-      value = (VALUE *)(void *)(res->second);
+    if (!Has(id)) {
+      values_.emplace(std::make_pair(id, VALUE(value_length_)));
     }
-    return value;
+
+    auto &value = values_.at(id);
+
+    if (with_update) {
+      AttrUpdate(&value, counter);
+    }
+
+    return &value;
   }
 
   void AttrUpdate(VALUE *value, const int counter) {
@@ -216,7 +229,7 @@ class ValueBlock {
       if (value->is_entry_) {
         // initialize
         for (size_t x = 0; x < value_names_.size(); ++x) {
-          initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
+          initializers_[x]->GetValue(value->data_ + value_offsets_[x],
                                      value_dims_[x]);
         }
         value->need_save_ = true;
@@ -230,73 +243,42 @@ class ValueBlock {
 
   // dont jude if (has(id))
   float *Get(const uint64_t &id) {
-    size_t hash = _hasher(id);
-    size_t bucket = compute_bucket(hash);
-    auto &table = values_[bucket];
-
-    // auto &value = table.at(id);
-    // return value->data_.data();
-    auto res = table.find(id);
-    VALUE *value = res->second;
-    return value->data_.data();
+    auto &value = values_.at(id);
+    return value.data_;
   }
 
   // for load, to reset count, unseen_days
-  VALUE *GetValue(const uint64_t &id) {
-    size_t hash = _hasher(id);
-    size_t bucket = compute_bucket(hash);
-
-    auto &table = values_[bucket];
-    auto res = table.find(id);
-    return res->second;
-  }
+  VALUE *GetValue(const uint64_t &id) { return &values_.at(id); }
 
   bool GetEntry(const uint64_t &id) {
-    auto value = GetValue(id);
-    return value->is_entry_;
+    auto &value = values_.at(id);
+    return value.is_entry_;
   }
 
   void SetEntry(const uint64_t &id, const bool state) {
-    auto value = GetValue(id);
-    value->is_entry_ = state;
+    auto &value = values_.at(id);
+    value.is_entry_ = state;
   }
 
   void Shrink(const int threshold) {
-    for (auto &table : values_) {
-      for (auto iter = table.begin(); iter != table.end();) {
-        // VALUE* value = (VALUE*)(void*)(iter->second);
-        VALUE *value = iter->second;
-        value->unseen_days_++;
-        if (value->unseen_days_ >= threshold) {
-          butil::return_object(iter->second);
-          //_alloc.release(iter->second);
-          //_alloc.release(value);
-          iter = table.erase(iter);
-        } else {
-          ++iter;
-        }
+    for (auto iter = values_.begin(); iter != values_.end();) {
+      auto &value = iter->second;
+      value.unseen_days_++;
+      if (value.unseen_days_ >= threshold) {
+        iter = values_.erase(iter);
+      } else {
+        ++iter;
       }
     }
     return;
   }
 
   float GetThreshold() { return threshold_; }
-  size_t compute_bucket(size_t hash) {
-    if (SPARSE_SHARD_BUCKET_NUM == 1) {
-      return 0;
-    } else {
-      return hash >> (sizeof(size_t) * 8 - SPARSE_SHARD_BUCKET_NUM_BITS);
-    }
-  }
 
  private:
   bool Has(const uint64_t id) {
-    size_t hash = _hasher(id);
-    size_t bucket = compute_bucket(hash);
-    auto &table = values_[bucket];
-
-    auto got = table.find(id);
-    if (got == table.end()) {
+    auto got = values_.find(id);
+    if (got == values_.end()) {
       return false;
     } else {
       return true;
@@ -304,9 +286,8 @@ class ValueBlock {
   }
 
  public:
-  robin_hood::unordered_map<uint64_t, VALUE *> values_[SPARSE_SHARD_BUCKET_NUM];
+  robin_hood::unordered_map<uint64_t, VALUE> values_;
   size_t value_length_ = 0;
-  std::hash<uint64_t> _hasher;
 
  private:
   const std::vector<std::string> &value_names_;
@@ -321,3 +302,4 @@ class ValueBlock {
 
 }  // namespace distributed
 }  // namespace paddle
+
