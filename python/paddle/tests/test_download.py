@@ -79,7 +79,7 @@ class TestGitclone(unittest.TestCase):
         repo_dir = './test/lyuwenyu_paddlehub_demo_main'
 
         git_clone_from_url(giturl, repo_dir, branch=None, check_exist=False)
-        git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=False)
+        git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=True)
         git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=True)
 
     def test_errors(self, ):
