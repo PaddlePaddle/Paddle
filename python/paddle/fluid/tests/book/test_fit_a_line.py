@@ -51,7 +51,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 
     if use_bf16:
-        sgd_optimizer = amp.bf16.decorate(
+        sgd_optimizer = amp.bf16.decorate_bf16(
             sgd_optimizer,
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),
             use_bf16_guard=False,

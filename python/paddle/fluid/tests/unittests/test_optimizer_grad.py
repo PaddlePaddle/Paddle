@@ -124,7 +124,7 @@ class SimpleNetWithCond(object):
         mean_out = fluid.layers.mean(sum_all)
         if use_bf16:
             import paddle.static.amp as amp
-            self.optimizer = amp.bf16.decorate(
+            self.optimizer = amp.bf16.decorate_bf16(
                 self.optimizer,
                 amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
                     custom_fp32_list={'elementwise_add'}),

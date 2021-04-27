@@ -20,7 +20,7 @@ from .amp_lists import AutoMixedPrecisionListsBF16
 import types
 import warnings
 
-__all__ = ["decorate"]
+__all__ = ["decorate_bf16"]
 
 
 class OptimizerWithMixedPrecision(object):
@@ -148,7 +148,7 @@ class OptimizerWithMixedPrecision(object):
                         custom_fp32_list=['pool2d'])
                     # 4) The entry of Paddle AMP.
                     # Enable pure bf16 training by setting `use_pure_bf16` to True.
-                    optimizer = paddle.static.amp.bf16.decorate(
+                    optimizer = paddle.static.amp.bf16.decorate_bf16(
                         optimizer,
                         amp_list,
                         use_pure_bf16=True)
@@ -229,10 +229,10 @@ class OptimizerWithMixedPrecision(object):
         return optimize_ops, params_grads
 
 
-def decorate(optimizer,
-             amp_lists=None,
-             use_pure_bf16=False,
-             use_bf16_guard=None):
+def decorate_bf16(optimizer,
+                  amp_lists=None,
+                  use_pure_bf16=False,
+                  use_bf16_guard=None):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 
@@ -261,7 +261,7 @@ def decorate(optimizer,
             loss = paddle.mean(hidden)
             optimizer = paddle.optimizer.Adam(learning_rate=0.001)
 
-            mp_optimizer = static.amp.decorate(optimizer=optimizer)
+            mp_optimizer = static.amp.decorate_bf16(optimizer=optimizer)
 
             ops, param_grads = mp_optimizer.minimize(loss)
 
@@ -293,7 +293,7 @@ def decorate(optimizer,
                     custom_fp32_list=['pool2d'])
                 # 4) The entry of Paddle AMP.
                 # Enable pure bf16 training by setting `use_pure_bf16` to True.
-                optimizer = paddle.static.amp.decorate(
+                optimizer = paddle.static.amp.decorate_bf16(
                     optimizer,
                     amp_list,
                     use_pure_bf16=True)
