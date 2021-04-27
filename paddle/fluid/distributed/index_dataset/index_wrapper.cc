@@ -304,6 +304,23 @@ int GraphIndex::load(std::string filename) {
   return 0;
 }
 
+void GraphIndex::add_item(uint64_t item_id, std::vector<int64_t> vec) {
+  if (item_path_dict_.find(item_id) != item_path_dict_.end()) {
+    auto path_vec = item_path_dict_[item_id];
+    for (auto path : path_vec) {
+      auto iter = path_item_set_dict_.find(path);
+      if (iter != path_item_set_dict_.end()) {
+        iter->second.erase(item_id);
+      }
+    }
+    item_path_dict_[item_id].clear();
+  }
+  for (auto p : vec) {
+    item_path_dict_[item_id].push_back(p);
+    path_item_set_dict_[p].insert(item_id);
+  }
+}
+
 std::vector<std::vector<int64_t>> GraphIndex::get_path_of_item(
     std::vector<uint64_t>& items) {
   std::vector<std::vector<int64_t>> result;

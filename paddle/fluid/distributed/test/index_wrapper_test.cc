@@ -23,9 +23,9 @@ TEST(GRAPH_INDEX, RUN) {
   graph1.set_width(width);
   graph1.set_height(height);
   graph1.set_item_path_nums(path_num);
-  graph1.add_item_path_dict(4, {3, 54, 12});
-  graph1.add_item_path_dict(6, {7, 2, 100});
-  graph1.add_item_path_dict(34, {7, 8, 12});
+  graph1.add_item(4, {3, 54, 12});
+  graph1.add_item(6, {7, 2, 100});
+  graph1.add_item(34, {7, 8, 12});
   graph1.save("paddle_graph_index.param");
   graph2.load("paddle_graph_index.param");
   ASSERT_EQ(graph2.width(), width);
@@ -37,7 +37,7 @@ TEST(GRAPH_INDEX, RUN) {
     ASSERT_EQ(map_2.find(p1.first) != map_2.end(), true);
     auto vec = map_2[p1.first];
     ASSERT_EQ(vec.size(), p1.second.size());
-    for (int i = 0; i < vec.size(); i++) {
+    for (size_t i = 0; i < vec.size(); i++) {
       ASSERT_EQ(vec[i], p1.second[i]);
     }
   }

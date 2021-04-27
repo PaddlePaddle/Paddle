@@ -80,11 +80,11 @@ class GraphIndex : public Index {
 
   void set_item_path_nums(int num) { meta_.set_item_path_nums(num); }
 
-  void add_item_path_dict(uint64_t item_id, std::vector<int64_t> vec) {
-    if (item_path_dict_.find(item_id) == item_path_dict_.end()) {
-      item_path_dict_[item_id] = vec;
-    }
+  void reset_mapping() {
+    item_path_dict_.clear();
+    path_item_set_dict_.clear();
   }
+  void add_item(uint64_t item_id, std::vector<int64_t> vec);
 
   std::unordered_map<uint64_t, std::vector<int64_t>> get_item_path_dict() {
     return item_path_dict_;
