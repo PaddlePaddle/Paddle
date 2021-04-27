@@ -96,6 +96,16 @@ class Test_extract_code_blocks_from_docstr(unittest.TestCase):
         codeblocks = extract_code_blocks_from_docstr(docstr)
         self.assertListEqual([], codeblocks)
 
+    def test_codeblock_before_examples_is_ignored(self):
+        docstr = """
+            .. code-block:: python
+
+                print(1+1)
+        Examples:
+        """
+        codeblocks = extract_code_blocks_from_docstr(docstr)
+        self.assertListEqual(codeblocks, [])
+
     def test_1_samplecode(self):
         docstr = """
         Examples:
