@@ -1334,8 +1334,9 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                 label_data = paddle.randint(
                     0, 100, shape=[20, 1], dtype="int64")
                 label_data[0] = 255
+                weight_data = paddle.rand([100])
                 paddle.nn.functional.cross_entropy(
-                    input=input_data, label=label_data)
+                    input=input_data, label=label_data, weight=weight_data)
 
             self.assertRaises(ValueError, test_LabelValue)
 
@@ -1344,8 +1345,9 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                 label_data = paddle.randint(
                     0, 100, shape=[20, 1], dtype="int64")
                 label_data[0] = -1
+                weight_data = paddle.rand([100])
                 paddle.nn.functional.cross_entropy(
-                    input=input_data, label=label_data)
+                    input=input_data, label=label_data, weight=weight_data)
 
             self.assertRaises(ValueError, test_LabelValueNeg)
 
