@@ -205,15 +205,14 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
       }
     }
 #else
-    auto const *dz = tensor_dout->data<T>(),
-               *x  = tensor_x->data<T>(),
-               *y  = tensor_y->data<T>();
-    auto&&      d  = tensor_x->dims();
-    auto const  N  = tensor_x->numel(),
-                B  = d[d.size() - 1];
+    auto const *x = tensor_x->data<T>(), *y = tensor_y->data<T>(),
+               *dz = tensor_dout->data<T>();
+    auto&& d = tensor_x->dims();
+    auto const N = tensor_x->numel();
+    auto const B = d[d.size() - 1];
 
     if (tensor_dx) {
-      auto *dx = tensor_dx->mutable_data<T>(ctx.GetPlace());
+      auto* dx = tensor_dx->mutable_data<T>(ctx.GetPlace());
       for (auto j = 0; j < N / B; ++j) {
         auto const ss = dz[j];
         for (auto i = 0; i < B; ++i) *dx++ = *y++ * ss;
@@ -221,7 +220,7 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
     }
 
     if (tensor_dy) {
-      auto *dy = tensor_dy->mutable_data<T>(ctx.GetPlace());
+      auto* dy = tensor_dy->mutable_data<T>(ctx.GetPlace());
       for (auto j = 0; j < N / B; ++j) {
         auto const ss = dz[j];
         for (auto i = 0; i < B; i++) *dy++ = *x++ * ss;
@@ -259,17 +258,16 @@ class DotKernel : public framework::OpKernel<T> {
 #else
     auto const *x = tensor_x->data<T>(), *x_ = &x[0];
     auto const *y = tensor_y->data<T>(), *y_ = &y[0];
-    auto       *z = tensor_out->data<T>();
+    auto* z = tensor_out->data<T>();
 
     // Loop over the total N elements of both operands while sum-reducing every
-    // B pairs along the way where B is the dimension of the least ordered axis  
-    auto&&      d = tensor_x->dims();
-    auto const  N = tensor_x->numel(),
-                B = d[d.size() - 1];
+    // B pairs along the way where B is the dimension of the least ordered axis
+    auto&& d = tensor_x->dims();
+    auto const N = tensor_x->numel(), auto const B = d[d.size() - 1];
 
-    for (int j=0; j < N / B; j++) {
+    for (int j = 0; j < N / B; j++) {
       T ss = 0;
-      for (int i=0; i < B; i++) ss += (*x_++) * (*y_++);
+      for (int i = 0; i < B; i++) ss += (*x_++) * (*y_++);
       z[j] = ss;
     }
 #endif
