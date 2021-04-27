@@ -263,7 +263,8 @@ class DotKernel : public framework::OpKernel<T> {
     // Loop over the total N elements of both operands while sum-reducing every
     // B pairs along the way where B is the dimension of the least ordered axis
     auto&& d = tensor_x->dims();
-    auto const N = tensor_x->numel(), auto const B = d[d.size() - 1];
+    auto const N = tensor_x->numel();
+    auto const B = d[d.size() - 1];
 
     for (int j = 0; j < N / B; j++) {
       T ss = 0;
