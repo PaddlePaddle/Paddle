@@ -121,6 +121,73 @@ def find_last_future_line_end(cbstr):
         return None
 
 
+def extract_code_blocks_from_docstr(docstr):
+    """
+    extract code-blocks from the given docstring.
+
+    DON'T include the multiline-string definition in code-blocks.
+
+    Args:
+        docstr - docstring
+    Return:
+        A dict of code-blocks, indent removed. key is the code-block's name or sequence id.
+    """
+    code_blocks = []
+    mo = re.search(r"Examples:", docstr)
+    if mo is None:
+        return code_blocks
+    ds_list = docstr[mo.start():].replace("\t", '    ').split("\n")
+    lastlineindex = len(ds_list) - 1
+    cb_started = False
+    cb_start_pat = re.compile(r"code-block::\s*python")
+    cb_cur = []
+    cb_cur_indent = -1
+    for lineno, linecont in enumerate(ds_list):
+        if re.search(cb_start_pat, linecont):
+            if not cb_started:
+                cb_started = True
+                continue
+            else:
+                # cur block end
+                if len(cb_cur):
+                    code_blocks.append(inspect.cleandoc("\n".join(cb_cur)))
+                cb_started = True  # another block started
+                cb_cur_indent = -1
+                cb_cur = []
+        else:
+            # check indent for cur block ends.
+            if cb_started:
+                if lineno == lastlineindex:
+                    mo = re.search(r"\S", linecont)
+                    if mo is not None and cb_cur_indent <= mo.start():
+                        cb_cur.append(linecont)
+                    if len(cb_cur):
+                        code_blocks.append(inspect.cleandoc("\n".join(cb_cur)))
+                    break
+                if cb_cur_indent < 0:
+                    mo = re.search(r"\S", linecont)
+                    if mo is None: continue
+                    cb_cur_indent = mo.start()
+                    cb_cur.append(linecont)
+                else:
+                    mo = re.search(r"\S", linecont)
+                    if mo is None: continue
+                    if cb_cur_indent <= mo.start():
+                        cb_cur.append(linecont)
+                    else:
+                        if linecont[mo.start()] == '#':
+                            continue
+                        else:
+                            # block end
+                            if len(cb_cur):
+                                code_blocks.append(
+                                    inspect.cleandoc("\n".join(cb_cur)))
+                            cb_started = False
+                            cb_cur_indent = -1
+                            cb_cur = []
+    return code_blocks
+
+
 def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
     """
     Extract sample codes from __doc__, and write them to files.

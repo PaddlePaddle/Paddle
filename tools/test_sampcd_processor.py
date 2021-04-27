@@ -27,6 +27,7 @@ from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
 from sampcd_processor import get_wlist
 from sampcd_processor import sampcd_extract_to_file
+from sampcd_processor import extract_code_blocks_from_docstr
 from sampcd_processor import execute_samplecode
 from sampcd_processor import find_last_future_line_end
 
@@ -85,6 +86,40 @@ class Test_find_last_future_line_end(unittest.TestCase):
         self.assertIsNotNone(mo)
         self.assertGreaterEqual(
             find_last_future_line_end(samplecodes), mo.end())
+
+
+class Test_extract_code_blocks_from_docstr(unittest.TestCase):
+    def test_no_samplecode(self):
+        docstr = """
+        placeholder
+        """
+        codeblocks = extract_code_blocks_from_docstr(docstr)
+        self.assertListEqual([], codeblocks)
+
+    def test_1_samplecode(self):
+        docstr = """
+        Examples:
+            .. code-block:: python
+
+                print(1+1)
+        """
+        codeblocks = extract_code_blocks_from_docstr(docstr)
+        self.assertListEqual(codeblocks, ["""print(1+1)"""])
+
+    def test_2_samplecodes(self):
+        docstr = """
+        placeholder
+        Examples:
+            .. code-block:: python
+
+                print(1/0)
+
+            .. code-block:: python
+
+                print(1+1)
+        """
+        codeblocks = extract_code_blocks_from_docstr(docstr)
+        self.assertListEqual(codeblocks, ["""print(1/0)""", """print(1+1)"""])
 
 
 class Test_execute_samplecode(unittest.TestCase):
