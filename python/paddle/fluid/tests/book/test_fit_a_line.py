@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import paddle.static.amp as amp
+
 import contextlib
 import numpy
 import unittest
@@ -32,13 +34,13 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
 
     if use_bf16:
         if not pure_bf16:
-            with paddle.static.amp.bf16_guard():
+            with amp.bf16.bf16_guard():
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_cost = fluid.layers.mean(cost)
         else:
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            with paddle.static.amp.bf16_guard():
+            with amp.bf16.bf16_guard():
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
     else:
@@ -49,7 +51,6 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 
     if use_bf16:
-        import paddle.static.amp as amp
         sgd_optimizer = amp.bf16.decorate(
             sgd_optimizer,
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),

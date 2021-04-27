@@ -21,6 +21,6 @@ from .amp_utils import *
 from . import decorator
 from .decorator import *
 
-__all__ = []
+__all__ = decorator.__all__
 __all__ += amp_lists.__all__
 __all__ += amp_utils.__all__

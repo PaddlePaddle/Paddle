@@ -15,7 +15,8 @@
 from paddle.fluid import (core, default_main_program, layers, program_guard,
                           unique_name)
 from .amp_utils import (rewrite_program_bf16, cast_model_to_bf16,
-                        cast_parameters_to_bf16, AutoMixedPrecisionListsBF16)
+                        cast_parameters_to_bf16)
+from .amp_lists import AutoMixedPrecisionListsBF16
 import types
 import warnings
 
