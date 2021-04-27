@@ -101,7 +101,8 @@ class PipelineParallel(MetaParallelBase):
         self._allocate_caches(self.num_stages)
         for microbatch_cmds in minibatch_cmds:
             for cmd in microbatch_cmds:
-                assert type(cmd) in self._COMMAND_MAP
+                assert type(cmd) in self._COMMAND_MAP, "unknow cmd: {}".format(
+                    repr(type(cmd)))
                 self._apply_cmd = MethodType(self._COMMAND_MAP[type(cmd)], self)
                 self._apply_cmd(**cmd.kwargs)
 
