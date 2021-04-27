@@ -1338,6 +1338,15 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_LabelValue)
 
+            def test_LabelValueNeg():
+                input_data = paddle.rand(shape=[20, 100])
+                label_data = paddle.randint(0, 100, shape=[5, 1], dtype="int64")
+                label_data[0] = -1
+                paddle.nn.functional.cross_entropy(
+                    input=input_data, label=label_data)
+
+            self.assertRaises(ValueError, test_LabelValueNeg)
+
 
 if __name__ == "__main__":
     unittest.main()
