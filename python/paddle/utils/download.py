@@ -216,7 +216,7 @@ def _git_clone(url, repo_dir, branch):
         shutil.rmtree(repo_dir, ignore_errors=True)
         raise RuntimeError('{} failed.'.format(command))
 
-    shutil.rmtree(repo_dir + '/.git/')
+    shutil.rmtree(os.path.join(repo_dir, '.git'), ignore_errors=True)
 
     return repo_dir
 
