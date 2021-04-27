@@ -103,6 +103,24 @@ def check_indent(cdline):
     return indent
 
 
+def find_last_future_line_end(cbstr):
+    """
+    find the last `__future__` line.
+    """
+    pat = re.compile('__future__.*\n')
+    lastmo = None
+    it = re.finditer(pat, cbstr)
+    while True:
+        try:
+            lastmo = next(it)
+        except StopIteration:
+            break
+    if lastmo:
+        return lastmo.end()
+    else:
+        return None
+
+
 def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
     """
     Extract sample codes from __doc__, and write them to files.

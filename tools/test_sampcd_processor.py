@@ -20,6 +20,7 @@ import tempfile
 import shutil
 import sys
 import importlib
+import re
 from sampcd_processor import find_all
 from sampcd_processor import check_indent
 from sampcd_processor import get_api_md5
@@ -27,6 +28,7 @@ from sampcd_processor import get_incrementapi
 from sampcd_processor import get_wlist
 from sampcd_processor import sampcd_extract_to_file
 from sampcd_processor import execute_samplecode
+from sampcd_processor import find_last_future_line_end
 
 SAMPLECODE_TEMP_DIR = 'samplecode_temp'
 
@@ -52,6 +54,37 @@ class Test_check_indent(unittest.TestCase):
 
     def test_indent_1_tab(self):
         self.assertEqual(4, check_indent("\thello paddle"))
+
+
+class Test_find_last_future_line_end(unittest.TestCase):
+    def test_no_instant(self):
+        samplecodes = """
+                print(10//3)
+        """
+        self.assertIsNone(find_last_future_line_end(samplecodes))
+
+    def test_1_instant(self):
+        samplecodes = """
+                from __future__ import print_function
+
+                print(10//3)
+        """
+        mo = re.search("print_function\n", samplecodes)
+        self.assertIsNotNone(mo)
+        self.assertGreaterEqual(
+            find_last_future_line_end(samplecodes), mo.end())
+
+    def test_2_instant(self):
+        samplecodes = """
+                from __future__ import print_function
+                from __future__ import division
+
+                print(10//3)
+        """
+        mo = re.search("division\n", samplecodes)
+        self.assertIsNotNone(mo)
+        self.assertGreaterEqual(
+            find_last_future_line_end(samplecodes), mo.end())
 
 
 class Test_execute_samplecode(unittest.TestCase):
