@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+#include <string>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -190,6 +191,142 @@ std::vector<IndexNode> TreeIndex::GetAllLeafs() {
     res.push_back(data_.at(code));
   }
   return res;
+}
+
+int GraphIndex::save(std::string filename) {
+  std::function<int(FILE*, KVItem&)> writeToFile = [](FILE* fp, KVItem& item) {
+    std::string output;
+    item.SerializeToString(&output);
+    int len = output.size();
+    if (fwrite(&len, sizeof(int), 1, fp) != 1) {
+      VLOG(0) << "write len failed";
+      return -1;
+    }
+    if (fwrite(output.data(), 1, len, fp) != (size_t)len) {
+      VLOG(0) << "write data failed";
+      return -1;
+    }
+    return 0;
+  };
+  VLOG(0) << " in save height = " << height() << " width = " << width();
+  FILE* fp = fopen(filename.c_str(), "wb");
+  if (fp == NULL) {
+    fprintf(stderr, "Can not open file: %s\n", filename.c_str());
+    return -1;
+  }
+  KVItem item;
+  item.set_key(".graph_meta");
+  std::string output;
+  meta_.SerializeToString(&output);
+  GraphMeta test;
+  test.ParseFromString(output);
+  VLOG(0) << "test height = " << test.height() << " " << test.width();
+  item.set_value(output);
+  if (writeToFile(fp, item) != 0) {
+    fprintf(stderr, "fail to write file: %s\n", filename.c_str());
+    fclose(fp);
+    return -1;
+  }
+  for (auto p : item_path_dict_) {
+    item.set_key(std::to_string(p.first));
+    GraphItem graph_item;
+    graph_item.set_item_id(p.first);
+    for (auto path_id : p.second) graph_item.add_path_id(path_id);
+    std::string graph_serialized;
+    graph_item.SerializeToString(&graph_serialized);
+    item.set_value(graph_serialized);
+    if (writeToFile(fp, item) != 0) {
+      fprintf(stderr, "fail to write file: %s\n", filename.c_str());
+      fclose(fp);
+      return -1;
+    }
+  }
+  fclose(fp);
+  return 0;
+}
+int GraphIndex::load(std::string filename) {
+  FILE* fp = fopen(filename.c_str(), "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "Can not open file: %s\n", filename.c_str());
+    return -1;
+  }
+
+  int num = 0;
+  item_path_dict_.clear();
+  path_item_set_dict_.clear();
+  size_t ret = fread(&num, sizeof(num), 1, fp);
+  while (ret == 1 && num > 0) {
+    std::string content(num, '\0');
+    char buffer[num + 1];
+    memset(buffer, '\0', sizeof(buffer));
+    if (fread(buffer, 1, num, fp) != static_cast<size_t>(num)) {
+      fprintf(stderr, "Read from file: %s failed, invalid format.\n",
+              filename.c_str());
+      break;
+    }
+    content = buffer;
+    KVItem item;
+    if (!item.ParseFromString(content)) {
+      fprintf(stderr, "Parse from file: %s failed.\n", filename.c_str());
+      break;
+    }
+    if (item.key() == ".graph_meta") {
+      meta_.ParseFromString(item.value());
+      path_item_set_dict_.reserve(std::pow(meta_.height(), meta_.width()));
+    } else {
+      GraphItem graph_item;
+      graph_item.ParseFromString(item.value());
+
+      uint64_t item_id = graph_item.item_id();
+
+      if (item_path_dict_.find(item_id) == item_path_dict_.end()) {
+        std::vector<int64_t> path_ids;
+        for (int i = 0; i < graph_item.path_id_size(); i++) {
+          path_ids.push_back(graph_item.path_id(i));
+          VLOG(0) << "Graph insert item: " << item_id
+                  << " path: " << graph_item.path_id(i);
+        }
+        item_path_dict_[item_id] = path_ids;
+
+        for (auto& path_id : path_ids) {
+          if (path_item_set_dict_.find(path_id) == path_item_set_dict_.end()) {
+            std::unordered_set<uint64_t> path_set;
+            path_item_set_dict_[path_id] = path_set;
+          }
+          path_item_set_dict_[path_id].insert(item_id);
+        }
+      }
+    }
+    ret = fread(&num, sizeof(num), 1, fp);
+  }
+  fclose(fp);
+  VLOG(0) << "Graph Load Success.";
+  return 0;
+}
+
+std::vector<std::vector<int64_t>> GraphIndex::get_path_of_item(
+    std::vector<uint64_t>& items) {
+  std::vector<std::vector<int64_t>> result;
+  for (auto& item : items) {
+    result.push_back(item_path_dict_[item]);
+  }
+  return result;
+}
+
+std::vector<std::vector<uint64_t>> GraphIndex::get_item_of_path(
+    std::vector<int64_t>& paths) {
+  std::vector<std::vector<uint64_t>> result;
+  for (auto& path : paths) {
+    result.push_back(std::vector<uint64_t>(path_item_set_dict_[path].begin(),
+                                           path_item_set_dict_[path].end()));
+  }
+  return result;
+}
+
+int GraphIndex::update_Jpath_of_item(
+    std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
+    const int J, const double lamd, const int factor) {
+  return 0;
 }
 
 }  // end namespace distributed

@@ -65,7 +65,57 @@ class TreeIndex : public Index {
   IndexNode fake_node_;
 };
 
+class GraphIndex : public Index {
+ public:
+  GraphIndex() {}
+  ~GraphIndex() {}
+
+  int height() { return meta_.height(); }
+  int width() { return meta_.width(); }
+  int item_path_nums() { return meta_.item_path_nums(); }
+
+  void set_height(int height) { meta_.set_height(height); }
+
+  void set_width(int weight) { meta_.set_width(weight); }
+
+  void set_item_path_nums(int num) { meta_.set_item_path_nums(num); }
+
+  void add_item_path_dict(uint64_t item_id, std::vector<int64_t> vec) {
+    if (item_path_dict_.find(item_id) == item_path_dict_.end()) {
+      item_path_dict_[item_id] = vec;
+    }
+  }
+
+  std::unordered_map<uint64_t, std::vector<int64_t>> get_item_path_dict() {
+    return item_path_dict_;
+  }
+  int load(std::string path);
+
+  int save(std::string filename);
+  int writeToFile(FILE* fp, KVItem& item);
+  std::vector<std::vector<int64_t>> get_path_of_item(
+      std::vector<uint64_t>& items);
+  std::vector<std::vector<uint64_t>> get_item_of_path(
+      std::vector<int64_t>& paths);
+
+  int update_Jpath_of_item(
+      std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
+      const int J, const double lamd, const int factor);
+
+ private:
+  GraphMeta meta_;
+
+  std::unordered_map<uint64_t, std::vector<int64_t>> item_path_dict_;
+  std::unordered_map<int64_t, std::unordered_set<uint64_t>> path_item_set_dict_;
+
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>>
+      tmp_item_path_dict_;
+  std::unordered_map<int64_t, std::unordered_set<uint64_t>>
+      tmp_path_item_set_dict_;
+};
+
 using TreePtr = std::shared_ptr<TreeIndex>;
+using GraphPtr = std::shared_ptr<GraphIndex>;
 
 class IndexWrapper {
  public:
@@ -97,6 +147,29 @@ class IndexWrapper {
     tree_map.insert(std::pair<std::string, TreePtr>{name, tree});
   }
 
+  GraphPtr GetGraphIndex(const std::string name) {
+    PADDLE_ENFORCE_NE(graph_map.find(name), graph_map.end(), "");
+    return graph_map[name];
+  }
+
+  void insert_graph_index(std::string name, std::string graph_path) {
+    if (graph_map.find(name) != graph_map.end()) {
+      return;
+    }
+    GraphPtr graph = std::make_shared<GraphIndex>();
+    int ret = graph->load(graph_path);
+    if (ret != 0) return;
+    graph_map.insert(std::pair<std::string, GraphPtr>{name, graph});
+  }
+
+  void save_graph_index_to_file(std::string name, std::string graph_path) {
+    if (graph_map.find(name) != graph_map.end()) {
+      VLOG(0) << "graph index " << name << " is not found";
+      return;
+    }
+    graph_map[name]->save(graph_path);
+  }
+
   static std::shared_ptr<IndexWrapper> GetInstancePtr() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::distributed::IndexWrapper());
@@ -114,6 +187,7 @@ class IndexWrapper {
  private:
   static std::shared_ptr<IndexWrapper> s_instance_;
   std::unordered_map<std::string, TreePtr> tree_map;
+  std::unordered_map<std::string, GraphPtr> graph_map;
 };
 
 }  // end namespace distributed

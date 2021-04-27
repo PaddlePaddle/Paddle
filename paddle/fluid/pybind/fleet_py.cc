@@ -30,6 +30,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/communicator_common.h"
 #include "paddle/fluid/distributed/fleet.h"
+#include "paddle/fluid/distributed/index_dataset/index_dataset.pb.h"
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/distributed/service/communicator.h"
@@ -48,6 +49,8 @@ using paddle::distributed::GraphNode;
 using paddle::distributed::GraphPyServer;
 using paddle::distributed::GraphPyClient;
 using paddle::distributed::FeatureNode;
+using paddle::distributed::GraphIndex;
+using paddle::distributed::GraphItem;
 
 namespace paddle {
 namespace pybind {
@@ -226,6 +229,40 @@ void BindIndexNode(py::module* m) {
       .def("probability", [](IndexNode& self) { return self.probability(); });
 }
 
+void BindGraphItem(py::module* m) {
+  py::class_<GraphItem>(*m, "GraphItem")
+      .def(py::init<>())
+      .def("item_id", [](GraphItem& self) { return self.item_id(); })
+      .def("path_id", [](GraphItem& self) { return self.path_id(); });
+  //  .def("item_path_nums",
+  //       [](GraphItem& self) { return self.item_path_nums(); })
+}
+
+void BindGraphIndex(py::module* m) {
+  py::class_<GraphIndex, std::shared_ptr<GraphIndex>>(*m, "GraphIndex")
+      .def(py::init([](const std::string name, const std::string path) {
+        auto index_wrapper = IndexWrapper::GetInstancePtr();
+        index_wrapper->insert_graph_index(name, path);
+        return index_wrapper->GetGraphIndex(name);
+      }))
+      .def("height", [](GraphIndex& self) { return self.height(); })
+      .def("width", [](GraphIndex& self) { return self.width(); })
+      .def("get_path_of_item",
+           [](GraphIndex& self, std::vector<uint64_t>& items) {
+             return self.get_path_of_item(items);
+           })
+      .def("get_item_of_path",
+           [](GraphIndex& self, std::vector<int64_t>& paths) {
+             return self.get_item_of_path(paths);
+           })
+      .def("update_Jpath_of_item",
+           [](GraphIndex& self,
+              std::map<uint64_t, std::vector<std::string>>& item_paths,
+              const int T, const int J, const double lamd, const int factor) {
+             return self.update_Jpath_of_item(item_paths, T, J, lamd, factor);
+           });
+}
+
 void BindTreeIndex(py::module* m) {
   py::class_<TreeIndex, std::shared_ptr<TreeIndex>>(*m, "TreeIndex")
       .def(py::init([](const std::string name, const std::string path) {
@@ -264,7 +301,10 @@ void BindIndexWrapper(py::module* m) {
       .def(py::init([]() { return IndexWrapper::GetInstancePtr(); }))
       .def("insert_tree_index", &IndexWrapper::insert_tree_index)
       .def("get_tree_index", &IndexWrapper::get_tree_index)
-      .def("clear_tree", &IndexWrapper::clear_tree);
+      .def("clear_tree", &IndexWrapper::clear_tree)
+      .def("insert_graph_index", &IndexWrapper::insert_graph_index)
+      .def("get_graph_index", &IndexWrapper::GetGraphIndex)
+      .def("save_graph_index_to_file", &IndexWrapper::save_graph_index_to_file);
 }
 
 using paddle::distributed::IndexSampler;

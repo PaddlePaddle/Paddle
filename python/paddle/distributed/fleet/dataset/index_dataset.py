@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.fluid import core
+from paddle.distributed.fleet.proto import index_dataset_pb2
+import numpy as np
+import struct
 
 
 class Index(object):
@@ -86,3 +89,156 @@ class TreeIndex(Index):
             raise ValueError("please init layerwise_sampler first.")
         return self._layerwise_sampler.sample(user_input, index_input,
                                               with_hierarchy)
+
+
+class GraphIndexBuilder:
+    def __init__(self, name=None, width=1, height=1, item_path_nums=1):
+        self.name = name
+        self.width = width  # D
+        self.height = height  # K
+        self.item_path_nums = item_path_nums
+
+    def graph_init_by_random(self, input_filename, output_filename):
+        total_path_num = pow(self.height, self.width)  # K^D
+        item_path_dict = {}
+
+        with open(input_filename, 'r') as f_in:
+            for line in f_in:
+                item_id = int(line.split()[0])
+                if item_id not in item_path_dict:
+                    item_path_dict[item_id] = []
+                else:
+                    continue
+
+                item_path_dict[item_id] = list(
+                    np.random.randint(0, total_path_num, self.item_path_nums))
+
+        self.build(output_filename, item_path_dict)
+
+    def build(self, output_filename, item_path_dict):
+        graph_meta = index_dataset_pb2.GraphMeta()
+        graph_meta.width = self.width
+        graph_meta.height = self.height
+        graph_meta.item_path_nums = self.item_path_nums
+
+        with open(output_filename, 'wb') as f_out:
+            kv_item = index_dataset_pb2.KVItem()
+            kv_item.key = '.graph_meta'.encode("utf8")
+            kv_item.value = graph_meta.SerializeToString()
+
+            self._write_kv(f_out, kv_item.SerializeToString())
+
+            for item in item_path_dict:
+                graph_item = index_dataset_pb2.GraphItem()
+                graph_item.item_id = item
+                for path in item_path_dict[item]:
+                    graph_item.path_id.append(path)
+                node_kv_item = index_dataset_pb2.KVItem()
+                node_kv_item.key = str(item).encode("utf8")
+                node_kv_item.value = graph_item.SerializeToString()
+                self._write_kv(f_out, node_kv_item.SerializeToString())
+
+    def _write_kv(self, fwr, message):
+        fwr.write(struct.pack('i', len(message)))
+        fwr.write(message)
+
+
+class GraphIndex(Index):
+    def __init__(self, name, width, height, item_path_nums):
+        super(GraphIndex, self).__init__(name)
+        self._graph = None
+        self.name = name
+        self.width = width
+        self.height = height
+        self.item_path_nums = item_path_nums
+        self._builder = GraphIndexBuilder(name, width, height, item_path_nums)
+        self._wrapper = core.IndexWrapper()
+        self.kd_represent_list = []
+        self.gen_kd_represent(width, height)
+
+    def _init_by_random(self, input_filename, output_filename):
+        self._builder.graph_init_by_random(input_filename, output_filename)
+        self._init_graph(output_filename)
+
+    def _init_graph(self, filename):
+        self._wrapper.insert_graph_index(self._name, filename)
+        self._graph = self._wrapper.get_graph_index(self.name)
+
+    def get_path_of_item(self, id):
+        if isinstance(id, list):
+            assert len(id) > 0
+            # assert isinstance(id[0], int)
+            return self._graph.get_path_of_item(id)
+        elif isinstance(id, int):
+            return self._graph.get_path_of_item([id])
+        else:
+            raise ValueError(
+                "Illegal input type {}, required list or int".format(type(id)))
+
+    def get_item_of_path(self, path):
+        if isinstance(path, list):
+            assert len(path) > 0
+            # assert isinstance(path[0], int)
+            return self._graph.get_item_of_path(path)
+        elif isinstance(path, int):
+            return self._graph.get_item_of_path([path])
+        else:
+            raise ValueError(
+                "Illegal input type {}, required list or int".format(type(id)))
+
+    def gen_kd_represent(self, width, height):
+        def recursive_method(start_idx, cur_path):
+            if start_idx == width:
+                self.kd_represent_list.append(list(cur_path))
+                return
+
+            for i in range(height):
+                cur_path.append(i)
+                recursive_method(start_idx + 1, cur_path)
+                cur_path.pop()
+
+        init_idx = 0
+        init_path = []
+        recursive_method(init_idx, init_path)
+        return
+
+    def path_id_to_kd_represent(self, path_id):
+        assert 0 <= path_id and path_id < pow(self.height, self.width)
+        return self.kd_represent_list[path_id]
+
+    def kd_represent_to_path_id(self, kd_represent):
+        assert len(kd_represent) == self.width
+        path_id = 0
+        for idx, val in enumerate(reversed(kd_represent)):
+            assert 0 <= val and val < self.height
+            path_id += val * pow(self.height, idx)
+        return path_id
+
+    def update_path_of_item(self, item_paths):
+        if isinstance(item_paths, dict):
+            assert len(item_paths) > 0
+            assert isinstance(item_paths[0], list)
+            return self._graph.update_path_of_item(item_paths)
+        elif isinstance(item_paths, int):  # {int, ["",""]}
+            return self._graph.update_path_of_item({item_paths, []})
+        else:
+            raise ValueError(
+                "Illegal input type {}, required list or int".format(type(id)))
+
+#   int update_Jpath_of_item(
+#     std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const int J, const double lambda, const int factor);
+#  J=self.item_path_nums
+
+    def update_Jpath_of_item(self, item_paths, T=3, J=3, lamd=1e-7, factor=2):
+
+        if isinstance(item_paths, dict):
+            assert len(item_paths) > 0
+            assert isinstance(item_paths[0], list)
+            return self._graph.update_Jpath_of_item(item_paths, T, J, lamd,
+                                                    factor)
+        elif isinstance(item_paths, int):  # {int, ["",""]}
+            return self._graph.update_Jpath_of_item({item_paths, []}, T, J,
+                                                    lamd, factor)
+        else:
+            raise ValueError(
+                "Illegal input type {}, required list or int".format(type(id)))
