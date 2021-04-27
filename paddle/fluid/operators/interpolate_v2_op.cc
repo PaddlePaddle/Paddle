@@ -80,7 +80,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
           scale_w > 0, true,
           platform::errors::InvalidArgument(
               "The scale_w in Attr(scale) of Operator(interpolate) "
-              "should be greater than 0, but received value is %d."
+              "should be greater than 0, but received value is %d.",
               scale_w));
       if (scale_w > 0.) {
         // round down
