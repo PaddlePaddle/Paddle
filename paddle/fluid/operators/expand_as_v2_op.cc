@@ -129,7 +129,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, double>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     expand_as_v2,
     ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, float>,

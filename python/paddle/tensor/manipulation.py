@@ -16,64 +16,65 @@ from __future__ import print_function
 
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_, device_guard
+from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_, device_guard, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 import numpy as np
 import six
 # TODO: define functions to manipulate a tensor  
-from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import slice  #DEFINE_ALIAS
-from ..fluid.layers import transpose  #DEFINE_ALIAS
-from ..fluid.layers import unstack  #DEFINE_ALIAS
+from ..fluid.layers import cast  # noqa: F401
+from ..fluid.layers import slice  # noqa: F401
+from ..fluid.layers import transpose  # noqa: F401
+from ..fluid.layers import unstack  # noqa: F401
 
-from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
-from ..fluid.layers import shard_index  #DEFINE_ALIAS
+from ..fluid.layers import scatter_nd  # noqa: F401
+from ..fluid.layers import shard_index  # noqa: F401
 from ..fluid import layers
 import paddle
 import warnings
-
-__all__ = [
-    'cast',
-    'concat',
-    'expand',
-    'broadcast_to',
-    'expand_as',
-    'flatten',
-    'gather',
-    'gather_nd',
-    'reshape',
-    'reshape_',
-    'reverse',
-    'scatter',
-    'scatter_',
-    'scatter_nd_add',
-    'scatter_nd',
-    'shard_index',
-    'slice',
-    'split',
-    'chunk',
-    'squeeze',
-    'squeeze_',
-    'stack',
-    'strided_slice',
-    'transpose',
-    'unique',
-    'unsqueeze',
-    'unsqueeze_',
-    'unstack',
-    'flip',
-    'unbind',
-    'roll',
-    'tile',
-]
 
 
 def _print_warning_in_static_mode(api_name):
     warnings.warn(
         "In static mode, {}_() is the same as {}() and does not perform inplace operation.".
         format(api_name, api_name))
+
+
+@dygraph_only
+def tolist(x):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function translate the paddle.Tensor to python list.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to translate to list
+
+    Returns:
+        list: A list that contain the same value of current Tensor.
+
+    Returns type:
+        list: dtype is same as current Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            t = paddle.to_tensor([0,1,2,3,4])
+            expectlist = t.tolist()
+            print(expectlist)   #[0, 1, 2, 3, 4]
+
+            expectlist = paddle.tolist(t)
+            print(expectlist)   #[0, 1, 2, 3, 4]
+
+    """
+    return x.numpy().tolist()
+
+
+setattr(core.VarBase, 'tolist', tolist)
 
 
 def concat(x, axis=0, name=None):

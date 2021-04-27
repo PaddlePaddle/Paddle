@@ -96,9 +96,17 @@ void AnalysisConfig::DisableFCPadding() {
   Update();
 }
 
-void AnalysisConfig::EnableXpu(int l3_workspace_size) {
+void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
+                               bool autotune, const std::string &autotune_file,
+                               const std::string &precision,
+                               bool adaptive_seqlen) {
   use_xpu_ = true;
   xpu_l3_workspace_size_ = l3_workspace_size;
+  xpu_locked_ = locked;
+  xpu_autotune_ = autotune;
+  xpu_autotune_file_ = autotune_file;
+  xpu_precision_ = precision;
+  xpu_adaptive_seqlen_ = adaptive_seqlen;
   Update();
 }
 
@@ -161,6 +169,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(use_xpu_);
   CP_MEMBER(xpu_l3_workspace_size_);
+  CP_MEMBER(xpu_locked_);
+  CP_MEMBER(xpu_autotune_);
+  CP_MEMBER(xpu_autotune_file_);
+  CP_MEMBER(xpu_precision_);
+  CP_MEMBER(xpu_adaptive_seqlen_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -548,6 +561,11 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_lite_;
   ss << use_xpu_;
   ss << xpu_l3_workspace_size_;
+  ss << xpu_locked_;
+  ss << xpu_autotune_;
+  ss << xpu_autotune_file_;
+  ss << xpu_precision_;
+  ss << xpu_adaptive_seqlen_;
 
   ss << thread_local_stream_;
 

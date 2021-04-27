@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,5 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .layers import *
-from .random import *
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_base import TestDistBase
+
+paddle.enable_static()
+
+
+class TestSplitOp(TestDistBase):
+    def _setup_config(self):
+        pass
+
+    def test_split(self, col_type="split"):
+        self.check_with_place("collective_split_op.py", col_type)
+
+
+if __name__ == '__main__':
+    unittest.main()
