@@ -26,7 +26,8 @@ if(EXISTS ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/include/graph/ascend_str
   add_definitions(-DPADDLE_WITH_ASCEND_STRING)
 endif()
 
-if(WITH_ASCEND)
+
+if(WITH_ASCEND OR WITH_ASCEND_CL)
   set(ASCEND_DRIVER_DIR ${ASCEND_DIR}/driver/lib64)
   set(ASCEND_DRIVER_COMMON_DIR ${ASCEND_DIR}/driver/lib64/common)
   set(ASCEND_DRIVER_SHARE_DIR ${ASCEND_DIR}/driver/lib64/share)
@@ -49,7 +50,6 @@ if(WITH_ASCEND)
   INCLUDE_DIRECTORIES(${ATLAS_RUNTIME_INC_DIR})
 
 
-
   ADD_LIBRARY(ascend_ge SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET ascend_ge PROPERTY IMPORTED_LOCATION ${atlas_ge_runner_lib})
 
@@ -65,6 +65,7 @@ endif()
 if(WITH_ASCEND_CL)
   set(ASCEND_CL_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64)
 
+  set(ascend_hccl_lib ${ASCEND_CL_DIR}/libhccl.so)
   set(ascendcl_lib ${ASCEND_CL_DIR}/libascendcl.so)
   set(acl_op_compiler_lib ${ASCEND_CL_DIR}/libacl_op_compiler.so)
   set(FWKACLLIB_INC_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/include)
@@ -77,6 +78,9 @@ if(WITH_ASCEND_CL)
 
   ADD_LIBRARY(ascendcl SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET ascendcl PROPERTY IMPORTED_LOCATION ${ascendcl_lib})
+
+  ADD_LIBRARY(ascend_hccl SHARED IMPORTED GLOBAL)
+  SET_PROPERTY(TARGET ascend_hccl PROPERTY IMPORTED_LOCATION ${ascend_hccl_lib})
 
   ADD_LIBRARY(acl_op_compiler SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET acl_op_compiler PROPERTY IMPORTED_LOCATION ${acl_op_compiler_lib})

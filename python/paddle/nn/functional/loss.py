@@ -1023,7 +1023,8 @@ def ctc_loss(log_probs,
              input_lengths,
              label_lengths,
              blank=0,
-             reduction='mean'):
+             reduction='mean',
+             norm_by_times=False):
     """
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
@@ -1038,6 +1039,7 @@ def ctc_loss(log_probs,
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+        norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
@@ -1101,7 +1103,7 @@ def ctc_loss(log_probs,
 
     """
 
-    loss_out = fluid.layers.warpctc(log_probs, labels, blank, False,
+    loss_out = fluid.layers.warpctc(log_probs, labels, blank, norm_by_times,
                                     input_lengths, label_lengths)
 
     loss_out = fluid.layers.squeeze(loss_out, [-1])
@@ -1452,20 +1454,20 @@ def cross_entropy(input,
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = core.ops.reduce_sum(mask, 'reduce_all', True)
-                    ret = out_sum / count
+                    ret = out_sum / (count + (count == 0.0))
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = core.ops.elementwise_mul(
                         mask, weight_gather_reshape)
                     weight_sum = core.ops.reduce_sum(weight_ignored,
                                                      'reduce_all', True)
-                    ret = out_sum / weight_sum
+                    ret = out_sum / (weight_sum + (weight_sum == 0.0))
                 return ret
             elif weight is not None:
                 out_sum = core.ops.reduce_sum(out, 'reduce_all', True)
                 total_weight = core.ops.reduce_sum(weight_gather_reshape,
                                                    'reduce_all', True)
-                return out_sum / total_weight
+                return out_sum / (total_weight + (total_weight == 0.0))
             else:
                 return core.ops.mean(out)
 
@@ -1535,17 +1537,17 @@ def cross_entropy(input,
             if (weight is None):
                 mask = paddle.cast(mask, dtype=out_sum.dtype)
                 count = paddle.sum(mask, name=name)
-                ret = out_sum / count
+                ret = out_sum / (count + (count == 0.0))
             else:
                 mask = paddle.cast(mask, weight_gather_reshape.dtype)
                 weight_ignored = paddle.multiply(mask, weight_gather_reshape)
                 weight_sum = paddle.sum(weight_ignored, name=name)
-                ret = out_sum / weight_sum
+                ret = out_sum / (weight_sum + (weight_sum == 0.0))
             return ret
         elif weight is not None:
             out_sum = paddle.sum(out, name=name)
             total_weight = paddle.sum(weight_gather_reshape)
-            return out_sum / total_weight
+            return out_sum / (total_weight + (total_weight == 0.0))
         else:
             return paddle.mean(out, name=name)
 

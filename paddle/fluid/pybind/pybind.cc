@@ -268,11 +268,6 @@ bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
 #endif
-
-#ifdef PADDLE_WITH_GRPC
-  return false;
-#endif
-
   return true;
 }
 
@@ -501,7 +496,56 @@ PYBIND11_MODULE(core_noavx, m) {
 #endif
     return tensor;
   });
+  m.def("_save_lod_tensor", [](const LoDTensor &tensor,
+                               const std::string &str_file_name) {
+    std::ofstream fout(str_file_name, std::ios::binary);
+    PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+                      platform::errors::Unavailable(
+                          "Cannot open %s to save variables.", str_file_name));
+    SerializeToStream(fout, tensor);
 
+    int64_t tellp = fout.tellp();
+    fout.close();
+    return tellp;
+  });
+  m.def("_load_lod_tensor", [](LoDTensor &tensor,
+                               const std::string &str_file_name) {
+    std::ifstream fin(str_file_name, std::ios::binary);
+    PADDLE_ENFORCE_EQ(static_cast<bool>(fin), true,
+                      platform::errors::Unavailable(
+                          "Cannot open %s to load variables.", str_file_name));
+
+    DeserializeFromStream(fin, &tensor);
+    int64_t tellg = fin.tellg();
+    fin.close();
+    return tellg;
+  });
+  m.def("_save_selected_rows", [](const SelectedRows &selected_rows,
+                                  const std::string &str_file_name) {
+    std::ofstream fout(str_file_name, std::ios::binary);
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fout), true,
+        platform::errors::Unavailable("Cannot open %s to save SelectedRows.",
+                                      str_file_name));
+
+    SerializeToStream(fout, selected_rows);
+    int64_t tellp = fout.tellp();
+    fout.close();
+    return tellp;
+  });
+  m.def("_load_selected_rows",
+        [](SelectedRows &selected_rows, const std::string &str_file_name) {
+          std::ifstream fin(str_file_name, std::ios::binary);
+          PADDLE_ENFORCE_EQ(
+              static_cast<bool>(fin), true,
+              platform::errors::Unavailable(
+                  "Cannot open %s to load SelectedRows.", str_file_name));
+
+          DeserializeFromStream(fin, &selected_rows);
+          int64_t tellg = fin.tellg();
+          fin.close();
+          return tellg;
+        });
   m.def("_save_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
            const Scope &scope) {
@@ -2178,9 +2222,7 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("_npu_finalize", []() {
-    platform::AclInstance::Instance().Finalize();
-  });  // private interface
+  m.def("npu_finalize", []() { platform::AclInstance::Instance().Finalize(); });
 
   py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
 

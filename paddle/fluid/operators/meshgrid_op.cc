@@ -157,7 +157,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, double>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     meshgrid, ops::MeshgridKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeshgridKernel<paddle::platform::CUDADeviceContext, double>,

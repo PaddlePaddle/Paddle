@@ -332,7 +332,8 @@ class PSGPUTrainer : public TrainerBase {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(WITH_ASCEND_CL)
 class PipelineTrainer : public TrainerBase {
  public:
   PipelineTrainer() {}

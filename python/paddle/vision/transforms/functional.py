@@ -153,8 +153,8 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     Args:
         img (PIL.Image|np.array): Image to be padded.
         padding (int|list|tuple): Padding on each border. If a single int is provided this
-            is used to pad all borders. If tuple of length 2 is provided this is the padding
-            on left/right and top/bottom respectively. If a tuple of length 4 is provided
+            is used to pad all borders. If list/tuple of length 2 is provided this is the padding
+            on left/right and top/bottom respectively. If a list/tuple of length 4 is provided
             this is the padding for the left, top, right and bottom borders
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
@@ -538,10 +538,10 @@ def rotate(img,
             If true, expands the output image to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
             Note that the expand flag assumes rotation around the center and no translation.
-        center (2-tuple, optional): Optional center of rotation.
+        center (2-list|2-tuple, optional): Optional center of rotation.
             Origin is the upper left corner.
             Default is the center of the image.
-        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+        fill (3-list|3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
 
 
@@ -567,6 +567,11 @@ def rotate(img,
         raise TypeError(
             'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
+
+    if isinstance(center, list):
+        center = tuple(center)
+    if isinstance(fill, list):
+        fill = tuple(fill)
 
     if _is_pil_image(img):
         return F_pil.rotate(img, angle, interpolation, expand, center, fill)
