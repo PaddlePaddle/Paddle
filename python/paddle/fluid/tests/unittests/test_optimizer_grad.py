@@ -237,11 +237,13 @@ class TestOptimizer(unittest.TestCase):
                                                                param_grads[i])
 
 
+@unittest.skipIf(not fluid.core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestSGDOptimizer(TestOptimizer):
     def test_optimizer_multiblock_except(self):
         with self.assertRaisesRegexp(ValueError,
                                      "var param_y not in this block"):
-            self._check_grads(True)
+            self._check_grads(use_bf16=True)
 
 
 class TestAdamOptimizer(TestOptimizer):
