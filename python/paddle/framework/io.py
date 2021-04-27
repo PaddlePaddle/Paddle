@@ -494,7 +494,7 @@ def save(obj, path, protocol=2, **configs):
     Save an object to the specified path.
     
     .. note::
-        Now supports saving ``state_dict`` of Layer or Optimizer, Tensor.
+        Now supports saving ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor.
 
     .. note::
         Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
@@ -558,7 +558,7 @@ def save(obj, path, protocol=2, **configs):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [224, 10]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
 
             # save/load tensor
@@ -665,7 +665,7 @@ def load(path, **configs):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now supports load ``state_dict`` of Layer or Optimizer, Tensor.
+        Now supports loading ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor.
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
@@ -758,7 +758,7 @@ def load(path, **configs):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [224, 10]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
 
             # save/load tensor

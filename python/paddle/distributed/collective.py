@@ -662,7 +662,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     Args:
         tensor (Tensor): The output Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
-        tensor_list (list): A list of Tensors to scatter. Every element in the list must be a Tensor whose data type
+        tensor_list (list|tuple): A list/tuple of Tensors to scatter. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64. Default value is None.
         src (int): The source rank id. Default value is 0.
         group (Group): The group instance return by new_group or None for global default group.
@@ -678,6 +678,8 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
+
+            # required: gpu
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
@@ -1080,10 +1082,12 @@ def split(x,
             import paddle
             from paddle.distributed import init_parallel_env
 
+            # required: gpu
+
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             data = paddle.randint(0, 8, shape=[10,4])
-            emb_out = padle.distributed.split(
+            emb_out = paddle.distributed.split(
                 data,
                 (8, 8),
                 operation="embedding",
