@@ -176,6 +176,9 @@ class TestDygraphDataLoaderSpawnContext(TestDygraphDataLoaderSpawnStr):
         return ret
 
 
+@unittest.skipIf(
+    sys.version_info < (3, 4),
+    "multiprocessing_context can only be set when Python version >= 3.4")
 class TestDygraphDataLoaderSpawnException(unittest.TestCase):
     def test_main(self):
         with fluid.dygraph.guard(fluid.cpu_places()[0]):
