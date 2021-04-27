@@ -8,10 +8,10 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
 endforeach()
 
 if(WITH_GPU AND TENSORRT_FOUND)
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES test_trt_multiclass_nms_op)
   foreach(target ${TEST_TRT_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
   endforeach()
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES test_trt_multiclass_nms_op)
 endif()
 
 file(GLOB TEST_MKLDNN_IR_PASSES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_mkldnn_*.py")
