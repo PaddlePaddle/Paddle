@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import core
-from .... import default_main_program
-from .... import layers
-from .... import program_guard
-from .... import unique_name
-from .amp_utils import rewrite_program_bf16
-from .amp_utils import cast_model_to_bf16
-from .amp_utils import cast_parameters_to_bf16
-# from .amp_utils import update_role_var_grad
-from .amp_lists import AutoMixedPrecisionListsBF16
+from paddle.fluid import (core, default_main_program, layers, program_guard,
+                          unique_name)
+from .amp_utils import (rewrite_program_bf16, cast_model_to_bf16,
+                        cast_parameters_to_bf16, AutoMixedPrecisionListsBF16)
 import types
 import warnings
 
@@ -40,9 +34,8 @@ class OptimizerWithMixedPrecision(object):
     Args:
         optimizer (Optimizer): A common Optimizer object.
         amp_lists (CustomOpLists): An CustomOpLists object.
-        use_pure_bf16(bool): Whether to use the pure bf16 training. Default False.
+        use_pure_bf16(bool): Whether to use the pure bf16 training.
         use_bf16_guard(bool): Whether to use `bf16_guard` when constructing the program.
-                           Default None, which means that its value is equal to `use_pure_bf16`.
 
     """
 

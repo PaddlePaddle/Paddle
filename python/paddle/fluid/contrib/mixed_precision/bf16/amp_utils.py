@@ -235,9 +235,8 @@ def bf16_guard():
 def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
     """
     Traverse all ops in the whole model and set their inputs and outputs
-    to the bf16 data type. This function will do some special process for
-    the batch normalization, which keeps the computational process of
-    batchnorms in FP32.
+    to the bf16 data type. This function will do some special processing for
+    the batch normalization, which will keep the batchnorm's computations in FP32.
     Args:
         program (Program): The used program.
         amp_lists (AutoMixedPrecisionListsBF16): An AutoMixedPrecisionListsBF16 object.
@@ -321,15 +320,10 @@ def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
                     _logger.debug(
                         "-- op type: {}, out var name: {}, out var dtype: {} --".
                         format(op.type, out_var_name, out_var.dtype))
-            if op.has_attr('in_dtype') and op.attr(
-                    'in_dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('in_dtype', core.VarDesc.VarType.BF16)
-            if op.has_attr('out_dtype') and op.attr(
-                    'out_dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
-            if op.has_attr('dtype') and op.attr(
-                    'dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('dtype', core.VarDesc.VarType.BF16)
+            for attr_name in ['in_dtype', 'out_dtype', 'dtype']:
+                if op.has_attr(attr_name) and op.attr(
+                        attr_name) == core.VarDesc.VarType.FP32:
+                    op._set_attr(attr_name, core.VarDesc.VarType.BF16)
             if op.has_attr('use_mkldnn'):
                 op._set_attr('use_mkldnn', True)
             if op.has_attr('mkldnn_data_type'):
@@ -402,7 +396,7 @@ def cast_parameters_to_bf16(place, program, scope=None, to_bf16_var_names=None):
             _logger.debug("---- cast {} to bf16 dtype ----".format(param.name))
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
-            param_t.set(np.uint16(data), place)
+            param_t.set(convert_float_to_uint16(data), place)
 
 
 def rewrite_program_bf16(main_prog, amp_lists=None):
