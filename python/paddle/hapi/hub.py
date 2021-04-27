@@ -17,7 +17,7 @@ import re
 import sys
 import shutil
 import zipfile
-from paddle.utils.download import get_path_from_url
+from paddle.utils.download import get_path_from_url, git_clone_from_url
 
 DEFAULT_CACHE_DIR = '~/.cache'
 VAR_DEPENDENCY = 'dependencies'
@@ -58,6 +58,13 @@ def _git_archive_link(repo_owner, repo_name, branch, source):
             repo_owner, repo_name, branch)
 
 
+def _git_clone_link(repo_owner, repo_name, source):
+    if source == 'github':
+        return 'https://github.com/{}/{}.git'.format(repo_owner, repo_name)
+    elif source == 'gitee':
+        return 'https://gitee.com/{}/{}.git'.format(repo_owner, repo_name)
+
+
 def _parse_repo_info(repo, source):
     branch = 'main' if source == 'github' else 'master'
     if ':' in repo:
@@ -76,7 +83,11 @@ def _make_dirs(dirname):
     Path(dirname).mkdir(exist_ok=True)
 
 
-def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
+def _get_cache_or_reload(repo,
+                         force_reload,
+                         verbose=True,
+                         source='github',
+                         use_git=False):
     # Setup hub_dir to save downloaded files
     hub_dir = HUB_DIR
 
@@ -101,6 +112,11 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
     if use_cache:
         if verbose:
             sys.stderr.write('Using cache found in {}\n'.format(repo_dir))
+    elif use_git:
+        _remove_if_exists(repo_name)
+        git_url = _git_clone_link(repo_owner, repo_name, source=source)
+        git_clone_from_url(git_url, repo_dir, branch, check_exist=False)
+
     else:
         cached_file = os.path.join(hub_dir, normalized_br + '.zip')
         _remove_if_exists(cached_file)
@@ -111,6 +127,7 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
             url,
             hub_dir,
             decompress=False,
+            check_exist=False,
             use_wget=(True if source == 'gitee' else False))
 
         with zipfile.ZipFile(cached_file) as cached_zipfile:
@@ -163,7 +180,7 @@ def _check_dependencies(m):
                 missing_deps)))
 
 
-def list(repo_dir, source='github', force_reload=False):
+def list(repo_dir, source='github', force_reload=False, use_git=False):
     r"""
     List all entrypoints available in `github` hubconf.
 
@@ -192,7 +209,7 @@ def list(repo_dir, source='github', force_reload=False):
 
     if source in ('github', 'gitee'):
         repo_dir = _get_cache_or_reload(
-            repo_dir, force_reload, True, source=source)
+            repo_dir, force_reload, True, source=source, use_git=use_git)
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
@@ -204,7 +221,7 @@ def list(repo_dir, source='github', force_reload=False):
     return entrypoints
 
 
-def help(repo_dir, model, source='github', force_reload=False):
+def help(repo_dir, model, source='github', force_reload=False, use_git=False):
     """
     Show help information of model
 
@@ -233,7 +250,7 @@ def help(repo_dir, model, source='github', force_reload=False):
 
     if source in ('github', 'gitee'):
         repo_dir = _get_cache_or_reload(
-            repo_dir, force_reload, True, source=source)
+            repo_dir, force_reload, True, source=source, use_git=use_git)
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
@@ -242,7 +259,12 @@ def help(repo_dir, model, source='github', force_reload=False):
     return entry.__doc__
 
 
-def load(repo_dir, model, source='github', force_reload=False, **kwargs):
+def load(repo_dir,
+         model,
+         source='github',
+         force_reload=False,
+         use_git=False,
+         **kwargs):
     """
     Load model
 
@@ -270,7 +292,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
 
     if source in ('github', 'gitee'):
         repo_dir = _get_cache_or_reload(
-            repo_dir, force_reload, True, source=source)
+            repo_dir, force_reload, True, source=source, use_git=use_git)
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 

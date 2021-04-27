@@ -99,13 +99,6 @@ class TestHub(unittest.TestCase):
 
         assert models1 == models2 == ['MM'], ''
 
-    @unittest.skipIf(sys.platform != 'linux', 'make sure have wget')
-    def testGitee(self, ):
-        _ = hub.list(
-            self.gitee_repo,
-            source='gitee',
-            force_reload=True, )
-
     def testExcept(self, ):
         with self.assertRaises(ValueError):
             _ = hub.help(
@@ -135,6 +128,32 @@ class TestHub(unittest.TestCase):
                 model='123',
                 source='local',
                 force_reload=False)
+
+
+class TestGithubClone(unittest.TestCase):
+    def get_params(self, ):
+        repo = 'lyuwenyu/paddlehub_demo:main'
+        source = 'github'
+        return repo, source
+
+    def testDownload(self, ):
+
+        repo, source = self.get_params()
+
+        _ = hub.list(repo, source=source, force_reload=True, use_git=True)
+
+        _ = hub.load(
+            repo, 'MM', source=source, force_reload=False, use_git=True)
+
+        _ = hub.help(
+            repo, 'MM', source=source, force_reload=False, use_git=True)
+
+
+class TestGiteeClone(TestGithubClone):
+    def get_params(self, ):
+        repo = 'lyuwenyuL/paddlehub_test:master'
+        source = 'gitee'
+        return repo, source
 
 
 if __name__ == '__main__':

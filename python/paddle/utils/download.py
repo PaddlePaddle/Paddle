@@ -164,6 +164,63 @@ def get_path_from_url(url,
     return fullpath
 
 
+def git_clone_from_url(
+        git_url,
+        repo_dir,
+        branch=None,
+        md5sum=None,
+        check_exist=True, ):
+    """ Download from given git_url to repo_dir.
+    if file or directory specified by git_url is exists in
+    repo_dir, return the path directly, otherwise download
+    from url and decompress it, return the path.
+
+    Args:
+        git_url (str): clone url, 
+        repo_dir (str): root dir for downloading,
+        branch (str): checkout to branch, default branch if given None
+        md5sum (str): md5 sum of download package
+        check_exist (bool): check_exist
+    Returns:
+        str: a local path to save downloaded models & weights & datasets.
+    """
+
+    from paddle.fluid.dygraph.parallel import ParallelEnv
+
+    fullpath = repo_dir
+
+    unique_endpoints = _get_unique_endpoints(ParallelEnv().trainer_endpoints[:])
+    if osp.exists(fullpath) and check_exist and _md5check(fullpath, md5sum):
+        logger.info("Found {}".format(fullpath))
+    else:
+        if ParallelEnv().current_endpoint in unique_endpoints:
+            fullpath = _git_clone(git_url, fullpath, branch)
+        else:
+            while not os.path.exists(fullpath):
+                time.sleep(1)
+
+    return fullpath
+
+
+def _git_clone(url, repo_dir, branch):
+    shutil.rmtree(repo_dir, ignore_errors=True)
+
+    if branch is None:
+        command = 'git clone {} {}'.format(url, repo_dir)
+    else:
+        command = 'git clone -b {} {} {}'.format(branch, url, repo_dir)
+
+    r = os.system(command)
+
+    if r != 0:
+        shutil.rmtree(repo_dir, ignore_errors=True)
+        raise RuntimeError('{} failed.'.format(command))
+
+    shutil.rmtree(repo_dir + '/.git/')
+
+    return repo_dir
+
+
 def _download(url, path, md5sum=None, use_wget=False):
     """
     Download from url, save to path.
