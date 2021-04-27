@@ -670,7 +670,7 @@ def load(path, **configs):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now supports loading ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor.
+        Now supports load ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor.
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
