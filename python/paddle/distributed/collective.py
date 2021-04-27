@@ -37,6 +37,8 @@ __all__ = [
     'barrier',
     'split',
     'ReduceOp',
+    'send',
+    'recv',
 ]
 
 
@@ -1170,3 +1172,103 @@ def split(x,
             name=name,
             group=None)
         return linear_out
+
+
+def send(tensor, dst=0, group=None, use_calc_stream=True):
+    """
+    Send a tensor to the receiver.
+
+    Args:
+        tensor (Tensor): The Tensor to send. Its data type
+            should be float16, float32, float64, int32 or int64.
+        dst (int): The destination rank id.
+        group (Group): The group instance return by new_group or None for global default group.
+        use_calc_stream (bool): Whether to use calculate stream or communication stream.
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            #from paddle.distributed import init_parallel_env
+            #init_parallel_env()
+            #if paddle.distributed.ParallelEnv().rank == 0:
+            #    data = paddle.to_tensor([7, 8, 9])
+            #    paddle.distributed.send(data, dst=1)
+            #else:
+            #    data = paddle.to_tensor([1,2,3])
+            #    paddle.distributed.recv(data, src=0)
+            #out = data.numpy()
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    op_type = 'send_v2'
+    if in_dygraph_mode():
+        return core.ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                'ring_id', ring_id, 'peer', dst)
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'send')
+
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'peer': dst,
+            'use_calc_stream': use_calc_stream,
+        })
+
+
+def recv(tensor, src=0, group=None, use_calc_stream=True):
+    """
+    Receive a tensor to the sender.
+
+    Args:
+        tensor (Tensor): The Tensor to receive. Its data type
+            should be float16, float32, float64, int32 or int64.
+        src (int): The source rank id.
+        group (Group): The group instance return by new_group or None for global default group.
+        use_calc_stream (bool): Whether to use calculate stream or communication stream.
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            #from paddle.distributed import init_parallel_env
+            #init_parallel_env()
+            #if paddle.distributed.ParallelEnv().rank == 0:
+            #    data = paddle.to_tensor([7, 8, 9])
+            #    paddle.distributed.send(data, dst=1)
+            #else:
+            #    data = paddle.to_tensor([1,2,3])
+            #    paddle.distributed.recv(data, src=0)
+            #out = data.numpy()
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    op_type = 'recv_v2'
+    if in_dygraph_mode():
+        return core.ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                'ring_id', ring_id, 'peer', src, 'dtype',
+                                tensor.dtype, 'out_shape', tensor.shape)
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'recv')
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        outputs={'Out': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'peer': src,
+            'out_shape': tensor.shape,
+            'dtype': tensor.dtype,
+            'use_calc_stream': use_calc_stream,
+        })
