@@ -767,7 +767,7 @@ class Categorical(Distribution):
             sample_shape = shape
             logits = self.logits
 
-        sample_index = multinomial(logits, num_samples, True)
+        sample_index = multinomial(logits, num_samples.tolist(), True)
         return nn.reshape(sample_index, sample_shape, name=name)
 
     def kl_divergence(self, other):
@@ -902,11 +902,11 @@ class Categorical(Distribution):
         shape = list(prob.shape)
         value_shape = list(value.shape)
         if len(shape) == 1:
-            num_value_in_one_dist = np.prod(value_shape)
+            num_value_in_one_dist = int(np.prod(value_shape))
             index_value = nn.reshape(value, [num_value_in_one_dist, 1])
             index = index_value
         else:
-            num_dist = np.prod(shape[:-1])
+            num_dist = int(np.prod(shape[:-1]))
             num_value_in_one_dist = value_shape[-1]
             prob = nn.reshape(prob, [num_dist, shape[-1]])
             if len(value_shape) == 1:

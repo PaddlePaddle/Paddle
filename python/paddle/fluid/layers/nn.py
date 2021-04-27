@@ -4869,8 +4869,8 @@ def split(input, num_or_sections, dim=-1, name=None):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
-                        num_or_sections[index] = num_or_sections[index].numpy()[
-                            0]
+                        num_or_sections[index] = int(num_or_sections[index]
+                                                     .numpy()[0])
                 attrs += ('sections', list(num_or_sections))
             else:
                 attrs += ('sections', list(num_or_sections))
@@ -6135,8 +6135,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             )
         if isinstance(shape, (list, tuple)):
             shape = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in shape
+                int(item.numpy().item(0))
+                if isinstance(item, Variable) else int(item) for item in shape
             ]
             out, _ = core.ops.reshape2(x, None, 'shape', shape)
         elif isinstance(shape, Variable):
