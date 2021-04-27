@@ -20,43 +20,19 @@ from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-# from ...fluid import one_hot  #DEFINE_ALIAS
-# from ...fluid.layers import pad2d  #DEFINE_ALIAS
-from ...fluid.layers import unfold  #DEFINE_ALIAS
-from ...fluid.layers import squeeze  #DEFINE_ALIAS
-from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
+from ...fluid.layers import unfold  # noqa: F401
+from ...fluid.layers import squeeze
+from ...fluid.layers import unsqueeze
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
-from ...tensor import sum  #DEFINE_ALIAS
-from ...tensor import sqrt  #DEFINE_ALIAS
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
 
-#from ...fluid.layers import fc  #DEFINE_ALIAS
-# from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
 from ...fluid.framework import in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
 from ...fluid.data_feeder import check_variable_and_dtype
-
-__all__ = [
-    'dropout',
-    'dropout2d',
-    'dropout3d',
-    'alpha_dropout',
-    #       'embedding',
-    #       'fc',
-    'label_smooth',
-    'linear',
-    'pad',
-    'unfold',
-    #       'bilinear_tensor_product',
-    'interpolate',
-    'upsample',
-    'bilinear',
-    'cosine_similarity',
-]
 
 
 def interpolate(x,
@@ -207,7 +183,7 @@ def interpolate(x,
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -638,7 +614,7 @@ def upsample(x,
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.

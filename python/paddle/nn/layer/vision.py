@@ -17,8 +17,6 @@
 from ...fluid.dygraph import layers
 from .. import functional
 
-__all__ = ['PixelShuffle']
-
 
 class PixelShuffle(layers.Layer):
     """
