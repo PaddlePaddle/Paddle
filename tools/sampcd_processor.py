@@ -142,6 +142,8 @@ def extract_code_blocks_from_docstr(docstr):
     cb_start_pat = re.compile(r"code-block::\s*python")
     cb_cur = []
     cb_cur_indent = -1
+    cb_cur_name = None
+    cb_cur_seq_id = 0
     for lineno, linecont in enumerate(ds_list):
         if re.search(cb_start_pat, linecont):
             if not cb_started:
@@ -203,10 +205,9 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
         sample_code_filenames(list of str)
     """
     global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR
-    CODE_BLOCK_INTERDUCTORY = "code-block:: python"
 
-    sampcd_begins = find_all(srccom, CODE_BLOCK_INTERDUCTORY)
-    if len(sampcd_begins) == 0:
+    codeblocks = extract_code_blocks_from_docstr(srccom)
+    if len(codeblocks) == 0:
         # detect sample codes using >>> to format and consider this situation as wrong
         print(htype, " name:", hname)
         print("-----------------------")
@@ -221,32 +222,9 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
         else:
             print("Error: No sample code!\n")
             return []
+
     sample_code_filenames = []
-    for y in range(1, len(sampcd_begins) + 1):
-        sampcd_begin = sampcd_begins[y - 1]
-        sampcd = srccom[sampcd_begin + len(CODE_BLOCK_INTERDUCTORY) + 1:]
-        sampcd = sampcd.split("\n")
-        # remove starting empty lines
-        while sampcd[0].replace(' ', '').replace('\t', '') == '':
-            sampcd.pop(0)
-
-        # the minimum indent, which is the indent of the first
-        # non-empty line
-        min_indent = check_indent(sampcd[0])
-        sampcd_to_write = []
-        for i in range(0, len(sampcd)):
-            cdline = sampcd[i]
-            # handle empty lines or those only with spaces/tabs
-            if cdline.strip() == '':
-                continue
-            this_indent = check_indent(cdline)
-            if this_indent < min_indent:
-                break
-            else:
-                cdline = cdline.replace('\t', '    ')
-                sampcd_to_write.append(cdline[min_indent:])
-
-        sampcd = '\n'.join(sampcd_to_write)
+    for y, sampcd in enumerate(codeblocks):
         if RUN_ON_DEVICE == "cpu":
             sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
         if RUN_ON_DEVICE == "gpu":
@@ -255,7 +233,7 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
         sampcd += '\nprint(' + '\"' + name + ' sample code is executed successfully!\")'
 
         tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
-            name, '.py' if len(sampcd_begins) == 1 else '_{}.py'.format(y)))
+            name, '.py' if len(codeblocks) == 1 else '_{}.py'.format(y + 1)))
         with open(tfname, 'w') as tempf:
             tempf.write(sampcd)
         sample_code_filenames.append(tfname)
