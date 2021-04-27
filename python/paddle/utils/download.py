@@ -210,8 +210,8 @@ def _handle_readonly_error(func, path, info):
 
 
 def _git_clone(url, repo_dir, branch):
-
-    shutil.rmtree(repo_dir, onerror=_handle_readonly_error)
+    if os.path.exists(repo_dir):
+        shutil.rmtree(repo_dir, onerror=_handle_readonly_error)
 
     if branch is None:
         command = 'git clone {} {}'.format(url, repo_dir)
@@ -221,7 +221,8 @@ def _git_clone(url, repo_dir, branch):
     r = os.system(command)
 
     if r != 0:
-        shutil.rmtree(repo_dir, onerror=_handle_readonly_error)
+        if os.path.exists(repo_dir):
+            shutil.rmtree(repo_dir, onerror=_handle_readonly_error)
         raise RuntimeError('{} failed.'.format(command))
 
     shutil.rmtree(
