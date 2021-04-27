@@ -25,6 +25,10 @@ static bool CheckDims(const nvinfer1::Dims& dims_x,
     return false;
   }
   for (int i = 0; i < dims_x.nbDims; i++) {
+    // conservative judgment
+    if (dims_x.d[i] == -1 || dims_y.d[i] == -1) {
+      return false;
+    }
     if (dims_x.d[i] != dims_y.d[i]) {
       return false;
     }

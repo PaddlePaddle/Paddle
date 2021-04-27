@@ -14,8 +14,6 @@
 
 from ..fluid import core
 
-__all__ = ['OpLastCheckpointChecker']
-
 
 def Singleton(cls):
     _instance = {}
