@@ -43,8 +43,6 @@ class TestReadFile(unittest.TestCase):
 
         img_cv2 = cv2.imread('fake.jpg')
         if paddle.in_dynamic_mode():
-            print(img.shape, img_cv2.shape)
-
             np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
         else:
             place = paddle.CUDAPlace(0)

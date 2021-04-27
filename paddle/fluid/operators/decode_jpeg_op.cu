@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_WITH_HIP
+
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
@@ -129,3 +131,5 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(decode_jpeg, ops::GPUDecodeJpegKernel<uint8_t>)
+
+#endif
