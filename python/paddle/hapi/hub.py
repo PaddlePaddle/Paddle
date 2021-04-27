@@ -114,7 +114,7 @@ def _get_cache_or_reload(repo,
     elif use_git:
         _remove_if_exists(repo_name)
         git_url = _git_clone_link(repo_owner, repo_name, source=source)
-        git_clone_from_url(git_url, repo_dir, branch, check_exist=False)
+        git_clone_from_url(git_url, repo_dir, branch, check_exist=True)
 
     else:
         cached_file = os.path.join(hub_dir, normalized_br + '.zip')
@@ -126,7 +126,7 @@ def _get_cache_or_reload(repo,
             url,
             hub_dir,
             decompress=False,
-            check_exist=False,
+            check_exist=True,
             use_wget=(True if source == 'gitee' else False))
 
         with zipfile.ZipFile(cached_file) as cached_zipfile:
