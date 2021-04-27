@@ -1238,13 +1238,13 @@ struct CudaHardSwishGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaELUFunctor : public BaseCudaActiveFunctor<T> {
+struct CudaELUFunctor : public BaseActivationFunctor<T> {
   using CT = typename details::MPTypeTrait<T>::Type;
   CT zero = static_cast<CT>(0.0f);
   CT one = static_cast<CT>(1.0f);
   float alpha;
 
-  typename BaseCudaActiveFunctor<T>::AttrPair GetAttrs() {
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
 
@@ -1259,13 +1259,13 @@ struct CudaELUFunctor : public BaseCudaActiveFunctor<T> {
 };
 
 template <typename T>
-struct CudaELUGradFunctor : public BaseCudaActiveFunctor<T> {
+struct CudaELUGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
   MPType zero = static_cast<MPType>(0.0f);
   MPType one = static_cast<MPType>(1.0f);
   float alpha;
 
-  typename BaseCudaActiveFunctor<T>::AttrPair GetAttrs() {
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
   }
 
