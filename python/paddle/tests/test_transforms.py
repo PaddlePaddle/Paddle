@@ -454,6 +454,18 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_equal(rotated_np_img.shape,
                                 np.array(rotated_pil_img).shape)
 
+    def test_rotate1(self):
+        np_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img).convert('RGB')
+
+        rotated_np_img = F.rotate(
+            np_img, 80, expand=True, center=[0, 0], fill=[0, 0, 0])
+        rotated_pil_img = F.rotate(
+            pil_img, 80, expand=True, center=[0, 0], fill=[0, 0, 0])
+
+        np.testing.assert_equal(rotated_np_img.shape,
+                                np.array(rotated_pil_img).shape)
+
 
 if __name__ == '__main__':
     unittest.main()

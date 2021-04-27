@@ -418,7 +418,7 @@ def cuda_places(device_ids=None):
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
 
     Parameters:
-        device_ids (list or tuple of int, optional): list of GPU device ids.
+        device_ids (list|tuple, optional): A list/tuple of int of GPU device ids.
 
     Returns:
         list of paddle.CUDAPlace: Created GPU place list.
@@ -429,6 +429,8 @@ def cuda_places(device_ids=None):
             import paddle
             import paddle.static as static
 
+            # required: gpu
+            
             paddle.enable_static()
 
             cuda_places = static.cuda_places()
@@ -5021,6 +5023,9 @@ class Program(object):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op._set_attr('is_test', True)
+                if op.type() == "batch_norm":
+                    # Remove the output ReserveSpace of batch_norm if exists.
+                    op.remove_output("ReserveSpace")
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]

@@ -300,7 +300,7 @@ class Upsample(layers.Layer):
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -419,7 +419,7 @@ class UpsamplingNearest2D(layers.Layer):
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
-             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -506,7 +506,7 @@ class UpsamplingBilinear2D(layers.Layer):
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
-             Default: None. If a list, each element can be an integer or a Tensor  of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor  of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -680,8 +680,8 @@ class Dropout(layers.Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int): Probability of setting units to zero. Default: 0.5
-        axis (int | list): The axis along which the dropout is performed. Default None.
+        p (float|int): Probability of setting units to zero. Default: 0.5
+        axis (int|list|tuple): The axis along which the dropout is performed. Default None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
                                1. upscale_in_train(default), upscale the output at training time
