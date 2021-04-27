@@ -125,34 +125,37 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
 
 int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
                    const int mode) {
-  int64_t not_save_num = 0;
-  for (auto& value : block->values_) {
-    if (mode == SaveMode::delta && !value.second.need_save_) {
-      not_save_num++;
-      continue;
-    }
+  int64_t save_num = 0;
+  for (auto& table : block->values_) {
+    for (auto& value : table) {
+      if (mode == SaveMode::delta && !value.second->need_save_) {
+        continue;
+      }
+      save_num += 1;
 
-    auto* vs = value.second.data_;
-    std::stringstream ss;
-    auto id = value.first;
-    ss << id << "\t" << value.second.count_ << "\t" << value.second.unseen_days_
-       << "\t" << value.second.is_entry_ << "\t";
+      auto* vs = value.second->data_.data();
+      std::stringstream ss;
+      auto id = value.first;
+      ss << id << "\t" << value.second->count_ << "\t"
+         << value.second->unseen_days_ << "\t" << value.second->is_entry_
+         << "\t";
 
-    for (int i = 0; i < block->value_length_; i++) {
-      ss << vs[i];
-      ss << ",";
-    }
+      for (int i = 0; i < block->value_length_; i++) {
+        ss << vs[i];
+        ss << ",";
+      }
 
-    ss << "\n";
+      ss << "\n";
 
-    os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
+      os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
 
-    if (mode == SaveMode::base || mode == SaveMode::delta) {
-      value.second.need_save_ = false;
+      if (mode == SaveMode::base || mode == SaveMode::delta) {
+        value.second->need_save_ = false;
+      }
     }
   }
 
-  return block->values_.size() - not_save_num;
+  return save_num;
 }
 
 int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
@@ -183,7 +186,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
 
     block->Init(id, false);
 
-    auto value_instant = block->GetValue(id);
+    VALUE* value_instant = block->GetValue(id);
     if (values.size() == 5) {
       value_instant->count_ = std::stoi(values[1]);
       value_instant->unseen_days_ = std::stoi(values[2]);
@@ -373,8 +376,10 @@ std::pair<int64_t, int64_t> CommonSparseTable::print_table_stat() {
   int64_t feasign_size = 0;
   int64_t mf_size = 0;
 
-  for (auto& value : shard_values_) {
-    feasign_size += value->values_.size();
+  for (auto& shard : shard_values_) {
+    for (auto& table : shard->values_) {
+      feasign_size += table.size();
+    }
   }
 
   return {feasign_size, mf_size};
