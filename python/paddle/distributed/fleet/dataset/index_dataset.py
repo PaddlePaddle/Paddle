@@ -165,7 +165,12 @@ class GraphIndex(Index):
         self._graph = self._wrapper.get_graph_index(self.name)
     
     def save_graph_path(self, filename):
-        self._graph.save(filename)
+        if self._graph != None:
+            self._graph.save(filename)
+
+    def load_graph_path(self, filename):
+        if self._graph != None:
+            self._graph.load(filename)
 
     def get_path_of_item(self, id):
         if isinstance(id, list):
