@@ -191,6 +191,8 @@ def list(repo_dir, source='github', force_reload=False, use_git=False):
             local path (str): local repo path
         source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
+        use_git (bool, optional): using git clone to download repo, default is `False` for github-repo, and we recommend `True` for gitee-repos.
+
     Returns:
         entrypoints: a list of available entrypoint names
 
@@ -233,6 +235,8 @@ def help(repo_dir, model, source='github', force_reload=False, use_git=False):
         model (str): model name
         source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional): default is `False`
+        use_git (bool, optional): using git clone to download repo, default is `False` for github-repo, and we recommend `True` for gitee-repos.
+
     Return:
         docs
 
@@ -276,9 +280,12 @@ def load(repo_dir,
         model (str): model name
         source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional), default is `False`
+        use_git (bool, optional): using git clone to download repo, default is `False` for github-repo, and we recommend `True` for gitee-repos.
         **kwargs: parameters using for model
+
     Return:
         paddle model
+        
     Example:
         ```python
         import paddle
