@@ -22,6 +22,7 @@ from ...framework import create_parameter
 from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
 from ...fluid import core, dygraph_utils
+import numbers
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
