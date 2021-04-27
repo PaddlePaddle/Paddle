@@ -25,26 +25,30 @@ import collections
 import sys
 import pydoc
 import hashlib
-import six
+import platform
 import functools
-import logging
 
 member_dict = collections.OrderedDict()
 
 visited_modules = set()
 
-# APIs that should not be printed into API.spec 
-omitted_list = [
-    "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
-    "paddle.fluid.io.ComposeNotAligned",
-    "paddle.fluid.io.ComposeNotAligned.__init__",
-]
-
 
 def md5(doc):
-    hash = hashlib.md5()
-    hash.update(str(doc).encode('utf-8'))
-    return hash.hexdigest()
+    try:
+        hashinst = hashlib.md5()
+        if platform.python_version()[0] == "2":
+            hashinst.update(str(doc))
+        else:
+            hashinst.update(str(doc).encode('utf-8'))
+        md5sum = hashinst.hexdigest()
+    except UnicodeDecodeError as e:
+        md5sum = None
+        print(
+            "Error({}) occurred when `md5({})`, discard it.".format(
+                str(e), doc),
+            file=sys.stderr)
+
+    return md5sum
 
 
 def get_functools_partial_spec(func):
@@ -74,13 +78,28 @@ def format_spec(spec):
 
 
 def queue_dict(member, cur_name):
-    if cur_name in omitted_list:
-        return
+    if cur_name != 'paddle':
+        try:
+            eval(cur_name)
+        except (AttributeError, NameError, SyntaxError) as e:
+            print(
+                "Error({}) occurred when `eval({})`, discard it.".format(
+                    str(e), cur_name),
+                file=sys.stderr)
+            return
 
-    doc_md5 = md5(member.__doc__)
-
-    if inspect.isclass(member):
+    if (inspect.isclass(member) or inspect.isfunction(member) or
+            inspect.ismethod(member)) and hasattr(
+                member, '__module__') and hasattr(member, '__name__'):
         args = member.__module__ + "." + member.__name__
+        try:
+            eval(args)
+        except (AttributeError, NameError, SyntaxError) as e:
+            print(
+                "Error({}) occurred when `eval({})`, discard it for {}.".format(
+                    str(e), args, cur_name),
+                file=sys.stderr)
+            return
     else:
         try:
             args = inspect.getargspec(member)
@@ -95,6 +114,7 @@ def queue_dict(member, cur_name):
         if not has_type_error:
             args = format_spec(args)
 
+    doc_md5 = md5(member.__doc__)
     member_dict[cur_name] = "({}, ('document', '{}'))".format(args, doc_md5)
 
 
@@ -106,8 +126,7 @@ def visit_member(parent_name, member, member_name=None):
     if inspect.isclass(member):
         queue_dict(member, cur_name)
         for name, value in inspect.getmembers(member):
-            if hasattr(value, '__name__') and (not name.startswith("_") or
-                                               name == "__init__"):
+            if hasattr(value, '__name__') and not name.startswith("_"):
                 visit_member(cur_name, value)
     elif inspect.ismethoddescriptor(member):
         return
@@ -123,7 +142,7 @@ def visit_member(parent_name, member, member_name=None):
 
 
 def is_primitive(instance):
-    int_types = (int, long) if six.PY2 else (int, )
+    int_types = (int, long) if platform.python_version()[0] == "2" else (int, )
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True
@@ -149,11 +168,14 @@ def visit_all_module(mod):
         return
 
     visited_modules.add(mod)
-
-    for member_name in (
-            name
-            for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
-            if not name.startswith("_")):
+    if hasattr(mod, "__all__"):
+        member_names = (name for name in mod.__all__
+                        if not name.startswith("_"))
+    elif mod_name == 'paddle':
+        member_names = dir(mod)
+    else:
+        return
+    for member_name in member_names:
         instance = getattr(mod, member_name, None)
         if instance is None:
             continue
@@ -168,17 +190,20 @@ def visit_all_module(mod):
             visit_all_module(instance)
         else:
             if member_name != instance.__name__:
-                logging.warn(
+                print(
                     "Found alias API, alias name is: {}, original name is: {}".
-                    format(member_name, instance.__name__))
+                    format(member_name, instance.__name__),
+                    file=sys.stderr)
                 visit_member(mod.__name__, instance, member_name)
             else:
                 visit_member(mod.__name__, instance)
 
 
-modules = sys.argv[1].split(",")
-for m in modules:
-    visit_all_module(importlib.import_module(m))
+if __name__ == '__main__':
+    import paddle
+    modules = sys.argv[1].split(",")
+    for m in modules:
+        visit_all_module(importlib.import_module(m))
 
-for name in member_dict:
-    print(name, member_dict[name])
+    for name in member_dict:
+        print(name, member_dict[name])

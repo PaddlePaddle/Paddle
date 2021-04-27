@@ -489,6 +489,30 @@ class ReduceOp : public framework::OperatorWithKernel {
       }
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    if (ctx.Input<paddle::framework::LoDTensor>("X")->dims().size() > 5)
+      return framework::OpKernelType(input_data_type, ctx.GetPlace());
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
+    if (input_data_type == framework::proto::VarType::FP16) {
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                        platform::errors::InvalidArgument(
+                            "float16 can only be used on GPU place"));
+    }
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class ReduceOpUseInputPlace : public ReduceOp {
@@ -535,15 +559,44 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    auto CanMKLDNNReduceGradBeUsed = [&]() {
+      auto dx_dims = ctx.Input<Tensor>("X")->dims();
+
+      if (dx_dims.size() > 5) return false;  // max 5D tensor is supported
+
+      if (ctx.Attr<bool>("reduce_all") ||
+          ((int)ctx.Attr<std::vector<int>>("dim").size() == dx_dims.size()))
+        return true;
+
+      auto dy_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
+
+      // Subtensor must be on rightmost part of the bigger tensor
+      for (int i = 0; i < dy_dims.size(); ++i) {
+        if (dx_dims[dx_dims.size() - dy_dims.size() + i] != dy_dims[i]) {
+          return false;
+        }
+      }
+      return true;
+    };
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        CanMKLDNNReduceGradBeUsed()) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     int in_dtype = ctx.Attr<int>("in_dtype");
     if (in_dtype >= 0) {
       return framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(in_dtype),
           ctx.GetPlace());
     }
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -579,6 +632,9 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "(int, default -1)"
         "The dtype of output, default value is -1, the dtype is same as intput")
         .SetDefault(-1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 

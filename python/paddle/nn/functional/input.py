@@ -148,9 +148,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         sparse(bool): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizers does not support sparse update,
-            such as :ref:`api_optimizer_AdadeltaOptimizer` , :ref:`api_optimizer_AdamaxOptimizer` ,
-            :ref:`api_optimizer_DecayedAdagradOptimizer` , :ref:`api_optimizer_FtrlOptimizer` ,
-            :ref:`api_optimizer_LambOptimizer` and :ref:`api_optimizer_LarsMomentumOptimizer` .
+            such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these cases, sparse must be False. Default: False.
         padding_idx(int|long|None): padding_idx needs to be in the interval [-weight.shape[0], weight.shape[0]).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted

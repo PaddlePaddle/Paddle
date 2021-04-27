@@ -165,6 +165,12 @@ class DataLoader(object):
 
     For :code:`batch_sampler` please see :code:`paddle.io.BatchSampler`
 
+    .. note::
+        GPU tensor operation is not supported in subprocess currently,
+        please don't use GPU tensor operations in pipeline which will
+        be performed in subprocess, such as dataset transforms, collte_fn,
+        etc. Numpy array and CPU tensor operation is supported.
+
     **Disable automatic batching**
 
     In certain cases such as some NLP tasks, instead of automatic batching,

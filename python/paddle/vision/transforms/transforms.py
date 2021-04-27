@@ -86,7 +86,7 @@ class Compose(object):
     together for a dataset transform.
 
     Args:
-        transforms (list): List of transforms to compose.
+        transforms (list|tuple): List/Tuple of transforms to compose.
 
     Returns:
         A compose object which is callable, __call__ for this Compose
@@ -104,7 +104,7 @@ class Compose(object):
 
             for i in range(10):
                 sample = flowers[i]
-                print(sample[0].shape, sample[1])
+                print(sample[0].size, sample[1])
 
     """
 
@@ -608,8 +608,8 @@ class Normalize(BaseTransform):
     ``output[channel] = (input[channel] - mean[channel]) / std[channel]``
 
     Args:
-        mean (int|float|list): Sequence of means for each channel.
-        std (int|float|list): Sequence of standard deviations for each channel.
+        mean (int|float|list|tuple): Sequence of means for each channel.
+        std (int|float|list|tuple): Sequence of standard deviations for each channel.
         data_format (str, optional): Data format of img, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
@@ -1022,11 +1022,11 @@ class Pad(BaseTransform):
 
     Args:
         padding (int|list|tuple): Padding on each border. If a single int is provided this
-            is used to pad all borders. If tuple of length 2 is provided this is the padding
-            on left/right and top/bottom respectively. If a tuple of length 4 is provided
+            is used to pad all borders. If list/tuple of length 2 is provided this is the padding
+            on left/right and top/bottom respectively. If a list/tuple of length 4 is provided
             this is the padding for the left, top, right and bottom borders
             respectively.
-        fill (int|list|tuple): Pixel fill value for constant fill. Default is 0. If a tuple of
+        fill (int|list|tuple): Pixel fill value for constant fill. Default is 0. If a list/tuple of
             length 3, it is used to fill R, G, B channels respectively.
             This value is only used when the padding_mode is constant
         padding_mode (str): Type of padding. Should be: constant, edge, reflect or symmetric. Default is constant.

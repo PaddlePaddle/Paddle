@@ -452,12 +452,7 @@ struct HardLabelCrossEntropyFunctorWithIgnoreIdx {
     // labels, loss view as [n, remain]
     int idx_lbl = idx_n * remain + idx_remain;
 
-    if (idx_axis == ignore_idx_) {
-      loss_[idx_lbl] = 0;
-      return;
-    }
-
-    if (idx_axis == labels_[idx_lbl]) {
+    if (idx_axis == labels_[idx_lbl] && idx_axis != ignore_idx_) {
       loss_[idx_lbl] = -log_on_device(logits_data_[idx]);
     }
   }
@@ -677,7 +672,11 @@ template <typename T>
 static void SoftmaxWithCrossEntropyFusedKernel(
     const T* logits_data, const T* labels_data, T* softmax_data, T* loss_data,
     int64_t n, int64_t d, int axis_dim, gpuStream_t stream) {
+#ifdef __HIPCC__
+  constexpr int kMaxBlockDim = 256;
+#else
   constexpr int kMaxBlockDim = 512;
+#endif
   int64_t block_dim = axis_dim >= kMaxBlockDim
                           ? kMaxBlockDim
                           : (1 << static_cast<int>(std::log2(axis_dim)));
@@ -732,7 +731,7 @@ static void SoftmaxWithCrossEntropyFusedKernel(
 template <typename T>
 static void CrossEntropyFusedKernel(const T* logits_data, const T* labels_data,
                                     T* loss_data, int n, int d, int axis_dim,
-                                    cudaStream_t stream) {
+                                    gpuStream_t stream) {
   constexpr int kMaxBlockDim = 512;
   int block_dim = axis_dim >= kMaxBlockDim
                       ? kMaxBlockDim
@@ -792,11 +791,11 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
       auto* softmax_out_data = softmax_out->mutable_data<T>(context.GetPlace());
       auto* loss_data = loss->mutable_data<T>(context.GetPlace());
 
+      math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+      set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
       if (axis_dim == 1) {
-        math::SetConstant<platform::CUDADeviceContext, T> set_constant;
         set_constant(context.cuda_device_context(), softmax_out,
                      static_cast<T>(1));
-        set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
         return;
       }
 

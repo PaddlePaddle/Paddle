@@ -152,9 +152,14 @@ int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
 
 int ElementwisePluginDynamic::initialize() { return 0; }
 
-size_t ElementwisePluginDynamic::getSerializationSize() const { return 0; }
+size_t ElementwisePluginDynamic::getSerializationSize() const {
+  return SerializedSize(type_.c_str()) + SerializedSize(axis_);
+}
 
-void ElementwisePluginDynamic::serialize(void *buffer) const {}
+void ElementwisePluginDynamic::serialize(void *buffer) const {
+  SerializeValue(&buffer, type_.c_str());
+  SerializeValue(&buffer, axis_);
+}
 
 nvinfer1::DimsExprs ElementwisePluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,

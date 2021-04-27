@@ -447,9 +447,20 @@ function(cc_test TARGET_NAME)
     cc_test_build(${TARGET_NAME}
 	    SRCS ${cc_test_SRCS}
 	    DEPS ${cc_test_DEPS})
-    cc_test_run(${TARGET_NAME}
-	    COMMAND ${TARGET_NAME}
-	    ARGS ${cc_test_ARGS})
+    # we dont test hcom op, because it need complex configuration
+    # with more than one machine
+    if(NOT ("${TARGET_NAME}" STREQUAL "c_broadcast_op_npu_test"         OR
+            "${TARGET_NAME}" STREQUAL "c_allreduce_sum_op_npu_test"     OR
+            "${TARGET_NAME}" STREQUAL "c_allreduce_max_op_npu_test"     OR
+            "${TARGET_NAME}" STREQUAL "c_reducescatter_op_npu_test"     OR
+            "${TARGET_NAME}" STREQUAL "c_allgather_op_npu_test"         OR
+            "${TARGET_NAME}" STREQUAL "send_v2_op_npu_test"             OR
+            "${TARGET_NAME}" STREQUAL "c_reduce_sum_op_npu_test"        OR
+            "${TARGET_NAME}" STREQUAL "recv_v2_op_npu_test"))
+      cc_test_run(${TARGET_NAME}
+        COMMAND ${TARGET_NAME}
+        ARGS ${cc_test_ARGS})
+    endif()
   endif()
 endfunction(cc_test)
 
@@ -492,10 +503,8 @@ function(nv_library TARGET_NAME)
         message(FATAL "Please specify source file or library in nv_library.")
       endif()
     endif(nv_library_SRCS)
-    if (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-      if(${MSVC_VERSION} LESS_EQUAL 1900)
-        set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
-      endif()
+    if((CUDA_VERSION GREATER 9.2) AND (CUDA_VERSION LESS 11.0) AND (MSVC_VERSION LESS 1910))
+      set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
     endif()
   endif()
 endfunction(nv_library)
@@ -512,7 +521,7 @@ function(nv_binary TARGET_NAME)
       add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
       common_link(${TARGET_NAME})
     endif()
-    if (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+    if((CUDA_VERSION GREATER 9.2) AND (CUDA_VERSION LESS 11.0) AND (MSVC_VERSION LESS 1910))
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
     endif()
   endif()
@@ -539,7 +548,7 @@ function(nv_test TARGET_NAME)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
-    if (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+    if((CUDA_VERSION GREATER 9.2) AND (CUDA_VERSION LESS 11.0) AND (MSVC_VERSION LESS 1910))
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
     endif()
   endif()
@@ -809,7 +818,7 @@ function(py_test TARGET_NAME)
                ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
-    
+
     if (WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
     endif()

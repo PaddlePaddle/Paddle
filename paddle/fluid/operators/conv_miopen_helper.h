@@ -127,57 +127,52 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
+                     bool deterministic, size_t workspace_size,
                      const framework::ExecutionContext& ctx) {
-    auto dtype = platform::CudnnDataType<T>::type;
-    bool has_got_workspace_size = true;
-    size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    size_t workspace_size = 0;
     algo_t algo;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
-    auto& temp = ctx.cuda_device_context();
-    AlgorithmsCache<algo_t>& algo_cache =
-        *(framework::ConvSearchCache::Instance().GetForward());
+    int find_count;
+    miopenConvAlgoPerf_t find_result;
+    auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::miopenFindConvolutionForwardAlgorithm(
+              args.handle, args.idesc.desc(), args.x->data<T>(),
+              args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
+              args.odesc.desc(), const_cast<T*>(args.o->data<T>()),
+              kNUM_CUDNN_FWD_ALGS, &find_count, &find_result,
+              cudnn_workspace_ptr, workspace_size, false));
+    };
 
-    auto x_dims = framework::vectorize(args.x->dims());
-    auto w_dims = framework::vectorize(args.w->dims());
+    if (!exhaustive_search && !deterministic) {
+      workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+      algo = find_result.fwd_algo;
+    } else {
+      auto& temp = ctx.cuda_device_context();
+      AlgorithmsCache<algo_t>& algo_cache =
+          *(framework::ConvSearchCache::Instance().GetForward());
 
-    VLOG(10) << "miopenConvolutionFwdAlgoPerf_t:"
-             << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
-             << args.s << ", args.p" << args.p << ", args.d" << args.d;
+      auto x_dims = framework::vectorize(args.x->dims());
+      auto w_dims = framework::vectorize(args.w->dims());
 
-    algo = algo_cache.GetAlgorithm(
-        x_dims, w_dims, args.s, args.p, args.d, 0,
-        static_cast<int64_t>(args.cudnn_dtype), [&]() {
-          int returned_algo_count;
-          std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_stat;
+      VLOG(10) << "miopenConvolutionFwdAlgoPerf_t:"
+               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
+               << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
-          auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                platform::dynload::miopenFindConvolutionForwardAlgorithm(
-                    args.handle, args.idesc.desc(), args.x->data<T>(),
-                    args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
-                    args.odesc.desc(), const_cast<T*>(args.o->data<T>()),
-                    kNUM_CUDNN_FWD_ALGS, &returned_algo_count, perf_stat.data(),
-                    cudnn_workspace_ptr, workspace_size_limit, false));
-          };
-          workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
-
-          VLOG(3) << "FwdAlgo Perf result: (algo: stat, time, memory)";
-          for (int i = 0; i < returned_algo_count; ++i) {
-            const auto& stat = perf_stat[i];
-            VLOG(3) << stat.fwd_algo;
-          }
-          return perf_stat[0].fwd_algo;
-        });
+      algo = algo_cache.GetAlgorithm(
+          x_dims, w_dims, args.s, args.p, args.d, 0,
+          static_cast<int64_t>(args.cudnn_dtype), [&]() {
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+            return find_result.fwd_algo;
+          });
+    }
     VLOG(3) << "choose algo " << algo;
     return algo;
   }
 
-  static size_t GetWorkspaceSize(const ConvArgs& args, algo_t algo) {
+  static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::miopenConvolutionForwardGetWorkSpaceSize(
@@ -194,58 +189,51 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
+                     bool deterministic, size_t workspace_size,
                      const framework::ExecutionContext& ctx) {
-    auto dtype = platform::CudnnDataType<T>::type;
-    size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    size_t workspace_size = 0;
-    bool has_got_workspace_size = true;
     algo_t algo;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
-    AlgorithmsCache<algo_t>& algo_cache =
-        *(framework::ConvSearchCache::Instance().GetBackwardData());
+    int find_count;
+    miopenConvAlgoPerf_t find_result;
+    auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::miopenFindConvolutionBackwardDataAlgorithm(
+              args.handle, args.odesc.desc(), args.o->data<T>(),
+              args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
+              args.idesc.desc(), const_cast<T*>(args.x->data<T>()),
+              kNUM_CUDNN_BWD_DATA_ALGS, &find_count, &find_result,
+              cudnn_workspace_ptr, workspace_size, false));
+    };
 
-    auto x_dims = framework::vectorize(args.x->dims());
-    auto w_dims = framework::vectorize(args.w->dims());
+    if (!exhaustive_search && !deterministic) {
+      workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+      algo = find_result.bwd_data_algo;
+    } else {
+      AlgorithmsCache<algo_t>& algo_cache =
+          *(framework::ConvSearchCache::Instance().GetBackwardData());
 
-    VLOG(10) << "miopenConvolutionFwdAlgoPerf_t"
-             << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
-             << args.s << ", args.p" << args.p << ", args.d" << args.d;
+      auto x_dims = framework::vectorize(args.x->dims());
+      auto w_dims = framework::vectorize(args.w->dims());
 
-    algo = algo_cache.GetAlgorithm(
-        x_dims, w_dims, args.s, args.p, args.d, 0,
-        static_cast<int64_t>(args.cudnn_dtype), [&]() {
-          int returned_algo_count;
-          std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_stat;
+      VLOG(10) << "miopenConvolutionFwdAlgoPerf_t"
+               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
+               << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
-          auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                platform::dynload::miopenFindConvolutionBackwardDataAlgorithm(
-                    args.handle, args.odesc.desc(), args.o->data<T>(),
-                    args.wdesc.desc(), args.w->data<T>(), args.cdesc.desc(),
-                    args.idesc.desc(), const_cast<T*>(args.x->data<T>()),
-                    kNUM_CUDNN_BWD_DATA_ALGS, &returned_algo_count,
-                    perf_stat.data(), cudnn_workspace_ptr, workspace_size_limit,
-                    false));
-          };
-          workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
-
-          VLOG(3) << "BwdDataAlgo Perf result: (algo: stat, time, memory)";
-          for (int i = 0; i < returned_algo_count; ++i) {
-            const auto& stat = perf_stat[i];
-            VLOG(3) << stat.bwd_data_algo;
-          }
-
-          return perf_stat[0].bwd_data_algo;
-        });
+      algo = algo_cache.GetAlgorithm(
+          x_dims, w_dims, args.s, args.p, args.d, 0,
+          static_cast<int64_t>(args.cudnn_dtype), [&]() {
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+            return find_result.bwd_data_algo;
+          });
+    }
     VLOG(3) << "choose algo " << algo;
     return algo;
   }
 
-  static size_t GetWorkspaceSize(const ConvArgs& args, algo_t algo) {
+  static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::miopenConvolutionBackwardDataGetWorkSpaceSize(
@@ -262,56 +250,51 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
+                     bool deterministic, size_t workspace_size,
                      const framework::ExecutionContext& ctx) {
-    auto dtype = platform::CudnnDataType<T>::type;
-    size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
-    size_t workspace_size = 0;
-    bool has_got_workspace_size = true;
     algo_t algo;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-    AlgorithmsCache<algo_t>& algo_cache =
-        *(framework::ConvSearchCache::Instance().GetBackwardFilter());
 
-    auto x_dims = framework::vectorize(args.x->dims());
-    auto w_dims = framework::vectorize(args.w->dims());
+    int find_count;
+    miopenConvAlgoPerf_t find_result;
+    auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::miopenFindConvolutionBackwardWeightsAlgorithm(
+              args.handle, args.odesc.desc(), args.o->data<T>(),
+              args.idesc.desc(), args.x->data<T>(), args.cdesc.desc(),
+              args.wdesc.desc(), const_cast<T*>(args.w->data<T>()),
+              kNUM_CUDNN_BWD_FILTER_ALGS, &find_count, &find_result,
+              cudnn_workspace_ptr, workspace_size, false));
+    };
 
-    VLOG(10) << "miopenConvolutionFwdAlgoPerf_t:"
-             << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
-             << args.s << ", args.p" << args.p << ", args.d" << args.d;
+    if (!exhaustive_search && !deterministic) {
+      workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+      algo = find_result.bwd_weights_algo;
+    } else {
+      AlgorithmsCache<algo_t>& algo_cache =
+          *(framework::ConvSearchCache::Instance().GetBackwardFilter());
 
-    algo = algo_cache.GetAlgorithm(
-        x_dims, w_dims, args.s, args.p, args.d, 0,
-        static_cast<int64_t>(args.cudnn_dtype), [&]() {
-          int returned_algo_count;
-          std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_stat;
-          auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                platform::dynload::
-                    miopenFindConvolutionBackwardWeightsAlgorithm(
-                        args.handle, args.odesc.desc(), args.o->data<T>(),
-                        args.idesc.desc(), args.x->data<T>(), args.cdesc.desc(),
-                        args.wdesc.desc(), const_cast<T*>(args.w->data<T>()),
-                        kNUM_CUDNN_BWD_FILTER_ALGS, &returned_algo_count,
-                        perf_stat.data(), cudnn_workspace_ptr,
-                        workspace_size_limit, false));
-          };
-          workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
+      auto x_dims = framework::vectorize(args.x->dims());
+      auto w_dims = framework::vectorize(args.w->dims());
 
-          VLOG(3) << "BwdFilterAlgo Perf result: (algo: stat, time, memory)";
-          for (int i = 0; i < returned_algo_count; ++i) {
-            const auto& stat = perf_stat[i];
-            VLOG(3) << stat.bwd_weights_algo;
-          }
-          return perf_stat[0].bwd_weights_algo;
-        });
+      VLOG(10) << "miopenConvolutionFwdAlgoPerf_t:"
+               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
+               << args.s << ", args.p" << args.p << ", args.d" << args.d;
+
+      algo = algo_cache.GetAlgorithm(
+          x_dims, w_dims, args.s, args.p, args.d, 0,
+          static_cast<int64_t>(args.cudnn_dtype), [&]() {
+            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+            return find_result.bwd_weights_algo;
+          });
+    }
     VLOG(3) << "choose algo " << algo;
     return algo;
   }
 
-  static size_t GetWorkspaceSize(const ConvArgs& args, algo_t algo) {
+  static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::miopenConvolutionBackwardWeightsGetWorkSpaceSize(

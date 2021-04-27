@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/extension/include/ext_tensor.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/custom_tensor_utils.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -178,7 +177,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
-          "`std::vector<float>`, `std::vector<int64_t>, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
           "`std::vector<std::string>`, Please check whether "
           "the attribute data type and data type string are matched.",
           attr_type_str));
@@ -327,7 +326,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
             "`int64_t`, `std::string`, `std::vector<int>`, "
-            "`std::vector<float>`, `std::vector<int64_t>, "
+            "`std::vector<float>`, `std::vector<int64_t>`, "
             "`std::vector<std::string>`, Please check whether "
             "the attribute data type and data type string are matched.",
             attr_type_str));
@@ -581,7 +580,7 @@ void RegisterOperatorWithMetaInfo(
       ctx->ShareDim(op_inputs[0], op_outputs[0]);
     };
   } else {
-    info.infer_shape_ = [op_inputs, op_outputs,
+    info.infer_shape_ = [op_inputs, op_outputs, op_attrs,
                          infer_shape_func](InferShapeContext* ctx) {
       std::vector<std::vector<int64_t>> input_shapes;
       std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
@@ -606,8 +605,50 @@ void RegisterOperatorWithMetaInfo(
         }
       }
 
+      std::vector<boost::any> custom_attrs;
+      for (auto& attr_str : op_attrs) {
+        auto attr_name_and_type = detail::ParseAttrStr(attr_str);
+        auto attr_name = attr_name_and_type[0];
+        auto attr_type_str = attr_name_and_type[1];
+        if (attr_type_str == "bool") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<bool>(attr_name));
+        } else if (attr_type_str == "int") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<int>(attr_name));
+        } else if (attr_type_str == "float") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<float>(attr_name));
+        } else if (attr_type_str == "int64_t") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<int64_t>(attr_name));
+        } else if (attr_type_str == "std::string") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<std::string>(attr_name));
+        } else if (attr_type_str == "std::vector<int>") {
+          custom_attrs.emplace_back(
+              ctx->Attrs().Get<std::vector<int>>(attr_name));
+        } else if (attr_type_str == "std::vector<float>") {
+          custom_attrs.emplace_back(
+              ctx->Attrs().Get<std::vector<float>>(attr_name));
+        } else if (attr_type_str == "std::vector<int64_t>") {
+          // NOTE(chenweihang): InferShape can't support std::vector<int64_t>
+          // attr type, because the input type is std::vector<int64_t>, only
+          // can use one rule to parse std::vector<int64_t> parameter
+          continue;
+        } else if (attr_type_str == "std::vector<std::string>") {
+          custom_attrs.emplace_back(
+              ctx->Attrs().Get<std::vector<std::string>>(attr_name));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported `%s` type value as custom attribute now. "
+              "Supported data types include `bool`, `int`, `float`, "
+              "`int64_t`, `std::string`, `std::vector<int>`, "
+              "`std::vector<float>`, `std::vector<std::string>`, "
+              "Please check whether the attribute data type and "
+              "data type string are matched.",
+              attr_type_str));
+        }
+      }
+
       VLOG(1) << "Custom Operator: InferShape - calc output ddim.";
-      auto output_shapes = infer_shape_func(input_shapes, vec_input_shapes);
+      auto output_shapes =
+          infer_shape_func(input_shapes, vec_input_shapes, custom_attrs);
 
       VLOG(1) << "Custom Operator: InferShape - set output ddim.";
       for (size_t i = 0; i < op_outputs.size(); ++i) {
@@ -757,10 +798,39 @@ void RegisterOperatorWithMetaInfo(
       return new CustomOperator(type, inputs, outputs, attrs);
     };
 
-    // Grad InferShape (gradient's shape is same with forward input default)
-    grad_info.infer_shape_ = [grad_op_outputs](InferShapeContext* ctx) {
+    // Grad InferShape
+    grad_info.infer_shape_ = [grad_op_inputs,
+                              grad_op_outputs](InferShapeContext* ctx) {
+      // 1. if forward input exists, gradient's shape is same with forward input
+      // default
+      //    [Suitable for most situations]
+      // 2. if forward input not exists, and only contains one grad input and
+      // output,
+      //    use grad input shape as grad output shape
+      //    [Suitable for the situation that forward input is not used as
+      //    backward input]
+      // TODO(chenweihang): support set grad op infershape func if needed
       for (auto& out_name : grad_op_outputs) {
-        ctx->ShareDim(detail::NoGrad(out_name), out_name);
+        auto fwd_name = detail::NoGrad(out_name);
+        if (detail::IsDuplicableVar(fwd_name)) {
+          // Duplicable forward var must as backward input
+          ctx->ShareDim(fwd_name, out_name);
+        } else {
+          if (ctx->HasInput(fwd_name)) {
+            ctx->ShareDim(fwd_name, out_name);
+          } else {
+            PADDLE_ENFORCE_EQ(
+                grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
+                true,
+                platform::errors::Unavailable(
+                    "Custom grad operator infershape error. "
+                    "If a custom grad operator contains only one input and "
+                    "only one output, the input shape will be directly set to "
+                    "the output shape. Otherwise, Please set the forward input "
+                    "as the grad operator's input."));
+            ctx->ShareDim(grad_op_inputs[0], out_name);
+          }
+        }
       }
     };
 

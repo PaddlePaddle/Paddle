@@ -652,6 +652,36 @@ PDNode *PDNode::assert_is_ops_input(
   return this;
 }
 
+PDNode *PDNode::assert_is_only_input_of_ops(
+    const std::unordered_set<std::string> &op_types) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->outputs) {
+      if (op && op->IsOp() && op->Op() && op_types.count(op->Op()->Type()) &&
+          op->inputs.size() == 1) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+
+PDNode *PDNode::assert_is_only_output_of_ops(
+    const std::unordered_set<std::string> &op_types) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->inputs) {
+      if (op && op->IsOp() && op->Op() && op_types.count(op->Op()->Type()) &&
+          op->outputs.size() == 1) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+
 bool VarLinksToOp(Node *node, const std::string &op_type) {
   for (auto *out : node->outputs) {
     if (out->IsOp() && out->Op()->Type() == op_type) {

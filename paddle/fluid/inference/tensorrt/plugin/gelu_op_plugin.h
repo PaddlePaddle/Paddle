@@ -115,9 +115,9 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
   void destroy() override { delete this; }
 };
 
-class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
+class GeluPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  GeluPluginV2Creator() {}
+  GeluPluginDynamicCreator() {}
   const char* getPluginName() const override { return "gelu_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
@@ -153,7 +153,7 @@ class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-REGISTER_TRT_PLUGIN_V2(GeluPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(GeluPluginDynamicCreator);
 #endif
 
 }  // namespace plugin
