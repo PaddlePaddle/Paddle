@@ -42,7 +42,6 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
 
   patterns::DeleteDropoutOpPattern pattern(gpd.mutable_pattern(), pattern_name);
   pattern();
-  // auto* scope = param_scope();
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -52,7 +51,6 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
     std::string dropout_op_out_name = dropout_op_out->Var()->Name();
 
     auto* any_op2_desc = any_op2->Op();
-    // auto input_args_names = any_op2_desc->InputArgumentNames();
     auto var_map = any_op2_desc->Inputs();
     std::string arg_name = "";
     for (auto& name_m : var_map) {
@@ -61,8 +59,11 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
         arg_name = name_m.first;
       }
     }
-    CHECK(arg_name.size() > 0) << "can not find the input "
-                               << dropout_op_out_name;
+    if (arg_name.size() == 0) {
+      LOG(INFO) << "Delete dropout op pass: can not find the input "
+                << dropout_op_out_name;
+      return;
+    }
 
     // modify the any_op2's inputs
     for (auto& name_m : var_map) {
