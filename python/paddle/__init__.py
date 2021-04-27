@@ -278,6 +278,7 @@ from .framework import DataParallel  #DEFINE_ALIAS
 
 from .framework import set_default_dtype  #DEFINE_ALIAS
 from .framework import get_default_dtype  #DEFINE_ALIAS
+from .framework import set_grad_enabled  #DEFINE_ALIAS
 
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS

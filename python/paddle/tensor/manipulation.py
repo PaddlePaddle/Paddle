@@ -23,52 +23,16 @@ from ..fluid.layers import utils
 import numpy as np
 import six
 # TODO: define functions to manipulate a tensor  
-from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import slice  #DEFINE_ALIAS
-from ..fluid.layers import transpose  #DEFINE_ALIAS
-from ..fluid.layers import unstack  #DEFINE_ALIAS
+from ..fluid.layers import cast  # noqa: F401
+from ..fluid.layers import slice  # noqa: F401
+from ..fluid.layers import transpose  # noqa: F401
+from ..fluid.layers import unstack  # noqa: F401
 
-from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
-from ..fluid.layers import shard_index  #DEFINE_ALIAS
+from ..fluid.layers import scatter_nd  # noqa: F401
+from ..fluid.layers import shard_index  # noqa: F401
 from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
-
-__all__ = [
-    'cast',
-    'concat',
-    'expand',
-    'broadcast_to',
-    'expand_as',
-    'flatten',
-    'flatten_',
-    'gather',
-    'gather_nd',
-    'reshape',
-    'reshape_',
-    'reverse',
-    'scatter',
-    'scatter_',
-    'scatter_nd_add',
-    'scatter_nd',
-    'shard_index',
-    'slice',
-    'split',
-    'chunk',
-    'squeeze',
-    'squeeze_',
-    'stack',
-    'strided_slice',
-    'transpose',
-    'unique',
-    'unsqueeze',
-    'unsqueeze_',
-    'unstack',
-    'flip',
-    'unbind',
-    'roll',
-    'tile',
-]
 
 
 @dygraph_only

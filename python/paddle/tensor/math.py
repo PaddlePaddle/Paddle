@@ -17,7 +17,12 @@ math functions
 from __future__ import print_function
 import numpy as np
 
-from paddle.common_ops_import import *
+from paddle.common_ops_import import VarDesc
+from paddle.common_ops_import import dygraph_only
+from paddle.common_ops_import import OpProtoHolder
+from paddle.common_ops_import import templatedoc
+from paddle.common_ops_import import dygraph_utils
+
 from paddle.tensor import cast
 import paddle
 from ..fluid import layers
@@ -29,127 +34,37 @@ from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 
 # TODO: define math functions
 # yapf: disable
-from ..fluid.layers import abs    #DEFINE_ALIAS
-from ..fluid.layers import acos    #DEFINE_ALIAS
-from ..fluid.layers import asin    #DEFINE_ALIAS
-from ..fluid.layers import ceil    #DEFINE_ALIAS
-from ..fluid.layers import ceil_    #DEFINE_ALIAS
-from ..fluid.layers import cos    #DEFINE_ALIAS
-from ..fluid.layers import tan    #DEFINE_ALIAS
-from ..fluid.layers import sinh    #DEFINE_ALIAS
-from ..fluid.layers import cosh    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
-from ..fluid.layers import exp    #DEFINE_ALIAS
-from ..fluid.layers import exp_    #DEFINE_ALIAS
-from ..fluid.layers import floor    #DEFINE_ALIAS
-from ..fluid.layers import floor_    #DEFINE_ALIAS
-from ..fluid.layers import log    #DEFINE_ALIAS
-from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reciprocal_    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_max    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_min    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
-from ..fluid.layers import round    #DEFINE_ALIAS
-from ..fluid.layers import round_    #DEFINE_ALIAS
-from ..fluid.layers import rsqrt    #DEFINE_ALIAS
-from ..fluid.layers import rsqrt_    #DEFINE_ALIAS
-from ..fluid.layers import scale    #DEFINE_ALIAS
-from ..fluid.layers import square    #DEFINE_ALIAS
-from ..fluid.layers import stanh    #DEFINE_ALIAS
-from ..fluid.layers import atan    #DEFINE_ALIAS
-from ..fluid.layers import erf    #DEFINE_ALIAS
-from ..fluid.layers import sqrt    #DEFINE_ALIAS
-from ..fluid.layers import sqrt_    #DEFINE_ALIAS
-from ..fluid.layers import sin    #DEFINE_ALIAS
+from ..fluid.layers import abs    # noqa: F401
+from ..fluid.layers import acos    # noqa: F401
+from ..fluid.layers import asin    # noqa: F401
+from ..fluid.layers import ceil    # noqa: F401
+from ..fluid.layers import ceil_    # noqa: F401
+from ..fluid.layers import cos    # noqa: F401
+from ..fluid.layers import tan    # noqa: F401
+from ..fluid.layers import sinh    # noqa: F401
+from ..fluid.layers import cosh    # noqa: F401
+from ..fluid.layers import exp    # noqa: F401
+from ..fluid.layers import exp_    # noqa: F401
+from ..fluid.layers import floor    # noqa: F401
+from ..fluid.layers import floor_    # noqa: F401
+from ..fluid.layers import log    # noqa: F401
+from ..fluid.layers import reciprocal    # noqa: F401
+from ..fluid.layers import reciprocal_    # noqa: F401
+from ..fluid.layers import round    # noqa: F401
+from ..fluid.layers import round_    # noqa: F401
+from ..fluid.layers import rsqrt    # noqa: F401
+from ..fluid.layers import rsqrt_    # noqa: F401
+from ..fluid.layers import scale    # noqa: F401
+from ..fluid.layers import square    # noqa: F401
+from ..fluid.layers import stanh    # noqa: F401
+from ..fluid.layers import atan    # noqa: F401
+from ..fluid.layers import erf    # noqa: F401
+from ..fluid.layers import sqrt    # noqa: F401
+from ..fluid.layers import sqrt_    # noqa: F401
+from ..fluid.layers import sin    # noqa: F401
 
-from ..fluid.layers import multiplex    #DEFINE_ALIAS
+from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
-
-
-__all__ = [
-        'abs',
-        'acos',
-        'all',
-        'any',
-        'asin',
-        'atan',
-        'ceil',
-        'ceil_',
-        'cos',
-        'cosh',
-        'cumsum',
-        'exp',
-        'exp_',
-        'floor',
-        'floor_',
-        'increment',
-        'log',
-        'log2',
-        'log10',
-        'logsumexp',
-        'mul',
-        'multiplex',
-        'pow',
-        'prod',
-        'reciprocal',
-        'reciprocal_',
-        'round',
-        'round_',
-        'rsqrt',
-        'rsqrt_',
-        'scale',
-        'scale_',
-        'sign',
-        'sin',
-        'sinh',
-        'sqrt',
-        'sqrt_',
-        'square',
-        'stanh',
-        'sum',
-        'tanh',
-        'tanh_',
-        'add_n',
-        'add_n_',
-        'max',
-        'maximum',
-        'min',
-        'minimum',
-        'mm',
-        'divide',
-        'floor_divide',
-        'remainder',
-        'mod',
-        'floor_mod',
-        'multiply',
-        'add',
-        'add_',
-        'subtract',
-        'subtract_',
-        'atan',
-        'logsumexp',
-        'inverse',
-        'log1p',
-        'erf',
-        'addmm',
-        'clip',
-        'clip_',
-        'trace',
-        'kron',
-        'isfinite',
-        'isinf',
-        'isnan',
-        'broadcast_shape',
-        'conj'
-]
-# yapf: enable.
 
 _supported_int_dtype_ = [
     VarDesc.VarType.UINT8,
@@ -540,8 +455,8 @@ def remainder(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-mod = remainder  #DEFINE_ALIAS
-floor_mod = remainder  #DEFINE_ALIAS
+mod = remainder  # noqa: F841
+floor_mod = remainder  # noqa: F841
 
 
 def multiply(x, y, name=None):
