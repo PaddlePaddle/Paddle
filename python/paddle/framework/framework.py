@@ -19,8 +19,6 @@ from paddle.fluid.framework import _dygraph_tracer
 import numpy as np
 from contextlib import contextmanager
 
-__all__ = ['set_default_dtype', 'get_default_dtype']
-
 
 def set_default_dtype(d):
     """
