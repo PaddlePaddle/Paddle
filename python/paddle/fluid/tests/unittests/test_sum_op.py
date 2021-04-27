@@ -21,7 +21,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest, convert_float_to_uint16, convert_uint16_to_float)
 
 
 class TestSumOp(OpTest):
@@ -149,6 +150,15 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         self.rows = [0, 1, 2, 3, 4, 5, 6]
         self.dtype = np.uint16
         self.init_kernel_type()
+        np.random.seed(12345)
+        self.data = np.random.random((len(self.rows),
+                                      self.row_numel)).astype(np.float32)
+
+    def _get_array(self, rows, row_numel):
+        if len(rows) > 0:
+            return convert_float_to_uint16(self.data)
+        else:
+            return np.ndarray((0, row_numel), dtype=self.dtype)
 
     def check_input_and_optput(self,
                                scope,
@@ -180,12 +190,11 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
 
         if has_data_w_num > 0:
             self.assertEqual(len(out.rows()), 7)
-            self.assertTrue(
-                np.array_equal(
-                    np.array(out.get_tensor()),
-                    convert_float_to_uint16(
-                        self._get_array(self.rows, self.row_numel) *
-                        has_data_w_num)))
+            out_bf16 = np.array(out.get_tensor())
+            out_fp32 = convert_uint16_to_float(out_bf16)
+            ref_fp32 = convert_uint16_to_float(
+                self._get_array(self.rows, self.row_numel)) * has_data_w_num
+            np.testing.assert_allclose(out_fp32, ref_fp32, atol=0, rtol=0.95e-2)
         else:
             self.assertEqual(len(out.rows()), 0)
 
