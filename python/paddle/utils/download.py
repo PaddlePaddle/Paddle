@@ -18,6 +18,7 @@ from __future__ import print_function
 
 import os
 import sys
+import stat
 import os.path as osp
 import shutil
 import requests
@@ -202,8 +203,15 @@ def git_clone_from_url(
     return fullpath
 
 
+def _handle_readonly_error(func, path, info):
+    # fix window .git readonly problem
+    os.chmod(path, stat.S_IWRITE)
+    os.unlink(path)
+
+
 def _git_clone(url, repo_dir, branch):
-    shutil.rmtree(repo_dir, ignore_errors=True)
+
+    shutil.rmtree(repo_dir, ignore_errors=True, onerror=_handle_readonly_error)
 
     if branch is None:
         command = 'git clone {} {}'.format(url, repo_dir)
@@ -216,7 +224,10 @@ def _git_clone(url, repo_dir, branch):
         shutil.rmtree(repo_dir, ignore_errors=True)
         raise RuntimeError('{} failed.'.format(command))
 
-    shutil.rmtree(os.path.join(repo_dir, '.git'), ignore_errors=True)
+    shutil.rmtree(
+        os.path.join(repo_dir, '.git'),
+        ignore_errors=True,
+        onerror=_handle_readonly_error)
 
     return repo_dir
 
