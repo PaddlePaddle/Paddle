@@ -983,11 +983,11 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale_w = scale_data[0];
       PADDLE_ENFORCE_EQ(
-        scale_w > 0, true,
-        platform::errors::InvalidArgument(
-            "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
-            "should be greater than 0, but received value is %d.",
-            scale_w));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
     } else {
       if (scale.size() > 0) {
         scale_w = scale[0];
@@ -1089,11 +1089,11 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       }
 
       PADDLE_ENFORCE_EQ(
-        scale_w > 0, true,
-        platform::errors::InvalidArgument(
-            "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
-            "should be greater than 0, but received value is %d.",
-            scale_w));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
     PADDLE_ENFORCE_EQ(
         scale_h > 0, true,
         platform::errors::InvalidArgument(
@@ -1106,11 +1106,11 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
         scale_h = scale[0];
 
         PADDLE_ENFORCE_EQ(
-          scale_w > 0, true,
-          platform::errors::InvalidArgument(
-              "The scale_w in Attr(scale) of Operator(interpolate) "
-              "should be greater than 0, but received value is %d.",
-              scale_w));
+            scale_w > 0, true,
+            platform::errors::InvalidArgument(
+                "The scale_w in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_w));
       PADDLE_ENFORCE_EQ(
           scale_h > 0, true,
           platform::errors::InvalidArgument(
