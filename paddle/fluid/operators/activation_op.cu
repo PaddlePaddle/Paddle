@@ -169,7 +169,7 @@ struct CudaLogSigmoidGradFunctor : public BaseActivationFunctor<T> {
     MPType dout = static_cast<MPType>(args[0]);
     MPType x = static_cast<MPType>(args[1]);
     MPType temp1 = x > zero ? zero : -x;
-    MPType temp2 = exp(-x - temp);
+    MPType temp2 = exp(-x - temp1);
     return static_cast<T>(dout * (temp2 / (exp(-temp1) + temp2)));
   }
 
