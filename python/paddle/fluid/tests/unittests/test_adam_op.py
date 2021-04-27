@@ -402,6 +402,54 @@ class TestAdamOpBetaVariable(OpTest):
         self.check_output()
 
 
+class TestAdamOpBetaEpsilonVariable(OpTest):
+    def setUp(self):
+        '''Test Adam Op with beta as Variable
+        '''
+        self.op_type = "adam"
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        # The second moment is positive
+        moment2 = np.random.random((102, 105)).astype("float32")
+        beta1 = 0.85
+        beta2 = 0.95
+
+        learning_rate = 0.001
+        epsilon = 1e-8
+        beta1_pow = beta1**10
+        beta2_pow = beta2**10
+
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Moment1': moment1,
+            'Moment2': moment2,
+            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
+            "Beta1Tensor": np.array([beta1]).astype("float32"),
+            "Beta2Tensor": np.array([beta2]).astype("float32"),
+            "EpsilonTensor": np.array([epsilon]).astype("float32"),
+        }
+
+        attributes = {'epsilon': epsilon}
+
+        param_out, moment1_out, \
+            moment2_out = adam_step(self.inputs, attributes)
+
+        self.outputs = {
+            'Moment1Out': moment1_out,
+            'Moment2Out': moment2_out,
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestAdamOpV2(unittest.TestCase):
     def test_adam_op(self):
         place = fluid.CPUPlace()

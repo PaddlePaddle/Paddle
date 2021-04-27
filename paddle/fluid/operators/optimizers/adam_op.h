@@ -431,7 +431,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
                             beta1_tensor->numel()));
       beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
     }
-    T beta2 = static_cast<T>(ctx.Attr<float>("epsilon"));
+    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     if (ctx.HasInput("Beta2Tensor")) {
       auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
       PADDLE_ENFORCE_EQ(beta2_tensor->numel(), 1,
