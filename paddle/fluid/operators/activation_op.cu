@@ -1253,7 +1253,7 @@ struct CudaELUFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T* args) const {
     CT x = static_cast<CT>(args[0]);
     CT temp = static_cast<CT>(alpha) * (exp(x) - one);
-    CT res = (x > zero ? x : zero) + (temp > zero ?: zero : temp);
+    CT res = (x > zero ? x : zero) + (temp > zero ? zero : temp);
     return static_cast<T>(res);
   }
 };
