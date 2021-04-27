@@ -35,16 +35,17 @@ visited_modules = set()
 
 def md5(doc):
     try:
-        hash = hashlib.md5()
+        hashinst = hashlib.md5()
         if platform.python_version()[0] == "2":
-            hash.update(str(doc))
+            hashinst.update(str(doc))
         else:
-            hash.update(str(doc).encode('utf-8'))
-        md5sum = hash.hexdigest()
+            hashinst.update(str(doc).encode('utf-8'))
+        md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
         print(
-            "Error occurred when `md5({})`, discard it.".format(str(e), doc),
+            "Error({}) occurred when `md5({})`, discard it.".format(
+                str(e), doc),
             file=sys.stderr)
 
     return md5sum
