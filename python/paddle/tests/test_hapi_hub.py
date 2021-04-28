@@ -29,7 +29,6 @@ class TestHub(unittest.TestCase):
     def setUp(self, ):
         self.local_repo = os.path.dirname(os.path.abspath(__file__))
         self.github_repo = 'lyuwenyu/paddlehub_demo:main'
-        self.gitee_repo = 'lyuwenyuL/paddlehub_test:master'
 
     def testLoad(self, ):
         model = hub.load(
@@ -149,12 +148,11 @@ class TestGithubClone(unittest.TestCase):
             repo, 'MM', source=source, force_reload=False, use_git=True)
 
 
-class TestGiteeClone(TestGithubClone):
-    def get_params(self, ):
-        repo = 'lyuwenyuL/paddlehub_test:master'
-        source = 'gitee'
-        return repo, source
-
+# class TestGiteeClone(TestGithubClone):
+#     def get_params(self, ):
+#         repo = 'lyuwenyuL/paddlehub_test:master'
+#         source = 'gitee'
+#         return repo, source
 
 if __name__ == '__main__':
     unittest.main()
