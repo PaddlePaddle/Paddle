@@ -761,6 +761,51 @@ void init_ops_attrtype_map() {
   }
 }
 
+PyObject* EOFExceptionException =
+    PyErr_NewException("paddle.EOFException", PyExc_Exception, NULL);
+PyObject* EnforceNotMetException =
+    PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, NULL);
+
+void throw_exception_to_python(std::exception_ptr p) {
+  try {
+    if (p) std::rethrow_exception(p);
+  } catch (const platform::EOFException& e) {
+    PyErr_SetString(EOFExceptionException, e.what());
+  } catch (const platform::EnforceNotMet& e) {
+    switch (e.code()) {
+      case paddle::platform::error::INVALID_ARGUMENT:
+        PyErr_SetString(PyExc_ValueError, e.what());
+        break;
+      case paddle::platform::error::NOT_FOUND:
+      case paddle::platform::error::ALREADY_EXISTS:
+      case paddle::platform::error::PRECONDITION_NOT_MET:
+      case paddle::platform::error::PERMISSION_DENIED:
+      case paddle::platform::error::EXECUTION_TIMEOUT:
+      case paddle::platform::error::UNAVAILABLE:
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+        break;
+      case paddle::platform::error::OUT_OF_RANGE:
+        PyErr_SetString(PyExc_IndexError, e.what());
+        break;
+      case paddle::platform::error::RESOURCE_EXHAUSTED:
+        PyErr_SetString(PyExc_MemoryError, e.what());
+        break;
+      case paddle::platform::error::UNIMPLEMENTED:
+        PyErr_SetString(PyExc_NotImplementedError, e.what());
+        break;
+      case paddle::platform::error::FATAL:
+        PyErr_SetString(PyExc_SystemError, e.what());
+        break;
+      case paddle::platform::error::EXTERNAL:
+        PyErr_SetString(PyExc_OSError, e.what());
+        break;
+      default:
+        PyErr_SetString(EnforceNotMetException, e.what());
+        break;
+    }
+  }
+}
+
 }  // namespace pybind
 }  // namespace paddle
 

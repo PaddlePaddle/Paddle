@@ -254,18 +254,25 @@ const char* OP_FUNCTION_TEMPLATE =
 R"(
 static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-  %s
-  framework::AttributeMap attrs;
-  ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args)-1 , attrs);
+  try
   {
-    py::gil_scoped_release release;
-    auto tracer = imperative::GetCurrentTracer();
     %s
-    imperative::NameVarBaseMap outs = %s;
-    imperative::NameVarBaseMap ins = %s;
-    %s
-    tracer->TraceOp("%s", ins, outs, attrs, {%s});
-    return %s;
+    framework::AttributeMap attrs;
+    ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args)-1 , attrs);
+    {
+      py::gil_scoped_release release;
+      auto tracer = imperative::GetCurrentTracer();
+      %s
+      imperative::NameVarBaseMap outs = %s;
+      imperative::NameVarBaseMap ins = %s;
+      %s
+      tracer->TraceOp("%s", ins, outs, attrs, {%s});
+      return %s;
+    }
+  }
+  catch(...) {
+    throw_exception_to_python(std::current_exception());
+    return NULL;
   }
 })";
 
@@ -607,7 +614,7 @@ int main(int argc, char* argv[]) {
   out << "static PyMethodDef ExtestMethods[] = {\n"
       << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
       << "  {NULL,NULL}"
-      << "};";
+      << "};\n\n";
 
   out << "inline void BindOpFunctions(pybind11::module *module) {\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
