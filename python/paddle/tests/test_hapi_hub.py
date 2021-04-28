@@ -140,7 +140,7 @@ class TestGithubClone(unittest.TestCase):
 
         repo, source = self.get_params()
 
-        _ = hub.list(repo, source=source, force_reload=True, use_git=True)
+        _ = hub.list(repo, source=source, force_reload=False, use_git=True)
 
         _ = hub.load(
             repo, 'MM', source=source, force_reload=False, use_git=True)
