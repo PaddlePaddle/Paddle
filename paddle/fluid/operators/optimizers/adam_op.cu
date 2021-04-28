@@ -226,6 +226,15 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                             beta2_tensor->numel()));
       beta2 = static_cast<MPDType>(GetAttrFromTensor(beta2_tensor));
     }
+    MPDType epsilon = static_cast<MPDType>(ctx.Attr<float>("epsilon"));
+    if (ctx.HasInput("EpsilonTensor")) {
+      auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+      PADDLE_ENFORCE_EQ(epsilon_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(EpsilonTensor) size must be 1, but get %d",
+                            epsilon_tensor->numel()));
+      epsilon = static_cast<MPDType>(GetAttrFromTensor(epsilon_tensor));
+    }
     VLOG(3) << "beta1_pow.numel() : " << beta1_pow->numel()
             << "beta2_pow.numel() : " << beta2_pow->numel();
     VLOG(3) << "param.numel(): " << param->numel();

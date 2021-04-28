@@ -898,5 +898,121 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestNetWithEpsilonTensor(unittest.TestCase):
+    def _test(self, place, use_tensor=True, use_fluid_api=True):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        SEED = 2021
+        paddle.seed(SEED)
+        np.random.seed(SEED)
+
+        a_np = np.random.random(size=(32, 32)).astype('float32')
+        b_np = np.random.random(size=(32, 32)).astype('float32')
+        label_np = np.random.randint(2, size=(32, 1)).astype('int64')
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
+            b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64')
+
+            sum = paddle.add(a, b)
+            z = paddle.pow(sum, 2.0)
+
+            fc_1 = fluid.layers.fc(input=z, size=128)
+            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+
+            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            loss = fluid.layers.reduce_mean(cost)
+            beta1_init = 0.9
+            beta2_init = 0.999
+            epsilon_init = 1e-8
+            if use_tensor:
+                beta1 = fluid.layers.create_global_var(
+                    shape=[1],
+                    value=float(beta1_init),
+                    dtype='float32',
+                    persistable=True,
+                    name="beta1")
+                beta2 = fluid.layers.create_global_var(
+                    shape=[1],
+                    value=float(beta2_init),
+                    dtype='float32',
+                    persistable=True,
+                    name="beta2")
+                epsilon = fluid.layers.create_global_var(
+                    shape=[1],
+                    value=float(epsilon_init),
+                    dtype='float32',
+                    persistable=True,
+                    name="epsilon")
+                if use_fluid_api:
+                    adam = fluid.optimizer.Adam(
+                        learning_rate=0.01,
+                        beta1=beta1,
+                        beta2=beta2,
+                        epsilon=epsilon)
+                else:
+                    adam = paddle.optimizer.Adam(
+                        learning_rate=0.01,
+                        beta1=beta1,
+                        beta2=beta2,
+                        epsilon=epsilon)
+            else:
+                if use_fluid_api:
+                    adam = fluid.optimizer.Adam(
+                        learning_rate=0.01,
+                        beta1=beta1_init,
+                        beta2=beta2_init,
+                        epsilon=epsilon_init)
+                else:
+                    adam = fluid.optimizer.Adam(
+                        learning_rate=0.01,
+                        beta1=beta1_init,
+                        beta2=beta2_init,
+                        epsilon=epsilon_init)
+
+            adam.minimize(loss)
+
+        exe = paddle.static.Executor(place)
+        exe.run(startup_prog)
+
+        print("Start run on {}".format(place))
+        for epoch in range(10):
+
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np,
+                      "b": b_np,
+                      "label": label_np},
+                fetch_list=[prediction, loss])
+
+        print("Epoch {} | Prediction[0]: {}, Loss: {}".format(epoch, pred_res[
+            0], loss_res))
+        paddle.disable_static()
+        return pred_res, loss_res
+
+    def _test_with_place(self, place):
+        preds = []
+        losses = []
+
+        for use_tensor in [True, False]:
+            for use_fluid_api in [True, False]:
+                pred, loss = self._test(place, use_tensor, use_fluid_api)
+                preds.append(pred)
+                losses.append(loss)
+        for pred in preds:
+            self.assertTrue(np.allclose(pred, preds[0]))
+        for loss in losses:
+            self.assertTrue(np.allclose(loss, losses[0]))
+
+    def test_adam_api(self):
+        # NOTE(zhiqiu): cpu and gpu has different seed, so should compare separatly.
+        self._test_with_place(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self._test_with_place(paddle.CUDAPlace(0))
+
+
 if __name__ == "__main__":
     unittest.main()

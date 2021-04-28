@@ -153,6 +153,11 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
              "as beta2, this has a higher priority than attr(beta2), the "
              "shape of this tensor MUST BE [1].")
         .AsDispensable();
+    AddInput("EpsilonTensor",
+             "(Tensor<float32>, optional) If provided, Adam will use this "
+             "as epsilon, this has a higher priority than attr(epsilon), the "
+             "shape of this tensor MUST BE [1].")
+        .AsDispensable();
     AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
     AddInput("SkipUpdate", "(Tensor<bool>, optional), Skip the update or not.")
         .AsDispensable();
