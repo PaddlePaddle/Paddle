@@ -256,19 +256,21 @@ class TestVarBase(unittest.TestCase):
             detach_x = x.detach()
             self.assertTrue(detach_x.stop_gradient, True)
 
+            cmp_float = np.allclose if core.is_compiled_with_rocm(
+            ) else np.array_equal
             detach_x[:] = 10.0
-            self.assertTrue(np.array_equal(x.numpy(), [10.0]))
+            self.assertTrue(cmp_float(x.numpy(), [10.0]))
 
             y = x**2
             y.backward()
-            self.assertTrue(np.array_equal(x.grad.numpy(), [20.0]))
+            self.assertTrue(cmp_float(x.grad.numpy(), [20.0]))
             self.assertEqual(detach_x.grad, None)
 
             detach_x.stop_gradient = False  # Set stop_gradient to be False, supported auto-grad
             z = 3 * detach_x**2
             z.backward()
-            self.assertTrue(np.array_equal(x.grad.numpy(), [20.0]))
-            self.assertTrue(np.array_equal(detach_x.grad.numpy(), [60.0]))
+            self.assertTrue(cmp_float(x.grad.numpy(), [20.0]))
+            self.assertTrue(cmp_float(detach_x.grad.numpy(), [60.0]))
 
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
             with self.assertRaises(RuntimeError):
