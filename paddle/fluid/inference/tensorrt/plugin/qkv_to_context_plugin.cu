@@ -233,6 +233,7 @@ __global__ void apply_scale(T* data, T scale, int n) {
 #endif
 }
 
+
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
