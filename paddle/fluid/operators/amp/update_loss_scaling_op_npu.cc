@@ -151,28 +151,31 @@ class LazyZerosNPU {
     }
     auto place = dev_ctx.GetPlace();
     auto stream = dev_ctx.stream();
-    int max_num = -1;
     Tensor* zero_tensor;
-    for (size_t i = 0; i < xs.size(); ++i) {
-      auto* out = outs[i];
-      int num = out->numel();
-      if (max_num < num) {
-        max_num = num;
-        zero_tensor = out;
+    void* src_ptr;
+    if (found_inf_vec[0]) {
+      int max_num = -1;
+      for (size_t i = 0; i < xs.size(); ++i) {
+        auto* out = outs[i];
+        int num = out->numel();
+        if (max_num < num) {
+          max_num = num;
+          zero_tensor = out;
+        }
       }
-    }
 
-    zero_tensor->mutable_data<T>(place);
-    auto runner_zeros =
-        NpuOpRunner("ZerosLike", {*zero_tensor}, {*zero_tensor});
-    runner_zeros.Run(stream);
-    zero_tensor->check_memory_size();
-    auto src_ptr = zero_tensor->data<void>();
+      zero_tensor->mutable_data<T>(place);
+      auto runner_zeros =
+          NpuOpRunner("ZerosLike", {*zero_tensor}, {*zero_tensor});
+      runner_zeros.Run(stream);
+      zero_tensor->check_memory_size();
+      src_ptr = zero_tensor->data<void>();
+    }
 
     for (size_t i = 0; i < xs.size(); ++i) {
       auto* out = outs[i];
       auto dst_ptr = out->mutable_data<T>(place);
-      if (src_ptr != dst_ptr) {
+      if (found_inf_vec[0] && src_ptr != dst_ptr) {
         auto size = out->numel() * framework::SizeOfType(out->type());
         memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place), dst_ptr,
                      BOOST_GET_CONST(platform::NPUPlace, place), src_ptr, size,
