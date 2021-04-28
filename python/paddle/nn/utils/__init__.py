@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .spectral_norm_hook import spectral_norm
 from .weight_norm_hook import weight_norm, remove_weight_norm  # noqa: F401
 
 __all__ = [  #noqa
-    'weight_norm', 'remove_weight_norm'
+    'weight_norm', 'remove_weight_norm', 'spectral_norm'
 ]
