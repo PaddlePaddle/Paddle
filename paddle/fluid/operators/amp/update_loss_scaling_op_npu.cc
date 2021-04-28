@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include <cmath>
 #include <vector>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
@@ -145,7 +146,7 @@ class LazyZerosNPU {
                   const std::vector<bool> found_inf_vec,
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
-    for (size_t i = 0; i < xs.size(); ++i) {
+    /*for (size_t i = 0; i < xs.size(); ++i) {
       auto* out = outs[i];
       if (found_inf_vec[0]) {
         VLOG(4) << "-- UpdateLossScaling: Find infinite grads. --";
@@ -155,6 +156,39 @@ class LazyZerosNPU {
         out->mutable_data<T>(place);
         auto runner_zeros = NpuOpRunner("ZerosLike", {*out}, {*out});
         runner_zeros.Run(stream);
+      }
+    }*/
+    if (!xs.size()) {
+      return;
+    }
+    auto place = dev_ctx.GetPlace();
+    auto stream = dev_ctx.stream();
+    int max_num = -1;
+    Tensor* zero_tensor;
+    for (size_t i = 0; i < xs.size(); ++i) {
+      auto* out = outs[i];
+      int num = out->numel();
+      if (max_num < num) {
+        max_num = num;
+        zero_tensor = out;
+      }
+    }
+
+    zero_tensor->mutable_data<T>(place);
+    auto runner_zeros =
+        NpuOpRunner("ZerosLike", {*zero_tensor}, {*zero_tensor});
+    runner_zeros.Run(stream);
+    zero_tensor->check_memory_size();
+    auto src_ptr = zero_tensor->data<void>();
+
+    for (size_t i = 0; i < xs.size(); ++i) {
+      auto* out = outs[i];
+      auto dst_ptr = out->mutable_data<T>(place);
+      if (src_ptr != dst_ptr) {
+        auto size = out->numel() * framework::SizeOfType(out->type());
+        memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place), dst_ptr,
+                     BOOST_GET_CONST(platform::NPUPlace, place), src_ptr, size,
+                     stream);
       }
     }
   }
