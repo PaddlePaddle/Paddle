@@ -27,6 +27,8 @@ import numpy
 import struct
 from six.moves import range
 
+__all__ = []
+
 URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'
 TEST_IMAGE_MD5 = '9fb629c4189551a2d022fa330f9573f3'
