@@ -76,14 +76,6 @@ class TestWget(unittest.TestCase):
     def setUp(self, ):
         self.giturl = 'https://github.com/lyuwenyu/paddlehub_demo/archive/main.zip'
 
-    # def test_wget(self, ):
-    #     get_path_from_url(
-    #         self.giturl,
-    #         root_dir='./test',
-    #         check_exist=False,
-    #         decompress=False,
-    #         use_wget=True, )
-
     def test_errors(self, ):
         with self.assertRaises(RuntimeError):
             get_path_from_url(
