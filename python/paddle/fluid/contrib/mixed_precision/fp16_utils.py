@@ -209,7 +209,7 @@ def find_true_prev_op(ops, cur_op, var_name):
     return None
 
 
-def find_true_post_op(ops, cur_op, var_name):
+def find_true_post_op(ops, cur_op, var_name, search_all=False):
     """
     if there are post ops, return them, if there is no post op,
     return None instead.
@@ -217,11 +217,15 @@ def find_true_post_op(ops, cur_op, var_name):
         ops (list): A list of ops.
         cur_op (Operator): Current operator which has var_name variable.
         var_name (string): Variable name.
+        search_all (bool): The type of operator search. Use if \"cur_op\" is not in the \"ops\" set. 
     """
     post_op = []
-    for idx, op in enumerate(ops):
-        if op == cur_op:
-            break
+    if search_all:
+        idx = -1
+    else:
+        for idx, op in enumerate(ops):
+            if op == cur_op:
+                break
 
     for i in range(idx + 1, len(ops)):
         op = ops[i]

@@ -58,8 +58,9 @@ class TestModelCastBF16(unittest.TestCase):
         exe = fluid.Executor(core.CPUPlace())
         exe.run(fluid.default_startup_program())
         prog = fluid.default_main_program()
+        startup_prog = fluid.default_startup_program()
         if amp_fun is not None:
-            amp_fun(prog)
+            amp_fun(prog, startup_prog)
         return exe.run(prog,
                        feed=feed,
                        fetch_list=fetch_list,
@@ -136,8 +137,9 @@ class TestModelCastBF16(unittest.TestCase):
         ))
 
     def test_graph_cast(self):
-        self._graph_common(lambda prog: amp.bf16.cast_model_to_bf16(
+        self._graph_common(lambda prog, startup_prog: amp.bf16.cast_model_to_bf16(
             prog,
+            startup_prog,
             amp.bf16.AutoMixedPrecisionListsBF16(
                 custom_fp32_list={'elementwise_mul'}),
             use_bf16_guard=True
