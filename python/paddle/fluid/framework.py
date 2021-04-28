@@ -246,11 +246,11 @@ def _static_only_(func):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
-            "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
-            "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
-            "please use other API to replace '%s'" % (func.__name__,
-                                                      func.__name__))
+            "'%s' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
+            "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
+            "  2. If you are using `@paddle.jit.to_static`, you can turn off ProgramTranslator by calling `paddle.jit.ProgramTranslator().enable(False)`. "
+            "If you have to translate dynamic graph to static graph, please use other API to replace '%s'."
+            % (func.__name__, func.__name__))
 
     return __impl__
 
@@ -1304,6 +1304,10 @@ class Variable(object):
                     print("After clear {}".format(loss2.gradient()))
 
         """
+        pass
+
+    @fake_interface_only
+    def register_hook(self, hook):
         pass
 
     def __str__(self):
