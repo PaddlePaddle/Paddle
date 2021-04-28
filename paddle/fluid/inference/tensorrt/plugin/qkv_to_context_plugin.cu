@@ -226,13 +226,12 @@ nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
 }
 
 template <typename T>
-__global__ void apply_scale(T* data, T scale, int n) {
+__global__ void apply_scale(T *data, T scale, int n) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   data[tid] = data[tid] * scale;
 #endif
 }
-
 
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
@@ -304,7 +303,8 @@ int QkvToContextPluginDynamic::enqueue(
     constexpr int threads = 128;
     int blocks = (n_q + threads - 1) / threads;
 
-    apply_scale<<<blocks, threads, 0, stream>>>(tptr, static_cast<half>(scale_), n_q);
+    apply_scale<<<blocks, threads, 0, stream>>>(tptr, static_cast<half>(scale_),
+                                                n_q);
 
     const platform::CUDADeviceContext &dev_ctx = *device_ctx;
     operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
