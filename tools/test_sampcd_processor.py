@@ -31,6 +31,10 @@ from sampcd_processor import extract_code_blocks_from_docstr
 from sampcd_processor import execute_samplecode
 from sampcd_processor import find_last_future_line_end
 from sampcd_processor import insert_codes_into_codeblock
+from sampcd_processor import get_test_capacity
+# from sampcd_processor import SAMPLE_CODE_TEST_CAPACITY
+import sampcd_processor
+from sampcd_processor import is_required_match
 
 SAMPLECODE_TEMP_DIR = 'samplecode_temp'
 
@@ -202,6 +206,90 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 print(10//3)
 print("not-specified's sample code (name:future, id:1) is executed successfully!")""",
                          insert_codes_into_codeblock(codeblock))
+
+
+ENV_KEY = 'SAMPLE_CODE_TEST_CAPACITY'
+
+
+def clear_capacity():
+    sampcd_processor.SAMPLE_CODE_TEST_CAPACITY = set()
+    sampcd_processor.RUN_ON_DEVICE = 'cpu'
+    if ENV_KEY in os.environ:
+        del os.environ[ENV_KEY]
+
+
+class Test_get_test_capacity(unittest.TestCase):
+    def setUp(self):
+        clear_capacity()
+
+    def tearDown(self):
+        clear_capacity()
+
+    def test_NoEnvVar(self):
+        clear_capacity()
+        get_test_capacity()
+        self.assertCountEqual(['cpu', ],
+                              sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+
+    def test_NoEnvVar_RUN_ON_DEVICE_gpu(self):
+        clear_capacity()
+        sampcd_processor.RUN_ON_DEVICE = 'gpu'
+        get_test_capacity()
+        self.assertCountEqual(['cpu', 'gpu'],
+                              sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+
+    def test_EnvVar_gpu(self):
+        clear_capacity()
+        os.environ[ENV_KEY] = 'gpu'
+        get_test_capacity()
+        self.assertCountEqual(['cpu', 'gpu'],
+                              sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+
+    def test_EnvVar_gpu_and_distributed(self):
+        clear_capacity()
+        os.environ[ENV_KEY] = 'gpu,distributed'
+        get_test_capacity()
+        self.assertCountEqual(['cpu', 'gpu', 'distributed'],
+                              sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+
+
+class Test_is_required_match(unittest.TestCase):
+    def setUp(self):
+        clear_capacity()
+
+    def tearDown(self):
+        clear_capacity()
+
+    def test_alldefault(self):
+        clear_capacity()
+        get_test_capacity()
+        self.assertTrue(is_required_match(''))
+        self.assertTrue(is_required_match(None))
+        self.assertTrue(is_required_match('cpu'))
+        self.assertFalse(is_required_match('gpu'))
+        self.assertIsNone(is_required_match('skiptest'))
+        self.assertIsNone(is_required_match('skip'))
+        self.assertIsNone(is_required_match('cpu,skiptest'))
+
+    def test_gpu_equipped(self):
+        clear_capacity()
+        os.environ[ENV_KEY] = 'gpu'
+        get_test_capacity()
+        self.assertTrue(is_required_match('cpu'))
+        self.assertTrue(is_required_match('gpu'))
+        self.assertTrue(is_required_match('gpu,cpu'))
+        self.assertIsNone(is_required_match('skiptest'))
+        self.assertFalse(is_required_match('distributed'))
+
+    def test_gpu_distributed_equipped(self):
+        clear_capacity()
+        os.environ[ENV_KEY] = 'gpu,distributed'
+        get_test_capacity()
+        self.assertTrue(is_required_match('cpu'))
+        self.assertTrue(is_required_match('gpu'))
+        self.assertTrue(is_required_match('distributed'))
+        self.assertFalse(is_required_match('xpu'))
+        self.assertIsNone(is_required_match('skiptest'))
 
 
 class Test_execute_samplecode(unittest.TestCase):

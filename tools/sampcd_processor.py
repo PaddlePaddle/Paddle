@@ -45,6 +45,7 @@ else:
 console.setFormatter(logging.Formatter("%(message)s"))
 
 RUN_ON_DEVICE = 'cpu'
+SAMPLE_CODE_TEST_CAPACITY = set()
 GPU_ID = 0
 methods = []
 whl_error = []
@@ -219,6 +220,57 @@ def extract_code_blocks_from_docstr(docstr):
                             cb_cur_indent = -1
                             cb_cur = []
     return code_blocks
+
+
+def get_test_capacity():
+    """
+    collect capacities and set to SAMPLE_CODE_TEST_CAPACITY
+    """
+    global SAMPLE_CODE_TEST_CAPACITY  # write
+    ENV_KEY = 'SAMPLE_CODE_TEST_CAPACITY'
+    if ENV_KEY in os.environ:
+        for r in os.environ[ENV_KEY].split(','):
+            rr = r.strip().lower()
+            if r:
+                SAMPLE_CODE_TEST_CAPACITY.add(rr)
+    if 'cpu' not in SAMPLE_CODE_TEST_CAPACITY:
+        SAMPLE_CODE_TEST_CAPACITY.add('cpu')
+
+    if RUN_ON_DEVICE:
+        SAMPLE_CODE_TEST_CAPACITY.add(RUN_ON_DEVICE)
+
+
+def is_required_match(requirestr, cbtitle='not-specified'):
+    """
+    search the required instruction in the code-block, and check it match the current running environment.
+    
+    environment values of equipped: cpu, gpu, xpu, distributed, skip
+    the 'skip' is the special flag to skip the test, so is_required_match will return False directly.
+
+    returns:
+        True - yes, matched
+        False - not match
+        None - skipped  # trick
+    """
+    requires = set(['cpu'])
+    if requirestr:
+        for r in requirestr.split(','):
+            rr = r.strip().lower()
+            if rr:
+                requires.add(rr)
+    if 'skip' in requires or 'skiptest' in requires:
+        logger.info('%s: skipped', cbtitle)
+        return None
+
+    if all([
+            k in SAMPLE_CODE_TEST_CAPACITY for k in requires
+            if k not in ['skip', 'skiptest']
+    ]):
+        return True
+
+    logger.info('%s: the equipments [%s] not match the required [%s].', cbtitle,
+                ','.join(SAMPLE_CODE_TEST_CAPACITY), ','.join(requires))
+    return False
 
 
 def insert_codes_into_codeblock(codeblock, apiname='not-specified'):
