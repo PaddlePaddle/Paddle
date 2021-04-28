@@ -125,6 +125,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     size_t avail, total, actual_avail, actual_total;
     bool is_limited = platform::RecordedCudaMemGetInfo(
         &avail, &total, &actual_avail, &actual_total, gpu_id_);
+    size_t allocated = total - avail;
 
     std::string err_msg;
     if (is_limited) {
@@ -139,7 +140,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU %d. "
-        "Cannot allocate %s memory on GPU %d, "
+        "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
         "available memory is only %s.\n\n"
         "Please check whether there is any other process using GPU %d.\n"
         "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
@@ -150,8 +151,8 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         "      The command is "
         "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
         gpu_id_, string::HumanReadableSize(size), gpu_id_,
-        string::HumanReadableSize(avail), gpu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use, err_msg));
+        string::HumanReadableSize(allocated), string::HumanReadableSize(avail),
+        gpu_id_, FLAGS_fraction_of_gpu_memory_to_use, err_msg));
   }
 }
 

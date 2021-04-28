@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    'cache', 'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap_readers', 'multiprocess_reader'
-]
-
 from threading import Thread
 import subprocess
 import multiprocessing
@@ -593,7 +588,8 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         sys.stderr.write("import ujson error: " + str(e) + " use json\n")
         import json
 
-    assert type(readers) is list and len(readers) > 0
+    assert isinstance(readers, (list, tuple)) and len(readers) > 0, (
+        "`readers` must be list or tuple.")
 
     def _read_into_queue(reader, queue):
         try:
