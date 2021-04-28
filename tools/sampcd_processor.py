@@ -291,17 +291,10 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
 
     sample_code_filenames = []
     for y, cb in enumerate(codeblocks):
-        sampcd = cb['codes']
-        if RUN_ON_DEVICE == "cpu":
-            sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
-        if RUN_ON_DEVICE == "gpu":
-            sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = "{}"\n'.format(
-                GPU_ID) + sampcd
-        sampcd += '\nprint(' + '\"' + name + ' sample code is executed successfully!\")'
-
         tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
             name, '.py' if len(codeblocks) == 1 else '_{}.py'.format(y + 1)))
         with open(tfname, 'w') as tempf:
+            sampcd = insert_codes_into_codeblock(cb, name)
             tempf.write(sampcd)
         sample_code_filenames.append(tfname)
     return sample_code_filenames
