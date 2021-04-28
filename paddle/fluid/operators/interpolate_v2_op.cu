@@ -1094,12 +1094,12 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
               "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
               "should be greater than 0, but received value is %d.",
               scale_w));
-    PADDLE_ENFORCE_EQ(
-        scale_h > 0, true,
-        platform::errors::InvalidArgument(
-            "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
-            "should be greater than 0, but received value is %d.",
-            scale_h));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
     } else {
       if (scale.size() > 1) {
         scale_w = scale[1];
@@ -1111,12 +1111,12 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
                 "The scale_w in Attr(scale) of Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
                 scale_w));
-      PADDLE_ENFORCE_EQ(
-          scale_h > 0, true,
-          platform::errors::InvalidArgument(
-              "The scale_h in Attr(scale) of Operator(interpolate) "
-              "should be greater than 0, but received value is %d.",
-              scale_h));
+        PADDLE_ENFORCE_EQ(
+            scale_h > 0, true,
+            platform::errors::InvalidArgument(
+                "The scale_h in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_h));
       }
     }
     if (scale_w > 0. && scale_h > 0.) {
