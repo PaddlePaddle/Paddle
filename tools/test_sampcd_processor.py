@@ -30,6 +30,7 @@ from sampcd_processor import sampcd_extract_to_file
 from sampcd_processor import extract_code_blocks_from_docstr
 from sampcd_processor import execute_samplecode
 from sampcd_processor import find_last_future_line_end
+from sampcd_processor import insert_codes_into_codeblock
 
 SAMPLECODE_TEMP_DIR = 'samplecode_temp'
 
@@ -117,7 +118,8 @@ class Test_extract_code_blocks_from_docstr(unittest.TestCase):
         self.assertListEqual(codeblocks, [{
             'codes': """print(1+1)""",
             'name': None,
-            'id': 1
+            'id': 1,
+            'required': None,
         }])
 
     def test_2_samplecodes(self):
@@ -132,18 +134,74 @@ class Test_extract_code_blocks_from_docstr(unittest.TestCase):
                :name: one_plus_one
                :linenos:
 
+                # required: gpu
                 print(1+1)
         """
         codeblocks = extract_code_blocks_from_docstr(docstr)
         self.assertListEqual(codeblocks, [{
             'codes': """print(1/0)""",
             'name': None,
-            'id': 1
+            'id': 1,
+            'required': None,
         }, {
-            'codes': """print(1+1)""",
+            'codes': """# required: gpu
+print(1+1)""",
             'name': 'one_plus_one',
-            'id': 2
+            'id': 2,
+            'required': 'gpu',
         }])
+
+
+class Test_insert_codes_into_codeblock(unittest.TestCase):
+    def test_required_None(self):
+        codeblock = {
+            'codes': """print(1/0)""",
+            'name': None,
+            'id': 1,
+            'required': None,
+        }
+        self.assertEqual("""
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+print(1/0)
+print("not-specified's sample code (name:None, id:1) is executed successfully!")""",
+                         insert_codes_into_codeblock(codeblock))
+
+    def test_required_gpu(self):
+        codeblock = {
+            'codes': """# required: gpu
+print(1+1)""",
+            'name': None,
+            'id': 1,
+            'required': 'gpu',
+        }
+        self.assertEqual("""
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# required: gpu
+print(1+1)
+print("not-specified's sample code (name:None, id:1) is executed successfully!")""",
+                         insert_codes_into_codeblock(codeblock))
+
+    def test_from_future(self):
+        codeblock = {
+            'codes': """
+from __future__ import print_function
+from __future__ import division
+print(10//3)""",
+            'name': 'future',
+            'id': 1,
+            'required': None,
+        }
+        self.assertEqual("""
+from __future__ import print_function
+from __future__ import division
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+print(10//3)
+print("not-specified's sample code (name:future, id:1) is executed successfully!")""",
+                         insert_codes_into_codeblock(codeblock))
 
 
 class Test_execute_samplecode(unittest.TestCase):
