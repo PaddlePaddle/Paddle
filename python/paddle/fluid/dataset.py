@@ -391,7 +391,7 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, False)
+            self.dataset.dynamic_adjust_channel_num(thread_num, True)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     @deprecated(
@@ -400,7 +400,7 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
+            self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     @deprecated(

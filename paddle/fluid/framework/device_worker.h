@@ -266,6 +266,9 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
+#ifdef PADDLE_WITH_HETERPS
+  platform::DeviceContext* dev_ctx_ = nullptr;
+#endif
 };
 
 class DownpourWorker : public HogwildWorker {
