@@ -477,16 +477,22 @@ class TestTensorRegisterHook(unittest.TestCase):
                     name='x', shape=[None, self.in_size], dtype='float32')
 
                 net = SimpleNetForStatic(self.in_size, self.out_size)
-                out = net(x)
-
-                exe = paddle.static.Executor()
-                exe.run(startup_program)
-
-                data = np.random.uniform(
-                    size=[self.batch_size, self.in_size]).astype('float32')
-                exe.run(main_program, feed={'x': data}, fetch_list=[out.name])
+                with self.assertRaises(AssertionError):
+                    out = net(x)
 
         paddle.disable_static()
+
+    def test_register_hook_in_dy2static_mode(self):
+        net = SimpleNetForStatic(self.in_size, self.out_size)
+        jit_net = paddle.jit.to_static(
+            net, input_spec=[paddle.static.InputSpec([None, self.in_size])])
+
+        data = np.random.uniform(
+            size=[self.batch_size, self.in_size]).astype('float32')
+        data_t = paddle.to_tensor(data)
+
+        with self.assertRaises(AssertionError):
+            out = jit_net(data_t)
 
 
 HOOK_INIT_VALUE = 10
