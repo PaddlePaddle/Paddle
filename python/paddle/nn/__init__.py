@@ -126,6 +126,8 @@ from .layer.distance import PairwiseDistance  # noqa: F401
 from .layer.vision import PixelShuffle  # noqa: F401
 from .layer.container import LayerDict  # noqa: F401
 
+from .utils.spectral_norm_hook import spectral_norm
+
 # TODO: remove loss, keep it for too many used in unitests
 from .layer import loss  # noqa: F401
 from ..fluid.dygraph.layers import Layer  # noqa: F401
