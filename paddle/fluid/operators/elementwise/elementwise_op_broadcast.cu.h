@@ -22,13 +22,12 @@ namespace operators {
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename fetch_t, int N>
 __device__ inline void BScalarizedKernelImpl(fetch_t data_fetch, int tid) {
-  using ScalarT = CudaAlignedVector<T, 1>;
-  ScalarT args[N];
+  T args[N];
   data_fetch.load_scalar(args, tid);
 
 #pragma unroll(N)
   for (int j = 1; j < N; ++j) {
-    args[0].val[0] += args[j].val[0];
+    args[0] += args[j];
   }
   data_fetch.store_scalar(args, tid);
 }
@@ -81,48 +80,48 @@ void CommonElementwiseCore(const platform::CUDADeviceContext &ctx,
 
   switch (dim_size) {
     case 1: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 2>(
-          ins, p_offset_pre, out_data, vec_len);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 2>(ins, p_offset_pre,
+                                                              out, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 2: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 2>(
-          ins, p_offset_pre, out_data, vec_len);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 2>(ins, p_offset_pre,
+                                                              out, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 3: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 3>(
-          ins, p_offset_pre, out_data, vec_len);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 3>(ins, p_offset_pre,
+                                                              out, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 4: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 4>(
-          ins, p_offset_pre, out_data, vec_len);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 4>(ins, p_offset_pre,
+                                                              out, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 5: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 5>(
-          ins, p_offset_pre, out_data, vec_len);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 5>(ins, p_offset_pre,
+                                                              out, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 6: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 6>(
-          ins, p_offset_pre, out_data, vec_len);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 6>(ins, p_offset_pre,
+                                                              out, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
@@ -157,7 +156,13 @@ void BroadcastDimsTransform(const platform::CUDADeviceContext &ctx,
           ctx, ins, out, offset_pre, func);
       break;
     }
-    default: { ; }
+    default: {
+      PADDLE_ENFORCE_GT(
+          input_num, MAX_TENSORS,
+          platform::errors::InvalidArgument("Quantity of Input tensor"
+                                            "is %d, the limitation is %d\n",
+                                            input_num, MAX_TENSORS));
+    }
   }
 #endif
 }

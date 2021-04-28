@@ -199,7 +199,7 @@ struct OffsetPreCalculator {
  public:
   explicit OffsetPreCalculator(const merge_t &merge_dims) {
     auto vec_dims = merge_dims.vec_dims;
-    auto N = vec_dims.size();
+    const auto N = vec_dims.size();
     int dim_size = merge_dims.dim_size;
     divmoders.resize(dim_size);
     strides.resize(N, std::vector<IndexT>(dim_size, 1));
@@ -222,12 +222,15 @@ struct DataFetch {
   using ScalarT = CudaAlignedVector<T, 1>;
 
   HOSTDEVICE DataFetch(const std::vector<const framework::Tensor *> &ins,
-                       const OffsetT &offset_pre, T *out_data, int data_offset)
-      : out_data(out_data), data_offset(data_offset) {
+                       const OffsetT &offset_pre, framework::Tensor *out,
+                       int data_offset)
+      : data_offset(data_offset) {
     for (int j = 0; j < N; ++j) {
       in_data[j] = ins[j]->data<T>();
+      is_vectorize[j] = ins[j]->dims() == out->dims() ? true : false;
       memcpy(strides[j], offset_pre.strides[j].data(), nDims * sizeof(IndexT));
     }
+    out_data = out->data<T>();
     memcpy(divmoders, offset_pre.divmoders.data(),
            nDims * sizeof(FastDivMod<IndexT>));
   }
@@ -244,24 +247,70 @@ struct DataFetch {
     return offset;
   }
 
-  __device__ __forceinline__ void load_vector(ArgT args[], int tid) {
+  //   __device__ __forceinline__ void load_vector(ArgT args[], int tid) {
+  //     int index = tid * vec_size;
+
+  // #pragma unroll(N)
+  //     for (int j = 0; j < N; ++j) {
+  // #pragma unroll(vec_size)
+  //       for (int i = 0; i < vec_size; ++i) {
+  //         IndexT offset = get_offset(index + i, j);
+  //         args[j].val[i] = in_data[j][offset];
+  //       }
+  //     }
+  //   }
+
+  //   __device__ __forceinline__ void load_scalar(ScalarT args[], int tid) {
+  // #pragma unroll
+  //     for (int j = 0; j < N; ++j) {
+  //       auto offset = get_offset(tid + data_offset, j);
+  //       args[j].val[0] = in_data[j][offset];
+  //     }
+  //   }
+
+  __device__ __forceinline__ void common_vector(ArgT args[], int tid, int idx) {
+    const ArgT *__restrict__ vec_data =
+        reinterpret_cast<const ArgT *__restrict__>(in_data[idx]);
+    args[idx] = vec_data[tid];
+  }
+
+  __device__ __forceinline__ void divmod_vector(ArgT args[], int tid, int idx) {
     int index = tid * vec_size;
 
+    for (int i = 0; i < vec_size; ++i) {
+      IndexT offset = get_offset(index + i, idx);
+      args[idx].val[i] = in_data[idx][offset];
+    }
+  }
+
+  __device__ __forceinline__ void common_scalar(T args[], int tid, int idx) {
+    args[idx] = in_data[idx][tid + data_offset];
+  }
+
+  __device__ __forceinline__ void divmod_scalar(T args[], int tid, int idx) {
+    auto offset = get_offset(tid + data_offset, idx);
+    args[idx] = in_data[idx][offset];
+  }
+
+  __device__ __forceinline__ void load_vector(ArgT args[], int tid) {
 #pragma unroll(N)
     for (int j = 0; j < N; ++j) {
-#pragma unroll(vec_size)
-      for (int i = 0; i < vec_size; ++i) {
-        IndexT offset = get_offset(index + i, j);
-        args[j].val[i] = in_data[j][offset];
+      if (is_vectorize[j]) {
+        common_vector(args, tid, j);
+      } else {
+        divmod_vector(args, tid, j);
       }
     }
   }
 
-  __device__ __forceinline__ void load_scalar(ScalarT args[], int tid) {
-#pragma unroll
+  __device__ __forceinline__ void load_scalar(T args[], int tid) {
+#pragma unroll(N)
     for (int j = 0; j < N; ++j) {
-      auto offset = get_offset(tid + data_offset, j);
-      args[j].val[0] = in_data[j][offset];
+      if (is_vectorize[j]) {
+        common_scalar(args, tid, j);
+      } else {
+        divmod_scalar(args, tid, j);
+      }
     }
   }
 
@@ -270,14 +319,15 @@ struct DataFetch {
     vec_out[tid] = args[0];
   }
 
-  __device__ __forceinline__ void store_scalar(ScalarT args[], int tid) {
-    out_data[data_offset + tid] = args[0].val[0];
+  __device__ __forceinline__ void store_scalar(T args[], int tid) {
+    out_data[data_offset + tid] = args[0];
   }
 
   T *out_data;
   const T *__restrict__ in_data[nDims];
-  IndexT data_offset;
+  bool is_vectorize[N];
   IndexT strides[N][MAX_DIMS];
+  IndexT data_offset;
   FastDivMod<IndexT> divmoders[nDims];
 };
 #endif
