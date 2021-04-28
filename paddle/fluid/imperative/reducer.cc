@@ -762,7 +762,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
     // TODO(liuyuhui): Add try catch to deal with exception later,
     // otherwise the main thread will continue to run when an exception is
     // thrown in comm_pool_.
-    comm_pool_->enqueue([&] {
+    comm_pool_->enqueue([=, &group] {
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
       platform::SetXPUDeviceId(dev_id);
       FusedAllReduceSchedule(run_order, group, next_group_);
