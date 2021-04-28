@@ -145,7 +145,7 @@ def extract_code_blocks_from_docstr(docstr):
     cb_cur_indent = -1
     cb_cur_name = None
     cb_cur_seq_id = 0
-    cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\w+)\s*$")
+    cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
     for lineno, linecont in enumerate(ds_list):
         if re.search(cb_start_pat, linecont):
             if not cb_started:

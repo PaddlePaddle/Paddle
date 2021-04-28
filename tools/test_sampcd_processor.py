@@ -130,6 +130,7 @@ class Test_extract_code_blocks_from_docstr(unittest.TestCase):
 
             .. code-block:: python
                :name: one_plus_one
+               :linenos:
 
                 print(1+1)
         """
