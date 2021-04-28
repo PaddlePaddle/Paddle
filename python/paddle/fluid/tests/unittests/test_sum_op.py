@@ -143,6 +143,8 @@ class TestSelectedRowsSumOp(unittest.TestCase):
                 self.check_with_place(place, inplace)
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 'place does not support BF16 evaluation')
 class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
     def setUp(self):
         self.height = 10
