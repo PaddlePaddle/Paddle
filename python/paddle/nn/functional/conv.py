@@ -13,15 +13,6 @@
 # limitations under the License.
 from __future__ import print_function
 
-__all__ = [
-    'conv1d',
-    'conv1d_transpose',
-    'conv2d',
-    'conv2d_transpose',
-    'conv3d',
-    'conv3d_transpose',
-]
-
 import numpy as np
 from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode

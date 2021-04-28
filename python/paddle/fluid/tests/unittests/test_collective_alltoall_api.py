@@ -12,5 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.layers import BeamSearchDecoder  # noqa: F401
-from ..fluid.layers import dynamic_decode  # noqa: F401
+from __future__ import print_function
+import unittest
+import numpy as np
+import paddle
+
+from test_collective_api_base import TestDistBase
+
+paddle.enable_static()
+
+
+class TestCollectiveAllToAllAPI(TestDistBase):
+    def _setup_config(self):
+        pass
+
+    def test_alltoall_nccl(self):
+        self.check_with_place("collective_alltoall_api.py", "alltoall", "nccl")
+
+
+if __name__ == '__main__':
+    unittest.main()
