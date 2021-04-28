@@ -16,10 +16,6 @@
 #include <mkl.h>
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#endif
-
 #include <algorithm>
 #include <cmath>
 #include <limits>
