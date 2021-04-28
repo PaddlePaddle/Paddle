@@ -131,7 +131,7 @@ def extract_code_blocks_from_docstr(docstr):
         docstr - docstring
     Return:
         code_blocks - A list of code-blocks, indent removed. 
-                      element {'name': the code-block's name, 'id': sequence id. 'codes': codes}
+                      element {'name': the code-block's name, 'id': sequence id. 'codes': codes, 'required': 'gpu'}
     """
     code_blocks = []
     mo = re.search(r"Examples:", docstr)
@@ -146,6 +146,8 @@ def extract_code_blocks_from_docstr(docstr):
     cb_cur_name = None
     cb_cur_seq_id = 0
     cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
+    cb_required_pat = re.compile(r"^\s*#\s*require[s|d]\s*:\s*(\S+)\s*$")
+    cb_required = None
     for lineno, linecont in enumerate(ds_list):
         if re.search(cb_start_pat, linecont):
             if not cb_started:
@@ -159,7 +161,8 @@ def extract_code_blocks_from_docstr(docstr):
                     code_blocks.append({
                         'codes': inspect.cleandoc("\n".join(cb_cur)),
                         'name': cb_cur_name,
-                        'id': cb_cur_seq_id
+                        'id': cb_cur_seq_id,
+                        'required': cb_required,
                     })
                 cb_started = True  # another block started
                 cb_cur_seq_id += 1
@@ -174,6 +177,9 @@ def extract_code_blocks_from_docstr(docstr):
                         cb_cur_name = mo_p.group(2)
                     continue
                 # check indent for cur block ends.
+                mo_r = cb_required_pat.match(linecont)
+                if mo_r:
+                    cb_required = mo_r.group(1)
                 if lineno == lastlineindex:
                     mo = re.search(r"\S", linecont)
                     if mo is not None and cb_cur_indent <= mo.start():
@@ -182,7 +188,8 @@ def extract_code_blocks_from_docstr(docstr):
                         code_blocks.append({
                             'codes': inspect.cleandoc("\n".join(cb_cur)),
                             'name': cb_cur_name,
-                            'id': cb_cur_seq_id
+                            'id': cb_cur_seq_id,
+                            'required': cb_required,
                         })
                     break
                 if cb_cur_indent < 0:
@@ -205,12 +212,48 @@ def extract_code_blocks_from_docstr(docstr):
                                     'codes':
                                     inspect.cleandoc("\n".join(cb_cur)),
                                     'name': cb_cur_name,
-                                    'id': cb_cur_seq_id
+                                    'id': cb_cur_seq_id,
+                                    'required': cb_required,
                                 })
                             cb_started = False
                             cb_cur_indent = -1
                             cb_cur = []
     return code_blocks
+
+
+def insert_codes_into_codeblock(codeblock, apiname='not-specified'):
+    """
+    insert some codes in the frontend and backend into the code-block.
+    """
+    inserted_codes_f = ''
+    inserted_codes_b = ''
+    env_key = 'CODES_INTERTED_INTO_FRONTEND'
+    if env_key in os.environ and os.environ[env_key]:
+        inserted_codes_f = os.environ[env_key]
+    else:
+        cpu_str = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = ""\n'
+        gpu_str = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = "{}"\n'.format(
+            GPU_ID)
+        if 'required' in codeblock:
+            if codeblock['required'] is None or codeblock['required'] == 'cpu':
+                inserted_codes_f = cpu_str
+            elif codeblock['required'] == 'gpu':
+                inserted_codes_f = gpu_str
+        else:
+            if RUN_ON_DEVICE == "cpu":
+                inserted_codes_f = cpu_str
+            elif RUN_ON_DEVICE == "gpu":
+                inserted_codes_f = gpu_str
+    inserted_codes_b = '\nprint("{}\'s sample code (name:{}, id:{}) is executed successfully!")'.format(
+        apiname, codeblock['name'], codeblock['id'])
+
+    cb = codeblock['codes']
+    last_future_line_end = find_last_future_line_end(cb)
+    if last_future_line_end:
+        return cb[:last_future_line_end] + inserted_codes_f + cb[
+            last_future_line_end:] + inserted_codes_b
+    else:
+        return inserted_codes_f + cb + inserted_codes_b
 
 
 def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
