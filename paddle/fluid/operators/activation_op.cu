@@ -547,7 +547,7 @@ struct CudaExpFunctor : public BaseActivationFunctor<T> {
   // Inputs: args[0], the input x
   __device__ __forceinline__ T operator()(const T* args) const {
     MPType x = static_cast<MPType>(args[0]);
-    return static_cast<T>(exp(x));
+    return static_cast<T>(std::exp(x));
   }
 };
 
@@ -1378,6 +1378,32 @@ namespace plat = paddle::platform;
       ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
                                     ops::grad_functor<plat::float16>>);
 
+#define REGISTER_ACTIVATION_CUDA_KERNEL_INT(act_type, op_name, functor,        \
+                                            grad_functor)                      \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      act_type, ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext, \
+                                          ops::functor<float>>,                \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
+                                ops::functor<double>>,                         \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
+                                ops::functor<int>>,                            \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,           \
+                                ops::functor<int64_t>>,                        \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,                       \
+                                ops::functor<plat::float16>>);                 \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      act_type##_grad,                                                         \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+                                    ops::grad_functor<float>>,                 \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+                                    ops::grad_functor<double>>,                \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+                                    ops::grad_functor<int>>,                   \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+                                    ops::grad_functor<int64_t>>,               \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,                   \
+                                    ops::grad_functor<plat::float16>>);
+
 /* ======================== leaky relu register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(leaky_relu, LeakyRelu, CudaLeakyReluFunctor,
                                 CudaLeakyReluGradFunctor);
@@ -1462,29 +1488,8 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ===========================  square register  ============================ */
-REGISTER_OP_CUDA_KERNEL(
-    square, ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                                      ops::CudaSquareFunctor<float>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaSquareFunctor<double>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaSquareFunctor<int>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaSquareFunctor<int64_t>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaSquareFunctor<plat::float16>>);
-REGISTER_OP_CUDA_KERNEL(
-    square_grad,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaSquareGradFunctor<float>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaSquareGradFunctor<double>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaSquareGradFunctor<int>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaSquareGradFunctor<int64_t>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaSquareGradFunctor<plat::float16>>);
+REGISTER_ACTIVATION_CUDA_KERNEL_INT(square, Square, CudaSquareFunctor,
+                                    CudaSquareGradFunctor);
 
 REGISTER_OP_CUDA_KERNEL(
     square_grad_grad,
@@ -1501,7 +1506,6 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */
-
 REGISTER_OP_CUDA_KERNEL(
     pow, ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<float>>,
     ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<double>>,
@@ -1519,27 +1523,8 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ==========================   exp register  ============================ */
-
-REGISTER_OP_CUDA_KERNEL(
-    exp, ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                                   ops::CudaExpFunctor<float>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaExpFunctor<double>>,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::ExpFunctor<int>>,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::ExpFunctor<int64_t>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaExpFunctor<plat::float16>>);
-REGISTER_OP_CUDA_KERNEL(
-    exp_grad, ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                            ops::CudaExpGradFunctor<float>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaExpGradFunctor<double>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaExpGradFunctor<int>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaExpGradFunctor<int64_t>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaExpGradFunctor<plat::float16>>);
+REGISTER_ACTIVATION_CUDA_KERNEL_INT(exp, Exp, CudaExpFunctor,
+                                    CudaExpGradFunctor);
 /* ========================================================================== */
 
 /* ==========================  Log register ==================================*/
@@ -1554,77 +1539,44 @@ REGISTER_OP_CUDA_KERNEL(
                              ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
-/* ========================== softrelu register ============================ */
-REGISTER_OP_CUDA_KERNEL(
-    soft_relu, ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                                         ops::CudaSoftReluFunctor<float>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaSoftReluFunctor<double>>,
-    ops::ActivationKernel<plat::CUDADeviceContext,
-                          ops::SoftReluFunctor<plat::float16>>);
-REGISTER_OP_CUDA_KERNEL(
-    soft_relu_grad,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaSoftReluGradFunctor<float>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaSoftReluGradFunctor<double>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::SoftReluGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
-/* ==========================   swish register  ============================ */
-REGISTER_OP_CUDA_KERNEL(
-    swish, ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                                     ops::CudaSwishFunctor<float>>,
-    ops::ActivationCudaKernel<plat::CUDADeviceContext,
-                              ops::CudaSwishFunctor<double>>,
-    ops::ActivationKernel<plat::CUDADeviceContext,
-                          ops::SwishFunctor<plat::float16>>);
-REGISTER_OP_CUDA_KERNEL(
-    swish_grad, ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                              ops::CudaSwishGradFunctor<float>>,
-    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
-                                  ops::CudaSwishGradFunctor<double>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::SwishGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
-#define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                 \
-  __macro(sigmoid, Sigmoid, CudaSigmoidFunctor, CudaSigmoidGradFunctor);     \
-  __macro(silu, Silu, CudaSiluFunctor, CudaSiluGradFunctor);                 \
-  __macro(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,                     \
-          CudaLogSigmoidGradFunctor);                                        \
-  __macro(atan, Atan, CudaAtanFunctor, CudaAtanGradFunctor);                 \
-  __macro(softshrink, SoftShrink, CudaSoftShrinkFunctor,                     \
-          CudaSoftShrinkGradFunctor);                                        \
-  __macro(ceil, Ceil, CudaCeilFunctor, CudaZeroGradFunctor);                 \
-  __macro(floor, Floor, CudaFloorFunctor, CudaZeroGradFunctor);              \
-  __macro(cos, Cos, CudaCosFunctor, CudaCosGradFunctor);                     \
-  __macro(tan, Tan, CudaTanFunctor, CudaTanGradFunctor);                     \
-  __macro(acos, Acos, CudaAcosFunctor, CudaAcosGradFunctor);                 \
-  __macro(sin, Sin, CudaSinFunctor, CudaSinGradFunctor);                     \
-  __macro(asin, Asin, CudaAsinFunctor, CudaAsinGradFunctor);                 \
-  __macro(sinh, Sinh, CudaSinhFunctor, CudaSinhGradFunctor);                 \
-  __macro(cosh, Cosh, CudaCoshFunctor, CudaCoshGradFunctor);                 \
-  __macro(round, Round, CudaRoundFunctor, CudaZeroGradFunctor);              \
-  __macro(reciprocal, Reciprocal, CudaReciprocalFunctor,                     \
-          CudaReciprocalGradFunctor);                                        \
-  __macro(log1p, Log1p, CudaLog1pFunctor, CudaLog1pGradFunctor);             \
-  __macro(log2, Log2, CudaLog2Functor, CudaLog2GradFunctor);                 \
-  __macro(log10, Log10, CudaLog10Functor, CudaLog10GradFunctor);             \
-  __macro(brelu, BRelu, CudaBReluFunctor, CudaBReluGradFunctor);             \
-  __macro(stanh, STanh, CudaSTanhFunctor, CudaSTanhGradFunctor);             \
-  __macro(softplus, Softplus, CudaSoftplusFunctor, CudaSoftplusGradFunctor); \
-  __macro(softsign, Softsign, CudaSoftsignFunctor, CudaSoftsignGradFunctor); \
-  __macro(relu6, Relu6, CudaRelu6Functor, CudaRelu6GradFunctor);             \
-  __macro(tanh_shrink, TanhShrink, CudaTanhShrinkFunctor,                    \
-          CudaTanhShrinkGradFunctor);                                        \
-  __macro(hard_shrink, HardShrink, CudaHardShrinkFunctor,                    \
-          CudaHardShrinkGradFunctor);                                        \
-  __macro(hard_sigmoid, HardSigmoid, CudaHardSigmoidFunctor,                 \
-          CudaHardSigmoidGradFunctor);                                       \
-  __macro(thresholded_relu, ThresholdedRelu, CudaThresholdedReluFunctor,     \
-          CudaThresholdedReluGradFunctor);                                   \
-  __macro(hard_swish, HardSwish, CudaHardSwishFunctor,                       \
+#define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \
+  __macro(sigmoid, Sigmoid, CudaSigmoidFunctor, CudaSigmoidGradFunctor);      \
+  __macro(silu, Silu, CudaSiluFunctor, CudaSiluGradFunctor);                  \
+  __macro(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,                      \
+          CudaLogSigmoidGradFunctor);                                         \
+  __macro(atan, Atan, CudaAtanFunctor, CudaAtanGradFunctor);                  \
+  __macro(softshrink, SoftShrink, CudaSoftShrinkFunctor,                      \
+          CudaSoftShrinkGradFunctor);                                         \
+  __macro(ceil, Ceil, CudaCeilFunctor, CudaZeroGradFunctor);                  \
+  __macro(floor, Floor, CudaFloorFunctor, CudaZeroGradFunctor);               \
+  __macro(cos, Cos, CudaCosFunctor, CudaCosGradFunctor);                      \
+  __macro(tan, Tan, CudaTanFunctor, CudaTanGradFunctor);                      \
+  __macro(acos, Acos, CudaAcosFunctor, CudaAcosGradFunctor);                  \
+  __macro(sin, Sin, CudaSinFunctor, CudaSinGradFunctor);                      \
+  __macro(asin, Asin, CudaAsinFunctor, CudaAsinGradFunctor);                  \
+  __macro(sinh, Sinh, CudaSinhFunctor, CudaSinhGradFunctor);                  \
+  __macro(cosh, Cosh, CudaCoshFunctor, CudaCoshGradFunctor);                  \
+  __macro(round, Round, CudaRoundFunctor, CudaZeroGradFunctor);               \
+  __macro(reciprocal, Reciprocal, CudaReciprocalFunctor,                      \
+          CudaReciprocalGradFunctor);                                         \
+  __macro(log1p, Log1p, CudaLog1pFunctor, CudaLog1pGradFunctor);              \
+  __macro(log2, Log2, CudaLog2Functor, CudaLog2GradFunctor);                  \
+  __macro(log10, Log10, CudaLog10Functor, CudaLog10GradFunctor);              \
+  __macro(brelu, BRelu, CudaBReluFunctor, CudaBReluGradFunctor);              \
+  __macro(soft_relu, SoftRelu, CudaSoftReluFunctor, CudaSoftReluGradFunctor); \
+  __macro(stanh, STanh, CudaSTanhFunctor, CudaSTanhGradFunctor);              \
+  __macro(softplus, Softplus, CudaSoftplusFunctor, CudaSoftplusGradFunctor);  \
+  __macro(softsign, Softsign, CudaSoftsignFunctor, CudaSoftsignGradFunctor);  \
+  __macro(relu6, Relu6, CudaRelu6Functor, CudaRelu6GradFunctor);              \
+  __macro(tanh_shrink, TanhShrink, CudaTanhShrinkFunctor,                     \
+          CudaTanhShrinkGradFunctor);                                         \
+  __macro(hard_shrink, HardShrink, CudaHardShrinkFunctor,                     \
+          CudaHardShrinkGradFunctor);                                         \
+  __macro(hard_sigmoid, HardSigmoid, CudaHardSigmoidFunctor,                  \
+          CudaHardSigmoidGradFunctor);                                        \
+  __macro(swish, Swish, CudaSwishFunctor, CudaSwishGradFunctor);              \
+  __macro(thresholded_relu, ThresholdedRelu, CudaThresholdedReluFunctor,      \
+          CudaThresholdedReluGradFunctor);                                    \
+  __macro(hard_swish, HardSwish, CudaHardSwishFunctor,                        \
           CudaHardSwishGradFunctor);
 FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
