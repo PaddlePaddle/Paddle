@@ -102,9 +102,13 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
+        if startup_program is None:
+            startup_program = fluid.default_startup_program()
+        self.startup_program = startup_program
 
         block = loss.block
         program = block.program
+        self.main_program = program
 
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
@@ -177,21 +181,19 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         outputs={'Out': grad},
                         attrs={
                             'ring_id': ring_id,
-                            self.op_role_key: OpRole.Backward
+                            OP_ROLE_KEY: OpRole.Backward
                         })
 
         if grad is None:
             return
 
         for idx, op in enumerate(block.ops):
-            if self._is_optimizer_op(op):
+            if is_optimizer_op(op):
                 block._insert_op(
                     idx,
                     type='c_sync_comm_stream',
                     inputs={'X': grad},
                     outputs={'Out': grad},
-                    attrs={
-                        'ring_id': ring_id,
-                        self.op_role_key: OpRole.Backward
-                    })
+                    attrs={'ring_id': ring_id,
+                           OP_ROLE_KEY: OpRole.Backward})
                 break
