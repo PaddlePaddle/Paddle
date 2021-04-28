@@ -133,6 +133,7 @@ void AppendOpOutputVarNames(const proto::OpDesc& op_desc,
       vars_set->emplace(arg);
     }
   }
+  std::cout << "tianshuo test" << std::endl;
 }
 
 int FindMapByValue(const std::map<int, int>& m, int val) {
