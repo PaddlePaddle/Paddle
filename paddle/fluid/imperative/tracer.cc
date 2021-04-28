@@ -84,7 +84,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
   if (gcs_.count(place) == 0) {
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gc.reset(new framework::DefaultStreamGarbageCollector(
           BOOST_GET_CONST(platform::CUDAPlace, place), 0));
 
@@ -95,7 +95,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gc.reset(new framework::CUDAPinnedGarbageCollector(
           BOOST_GET_CONST(platform::CUDAPinnedPlace, place), 0));
 
