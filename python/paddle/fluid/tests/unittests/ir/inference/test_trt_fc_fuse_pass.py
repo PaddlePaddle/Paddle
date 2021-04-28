@@ -55,14 +55,17 @@ class FCFusePassTRTTest(InferencePassTest):
 class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[32, 128, 32, 8], dtype="float32")
+            data = fluid.data(
+                name="data", shape=[32, 128, 32, 8], dtype="float32")
             fc_out1 = fluid.layers.fc(input=data,
                                       size=64,
                                       num_flatten_dims=1,
                                       act="relu")
             out = fluid.layers.softmax(input=fc_out1)
 
-        self.feeds = {"data": np.random.random((32, 128, 32, 8)).astype("float32")}
+        self.feeds = {
+            "data": np.random.random((32, 128, 32, 8)).astype("float32")
+        }
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTStaticDims4Cols1Test.TensorRTParam(
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
@@ -75,17 +78,21 @@ class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
         for i in range(len(use_gpu)):
             self.check_output_with_option(use_gpu[i])
 
+
 class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[3, 24, 16, 16], dtype="float32")
+            data = fluid.data(
+                name="data", shape=[3, 24, 16, 16], dtype="float32")
             fc_out1 = fluid.layers.fc(input=data,
                                       size=32,
                                       num_flatten_dims=2,
                                       act="relu")
             out = fluid.layers.softmax(input=fc_out1)
 
-        self.feeds = {"data": np.random.random((3, 24, 16, 16)).astype("float32")}
+        self.feeds = {
+            "data": np.random.random((3, 24, 16, 16)).astype("float32")
+        }
         self.enable_trt = True
         self.trt_parameters = FCFusePassTRTStaticDims4Cols2Test.TensorRTParam(
             1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
