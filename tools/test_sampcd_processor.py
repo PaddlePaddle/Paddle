@@ -114,7 +114,11 @@ class Test_extract_code_blocks_from_docstr(unittest.TestCase):
                 print(1+1)
         """
         codeblocks = extract_code_blocks_from_docstr(docstr)
-        self.assertListEqual(codeblocks, ["""print(1+1)"""])
+        self.assertListEqual(codeblocks, [{
+            'codes': """print(1+1)""",
+            'name': None,
+            'id': 1
+        }])
 
     def test_2_samplecodes(self):
         docstr = """
@@ -125,11 +129,20 @@ class Test_extract_code_blocks_from_docstr(unittest.TestCase):
                 print(1/0)
 
             .. code-block:: python
+               :name: one_plus_one
 
                 print(1+1)
         """
         codeblocks = extract_code_blocks_from_docstr(docstr)
-        self.assertListEqual(codeblocks, ["""print(1/0)""", """print(1+1)"""])
+        self.assertListEqual(codeblocks, [{
+            'codes': """print(1/0)""",
+            'name': None,
+            'id': 1
+        }, {
+            'codes': """print(1+1)""",
+            'name': 'one_plus_one',
+            'id': 2
+        }])
 
 
 class Test_execute_samplecode(unittest.TestCase):
