@@ -146,18 +146,6 @@ class LazyZerosNPU {
                   const std::vector<bool> found_inf_vec,
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
-    /*for (size_t i = 0; i < xs.size(); ++i) {
-      auto* out = outs[i];
-      if (found_inf_vec[0]) {
-        VLOG(4) << "-- UpdateLossScaling: Find infinite grads. --";
-
-        auto place = dev_ctx.GetPlace();
-        auto stream = dev_ctx.stream();
-        out->mutable_data<T>(place);
-        auto runner_zeros = NpuOpRunner("ZerosLike", {*out}, {*out});
-        runner_zeros.Run(stream);
-      }
-    }*/
     if (!xs.size()) {
       return;
     }
