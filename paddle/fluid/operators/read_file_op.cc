@@ -29,25 +29,20 @@ class CPUReadFileKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto filename = ctx.Attr<std::string>("filename");
-    std::vector<char> image_data;
+
     std::ifstream input(filename.c_str(),
                         std::ios::in | std::ios::binary | std::ios::ate);
     std::streamsize file_size = input.tellg();
 
     input.seekg(0, std::ios::beg);
 
-    if ((int64_t)image_data.size() < (int64_t)file_size) {
-      image_data.resize(file_size);
-    }
-
-    input.read(image_data.data(), file_size);
-
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     std::vector<int64_t> out_shape = {file_size};
     out->Resize(framework::make_ddim(out_shape));
 
     uint8_t* data = out->mutable_data<T>(ctx.GetPlace());
-    std::memcpy(data, reinterpret_cast<uint8_t*>(image_data.data()), file_size);
+
+    input.read(reinterpret_cast<char*>(data), file_size);
   }
 };
 

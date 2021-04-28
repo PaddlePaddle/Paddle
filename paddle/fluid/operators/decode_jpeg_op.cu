@@ -18,13 +18,15 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 namespace paddle {
 namespace operators {
 
+static cudaStream_t nvjpeg_stream = nullptr;
 static nvjpegHandle_t nvjpeg_handle = nullptr;
 
-void init_nvjpegImage(nvjpegImage_t* img) {
+void InitNvjpegImage(nvjpegImage_t* img) {
   for (int c = 0; c < NVJPEG_MAX_COMPONENT; c++) {
     img->channel[c] = nullptr;
     img->pitch[c] = 0;
@@ -72,57 +74,58 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
     int width = widths[0];
     int height = heights[0];
 
-    nvjpegOutputFormat_t outputFormat;
-    int outputComponents;
+    nvjpegOutputFormat_t output_format;
+    int output_components;
 
     auto mode = ctx.Attr<std::string>("mode");
     if (mode == "unchanged") {
       if (components == 1) {
-        outputFormat = NVJPEG_OUTPUT_Y;
-        outputComponents = 1;
+        output_format = NVJPEG_OUTPUT_Y;
+        output_components = 1;
       } else if (components == 3) {
-        outputFormat = NVJPEG_OUTPUT_RGB;
-        outputComponents = 3;
+        output_format = NVJPEG_OUTPUT_RGB;
+        output_components = 3;
       } else {
         platform::dynload::nvjpegJpegStateDestroy(nvjpeg_state);
         PADDLE_THROW(platform::errors::Fatal(
             "The provided mode is not supported for JPEG files on GPU"));
       }
     } else if (mode == "gray") {
-      outputFormat = NVJPEG_OUTPUT_Y;
-      outputComponents = 1;
+      output_format = NVJPEG_OUTPUT_Y;
+      output_components = 1;
     } else if (mode == "rgb") {
-      outputFormat = NVJPEG_OUTPUT_RGB;
-      outputComponents = 3;
+      output_format = NVJPEG_OUTPUT_RGB;
+      output_components = 3;
     } else {
       platform::dynload::nvjpegJpegStateDestroy(nvjpeg_state);
-      PADDLE_ENFORCE_EQ(
-          false, true,
-          platform::errors::Fatal(
-              "The provided mode is not supported for JPEG files on GPU"));
+      PADDLE_THROW(platform::errors::Fatal(
+          "The provided mode is not supported for JPEG files on GPU"));
     }
 
-    nvjpegImage_t outImage;
-    init_nvjpegImage(&outImage);
+    nvjpegImage_t out_image;
+    InitNvjpegImage(&out_image);
 
-    auto stream = ctx.cuda_device_context().stream();
+    // create nvjpeg stream
+    if (nvjpeg_stream == nullptr) {
+      cudaStreamCreateWithFlags(&nvjpeg_stream, cudaStreamNonBlocking);
+    }
 
     int sz = widths[0] * heights[0];
 
     auto* out = ctx.Output<framework::LoDTensor>("Out");
-    std::vector<int64_t> out_shape = {outputComponents, height, width};
+    std::vector<int64_t> out_shape = {output_components, height, width};
     out->Resize(framework::make_ddim(out_shape));
 
     T* data = out->mutable_data<T>(ctx.GetPlace());
 
-    for (int c = 0; c < outputComponents; c++) {
-      outImage.channel[c] = data + c * sz;
-      outImage.pitch[c] = width;
+    for (int c = 0; c < output_components; c++) {
+      out_image.channel[c] = data + c * sz;
+      out_image.pitch[c] = width;
     }
 
     nvjpegStatus_t decode_status = platform::dynload::nvjpegDecode(
-        nvjpeg_handle, nvjpeg_state, x_data, x->numel(), outputFormat,
-        &outImage, stream);
+        nvjpeg_handle, nvjpeg_state, x_data, x->numel(), output_format,
+        &out_image, nvjpeg_stream);
   }
 };
 

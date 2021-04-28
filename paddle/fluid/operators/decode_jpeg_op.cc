@@ -43,7 +43,20 @@ class DecodeJpegOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DecodeJpeg");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "DecodeJpeg");
 
-    auto out_dims = std::vector<int>(1, -1);
+    auto mode = ctx->Attrs().Get<std::string>("mode");
+    std::vector<int> out_dims;
+
+    if (mode == "unchanged") {
+      out_dims = {-1, -1, -1};
+    } else if (mode == "gray") {
+      out_dims = {1, -1, -1};
+    } else if (mode == "rgb") {
+      out_dims = {3, -1, -1};
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "The provided mode is not supported for JPEG files on GPU: ", mode));
+    }
+
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
   }
 
@@ -74,9 +87,10 @@ class DecodeJpegOpMaker : public framework::OpProtoAndCheckerMaker {
              "of the JPEG image. It is a tensor with rank 1.");
     AddOutput("Out", "The output tensor of DecodeJpeg op");
     AddComment(R"DOC(
-This operator decode a JPEG image into a 3 dimensional RGB Tensor.
-Optionally converts the image to the desired format. The values of 
-the output tensor are uint8 between 0 and 255.
+This operator decodes a JPEG image into a 3 dimensional RGB Tensor 
+or 1 dimensional Gray Tensor. Optionally converts the image to the 
+desired format. The values of the output tensor are uint8 between 0 
+and 255.
 )DOC");
     AddAttr<std::string>(
         "mode",
