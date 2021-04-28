@@ -130,7 +130,8 @@ def extract_code_blocks_from_docstr(docstr):
     Args:
         docstr - docstring
     Return:
-        A dict of code-blocks, indent removed. key is the code-block's name or sequence id.
+        code_blocks - A list of code-blocks, indent removed. 
+                      element {'name': the code-block's name, 'id': sequence id. 'codes': codes}
     """
     code_blocks = []
     mo = re.search(r"Examples:", docstr)
@@ -144,27 +145,45 @@ def extract_code_blocks_from_docstr(docstr):
     cb_cur_indent = -1
     cb_cur_name = None
     cb_cur_seq_id = 0
+    cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\w+)\s*$")
     for lineno, linecont in enumerate(ds_list):
         if re.search(cb_start_pat, linecont):
             if not cb_started:
                 cb_started = True
+                cb_cur_seq_id += 1
+                cb_cur_name = None
                 continue
             else:
                 # cur block end
                 if len(cb_cur):
-                    code_blocks.append(inspect.cleandoc("\n".join(cb_cur)))
+                    code_blocks.append({
+                        'codes': inspect.cleandoc("\n".join(cb_cur)),
+                        'name': cb_cur_name,
+                        'id': cb_cur_seq_id
+                    })
                 cb_started = True  # another block started
+                cb_cur_seq_id += 1
+                cb_cur_name = None
                 cb_cur_indent = -1
                 cb_cur = []
         else:
-            # check indent for cur block ends.
             if cb_started:
+                mo_p = cb_param_pat.match(linecont)
+                if mo_p:
+                    if mo_p.group(1) == 'name':
+                        cb_cur_name = mo_p.group(2)
+                    continue
+                # check indent for cur block ends.
                 if lineno == lastlineindex:
                     mo = re.search(r"\S", linecont)
                     if mo is not None and cb_cur_indent <= mo.start():
                         cb_cur.append(linecont)
                     if len(cb_cur):
-                        code_blocks.append(inspect.cleandoc("\n".join(cb_cur)))
+                        code_blocks.append({
+                            'codes': inspect.cleandoc("\n".join(cb_cur)),
+                            'name': cb_cur_name,
+                            'id': cb_cur_seq_id
+                        })
                     break
                 if cb_cur_indent < 0:
                     mo = re.search(r"\S", linecont)
@@ -182,8 +201,12 @@ def extract_code_blocks_from_docstr(docstr):
                         else:
                             # block end
                             if len(cb_cur):
-                                code_blocks.append(
-                                    inspect.cleandoc("\n".join(cb_cur)))
+                                code_blocks.append({
+                                    'codes':
+                                    inspect.cleandoc("\n".join(cb_cur)),
+                                    'name': cb_cur_name,
+                                    'id': cb_cur_seq_id
+                                })
                             cb_started = False
                             cb_cur_indent = -1
                             cb_cur = []
@@ -224,7 +247,8 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
             return []
 
     sample_code_filenames = []
-    for y, sampcd in enumerate(codeblocks):
+    for y, cb in enumerate(codeblocks):
+        sampcd = cb['codes']
         if RUN_ON_DEVICE == "cpu":
             sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
         if RUN_ON_DEVICE == "gpu":
