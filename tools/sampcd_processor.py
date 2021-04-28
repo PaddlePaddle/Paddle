@@ -155,6 +155,7 @@ def extract_code_blocks_from_docstr(docstr):
                 cb_started = True
                 cb_cur_seq_id += 1
                 cb_cur_name = None
+                cb_required = None
                 continue
             else:
                 # cur block end
@@ -168,6 +169,7 @@ def extract_code_blocks_from_docstr(docstr):
                 cb_started = True  # another block started
                 cb_cur_seq_id += 1
                 cb_cur_name = None
+                cb_required = None
                 cb_cur_indent = -1
                 cb_cur = []
         else:
@@ -343,12 +345,25 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
 
     sample_code_filenames = []
     for y, cb in enumerate(codeblocks):
-        tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
-            name, '.py' if len(codeblocks) == 1 else '_{}.py'.format(y + 1)))
-        with open(tfname, 'w') as tempf:
-            sampcd = insert_codes_into_codeblock(cb, name)
-            tempf.write(sampcd)
-        sample_code_filenames.append(tfname)
+        matched = is_required_match(cb['required'], name)
+        if matched == True:
+            tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
+                name, '.py'
+                if len(codeblocks) == 1 else '_{}.py'.format(y + 1)))
+            with open(tfname, 'w') as tempf:
+                sampcd = insert_codes_into_codeblock(cb, name)
+                tempf.write(sampcd)
+            sample_code_filenames.append(tfname)
+        else:
+            if matched is None:
+                logger.info('{}\' code block (name:{}, id:{}) is skipped.'.
+                            format(name, cb['name'], cb['id']))
+            elif matched == False:
+                logger.info(
+                    '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'.
+                    format(name, cb['name'], cb['id'], cb['required'],
+                           SAMPLE_CODE_TEST_CAPACITY))
+
     return sample_code_filenames
 
 

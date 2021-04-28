@@ -221,9 +221,11 @@ def clear_capacity():
 class Test_get_test_capacity(unittest.TestCase):
     def setUp(self):
         clear_capacity()
+        get_test_capacity()
 
     def tearDown(self):
         clear_capacity()
+        get_test_capacity()
 
     def test_NoEnvVar(self):
         clear_capacity()
@@ -259,6 +261,7 @@ class Test_is_required_match(unittest.TestCase):
 
     def tearDown(self):
         clear_capacity()
+        get_test_capacity()
 
     def test_alldefault(self):
         clear_capacity()
@@ -349,9 +352,14 @@ class Test_sampcd_extract_to_file(unittest.TestCase):
     def setUp(self):
         if not os.path.exists(SAMPLECODE_TEMP_DIR):
             os.mkdir(SAMPLECODE_TEMP_DIR)
+        clear_capacity()
+        os.environ[ENV_KEY] = 'gpu,distributed'
+        get_test_capacity()
 
     def tearDown(self):
         shutil.rmtree(SAMPLECODE_TEMP_DIR)
+        clear_capacity()
+        get_test_capacity()
 
     def test_1_samplecode(self):
         comments = """
@@ -390,6 +398,30 @@ class Test_sampcd_extract_to_file(unittest.TestCase):
         sample_code_filenames = sampcd_extract_to_file(comments, funcname)
         self.assertCountEqual([
             os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_1.py'),
+            os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_2.py')
+        ], sample_code_filenames)
+
+    def test_2_samplecodes_has_skipped(self):
+        comments = """
+        placeholder
+        Examples:
+            .. code-block:: python
+
+                # required: skiptest
+                print(1/0)
+
+            .. code-block:: python
+
+                print(1+1)
+
+            .. code-block:: python
+
+                # required: skiptest
+                print(1//1)
+        """
+        funcname = 'one_plus_one'
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([
             os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_2.py')
         ], sample_code_filenames)
 
