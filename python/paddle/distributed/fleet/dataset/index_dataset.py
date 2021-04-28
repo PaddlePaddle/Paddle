@@ -163,7 +163,16 @@ class GraphIndex(Index):
     def _init_graph(self, filename):
         self._wrapper.insert_graph_index(self._name, filename)
         self._graph = self._wrapper.get_graph_index(self.name)
-    
+
+    def reset_graph_mapping(self):
+        self._graph.reset_mapping()
+
+    def add_graph_item_path_mapping(self, item_id, path_list):
+        self._graph.add_item(item_id, path_list)
+
+    def get_graph_item_path_dict(self):
+        return self._graph.get_item_path_dict()
+
     def save_graph_path(self, filename):
         if self._graph != None:
             self._graph.save(filename)

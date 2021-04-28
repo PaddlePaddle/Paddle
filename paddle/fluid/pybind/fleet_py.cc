@@ -247,6 +247,9 @@ void BindGraphIndex(py::module* m) {
       }))
       .def("reset_mapping", &GraphIndex::reset_mapping)
       .def("add_item", &GraphIndex::add_item)
+      .def("save", &GraphIndex::save)
+      .def("load", &GraphIndex::load)
+      .def("get_item_path_dict", &GraphIndex::get_item_path_dict)
       .def("height", [](GraphIndex& self) { return self.height(); })
       .def("width", [](GraphIndex& self) { return self.width(); })
       .def("get_path_of_item",
