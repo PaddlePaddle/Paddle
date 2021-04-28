@@ -83,7 +83,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
       beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
     }
-    T epsilon = static_cast<T>(ctx.Attr<float>("EpsilonTensor"));
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
     if (ctx.HasInput("EpsilonTensor")) {
       auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
       epsilon = static_cast<T>(GetAttrFromTensor(epsilon_tensor));
