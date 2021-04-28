@@ -102,6 +102,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dropout",
       "prelu",
       "conv2d_transpose",
+      "depthwise_conv2d_transpose",
       "leaky_relu",
       "fc",
       "shuffle_channel",
@@ -172,7 +173,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
-        op_type == "conv2d_fusion") {
+        op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
+        op_type == "depthwise_conv2d_transpose") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
@@ -202,7 +204,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
 
-      if (op_type == "conv2d_transpose") {
+      if (op_type == "conv2d_transpose" ||
+          op_type == "depthwise_conv2d_transpose") {
         if (!desc.HasAttr("dilations")) {
           return false;
         } else {

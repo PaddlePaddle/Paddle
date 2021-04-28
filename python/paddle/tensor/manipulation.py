@@ -23,51 +23,16 @@ from ..fluid.layers import utils
 import numpy as np
 import six
 # TODO: define functions to manipulate a tensor  
-from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import slice  #DEFINE_ALIAS
-from ..fluid.layers import transpose  #DEFINE_ALIAS
-from ..fluid.layers import unstack  #DEFINE_ALIAS
+from ..fluid.layers import cast  # noqa: F401
+from ..fluid.layers import slice  # noqa: F401
+from ..fluid.layers import transpose  # noqa: F401
+from ..fluid.layers import unstack  # noqa: F401
 
-from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
-from ..fluid.layers import shard_index  #DEFINE_ALIAS
+from ..fluid.layers import scatter_nd  # noqa: F401
+from ..fluid.layers import shard_index  # noqa: F401
 from ..fluid import layers
 import paddle
 import warnings
-
-__all__ = [
-    'cast',
-    'concat',
-    'expand',
-    'broadcast_to',
-    'expand_as',
-    'flatten',
-    'gather',
-    'gather_nd',
-    'reshape',
-    'reshape_',
-    'reverse',
-    'scatter',
-    'scatter_',
-    'scatter_nd_add',
-    'scatter_nd',
-    'shard_index',
-    'slice',
-    'split',
-    'chunk',
-    'squeeze',
-    'squeeze_',
-    'stack',
-    'strided_slice',
-    'transpose',
-    'unique',
-    'unsqueeze',
-    'unsqueeze_',
-    'unstack',
-    'flip',
-    'unbind',
-    'roll',
-    'tile',
-]
 
 
 def _print_warning_in_static_mode(api_name):
@@ -167,7 +132,7 @@ def flip(x, axis, name=None):
     Args:
         x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        axis (list): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
+        axis (list|tuple): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -580,7 +545,7 @@ def squeeze(x, axis=None, name=None):
 
     Args:
         x (Tensor): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
-        axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
+        axis (int|list|tuple, optional): An integer or list/tuple of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-ndim(x), ndim(x))`.
                           If axis is negative, :math:`axis = axis + ndim(x)`.
                           If axis is None, all the dimensions of x of size 1 will be removed.
