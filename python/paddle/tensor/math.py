@@ -808,7 +808,7 @@ def add_n(inputs, name=None):
                               [14, 16, 18]]
 
     Args:
-        inputs (Tensor|list(Tensor)):  A Tensor list. The shape and data type of the list elements should be consistent.
+        inputs (Tensor|list[Tensor]|tuple[Tensor]):  A Tensor or a list/tuple of Tensors. The shape and data type of the list/tuple elements should be consistent.
             Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
@@ -1149,7 +1149,7 @@ def max(x, axis=None, keepdim=False, name=None):
     Args:
         x(Tensor): A tensor, the data type is float32,
             float64, int32, int64.
-        axis(list|int, optional): The axis along which the maximum is computed.
+        axis(int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
@@ -1241,7 +1241,7 @@ def min(x, axis=None, keepdim=False, name=None):
 
     Args:
         x(Tensor): A tensor, the data type is float32, float64, int32, int64.
-        axis(list|int, optional): The axis along which the minimum is computed.
+        axis(int|list|tuple, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.

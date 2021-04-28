@@ -537,6 +537,7 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
     : CPUDeviceContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
+  p_exec_items_.reset(new ExecMap());
   p_mutex_.reset(new std::mutex());
 }
 
@@ -560,7 +561,7 @@ MKLDNNDeviceContextThreadLocals::Body::~Body() {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::MKLDNNDeviceContext* dev_ctx =
       (platform::MKLDNNDeviceContext*)pool.Get(cpu_place);
-  dev_ctx->ResetBlobMap();
+  dev_ctx->ResetBlobMap(exec_ptr_);
 }
 
 void MKLDNNDeviceContextThreadLocals::Body::set_cur_mkldnn_session_id(
@@ -607,15 +608,32 @@ mkldnn::stream& MKLDNNDeviceContextThreadLocals::Body::get_stream(void) {
   return cur_stream;
 }
 
-void MKLDNNDeviceContext::ResetBlobMap() {
+void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
   std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
   if (!block_next_cache_clearing_) {
     VLOG(3) << "Clearing DNNL cache.";
-    p_blobmap_->clear();
+    // If no specific executor pointer then clear
+    // everything. For executor pointer then clear only
+    // objects allocated when using given executor
+    if (ptr == nullptr) {
+      p_blobmap_->clear();
+    } else {
+      for (auto& v : (*p_exec_items_)[ptr]) {
+        (v.first)->erase(v.second);
+      }
+      p_exec_items_->erase(ptr);
+    }
   } else {
     VLOG(3) << "Prevented Clearing DNNL cache.";
     block_next_cache_clearing_ = false;
   }
+}
+
+void MKLDNNDeviceContext::LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
+                                                KeyBlob::iterator it) const {
+  // Take current executor addess from TLS
+  // and for this executor's items add the one defined with arguments
+  (*p_exec_items_)[tls().get_curr_exec()].push_back(std::make_pair(pblob, it));
 }
 
 void MKLDNNDeviceContext::BlockNextCacheClearing() {
@@ -682,7 +700,11 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
   // Find Blob via name
   auto blob_it = pBlob->find(name);
   if (blob_it == pBlob->end()) {
-    (*pBlob)[name] = data;
+    auto el =
+        pBlob->insert(std::make_pair(name, data));  //  (*pBlob)[name] = data;
+    // Register new element in per executor map
+    // to have easily erased when executor terminated
+    LinkEntryWithExecutor(pBlob, el.first);
   } else {
     blob_it->second = data;  // set data to existing blob
   }

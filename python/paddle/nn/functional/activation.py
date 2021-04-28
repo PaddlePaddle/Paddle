@@ -12,57 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define activation functions of neural network
-from ...fluid.layers import brelu  #DEFINE_ALIAS
-# from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import maxout  #DEFINE_ALIAS
-# from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import swish  #DEFINE_ALIAS
-from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import sigmoid_  #DEFINE_ALIAS
-from ...tensor.math import tanh  #DEFINE_ALIAS
-from ...tensor.math import tanh_  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid  # noqa: F401
+from ...fluid.layers import sigmoid_  # noqa: F401
+from ...tensor.math import tanh  # noqa: F401
+from ...tensor.math import tanh_  # noqa: F401
 
 from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...tensor.manipulation import chunk
 from ...tensor.math import multiply
-
-__all__ = [
-    'brelu',
-    'elu',
-    'elu_',
-    'gelu',
-    'hardshrink',
-    'hardtanh',
-    'hardsigmoid',
-    'hardsigmoid_',
-    'hardswish',
-    'leaky_relu',
-    'leaky_relu_',
-    'log_sigmoid',
-    'maxout',
-    'prelu',
-    'relu',
-    'relu_',
-    'relu6',
-    'relu6_',
-    'selu',
-    'softmax',
-    'softmax_',
-    'softplus',
-    'softshrink',
-    'softsign',
-    'sigmoid',
-    'sigmoid_',
-    'silu'
-    'swish',
-    'tanh',
-    'tanh_',
-    'tanhshrink',
-    'thresholded_relu',
-    'log_softmax',
-    'glu',
-]
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
