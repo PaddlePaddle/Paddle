@@ -15,13 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
-#include <nvfunctional>
-#endif
 
 #define MAX_DIMS 10
 #define MAX_TENSORS 4
-
 #define INT_BITS 32
 
 namespace paddle {
@@ -37,9 +33,9 @@ struct FastDivMod {
       IndexT shift_limit = 1 << shift_val;
       if (shift_limit >= divisor) break;
     }
-    uint64_t one_uint64 = 1;
+    uint64_t long_one = 1;
     uint64_t temp_div =
-        ((one_uint64 << INT_BITS) * ((one_uint64 << shift_val) - divisor)) /
+        ((long_one << INT_BITS) * ((long_one << shift_val) - divisor)) /
             divisor +
         1;
     multiplier = temp_div;
@@ -58,7 +54,7 @@ struct FastDivMod {
 
   IndexT divisor;
   IndexT shift_val;
-  IndexT multiplier;
+  uint32_t multiplier;
 };
 
 /* 1. To compensate the lackage of input_tensors dimension;
@@ -209,33 +205,31 @@ struct OffsetPreCalculator {
     strides.resize(N, std::vector<IndexT>(dim_size, 1));
 
     for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = FastDivMod<uint64_t>(merge_dims.out_dims[i]);
+      divmoders[i] = FastDivMod<IndexT>(merge_dims.out_dims[i]);
     }
     StirdeCalculator<decltype(vec_dims)>(N, dim_size, vec_dims);
   }
+
   std::vector<std::vector<IndexT>> strides;
-  std::vector<FastDivMod<uint64_t>> divmoders;
+  std::vector<FastDivMod<IndexT>> divmoders;
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T, typename FuncT, typename OffsetT, int N, int vec_size,
-          int nDims, typename IndexT = uint32_t>
+template <typename T, typename OffsetT, int N, int vec_size, int nDims,
+          typename IndexT = uint32_t>
 struct DataFetch {
   using ArgT = CudaAlignedVector<T, vec_size>;
   using ScalarT = CudaAlignedVector<T, 1>;
 
-  DataFetch() {}
   HOSTDEVICE DataFetch(const std::vector<const framework::Tensor *> &ins,
-                       const OffsetT &offset_pre, T *out_data, int data_offset,
-                       FuncT func)
-      : out_data(out_data), data_offset(data_offset), func(func) {
+                       const OffsetT &offset_pre, T *out_data, int data_offset)
+      : out_data(out_data), data_offset(data_offset) {
     for (int j = 0; j < N; ++j) {
       in_data[j] = ins[j]->data<T>();
-      memcpy(strides[j], offset_pre.strides[j].data(),
-             nDims * sizeof(uint32_t));
+      memcpy(strides[j], offset_pre.strides[j].data(), nDims * sizeof(IndexT));
     }
     memcpy(divmoders, offset_pre.divmoders.data(),
-           nDims * sizeof(FastDivMod<uint64_t>));
+           nDims * sizeof(FastDivMod<IndexT>));
   }
 
   __device__ __forceinline__ IndexT get_offset(int idx, int in_idx) {
@@ -280,12 +274,11 @@ struct DataFetch {
     out_data[data_offset + tid] = args[0].val[0];
   }
 
-  FuncT func;
   T *out_data;
   const T *__restrict__ in_data[nDims];
-  uint32_t data_offset;
-  uint32_t strides[N][nDims];
-  FastDivMod<uint64_t> divmoders[nDims];
+  IndexT data_offset;
+  IndexT strides[N][MAX_DIMS];
+  FastDivMod<IndexT> divmoders[nDims];
 };
 #endif
 

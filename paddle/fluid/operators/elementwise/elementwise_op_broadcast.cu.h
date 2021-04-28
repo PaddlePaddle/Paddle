@@ -80,41 +80,49 @@ void CommonElementwiseCore(const platform::CUDADeviceContext &ctx,
   T *out_data = out->data<T>();
 
   switch (dim_size) {
+    case 1: {
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 2>(
+          ins, p_offset_pre, out_data, vec_len);
+      CommonElementwiseKernel<T, decltype(data_fetch), N,
+                              vec_size><<<blocks, threads, 0, stream>>>(
+          data_fetch, main_tid, tail_tid);
+      break;
+    }
     case 2: {
-      auto data_fetch = DataFetch<T, FuncT, OffsetT, N, vec_size, 2>(
-          ins, p_offset_pre, out_data, vec_len, func);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 2>(
+          ins, p_offset_pre, out_data, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 3: {
-      auto data_fetch = DataFetch<T, FuncT, OffsetT, N, vec_size, 3>(
-          ins, p_offset_pre, out_data, vec_len, func);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 3>(
+          ins, p_offset_pre, out_data, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 4: {
-      auto data_fetch = DataFetch<T, FuncT, OffsetT, N, vec_size, 4>(
-          ins, p_offset_pre, out_data, vec_len, func);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 4>(
+          ins, p_offset_pre, out_data, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 5: {
-      auto data_fetch = DataFetch<T, FuncT, OffsetT, N, vec_size, 5>(
-          ins, p_offset_pre, out_data, vec_len, func);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 5>(
+          ins, p_offset_pre, out_data, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
       break;
     }
     case 6: {
-      auto data_fetch = DataFetch<T, FuncT, OffsetT, N, vec_size, 6>(
-          ins, p_offset_pre, out_data, vec_len, func);
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 6>(
+          ins, p_offset_pre, out_data, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
           data_fetch, main_tid, tail_tid);
