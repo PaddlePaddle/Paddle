@@ -32,8 +32,8 @@ namespace math {
 namespace detail {
 
 template <typename T>
-static void axpy(int n, const T alpha, const T *__restrict__ x, const int incx,
-                 T *y, const int incy) {
+static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
+                 const int incy) {
   // Y = Y + apha * X
   if (static_cast<float>(alpha) == 1.f) {
     while (n-- > 0) {
