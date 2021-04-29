@@ -457,13 +457,14 @@ class DataLoader(object):
             if isinstance(multiprocessing_context, (str, bytes)):
                 valid_start_methods = multiprocessing.get_all_start_methods()
                 if multiprocessing_context not in valid_start_methods:
-                    raise ValueError("multiprocessing_context can only be"
-                                     "set as one of {}, but got {}".format(
-                                     valid_start_methods, multiprocessing_context))
+                    raise ValueError(
+                        "multiprocessing_context can only be"
+                        "set as one of {}, but got {}".format(
+                            valid_start_methods, multiprocessing_context))
                 multiprocessing_context = \
                         multiprocessing.get_context(multiprocessing_context)
             elif not isinstance(multiprocessing_context,
-                                   multiprocessing.context.BaseContext):
+                                multiprocessing.context.BaseContext):
                 raise TypeError("multiprocessing_context can only be set "
                                 "as str or multiprocessing context")
 
