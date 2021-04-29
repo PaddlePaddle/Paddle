@@ -300,7 +300,7 @@ template <typename T>
 typename std::enable_if<std::is_floating_point<T>::value>::type
 elementwise_add_to(BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
                    const T* in, T* out) {
-  blas->AXPY(data_len, T(1.), in, out);
+  blas->AXPY(data_len, T(1.f), in, out);
 }
 
 template <typename T>
@@ -410,7 +410,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
       out.set_rows(merge_rows);
 
       math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
-      constant_functor(context, out.mutable_value(), static_cast<T>(0.0));
+      constant_functor(context, out.mutable_value(), static_cast<T>(0.f));
 
       std::unordered_map<int64_t, size_t> rows_to_id;
       for (size_t i = 0; i < merge_rows.size(); ++i) {
