@@ -26,6 +26,7 @@ function check_whl {
     unzip build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl -d /tmp/pr
 
     git checkout develop
+    make -j `nproc`
     unzip build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl -d /tmp/develop
 
     diff_whl=`diff /tmp/pr/paddlepaddle_gpu-0.0.0.dist-info/RECORD /tmp/develop/paddlepaddle_gpu-0.0.0.dist-info/RECORD|wc -l`
