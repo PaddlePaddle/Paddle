@@ -16,6 +16,8 @@ import os
 import paddle
 from paddle.distributed.fleet.launch_utils import get_cluster, logger
 
+__all__ = []
+
 
 def get_cloud_cluster(args_node_ips,
                       device_mode,

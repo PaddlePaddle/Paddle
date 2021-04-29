@@ -34,7 +34,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 from functools import reduce
 
-__all__ = ["ShardingOptimizer"]
+__all__ = []
 
 
 class ShardingOptimizer(MetaOptimizerBase):
