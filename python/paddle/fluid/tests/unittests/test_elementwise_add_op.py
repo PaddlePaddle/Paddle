@@ -464,10 +464,8 @@ class TestAddInplaceBroadcastSuccess(unittest.TestCase):
     def test_broadcast_success(self):
         paddle.disable_static()
         self.init_data()
-
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
-
         inplace_result = x.add_(y)
         numpy_result = self.x_numpy + self.y_numpy
         self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
@@ -494,7 +492,6 @@ class TestAddInplaceBroadcastError(unittest.TestCase):
     def test_broadcast_errors(self):
         paddle.disable_static()
         self.init_data()
-
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
 

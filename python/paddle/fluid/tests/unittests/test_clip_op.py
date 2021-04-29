@@ -149,7 +149,6 @@ class TestClipAPI(unittest.TestCase):
         out_8 = self._executed_api(images)
         out_9 = self._executed_api(
             paddle.cast(images, 'float64'), min=0.2, max=0.9)
-
         out_10 = self._executed_api(
             paddle.cast(images * 10, 'int32'), min=2, max=8)
         out_11 = self._executed_api(

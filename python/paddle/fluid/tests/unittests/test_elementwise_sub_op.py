@@ -262,7 +262,6 @@ class TestSubtractApi(unittest.TestCase):
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
             z = self._executed_api(x, y)
-
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
@@ -294,10 +293,8 @@ class TestSubtractInplaceBroadcastSuccess(unittest.TestCase):
     def test_broadcast_success(self):
         paddle.disable_static()
         self.init_data()
-
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
-
         inplace_result = x.subtract_(y)
         numpy_result = self.x_numpy - self.y_numpy
         self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
@@ -324,7 +321,6 @@ class TestSubtractInplaceBroadcastError(unittest.TestCase):
     def test_broadcast_errors(self):
         paddle.disable_static()
         self.init_data()
-
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
 

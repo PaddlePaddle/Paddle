@@ -23,7 +23,6 @@ from op_test import OpTest
 
 class TestFlattenOp(OpTest):
     def setUp(self):
-        paddle.enable_static()
         self.op_type = "flatten_contiguous_range"
         self.start_axis = 0
         self.stop_axis = -1
@@ -140,7 +139,6 @@ class TestFlattenOpSixDims(TestFlattenOp):
 
 class TestFlatten2OpError(unittest.TestCase):
     def test_errors(self):
-        paddle.enable_static()
         image_shape = (2, 3, 4, 4)
         x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] *
                       image_shape[3]).reshape(image_shape) / 100.
@@ -185,13 +183,11 @@ class TestFlatten2OpError(unittest.TestCase):
 
 
 class TestStaticFlattenPythonAPI(unittest.TestCase):
-    def setUp(self):
-        paddle.enable_static()
-
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
     def test_static_api(self):
+        paddle.enable_static()
         np_x = np.random.rand(2, 3, 4, 4).astype('float32')
 
         main_prog = paddle.static.Program()
@@ -247,6 +243,7 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
 
         res_shape = test_Negative()
         self.assertTrue((2, 3, 16) == res_shape)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

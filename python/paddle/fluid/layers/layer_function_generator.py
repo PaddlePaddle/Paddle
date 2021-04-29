@@ -292,7 +292,6 @@ def generate_inplace_fn(inplace_op_type):
 
     This function takes in the inplace operator type (exp_ , ceil_ etc) and
     creates the operator functionality.
-
     """
     origin_op_type = inplace_op_type[:-1]
 
@@ -300,7 +299,6 @@ def generate_inplace_fn(inplace_op_type):
         if in_dygraph_mode():
             op = getattr(core.ops, inplace_op_type)
             return op(x)
-
         warnings.warn(
             "In static mode, {}() is the same as {}() and does not perform inplace operation.".
             format(inplace_op_type, origin_op_type))

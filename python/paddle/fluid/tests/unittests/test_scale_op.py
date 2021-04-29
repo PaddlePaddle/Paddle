@@ -199,10 +199,8 @@ class TestScaleApiDygraph(unittest.TestCase):
     def test_api(self):
         paddle.disable_static()
         input = np.random.random([2, 25]).astype("float32")
-
         x = paddle.to_tensor(input)
         out = self._executed_api(x, scale=2.0, bias=3.0)
-
         self.assertEqual(np.array_equal(out.numpy(), input * 2.0 + 3.0), True)
         paddle.enable_static()
 
