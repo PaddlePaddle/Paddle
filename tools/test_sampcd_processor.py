@@ -307,28 +307,14 @@ class Test_execute_samplecode(unittest.TestCase):
         self.assertIsNotNone(msg)
         self.assertLess(msg.find('skipped'), 0)
 
-    def test_testcases_skipped_distributed(self):
-        tfname = os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
-                              'samplecode_skipped.py')
-        with open(tfname, 'w') as f:
-            f.write("# required: distributed\nprint(1/0)")
-        result, _, msg = execute_samplecode(tfname)
-        self.assertTrue(result)
-        self.assertGreaterEqual(msg.find('skipped'), 0)
-        os.remove(tfname)
 
-    def test_testcases_skipped_gpu(self):
-        tfname = os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
-                              'samplecode_skipped.py')
-        with open(tfname, 'w') as f:
-            f.write("""
-# required: gpu
-print(1/0)
-""")
-        result, _, msg = execute_samplecode(tfname)
-        self.assertTrue(result)
-        self.assertGreaterEqual(msg.find('skipped'), 0)
-        os.remove(tfname)
+def clear_summary_info():
+    sampcd_processor.SUMMARY_INFO = {
+        'success': [],
+        'failed': [],
+        'skiptest': [],
+        # ... required not-match
+    }
 
 
 class Test_sampcd_extract_to_file(unittest.TestCase):
@@ -402,15 +388,42 @@ class Test_sampcd_extract_to_file(unittest.TestCase):
 
             .. code-block:: python
 
-                # required: skiptest
+                # required: gpu
+                print(1//1)
+
+            .. code-block:: python
+
+                # required: xpu
+                print(1//1)
+
+            .. code-block:: python
+
+                # required: distributed
+                print(1//1)
+
+            .. code-block:: python
+
+                # required: gpu
                 print(1//1)
         """
         funcname = 'one_plus_one'
+        clear_summary_info()
+        clear_capacity()
+        get_test_capacity()
+
         sample_code_filenames = sampcd_extract_to_file(comments, funcname)
         self.assertCountEqual([
             os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
                          funcname + '_example_2.py')
         ], sample_code_filenames)
+        self.assertCountEqual(sampcd_processor.SUMMARY_INFO['skiptest'],
+                              [funcname + '-1'])
+        self.assertCountEqual(sampcd_processor.SUMMARY_INFO['gpu'],
+                              [funcname + '-3', funcname + '-6'])
+        self.assertCountEqual(sampcd_processor.SUMMARY_INFO['xpu'],
+                              [funcname + '-4'])
+        self.assertCountEqual(sampcd_processor.SUMMARY_INFO['distributed'],
+                              [funcname + '-5'])
 
 
 class Test_get_api_md5(unittest.TestCase):
