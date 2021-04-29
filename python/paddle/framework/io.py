@@ -38,6 +38,8 @@ from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 
+__all__ = []
+
 
 def _build_saved_state_dict(state_dict):
     save_dict = {}
