@@ -493,35 +493,6 @@ def get_incrementapi():
                 f.write('\n')
 
 
-def get_wlist(fn="wlist.json"):
-    '''
-    this function will get the white list of API.
-
-    Returns:
-
-        wlist: a list of API that should not trigger the example check .
-
-    '''
-    wlist = []
-    wlist_file = []
-    # only white on CPU
-    gpu_not_white = []
-    with open(fn, 'r') as load_f:
-        load_dict = json.load(load_f)
-        for key in load_dict:
-            if key == 'wlist_dir':
-                for item in load_dict[key]:
-                    wlist_file.append(item["name"])
-            elif key == "gpu_not_white":
-                gpu_not_white = load_dict[key]
-            elif key == "wlist_api":
-                for item in load_dict[key]:
-                    wlist.append(item["name"])
-            else:
-                wlist = wlist + load_dict[key]
-    return wlist, wlist_file, gpu_not_white
-
-
 arguments = [
     # flags, dest, type, default, help
     ['--gpu_id', 'gpu_id', int, 0, 'GPU device id to use [0]'],
@@ -567,13 +538,9 @@ if __name__ == '__main__':
             ))
         logger.addHandler(logfHandler)
 
-    wlist, wlist_file, gpu_not_white = get_wlist()
-
     if args.mode == "gpu":
         GPU_ID = args.gpu_id
         logger.info("using GPU_ID %d", GPU_ID)
-        for _gnw in gpu_not_white:
-            wlist.remove(_gnw)
     elif args.mode != "cpu":
         logger.error("Unrecognized argument:%s, 'cpu' or 'gpu' is desired.",
                      args.mode)
