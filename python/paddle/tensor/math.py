@@ -59,6 +59,8 @@ from ..fluid.layers import sin    # noqa: F401
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
 
+__all__ = []
+
 _supported_int_dtype_ = [
     VarDesc.VarType.UINT8,
     VarDesc.VarType.INT8,
