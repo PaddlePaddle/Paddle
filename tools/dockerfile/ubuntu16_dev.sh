@@ -40,6 +40,8 @@ function ref_whl(){
 
   if [[ ${ref_CUDA_MAJOR} == "11.0" ]];then
       ref_version=.post110
+  elif [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
+      ref_version=.post112
   elif [[ ${ref_CUDA_MAJOR} == "10" ]];then
       ref_version=.post100
   elif [[ ${ref_CUDA_MAJOR} == "10.1" ]];then
