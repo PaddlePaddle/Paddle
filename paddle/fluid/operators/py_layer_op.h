@@ -27,9 +27,7 @@ namespace py = ::pybind11;
 
 class PyLayerContext {
  public:
-  explicit PyLayerContext(PyObject* context) : context_(context) {
-    Py_INCREF(context_);
-  }
+  explicit PyLayerContext(PyObject* context) : context_(context) {}
 
   PyLayerContext() = delete;
 

@@ -45,7 +45,7 @@ class PyLayerContext(object):
     """
 
     def __init__(self):
-        self.container = None
+        self.container = list()
 
     def save_for_backward(self, *tensors):
         """
@@ -83,7 +83,9 @@ class PyLayerContext(object):
                         return grad
 
         """
-        self.container = tensors
+        #self.container = tensors
+        for t in tensors:
+            self.container.append(t)
 
     def saved_tensor(self):
         """
@@ -178,7 +180,10 @@ class PyLayerBackward(PyLayerContext):
     def backward(self, *args, **kwargs):
         with paddle.fluid.dygraph.guard():
             with paddle.fluid.dygraph.no_grad():
-                return self._forward_cls.backward(*args, **kwargs)
+                grads = self._forward_cls.backward(*args, **kwargs)
+                # clear tensor in ctx
+                args[0].container.clear()
+                return grads
 
 
 class LayerMeta(type):
