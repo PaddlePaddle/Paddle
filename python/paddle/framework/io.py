@@ -38,11 +38,6 @@ from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 
-__all__ = [
-    'save',
-    'load',
-]
-
 
 def _build_saved_state_dict(state_dict):
     save_dict = {}
@@ -499,7 +494,7 @@ def save(obj, path, protocol=2, **configs):
     Save an object to the specified path.
     
     .. note::
-        Now supports saving ``state_dict`` of Layer or Optimizer, Tensor.
+        Now supports saving ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor.
 
     .. note::
         Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
@@ -563,7 +558,7 @@ def save(obj, path, protocol=2, **configs):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [224, 10]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
 
             # save/load tensor
@@ -670,7 +665,7 @@ def load(path, **configs):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now supports load ``state_dict`` of Layer or Optimizer, Tensor.
+        Now supports loading ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor.
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
@@ -763,7 +758,7 @@ def load(path, **configs):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [224, 10]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
 
             # save/load tensor

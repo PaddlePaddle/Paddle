@@ -172,6 +172,12 @@ class TestModel(unittest.TestCase):
     def test_fit_static(self):
         self.fit(False)
 
+    def test_fit_dynamic_with_tuple_input(self):
+        self.fit_with_tuple_input(True)
+
+    def test_fit_static_with_tuple_input(self):
+        self.fit_with_tuple_input(False)
+
     def test_fit_dynamic_with_rank(self):
         self.fit(True, 2, 0)
 
@@ -203,6 +209,53 @@ class TestModel(unittest.TestCase):
         optim_new = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=net.parameters())
         model = Model(net, inputs=self.inputs, labels=self.labels)
+        model.prepare(
+            optim_new,
+            loss=CrossEntropyLoss(reduction="sum"),
+            metrics=Accuracy())
+        model.fit(self.train_dataset, batch_size=64, shuffle=False)
+
+        result = model.evaluate(self.val_dataset, batch_size=64)
+        np.testing.assert_allclose(result['acc'], self.acc1)
+
+        train_sampler = DistributedBatchSampler(
+            self.train_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
+        val_sampler = DistributedBatchSampler(
+            self.val_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
+
+        train_loader = fluid.io.DataLoader(
+            self.train_dataset,
+            batch_sampler=train_sampler,
+            places=self.device,
+            return_list=True)
+
+        val_loader = fluid.io.DataLoader(
+            self.val_dataset,
+            batch_sampler=val_sampler,
+            places=self.device,
+            return_list=True)
+
+        model.fit(train_loader, val_loader)
+        fluid.disable_dygraph() if dynamic else None
+
+    def fit_with_tuple_input(self, dynamic, num_replicas=None, rank=None):
+        fluid.enable_dygraph(self.device) if dynamic else None
+        seed = 333
+        paddle.seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
+
+        net = LeNet()
+        optim_new = fluid.optimizer.Adam(
+            learning_rate=0.001, parameter_list=net.parameters())
+        model = Model(net, inputs=tuple(self.inputs), labels=tuple(self.labels))
         model.prepare(
             optim_new,
             loss=CrossEntropyLoss(reduction="sum"),

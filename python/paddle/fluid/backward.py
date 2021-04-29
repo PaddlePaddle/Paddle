@@ -1036,7 +1036,7 @@ def _append_backward_ops_(block,
             val(list) the op path of block(index)
     """
     if callbacks is not None:
-        assert (isinstance(callbacks, list))
+        assert (isinstance(callbacks, (list, tuple)))
         for cb in callbacks:
             if not hasattr(cb, '__call__'):
                 raise ValueError("'callback' must be a callable object.")
@@ -1157,7 +1157,7 @@ def _append_backward_ops_(block,
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
-            assert (isinstance(callbacks, list))
+            assert (isinstance(callbacks, (list, tuple)))
             for cb in callbacks:
                 cb(block=target_block, context=grad_to_var)
 
@@ -1380,7 +1380,7 @@ def append_backward(loss,
 
     Parameters:
         loss(Tensor): The loss Tensor of the network.
-        parameter_list(list[Tensor|str], optional): List of Parameters or Parameter.names
+        parameter_list(list[Tensor|str]|tuple[Tensor|str], optional): List/Tuple of Parameters or Parameter.names
                                            that need to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
@@ -1391,7 +1391,7 @@ def append_backward(loss,
                                be automatically added into this set.
                                If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
                                Default: None.
-        callbacks(list[callable object], optional): List of callback functions.
+        callbacks(list[callable object]|tuple[callable object], optional): List/Tuple of callback functions.
                                                The callbacks are used for
                                                doing some custom jobs during
                                                backward part building. All
@@ -1477,7 +1477,7 @@ def append_backward(loss,
                       int(core.op_proto_and_checker_maker.OpRole.Loss))
 
     if callbacks is not None:
-        check_type(callbacks, 'callbacks', list,
+        check_type(callbacks, 'callbacks', (list, tuple),
                    'paddle.static.append_backward')
 
     program = loss.block.program
@@ -1823,9 +1823,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets(Tensor|list[Tensor]): The target Tensors
-        inputs(Tensor|list[Tensor]): The input Tensors
-        target_gradients (Tensor|list[Tensor], optional): The gradient Tensors
+        targets(Tensor|list[Tensor]|tuple[Tensor]): The target Tensors
+        inputs(Tensor|list[Tensor]|tuple[Tensor]): The input Tensors
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensors
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
@@ -1962,9 +1962,9 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets (Tensor|list[Tensor]): The target Tensors.
-        inputs (Tensor|list[Tensor]): The input Tensors.
-        target_gradients (Tensor|list[Tensor], optional): The gradient Tensor
+        targets (Tensor|list[Tensor]|tuple[Tensor]): The target Tensors.
+        inputs (Tensor|list[Tensor]|tuple[Tensor]): The input Tensors.
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensor
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
@@ -1992,12 +1992,12 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = paddle.static.gradients([y], x)
             print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
     """
-    check_type(targets, 'targets', (framework.Variable, list),
+    check_type(targets, 'targets', (framework.Variable, list, tuple),
                'paddle.static.gradients')
-    check_type(inputs, 'inputs', (framework.Variable, list),
+    check_type(inputs, 'inputs', (framework.Variable, list, tuple),
                'paddle.static.gradients')
     check_type(target_gradients, 'target_gradients', (
-        framework.Variable, list, type(None)), 'paddle.static.gradients')
+        framework.Variable, list, tuple, type(None)), 'paddle.static.gradients')
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)

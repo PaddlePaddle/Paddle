@@ -14,8 +14,6 @@
 
 # TODO: define the extention functions
 
-__all__ = ['diag_embed', 'sequence_mask']
-
 import numpy as np
 from ...fluid.data_feeder import check_dtype
 from ...fluid.layer_helper import LayerHelper

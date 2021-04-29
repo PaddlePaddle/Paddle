@@ -753,7 +753,7 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
       pattern->NewNode(transpose2_0_repr())->assert_is_op("transpose2");
   auto* transpose2_0_out_var = pattern->NewNode(transpose2_0_out_repr())
                                    ->assert_is_op_output("transpose2");
-  transpose2_0_out_var->AsIntermediate()->assert_is_op_input("matmul");
+  transpose2_0_out_var->AsIntermediate()->assert_is_op_input("matmul", "X");
 
   auto* matmul_qk = pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul");
   auto* matmul_qk_out_var =
@@ -827,7 +827,7 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
   auto* transpose2_1_out_var = pattern->NewNode(transpose2_1_out_repr())
                                    ->assert_is_op_output("transpose2");
   transpose2_1_out_var->AsIntermediate()->assert_is_op_input(
-      "matmul");  // link to matmul qk
+      "matmul", "Y");  // link to matmul qk
 
   // Third path to matmul
   auto* mul2 = pattern->NewNode(mul2_repr())->assert_is_op("matmul");
