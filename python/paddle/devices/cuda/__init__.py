@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core, core_avx
+from paddle.fluid import core
 
 from . import streams
 from .streams import *
@@ -59,7 +59,7 @@ def current_stream(device=None):
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
 
-    return core_avx._get_current_stream(device_id)
+    return core._get_current_stream(device_id)
 
 
 def synchronize(device=None):
@@ -91,4 +91,4 @@ def synchronize(device=None):
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
 
-    return core_avx._device_synchronize(device_id)
+    return core._device_synchronize(device_id)
