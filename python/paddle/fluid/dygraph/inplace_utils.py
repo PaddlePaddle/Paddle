@@ -15,6 +15,7 @@
 from ..wrapped_decorator import wrap_decorator
 from ..framework import in_dygraph_mode
 import warnings
+import paddle
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `core.ops`
