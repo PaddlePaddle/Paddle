@@ -39,6 +39,8 @@ from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
 from paddle.utils import deprecated
 
+__all__ = []
+
 
 def binary_cross_entropy(input, label, weight=None, reduction='mean',
                          name=None):

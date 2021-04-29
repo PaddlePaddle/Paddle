@@ -34,6 +34,8 @@ from ..fluid import layers
 import paddle
 import warnings
 
+__all__ = []
+
 
 def _print_warning_in_static_mode(api_name):
     warnings.warn(
