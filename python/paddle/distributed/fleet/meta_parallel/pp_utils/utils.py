@@ -16,7 +16,7 @@ import abc
 import paddle
 from ...utils import hybrid_parallel_util as hp_util
 
-__all__ = ['get_tensor_bytes', ]
+__all__ = []
 
 
 def get_tensor_bytes(tensor):

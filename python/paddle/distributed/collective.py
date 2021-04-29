@@ -15,8 +15,14 @@
 import numpy as np
 import os
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.framework import Variable
+from ..fluid.framework import OpProtoHolder
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import convert_np_dtype_to_dtype_
+from ..fluid.data_feeder import convert_dtype
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.data_feeder import check_type
+from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 from ..fluid.dygraph.parallel import prepare_context
@@ -25,21 +31,7 @@ from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-__all__ = [
-    'wait',
-    'new_group',
-    'get_group',
-    'broadcast',
-    'all_reduce',
-    'reduce',
-    'all_gather',
-    'scatter',
-    'barrier',
-    'split',
-    'ReduceOp',
-    'send',
-    'recv',
-]
+__all__ = []
 
 
 class ReduceOp:

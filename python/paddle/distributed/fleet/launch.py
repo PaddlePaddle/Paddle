@@ -75,6 +75,8 @@ from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
 import paddle.distributed.fleet.ascend_utils as ascend_utils
 
+__all__ = []
+
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
