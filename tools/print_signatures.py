@@ -25,9 +25,8 @@ import collections
 import sys
 import pydoc
 import hashlib
-import six
+import platform
 import functools
-import paddle
 
 member_dict = collections.OrderedDict()
 
@@ -131,7 +130,7 @@ def visit_member(parent_name, member, member_name=None):
 
 
 def is_primitive(instance):
-    int_types = (int, long) if six.PY2 else (int, )
+    int_types = (int, long) if platform.python_version()[0] == "2" else (int, )
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True
@@ -189,6 +188,7 @@ def visit_all_module(mod):
 
 
 if __name__ == '__main__':
+    import paddle
     modules = sys.argv[1].split(",")
     for m in modules:
         visit_all_module(importlib.import_module(m))

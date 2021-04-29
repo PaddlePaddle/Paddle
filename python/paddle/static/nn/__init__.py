@@ -12,7 +12,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
+from .common import fc  # noqa: F401
+from .common import deform_conv2d  # noqa: F401
+
+from ...fluid.layers import batch_norm  # noqa: F401
+from ...fluid.layers import bilinear_tensor_product  # noqa: F401
+from ...fluid.layers import case  # noqa: F401
+from ...fluid.layers import cond  # noqa: F401
+from ...fluid.layers import conv2d  # noqa: F401
+from ...fluid.layers import conv2d_transpose  # noqa: F401
+from ...fluid.layers import conv3d  # noqa: F401
+from ...fluid.layers import conv3d_transpose  # noqa: F401
+from ...fluid.layers import create_parameter  # noqa: F401
+from ...fluid.layers import crf_decoding  # noqa: F401
+from ...fluid.layers import data_norm  # noqa: F401
+from ...fluid.layers import group_norm  # noqa: F401
+from ...fluid.layers import instance_norm  # noqa: F401
+from ...fluid.layers import layer_norm  # noqa: F401
+from ...fluid.layers import multi_box_head  # noqa: F401
+from ...fluid.layers import nce  # noqa: F401
+from ...fluid.layers import prelu  # noqa: F401
+from ...fluid.layers import py_func  # noqa: F401
+from ...fluid.layers import row_conv  # noqa: F401
+from ...fluid.layers import spectral_norm  # noqa: F401
+from ...fluid.layers import switch_case  # noqa: F401
+from ...fluid.layers import while_loop  # noqa: F401
+
+from ...fluid.input import embedding  # noqa: F401
+from ...fluid.contrib.layers import sparse_embedding  # noqa: F401
+
+from ...fluid.layers.sequence_lod import sequence_conv  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_softmax  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_pool  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_concat  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_first_step  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_last_step  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_slice  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_expand  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_expand_as  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_pad  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_unpad  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_reshape  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
+from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
+
+__all__ = [     #noqa
     'fc',
     'batch_norm',
     'embedding',
@@ -55,48 +100,3 @@ __all__ = [
     'sequence_enumerate',
     'sequence_reverse',
 ]
-
-from .common import fc  #DEFINE_ALIAS
-from .common import deform_conv2d  #DEFINE_ALIAS
-
-from ...fluid.layers import batch_norm  #DEFINE_ALIAS
-from ...fluid.layers import bilinear_tensor_product  #DEFINE_ALIAS
-from ...fluid.layers import case  #DEFINE_ALIAS
-from ...fluid.layers import cond  #DEFINE_ALIAS
-from ...fluid.layers import conv2d  #DEFINE_ALIAS
-from ...fluid.layers import conv2d_transpose  #DEFINE_ALIAS
-from ...fluid.layers import conv3d  #DEFINE_ALIAS
-from ...fluid.layers import conv3d_transpose  #DEFINE_ALIAS
-from ...fluid.layers import create_parameter  #DEFINE_ALIAS
-from ...fluid.layers import crf_decoding  #DEFINE_ALIAS
-from ...fluid.layers import data_norm  #DEFINE_ALIAS
-from ...fluid.layers import group_norm  #DEFINE_ALIAS
-from ...fluid.layers import instance_norm  #DEFINE_ALIAS
-from ...fluid.layers import layer_norm  #DEFINE_ALIAS
-from ...fluid.layers import multi_box_head  #DEFINE_ALIAS
-from ...fluid.layers import nce  #DEFINE_ALIAS
-from ...fluid.layers import prelu  #DEFINE_ALIAS
-from ...fluid.layers import py_func  #DEFINE_ALIAS
-from ...fluid.layers import row_conv  #DEFINE_ALIAS
-from ...fluid.layers import spectral_norm  #DEFINE_ALIAS
-from ...fluid.layers import switch_case  #DEFINE_ALIAS
-from ...fluid.layers import while_loop  #DEFINE_ALIAS
-
-from ...fluid.input import embedding  #DEFINE_ALIAS
-from ...fluid.contrib.layers import sparse_embedding  #DEFINE_ALIAS
-
-from ...fluid.layers.sequence_lod import sequence_conv
-from ...fluid.layers.sequence_lod import sequence_softmax
-from ...fluid.layers.sequence_lod import sequence_pool
-from ...fluid.layers.sequence_lod import sequence_concat
-from ...fluid.layers.sequence_lod import sequence_first_step
-from ...fluid.layers.sequence_lod import sequence_last_step
-from ...fluid.layers.sequence_lod import sequence_slice
-from ...fluid.layers.sequence_lod import sequence_expand
-from ...fluid.layers.sequence_lod import sequence_expand_as
-from ...fluid.layers.sequence_lod import sequence_pad
-from ...fluid.layers.sequence_lod import sequence_unpad
-from ...fluid.layers.sequence_lod import sequence_reshape
-from ...fluid.layers.sequence_lod import sequence_scatter
-from ...fluid.layers.sequence_lod import sequence_enumerate
-from ...fluid.layers.sequence_lod import sequence_reverse

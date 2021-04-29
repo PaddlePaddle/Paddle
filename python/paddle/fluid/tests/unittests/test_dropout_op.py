@@ -303,6 +303,12 @@ class TestDropoutFAPI(unittest.TestCase):
                 mode='downscale_in_infer')
             res10 = paddle.nn.functional.dropout(x=input, p=1., training=True)
             res11 = paddle.fluid.layers.dropout(x=input, dropout_prob=0.)
+            res12 = paddle.nn.functional.dropout(
+                x=input,
+                p=0.,
+                axis=(0, 1),
+                training=False,
+                mode='upscale_in_train')
 
             in_np = np.random.random([40, 40]).astype("float32")
             res_np = in_np
@@ -310,7 +316,8 @@ class TestDropoutFAPI(unittest.TestCase):
 
             exe = fluid.Executor(place)
             res_list = [
-                res1, res2, res3, res4, res5, res6, res7, res8, res9, res11
+                res1, res2, res3, res4, res5, res6, res7, res8, res9, res11,
+                res12
             ]
             for res in res_list:
                 fetches = exe.run(fluid.default_main_program(),
@@ -388,9 +395,16 @@ class TestDropoutFAPI(unittest.TestCase):
                     x=input, p=1., training=True)
                 dropout = paddle.fluid.dygraph.Dropout(p=0, )
                 res11 = dropout(input)
+                res12 = paddle.nn.functional.dropout(
+                    x=input,
+                    p=0.,
+                    axis=(0, 1),
+                    training=False,
+                    mode='upscale_in_train')
 
             res_list = [
-                res1, res2, res3, res4, res5, res6, res7, res8, res9, res11
+                res1, res2, res3, res4, res5, res6, res7, res8, res9, res11,
+                res12
             ]
             for res in res_list:
                 self.assertTrue(np.allclose(res.numpy(), res_np))

@@ -718,6 +718,18 @@ class TestAssign(unittest.TestCase):
 
         self.assertTrue((linear_3.weight.numpy() == [2.0, 2.0]).all(), '')
 
+    def test_assign_initializer_dygraph_4(self):
+        """Test assign initializer in dygraph model.
+        """
+        paddle.disable_static()
+
+        weight_attr_4 = paddle.framework.ParamAttr(
+            name="linear_weight_4",
+            initializer=paddle.nn.initializer.Assign((2, 2)))
+        linear_4 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_4)
+
+        self.assertTrue((linear_4.weight.numpy() == [2.0, 2.0]).all(), '')
+
 
 if __name__ == '__main__':
     unittest.main()

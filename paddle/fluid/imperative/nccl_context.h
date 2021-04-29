@@ -49,7 +49,8 @@ class NCCLParallelContext : public ParallelContext {
 
   ~NCCLParallelContext() override = default;
 
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root);  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root,  // NOLINT
+                   int server_fd);
 
   void Init() override;
 

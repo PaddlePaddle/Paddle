@@ -680,8 +680,8 @@ class Dropout(layers.Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int): Probability of setting units to zero. Default: 0.5
-        axis (int | list): The axis along which the dropout is performed. Default None.
+        p (float|int): Probability of setting units to zero. Default: 0.5
+        axis (int|list|tuple): The axis along which the dropout is performed. Default None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
                                1. upscale_in_train(default), upscale the output at training time
