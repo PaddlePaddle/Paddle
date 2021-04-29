@@ -17,8 +17,6 @@ from ..framework import in_dygraph_mode
 import warnings
 import paddle
 
-__all__ = ['inplace_apis_in_dygraph_only']
-
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `core.ops`
 # in dygraph mode. If static mode is used, the inplace mechanism will not be used, and the static method

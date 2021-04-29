@@ -73,4 +73,3 @@ __all__ += io.__all__
 __all__ += rnn.__all__
 __all__ += ['ProgramTranslator']
 __all__ += amp.__all__
-__all__ += inplace_utils.__all__
