@@ -10524,10 +10524,10 @@ def uniform_random_batch_size_like(input,
 
 
     """
-    check_variable_and_dtype(input, 'Input', ("float32", 'float64'),
+    check_variable_and_dtype(input, 'Input', ("float32", 'float64', "uint16"),
                              'uniform_random_batch_size_like')
     check_type(shape, 'shape', (list, tuple), 'uniform_random_batch_size_like')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'),
+    check_dtype(dtype, 'dtype', ('float32', 'float64', "uint16"),
                 'uniform_random_batch_size_like')
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -15121,7 +15121,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                                        float(max), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64', 'uint16'),
+                'uniform_random/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
