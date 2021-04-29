@@ -19,6 +19,8 @@ from ...fluid.layer_helper import LayerHelper
 from ...fluid.layers import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 
+__all__ = []
+
 
 def one_hot(x, num_classes, name=None):
     """

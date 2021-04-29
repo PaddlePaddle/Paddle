@@ -19,6 +19,8 @@ import warnings
 import functools
 import paddle
 
+__all__ = []
+
 # NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,
 # and since python 3.7, it is once again shown by default when triggered directly by code in __main__.
 # See details: https://docs.python.org/3/library/warnings.html#default-warning-filter
