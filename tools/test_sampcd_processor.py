@@ -25,7 +25,6 @@ import sampcd_processor
 from sampcd_processor import find_all
 from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
-from sampcd_processor import get_wlist
 from sampcd_processor import sampcd_extract_to_file
 from sampcd_processor import extract_code_blocks_from_docstr
 from sampcd_processor import execute_samplecode
@@ -475,55 +474,6 @@ class Test_get_incrementapi(unittest.TestCase):
                 "paddle.two_plus_two\n", "paddle.three_plus_three\n",
                 "paddle.four_plus_four\n"
             ], lines)
-
-
-class Test_get_wlist(unittest.TestCase):
-    def setUp(self):
-        self.tmpDir = tempfile.mkdtemp()
-        self.wlist_filename = os.path.join(self.tmpDir, 'wlist.json')
-        with open(self.wlist_filename, 'w') as f:
-            f.write(r'''
-{
-    "wlist_dir":[
-        {
-            "name":"../python/paddle/fluid/contrib",
-            "annotation":""
-        },
-        {
-            "name":"../python/paddle/verison.py",
-            "annotation":""
-        }
-    ],
-    "wlist_api":[
-        {
-            "name":"xxxxx",
-            "annotation":"not a real api, just for example"
-        }
-    ],
-    "wlist_temp_api":[
-        "to_tensor",
-        "save_persistables@dygraph/checkpoint.py"
-    ],
-    "gpu_not_white":[
-        "deformable_conv"
-    ]
-}
-''')
-
-    def tearDown(self):
-        os.remove(self.wlist_filename)
-        shutil.rmtree(self.tmpDir)
-
-    def test_get_wlist(self):
-        wlist, wlist_file, gpu_not_white = get_wlist(self.wlist_filename)
-        self.assertCountEqual(
-            ["xxxxx", "to_tensor",
-             "save_persistables@dygraph/checkpoint.py"], wlist)
-        self.assertCountEqual([
-            "../python/paddle/fluid/contrib",
-            "../python/paddle/verison.py",
-        ], wlist_file)
-        self.assertCountEqual(["deformable_conv"], gpu_not_white)
 
 
 # https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/layers/ops.py
