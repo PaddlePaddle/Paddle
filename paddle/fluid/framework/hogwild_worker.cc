@@ -238,7 +238,7 @@ void HogwildWorker::TrainFiles() {
     thread_scope_->DropKids();
   }
   timeline.Pause();
-  VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+  VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num;
 #if defined PADDLE_WITH_PSCORE
   if (thread_barrier_) {
