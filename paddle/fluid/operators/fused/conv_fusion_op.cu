@@ -208,7 +208,6 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               kNUM_CUDNN_FWD_ALGS, &find_count, &find_result,
               cudnn_workspace_ptr, workspace_size, false));
     };
-    // if (!exhaustive_search && !deterministic) {
     workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
     algo = find_result.fwd_algo;
     VLOG(3) << "cuDNN forward algo " << algo;
@@ -244,15 +243,16 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSetConvolutionGroupCount(cudnn_conv_desc,
                                                          groups));
-    // Now only support NCHW
-    std::vector<int> bias_dim = {
-        1, static_cast<int>(transformed_output.dims()[1]), 1, 1};
+
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize<int>(transformed_input.dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize<int>(transformed_output.dims()));
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize<int>(filter->dims()));
+    // Now only support NCHW
+    std::vector<int> bias_dim = {
+        1, static_cast<int>(transformed_output.dims()[1]), 1, 1};
     cudnnTensorDescriptor_t cudnn_bias_desc =
         bias_desc.descriptor<T>(layout, bias_dim);
     cudnnActivationDescriptor_t cudnn_act_desc =
@@ -430,6 +430,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
   }
 };
 #endif
+
 }  // namespace operators
 }  // namespace paddle
 

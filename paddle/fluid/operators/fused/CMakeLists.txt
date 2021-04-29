@@ -32,8 +32,10 @@ if (WITH_GPU OR WITH_ROCM)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_batch_norm_act);\n")
     endif()
     # conv_fusion_op needs cudnn 7 above
-    op_library(conv_fusion_op)
-    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
+    if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
+        op_library(conv_fusion_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
+    endif()
     # fusion_transpose_flatten_concat_op
     # HIP not support cudnnTransformTensor
     if(NOT WITH_ROCM)
