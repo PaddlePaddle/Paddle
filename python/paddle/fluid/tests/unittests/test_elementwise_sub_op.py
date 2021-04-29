@@ -239,18 +239,15 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
 
 
 class TestSubtractApi(unittest.TestCase):
-    def setUp(self):
-        self._executed_api()
-
-    def _executed_api(self):
-        self.subtract = paddle.subtract
+    def _executed_api(self, x, y, name=None):
+        return paddle.subtract(x, y, name)
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
             y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = self.subtract(x, y, name='subtract_res')
+            y_1 = self._executed_api(x, y, name='subtract_res')
             self.assertEqual(('subtract_res' in y_1.name), True)
 
     def test_declarative(self):
@@ -264,7 +261,7 @@ class TestSubtractApi(unittest.TestCase):
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = self.subtract(x, y)
+            z = self._executed_api(x, y)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -278,15 +275,15 @@ class TestSubtractApi(unittest.TestCase):
             np_y = np.array([1, 5, 2]).astype('float64')
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
-            z = self.subtract(x, y)
+            z = self._executed_api(x, y)
             np_z = z.numpy()
             z_expected = np.array([1., -2., 2.])
             self.assertEqual((np_z == z_expected).all(), True)
 
 
 class TestSubtractInplaceApi(TestSubtractApi):
-    def _executed_api(self):
-        self.subtract = paddle.subtract_
+    def _executed_api(self, x, y, name=None):
+        return x.subtract_(y, name)
 
 
 class TestSubtractInplaceBroadcastSuccess(unittest.TestCase):
@@ -301,7 +298,7 @@ class TestSubtractInplaceBroadcastSuccess(unittest.TestCase):
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
 
-        inplace_result = paddle.subtract_(x, y)
+        inplace_result = x.subtract_(y)
         numpy_result = self.x_numpy - self.y_numpy
         self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
         paddle.enable_static()
@@ -332,7 +329,7 @@ class TestSubtractInplaceBroadcastError(unittest.TestCase):
         y = paddle.to_tensor(self.y_numpy)
 
         def broadcast_shape_error():
-            paddle.subtract_(x, y)
+            x.subtract_(y)
 
         self.assertRaises(ValueError, broadcast_shape_error)
         paddle.enable_static()

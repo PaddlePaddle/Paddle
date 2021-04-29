@@ -124,11 +124,8 @@ class TestClipOpError(unittest.TestCase):
 
 
 class TestClipAPI(unittest.TestCase):
-    def setUp(self):
-        self._executed_api()
-
-    def _executed_api(self):
-        self.clip = paddle.clip
+    def _executed_api(self, x, min=None, max=None):
+        return paddle.clip(x, min, max)
 
     def test_clip(self):
         paddle.enable_static()
@@ -142,18 +139,21 @@ class TestClipAPI(unittest.TestCase):
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
-        out_1 = self.clip(images, min=min, max=max)
-        out_2 = self.clip(images, min=0.2, max=0.9)
-        out_3 = self.clip(images, min=0.3)
-        out_4 = self.clip(images, max=0.7)
-        out_5 = self.clip(images, min=min)
-        out_6 = self.clip(images, max=max)
-        out_7 = self.clip(images, max=-1.)
-        out_8 = self.clip(images)
-        out_9 = self.clip(paddle.cast(images, 'float64'), min=0.2, max=0.9)
+        out_1 = self._executed_api(images, min=min, max=max)
+        out_2 = self._executed_api(images, min=0.2, max=0.9)
+        out_3 = self._executed_api(images, min=0.3)
+        out_4 = self._executed_api(images, max=0.7)
+        out_5 = self._executed_api(images, min=min)
+        out_6 = self._executed_api(images, max=max)
+        out_7 = self._executed_api(images, max=-1.)
+        out_8 = self._executed_api(images)
+        out_9 = self._executed_api(
+            paddle.cast(images, 'float64'), min=0.2, max=0.9)
 
-        out_10 = self.clip(paddle.cast(images * 10, 'int32'), min=2, max=8)
-        out_11 = self.clip(paddle.cast(images * 10, 'int64'), min=2, max=8)
+        out_10 = self._executed_api(
+            paddle.cast(images * 10, 'int32'), min=2, max=8)
+        out_11 = self._executed_api(
+            paddle.cast(images * 10, 'int64'), min=2, max=8)
 
         res1, res2, res3, res4, res5, res6, res7, res8, res9, res10, res11 = exe.run(
             fluid.default_main_program(),
@@ -194,14 +194,16 @@ class TestClipAPI(unittest.TestCase):
         v_min = paddle.to_tensor(np.array([0.2], dtype=np.float32))
         v_max = paddle.to_tensor(np.array([0.8], dtype=np.float32))
 
-        out_1 = self.clip(images, min=0.2, max=0.8)
+        out_1 = self._executed_api(images, min=0.2, max=0.8)
         images = paddle.to_tensor(data, dtype='float32')
-        out_2 = self.clip(images, min=0.2, max=0.9)
+        out_2 = self._executed_api(images, min=0.2, max=0.9)
         images = paddle.to_tensor(data, dtype='float32')
-        out_3 = self.clip(images, min=v_min, max=v_max)
+        out_3 = self._executed_api(images, min=v_min, max=v_max)
 
-        out_4 = self.clip(paddle.cast(images * 10, 'int32'), min=2, max=8)
-        out_5 = self.clip(paddle.cast(images * 10, 'int64'), min=2, max=8)
+        out_4 = self._executed_api(
+            paddle.cast(images * 10, 'int32'), min=2, max=8)
+        out_5 = self._executed_api(
+            paddle.cast(images * 10, 'int64'), min=2, max=8)
 
         self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
         self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
@@ -215,13 +217,14 @@ class TestClipAPI(unittest.TestCase):
         paddle.enable_static()
         x1 = fluid.data(name='x1', shape=[1], dtype="int16")
         x2 = fluid.data(name='x2', shape=[1], dtype="int8")
-        self.assertRaises(TypeError, self.clip, x=x2, min=0.2, max=0.8)
+        self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
+        self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
         paddle.disable_static()
 
 
 class TestInplaceClipAPI(TestClipAPI):
-    def _executed_api(self):
-        self.clip = paddle.clip_
+    def _executed_api(self, x, min=None, max=None):
+        return x.clip_(min, max)
 
 
 if __name__ == '__main__':

@@ -171,11 +171,8 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
 
 
 class TestScaleApiStatic(unittest.TestCase):
-    def setUp(self):
-        self._executed_api()
-
-    def _executed_api(self):
-        self.scale = paddle.scale
+    def _executed_api(self, x, scale=1.0, bias=0.0):
+        return paddle.scale(x, scale, bias)
 
     def test_api(self):
         paddle.enable_static()
@@ -183,7 +180,7 @@ class TestScaleApiStatic(unittest.TestCase):
         main_prog = Program()
         with program_guard(main_prog, Program()):
             x = paddle.static.data(name="x", shape=[2, 25], dtype="float32")
-            out = self.scale(x, scale=2.0, bias=3.0)
+            out = self._executed_api(x, scale=2.0, bias=3.0)
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         out = exe.run(main_prog, feed={"x": input}, fetch_list=[out])
@@ -191,31 +188,28 @@ class TestScaleApiStatic(unittest.TestCase):
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
-    def _executed_api(self):
-        self.scale = paddle.scale_
+    def _executed_api(self, x, scale=1.0, bias=0.0):
+        return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
-    def setUp(self):
-        self._executed_api()
-
-    def _executed_api(self):
-        self.scale = paddle.scale
+    def _executed_api(self, x, scale=1.0, bias=0.0):
+        return paddle.scale(x, scale, bias)
 
     def test_api(self):
         paddle.disable_static()
         input = np.random.random([2, 25]).astype("float32")
 
         x = paddle.to_tensor(input)
-        out = self.scale(x, scale=2.0, bias=3.0)
+        out = self._executed_api(x, scale=2.0, bias=3.0)
 
         self.assertEqual(np.array_equal(out.numpy(), input * 2.0 + 3.0), True)
         paddle.enable_static()
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
-    def _executed_api(self):
-        self.scale = paddle.scale_
+    def _executed_api(self, x, scale=1.0, bias=0.0):
+        return x.scale_(scale, bias)
 
 
 if __name__ == "__main__":

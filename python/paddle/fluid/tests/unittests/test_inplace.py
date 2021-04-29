@@ -250,10 +250,10 @@ class TestDygraphInplaceReshape(TestDygraphInplace):
 
 class TestDygraphInplaceFlatten(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
-        return paddle.flatten(var)
+        return var.flatten()
 
     def inplace_api_processing(self, var):
-        return paddle.flatten_(var)
+        return var.flatten_()
 
 
 class TestDygraphInplaceScatter(TestDygraphInplace):
@@ -310,18 +310,18 @@ class TestDygraphInplaceTanh(TestDygraphInplace):
 
 class TestDygraphInplaceCeil(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
-        return paddle.ceil(var)
+        return var.ceil()
 
     def inplace_api_processing(self, var):
-        return paddle.ceil_(var)
+        return var.ceil_()
 
 
 class TestDygraphInplaceFloor(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
-        return paddle.floor(var)
+        return var.floor()
 
     def inplace_api_processing(self, var):
-        return paddle.floor_(var)
+        return var.floor_()
 
 
 class TestDygraphInplaceExp(TestDygraphInplace):
@@ -329,26 +329,26 @@ class TestDygraphInplaceExp(TestDygraphInplace):
         self.np_compare = np.allclose
 
     def non_inplace_api_processing(self, var):
-        return paddle.exp(var)
+        return var.exp()
 
     def inplace_api_processing(self, var):
-        return paddle.exp_(var)
+        return var.exp_()
 
 
 class TestDygraphInplaceReciprocal(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
-        return paddle.reciprocal(var)
+        return var.reciprocal()
 
     def inplace_api_processing(self, var):
-        return paddle.reciprocal_(var)
+        return var.reciprocal_()
 
 
 class TestDygraphInplaceRound(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
-        return paddle.round(var)
+        return var.round()
 
     def inplace_api_processing(self, var):
-        return paddle.round_(var)
+        return var.round_()
 
 
 class TestDygraphInplaceSqrt(TestDygraphInplace):
@@ -357,34 +357,34 @@ class TestDygraphInplaceSqrt(TestDygraphInplace):
         self.dtype = "float32"
 
     def non_inplace_api_processing(self, var):
-        return paddle.sqrt(var)
+        return var.sqrt()
 
     def inplace_api_processing(self, var):
-        return paddle.sqrt_(var)
+        return var.sqrt_()
 
 
 class TestDygraphInplaceRsqrt(TestDygraphInplaceSqrt):
     def non_inplace_api_processing(self, var):
-        return paddle.rsqrt(var)
+        return var.rsqrt()
 
     def inplace_api_processing(self, var):
-        return paddle.rsqrt_(var)
+        return var.rsqrt_()
 
 
 class TestDygraphInplaceClip(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
-        return paddle.clip(var, 0.6, 1.5)
+        return var.clip(0.6, 1.5)
 
     def inplace_api_processing(self, var):
-        return paddle.clip_(var, 0.6, 1.5)
+        return var.clip_(0.6, 1.5)
 
 
 class TestDygraphInplaceScale(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
-        return paddle.scale(var, scale=2.0, bias=3.0)
+        return var.scale(scale=2.0, bias=3.0)
 
     def inplace_api_processing(self, var):
-        return paddle.scale_(var, scale=2.0, bias=3.0)
+        return var.scale_(scale=2.0, bias=3.0)
 
 
 class TestDygraphInplaceAdd(TestDygraphInplace):
@@ -395,34 +395,18 @@ class TestDygraphInplaceAdd(TestDygraphInplace):
         self.input_var_2 = paddle.to_tensor(input_var_numpy_2)
 
     def non_inplace_api_processing(self, var):
-        return paddle.add(var, self.input_var_2)
+        return var.add(self.input_var_2)
 
     def inplace_api_processing(self, var):
-        return paddle.add_(var, self.input_var_2)
+        return var.add_(self.input_var_2)
 
 
 class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
     def non_inplace_api_processing(self, var):
-        return paddle.subtract(var, self.input_var_2)
+        return var.subtract(self.input_var_2)
 
     def inplace_api_processing(self, var):
-        return paddle.subtract_(var, self.input_var_2)
-
-
-class TestDygraphInplaceAddN(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.add_n(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.add_n_(var)
-
-
-class TestDygraphInplaceAddNMultiInput(TestDygraphInplaceAdd):
-    def non_inplace_api_processing(self, var):
-        return paddle.add_n([var, self.input_var_2])
-
-    def inplace_api_processing(self, var):
-        return paddle.add_n_([var, self.input_var_2])
+        return var.subtract_(self.input_var_2)
 
 
 if __name__ == '__main__':

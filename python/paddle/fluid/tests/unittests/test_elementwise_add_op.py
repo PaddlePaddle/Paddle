@@ -409,18 +409,15 @@ class TestElementwiseAddOpError(unittest.TestCase):
 
 
 class TestAddApi(unittest.TestCase):
-    def setUp(self):
-        self._executed_api()
-
-    def _executed_api(self):
-        self.add = paddle.add
+    def _executed_api(self, x, y, name=None):
+        return paddle.add(x, y, name)
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
             y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = self.add(x, y, name='add_res')
+            y_1 = self._executed_api(x, y, name='add_res')
             self.assertEqual(('add_res' in y_1.name), True)
 
     def test_declarative(self):
@@ -434,7 +431,7 @@ class TestAddApi(unittest.TestCase):
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = self.add(x, y)
+            z = self._executed_api(x, y)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -448,15 +445,15 @@ class TestAddApi(unittest.TestCase):
             np_y = np.array([1, 5, 2]).astype('float64')
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
-            z = self.add(x, y)
+            z = self._executed_api(x, y)
             np_z = z.numpy()
             z_expected = np.array([3., 8., 6.])
             self.assertEqual((np_z == z_expected).all(), True)
 
 
 class TestAddInplaceApi(TestAddApi):
-    def _executed_api(self):
-        self.add = paddle.add_
+    def _executed_api(self, x, y, name=None):
+        return x.add_(y, name)
 
 
 class TestAddInplaceBroadcastSuccess(unittest.TestCase):
@@ -471,7 +468,7 @@ class TestAddInplaceBroadcastSuccess(unittest.TestCase):
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
 
-        inplace_result = paddle.add_(x, y)
+        inplace_result = x.add_(y)
         numpy_result = self.x_numpy + self.y_numpy
         self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
         paddle.enable_static()
@@ -502,7 +499,7 @@ class TestAddInplaceBroadcastError(unittest.TestCase):
         y = paddle.to_tensor(self.y_numpy)
 
         def broadcast_shape_error():
-            paddle.add_(x, y)
+            x.add_(y)
 
         self.assertRaises(ValueError, broadcast_shape_error)
         paddle.enable_static()

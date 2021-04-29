@@ -857,17 +857,6 @@ def add_n(inputs, name=None):
     return out
 
 
-@inplace_apis_in_dygraph_only
-def add_n_(inputs, name=None):
-    """
-    Inplace version of ``add_n`` API, the output Tensor will be inplaced with the first Tensor in input ``inputs``.
-    Please refer to :ref:`api_tensor_add_n`.
-    """
-    if isinstance(inputs, Variable):
-        inputs = [inputs]
-    return core.ops.sum_(inputs, 'use_mkldnn', False)
-
-
 def mm(input, mat2, name=None):
     """
 
