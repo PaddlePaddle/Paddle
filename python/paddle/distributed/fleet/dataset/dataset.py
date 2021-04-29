@@ -31,6 +31,7 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
 
     def init(self,
              batch_size=1,
@@ -212,6 +213,15 @@ class DatasetBase(object):
         self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_readers()
 
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = use_ps_gpu
+
     def _finish_to_run(self):
         self.dataset.destroy_readers()
 
@@ -267,7 +277,6 @@ class InMemoryDataset(DatasetBase):
         self.enable_pv_merge = False
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
-        self.use_ps_gpu = False
 
     def _init_distributed_settings(self, **kwargs):
         """
@@ -543,9 +552,6 @@ class InMemoryDataset(DatasetBase):
             else:
                 self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
-
-    def _set_use_ps_gpu(self, use_ps_gpu):
-        self.use_ps_gpu = use_ps_gpu
 
     def _set_queue_num(self, queue_num):
         """

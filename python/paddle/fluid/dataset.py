@@ -74,6 +74,7 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
 
     def set_pipe_command(self, pipe_command):
         """
@@ -300,6 +301,15 @@ class DatasetBase(object):
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_readers()
 
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = use_ps_gpu
+
     def _finish_to_run(self):
         self.dataset.destroy_readers()
 
@@ -352,7 +362,6 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
         self.trainer_num = -1
-        self.use_ps_gpu = False
 
     @deprecated(
         since="2.0.0",
@@ -409,12 +418,6 @@ class InMemoryDataset(DatasetBase):
             else:
                 self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
-
-    @deprecated(
-        since="2.1.0",
-        update_to="paddle.distributed.InMemoryDataset._set_use_ps_gpu")
-    def _set_use_ps_gpu(self, use_ps_gpu):
-        self.use_ps_gpu = use_ps_gpu
 
     @deprecated(
         since="2.0.0",
