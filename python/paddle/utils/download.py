@@ -213,7 +213,7 @@ def _remove_if_exists(path):
 
 
 def _git_clone(url, repo_dir, branch):
-    _remove_if_exists(repo_dir)
+
     if branch is None:
         command = 'git clone {} {}'.format(url, repo_dir)
     else:
