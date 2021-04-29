@@ -148,12 +148,5 @@ class TestGithubClone(unittest.TestCase):
             repo, 'MM', source=source, force_reload=False, use_git=True)
 
 
-class TestGiteeClone(TestGithubClone):
-    def get_params(self, ):
-        repo = 'lyuwenyuL/paddlehub_test:master'
-        source = 'gitee'
-        return repo, source
-
-
 if __name__ == '__main__':
     unittest.main()
