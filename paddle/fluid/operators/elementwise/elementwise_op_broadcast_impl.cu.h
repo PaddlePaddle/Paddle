@@ -215,70 +215,68 @@ struct OffsetPreCalculator {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T, typename OffsetT, int N, int vec_size, int nDims,
-          typename IndexT = uint32_t>
+template <typename T, typename OffsetT, int N, int vec_size, int nDims>
 struct DataFetch {
-  using ArgT = CudaAlignedVector<T, vec_size>;
-  using ScalarT = CudaAlignedVector<T, 1>;
+  using VecT = CudaAlignedVector<T, vec_size>;
+  T *out_data;
+  const T *__restrict__ in_data[nDims];
+  uint32_t data_offset;
+  uint32_t strides[N][MAX_DIMS];
+  FastDivMod<uint32_t> divmoders[nDims];
+  bool is_vectorize[N];
 
   HOSTDEVICE DataFetch(const std::vector<const framework::Tensor *> &ins,
                        const OffsetT &offset_pre, framework::Tensor *out,
                        int data_offset)
       : data_offset(data_offset) {
+    out_data = out->data<T>();
+
     for (int j = 0; j < N; ++j) {
       in_data[j] = ins[j]->data<T>();
       is_vectorize[j] = ins[j]->dims() == out->dims() ? true : false;
-      memcpy(strides[j], offset_pre.strides[j].data(), nDims * sizeof(IndexT));
+      // printf("[%s %d]: is_vectorize[%d]=%d\n", __func__, __LINE__,
+      //        j, is_vectorize[j]);
+      memcpy(strides[j], offset_pre.strides[j].data(),
+             nDims * sizeof(uint32_t));
     }
-    out_data = out->data<T>();
     memcpy(divmoders, offset_pre.divmoders.data(),
-           nDims * sizeof(FastDivMod<IndexT>));
+           nDims * sizeof(FastDivMod<uint32_t>));
+
+    // for (int j = 0; j < N; ++j) {
+    //   printf("[%s %d]: ", __func__, __LINE__);
+    //   for (int i = 0; i < nDims; ++i) {
+    //     printf("stride = [%d][%d] = %d\t, real_value = %d\n", j, i,
+    //              strides[j][i], offset_pre.strides[j][i]);
+    //   }
+    //   printf("\n");
+    // }
   }
 
-  __device__ __forceinline__ IndexT get_offset(int idx, int in_idx) {
-    IndexT offset = 0;
+  __device__ __forceinline__ uint32_t get_offset(int idx, int in_idx) {
+    uint32_t offset = 0;
 
 #pragma unroll(nDims)
     for (int i = 0; i < nDims; ++i) {
       auto fast_divmoder = divmoders[i].divmod(idx);
       idx = fast_divmoder.val[0];
       offset += fast_divmoder.val[1] * strides[in_idx][i];
+      // printf("[%s %d]: strides[%d][%d]=%d \n", __func__, __LINE__,
+      //         in_idx, i, strides[in_idx][i]);
     }
     return offset;
   }
 
-  //   __device__ __forceinline__ void load_vector(ArgT args[], int tid) {
-  //     int index = tid * vec_size;
-
-  // #pragma unroll(N)
-  //     for (int j = 0; j < N; ++j) {
-  // #pragma unroll(vec_size)
-  //       for (int i = 0; i < vec_size; ++i) {
-  //         IndexT offset = get_offset(index + i, j);
-  //         args[j].val[i] = in_data[j][offset];
-  //       }
-  //     }
-  //   }
-
-  //   __device__ __forceinline__ void load_scalar(ScalarT args[], int tid) {
-  // #pragma unroll
-  //     for (int j = 0; j < N; ++j) {
-  //       auto offset = get_offset(tid + data_offset, j);
-  //       args[j].val[0] = in_data[j][offset];
-  //     }
-  //   }
-
-  __device__ __forceinline__ void common_vector(ArgT args[], int tid, int idx) {
-    const ArgT *__restrict__ vec_data =
-        reinterpret_cast<const ArgT *__restrict__>(in_data[idx]);
+  __device__ __forceinline__ void common_vector(VecT args[], int tid, int idx) {
+    const VecT *__restrict__ vec_data =
+        reinterpret_cast<const VecT *__restrict__>(in_data[idx]);
     args[idx] = vec_data[tid];
   }
 
-  __device__ __forceinline__ void divmod_vector(ArgT args[], int tid, int idx) {
+  __device__ __forceinline__ void divmod_vector(VecT args[], int tid, int idx) {
     int index = tid * vec_size;
 
     for (int i = 0; i < vec_size; ++i) {
-      IndexT offset = get_offset(index + i, idx);
+      uint32_t offset = get_offset(index + i, idx);
       args[idx].val[i] = in_data[idx][offset];
     }
   }
@@ -292,9 +290,11 @@ struct DataFetch {
     args[idx] = in_data[idx][offset];
   }
 
-  __device__ __forceinline__ void load_vector(ArgT args[], int tid) {
+  __device__ __forceinline__ void load_vector(VecT args[], int tid) {
 #pragma unroll(N)
     for (int j = 0; j < N; ++j) {
+      // printf("[%s %d]: is_vectorize[%d]=%d\n", __func__, __LINE__,
+      //         j, is_vectorize[j]);
       if (is_vectorize[j]) {
         common_vector(args, tid, j);
       } else {
@@ -314,21 +314,14 @@ struct DataFetch {
     }
   }
 
-  __device__ __forceinline__ void store_vector(ArgT args[], int tid) {
-    ArgT *vec_out = reinterpret_cast<ArgT *>(out_data);
+  __device__ __forceinline__ void store_vector(VecT args[], int tid) {
+    VecT *vec_out = reinterpret_cast<VecT *>(out_data);
     vec_out[tid] = args[0];
   }
 
   __device__ __forceinline__ void store_scalar(T args[], int tid) {
     out_data[data_offset + tid] = args[0];
   }
-
-  T *out_data;
-  const T *__restrict__ in_data[nDims];
-  bool is_vectorize[N];
-  IndexT strides[N][MAX_DIMS];
-  IndexT data_offset;
-  FastDivMod<IndexT> divmoders[nDims];
 };
 #endif
 

@@ -34,8 +34,8 @@ __device__ inline void BScalarizedKernelImpl(fetch_t data_fetch, int tid) {
 
 template <typename T, typename fetch_t, int N, int vec_size>
 __device__ inline void BVectorizedKernelImpl(fetch_t data_fetch, int tid) {
-  using ScalarT = CudaAlignedVector<T, vec_size>;
-  ScalarT args[N];
+  using VecT = CudaAlignedVector<T, vec_size>;
+  VecT args[N];
   data_fetch.load_vector(args, tid);
 
 #pragma unroll(N)
@@ -76,11 +76,10 @@ void CommonElementwiseCore(const platform::CUDADeviceContext &ctx,
 #if defined(__NVCC__) || defined(__HIPCC__)
   int dim_size = p_offset_pre.strides[0].size();
   auto stream = ctx.stream();
-  T *out_data = out->data<T>();
 
   switch (dim_size) {
     case 1: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 2>(ins, p_offset_pre,
+      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 1>(ins, p_offset_pre,
                                                               out, vec_len);
       CommonElementwiseKernel<T, decltype(data_fetch), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
