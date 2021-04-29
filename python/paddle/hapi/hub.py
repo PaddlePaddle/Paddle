@@ -19,6 +19,8 @@ import shutil
 import zipfile
 from paddle.utils.download import get_path_from_url
 
+__all__ = []
+
 DEFAULT_CACHE_DIR = '~/.cache'
 VAR_DEPENDENCY = 'dependencies'
 MODULE_HUBCONF = 'hubconf.py'
