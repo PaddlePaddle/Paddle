@@ -674,6 +674,8 @@ TETRAD_PARALLEL_JOB = [
     'test_complex_grad_accumulated',
     'test_tensor_methods',
     'test_sequential',
+    'test_tensor_methods',
+    'test_sequential',
     'test_imperative_layers',
     'test_dgc_momentum_op',
     'test_memcpy_op',
