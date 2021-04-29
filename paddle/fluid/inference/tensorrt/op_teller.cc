@@ -42,15 +42,13 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
     teller_set.insert("slice");
+    int8_teller_set.insert("fused_embedding_eltwise_layernorm");
+    int8_teller_set.insert("multihead_matmul");
+    int8_teller_set.insert("skip_layernorm");
+    int8_teller_set.insert("slice");
 #endif
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
-    int8_teller_set.insert("multihead_matmul");
-    int8_teller_set.insert("skip_layernorm");
-    int8_teller_set.insert("fused_embedding_eltwise_layernorm");
-    int8_teller_set.insert("matmul");
-    int8_teller_set.insert("stack");
-    int8_teller_set.insert("slice");
 #endif
   }
 
@@ -67,6 +65,8 @@ struct SimpleOpTypeSetTeller : public Teller {
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{"mul",
                                                   "conv2d",
+                                                  "matmul",
+                                                  "stack",
                                                   "conv2d_fusion",
                                                   "pool2d",
                                                   "relu",
@@ -102,6 +102,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dropout",
       "prelu",
       "conv2d_transpose",
+      "depthwise_conv2d_transpose",
       "leaky_relu",
       "fc",
       "shuffle_channel",
@@ -172,7 +173,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
-        op_type == "conv2d_fusion") {
+        op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
+        op_type == "depthwise_conv2d_transpose") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
@@ -202,7 +204,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
 
-      if (op_type == "conv2d_transpose") {
+      if (op_type == "conv2d_transpose" ||
+          op_type == "depthwise_conv2d_transpose") {
         if (!desc.HasAttr("dilations")) {
           return false;
         } else {
@@ -341,30 +344,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
       auto registry = GetPluginRegistry();
       if (registry == nullptr) return false;
-    }
-
-    if (op_type == "mul") {
-      const int x_num_col_dims =
-          desc.HasAttr("x_num_col_dims")
-              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
-              : (desc.HasAttr("in_num_col_dims")
-                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
-                     : 1);
-      if (x_num_col_dims != 1 && x_num_col_dims != 2) {
-        return false;
-      }
-    }
-
-    if (op_type == "fc") {
-      const int x_num_col_dims =
-          desc.HasAttr("x_num_col_dims")
-              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
-              : (desc.HasAttr("in_num_col_dims")
-                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
-                     : 1);
-      if (x_num_col_dims != 1 && x_num_col_dims != 2) {
-        return false;
-      }
     }
 
     if (op_type == "nearest_interp") {

@@ -20,6 +20,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 
 namespace paddle {
@@ -321,11 +322,20 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     opt_input_shape = {};
   }
 
-  if (min_input_shape.size() > 0 && TRT_VERSION > 6000) {
+  auto to_major_version = [&](int full_version) -> float {
+    return (full_version / 100) / 10.0;
+  };
+  const float compile_time_trt_version = to_major_version(TRT_VERSION);
+  const float run_time_trt_version =
+      to_major_version(tensorrt::GetInferLibVersion());
+  if (compile_time_trt_version != run_time_trt_version) {
     LOG_FIRST_N(WARNING, 1)
-        << "The Paddle lib links the " << TRT_VERSION << " version TensorRT, "
-        << "make sure the runtime TensorRT you are using is no less than this "
-           "version, otherwise, there might be Segfault!";
+        << "The Paddle Inference library is compiled with "
+        << compile_time_trt_version << " version TensorRT, "
+        << "but the runtime TensorRT you are using is " << run_time_trt_version
+        << " version. "
+           "This might cause serious compatibility issues. We strongly "
+           "recommend using the same TRT version at runtime.";
   }
 
   // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not

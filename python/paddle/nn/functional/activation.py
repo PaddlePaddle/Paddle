@@ -12,51 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define activation functions of neural network
-from ...fluid.layers import brelu  #DEFINE_ALIAS
-# from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import maxout  #DEFINE_ALIAS
-# from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import swish  #DEFINE_ALIAS
-from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...tensor.math import tanh  #DEFINE_ALIAS
-from ...tensor.math import tanh_  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid  # noqa: F401
+from ...tensor.math import tanh  # noqa: F401
+from ...tensor.math import tanh_  # noqa: F401
 
 from ...tensor.manipulation import _print_warning_in_static_mode
 from ...tensor.manipulation import chunk
 from ...tensor.math import multiply
-
-__all__ = [
-    'brelu',
-    'elu',
-    'elu_',
-    'gelu',
-    'hardshrink',
-    'hardtanh',
-    'hardsigmoid',
-    'hardswish',
-    'leaky_relu',
-    'log_sigmoid',
-    'maxout',
-    'prelu',
-    'relu',
-    'relu_',
-    'relu6',
-    'selu',
-    'softmax',
-    'softmax_',
-    'softplus',
-    'softshrink',
-    'softsign',
-    'sigmoid',
-    'swish',
-    'tanh',
-    'tanh_',
-    'tanhshrink',
-    'thresholded_relu',
-    'log_softmax',
-    'glu',
-]
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
@@ -758,6 +720,39 @@ def selu(x,
         outputs={'Out': out},
         attrs={'scale': scale,
                'alpha': alpha})
+    return out
+
+
+def silu(x, name=None):
+    """
+    silu activation.
+    .. math:
+        silu(x) = \frac{x}{1 + e^{-x}}
+    
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+    
+    Examples:
+        .. code-block:: python
+        import paddle
+        import paddle.nn.functional as F
+        
+        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+        out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.silu(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'silu')
+    helper = LayerHelper("silu", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='silu', inputs={'X': x}, outputs={'Out': out})
     return out
 
 

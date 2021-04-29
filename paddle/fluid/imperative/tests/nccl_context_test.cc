@@ -15,6 +15,7 @@
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/imperative/nccl_context.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 #include "gtest/gtest.h"
 
@@ -36,9 +37,13 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 void BcastNCCLId(int local_rank, std::vector<ncclUniqueId>* nccl_ids) {
   auto strategy = GetStrategy(local_rank);
+  int server_fd = platform::CreateListenSocket(strategy.current_endpoint_);
+
   platform::CUDAPlace gpu(local_rank);
   imperative::NCCLParallelContext ctx(strategy, gpu);
-  ctx.BcastNCCLId(*nccl_ids, 0);
+  ctx.BcastNCCLId(*nccl_ids, 0, server_fd);
+
+  platform::CloseSocket(server_fd);
 }
 
 TEST(BcastNCCLId, Run) {

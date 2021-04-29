@@ -24,7 +24,7 @@ class PaddlePSInstance(object):
             instance = PaddlePSInstance(1, 2)
     """
 
-    def __init__(self, server_worker_mode, proc_per_node):
+    def __init__(self, server_worker_mode=1, proc_per_node=2):
         self.dh = MPIHelper()
         self._rankid = self.dh.get_rank()
         self._server_worker_mode = server_worker_mode
