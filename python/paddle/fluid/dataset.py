@@ -352,6 +352,7 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
         self.trainer_num = -1
+        self.use_ps_gpu = False
 
     @deprecated(
         since="2.0.0",
@@ -391,7 +392,10 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     @deprecated(
@@ -400,8 +404,17 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
+
+    @deprecated(
+        since="2.1.0",
+        update_to="paddle.distributed.InMemoryDataset._set_use_ps_gpu")
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        self.use_ps_gpu = use_ps_gpu
 
     @deprecated(
         since="2.0.0",
