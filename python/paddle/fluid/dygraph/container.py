@@ -29,7 +29,7 @@ class Sequential(Layer):
     The argument passed to the constructor can be iterable Layers or iterable name Layer pairs.
 
     Parameters:
-        *layers(tuple): Layers or iterable name Layer pairs.
+        layers(Layer|list|tuple): Layer or list/tuple of iterable name Layer pair.
 
     Examples:
         .. code-block:: python
@@ -59,7 +59,7 @@ class Sequential(Layer):
 
     def __init__(self, *layers):
         super(Sequential, self).__init__()
-        if len(layers) > 0 and isinstance(layers[0], tuple):
+        if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
         else:
