@@ -700,7 +700,7 @@ class ReductionMKLDNNHandler
                          const mkldnn::engine engine, platform::Place cpu_place,
                          const Tensor* x, const Tensor* y,
                          const std::string& uniq_name,
-                         std::vector<int64_t> output_dims)
+                         std::vector<int64_t> y_tz)
       : platform::MKLDNNHandlerT<T, dnnl::reduction>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
@@ -714,14 +714,14 @@ class ReductionMKLDNNHandler
           x->format(), MKLDNNMemoryFormat::undef,
           platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
-      const auto src_tz = framework::vectorize(x->dims());
+      const auto x_tz = framework::vectorize(x->dims());
 
-      const auto src_md = dnnl::memory::desc(
-          src_tz, platform::MKLDNNGetDataType<T>(), x->format());
-      const auto dst_md = memory::desc(
-          output_dims, platform::MKLDNNGetDataType<T>(), x->format());
+      const auto x_md = dnnl::memory::desc(
+          x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+      const auto y_md = memory::desc(
+          y_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
-      this->AcquireForwardPrimitiveDescriptor(algo, src_md, dst_md, p, eps);
+      this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
     }
   }
 };

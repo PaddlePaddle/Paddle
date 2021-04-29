@@ -60,7 +60,6 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
 
     auto output_dims =
         CalculateReducedDims(input, output, reduce_dims, reduce_all, keep_dim);
-
     auto input_dims = framework::vectorize(input->dims());
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();

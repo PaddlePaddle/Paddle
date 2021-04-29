@@ -581,11 +581,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    if (in_dtype >= 0) {
-      return framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(in_dtype),
-          ctx.GetPlace());
-    }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
