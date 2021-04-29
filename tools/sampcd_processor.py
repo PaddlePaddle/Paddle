@@ -53,6 +53,8 @@ API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
 API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
 API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 SAMPLECODE_TEMPDIR = 'samplecode_temp'
+ENV_KEY_CODES_FRONTEND = 'CODES_INSERTED_INTO_FRONTEND'
+ENV_KEY_TEST_CAPACITY = 'SAMPLE_CODE_TEST_CAPACITY'
 
 
 def find_all(srcstr, substr):
@@ -74,34 +76,6 @@ def find_all(srcstr, substr):
         indices.append(gotone)
         gotone = srcstr.find(substr, gotone + 1)
     return indices
-
-
-def check_indent(cdline):
-    """
-    to check the indent of a given code line
-
-    to get the number of starting blank chars,
-    e.t. blankspaces and \t
-
-    \t will be interpreted as 4 single blankspaces,
-    e.t. '\t'='    '
-
-    Args:
-        cdline(str) : a single line of code from the source file
-
-    Returns:
-        int : the indent of the number of interpreted
-             blankspaces
-    """
-    indent = 0
-    for c in cdline:
-        if c == '\t':
-            indent += 4
-        elif c == ' ':
-            indent += 1
-        if c != ' ' and c != '\t':
-            break
-    return indent
 
 
 def find_last_future_line_end(cbstr):
@@ -127,6 +101,7 @@ def extract_code_blocks_from_docstr(docstr):
     extract code-blocks from the given docstring.
 
     DON'T include the multiline-string definition in code-blocks.
+    The *Examples* section must be the last.
 
     Args:
         docstr - docstring
@@ -135,74 +110,81 @@ def extract_code_blocks_from_docstr(docstr):
                       element {'name': the code-block's name, 'id': sequence id. 'codes': codes, 'required': 'gpu'}
     """
     code_blocks = []
+
     mo = re.search(r"Examples:", docstr)
     if mo is None:
         return code_blocks
     ds_list = docstr[mo.start():].replace("\t", '    ').split("\n")
     lastlineindex = len(ds_list) - 1
-    cb_started = False
+
     cb_start_pat = re.compile(r"code-block::\s*python")
+    cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
+    cb_required_pat = re.compile(r"^\s*#\s*require[s|d]\s*:\s*(\S+)\s*$")
+
+    cb_started = False
     cb_cur = []
     cb_cur_indent = -1
     cb_cur_name = None
     cb_cur_seq_id = 0
-    cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
-    cb_required_pat = re.compile(r"^\s*#\s*require[s|d]\s*:\s*(\S+)\s*$")
     cb_required = None
+
+    def _cb_started():
+        nonlocal cb_started, cb_cur_name, cb_required, cb_cur_seq_id
+        cb_started = True
+        cb_cur_seq_id += 1
+        cb_cur_name = None
+        cb_required = None
+
+    def _append_code_block():
+        nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id, cb_required
+        code_blocks.append({
+            'codes': inspect.cleandoc("\n".join(cb_cur)),
+            'name': cb_cur_name,
+            'id': cb_cur_seq_id,
+            'required': cb_required,
+        })
+
     for lineno, linecont in enumerate(ds_list):
         if re.search(cb_start_pat, linecont):
             if not cb_started:
-                cb_started = True
-                cb_cur_seq_id += 1
-                cb_cur_name = None
-                cb_required = None
+                _cb_started()
                 continue
             else:
                 # cur block end
                 if len(cb_cur):
-                    code_blocks.append({
-                        'codes': inspect.cleandoc("\n".join(cb_cur)),
-                        'name': cb_cur_name,
-                        'id': cb_cur_seq_id,
-                        'required': cb_required,
-                    })
-                cb_started = True  # another block started
-                cb_cur_seq_id += 1
-                cb_cur_name = None
-                cb_required = None
+                    _append_code_block()
+                _cb_started()  # another block started
                 cb_cur_indent = -1
                 cb_cur = []
         else:
             if cb_started:
+                # handle the code-block directive's options
                 mo_p = cb_param_pat.match(linecont)
                 if mo_p:
                     if mo_p.group(1) == 'name':
                         cb_cur_name = mo_p.group(2)
                     continue
-                # check indent for cur block ends.
+                # read the required directive
                 mo_r = cb_required_pat.match(linecont)
                 if mo_r:
                     cb_required = mo_r.group(1)
+                # docstring end
                 if lineno == lastlineindex:
                     mo = re.search(r"\S", linecont)
                     if mo is not None and cb_cur_indent <= mo.start():
                         cb_cur.append(linecont)
                     if len(cb_cur):
-                        code_blocks.append({
-                            'codes': inspect.cleandoc("\n".join(cb_cur)),
-                            'name': cb_cur_name,
-                            'id': cb_cur_seq_id,
-                            'required': cb_required,
-                        })
+                        _append_code_block()
                     break
+                # check indent for cur block start and end.
+                mo = re.search(r"\S", linecont)
+                if mo is None:
+                    continue
                 if cb_cur_indent < 0:
-                    mo = re.search(r"\S", linecont)
-                    if mo is None: continue
+                    # find the first non empty line
                     cb_cur_indent = mo.start()
                     cb_cur.append(linecont)
                 else:
-                    mo = re.search(r"\S", linecont)
-                    if mo is None: continue
                     if cb_cur_indent <= mo.start():
                         cb_cur.append(linecont)
                     else:
@@ -211,13 +193,7 @@ def extract_code_blocks_from_docstr(docstr):
                         else:
                             # block end
                             if len(cb_cur):
-                                code_blocks.append({
-                                    'codes':
-                                    inspect.cleandoc("\n".join(cb_cur)),
-                                    'name': cb_cur_name,
-                                    'id': cb_cur_seq_id,
-                                    'required': cb_required,
-                                })
+                                _append_code_block()
                             cb_started = False
                             cb_cur_indent = -1
                             cb_cur = []
@@ -229,9 +205,9 @@ def get_test_capacity():
     collect capacities and set to SAMPLE_CODE_TEST_CAPACITY
     """
     global SAMPLE_CODE_TEST_CAPACITY  # write
-    ENV_KEY = 'SAMPLE_CODE_TEST_CAPACITY'
-    if ENV_KEY in os.environ:
-        for r in os.environ[ENV_KEY].split(','):
+    global ENV_KEY_TEST_CAPACITY, RUN_ON_DEVICE  # readonly
+    if ENV_KEY_TEST_CAPACITY in os.environ:
+        for r in os.environ[ENV_KEY_TEST_CAPACITY].split(','):
             rr = r.strip().lower()
             if r:
                 SAMPLE_CODE_TEST_CAPACITY.add(rr)
@@ -254,6 +230,7 @@ def is_required_match(requirestr, cbtitle='not-specified'):
         False - not match
         None - skipped  # trick
     """
+    global SAMPLE_CODE_TEST_CAPACITY  # readonly
     requires = set(['cpu'])
     if requirestr:
         for r in requirestr.split(','):
@@ -279,11 +256,12 @@ def insert_codes_into_codeblock(codeblock, apiname='not-specified'):
     """
     insert some codes in the frontend and backend into the code-block.
     """
+    global ENV_KEY_CODES_FRONTEND, GPU_ID, RUN_ON_DEVICE  # readonly
     inserted_codes_f = ''
     inserted_codes_b = ''
-    env_key = 'CODES_INTERTED_INTO_FRONTEND'
-    if env_key in os.environ and os.environ[env_key]:
-        inserted_codes_f = os.environ[env_key]
+    if ENV_KEY_CODES_FRONTEND in os.environ and os.environ[
+            ENV_KEY_CODES_FRONTEND]:
+        inserted_codes_f = os.environ[ENV_KEY_CODES_FRONTEND]
     else:
         cpu_str = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = ""\n'
         gpu_str = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = "{}"\n'.format(
@@ -324,7 +302,7 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
     Returns:
         sample_code_filenames(list of str)
     """
-    global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR
+    global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR  # readonly
 
     codeblocks = extract_code_blocks_from_docstr(srccom)
     if len(codeblocks) == 0:

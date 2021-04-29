@@ -21,8 +21,8 @@ import shutil
 import sys
 import importlib
 import re
+import sampcd_processor
 from sampcd_processor import find_all
-from sampcd_processor import check_indent
 from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
 from sampcd_processor import get_wlist
@@ -32,11 +32,7 @@ from sampcd_processor import execute_samplecode
 from sampcd_processor import find_last_future_line_end
 from sampcd_processor import insert_codes_into_codeblock
 from sampcd_processor import get_test_capacity
-# from sampcd_processor import SAMPLE_CODE_TEST_CAPACITY
-import sampcd_processor
 from sampcd_processor import is_required_match
-
-SAMPLECODE_TEMP_DIR = 'samplecode_temp'
 
 
 class Test_find_all(unittest.TestCase):
@@ -49,17 +45,6 @@ class Test_find_all(unittest.TestCase):
     def test_find_two(self):
         self.assertListEqual([1, 15],
                              find_all(' hello, world; hello paddle!', 'hello'))
-
-
-class Test_check_indent(unittest.TestCase):
-    def test_no_indent(self):
-        self.assertEqual(0, check_indent('hello paddle'))
-
-    def test_indent_4_spaces(self):
-        self.assertEqual(4, check_indent('    hello paddle'))
-
-    def test_indent_1_tab(self):
-        self.assertEqual(4, check_indent("\thello paddle"))
 
 
 class Test_find_last_future_line_end(unittest.TestCase):
@@ -208,14 +193,11 @@ print("not-specified's sample code (name:future, id:1) is executed successfully!
                          insert_codes_into_codeblock(codeblock))
 
 
-ENV_KEY = 'SAMPLE_CODE_TEST_CAPACITY'
-
-
 def clear_capacity():
     sampcd_processor.SAMPLE_CODE_TEST_CAPACITY = set()
     sampcd_processor.RUN_ON_DEVICE = 'cpu'
-    if ENV_KEY in os.environ:
-        del os.environ[ENV_KEY]
+    if sampcd_processor.ENV_KEY_TEST_CAPACITY in os.environ:
+        del os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY]
 
 
 class Test_get_test_capacity(unittest.TestCase):
@@ -242,14 +224,14 @@ class Test_get_test_capacity(unittest.TestCase):
 
     def test_EnvVar_gpu(self):
         clear_capacity()
-        os.environ[ENV_KEY] = 'gpu'
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu'
         get_test_capacity()
         self.assertCountEqual(['cpu', 'gpu'],
                               sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
 
     def test_EnvVar_gpu_and_distributed(self):
         clear_capacity()
-        os.environ[ENV_KEY] = 'gpu,distributed'
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu,distributed'
         get_test_capacity()
         self.assertCountEqual(['cpu', 'gpu', 'distributed'],
                               sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
@@ -276,7 +258,7 @@ class Test_is_required_match(unittest.TestCase):
 
     def test_gpu_equipped(self):
         clear_capacity()
-        os.environ[ENV_KEY] = 'gpu'
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu'
         get_test_capacity()
         self.assertTrue(is_required_match('cpu'))
         self.assertTrue(is_required_match('gpu'))
@@ -286,7 +268,7 @@ class Test_is_required_match(unittest.TestCase):
 
     def test_gpu_distributed_equipped(self):
         clear_capacity()
-        os.environ[ENV_KEY] = 'gpu,distributed'
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu,distributed'
         get_test_capacity()
         self.assertTrue(is_required_match('cpu'))
         self.assertTrue(is_required_match('gpu'))
@@ -297,14 +279,14 @@ class Test_is_required_match(unittest.TestCase):
 
 class Test_execute_samplecode(unittest.TestCase):
     def setUp(self):
-        if not os.path.exists(SAMPLECODE_TEMP_DIR):
-            os.mkdir(SAMPLECODE_TEMP_DIR)
-        self.successSampleCodeFile = os.path.join(SAMPLECODE_TEMP_DIR,
-                                                  'samplecode_success.py')
+        if not os.path.exists(sampcd_processor.SAMPLECODE_TEMPDIR):
+            os.mkdir(sampcd_processor.SAMPLECODE_TEMPDIR)
+        self.successSampleCodeFile = os.path.join(
+            sampcd_processor.SAMPLECODE_TEMPDIR, 'samplecode_success.py')
         with open(self.successSampleCodeFile, 'w') as f:
             f.write('print(1+1)')
-        self.failedSampleCodeFile = os.path.join(SAMPLECODE_TEMP_DIR,
-                                                 'samplecode_failed.py')
+        self.failedSampleCodeFile = os.path.join(
+            sampcd_processor.SAMPLECODE_TEMPDIR, 'samplecode_failed.py')
         with open(self.failedSampleCodeFile, 'w') as f:
             f.write('print(1/0)')
 
@@ -327,7 +309,8 @@ class Test_execute_samplecode(unittest.TestCase):
         self.assertLess(msg.find('skipped'), 0)
 
     def test_testcases_skipped_distributed(self):
-        tfname = os.path.join(SAMPLECODE_TEMP_DIR, 'samplecode_skipped.py')
+        tfname = os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                              'samplecode_skipped.py')
         with open(tfname, 'w') as f:
             f.write("# required: distributed\nprint(1/0)")
         result, _, msg = execute_samplecode(tfname)
@@ -336,7 +319,8 @@ class Test_execute_samplecode(unittest.TestCase):
         os.remove(tfname)
 
     def test_testcases_skipped_gpu(self):
-        tfname = os.path.join(SAMPLECODE_TEMP_DIR, 'samplecode_skipped.py')
+        tfname = os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                              'samplecode_skipped.py')
         with open(tfname, 'w') as f:
             f.write("""
 # required: gpu
@@ -350,14 +334,14 @@ print(1/0)
 
 class Test_sampcd_extract_to_file(unittest.TestCase):
     def setUp(self):
-        if not os.path.exists(SAMPLECODE_TEMP_DIR):
-            os.mkdir(SAMPLECODE_TEMP_DIR)
+        if not os.path.exists(sampcd_processor.SAMPLECODE_TEMPDIR):
+            os.mkdir(sampcd_processor.SAMPLECODE_TEMPDIR)
         clear_capacity()
-        os.environ[ENV_KEY] = 'gpu,distributed'
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu,distributed'
         get_test_capacity()
 
     def tearDown(self):
-        shutil.rmtree(SAMPLECODE_TEMP_DIR)
+        shutil.rmtree(sampcd_processor.SAMPLECODE_TEMPDIR)
         clear_capacity()
         get_test_capacity()
 
@@ -370,9 +354,10 @@ class Test_sampcd_extract_to_file(unittest.TestCase):
         """
         funcname = 'one_plus_one'
         sample_code_filenames = sampcd_extract_to_file(comments, funcname)
-        self.assertCountEqual(
-            [os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example.py')],
-            sample_code_filenames)
+        self.assertCountEqual([
+            os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                         funcname + '_example.py')
+        ], sample_code_filenames)
 
     def test_no_samplecode(self):
         comments = """
@@ -397,8 +382,10 @@ class Test_sampcd_extract_to_file(unittest.TestCase):
         funcname = 'one_plus_one'
         sample_code_filenames = sampcd_extract_to_file(comments, funcname)
         self.assertCountEqual([
-            os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_1.py'),
-            os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_2.py')
+            os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                         funcname + '_example_1.py'),
+            os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                         funcname + '_example_2.py')
         ], sample_code_filenames)
 
     def test_2_samplecodes_has_skipped(self):
@@ -422,7 +409,8 @@ class Test_sampcd_extract_to_file(unittest.TestCase):
         funcname = 'one_plus_one'
         sample_code_filenames = sampcd_extract_to_file(comments, funcname)
         self.assertCountEqual([
-            os.path.join(SAMPLECODE_TEMP_DIR, funcname + '_example_2.py')
+            os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                         funcname + '_example_2.py')
         ], sample_code_filenames)
 
 
