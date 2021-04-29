@@ -90,6 +90,9 @@ aclrtStream GetCurrentNPUStream(int device_id = -1);
 
 template <typename T>
 void FillNpuTensorWithConstant(Tensor *tensor, T val) {
+  // NOTE(zhiqiu): we found that power sometimes returns 0 when val is small
+  // like 1e-8.
+  constexpr float MIN_PRECISION_FOR_POWER = 1e-3;
   PADDLE_ENFORCE_EQ(
       tensor->IsInitialized(), true,
       platform::errors::InvalidArgument("The tensor should be initialized."));
@@ -97,7 +100,8 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
       platform::is_npu_place(tensor->place()), true,
       platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
   // do async for better performance
-  if (typeid(float) == typeid(T) || typeid(platform::float16) == typeid(T)) {
+  if ((typeid(float) == typeid(T) || typeid(platform::float16) == typeid(T)) &&
+      static_cast<float>(val) > MIN_PRECISION_FOR_POWER) {
     Tensor tmp(tensor->type());
     tmp.Resize(tensor->dims());
     tmp.mutable_data<T>(tensor->place());

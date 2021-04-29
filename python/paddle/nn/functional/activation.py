@@ -28,6 +28,8 @@ from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 
+__all__ = []
+
 
 def elu(x, alpha=1.0, name=None):
     r"""

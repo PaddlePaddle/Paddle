@@ -34,6 +34,8 @@ from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
 from ...fluid.data_feeder import check_variable_and_dtype
 
+__all__ = []
+
 
 def interpolate(x,
                 size=None,
