@@ -76,9 +76,12 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     if (scale.size() > 0) {
       float scale_w = -1;
       scale_w = scale[0];
-      PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
-                                               "scale  of Op(interpolate) "
-                                               "should be greater than 0."));
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
       if (scale_w > 0.) {
         // round down
         out_w = (data_layout == DataLayout::kNCHW
@@ -99,8 +102,11 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got dimention = %d .",
             out_size_dim.size()));
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 1, platform::errors::InvalidArgument(
-                                              "OutSize's dim[0] must be 1"));
+    PADDLE_ENFORCE_EQ(
+        out_size_dim[0], 1,
+        platform::errors::InvalidArgument(
+            "OutSize's 0-th dimension's value must be 1, but got value = %d .",
+            out_size_dim[0]));
     ctx->ShareLoD("X", "Out");
     return;
   }
@@ -173,9 +179,17 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       scale_h = scale[0];
       scale_w = scale[1];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
       if (scale_h > 0. && scale_w > 0.) {
         // round down
         out_h = (data_layout == DataLayout::kNCHW
@@ -281,9 +295,23 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
       scale_h = scale[1];
       scale_w = scale[2];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0 && scale_d > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
+      PADDLE_ENFORCE_EQ(
+          scale_d > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_d in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_d));
       if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
         // round down
         out_d = (data_layout == DataLayout::kNCHW
