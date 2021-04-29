@@ -54,6 +54,12 @@ API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 SAMPLECODE_TEMPDIR = 'samplecode_temp'
 ENV_KEY_CODES_FRONTEND = 'CODES_INSERTED_INTO_FRONTEND'
 ENV_KEY_TEST_CAPACITY = 'SAMPLE_CODE_TEST_CAPACITY'
+SUMMARY_INFO = {
+    'success': [],
+    'failed': [],
+    'skiptest': [],
+    # ... required not-match
+}
 
 
 def find_all(srcstr, substr):
@@ -311,6 +317,7 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
         sample_code_filenames(list of str)
     """
     global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR  # readonly
+    global SUMMARY_INFO  # update
 
     codeblocks = extract_code_blocks_from_docstr(srccom)
     if len(codeblocks) == 0:
@@ -346,11 +353,16 @@ Please use '.. code-block:: python' to format the sample code.""")
             if matched is None:
                 logger.info('{}\' code block (name:{}, id:{}) is skipped.'.
                             format(name, cb['name'], cb['id']))
+                SUMMARY_INFO['skiptest'].append("{}-{}".format(name, cb['id']))
             elif matched == False:
                 logger.info(
                     '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'.
                     format(name, cb['name'], cb['id'], cb['required'],
                            SAMPLE_CODE_TEST_CAPACITY))
+                if cb['required'] not in SUMMARY_INFO:
+                    SUMMARY_INFO[cb['required']] = []
+                SUMMARY_INFO[cb['required']].append("{}-{}".format(name, cb[
+                    'id']))
 
     return sample_code_filenames
 
@@ -375,14 +387,6 @@ def execute_samplecode(tfname):
         logger.error("Error: fail to parse python version!")
         result = False
         exit(1)
-
-    # check required envisonment
-    with open(tfname, 'r') as f:
-        for line in f.readlines():
-            if re.match(r'#\s*required\s*:\s*(distributed|gpu|skip)', line):
-                result = True
-                return result, tfname, '{} is skipped. cause: {}'.format(tfname,
-                                                                         line)
 
     logger.info("----example code check----")
     logger.info("executing sample code: %s", tfname)
@@ -596,15 +600,34 @@ if __name__ == '__main__':
         logger.info("----------------------------------------------------")
         exit(1)
     else:
-        has_error = False
         for temp in result:
             if not temp[0]:
                 logger.info("In addition, mistakes found in sample codes: %s",
                             temp[1])
                 logger.info("error_methods: %s", str(temp[2]))
-                has_error = True
-        if has_error:
-            logger.info("Mistakes found in sample codes.")
-            logger.info("Please check sample codes.")
+                SUMMARY_INFO['failed'].append(temp[1])
+            else:
+                SUMMARY_INFO['success'].append(temp[1])
+
+        if len(SUMMARY_INFO['success']):
+            logger.info("%d sample codes ran success",
+                        len(SUMMARY_INFO['success']))
+        for k, v in SUMMARY_INFO.items():
+            if k not in ['success', 'failed', 'skipptest']:
+                logger.info("%d sample codes required not match", len(v))
+        if len(SUMMARY_INFO['skiptest']):
+            logger.info("%d sample codes skipped",
+                        len(SUMMARY_INFO['skiptest']))
+        if len(SUMMARY_INFO['failed']):
+            logger.info("%d sample codes ran failed",
+                        len(SUMMARY_INFO['failed']))
+            logger.info(', '.join(SUMMARY_INFO['failed']))
+            logger.info("%d sample codes ran failed: %s",
+                        len(SUMMARY_INFO['failed']),
+                        ', '.join(SUMMARY_INFO['failed']))
+            logger.info(
+                "Mistakes found in sample codes. Please recheck the sample codes."
+            )
             exit(1)
+
     logger.info("Sample code check is successful!")
