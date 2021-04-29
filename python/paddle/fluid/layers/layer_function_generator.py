@@ -290,7 +290,7 @@ def generate_inplace_fn(inplace_op_type):
     Args:
        inplace_op_type: The name of the inplace operator to be created.
 
-    This function takes in the inplace operator type (sigmoid_, exp_ , ceil_ etc) and
+    This function takes in the inplace operator type (exp_ , ceil_ etc) and
     creates the operator functionality.
 
     """

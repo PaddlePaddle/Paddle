@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from ...fluid.layers import sigmoid  # noqa: F401
-from ...fluid.layers import sigmoid_  # noqa: F401
 from ...tensor.math import tanh  # noqa: F401
 from ...tensor.math import tanh_  # noqa: F401
 
@@ -291,15 +290,6 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
     return out
 
 
-@inplace_apis_in_dygraph_only
-def hardsigmoid_(x, slope=0.1666667, offset=0.5, name=None):
-    r"""
-    Inplace version of ``hardsigmoid`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_hardsigmoid`.
-    """
-    return core.ops.hard_sigmoid_(x, 'slope', slope, 'offset', offset)
-
-
 def hardswish(x, name=None):
     r"""
     hardswish activation
@@ -395,15 +385,6 @@ def leaky_relu(x, negative_slope=0.01, name=None):
         outputs={'Out': out},
         attrs={'alpha': negative_slope})
     return out
-
-
-@inplace_apis_in_dygraph_only
-def leaky_relu_(x, negative_slope=0.01, name=None):
-    r"""
-    Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_leaky_relu`.
-    """
-    return core.ops.leaky_relu_(x, 'alpha', negative_slope)
 
 
 def prelu(x, weight, name=None):
@@ -676,16 +657,6 @@ def relu6(x, name=None):
         outputs={'Out': out},
         attrs={'threshold': threshold})
     return out
-
-
-@inplace_apis_in_dygraph_only
-def relu6_(x, name=None):
-    """
-    Inplace version of ``relu6`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_nn_cn_relu6`.
-    """
-    threshold = 6.0
-    return core.ops.relu6_(x, 'threshold', threshold)
 
 
 def selu(x,

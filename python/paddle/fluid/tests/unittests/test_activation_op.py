@@ -1228,16 +1228,12 @@ class TestLeakyReluAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
-        self.executed_api()
-
-    def executed_api(self):
-        self.leaky_relu = F.leaky_relu
 
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [10, 12])
-            out1 = self.leaky_relu(x)
+            out1 = F.leaky_relu(x)
             m = paddle.nn.LeakyReLU()
             out2 = m(x)
             exe = paddle.static.Executor(self.place)
@@ -1249,17 +1245,16 @@ class TestLeakyReluAPI(unittest.TestCase):
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
+        out1 = F.leaky_relu(x)
         m = paddle.nn.LeakyReLU()
         out2 = m(x)
-        out1 = self.leaky_relu(x)
         out_ref = ref_leaky_relu(self.x_np)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
-        x = paddle.to_tensor(self.x_np)
+        out1 = F.leaky_relu(x, 0.6)
         m = paddle.nn.LeakyReLU(0.6)
         out2 = m(x)
-        out1 = self.leaky_relu(x, 0.6)
         out_ref = ref_leaky_relu(self.x_np, 0.6)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
@@ -1279,24 +1274,15 @@ class TestLeakyReluAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, self.leaky_relu, 1)
+            self.assertRaises(TypeError, F.leaky_relu, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, self.leaky_relu, x_int32)
+            self.assertRaises(TypeError, F.leaky_relu, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16')
-            self.leaky_relu(x_fp16)
-
-
-class TestLeakyReluInplaceAPI(TestLeakyReluAPI):
-    # test paddle.nn.functional.leaky_relu_
-    def executed_api(self):
-        self.leaky_relu = F.leaky_relu_
-
-    def test_fluid_api(self):
-        pass
+            F.leaky_relu(x_fp16)
 
 
 def gelu(x, approximate):
@@ -1502,16 +1488,12 @@ class TestRelu6API(unittest.TestCase):
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
-        self.executed_api()
-
-    def executed_api(self):
-        self.relu6 = F.relu6
 
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out1 = self.relu6(x)
+            out1 = F.relu6(x)
             relu6 = paddle.nn.ReLU6()
             out2 = relu6(x)
             exe = paddle.static.Executor(self.place)
@@ -1523,9 +1505,9 @@ class TestRelu6API(unittest.TestCase):
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
+        out1 = F.relu6(x)
         relu6 = paddle.nn.ReLU6()
         out2 = relu6(x)
-        out1 = self.relu6(x)
         out_ref = ref_relu6(self.x_np)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
@@ -1545,24 +1527,15 @@ class TestRelu6API(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, self.relu6, 1)
+            self.assertRaises(TypeError, F.relu6, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, self.relu6, x_int32)
+            self.assertRaises(TypeError, F.relu6, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16')
-            self.relu6(x_fp16)
-
-
-class TestRelu6InplaceAPI(TestRelu6API):
-    # test paddle.nn.functional.relu6_
-    def executed_api(self):
-        self.relu6 = F.relu6_
-
-    def test_fluid_api(self):
-        pass
+            F.relu6(x_fp16)
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
@@ -2505,15 +2478,11 @@ class TestHardsigmoidAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
-        self.executed_api()
-
-    def executed_api(self):
-        self.hardsigmoid = F.hardsigmoid
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
-            out1 = self.hardsigmoid(x)
+            out1 = F.hardsigmoid(x)
             m = paddle.nn.Hardsigmoid()
             out2 = m(x)
             exe = paddle.static.Executor(self.place)
@@ -2525,9 +2494,9 @@ class TestHardsigmoidAPI(unittest.TestCase):
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
+        out1 = F.hardsigmoid(x)
         m = paddle.nn.Hardsigmoid()
         out2 = m(x)
-        out1 = self.hardsigmoid(x)
         out_ref = ref_hardsigmoid(self.x_np)
         for r in [out1, out2]:
             self.assertTrue(np.allclose(out_ref, r.numpy()))
@@ -2551,24 +2520,15 @@ class TestHardsigmoidAPI(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, self.hardsigmoid, 1)
+            self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, self.hardsigmoid, x_int32)
+            self.assertRaises(TypeError, F.hardsigmoid, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16')
-            self.hardsigmoid(x_fp16)
-
-
-class TestHardsigmoidInplaceAPI(TestHardsigmoidAPI):
-    # test paddle.nn.functional.hardsigmoid_
-    def executed_api(self):
-        self.hardsigmoid = F.hardsigmoid_
-
-    def test_fluid_api(self):
-        pass
+            F.hardsigmoid(x_fp16)
 
 
 def ref_swish(x):
