@@ -34,6 +34,8 @@ from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 
+__all__ = []
+
 
 @dygraph_only
 def tolist(x):

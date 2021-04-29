@@ -21,6 +21,8 @@ import paddle
 from .. import functional as F
 from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
+__all__ = []
+
 
 class BCEWithLogitsLoss(fluid.dygraph.Layer):
     r"""

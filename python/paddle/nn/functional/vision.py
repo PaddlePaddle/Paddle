@@ -19,6 +19,8 @@ from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import dygraph_utils
 import numpy as np
 
+__all__ = []
+
 
 def affine_grid(theta, out_shape, align_corners=True, name=None):
     """
