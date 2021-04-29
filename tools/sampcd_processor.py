@@ -11,7 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+please make sure to run in the tools path
+usage: python sample_test.py {cpu or gpu} 
+    {cpu or gpu}: running in cpu version or gpu version
 
+for example, you can run cpu version python2 testing like this:
+
+    python sampcd_processor.py cpu 
+
+"""
 import os
 import sys
 import subprocess
@@ -24,16 +33,6 @@ import argparse
 import shutil
 import re
 import logging
-"""
-please make sure to run in the tools path
-usage: python sample_test.py {cpu or gpu} 
-    {cpu or gpu}: running in cpu version or gpu version
-
-for example, you can run cpu version python2 testing like this:
-
-    python sampcd_processor.py cpu 
-
-"""
 
 logger = logging.getLogger()
 if logger.handlers:
@@ -81,6 +80,11 @@ def find_all(srcstr, substr):
 def find_last_future_line_end(cbstr):
     """
     find the last `__future__` line.
+
+    Args:
+        docstr(str): docstring
+    Return:
+        index of the line end or None.
     """
     pat = re.compile('__future__.*\n')
     lastmo = None
@@ -104,10 +108,11 @@ def extract_code_blocks_from_docstr(docstr):
     The *Examples* section must be the last.
 
     Args:
-        docstr - docstring
+        docstr(str): docstring
     Return:
-        code_blocks - A list of code-blocks, indent removed. 
-                      element {'name': the code-block's name, 'id': sequence id. 'codes': codes, 'required': 'gpu'}
+        code_blocks: A list of code-blocks, indent removed. 
+                     element {'name': the code-block's name, 'id': sequence id.
+                              'codes': codes, 'required': 'gpu'}
     """
     code_blocks = []
 
@@ -225,6 +230,9 @@ def is_required_match(requirestr, cbtitle='not-specified'):
     environment values of equipped: cpu, gpu, xpu, distributed, skip
     the 'skip' is the special flag to skip the test, so is_required_match will return False directly.
 
+    Args:
+        requirestr(str): the required string.
+        cbtitle(str): the title of the code-block.
     returns:
         True - yes, matched
         False - not match
@@ -307,18 +315,20 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
     codeblocks = extract_code_blocks_from_docstr(srccom)
     if len(codeblocks) == 0:
         # detect sample codes using >>> to format and consider this situation as wrong
-        print(htype, " name:", hname)
-        print("-----------------------")
+        logger.info(htype + " name:" + hname)
+        logger.info("-----------------------")
         if srccom.find("Examples:") != -1:
-            print("----example code check----\n")
+            logger.info("----example code check----")
             if srccom.find(">>>") != -1:
-                print(
-                    "Deprecated sample code style:\n\n    Examples:\n\n        >>>codeline\n        >>>codeline\n\n\n ",
-                    "Please use '.. code-block:: python' to ",
-                    "format sample code.\n")
+                logger.warning(r"""Deprecated sample code style:
+    Examples:
+        >>>codeline
+        >>>codeline
+
+Please use '.. code-block:: python' to format the sample code.""")
                 return []
         else:
-            print("Error: No sample code!\n")
+            logger.warning("Error: No sample code!")
             return []
 
     sample_code_filenames = []
@@ -362,7 +372,7 @@ def execute_samplecode(tfname):
     if platform.python_version()[0] in ["2", "3"]:
         cmd = [sys.executable, tfname]
     else:
-        print("Error: fail to parse python version!")
+        logger.error("Error: fail to parse python version!")
         result = False
         exit(1)
 
@@ -374,9 +384,8 @@ def execute_samplecode(tfname):
                 return result, tfname, '{} is skipped. cause: {}'.format(tfname,
                                                                          line)
 
-    logging.info('running %s', tfname)
-    print("\n----example code check----")
-    print("executing sample code .....", tfname)
+    logger.info("----example code check----")
+    logger.info("executing sample code: %s", tfname)
     subprc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = subprc.communicate()
@@ -384,20 +393,19 @@ def execute_samplecode(tfname):
     err = "".join(error.decode(encoding='utf-8'))
 
     if subprc.returncode != 0:
-        print("Sample code error found in ", tfname, ":")
-        print("-----------------------")
-        print(open(tfname).read())
-        print("-----------------------")
-        print("subprocess return code: ", str(subprc.returncode))
-        print("Error Raised from Sample Code ", tfname, " :")
-        print(err)
-        print(msg)
-        print("----example code check failed----\n")
-        logging.warning('%s error: %s', tfname, err)
-        logging.warning('%s msg: %s', tfname, msg)
+        logger.warning("""Sample code error found in %s:
+-----------------------
+%s
+-----------------------
+subprocess return code: %d
+Error Raised from Sample Code:
+stderr: %s
+stdout: %s
+""", tfname, open(tfname).read(), subprc.returncode, err, msg)
+        logger.info("----example code check failed----")
         result = False
     else:
-        print("----example code check success----\n")
+        logger.info("----example code check success----")
 
     # msg is the returned code execution report
     return result, tfname, msg
