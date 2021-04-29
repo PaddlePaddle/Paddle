@@ -26,6 +26,7 @@ namespace paddle {
 struct MkldnnQuantizerConfig;
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
+extern const std::vector<std::string> kDlnneSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
@@ -95,9 +96,17 @@ void AnalysisConfig::DisableFCPadding() {
   Update();
 }
 
-void AnalysisConfig::EnableXpu(int l3_workspace_size) {
+void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
+                               bool autotune, const std::string &autotune_file,
+                               const std::string &precision,
+                               bool adaptive_seqlen) {
   use_xpu_ = true;
   xpu_l3_workspace_size_ = l3_workspace_size;
+  xpu_locked_ = locked;
+  xpu_autotune_ = autotune;
+  xpu_autotune_file_ = autotune_file;
+  xpu_precision_ = precision;
+  xpu_adaptive_seqlen_ = adaptive_seqlen;
   Update();
 }
 
@@ -134,6 +143,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_oss_);
+  // Dlnne related
+  CP_MEMBER(use_dlnne_);
+  CP_MEMBER(dlnne_min_subgraph_size_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -157,6 +169,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(use_xpu_);
   CP_MEMBER(xpu_l3_workspace_size_);
+  CP_MEMBER(xpu_locked_);
+  CP_MEMBER(xpu_autotune_);
+  CP_MEMBER(xpu_autotune_file_);
+  CP_MEMBER(xpu_precision_);
+  CP_MEMBER(xpu_adaptive_seqlen_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -198,6 +215,21 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
     auto all_passes = kTRTSubgraphPasses;
+    auto other_passes = other.pass_builder()->AllPasses();
+    // We should sort them, because the user may call the SwitchIrDebug
+    // interface, which will change the pass.
+    std::sort(all_passes.begin(), all_passes.end());
+    std::sort(other_passes.begin(), other_passes.end());
+    std::vector<std::string> deleted_passes;
+    std::set_difference(all_passes.begin(), all_passes.end(),
+                        other_passes.begin(), other_passes.end(),
+                        std::inserter(deleted_passes, deleted_passes.begin()));
+    for (auto ps : deleted_passes) {
+      pass_builder_->DeletePass(ps);
+    }
+  }
+  if (use_dlnne_) {
+    auto all_passes = kDlnneSubgraphPasses;
     auto other_passes = other.pass_builder()->AllPasses();
     // We should sort them, because the user may call the SwitchIrDebug
     // interface, which will change the pass.
@@ -309,6 +341,12 @@ void AnalysisConfig::EnableTensorRtEngine(
 #endif
 }
 
+void AnalysisConfig::EnableDlnne(int min_subgraph_size) {
+  use_dlnne_ = true;
+  dlnne_min_subgraph_size_ = min_subgraph_size;
+  Update();
+}
+
 void AnalysisConfig::SetTRTDynamicShapeInfo(
     std::map<std::string, std::vector<int>> min_input_shape,
     std::map<std::string, std::vector<int>> max_input_shape,
@@ -383,6 +421,14 @@ void AnalysisConfig::Update() {
       pass_builder()->AppendPass(pass);
     }
   }
+  LOG(INFO) << "use_dlnne_:" << use_dlnne_ << std::endl;
+  if (use_dlnne_) {
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kDlnneSubgraphPasses) {
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
   if (use_gpu() && use_cudnn_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!enable_ir_optim_) {
@@ -479,6 +525,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
 
+  ss << use_dlnne_;
+  ss << dlnne_min_subgraph_size_;
+
   for (auto &op : trt_disabled_ops_) ss << op.c_str();
   ss << ";";
 
@@ -512,6 +561,11 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_lite_;
   ss << use_xpu_;
   ss << xpu_l3_workspace_size_;
+  ss << xpu_locked_;
+  ss << xpu_autotune_;
+  ss << xpu_autotune_file_;
+  ss << xpu_precision_;
+  ss << xpu_adaptive_seqlen_;
 
   ss << thread_local_stream_;
 

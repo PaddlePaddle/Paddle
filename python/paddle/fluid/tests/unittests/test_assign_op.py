@@ -94,10 +94,8 @@ class TestAssignOpError(unittest.TestCase):
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="uint8")
             self.assertRaises(TypeError, fluid.layers.assign, x3)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
-            x4 = np.array([[2.5, 2.5]], dtype='float64')
+            x4 = np.array([[2.5, 2.5]], dtype='uint8')
             self.assertRaises(TypeError, fluid.layers.assign, x4)
-            x5 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, fluid.layers.assign, x5)
 
 
 class TestAssignOApi(unittest.TestCase):
@@ -157,6 +155,23 @@ class TestAssignOApi(unittest.TestCase):
             paddle.assign(array, result1)
         self.assertTrue(np.allclose(result1.numpy(), array))
 
+    def test_assign_List(self):
+        paddle.disable_static()
+        l = [1, 2, 3]
+        result = paddle.assign(l)
+        self.assertTrue(np.allclose(result.numpy(), np.array(l)))
+        paddle.enable_static()
+
+    def test_assign_BasicTypes(self):
+        paddle.disable_static()
+        result1 = paddle.assign(2)
+        result2 = paddle.assign(3.0)
+        result3 = paddle.assign(True)
+        self.assertTrue(np.allclose(result1.numpy(), np.array([2])))
+        self.assertTrue(np.allclose(result2.numpy(), np.array([3.0])))
+        self.assertTrue(np.allclose(result3.numpy(), np.array([1])))
+        paddle.enable_static()
+
 
 class TestAssignOpErrorApi(unittest.TestCase):
     def test_errors(self):
@@ -169,10 +184,8 @@ class TestAssignOpErrorApi(unittest.TestCase):
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="uint8")
             self.assertRaises(TypeError, paddle.assign, x3)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
-            x4 = np.array([[2.5, 2.5]], dtype='float64')
+            x4 = np.array([[2.5, 2.5]], dtype='uint8')
             self.assertRaises(TypeError, paddle.assign, x4)
-            x5 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, paddle.assign, x5)
 
 
 if __name__ == '__main__':

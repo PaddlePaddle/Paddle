@@ -12,10 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.layers import BeamSearchDecoder  #DEFINE_ALIAS
-from ..fluid.layers import dynamic_decode  #DEFINE_ALIAS
-
-__all__ = [
-    'BeamSearchDecoder',
-    'dynamic_decode',
-]
+from ..fluid.layers import BeamSearchDecoder  # noqa: F401
+from ..fluid.layers import dynamic_decode  # noqa: F401

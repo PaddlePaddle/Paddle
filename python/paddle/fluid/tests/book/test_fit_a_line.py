@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import paddle.static.amp as amp
+
 import contextlib
 import numpy
 import unittest
@@ -26,19 +28,34 @@ import os
 paddle.enable_static()
 
 
-def train(use_cuda, save_dirname, is_local, use_bf16):
+def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-
-    y_predict = fluid.layers.fc(input=x, size=1, act=None)
-
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-    avg_cost = fluid.layers.mean(cost)
+    if use_bf16:
+        if not pure_bf16:
+            with amp.bf16.bf16_guard():
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = fluid.layers.mean(cost)
+        else:
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            with amp.bf16.bf16_guard():
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+    else:
+        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+
     if use_bf16:
-        paddle.static.amp.rewrite_program_bf16(fluid.default_main_program())
+        sgd_optimizer = amp.bf16.decorate_bf16(
+            sgd_optimizer,
+            amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),
+            use_bf16_guard=False,
+            use_pure_bf16=pure_bf16)
     sgd_optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 20
@@ -54,6 +71,10 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
     def train_loop(main_program):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe.run(fluid.default_startup_program())
+        test_prog = main_program.clone(for_test=True)
+        if pure_bf16:
+            sgd_optimizer.amp_init(
+                exe.place, test_program=test_prog, use_bf16_test=True)
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -61,9 +82,8 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
                 avg_loss_value, = exe.run(main_program,
                                           feed=feeder.feed(data),
                                           fetch_list=[avg_cost])
-                print(avg_loss_value)
-                if avg_loss_value[0] < 10.0:
-                    if save_dirname is not None:
+                if avg_loss_value[0] < 10.0 or pure_bf16:
+                    if save_dirname is not None and not pure_bf16:
                         fluid.io.save_inference_model(save_dirname, ['x'],
                                                       [y_predict], exe)
                     return
@@ -97,7 +117,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16):
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, use_bf16=False):
     if save_dirname is None:
         return
 
@@ -135,7 +155,7 @@ def infer(use_cuda, save_dirname=None):
         print("ground truth: ", test_label)
 
 
-def main(use_cuda, is_local=True, use_bf16=False):
+def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
@@ -145,25 +165,11 @@ def main(use_cuda, is_local=True, use_bf16=False):
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, save_dirname, is_local, use_bf16)
-    infer(use_cuda, save_dirname)
+    train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16)
+    infer(use_cuda, save_dirname, use_bf16)
 
 
-class TestFitALine(unittest.TestCase):
-    def test_cpu(self):
-        with self.program_scope_guard():
-            main(use_cuda=False)
-
-    def test_cuda(self):
-        with self.program_scope_guard():
-            main(use_cuda=True)
-
-    @unittest.skipIf(not fluid.core.supports_bfloat16(),
-                     "place does not support BF16 evaluation")
-    def test_bf16(self):
-        with self.program_scope_guard():
-            main(use_cuda=False, use_bf16=True)
-
+class TestFitALineBase(unittest.TestCase):
     @contextlib.contextmanager
     def program_scope_guard(self):
         prog = fluid.Program()
@@ -172,6 +178,28 @@ class TestFitALine(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
                 yield
+
+
+class TestFitALine(TestFitALineBase):
+    def test_cpu(self):
+        with self.program_scope_guard():
+            main(use_cuda=False)
+
+    def test_cuda(self):
+        with self.program_scope_guard():
+            main(use_cuda=True)
+
+
+@unittest.skipIf(not fluid.core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestFitALineBF16(TestFitALineBase):
+    def test_bf16(self):
+        with self.program_scope_guard():
+            main(use_cuda=False, use_bf16=True)
+
+    def test_pure_bf16(self):
+        with self.program_scope_guard():
+            main(use_cuda=False, use_bf16=True, pure_bf16=True)
 
 
 if __name__ == '__main__':

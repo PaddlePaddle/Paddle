@@ -103,7 +103,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             if in_name not in {'X', 'Z'}:
                 continue
         for in_var_name in op.input(in_name):
-            in_var = block.var(in_var_name)
+            in_var = block._find_var_recursive(in_var_name)
             if in_var.type not in _valid_types or in_var.dtype == dest_dtype:
                 continue
             if in_var.dtype == src_dtype:
