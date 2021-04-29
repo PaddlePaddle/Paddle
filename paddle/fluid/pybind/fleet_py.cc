@@ -240,11 +240,18 @@ void BindGraphItem(py::module* m) {
 
 void BindGraphIndex(py::module* m) {
   py::class_<GraphIndex, std::shared_ptr<GraphIndex>>(*m, "GraphIndex")
-      .def(py::init([](const std::string name, const std::string path) {
-        auto index_wrapper = IndexWrapper::GetInstancePtr();
-        index_wrapper->insert_graph_index(name, path);
-        return index_wrapper->GetGraphIndex(name);
-      }))
+      // .def(py::init([](const std::string name, const std::string path) {
+      //   auto index_wrapper = IndexWrapper::GetInstancePtr();
+      //   index_wrapper->insert_graph_index(name, path);
+      //   return index_wrapper->GetGraphIndex(name);
+      // }))
+      .def(py::init<>())
+      .def("initialize",
+           [](GraphIndex& self, int height, int width, int item_path_nums) {
+             self.set_height(height);
+             self.set_width(width);
+             self.set_item_path_nums(item_path_nums);
+           })
       .def("reset_mapping", &GraphIndex::reset_mapping)
       .def("add_item", &GraphIndex::add_item)
       .def("save", &GraphIndex::save)
@@ -252,6 +259,7 @@ void BindGraphIndex(py::module* m) {
       .def("get_item_path_dict", &GraphIndex::get_item_path_dict)
       .def("height", [](GraphIndex& self) { return self.height(); })
       .def("width", [](GraphIndex& self) { return self.width(); })
+      .def("item_path_nums", &GraphIndex::item_path_nums)
       .def("get_path_of_item",
            [](GraphIndex& self, std::vector<uint64_t>& items) {
              return self.get_path_of_item(items);
@@ -309,6 +317,8 @@ void BindIndexWrapper(py::module* m) {
       .def("clear_tree", &IndexWrapper::clear_tree)
       .def("insert_graph_index", &IndexWrapper::insert_graph_index)
       .def("get_graph_index", &IndexWrapper::GetGraphIndex)
+      .def("insert_graph_index_by_meta_info",
+           &IndexWrapper::insert_graph_index_by_meta_info)
       .def("save_graph_index_to_file", &IndexWrapper::save_graph_index_to_file);
 }
 

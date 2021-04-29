@@ -156,9 +156,11 @@ class GraphIndex(Index):
         self.kd_represent_list = []
         self.gen_kd_represent(width, height)
 
-    def _init_by_random(self, input_filename, output_filename):
-        self._builder.graph_init_by_random(input_filename, output_filename)
-        self._init_graph(output_filename)
+    def _init_by_random(self):
+        self._graph = core.GraphIndex()
+        self._graph.initialize(self.height, self.width, self.item_path_nums)
+        # self._builder.graph_init_by_random(input_filename, output_filename)
+        # self._init_graph(output_filename)
 
     def _init_graph(self, filename):
         self._wrapper.insert_graph_index(self._name, filename)

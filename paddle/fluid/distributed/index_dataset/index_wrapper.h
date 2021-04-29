@@ -84,6 +84,9 @@ class GraphIndex : public Index {
     item_path_dict_.clear();
     path_item_set_dict_.clear();
   }
+
+  std::vector<int64_t> create_path(uint64_t item_id);
+  std::vector<int64_t> generate_random_path();
   void add_item(uint64_t item_id, std::vector<int64_t> vec);
 
   std::unordered_map<uint64_t, std::vector<int64_t>> get_item_path_dict() {
@@ -107,11 +110,6 @@ class GraphIndex : public Index {
 
   std::unordered_map<uint64_t, std::vector<int64_t>> item_path_dict_;
   std::unordered_map<int64_t, std::unordered_set<uint64_t>> path_item_set_dict_;
-
-  std::unordered_map<uint64_t, std::unordered_set<uint64_t>>
-      tmp_item_path_dict_;
-  std::unordered_map<int64_t, std::unordered_set<uint64_t>>
-      tmp_path_item_set_dict_;
 };
 
 using TreePtr = std::shared_ptr<TreeIndex>;
@@ -153,12 +151,18 @@ class IndexWrapper {
   }
 
   void insert_graph_index(std::string name, std::string graph_path) {
-    if (graph_map.find(name) != graph_map.end()) {
-      return;
-    }
     GraphPtr graph = std::make_shared<GraphIndex>();
     int ret = graph->load(graph_path);
     if (ret != 0) return;
+    graph_map.insert(std::pair<std::string, GraphPtr>{name, graph});
+  }
+
+  void insert_graph_index_by_meta_info(std::string name, int height, int width,
+                                       int path_volume) {
+    GraphPtr graph = std::make_shared<GraphIndex>();
+    graph->set_height(height);
+    graph->set_width(width);
+    graph->set_item_path_nums(path_volume);
     graph_map.insert(std::pair<std::string, GraphPtr>{name, graph});
   }
 
