@@ -34,7 +34,7 @@ namespace detail {
 template <typename T>
 static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
                  const int incy) {
-  // Y = Y + apha * X
+  // Y = Y + alpha * X
   if (static_cast<float>(alpha) == 1.f) {
     while (n-- > 0) {
       *y += *x;

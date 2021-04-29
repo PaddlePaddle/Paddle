@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
+from paddle import enable_static
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -199,6 +200,10 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
             np.testing.assert_allclose(out_fp32, ref_fp32, atol=0, rtol=0.95e-2)
         else:
             self.assertEqual(len(out.rows()), 0)
+
+    def test_w_is_selected_rows(self):
+        for inplace in [True, False]:
+            self.check_with_place(core.CPUPlace(), inplace)
 
 
 class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
@@ -384,6 +389,5 @@ create_test_sum_fp16_class(TestSelectedRowsSumOp)
 create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
 
 if __name__ == "__main__":
-    from paddle import enable_static
     enable_static()
     unittest.main()
