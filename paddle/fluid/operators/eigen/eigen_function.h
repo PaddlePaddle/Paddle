@@ -56,6 +56,78 @@ struct EigenConstant {
 };
 
 template <typename EigenDevice, typename T>
+struct EigenSign {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& in);
+};
+
+template <typename EigenDevice, typename T, int Rank>
+struct EigenReverse {
+  using Array = Eigen::DSizes<bool, Rank>;
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& in,
+                   const Array& reverse);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenIncrement {
+  using InType = Eigen::TensorMap<Eigen::TensorFixedSize<
+      const T, Eigen::Sizes<>, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<
+      T, Eigen::Sizes<>, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& in,
+                   const T value);
+};
+
+template <typename EigenDevice, typename T, int Rank>
+struct EigenSlice {
+  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
+  using Array32Bit = Eigen::DSizes<int, Rank>;
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType32BitIndex =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
+                       Eigen::Aligned>;
+  using OutType = Eigen::TensorMap<
+      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType32BitIndex =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
+                       Eigen::Aligned>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& in,
+                   const Array& offsets, const Array& extents);
+  static void Eval(const EigenDevice& dev, OutType32BitIndex out,
+                   const InType32BitIndex& in, const Array32Bit& offsets,
+                   const Array32Bit& extents);
+};
+
+template <typename EigenDevice, typename T, int Rank>
+struct EigenPad {
+  using Array = Eigen::array<std::pair<int64_t, int64_t>, Rank>;
+  using Array32Bit = Eigen::array<std::pair<int, int>, Rank>;
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType32BitIndex =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
+                       Eigen::Aligned>;
+  using OutType = Eigen::TensorMap<
+      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType32BitIndex =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
+                       Eigen::Aligned>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& in,
+                   const Array& padding, const T value);
+  static void Eval(const EigenDevice& dev, OutType32BitIndex out,
+                   const InType32BitIndex& in, const Array32Bit& padding,
+                   const T value);
+};
+
+template <typename EigenDevice, typename T>
 struct EigenScale {
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
