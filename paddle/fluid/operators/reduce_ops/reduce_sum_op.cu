@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_merge/reduce_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_merge/reduce_op_functor.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
 namespace paddle {
@@ -54,14 +55,21 @@ class ReduceSumKernel : public framework::OpKernel<T> {
 
     auto stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
-      framework::VisitDataTypeSmall(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunctor<T, cub::Sum, IdentityFunctor<T>>(
-              *input, output, reduce_dims, static_cast<double>(0.0), cub::Sum(),
-              IdentityFunctor<T>(), stream));
+#define VisitDataTypeSmall_t(cpp_type, proto_type)                     \
+  do {                                                                 \
+    if (static_cast<framework::proto::VarType::Type>(out_dtype) ==     \
+        proto_type) {                                                  \
+      TensorReduce<T, cpp_type, CustomSum<cpp_type>,                   \
+                   IdentityFunctor<cpp_type>>(                         \
+          *input, output, reduce_dims, static_cast<cpp_type>(0.0f),    \
+          CustomSum<cpp_type>(), IdentityFunctor<cpp_type>(), stream); \
+    }                                                                  \
+  } while (0)
+      _ForEachDataTypeSmall_(VisitDataTypeSmall_t);
+#undef VisitDataTypeSmall_t
     } else {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
-          *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
+      TensorReduce<T, T, CustomSum<T>, IdentityFunctor<T>>(
+          *input, output, reduce_dims, static_cast<T>(0), CustomSum<T>(),
           IdentityFunctor<T>(), stream);
     }
   }

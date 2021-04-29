@@ -15,6 +15,7 @@
 #include <vector>
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_merge/reduce_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_merge/reduce_op_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -56,8 +57,8 @@ class ReduceMeanKernel : public framework::OpKernel<T> {
     }
 
     auto stream = context.cuda_device_context().stream();
-    TensorReduce<T, T, cub::Sum, DivideFunctor<T>>(
-        *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
+    TensorReduce<T, T, CustomSum<T>, DivideFunctor<T>>(
+        *input, output, reduce_dims, static_cast<T>(0), CustomSum<T>(),
         DivideFunctor<T>(reduce_num), stream);
   }
 };
