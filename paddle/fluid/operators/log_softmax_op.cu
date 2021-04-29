@@ -211,7 +211,7 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
       for (int d = threadIdx.x; d < dim_size; d += blockDim.x) {
         const AccT value =
             static_cast<AccT>(input[data_offset + d * dim_stride]);
-        max_value = Max<AccT>()(max_value, value);
+        max_value = math::MaxFunctor<AccT>()(max_value, value);
       }
       if (blockDim.x > 1) {
         max_value = BlockDimxReduceMax<AccT>(sdata, max_value);
