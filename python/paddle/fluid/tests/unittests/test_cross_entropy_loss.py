@@ -1378,7 +1378,7 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                     input=input_data,
                     label=label_data,
                     weight=weight_data,
-                    ignore_index=0)
+                    ignore_index=255)
 
             self.assertRaises(ValueError, test_LabelValue)
 
@@ -1392,7 +1392,7 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                     input=input_data,
                     label=label_data,
                     weight=weight_data,
-                    ignore_index=0)
+                    ignore_index=-1)
 
             self.assertRaises(ValueError, test_LabelValueNeg)
 
