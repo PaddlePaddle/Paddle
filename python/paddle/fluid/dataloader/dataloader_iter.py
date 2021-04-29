@@ -314,8 +314,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._workers_done_event = self._multiprocessing_context.Event()
         self._thread_done_event = threading.Event()
 
-        is_spawn = isinstance(self._multiprocessing_context,
-                              multiprocessing.context.SpawnContext)
+        is_spawn = sys.version >= (3, 4) and \
+                    isinstance(self._multiprocessing_context,
+                               multiprocessing.context.SpawnContext)
         for i in range(self._num_workers):
             indices_queue = self._multiprocessing_context.Queue()
             self._indices_queues.append(indices_queue)
