@@ -718,8 +718,8 @@ class ReductionMKLDNNHandler
 
       const auto x_md = dnnl::memory::desc(
           x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-      const auto y_md = memory::desc(
-          y_tz, platform::MKLDNNGetDataType<T>(), x->format());
+      const auto y_md =
+          memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
       this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
     }
