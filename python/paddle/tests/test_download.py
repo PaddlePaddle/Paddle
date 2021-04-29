@@ -94,7 +94,8 @@ class TestGitclone(unittest.TestCase):
 
         git_clone_from_url(giturl, repo_dir, branch=None, check_exist=False)
         git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=True)
-        git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=True)
+        git_clone_from_url(
+            giturl, repo_dir + 'x', branch=branch, check_exist=False)
 
     def test_errors(self, ):
         with self.assertRaises(RuntimeError):

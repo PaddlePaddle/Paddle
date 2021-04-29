@@ -201,15 +201,9 @@ def git_clone_from_url(
     return fullpath
 
 
-def _handle_readonly_error(func, path, info):
-    # fix window .git readonly problem
-    os.chmod(path, stat.S_IWRITE)
-    os.unlink(path)
-
-
 def _remove_if_exists(path):
     if os.path.exists(path):
-        shutil.rmtree(path, onerror=_handle_readonly_error)
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def _git_clone(url, repo_dir, branch):
