@@ -86,6 +86,12 @@ void RunPyObject(py::object *py_object,
       }
     }
   } else {
+    if (1 != outs->size()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The number of outputs of `PyLayer.backward` should be %d, but "
+          "received 1.",
+          outs->size()));
+    }
     if ((*outs)[0] != nullptr) {
       if (Py_None != py_result.ptr()) {
         try {
