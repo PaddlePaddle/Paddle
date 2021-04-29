@@ -16,7 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+// #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -27,6 +27,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <cuda_fp16.h>
 #include "cub/cub.cuh"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #endif
 #ifdef __HIPCC__
 #include <hip/hip_fp16.h>

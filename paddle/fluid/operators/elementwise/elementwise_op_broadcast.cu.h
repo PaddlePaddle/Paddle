@@ -19,24 +19,23 @@
 namespace paddle {
 namespace operators {
 
-#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename fetch_t, int N>
-__device__ inline void BScalarizedKernelImpl(fetch_t data_fetch, int tid) {
+__device__ inline void BScalarizedKernelImpl(fetch_t data_processor, int tid) {
   T args[N];
-  data_fetch.load_scalar(args, tid);
+  data_processor.load_scalar(args, tid);
 
 #pragma unroll(N)
   for (int j = 1; j < N; ++j) {
     args[0] += args[j];
   }
-  data_fetch.store_scalar(args, tid);
+  data_processor.store_scalar(args, tid);
 }
 
 template <typename T, typename fetch_t, int N, int vec_size>
-__device__ inline void BVectorizedKernelImpl(fetch_t data_fetch, int tid) {
+__device__ inline void BVectorizedKernelImpl(fetch_t data_processor, int tid) {
   using VecT = CudaAlignedVector<T, vec_size>;
   VecT args[N];
-  data_fetch.load_vector(args, tid);
+  data_processor.load_vector(args, tid);
 
 #pragma unroll(N)
   for (int j = 1; j < N; ++j) {
@@ -45,21 +44,20 @@ __device__ inline void BVectorizedKernelImpl(fetch_t data_fetch, int tid) {
       args[0].val[i] += args[j].val[i];
     }
   }
-  data_fetch.store_vector(args, tid);
+  data_processor.store_vector(args, tid);
 }
 
 template <typename T, typename fetch_t, int N, int vec_size>
-__global__ void CommonElementwiseKernel(fetch_t data_fetch, int main_tid,
+__global__ void CommonElementwiseKernel(fetch_t data_processor, int main_tid,
                                         int tail_tid) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < main_tid) {
-    BVectorizedKernelImpl<T, fetch_t, N, vec_size>(data_fetch, tid);
+    BVectorizedKernelImpl<T, fetch_t, N, vec_size>(data_processor, tid);
   }
   if (tid < tail_tid) {
-    BScalarizedKernelImpl<T, fetch_t, N>(data_fetch, tid);
+    BScalarizedKernelImpl<T, fetch_t, N>(data_processor, tid);
   }
 }
-#endif
 
 template <typename T, typename FuncT, typename OffsetT, int vec_size, int N>
 void CommonElementwiseCore(const platform::CUDADeviceContext &ctx,
@@ -73,62 +71,60 @@ void CommonElementwiseCore(const platform::CUDADeviceContext &ctx,
   int tail_tid = numel % vec_size;
   int vec_len = main_tid * vec_size;
 
-#if defined(__NVCC__) || defined(__HIPCC__)
   int dim_size = p_offset_pre.strides[0].size();
   auto stream = ctx.stream();
 
   switch (dim_size) {
     case 1: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 1>(ins, p_offset_pre,
-                                                              out, vec_len);
-      CommonElementwiseKernel<T, decltype(data_fetch), N,
+      auto data_processor = DataProcessor<T, OffsetT, N, vec_size, 1>(
+          ins, p_offset_pre, out, vec_len);
+      CommonElementwiseKernel<T, decltype(data_processor), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
-          data_fetch, main_tid, tail_tid);
+          data_processor, main_tid, tail_tid);
       break;
     }
     case 2: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 2>(ins, p_offset_pre,
-                                                              out, vec_len);
-      CommonElementwiseKernel<T, decltype(data_fetch), N,
+      auto data_processor = DataProcessor<T, OffsetT, N, vec_size, 2>(
+          ins, p_offset_pre, out, vec_len);
+      CommonElementwiseKernel<T, decltype(data_processor), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
-          data_fetch, main_tid, tail_tid);
+          data_processor, main_tid, tail_tid);
       break;
     }
     case 3: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 3>(ins, p_offset_pre,
-                                                              out, vec_len);
-      CommonElementwiseKernel<T, decltype(data_fetch), N,
+      auto data_processor = DataProcessor<T, OffsetT, N, vec_size, 3>(
+          ins, p_offset_pre, out, vec_len);
+      CommonElementwiseKernel<T, decltype(data_processor), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
-          data_fetch, main_tid, tail_tid);
+          data_processor, main_tid, tail_tid);
       break;
     }
     case 4: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 4>(ins, p_offset_pre,
-                                                              out, vec_len);
-      CommonElementwiseKernel<T, decltype(data_fetch), N,
+      auto data_processor = DataProcessor<T, OffsetT, N, vec_size, 4>(
+          ins, p_offset_pre, out, vec_len);
+      CommonElementwiseKernel<T, decltype(data_processor), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
-          data_fetch, main_tid, tail_tid);
+          data_processor, main_tid, tail_tid);
       break;
     }
     case 5: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 5>(ins, p_offset_pre,
-                                                              out, vec_len);
-      CommonElementwiseKernel<T, decltype(data_fetch), N,
+      auto data_processor = DataProcessor<T, OffsetT, N, vec_size, 5>(
+          ins, p_offset_pre, out, vec_len);
+      CommonElementwiseKernel<T, decltype(data_processor), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
-          data_fetch, main_tid, tail_tid);
+          data_processor, main_tid, tail_tid);
       break;
     }
     case 6: {
-      auto data_fetch = DataFetch<T, OffsetT, N, vec_size, 6>(ins, p_offset_pre,
-                                                              out, vec_len);
-      CommonElementwiseKernel<T, decltype(data_fetch), N,
+      auto data_processor = DataProcessor<T, OffsetT, N, vec_size, 6>(
+          ins, p_offset_pre, out, vec_len);
+      CommonElementwiseKernel<T, decltype(data_processor), N,
                               vec_size><<<blocks, threads, 0, stream>>>(
-          data_fetch, main_tid, tail_tid);
+          data_processor, main_tid, tail_tid);
       break;
     }
     default: { ; }
   }
-#endif
 }
 
 template <typename T, typename FuncT, int vec_size = 1>
@@ -138,7 +134,7 @@ void BroadcastDimsTransform(const platform::CUDADeviceContext &ctx,
   int input_num = ins.size();
   const auto merge_dims = DimensionTransform(ins, out->dims(), input_num);
   const auto offset_pre = OffsetPreCalculator<decltype(merge_dims)>(merge_dims);
-#if defined(__NVCC__) || defined(__HIPCC__)
+
   switch (input_num) {
     case 2: {
       CommonElementwiseCore<T, FuncT, decltype(offset_pre), vec_size, 2>(
@@ -163,7 +159,6 @@ void BroadcastDimsTransform(const platform::CUDADeviceContext &ctx,
                                             input_num, MAX_TENSORS));
     }
   }
-#endif
 }
 
 template <typename T, typename FuncT>
@@ -180,7 +175,6 @@ void LaunchBroadcastElementwiseCudaKernel(
   T *out_data = out->data<T>();
   int out_vec_size = GetVectorizedSizeImpl<T>(out_data);
   int vec_size = std::min(out_vec_size, in_vec_size);
-  // auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
   switch (vec_size) {
     case 4: {

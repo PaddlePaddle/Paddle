@@ -191,7 +191,7 @@ void LaunchElementwiseCudaKernel(
   T *out = (*outs)[0]->data<T>();
   // cuda kernel
   auto stream = ctx.stream();
-#if defined(__NVCC__) || defined(__HIPCC__)
+  // #if defined(__NVCC__) || defined(__HIPCC__)
   switch (vec_size) {
     case 4:
       VectorizedKernel<ET, 4><<<grid_size, block_size, 0, stream>>>(
@@ -210,7 +210,7 @@ void LaunchElementwiseCudaKernel(
           "Unsupported vectorized size: %d !", vec_size));
       break;
   }
-#endif
+  // #endif
 }
 
 }  // namespace operators
