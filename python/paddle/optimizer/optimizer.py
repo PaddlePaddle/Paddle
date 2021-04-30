@@ -42,6 +42,8 @@ from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 from .lr import LRScheduler
 
+__all__ = []
+
 
 class Optimizer(object):
     r"""Optimizer Base class.

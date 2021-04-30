@@ -14,7 +14,7 @@
 import copy
 import unittest
 import paddle.fluid as fluid
-import paddle.fluid.contrib.mixed_precision as amp
+import paddle.static.amp as amp
 from paddle.fluid import core
 import paddle
 
@@ -34,34 +34,34 @@ class AMPTest(unittest.TestCase):
         self.assertEqual(self.amp_lists_.gray_list, self.gray_list)
 
     def test_amp_lists(self):
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16()
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16()
 
     def test_amp_lists_1(self):
         # 1. w={'exp}, b=None
         self.bf16_list.add('exp')
         self.fp32_list.remove('exp')
 
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16({'exp'})
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16({'exp'})
 
     def test_amp_lists_2(self):
         # 2. w={'tanh'}, b=None
         self.fp32_list.remove('tanh')
         self.bf16_list.add('tanh')
 
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16({'tanh'})
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16({'tanh'})
 
     def test_amp_lists_3(self):
         # 3. w={'lstm'}, b=None
         self.bf16_list.add('lstm')
 
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16({'lstm'})
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16({'lstm'})
 
     def test_amp_lists_4(self):
         # 4. w=None, b={'elementwise_add'}
         self.bf16_list.remove('elementwise_add')
         self.fp32_list.add('elementwise_add')
 
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16(
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
             custom_fp32_list={'elementwise_add'})
 
     def test_amp_lists_5(self):
@@ -69,28 +69,28 @@ class AMPTest(unittest.TestCase):
         self.fp32_list.add('elementwise_add')
         self.bf16_list.remove('elementwise_add')
 
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16(
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
             custom_fp32_list={'elementwise_add'})
 
     def test_amp_lists_6(self):
         # 6. w=None, b={'lstm'}
         self.fp32_list.add('lstm')
 
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16(
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
             custom_fp32_list={'lstm'})
 
     def test_amp_lists_7(self):
         self.fp32_list.add('reshape2')
         self.gray_list.remove('reshape2')
 
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16(
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
             custom_fp32_list={'reshape2'})
 
     def test_amp_list_8(self):
         self.bf16_list.add('reshape2')
         self.gray_list.remove('reshape2')
 
-        self.amp_lists_ = amp.AutoMixedPrecisionListsBF16(
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16(
             custom_bf16_list={'reshape2'})
 
 
@@ -98,7 +98,7 @@ class AMPTest2(unittest.TestCase):
     def test_amp_lists_(self):
         # 7. w={'lstm'} b={'lstm'}
         # raise ValueError
-        self.assertRaises(ValueError, amp.AutoMixedPrecisionListsBF16,
+        self.assertRaises(ValueError, amp.bf16.AutoMixedPrecisionListsBF16,
                           {'lstm'}, {'lstm'})
 
     def test_find_op_index(self):
@@ -117,10 +117,10 @@ class AMPTest2(unittest.TestCase):
             type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]})
         op2 = block.append_op(
             type="abs", inputs={"X": [var2]}, outputs={"Out": [var3]})
-        amp_lists_1 = amp.AutoMixedPrecisionListsBF16(
+        amp_lists_1 = amp.bf16.AutoMixedPrecisionListsBF16(
             custom_fp32_varnames={'X'})
         assert amp.bf16.amp_utils._is_in_fp32_varnames(op1, amp_lists_1)
-        amp_lists_2 = amp.AutoMixedPrecisionListsBF16(
+        amp_lists_2 = amp.bf16.AutoMixedPrecisionListsBF16(
             custom_fp32_varnames={'Y'})
         assert amp.bf16.amp_utils._is_in_fp32_varnames(op2, amp_lists_2)
         assert amp.bf16.amp_utils._is_in_fp32_varnames(op1, amp_lists_2)

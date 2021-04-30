@@ -30,6 +30,8 @@ import paddle.dataset.common
 import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated
 
+__all__ = []
+
 URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
                 'cslm_joint_paper/data/dev+test.tgz')
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
