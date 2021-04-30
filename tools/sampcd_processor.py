@@ -58,6 +58,7 @@ SUMMARY_INFO = {
     'success': [],
     'failed': [],
     'skiptest': [],
+    'nocodes': [],
     # ... required not-match
 }
 
@@ -321,6 +322,7 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
 
     codeblocks = extract_code_blocks_from_docstr(srccom)
     if len(codeblocks) == 0:
+        SUMMARY_INFO['nocodes'].append(name)
         # detect sample codes using >>> to format and consider this situation as wrong
         logger.info(htype + " name:" + name)
         logger.info("-----------------------")
@@ -613,11 +615,19 @@ if __name__ == '__main__':
             logger.info("%d sample codes ran success",
                         len(SUMMARY_INFO['success']))
         for k, v in SUMMARY_INFO.items():
-            if k not in ['success', 'failed', 'skiptest']:
-                logger.info("%d sample codes required not match for %s", len(v), k)
+            if k not in ['success', 'failed', 'skiptest', 'nocodes']:
+                logger.info("%d sample codes required not match for %s",
+                            len(v), k)
         if len(SUMMARY_INFO['skiptest']):
             logger.info("%d sample codes skipped",
                         len(SUMMARY_INFO['skiptest']))
+            if args.debug:
+                logger.info('\n'.join(SUMMARY_INFO['skiptest']))
+        if len(SUMMARY_INFO['nocodes']):
+            logger.info("%d apis don't have sample codes",
+                        len(SUMMARY_INFO['nocodes']))
+            if args.debug:
+                logger.info('\n'.join(SUMMARY_INFO['nocodes']))
         if len(SUMMARY_INFO['failed']):
             logger.info("%d sample codes ran failed",
                         len(SUMMARY_INFO['failed']))
