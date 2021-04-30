@@ -35,18 +35,10 @@ template <typename T>
 static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
                  const int incy) {
   // Y = Y + alpha * X
-  if (static_cast<float>(alpha) == 1.f) {
-    while (n-- > 0) {
-      *y += *x;
-      y = y + incy;
-      x = x + incx;
-    }
-  } else {
-    while (n-- > 0) {
-      *y += alpha * *x;
-      y = y + incy;
-      x = x + incx;
-    }
+  while (n-- > 0) {
+    *y += alpha * *x;
+    y = y + incy;
+    x = x + incx;
   }
 }
 }  // namespace detail
