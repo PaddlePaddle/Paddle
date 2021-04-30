@@ -25,18 +25,12 @@ MODULE_HUBCONF = 'hubconf.py'
 HUB_DIR = os.path.expanduser(os.path.join('~', '.cache', 'paddle', 'hub'))
 
 
-def _handle_readonly_error(func, path, info):
-    # fix window .git readonly problem
-    os.chmod(path, stat.S_IWRITE)
-    os.unlink(path)
-
-
 def _remove_if_exists(path):
     if os.path.exists(path):
         if os.path.isfile(path):
             os.remove(path)
         else:
-            shutil.rmtree(path, onerror=_handle_readonly_error)
+            shutil.rmtree(path)
 
 
 def _import_module(name, repo_dir):
