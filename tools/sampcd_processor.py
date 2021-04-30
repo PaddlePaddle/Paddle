@@ -33,6 +33,7 @@ import argparse
 import shutil
 import re
 import logging
+import time
 
 logger = logging.getLogger()
 if logger.handlers:
@@ -371,15 +372,16 @@ Please use '.. code-block:: python' to format the sample code.""")
 
 def execute_samplecode(tfname):
     """
-    Execute a sample-code test.
+    Execute a sample-code test
 
     Args:
-        tfname: the filename of the samplecode.
+        tfname: the filename of the sample code
     
     Returns:
         result: success or not
         tfname: same as the input argument
-        msg: the stdout output of the samplecode executing.
+        msg: the stdout output of the sample code executing
+        time: time consumed by sample code
     """
     result = True
     msg = None
@@ -392,11 +394,13 @@ def execute_samplecode(tfname):
 
     logger.info("----example code check----")
     logger.info("executing sample code: %s", tfname)
+    start_time = time.time()
     subprc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = subprc.communicate()
     msg = "".join(output.decode(encoding='utf-8'))
     err = "".join(error.decode(encoding='utf-8'))
+    end_time = time.time()
 
     if subprc.returncode != 0:
         logger.warning("""Sample code error found in %s:
@@ -414,7 +418,7 @@ stdout: %s
         logger.info("----example code check success----")
 
     # msg is the returned code execution report
-    return result, tfname, msg
+    return result, tfname, msg, end_time - start_time
 
 
 def get_filenames():
@@ -602,15 +606,23 @@ if __name__ == '__main__':
         logger.info("----------------------------------------------------")
         exit(1)
     else:
+        timeovered_test = {}
         for temp in result:
             if not temp[0]:
                 logger.info("In addition, mistakes found in sample codes: %s",
                             temp[1])
-                logger.info("error_methods: %s", str(temp[2]))
                 SUMMARY_INFO['failed'].append(temp[1])
             else:
                 SUMMARY_INFO['success'].append(temp[1])
+            if temp[3] > 10:
+                timeovered_test[temp[1]] = temp[3]
 
+        if len(timeovered_test):
+            logger.info("%d sample codes ran time over 10s",
+                        len(timeovered_test))
+            if args.debug:
+                for k, v in timeovered_test.items():
+                    logger.info('{} - {}s'.format(k, v))
         if len(SUMMARY_INFO['success']):
             logger.info("%d sample codes ran success",
                         len(SUMMARY_INFO['success']))
