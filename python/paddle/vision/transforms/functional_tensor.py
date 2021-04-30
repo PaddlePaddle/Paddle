@@ -436,8 +436,6 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
 
     if isinstance(padding, int):
         pad_left = pad_right = pad_top = pad_bottom = padding
-    elif len(padding) == 1:
-        pad_left = pad_right = pad_top = pad_bottom = padding[0]
     elif len(padding) == 2:
         pad_left = pad_right = padding[0]
         pad_top = pad_bottom = padding[1]
