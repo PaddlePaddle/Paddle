@@ -597,7 +597,6 @@ if __name__ == '__main__':
             if not temp[0]:
                 logger.info("In addition, mistakes found in sample codes: %s",
                             temp[1])
-                logger.info("error_methods: %s", str(temp[2]))
         logger.info("----------------------------------------------------")
         exit(1)
     else:
@@ -622,10 +621,7 @@ if __name__ == '__main__':
         if len(SUMMARY_INFO['failed']):
             logger.info("%d sample codes ran failed",
                         len(SUMMARY_INFO['failed']))
-            logger.info(', '.join(SUMMARY_INFO['failed']))
-            logger.info("%d sample codes ran failed: %s",
-                        len(SUMMARY_INFO['failed']),
-                        ', '.join(SUMMARY_INFO['failed']))
+            logger.info('\n'.join(SUMMARY_INFO['failed']))
             logger.info(
                 "Mistakes found in sample codes. Please recheck the sample codes."
             )
