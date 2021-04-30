@@ -16,25 +16,16 @@ import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import core, layers
+from paddle.common_ops_import import in_dygraph_mode
+from paddle.common_ops_import import convert_np_dtype_to_dtype_
+from paddle.common_ops_import import Variable
+from paddle.common_ops_import import VarDesc
 
 # TODO: define searching & indexing functions of a tensor  
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
 # from ..fluid.layers import has_nan  #DEFINE_ALIAS
 
-__all__ = [
-    'argmax',
-    'argmin',
-    'argsort',
-    'masked_select',
-    'topk',
-    'where',
-    'index_select',
-    'nonzero',
-    'sort',
-    'index_sample',
-]
-
-from paddle.common_ops_import import *
+__all__ = []
 
 
 def argsort(x, axis=-1, descending=False, name=None):

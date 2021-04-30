@@ -50,6 +50,7 @@ output_data := value.Interface().([][]float32)
 
 运行
 ```bash
+go mod init github.com/paddlepaddle
 export LD_LIBRARY_PATH=`pwd`/paddle_c/paddle/lib:$LD_LIBRARY_PATH
 go run ./demo/mobilenet.go
 ```

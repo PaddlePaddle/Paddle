@@ -79,6 +79,7 @@ FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
 FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
+FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
 
 # FullArgSpec is valid from Python3. Defined a Namedtuple to
 # to make it available in Python2.
@@ -381,9 +382,15 @@ def get_attribute_full_name(node):
     return astor.to_source(gast.gast_to_ast(node)).strip()
 
 
-def generate_name_node(name_ids, ctx=gast.Load()):
+def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
     """
-    Generate list or gast.Tuple of ast.Name for Return statement.
+    If name_ids is list or tuple or set with multiple strings, this function
+    generates gast.Tuple of gast.Name.
+    If the name_ids is single string or contains only 1 string, this function
+    returns gast.Name if gen_tuple_if_single==False else returns gast.Tuple
+    with only one gast.Name
+
+    This function is used at several gast.Return statements.
     """
     if isinstance(name_ids, six.string_types):
         name_ids = [name_ids]
@@ -395,7 +402,7 @@ def generate_name_node(name_ids, ctx=gast.Load()):
             id=name_id, ctx=ctx, annotation=None, type_comment=None)
         for name_id in name_ids
     ]
-    if len(gast_names) == 1:
+    if len(gast_names) == 1 and not gen_tuple_if_single:
         name_node = gast_names[0]
     else:
         name_node = gast.Tuple(elts=gast_names, ctx=ctx)
@@ -1006,6 +1013,9 @@ class ForNodeVisitor(object):
         #   - for i, x enumerate(var|var.numpy())
         #   - for x in var
         self.iter_var_len_name = unique_name.generate(FOR_ITER_VAR_LEN_PREFIX)
+        # - created zip to list var : __for_loop_iter_zip_0
+        self.iter_zip_to_list_name = unique_name.generate(
+            FOR_ITER_ZIP_TO_LIST_PREFIX)
 
         # - var.numpy()/var
         #   - for x in var|var.numpy()
@@ -1077,6 +1087,7 @@ class ForNodeVisitor(object):
 
     def _parse_for_stmts(self):
         init_stmts = []
+        init_stmts.extend(self._build_iter_node())
         init_stmts.append(self._build_index_init_node())
         init_stmts.append(self._build_var_len_assign_node())
 
@@ -1099,6 +1110,7 @@ class ForNodeVisitor(object):
 
     def _parse_for_enumerate_stmts(self):
         init_stmts = []
+        init_stmts.extend(self._build_iter_node())
         init_stmts.append(self._build_index_init_node())
         init_stmts.append(self._build_var_len_assign_node())
         init_stmts.append(self._build_enum_init_node())
@@ -1156,6 +1168,34 @@ class ForNodeVisitor(object):
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]
 
         return convert_len_node
+
+    def _build_iter_node(self):
+        """
+        Process special cases for iter_node inclue:
+          - Case 1 (for zip):
+            
+            - for i, val in enumerate(zip(x, y))  # original code:
+            
+            - __for_loop_iter_zip_0 = list(zip(x, y))
+            - for i, val in enumerate(__for_loop_iter_zip_0)
+        """
+        new_nodes = []
+        if isinstance(self.iter_node, gast.Call) and isinstance(
+                self.iter_node.func, gast.Name):
+            if self.iter_node.func.id == 'zip':
+                iter_var_name = ast_to_source_code(self.iter_node).strip()
+                zip_to_list_str = "{target} = list({value})".format(
+                    target=self.iter_zip_to_list_name, value=iter_var_name)
+                zip_to_list_node = gast.parse(zip_to_list_str).body[0]
+                new_nodes.append(zip_to_list_node)
+
+                self.iter_node = gast.Name(
+                    id=self.iter_zip_to_list_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None)
+
+        return new_nodes
 
     def _build_enum_init_node(self):
         if self.is_for_enumerate_iter() and self.args_length != 1:
@@ -1393,6 +1433,7 @@ def input_specs_compatible(src_input_specs, desired_input_specs):
         for spec in src_input_specs:
             if spec not in desired_input_specs:
                 return False
+
     else:
         for i in range(len_specs):
             src_shape = src_input_specs[i].shape

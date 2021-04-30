@@ -21,7 +21,8 @@ from ..fluid import unique_name
 from ..fluid import layers
 import paddle.fluid as fluid
 from paddle.fluid.regularizer import L2DecayRegularizer
-__all__ = ["Momentum"]
+
+__all__ = []
 
 
 class Momentum(Optimizer):
@@ -50,16 +51,16 @@ class Momentum(Optimizer):
         learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
         momentum (float): Momentum factor. The default value is 0.9.
-        parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-        It canbe a float value as coeff of L2 regularization or \
-        :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-        If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
-        the regularization setting here in optimizer will be ignored for this parameter. \
-        Otherwise, the regularization setting here in optimizer will take effect. \
-        Default None, meaning there is no regularization.
+            It canbe a float value as coeff of L2 regularization or \
+            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            the regularization setting here in optimizer will be ignored for this parameter. \
+            Otherwise, the regularization setting here in optimizer will take effect. \
+            Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,

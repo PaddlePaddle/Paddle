@@ -250,7 +250,10 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   tracer.TraceOp("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
                  gpu_place, true);
   imperative::BasicEngine engine;
-  engine.Init(reduce_sum_out.get());
+
+  std::vector<std::shared_ptr<imperative::VarBase>> tensors{reduce_sum_out};
+  std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
+  engine.Init(tensors, grad_tensors);
   engine.Execute();
 
   framework::LoDTensor rlt;
@@ -376,8 +379,10 @@ TEST(test_tracer, test_var_without_grad_var) {
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 
+  std::vector<std::shared_ptr<imperative::VarBase>> tensors{vout};
+  std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
   imperative::BasicEngine engine;
-  engine.Init(vout.get());
+  engine.Init(tensors, grad_tensors);
   engine.Execute();
 
   // check the grad

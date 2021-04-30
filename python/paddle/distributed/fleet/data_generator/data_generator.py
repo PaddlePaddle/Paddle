@@ -32,11 +32,11 @@ class DataGenerator(object):
         '''
         Set batch size of current DataGenerator
         This is necessary only if a user wants to define generator_batch
-        
+
         Example:
 
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -52,7 +52,7 @@ class DataGenerator(object):
                                 yield ("words", s[1].extend([s[1][0]]))
                 mydata = MyData()
                 mydata.set_batch(128)
-                    
+
         '''
         self.batch_size_ = batch_size
 
@@ -63,7 +63,7 @@ class DataGenerator(object):
 
         Example:
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -100,9 +100,9 @@ class DataGenerator(object):
         generated.
 
         Example:
-        
+
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -161,7 +161,7 @@ class DataGenerator(object):
               The data format is list or tuple: 
             [(name, [feasign, ...]), ...] 
               or ((name, [feasign, ...]), ...)
-             
+
             For example:
             [("words", [1926, 08, 17]), ("label", [1])]
               or (("words", [1926, 08, 17]), ("label", [1]))
@@ -174,7 +174,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -206,7 +206,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                
+
                 import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
@@ -259,6 +259,9 @@ class MultiSlotStringDataGenerator(DataGenerator):
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
+        if sys.version > '3' and isinstance(line, zip):
+            line = list(line)
+
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
                 "the output of process() must be in list or tuple type"
@@ -289,7 +292,7 @@ class MultiSlotDataGenerator(DataGenerator):
             >>> [ids_num id1 id2 ...] ...
         The proto_info will be in this format:
             >>> [(name, type), ...]
-        
+
         For example, if the input is like this:
             >>> [("words", [1926, 08, 17]), ("label", [1])]
             >>> or (("words", [1926, 08, 17]), ("label", [1]))
@@ -304,6 +307,9 @@ class MultiSlotDataGenerator(DataGenerator):
         Returns:
             Return a string data that can be read directly by the MultiSlotDataFeed.
         '''
+        if sys.version > '3' and isinstance(line, zip):
+            line = list(line)
+
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
                 "the output of process() must be in list or tuple type"

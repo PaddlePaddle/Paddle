@@ -273,5 +273,62 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
                 assert isinstance(label, paddle.Tensor)
 
 
+class ComplextDataset(Dataset):
+    def __init__(self, sample_num):
+        self.sample_num = sample_num
+
+    def __len__(self):
+        return self.sample_num
+
+    def __getitem__(self, idx):
+        return (3.1, 'abc', paddle.to_tensor(
+            np.random.random([IMAGE_SIZE]).astype('float32'),
+            place=paddle.CPUPlace()),
+                [1, np.random.random([2]).astype('float32')], {
+                    'a': 2.0,
+                    'b': np.random.random([2]).astype('float32')
+                })
+
+
+class TestComplextDataset(unittest.TestCase):
+    def run_main(self, num_workers):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+        place = paddle.CPUPlace()
+        with fluid.dygraph.guard(place):
+            dataset = ComplextDataset(16)
+            assert len(dataset) == 16
+            dataloader = DataLoader(
+                dataset,
+                places=place,
+                num_workers=num_workers,
+                batch_size=2,
+                drop_last=True)
+
+            for i, data in enumerate(dataloader()):
+                assert len(data) == 5
+                # data[0]: collate 3.1
+                assert data[0].shape == [2]
+                assert isinstance(data[1], list)
+                # data[1]: collate 'abc'
+                assert len(data[1]) == 2
+                assert isinstance(data[1][0], str)
+                assert isinstance(data[1][1], str)
+                # data[2]: collate tensor
+                assert data[2].shape == [2, IMAGE_SIZE]
+                # data[3]: collate list
+                assert isinstance(data[3], list)
+                assert data[3][0].shape == [2]
+                assert data[3][1].shape == [2, 2]
+                # data[4]: collate dict
+                assert isinstance(data[4], dict)
+                assert data[4]['a'].shape == [2]
+                assert data[4]['b'].shape == [2, 2]
+
+    def test_main(self):
+        for num_workers in [0, 2]:
+            self.run_main(num_workers)
+
+
 if __name__ == '__main__':
     unittest.main()

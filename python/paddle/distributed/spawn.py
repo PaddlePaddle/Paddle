@@ -303,8 +303,8 @@ class MultiprocessContext(object):
                 raise Exception("Process %d terminated with signal %s." %
                                 (error_index, name))
             else:
-                raise Exception("Process %d terminated with exit code %d." & (
-                    error_index, exitcode))
+                raise Exception("Process %d terminated with exit code %d." %
+                                (error_index, exitcode))
 
         original_trace = self.error_queues[error_index].get()
         msg = "\n\n----------------------------------------------\n" \
@@ -325,7 +325,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         func (function): The target function is called by spawned process.
             This function need to be able to pickled, so it must be defined
             at the top level of a module.
-        args (tuple, optional): Arguments passed to ``func``.
+        args (list|tuple, optional): Arguments passed to ``func``.
         nprocs (int, optional): Number of processed to start. Default: -1.
             when nprocs is -1, the available device will be obtained from 
             the environment variable when the model is executed: If use GPU, 

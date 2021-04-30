@@ -32,6 +32,11 @@ __global__ void GPUBCELossForward(const T* x_data, const T* label_data,
     T one = static_cast<T>(1.);
     T neg_100 = static_cast<T>(-100.);
 
+    PADDLE_ENFORCE(
+        (x >= static_cast<T>(0)) && (x <= one),
+        "Input is expected to be within the interval [0, 1], but recieved %f.",
+        x);
+
     T term1 = max(real_log(x), neg_100);
     T term2 = max(real_log(one - x), neg_100);
 
@@ -64,29 +69,13 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
     auto* labels = ctx.Input<Tensor>("Label");
     auto* out = ctx.Output<Tensor>("Out");
 
-    auto x_data = x->data<T>();
-    auto out_data = out->mutable_data<T>(ctx.GetPlace());
+    const auto* x_data = x->data<T>();
+    auto* out_data = out->mutable_data<T>(ctx.GetPlace());
     auto x_numel = x->numel();
 
-    platform::GpuLaunchConfig config =
-        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), x_numel);
-
-    Tensor x_cpu;
-    framework::TensorCopy(*x, platform::CPUPlace(), &x_cpu);
-    T* x_cpu_data = x_cpu.data<T>();
-
-    for (int64_t i = 0; i < x_numel; ++i) {
-      PADDLE_ENFORCE_GE(
-          x_cpu_data[i], static_cast<T>(0),
-          platform::errors::InvalidArgument(
-              "Illegal input, input must be greater than  or equal to 0"));
-      PADDLE_ENFORCE_LE(
-          x_cpu_data[i], static_cast<T>(1),
-          platform::errors::InvalidArgument(
-              "Illegal input, input must be less than or equal to 1"));
-    }
-
     auto& dev_ctx = ctx.cuda_device_context();
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(dev_ctx, x_numel);
 
     GPUBCELossForward<T><<<config.block_per_grid, config.thread_per_block, 0,
                            dev_ctx.stream()>>>(x_data, labels->data<T>(),
@@ -102,9 +91,10 @@ class BCELossGradCUDAKernel : public framework::OpKernel<T> {
     auto* labels = ctx.Input<Tensor>("Label");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
     int x_numel = x->numel();
+    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+
     auto& dev_ctx = ctx.cuda_device_context();
     platform::GpuLaunchConfig config =
         platform::GetGpuLaunchConfig1D(dev_ctx, x_numel);

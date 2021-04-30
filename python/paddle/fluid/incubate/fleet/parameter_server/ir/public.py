@@ -31,7 +31,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundR
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 
 OP_NAME_SCOPE = "op_namescope"
-CLIP_OP_NAME_SCOPE = "@CLIP"
+CLIP_OP_NAME_SCOPE = "gradient_clip"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
 LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
 
@@ -138,6 +138,7 @@ class CompileTimeStrategy(object):
 
         self.strategy = strategy
         self.role_maker = role_maker
+        self.use_ps_gpu = False
         try:
             self.is_heter_ps_mode = role_maker._is_heter_parameter_server_mode
         except:

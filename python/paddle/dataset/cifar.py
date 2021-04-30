@@ -37,7 +37,7 @@ import tarfile
 import six
 from six.moves import cPickle as pickle
 
-__all__ = ['train100', 'test100', 'train10', 'test10']
+__all__ = []
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/cifar/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'

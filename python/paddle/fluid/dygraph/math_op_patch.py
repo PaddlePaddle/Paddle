@@ -29,6 +29,7 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.INT16,
     core.VarDesc.VarType.INT32,
     core.VarDesc.VarType.INT64,
+    core.VarDesc.VarType.BOOL,
 ]
 
 # NOTE(chenweihang): We currently do not fully support the type promotion 
@@ -324,13 +325,7 @@ def monkey_patch_math_varbase():
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
-        tensor_methods = paddle.tensor.linalg.__all__ + \
-                         paddle.tensor.math.__all__ + \
-                         paddle.tensor.logic.__all__ + \
-                         paddle.tensor.manipulation.__all__ + \
-                         paddle.tensor.search.__all__ + \
-                         paddle.tensor.stat.__all__ + \
-                         paddle.tensor.attribute.__all__
+        tensor_methods = paddle.tensor.tensor_method_func
         for method_name in tensor_methods:
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)

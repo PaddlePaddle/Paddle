@@ -17,6 +17,8 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
 #include <functional>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -39,6 +41,24 @@ void RecvBroadCastCommID(std::string endpoint,
 template <typename CommUniqueId>
 void RecvBroadCastCommID(int server_fd, std::string endpoint,
                          std::vector<CommUniqueId>* nccl_ids);
+
+class SocketServer {
+ public:
+  SocketServer() = default;
+
+  ~SocketServer() { CloseSocket(server_fd_); }
+
+  int socket() const { return server_fd_; }
+
+  static SocketServer& GetInstance(const std::string& end_point);
+
+ private:
+  int server_fd_{-1};
+  std::string end_point_;
+
+  static std::once_flag init_flag_;
+};
+
 }  // namespace platform
 }  // namespace paddle
 

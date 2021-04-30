@@ -30,7 +30,7 @@ import re
 import string
 import six
 
-__all__ = ['build_dict', 'train', 'test']
+__all__ = []
 
 #URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
 URL = 'https://dataset.bj.bcebos.com/imdb%2FaclImdb_v1.tar.gz'

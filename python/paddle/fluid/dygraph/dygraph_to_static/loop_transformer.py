@@ -378,6 +378,21 @@ class NameVisitor(gast.NodeVisitor):
         :param loop_node: Current loop node.
         """
 
+        def filter_name_nodes_from(root_node, target_var_names):
+            """
+            Filter children with gast.Name type from node.(inclusivly)
+            """
+            name_nodes = set()
+            if isinstance(root_node, gast.Name):
+                if node.id in target_var_names:
+                    name_nodes.add(root_node)
+            for child_node in gast.walk(root_node):
+                if isinstance(child_node, gast.Name):
+                    if child_node.id in target_var_names:
+                        name_nodes.add(child_node)
+
+            return name_nodes
+
         vars_of_list_generator = set()
         target_vars_of_for_node = set()
 
@@ -412,15 +427,16 @@ class NameVisitor(gast.NodeVisitor):
 
                 # 1.2 vars from target vars used in elt_node
                 target_var_names = {var.id for var in target_vars}
-                listcomp_node = self._get_parent_node(parent_node)
-                elt_node = listcomp_node.elt
-                if isinstance(elt_node, gast.Name):
-                    if elt_node.id in target_var_names:
-                        vars_of_list_generator.add(elt_node)
-                for child_node in gast.walk(elt_node):
-                    if isinstance(child_node, gast.Name):
-                        if child_node.id in target_var_names:
-                            vars_of_list_generator.add(child_node)
+                comp_node = self._get_parent_node(parent_node)
+                elt_nodes = []
+                if isinstance(comp_node, gast.ListComp):
+                    elt_nodes.append(comp_node.elt)
+                elif isinstance(comp_node, gast.DictComp):
+                    elt_nodes.extend([comp_node.key, comp_node.value])
+
+                for node in elt_nodes:
+                    vars_of_list_generator |= filter_name_nodes_from(
+                        node, target_var_names)
 
             # 2. Get target vars or vars from target vars used in for-loop but the for-loop is
             #   1) not the "loop_node" itself
@@ -594,7 +610,7 @@ class LoopTransformer(gast.NodeTransformer):
         # append return values for loop body
         body_stmts.append(
             gast.Return(value=generate_name_node(
-                loop_var_names, ctx=gast.Load())))
+                loop_var_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_BODY_PREFIX),
             args=gast.arguments(

@@ -652,6 +652,36 @@ PDNode *PDNode::assert_is_ops_input(
   return this;
 }
 
+PDNode *PDNode::assert_is_only_input_of_ops(
+    const std::unordered_set<std::string> &op_types) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->outputs) {
+      if (op && op->IsOp() && op->Op() && op_types.count(op->Op()->Type()) &&
+          op->inputs.size() == 1) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+
+PDNode *PDNode::assert_is_only_output_of_ops(
+    const std::unordered_set<std::string> &op_types) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->inputs) {
+      if (op && op->IsOp() && op->Op() && op_types.count(op->Op()->Type()) &&
+          op->outputs.size() == 1) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+
 bool VarLinksToOp(Node *node, const std::string &op_type) {
   for (auto *out : node->outputs) {
     if (out->IsOp() && out->Op()->Type() == op_type) {
@@ -2407,6 +2437,29 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
 
   concat_op->LinksFrom(flatten_outs).LinksTo({concat_out});
   return concat_out;
+}
+
+void patterns::DeleteDropoutOpPattern::operator()() {
+  auto any_op_out = pattern->NewNode(any_op_out_repr())
+                        ->assert_is_op_input("dropout", "X")
+                        ->AsInput();
+
+  auto dropout_op =
+      pattern->NewNode(dropout_op_repr())->assert_is_op("dropout");
+
+  auto dropout_op_out = pattern->NewNode(dropout_op_out_repr())
+                            ->assert_is_op_output("dropout", "Out")
+                            ->AsIntermediate();
+
+  auto dropout_op_outmask = pattern->NewNode(dropout_op_outmask_repr())
+                                ->assert_is_op_output("dropout", "Mask")
+                                ->AsOutput();
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  dropout_op->LinksFrom({any_op_out});
+  dropout_op_out->LinksFrom({dropout_op});
+  dropout_op_outmask->LinksFrom({dropout_op});
+  any_op2->LinksFrom({dropout_op_out});
 }
 
 void patterns::DeleteQuantOpFuse::operator()(PDNode *input_act_node,

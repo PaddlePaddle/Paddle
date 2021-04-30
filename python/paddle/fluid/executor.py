@@ -1213,6 +1213,7 @@ class Executor(object):
             # In distributed training, the compiled program is saved in Program._graph
             has_compiled_graph = isinstance(program._graph,
                                             compiler.CompiledProgram)
+
             if has_compiled_graph:
                 program._graph._compile(scope, self.place)
                 # _graph in program does not support inference since the _graph is optimized
@@ -1372,11 +1373,14 @@ class Executor(object):
                          fetch_info=None,
                          print_period=100):
         is_heter = 0
+        use_ps_gpu = 0
         if not program._fleet_opt is None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
                 is_heter = 1
+            if program._fleet_opt.get("use_ps_gpu", False):
+                use_ps_gpu = True
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -1411,7 +1415,9 @@ class Executor(object):
             trainer._set_program(program.program)
 
         if thread <= 0:
-            if dataset.thread_num <= 0:
+            if use_ps_gpu:
+                trainer._set_thread(len(program._fleet_opt["worker_places"]))
+            elif dataset.thread_num <= 0:
                 raise RuntimeError(
                     "You should set thread num first, either in Dataset"
                     "or in Executor.train_from_dataset")
@@ -1445,8 +1451,12 @@ class Executor(object):
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            dataset = paddle.fluid.DatasetFactory().create_dataset(
-                'FileInstantDataset')
+            if core.is_compiled_with_npu():
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'InMemoryDataset')
+            else:
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'FileInstantDataset')
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -1458,7 +1468,7 @@ class Executor(object):
         dataset._prepare_to_run()
         real_fetch_list = []
         if program._pipeline_opt:
-            real_program = program._pipeline_opt["section_program"]['program']
+            real_program = program._pipeline_opt["section_program"]
             for fetch_var in fetch_list:
                 if isinstance(fetch_var, Variable):
                     fetch_var_name = fetch_var.name
@@ -1467,13 +1477,20 @@ class Executor(object):
                 if fetch_var_name in real_program.global_block().vars:
                     real_fetch_list.append(fetch_var)
 
-            program._pipeline_opt["section_program"][
-                'program'] = self._add_feed_fetch_ops(
-                    program=program._pipeline_opt["section_program"]['program'],
-                    feed=[],
-                    fetch_list=real_fetch_list,
-                    feed_var_name='feed',
-                    fetch_var_name='fetch')
+            program._pipeline_opt["section_program"] = self._add_feed_fetch_ops(
+                program=program._pipeline_opt["section_program"],
+                feed=[],
+                fetch_list=real_fetch_list,
+                feed_var_name='feed',
+                fetch_var_name='fetch')
+            main_block = program._pipeline_opt["section_program"].block(0)
+            for op in main_block.ops:
+                # set the op_role of fetch op to Optimize to avoid
+                # erase the fetched vars by gc for pipeline
+                if op.type == 'fetch':
+                    op._set_attr(
+                        'op_role',
+                        core.op_proto_and_checker_maker.OpRole.Optimize)
             fetch_list = None
 
         scope, trainer = self._prepare_trainer(

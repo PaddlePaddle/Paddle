@@ -543,8 +543,8 @@ REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale,
 REGISTER_OP_CUDA_KERNEL(
     fake_quantize_dequantize_moving_average_abs_max,
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float>);
-REGISTER_OP_CUDA_KERNEL(fake_quantize_dequantize_grad,
-                        ops::FakeQuantDequantGradKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(stright_throuth_estimator_grad,
+                        ops::StrightThroughEstimatorGradKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(
     fake_channel_wise_quantize_dequantize_abs_max,
     ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel<CUDA, float>);

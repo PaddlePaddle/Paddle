@@ -8,8 +8,6 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-// clang-format off
-
 #ifndef EIGEN_META_H
 #define EIGEN_META_H
 
@@ -27,8 +25,40 @@
 
 #endif
 
-#if EIGEN_COMP_ICC>=1600 &&  __cplusplus >= 201103L
+// Recent versions of ICC require <cstdint> for pointer types below.
+#define EIGEN_ICC_NEEDS_CSTDINT (EIGEN_COMP_ICC>=1600 && EIGEN_COMP_CXXVER >= 11)
+
+// Define portable (u)int{32,64} types
+#if EIGEN_HAS_CXX11 || EIGEN_ICC_NEEDS_CSTDINT
 #include <cstdint>
+namespace Eigen {
+namespace numext {
+typedef std::uint8_t  uint8_t;
+typedef std::int8_t   int8_t;
+typedef std::uint16_t uint16_t;
+typedef std::int16_t  int16_t;
+typedef std::uint32_t uint32_t;
+typedef std::int32_t  int32_t;
+typedef std::uint64_t uint64_t;
+typedef std::int64_t  int64_t;
+}
+}
+#else
+// Without c++11, all compilers able to compile Eigen also
+// provide the C99 stdint.h header file.
+#include <stdint.h>
+namespace Eigen {
+namespace numext {
+typedef ::uint8_t  uint8_t;
+typedef ::int8_t   int8_t;
+typedef ::uint16_t uint16_t;
+typedef ::int16_t  int16_t;
+typedef ::uint32_t uint32_t;
+typedef ::int32_t  int32_t;
+typedef ::uint64_t uint64_t;
+typedef ::int64_t  int64_t;
+}
+}
 #endif
 
 namespace Eigen {
@@ -54,13 +84,14 @@ namespace internal {
 
 // Only recent versions of ICC complain about using ptrdiff_t to hold pointers,
 // and older versions do not provide *intptr_t types.
-#if EIGEN_COMP_ICC>=1600 &&  __cplusplus >= 201103L
+#if EIGEN_ICC_NEEDS_CSTDINT
 typedef std::intptr_t  IntPtr;
 typedef std::uintptr_t UIntPtr;
 #else
 typedef std::ptrdiff_t IntPtr;
 typedef std::size_t UIntPtr;
 #endif
+#undef EIGEN_ICC_NEEDS_CSTDINT
 
 struct true_type {  enum { value = 1 }; };
 struct false_type { enum { value = 0 }; };
@@ -161,6 +192,16 @@ template<> struct make_unsigned<unsigned long>    { typedef unsigned long type; 
 #if EIGEN_COMP_MSVC
 template<> struct make_unsigned<signed __int64>   { typedef unsigned __int64 type; };
 template<> struct make_unsigned<unsigned __int64> { typedef unsigned __int64 type; };
+#endif
+
+// Some platforms define int64_t as long long even for C++03. In this case we
+// are missing the definition for make_unsigned. If we just define it, we get
+// duplicated definitions for platforms defining int64_t as signed long for
+// C++03. We therefore add the specialization for C++03 long long for these
+// platforms only.
+#if EIGEN_OS_MAC
+template<> struct make_unsigned<unsigned long long> { typedef unsigned long long type; };
+template<> struct make_unsigned<long long>          { typedef unsigned long long type; };
 #endif
 #endif
 
@@ -360,6 +401,15 @@ template<> struct numeric_limits<unsigned long long>
   EIGEN_DEVICE_FUNC
   static unsigned long long (min)() { return 0; }
 };
+template<> struct numeric_limits<bool>
+{
+  EIGEN_DEVICE_FUNC
+  static bool epsilon() { return false; }
+  EIGEN_DEVICE_FUNC
+  static bool (max)() { return true; }
+  EIGEN_DEVICE_FUNC
+  static bool (min)() { return false; }
+};
 
 }
 
@@ -431,13 +481,29 @@ template<typename T,std::size_t N>
 Index size(const T (&) [N]) { return N; }
 
 /** \internal
-  * Convenient struct to get the result type of a unary or binary functor.
-  *
-  * It supports both the current STL mechanism (using the result_type member) as well as
-  * upcoming next STL generation (using a templated result member).
-  * If none of these members is provided, then the type of the first argument is returned. FIXME, that behavior is a pretty bad hack.
+  * Convenient struct to get the result type of a nullary, unary, binary, or
+  * ternary functor.
+  * 
+  * Pre C++11:
+  * Supports both a Func::result_type member and templated
+  * Func::result<Func(ArgTypes...)>::type member.
+  * 
+  * If none of these members is provided, then the type of the first
+  * argument is returned.
+  * 
+  * Post C++11:
+  * This uses std::result_of. However, note the `type` member removes
+  * const and converts references/pointers to their corresponding value type.
   */
-#if EIGEN_HAS_STD_RESULT_OF
+#if EIGEN_HAS_STD_INVOKE_RESULT
+template<typename T> struct result_of;
+
+template<typename F, typename... ArgTypes>
+struct result_of<F(ArgTypes...)> {
+  typedef typename std::invoke_result<F, ArgTypes...>::type type1;
+  typedef typename remove_all<type1>::type type;
+};
+#elif EIGEN_HAS_STD_RESULT_OF
 template<typename T> struct result_of {
   typedef typename std::result_of<T>::type type1;
   typedef typename remove_all<type1>::type type;
@@ -448,6 +514,28 @@ template<typename T> struct result_of { };
 struct has_none {int a[1];};
 struct has_std_result_type {int a[2];};
 struct has_tr1_result {int a[3];};
+
+template<typename Func, int SizeOf>
+struct nullary_result_of_select {};
+
+template<typename Func>
+struct nullary_result_of_select<Func, sizeof(has_std_result_type)> {typedef typename Func::result_type type;};
+
+template<typename Func>
+struct nullary_result_of_select<Func, sizeof(has_tr1_result)> {typedef typename Func::template result<Func()>::type type;};
+
+template<typename Func>
+struct result_of<Func()> {
+    template<typename T>
+    static has_std_result_type    testFunctor(T const *, typename T::result_type const * = 0);
+    template<typename T>
+    static has_tr1_result         testFunctor(T const *, typename T::template result<T()>::type const * = 0);
+    static has_none               testFunctor(...);
+
+    // note that the following indirection is needed for gcc-3.3
+    enum {FunctorType = sizeof(testFunctor(static_cast<Func*>(0)))};
+    typedef typename nullary_result_of_select<Func, FunctorType>::type type;
+};
 
 template<typename Func, typename ArgType, int SizeOf=sizeof(has_none)>
 struct unary_result_of_select {typedef typename internal::remove_all<ArgType>::type type;};
@@ -517,6 +605,45 @@ struct result_of<Func(ArgType0,ArgType1,ArgType2)> {
     // note that the following indirection is needed for gcc-3.3
     enum {FunctorType = sizeof(testFunctor(static_cast<Func*>(0)))};
     typedef typename ternary_result_of_select<Func, ArgType0, ArgType1, ArgType2, FunctorType>::type type;
+};
+
+#endif
+
+#if EIGEN_HAS_STD_INVOKE_RESULT
+template<typename F, typename... ArgTypes>
+struct invoke_result {
+  typedef typename std::invoke_result<F, ArgTypes...>::type type1;
+  typedef typename remove_all<type1>::type type;
+};
+#elif EIGEN_HAS_CXX11
+template<typename F, typename... ArgTypes>
+struct invoke_result {
+  typedef typename result_of<F(ArgTypes...)>::type type1;
+  typedef typename remove_all<type1>::type type;
+};
+#else
+template<typename F, typename ArgType0 = void, typename ArgType1 = void, typename ArgType2 = void>
+struct invoke_result {
+  typedef typename result_of<F(ArgType0, ArgType1, ArgType2)>::type type1;
+  typedef typename remove_all<type1>::type type;
+};
+
+template<typename F>
+struct invoke_result<F, void, void, void> {
+  typedef typename result_of<F()>::type type1;
+  typedef typename remove_all<type1>::type type;
+};
+
+template<typename F, typename ArgType0>
+struct invoke_result<F, ArgType0, void, void> {
+  typedef typename result_of<F(ArgType0)>::type type1;
+  typedef typename remove_all<type1>::type type;
+};
+
+template<typename F, typename ArgType0, typename ArgType1>
+struct invoke_result<F, ArgType0, ArgType1, void> {
+  typedef typename result_of<F(ArgType0, ArgType1)>::type type1;
+  typedef typename remove_all<type1>::type type;
 };
 #endif
 
@@ -672,51 +799,8 @@ template<> EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC
 bool not_equal_strict(const double& x,const double& y) { return std::not_equal_to<double>()(x,y); }
 #endif
 
-/** \internal extract the bits of the float \a x */
-inline unsigned int as_uint(float x)
-{
-  unsigned int ret;
-  std::memcpy(&ret, &x, sizeof(float));
-  return ret;
-}
-
 } // end namespace numext
 
 } // end namespace Eigen
 
-// Define portable (u)int{32,64} types
-#if EIGEN_HAS_CXX11
-#include <cstdint>
-namespace Eigen {
-namespace numext {
-typedef std::uint8_t  uint8_t;
-typedef std::int8_t   int8_t;
-typedef std::uint16_t uint16_t;
-typedef std::int16_t  int16_t;
-typedef std::uint32_t uint32_t;
-typedef std::int32_t  int32_t;
-typedef std::uint64_t uint64_t;
-typedef std::int64_t  int64_t;
-}
-}
-#else
-// Without c++11, all compilers able to compile Eigen also
-// provides the C99 stdint.h header file.
-#include <stdint.h>
-namespace Eigen {
-namespace numext {
-typedef ::uint8_t  uint8_t;
-typedef ::int8_t   int8_t;
-typedef ::uint16_t uint16_t;
-typedef ::int16_t  int16_t;
-typedef ::uint32_t uint32_t;
-typedef ::int32_t  int32_t;
-typedef ::uint64_t uint64_t;
-typedef ::int64_t  int64_t;
-}
-}
-#endif
-
 #endif // EIGEN_META_H
-
-// clang-format on

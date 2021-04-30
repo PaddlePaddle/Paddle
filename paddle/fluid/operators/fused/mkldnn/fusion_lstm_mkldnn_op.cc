@@ -79,13 +79,11 @@ class LSTMMKLDNNHandler
                                    MKLDNNMemoryFormat::ldgo);
       auto hidden_md = MKLDNNMemDesc({Ti, N, OC}, MKLDNNGetDataType<T_out>(),
                                      MKLDNNMemoryFormat::tnc);
+
       auto h0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
                                  MKLDNNMemoryFormat::ldnc);
-      auto c0_md = MKLDNNMemDesc(
-          {L, D, N, OC}, MKLDNNGetDataType<float>(),  // Vanilla LSTM and LSTM
-                                                      // with peepoles has c0 as
-                                                      // fp32
-          MKLDNNMemoryFormat::ldnc);
+      auto c0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<float>(),
+                                 MKLDNNMemoryFormat::ldnc);
 
       // Create LSTM oneDNN primitive
       const auto direction =
@@ -266,7 +264,7 @@ class LSTMMKLDNNHandler
           this->fwd_pd_->src_iter_c_desc(), this->engine_);
 
       auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-      dnnl::reorder(user_c0_memory, *memory_p, this->attr_)
+      dnnl::reorder(user_c0_memory, *memory_p)
           .execute(astream, user_c0_memory, *memory_p);
 
       this->dev_ctx_.SetBlob(c0_key, memory_p);
@@ -360,6 +358,12 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
       weight_h_memory_p =
           handler.template AcquireWeightHMemory<paddle::platform::bfloat16>(
               weight_h);
+    } else {
+      h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<int8_t>(weight_x);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<int8_t>(weight_h);
     }
 
     auto bias_memory_p = handler.AcquireBiasMemory(bias);
@@ -406,4 +410,5 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm, MKLDNN, paddle::platform::CPUPlace,
                    ops::FusionLSTMMKLDNNKernel<float>,
-                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>);
+                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>,
+                   ops::FusionLSTMMKLDNNKernel<uint8_t>);

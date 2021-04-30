@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
 
@@ -37,6 +38,16 @@ struct CBlas<int8_t> {
   static void VCOPY(ARGS... args) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Blas VCOPY do not supported on CPU, please check your code"));
+  }
+};
+
+template <>
+struct CBlas<platform::bfloat16> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Blas VCOPY do not supported on CPU with bfloat16,"
+        " please check your code"));
   }
 };
 

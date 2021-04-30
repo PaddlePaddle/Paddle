@@ -31,19 +31,7 @@ class PReluOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     size_t input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(input_num, 1UL,
-                      platform::errors::InvalidArgument(
-                          "Invalid input X's size of prelu TRT converter. "
-                          "Expected 1, received %d.",
-                          input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    // Get output
-    size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE_EQ(output_num, 1UL,
-                      platform::errors::InvalidArgument(
-                          "Invalid output Out's size of prelu TRT converter. "
-                          "Expected 1, received %d.",
-                          output_num));
     // Get attrs
     std::string mode = BOOST_GET_CONST(std::string, op_desc.GetAttr("mode"));
     //
@@ -65,7 +53,7 @@ class PReluOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
       plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
           alpha_data, alpha_tensor_temp->numel(), mode);
-      layer = engine_->AddPluginV2(&input, input_num, plugin);
+      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the TRT Dynamic Shape mode, need to confirm that "

@@ -53,7 +53,7 @@ void CPUBfloat16PlacementPass::SetMkldnnDataType(
   gpd(graph, handler);
 }
 
-void CPUBfloat16PlacementPass::RemoveOrhanedOperators(
+void CPUBfloat16PlacementPass::RemoveOrphanedOperators(
     ir::Graph* graph, int* bfloat16_operators) const {
   // find orphaned bfloat16 operator that is between two float32 operators
   // revert mkldnn_data_type attr to float32
@@ -74,7 +74,7 @@ void CPUBfloat16PlacementPass::RemoveOrhanedOperators(
 void CPUBfloat16PlacementPass::ApplyImpl(ir::Graph* graph) const {
   int bfloat16_operators = 0;
   SetMkldnnDataType(graph, &bfloat16_operators);
-  RemoveOrhanedOperators(graph, &bfloat16_operators);
+  RemoveOrphanedOperators(graph, &bfloat16_operators);
   PrettyLogDetail("---    marked %d operators to bfloat16 ",
                   bfloat16_operators);
 }
