@@ -796,12 +796,12 @@ struct CudaSoftReluFunctor : public BaseActivationFunctor<T> {
   float threshold;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    // threshold should not be negative
     return {{"threshold", &threshold}};
   }
 
   // soft_relu(x) = log(1 + exp(max(min(x, threshold), -threshold)))
   // Inputs: args[0], the input x
+  // threshold should not be negative
   __device__ __forceinline__ T operator()(const T* args) const {
     MPType x = static_cast<MPType>(args[0]);
     MPType t = static_cast<MPType>(threshold);
@@ -818,13 +818,13 @@ struct CudaSoftReluGradFunctor : public BaseActivationFunctor<T> {
   float threshold;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    // threshold should not be negative
     return {{"threshold", &threshold}};
   }
 
   // dx = (out > -threshold && out < threshold) ? dout * (1 - exp(-out)) : 0
   // Inputs: args[0], the input dout
   //         args[1], the input out
+  // threshold should not be negative
   __device__ __forceinline__ T operator()(const T* args) const {
     MPType dout = static_cast<MPType>(args[0]);
     MPType out = static_cast<MPType>(args[1]);
