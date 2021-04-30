@@ -255,9 +255,7 @@ def _download(url, path, md5sum=None, use_wget=False):
 
         if use_wget:
             r = os.system('wget {} -O {} '.format(url, tmp_fullname))
-            if r == 32512:
-                raise RuntimeError("wget command not found")
-            elif r != 0:
+            if r != 0:
                 raise RuntimeError("Downloading from {} failed with code,"
                                    "{}!".format(url, r))
         else:

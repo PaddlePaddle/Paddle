@@ -86,15 +86,6 @@ class TestWget(unittest.TestCase):
                 decompress=False,
                 use_wget=True, )
 
-    def test_errors(self, ):
-        with self.assertRaises(RuntimeError):
-            get_path_from_url(
-                self.giturl + 'x',
-                root_dir='./test',
-                check_exist=False,
-                decompress=False,
-                use_wget=True, )
-
 
 class TestGitclone(unittest.TestCase):
     def test_git_clone_from_url(self, ):
