@@ -547,7 +547,7 @@ struct CudaExpFunctor : public BaseActivationFunctor<T> {
   // Inputs: args[0], the input x
   __device__ __forceinline__ T operator()(const T* args) const {
     MPType x = static_cast<MPType>(args[0]);
-    return static_cast<T>(std::exp(x));
+    return static_cast<T>(exp(x));
   }
 };
 
