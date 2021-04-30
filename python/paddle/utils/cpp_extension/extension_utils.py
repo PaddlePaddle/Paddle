@@ -32,9 +32,12 @@ from ...fluid import core
 from ...fluid.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
 
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger("utils.cpp_extension")
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 OS_NAME = sys.platform
 IS_WINDOWS = OS_NAME.startswith('win')
@@ -448,9 +451,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
 
-        # Will search shared library from environment viriable 'path' on windows
-        for lib_dir in library_dirs:
-            os.environ['path'] = lib_dir + ';' + os.environ['path']
     else:
         ########################### Linux Platform ###########################
         extra_link_args = kwargs.get('extra_link_args', [])
@@ -1158,4 +1158,4 @@ def log_v(info, verbose=True):
     Print log information on stdout.
     """
     if verbose:
-        logging.info(info)
+        logger.info(info)
