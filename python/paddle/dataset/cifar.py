@@ -79,6 +79,7 @@ def reader_creator(filename, sub_name, cycle=False):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar100",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train100():
     """
@@ -98,6 +99,7 @@ def train100():
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar100",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test100():
     """
@@ -117,6 +119,7 @@ def test100():
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar10",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train10(cycle=False):
     """
@@ -139,6 +142,7 @@ def train10(cycle=False):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar10",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test10(cycle=False):
     """
@@ -161,6 +165,7 @@ def test10(cycle=False):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar10",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5)

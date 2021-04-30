@@ -241,6 +241,7 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     @deprecated(
         since="2.1.0",
+        level=1,
         reason="Please use x.grad, which returns the tensor value of the gradient."
     )
     def gradient(self):

@@ -146,6 +146,7 @@ import paddle.utils.deprecated as deprecated
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.funcitional.diag_embed",
+    level=1,
     reason="diag_embed in paddle.nn will removed in future")
 def diag_embed(*args):
     '''
@@ -157,6 +158,7 @@ def diag_embed(*args):
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.remove_weight_norm",
+    level=1,
     reason="remove_weight_norm in paddle.nn will removed in future")
 def remove_weight_norm(*args):
     '''
@@ -168,6 +170,7 @@ def remove_weight_norm(*args):
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.weight_norm",
+    level=1,
     reason="weight_norm in paddle.nn will removed in future")
 def weight_norm(*args):
     '''
