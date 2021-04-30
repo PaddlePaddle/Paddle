@@ -160,5 +160,3 @@ def image_load(path, backend=None):
     elif backend == 'cv2':
         cv2 = try_import('cv2')
         return cv2.imread(path)
-    else:
-        raise RuntimeError('do not support by now')
