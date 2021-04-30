@@ -20,36 +20,41 @@ REPO="${REPO:-paddledocker}"
 
 function make_cuda9cudnn7(){
   sed 's/<baseimg>/9.0-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/gcc /usr/bin/gcc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/gcc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
 
 }
 
 
 function make_cuda10cudnn7() {
   sed 's/<baseimg>/10.0-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/gcc /usr/bin/gcc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/gcc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
 
 }
 
 
 function make_cuda101cudnn7() {
   sed 's/<baseimg>/10.1-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/gcc /usr/bin/gcc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
 }
 
 function make_cuda102cudnn7() {
   sed 's/<baseimg>/10.2-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/gcc /usr/bin/gcc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 }
 
 function make_cuda102cudnn8() {
   sed 's/<baseimg>/10.2-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/gcc /usr/bin/gcc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 }
 
 function make_cuda11cudnn8() {
   sed 's/<baseimg>/11.0-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/gcc /usr/bin/gcc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+}
+
+function make_cuda112cudnn8() {
+  sed 's/<baseimg>/11.2.1-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 }
 
 function main() {
@@ -72,6 +77,9 @@ function main() {
       ;;
     cuda11cudnn8)
       make_cuda11cudnn8
+     ;;
+    cuda112cudnn8)
+      make_cuda112cudnn8
      ;;
     *)
       echo "Make dockerfile error, Without this paramet."

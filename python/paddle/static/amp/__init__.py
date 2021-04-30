@@ -18,7 +18,4 @@ from ...fluid.contrib.mixed_precision import AutoMixedPrecisionLists  # noqa: F4
 from ...fluid.contrib.mixed_precision import fp16_guard  # noqa: F401
 from ...fluid.contrib.mixed_precision import cast_model_to_fp16  # noqa: F401
 from ...fluid.contrib.mixed_precision import cast_parameters_to_fp16  # noqa: F401
-from ...fluid.contrib.mixed_precision import AutoMixedPrecisionListsBF16  # noqa: F401
-from ...fluid.contrib.mixed_precision import bf16_guard  # noqa: F401
-from ...fluid.contrib.mixed_precision import rewrite_program_bf16  # noqa: F401
-from ...fluid.contrib.mixed_precision import convert_float_to_uint16  # noqa: F401
+from ...fluid.contrib.mixed_precision import bf16  # noqa: F401

@@ -20,6 +20,8 @@ import numpy as np
 
 import paddle
 
+__all__ = []
+
 
 def _simple_network():
     """

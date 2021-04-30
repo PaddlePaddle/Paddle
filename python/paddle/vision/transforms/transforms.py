@@ -49,6 +49,8 @@ def _get_image_size(img):
         return img.size
     elif F._is_numpy_image(img):
         return img.shape[:2][::-1]
+    elif F._is_tensor_image(img):
+        return img.shape[1:][::-1]  # chw
     else:
         raise TypeError("Unexpected type {}".format(type(img)))
 
@@ -690,6 +692,9 @@ class Transpose(BaseTransform):
         self.order = order
 
     def _apply_image(self, img):
+        if F._is_tensor_image(img):
+            return img.transpose(self.order)
+
         if F._is_pil_image(img):
             img = np.asarray(img)
 

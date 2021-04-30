@@ -191,22 +191,8 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
-    scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
-      delete scope;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
-           ++dev_id) {
-        memory::Release(platform::CUDAPlace(dev_id));
-      }
-#endif
-#ifdef PADDLE_WITH_XPU
-      for (int dev_id = 0; dev_id < paddle::platform::GetXPUDeviceCount();
-           ++dev_id) {
-        memory::Release(platform::XPUPlace(dev_id));
-      }
-#endif
-      memory::Release(platform::CPUPlace());
-    });
+    // TODO(wilber): we need to release memory occupied by weights.
+    scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();

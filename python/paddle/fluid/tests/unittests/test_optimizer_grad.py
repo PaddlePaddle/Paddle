@@ -64,7 +64,7 @@ class SimpleNetWithCond(object):
 
         return grads
 
-    def build_net(self, cond_i):
+    def build_net(self, cond_i, use_bf16=False):
         """
         pseudo code:
             sum_xy = x + y
@@ -122,13 +122,22 @@ class SimpleNetWithCond(object):
         sum_cond = fluid.layers.cond(cond_i > 1.0, cond_true, cond_false)
         sum_all = fluid.layers.sum([sum_xy, sub_yz, sum_cond])
         mean_out = fluid.layers.mean(sum_all)
+        if use_bf16:
+            import paddle.static.amp as amp
+            self.optimizer = amp.bf16.decorate_bf16(
+                self.optimizer,
+                amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
+                    custom_fp32_list={'elementwise_add'}),
+                use_bf16_guard=False,
+                use_pure_bf16=True)
+
         self.optimizer.minimize(mean_out)
 
         fetch_list = ["param_x", "param_z"] if self.y_no_grad else [
             "param_x", "param_y", "param_z"
         ]
         fetch_list += [_append_grad_suffix_(param) for param in fetch_list]
-        return fetch_list
+        return fetch_list, self.optimizer
 
 
 class TestOptimizer(unittest.TestCase):
@@ -180,7 +189,7 @@ class TestOptimizer(unittest.TestCase):
         for key in ['x', 'y', 'z']:
             self.param_attr[key] = self.attr.copy()
 
-    def _check_grads(self):
+    def _check_grads(self, use_bf16=False):
         """
         main logic code to check the validity of apply_optimize.
         """
@@ -204,10 +213,16 @@ class TestOptimizer(unittest.TestCase):
                                 lambda: dict())
                             test_net = self.NetClass(self.optimizer, param_lr,
                                                      y_no_grad)
-                            fetch_list = test_net.build_net(cond_i)
+                            fetch_list, decorated_optimizer = test_net.build_net(
+                                cond_i, use_bf16)
+                            if use_bf16:
+                                self.optimizer = decorated_optimizer
 
                             exe = fluid.Executor(place)
                             exe.run(init_program)
+                            if use_bf16:
+                                self.optimizer.amp_init(exe.place)
+
                             # Train 2 steps to check validity
                             for batch_i in range(2):
 
@@ -220,6 +235,15 @@ class TestOptimizer(unittest.TestCase):
                                 for i in range(len(res)):
                                     np.testing.assert_allclose(res[i],
                                                                param_grads[i])
+
+
+@unittest.skipIf(not fluid.core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestSGDOptimizer(TestOptimizer):
+    def test_optimizer_multiblock_except(self):
+        with self.assertRaisesRegexp(ValueError,
+                                     "var param_y not in this block"):
+            self._check_grads(use_bf16=True)
 
 
 class TestAdamOptimizer(TestOptimizer):

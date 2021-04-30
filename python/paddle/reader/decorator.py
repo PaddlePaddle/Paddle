@@ -27,6 +27,8 @@ import random
 import zlib
 import paddle.compat as cpt
 
+__all__ = []
+
 # On macOS, the 'spawn' start method is now the default in Python3.8 multiprocessing,
 # Paddle is currently unable to solve this, so forces the process to start using 
 # the 'fork' start method.

@@ -25,6 +25,8 @@ from paddle.common_ops_import import VarDesc
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
 # from ..fluid.layers import has_nan  #DEFINE_ALIAS
 
+__all__ = []
+
 
 def argsort(x, axis=-1, descending=False, name=None):
     """

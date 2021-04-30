@@ -149,6 +149,7 @@ class DistributedStrategy(object):
         if num_threads > 1:
             self._build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
         self.debug_opt = None
+        self.use_ps_gpu = False
 
     def set_debug_opt(self, opt_info):
         self.debug_opt = opt_info

@@ -2439,6 +2439,29 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
   return concat_out;
 }
 
+void patterns::DeleteDropoutOpPattern::operator()() {
+  auto any_op_out = pattern->NewNode(any_op_out_repr())
+                        ->assert_is_op_input("dropout", "X")
+                        ->AsInput();
+
+  auto dropout_op =
+      pattern->NewNode(dropout_op_repr())->assert_is_op("dropout");
+
+  auto dropout_op_out = pattern->NewNode(dropout_op_out_repr())
+                            ->assert_is_op_output("dropout", "Out")
+                            ->AsIntermediate();
+
+  auto dropout_op_outmask = pattern->NewNode(dropout_op_outmask_repr())
+                                ->assert_is_op_output("dropout", "Mask")
+                                ->AsOutput();
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  dropout_op->LinksFrom({any_op_out});
+  dropout_op_out->LinksFrom({dropout_op});
+  dropout_op_outmask->LinksFrom({dropout_op});
+  any_op2->LinksFrom({dropout_op_out});
+}
+
 void patterns::DeleteQuantOpFuse::operator()(PDNode *input_act_node,
                                              const std::string &quant_type) {
   auto *input_scale_node = pattern->NewNode(GetNodeName("input_scale_node"))

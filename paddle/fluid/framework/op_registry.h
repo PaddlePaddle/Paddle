@@ -25,7 +25,8 @@ limitations under the License. */
 #include <unordered_set>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "glog/logging.h"               // For VLOG()
+#include "gflags/gflags.h"
+#include "glog/logging.h"  // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
@@ -66,6 +67,8 @@ class Version;
 }  // namespace proto
 }  // namespace framework
 }  // namespace paddle
+
+DECLARE_bool(check_kernel_launch);
 
 namespace paddle {
 namespace framework {
@@ -135,14 +138,16 @@ class OpRegistry {
 };
 
 template <typename PlaceType>
-inline void CheckKernelLaunch(const char* op_type){};
+inline void CheckKernelLaunch(const char* op_type) {}
 
 #ifdef PADDLE_WITH_CUDA
 template <>
 inline void CheckKernelLaunch<::paddle::platform::CUDAPlace>(
     const char* op_type) {
-  PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(op_type);
-};
+  if (FLAGS_check_kernel_launch) {
+    PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(op_type);
+  }
+}
 #endif
 
 template <typename PlaceType, bool at_end, size_t I, typename... KernelType>

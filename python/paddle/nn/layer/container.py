@@ -16,7 +16,7 @@ from collections import OrderedDict
 from ...fluid.dygraph.layers import Layer
 from six.moves import collections_abc
 
-__all__ = ['LayerDict', ]
+__all__ = []
 
 
 class LayerDict(Layer):

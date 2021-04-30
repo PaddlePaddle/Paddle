@@ -225,7 +225,7 @@ class TestUniform(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Uniform())
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -256,7 +256,7 @@ class TestUniform(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Uniform())
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -287,7 +287,7 @@ class TestUniform(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Uniform(min_value, max_vlaue))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -317,7 +317,7 @@ class TestUniform(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Uniform(min_value, float(i)))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op0 = block.ops[0]
         self.assertEqual(init_op0.type, 'uniform_random')
@@ -343,11 +343,8 @@ class TestUniform(unittest.TestCase):
         """Test uniform initializer with bfloat16
         """
         block = self.test_uniform_initializer_default_value("uint16")  #bfloat16
-        self.assertTrue(check_cast_op(block.ops[1]))
         block = self.test_uniform_initializer(dtype="uint16")  #bfloat16
-        self.assertTrue(check_cast_op(block.ops[1]))
         block = self.test_uniform_initializer_two_op("uint16")  #bfloat16
-        self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_uniform_initializer_dygraph(self):
         """Test uniform initializer in dygraph model.

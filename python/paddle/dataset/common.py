@@ -26,6 +26,8 @@ import paddle.dataset
 import six.moves.cPickle as pickle
 import glob
 
+__all__ = []
+
 HOME = os.path.expanduser('~')
 DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
 

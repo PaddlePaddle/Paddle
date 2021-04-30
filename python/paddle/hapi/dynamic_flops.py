@@ -18,7 +18,7 @@ import paddle.nn as nn
 import numpy as np
 from .static_flops import static_flops, Table
 
-__all__ = ['flops']
+__all__ = []
 
 
 def flops(net, input_size, custom_ops=None, print_detail=False):

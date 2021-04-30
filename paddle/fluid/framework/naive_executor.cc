@@ -128,7 +128,7 @@ NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  ClearMKLDNNCache(place_);
+  ClearMKLDNNCache(place_, this);
 #endif
 }
 

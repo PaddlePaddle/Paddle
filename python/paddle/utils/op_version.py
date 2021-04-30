@@ -14,6 +14,8 @@
 
 from ..fluid import core
 
+__all__ = []
+
 
 def Singleton(cls):
     _instance = {}

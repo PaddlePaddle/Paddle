@@ -582,10 +582,9 @@ def assign(input, output=None):
         input = numpy.array(input)
 
     if isinstance(input, Variable):
-        check_dtype(
-            input.dtype, 'input',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-            'assign', '(When the type of input in assign is Variable.)')
+        check_dtype(input.dtype, 'input', [
+            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'
+        ], 'assign', '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)

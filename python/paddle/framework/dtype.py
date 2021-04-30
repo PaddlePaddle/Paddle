@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    "dtype", "uint8", "int8", "int16", "int32", "int64", "bfloat16", "float16",
-    "float32", "float64", "complex64", "complex128", "bool"
-]
-
 from ..fluid.core import VarDesc
 
 dtype = VarDesc.VarType
@@ -38,3 +33,5 @@ complex64 = VarDesc.VarType.COMPLEX64
 complex128 = VarDesc.VarType.COMPLEX128
 
 bool = VarDesc.VarType.BOOL
+
+__all__ = []

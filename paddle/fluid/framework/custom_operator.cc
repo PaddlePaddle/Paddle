@@ -246,7 +246,7 @@ class CustomOperator : public OperatorWithKernel {
    * it can only be determined at runtime.
    */
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(proto::VarType::RAW, ctx.GetPlace());
   }
 
@@ -257,7 +257,7 @@ class CustomOperator : public OperatorWithKernel {
    */
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
-      const OpKernelType& expected_kernel_type) {
+      const OpKernelType& expected_kernel_type) const override {
     return OpKernelType(expected_kernel_type.data_type_,
                         expected_kernel_type.place_, tensor.layout());
   }

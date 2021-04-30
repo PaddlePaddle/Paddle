@@ -21,6 +21,8 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.layers import utils
 import paddle
 
+__all__ = []
+
 
 def bernoulli(x, name=None):
     """

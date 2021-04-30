@@ -14,7 +14,7 @@
 
 from ...fluid.initializer import UniformInitializer
 
-__all__ = ['Uniform']
+__all__ = []
 
 
 class Uniform(UniformInitializer):

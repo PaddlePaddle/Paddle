@@ -817,7 +817,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         platform::errors::InvalidArgument("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    bool use_global_stats = ctx.Attr<bool>("use_global_stats");
 
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
@@ -850,12 +850,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     }
 
     const bool is_test = ctx.Attr<bool>("is_test");
-    PADDLE_ENFORCE_EQ(
-        is_test, false,
-        platform::errors::InvalidArgument(
-            "`is_test = True` CANNOT be used in train program. If "
-            "you want to use global status in pre_train model, "
-            "please set `use_global_stats = True`"));
+    use_global_stats = is_test || use_global_stats;
 
     const auto &x_dims = x->dims();
 

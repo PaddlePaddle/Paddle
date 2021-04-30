@@ -14,15 +14,6 @@
 
 # TODO: define classes of convolutional neural network
 
-__all__ = [
-    'Conv1D',
-    'Conv2D',
-    'Conv3D',
-    'Conv1DTranspose',
-    'Conv2DTranspose',
-    'Conv3DTranspose',
-]
-
 import numpy as np
 
 from ...fluid import get_flags
@@ -33,6 +24,8 @@ from ...fluid.initializer import Normal
 from .. import functional as F
 from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
+
+__all__ = []
 
 
 def _get_default_param_initializer(num_channels, filter_size):

@@ -14,7 +14,7 @@
 
 from ...fluid.initializer import XavierInitializer
 
-__all__ = ['XavierNormal', 'XavierUniform']
+__all__ = []
 
 
 class XavierNormal(XavierInitializer):

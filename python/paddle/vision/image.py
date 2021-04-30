@@ -80,9 +80,9 @@ def set_image_backend(backend):
             shutil.rmtree(temp_dir)
     """
     global _image_backend
-    if backend not in ['pil', 'cv2']:
+    if backend not in ['pil', 'cv2', 'tensor']:
         raise ValueError(
-            "Expected backend are one of ['pil', 'cv2'], but got {}"
+            "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}"
             .format(backend))
     _image_backend = backend
 
@@ -150,13 +150,13 @@ def image_load(path, backend=None):
 
     if backend is None:
         backend = _image_backend
-    if backend not in ['pil', 'cv2']:
+    if backend not in ['pil', 'cv2', 'tensor']:
         raise ValueError(
-            "Expected backend are one of ['pil', 'cv2'], but got {}"
+            "Expected backend are one of ['pil', 'cv2', 'tensor'], but got {}"
             .format(backend))
 
     if backend == 'pil':
         return Image.open(path)
-    else:
+    elif backend == 'cv2':
         cv2 = try_import('cv2')
         return cv2.imread(path)

@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 
-from paddle.vision.datasets import *
+from paddle.vision.datasets import Cifar10, Cifar100
 
 
 class TestCifar10Train(unittest.TestCase):

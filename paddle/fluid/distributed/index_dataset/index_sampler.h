@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -83,6 +84,23 @@ class LayerWiseSampler : public IndexSampler {
     }
     reverse(layer_counts_.begin(), layer_counts_.end());
     VLOG(3) << "sample counts sum: " << layer_counts_sum_;
+
+    auto max_layer = tree_->Height();
+    sampler_vec_.clear();
+    layer_ids_.clear();
+
+    auto layer_index = max_layer - 1;
+    size_t idx = 0;
+    while (layer_index >= start_sample_layer_) {
+      auto layer_codes = tree_->GetLayerCodes(layer_index);
+      layer_ids_.push_back(tree_->GetNodes(layer_codes));
+      auto sampler_temp =
+          std::make_shared<paddle::operators::math::UniformSampler>(
+              layer_ids_[idx].size() - 1, seed_);
+      sampler_vec_.push_back(sampler_temp);
+      layer_index--;
+      idx++;
+    }
   }
   std::vector<std::vector<uint64_t>> sample(
       const std::vector<std::vector<uint64_t>>& user_inputs,
@@ -94,6 +112,8 @@ class LayerWiseSampler : public IndexSampler {
   std::shared_ptr<TreeIndex> tree_{nullptr};
   int seed_{0};
   int start_sample_layer_{1};
+  std::vector<std::shared_ptr<paddle::operators::math::Sampler>> sampler_vec_;
+  std::vector<std::vector<IndexNode>> layer_ids_;
 };
 
 }  // end namespace distributed

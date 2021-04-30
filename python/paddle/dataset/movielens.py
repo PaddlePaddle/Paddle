@@ -34,6 +34,8 @@ import functools
 import six
 import paddle.compat as cpt
 
+__all__ = []
+
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
 #URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'

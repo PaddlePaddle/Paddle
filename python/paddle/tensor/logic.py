@@ -28,6 +28,8 @@ from ..fluid.layers import logical_xor  # noqa: F401
 
 from paddle.common_ops_import import core
 
+__all__ = []
+
 
 def equal_all(x, y, name=None):
     """

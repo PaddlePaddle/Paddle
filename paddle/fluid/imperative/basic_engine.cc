@@ -408,7 +408,8 @@ void BasicEngine::Execute() {
             VLOG(10) << "create temporary var of " << var->Name()
                      << " for sum gradient within this graph!";
           } else if (!inplace_grad_name_map.empty() &&
-                     inplace_grad_name_map.count(pair.first)) {
+                     inplace_grad_name_map.count(pair.first) &&
+                     bwd_ins.count(inplace_grad_name_map.at(pair.first))) {
             // When calculate Inplace grad op, create a new output var.
             // If a tmp var has been created, there is no need to create it
             // again.
@@ -470,12 +471,20 @@ void BasicEngine::Execute() {
 
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
-        if (tmp_ins_ptr == nullptr) {
-          OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
-                      cur_op.place());
-        } else {
-          OpBase::Run(cur_op.InnerOp(), *tmp_ins_ptr, tmp_outs, cur_op.Attrs(),
-                      cur_op.place());
+        try {
+          if (tmp_ins_ptr == nullptr) {
+            OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
+                        cur_op.place());
+          } else {
+            OpBase::Run(cur_op.InnerOp(), *tmp_ins_ptr, tmp_outs,
+                        cur_op.Attrs(), cur_op.place());
+          }
+        } catch (platform::EnforceNotMet& exception) {
+          Clear();
+          throw std::move(exception);
+        } catch (std::exception& ex) {
+          Clear();
+          PADDLE_THROW(platform::errors::External("%s", ex.what()));
         }
       }
 

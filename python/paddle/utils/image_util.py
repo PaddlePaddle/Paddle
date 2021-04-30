@@ -16,6 +16,8 @@ import numpy as np
 from PIL import Image
 from six.moves import cStringIO as StringIO
 
+__all__ = []
+
 
 def resize_image(img, target_size):
     """

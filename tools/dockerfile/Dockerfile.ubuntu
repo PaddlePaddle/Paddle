@@ -205,7 +205,7 @@ RUN pip3.6 --no-cache-dir install -r /root/requirements.txt && \
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && \
-    pip3.6 install --upgrade pip && \ 
+    pip3.6 install --upgrade pip==20.3.3 && \ 
     pip3.7 install --upgrade pip && \ 
     pip3.8 install --upgrade pip && \ 
     pip3.9 install --upgrade pip && \ 

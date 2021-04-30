@@ -58,7 +58,7 @@ Call communication stream synchronization.
 };
 
 template <typename T>
-class CSyncCommStreamCudaKernel : public framework::OpKernel<T> {
+class CSyncCommStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
@@ -97,5 +97,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream, ops::CSyncCommStreamOp,
                              ops::CSyncCommStreamOpMaker);
 
-REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream,
-                        ops::CSyncCommStreamCudaKernel<float>);
+REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

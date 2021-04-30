@@ -35,7 +35,7 @@ namespace m = paddle::operators::math;
 
 USE_OP(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
-USE_NO_KERNEL_OP(c_sync_calc_stream);
+USE_OP_DEVICE_KERNEL(c_sync_calc_stream, NPU);
 
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {

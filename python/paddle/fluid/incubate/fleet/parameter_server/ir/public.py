@@ -138,6 +138,7 @@ class CompileTimeStrategy(object):
 
         self.strategy = strategy
         self.role_maker = role_maker
+        self.use_ps_gpu = False
         try:
             self.is_heter_ps_mode = role_maker._is_heter_parameter_server_mode
         except:

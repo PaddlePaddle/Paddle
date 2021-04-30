@@ -21,6 +21,8 @@ from ..fluid.layers import transpose  # noqa: F401
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 
+__all__ = []
+
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """

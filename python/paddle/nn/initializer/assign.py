@@ -19,7 +19,7 @@ from ...fluid.core import VarDesc
 from ...fluid.data_feeder import check_type
 from ...fluid.initializer import NumpyArrayInitializer
 
-__all__ = ['Assign']
+__all__ = []
 
 
 class Assign(NumpyArrayInitializer):

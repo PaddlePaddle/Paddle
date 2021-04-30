@@ -135,13 +135,14 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
   return mkldnn::memory::desc({dims}, data_type, format);
 }
 
-inline void ClearMKLDNNCache(const platform::Place& place) {
+inline void ClearMKLDNNCache(const platform::Place& place,
+                             void* ptr = nullptr) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
-    dev_ctx->ResetBlobMap();
+    dev_ctx->ResetBlobMap(ptr);
     platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
         paddle::framework::DataLayout::kNCHW);
   }
@@ -452,6 +453,9 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr,
       paddle::platform::MKLDNNDeviceContext::tls().set_key_suffix(
           "E" + std::to_string(reinterpret_cast<uintptr_t>(ptr)));
     }
+    // Let's register adress of current executor
+    paddle::platform::MKLDNNDeviceContext::tls().set_curr_exec(ptr);
+
     // For first thread
     if (first_thread == ThreadIDasStr()) {
       paddle::platform::MKLDNNDeviceContext::tls().disable_tid_in_key();

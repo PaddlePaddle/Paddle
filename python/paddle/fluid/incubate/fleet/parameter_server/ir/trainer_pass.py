@@ -527,7 +527,7 @@ def create_heter_program(program, config, heter_program, heter_ops,
     # This function mainly includes the following contents:
     # 1. For every heter block:
     #     a) copy heter device op from origin program
-    #     b) create variables which belong to heter op：
+    #     b) create variables which belong to heter op:
     #         -> if variable is persistable, clone it in global_scope
     #         -> if variable is temp, create it in heter block
     #     c) create communicate related op as follow:

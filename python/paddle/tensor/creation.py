@@ -31,6 +31,8 @@ from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varb
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 
+__all__ = []
+
 
 @dygraph_only
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):

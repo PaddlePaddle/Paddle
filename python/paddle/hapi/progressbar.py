@@ -22,7 +22,7 @@ import time
 import numpy as np
 from collections import namedtuple
 
-__all__ = ['ProgressBar']
+__all__ = []
 
 
 class ProgressBar(object):
