@@ -64,7 +64,6 @@ int GetVectorizedSize(const std::vector<const framework::Tensor *> &ins,
   return vec_size;
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
 template <ElementwiseType ET, int VecSize, typename T>
 struct ElementwiseDataWrapper {
   T *out;
@@ -173,7 +172,6 @@ __global__ void ScalarKernel(const T *__restrict__ in0,
   int remain = tid < size ? 1 : 0;
   ScalarKernelImpl(data, func, tid, remain);
 }
-#endif
 
 template <ElementwiseType ET, typename T, typename Functor>
 void LaunchElementwiseCudaKernel(
@@ -191,7 +189,7 @@ void LaunchElementwiseCudaKernel(
   T *out = (*outs)[0]->data<T>();
   // cuda kernel
   auto stream = ctx.stream();
-  // #if defined(__NVCC__) || defined(__HIPCC__)
+
   switch (vec_size) {
     case 4:
       VectorizedKernel<ET, 4><<<grid_size, block_size, 0, stream>>>(
@@ -210,7 +208,6 @@ void LaunchElementwiseCudaKernel(
           "Unsupported vectorized size: %d !", vec_size));
       break;
   }
-  // #endif
 }
 
 }  // namespace operators
