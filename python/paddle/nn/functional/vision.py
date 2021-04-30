@@ -265,8 +265,10 @@ def grid_sample(x,
 
     cudnn_version = get_cudnn_version()
     use_cudnn = False
-    if (cudnn_version is not None
-        ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
+    if (
+            cudnn_version is not None
+    ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros' and not core.is_compiled_with_rocm(
+    ):
         use_cudnn = True
         # CUDNN always computes gradients for all inputs
         x.stop_gradient = False

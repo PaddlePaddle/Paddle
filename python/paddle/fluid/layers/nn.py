@@ -3000,6 +3000,8 @@ def inplace_abn(input,
                              'inplace_abn')
     dtype = helper.input_dtype()
 
+    if core.is_compiled_with_rocm():
+        dtype = 'float32'
     input_shape = input.shape
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -13029,7 +13031,10 @@ def grid_sampler(x, grid, name=None):
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x, 'Grid': grid}
 
-    helper.append_op(type='grid_sampler', inputs=ipts, outputs={'Output': out})
+    attrs = {'use_cudnn': False} if core.is_compiled_with_rocm() else {}
+
+    helper.append_op(
+        type='grid_sampler', inputs=ipts, outputs={'Output': out}, attrs=attrs)
     return out
 
 
