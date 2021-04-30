@@ -56,6 +56,8 @@ except:
 import logging
 logger = logging.getLogger(__name__)
 
+__all__ = []
+
 WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 
 DOWNLOAD_RETRY_LIMIT = 3
