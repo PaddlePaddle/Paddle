@@ -443,10 +443,6 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
     auto *cur_node = q.front();
     q.pop();
 
-    for (auto &cur_op : *cur_node) {
-      cur_op.EnforceHasInOut();
-    }
-
     const auto &grad_pending_nodes = cur_node->GradPendingNodes();
     for (auto &grad_pending_node : grad_pending_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -523,7 +519,6 @@ void Reducer::PrepareForBackward(
     q.pop();
 
     for (const auto &cur_op : *cur_node) {
-      cur_op.EnforceHasInOut();
       auto &bwd_outs = cur_op.GetOutsMap();
       for (const auto &pair : bwd_outs) {
         if (!pair.second.IsGrad()) {
