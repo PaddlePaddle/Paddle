@@ -113,11 +113,11 @@ class ToTensorTransformer(gast.NodeTransformer):
         self.visit(self.root)
         return self.root
 
-    def visit_Call(node):
+    def visit_Call(self, node):
         assert isinstance(node, gast.Call)
         if is_to_variable(node):
             node = to_assign_node(node)
-        generic_visit(node)
+        self.generic_visit(node)
         return node
 
 
