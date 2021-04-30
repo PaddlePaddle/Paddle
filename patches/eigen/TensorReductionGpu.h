@@ -13,7 +13,6 @@
 namespace Eigen {
 namespace internal {
 
-
 #if defined(EIGEN_USE_GPU) && defined(EIGEN_GPUCC)
 // Full reducers for GPU, don't vectorize for now
 
@@ -989,7 +988,6 @@ struct OuterReducer<Self, Op, GpuDevice> {
 };
 
 #endif // defined(EIGEN_USE_GPU) && defined(EIGEN_GPUCC)
-
 
 } // end namespace internal
 } // end namespace Eigen
