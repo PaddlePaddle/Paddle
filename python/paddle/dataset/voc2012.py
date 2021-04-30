@@ -25,9 +25,10 @@ import tarfile
 import io
 import numpy as np
 from paddle.dataset.common import download
-from paddle.dataset.image import *
 import paddle.utils.deprecated as deprecated
 from PIL import Image
+
+__all__ = []
 
 VOC_URL = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/\
 VOCtrainval_11-May-2012.tar'
