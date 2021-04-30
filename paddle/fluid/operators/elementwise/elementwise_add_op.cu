@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.1 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,9 +64,9 @@ struct BroadcastElemwiseAdd<platform::CUDADeviceContext, T> {
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* out) {
     std::vector<const framework::Tensor*> ins = {x, y};
-    LaunchBroadcastElementwiseCudaKernel<T>(
+    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, T>(
         ctx.template device_context<platform::CUDADeviceContext>(), ins, out,
-        BCudaAddFunctor<T>());
+        CudaAddFunctor<T>());
   }
 };
 
