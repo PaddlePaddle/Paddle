@@ -447,6 +447,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         if use_cuda:
             extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
+
+        # Will search shared library from environment viriable 'path' on windows
+        for lib_dir in library_dirs:
+            os.environ['path'] = lib_dir + ';' + os.environ['path']
     else:
         ########################### Linux Platform ###########################
         extra_link_args = kwargs.get('extra_link_args', [])

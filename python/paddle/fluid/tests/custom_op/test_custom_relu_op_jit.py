@@ -34,7 +34,7 @@ if os.name == 'nt' and os.path.isfile(file):
 # not a new op, if you want to test only one op, remove this
 # source file
 sources = ['custom_relu_op.cc', 'custom_relu_op_dup.cc']
-if IS_MAC:
+if not IS_MAC:
     sources.append('custom_relu_op.cu')
 
 custom_module = load(
@@ -105,17 +105,17 @@ class TestJITLoad(unittest.TestCase):
                 in str(e))
             if IS_WINDOWS:
                 self.assertTrue(
-                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:47"
-                    in str(e))
+                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc" in
+                    str(e))
             else:
                 self.assertTrue(
-                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:47"
-                    in str(e))
+                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc" in
+                    str(e))
         self.assertTrue(caught_exception)
 
         caught_exception = False
         # MAC-CI don't support GPU
-        if not paddle.is_compiled_with_cuda():
+        if IS_MAC:
             return
         try:
             x = np.random.uniform(-1, 1, [4, 8]).astype('int32')

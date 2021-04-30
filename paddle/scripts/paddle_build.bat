@@ -61,7 +61,7 @@ if not defined WITH_GPU set WITH_GPU=ON
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_TESTING set WITH_TESTING=ON
-if not defined MSVC_STATIC_CRT set MSVC_STATIC_CRT=OFF
+if not defined MSVC_STATIC_CRT set MSVC_STATIC_CRT=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
@@ -75,6 +75,7 @@ if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=2
+if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
@@ -138,12 +139,15 @@ echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
 echo "wincheck_mkl: run Windows MKL/GPU/UnitTest CI tasks on Windows"
 echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
+echo "build_avx_whl: build Windows avx whl package on Windows"
+echo "build_no_avx_whl: build Windows no avx whl package on Windows"
 exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
 :CASE_wincheck_mkl
 set WITH_MKL=ON
 set WITH_GPU=ON
+set WITH_AVX=ON
 set MSVC_STATIC_CRT=OFF
 
 call :cmake || goto cmake_error
@@ -156,8 +160,9 @@ goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
 :CASE_wincheck_openblas
-set WITH_MKL=ON
+set WITH_MKL=OFF
 set WITH_GPU=OFF
+set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
 set retry_times=1
 
@@ -207,19 +212,50 @@ rem "Other configurations are added here"
 rem :CASE_wincheck_others
 rem call ...
 
-rem ------initialize the python environment------
-if %WITH_PYTHON% == "OFF" (
-    if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
-    set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-    set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
 
-    rem ------pre install python requirement----------
+rem ---------------------------------------------------------------------------------------------
+:cmake
+@ECHO OFF
+echo    ========================================
+echo    Step 1. Cmake ...
+echo    ========================================
+
+rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
+call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+set DISTUTILS_USE_SDK=1
+rem Windows 10 Kit bin dir
+set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+set start=%start:~4,10%
+
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2
+set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
+
+rem install ninja if GENERATOR is Ninja
+if %GENERATOR% == "Ninja" (
+    pip install ninja
+    if %errorlevel% NEQ 0 (
+        echo pip install ninja failed!
+        exit /b 7
+    )
+)
+
+rem ------show summary of current GPU environment----------
+cmake --version
+if "%WITH_GPU%"=="ON" (
+    nvcc --version
+    nvidia-smi
+)
+
+rem ------initialize the python environment------
+set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
+if %WITH_PYTHON% == "OFF" (
     where python
     where pip
     pip install wheel --user
-    pip install -r %work_dir%\python\unittest_py\requirements.txt --user
     pip install -r %work_dir%\python\requirements.txt --user
-
     if %ERRORLEVEL% NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 7
@@ -238,43 +274,7 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 rem clcache.exe -M 21474836480
 
-rem install ninja if GENERATOR is Ninja
-if %GENERATOR% == "Ninja" (
-    pip install ninja
-    if %errorlevel% NEQ 0 (
-        echo pip install ninja failed!
-        exit /b 7
-    )
-)
-
-rem ------show summary of current GPU environment----------
-cmake --version
-if "%WITH_GPU%"=="ON" (
-    nvcc --version
-    nvidia-smi
-)
-
-rem ---------------------------------------------------------------------------------------------
-:cmake
-echo    ========================================
-echo    Step 1. Cmake ...
-echo    ========================================
-
-rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
-set DISTUTILS_USE_SDK=1
-rem Windows 10 Kit bin dir
-set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
-
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
-set start=%start:~4,10%
-
-@ECHO ON
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0
-set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
-
 rem ------set third_party cache dir------
-
 : clear third party cache every once in a while
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 set day_now=%datetime:~6,2%
@@ -488,8 +488,15 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
+
 : set CI_SKIP_CPP_TEST if only *.py changed
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
+
+pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+if %ERRORLEVEL% NEQ 0 (
+    echo pip install unittest requirements.txt failed!
+    exit /b 7
+)
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%

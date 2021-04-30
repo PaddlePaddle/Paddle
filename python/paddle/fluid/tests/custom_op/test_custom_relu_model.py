@@ -36,7 +36,7 @@ if os.name == 'nt' and os.path.isfile(file):
 # not a new op, if you want to test only one op, remove this
 # source file
 source_files = ['custom_relu_op.cc']
-if IS_MAC:
+if not IS_MAC:
     source_files.append('custom_relu_op.cu')
 
 custom_module = load(
@@ -88,8 +88,7 @@ class TestDygraphModel(unittest.TestCase):
             for i in range(self.batch_num)
         ]
 
-        self.devices = ['cpu', 'gpu'] if paddle.is_compiled_with_cuda(
-        ) else ['cpu']
+        self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
         self.model_path_template = "infer_model/custom_relu_dygaph_model_{}.pdparams"
@@ -196,8 +195,7 @@ class TestStaticModel(unittest.TestCase):
             for i in range(self.batch_num)
         ]
 
-        self.devices = ['cpu', 'gpu'] if paddle.is_compiled_with_cuda(
-        ) else ['cpu']
+        self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
         self.model_path_template = "infer_model/custom_relu_static_model_{}_{}"

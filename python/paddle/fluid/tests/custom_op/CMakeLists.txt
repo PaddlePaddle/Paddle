@@ -3,12 +3,12 @@ if(WITH_GPU OR APPLE)
     py_test(test_custom_relu_op_setup SRCS test_custom_relu_op_setup.py)
     py_test(test_custom_relu_op_jit SRCS test_custom_relu_op_jit.py)
     py_test(test_custom_relu_model SRCS test_custom_relu_model.py)
-endif()
 
-# Compiling shared library will cost some time, but running process is very fast.
-set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
-set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
-set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
+    # Compiling shared library will cost some time, but running process is very fast.
+    set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
+    set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
+    set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
+endif()
 
 # CPU custom op tests: only compile .cc file
 py_test(test_dispatch_jit SRCS test_dispatch_jit.py)

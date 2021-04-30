@@ -69,7 +69,7 @@ def setup(**attr):
     For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
     then the version of user's local machine should satisfy GCC >= 8.2. 
     For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of 
-    PaddlePaddle (Visual Studio 2015 update3). 
+    PaddlePaddle (Visual Studio 2017). 
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
     occur because of ABI compatibility.
 
@@ -79,7 +79,7 @@ def setup(**attr):
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
            GCC version.
-        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2015 update3).
+        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
 
 
     Compared with Just-In-Time ``load`` interface, it only compiles once by executing
@@ -470,8 +470,8 @@ class BuildExtension(build_ext, object):
 
                 include_regex = re.compile(r'((\-|\/)I.*)')
                 include_list = [
-                    m.group(1) for m in (include_regex.match(elem)
-                                         for elem in cmd) if m
+                    m.group(1)
+                    for m in (include_regex.match(elem) for elem in cmd) if m
                 ]
 
                 assert len(src_list) == 1 and len(obj_list) == 1
@@ -724,7 +724,7 @@ def load(name,
     processes under a individual subprocess. It does not require CMake or Ninja 
     environment. On Linux platform, it requires GCC compiler whose version is 
     greater than 5.4 and it should be soft linked to ``/usr/bin/cc`` . On Windows 
-    platform, it requires Visual Studio whose version is greater than 2015 update3.
+    platform, it requires Visual Studio whose version is greater than 2017.
     On MacOS, clang++ is requited. In addition, if compiling Operators supporting 
     GPU device, please make sure ``nvcc`` compiler is installed in local environment.
     
@@ -735,7 +735,7 @@ def load(name,
     For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
     then the version of user's local machine should satisfy GCC >= 8.2. 
     For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of 
-    PaddlePaddle (Visual Studio 2015 update3). 
+    PaddlePaddle (Visual Studio 2017). 
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
     occur because of ABI compatibility.
 
@@ -749,7 +749,7 @@ def load(name,
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
            GCC version.
-        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2015 update3).
+        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
 
 
     **A simple example:**
@@ -824,11 +824,6 @@ def load(name,
 
     # write setup.py file and compile it
     build_base_dir = os.path.join(build_directory, name)
-
-    # Will load shared library from 'path' on windows
-    if IS_WINDOWS:
-        os.environ['path'] = _get_fluid_path(
-        ) + ';' + build_base_dir + ';' + os.environ['path']
 
     _write_setup_file(name, sources, file_path, build_base_dir,
                       extra_include_paths, extra_cxx_cflags, extra_cuda_cflags,

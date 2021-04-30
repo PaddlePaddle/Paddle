@@ -27,7 +27,7 @@ import collections
 import tarfile
 import six
 
-__all__ = ['train', 'test', 'build_dict']
+__all__ = []
 
 #URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
 URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
