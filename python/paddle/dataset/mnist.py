@@ -26,7 +26,8 @@ import gzip
 import numpy
 import struct
 from six.moves import range
-__all__ = ['train', 'test']
+
+__all__ = []
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'

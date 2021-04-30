@@ -58,12 +58,11 @@ Call communication stream synchronization.
 };
 
 template <typename T>
-class CSyncCommStreamCudaKernel : public framework::OpKernel<T> {
+class CSyncCommStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
@@ -75,7 +74,6 @@ class CSyncCommStreamCudaKernel : public framework::OpKernel<T> {
 #endif
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
-    auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on npu place only for now."));
@@ -99,5 +97,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream, ops::CSyncCommStreamOp,
                              ops::CSyncCommStreamOpMaker);
 
-REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream,
-                        ops::CSyncCommStreamCudaKernel<float>);
+REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
