@@ -25,6 +25,8 @@ from .. import functional as F
 from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
 
+__all__ = []
+
 
 def _get_default_param_initializer(num_channels, filter_size):
     filter_elem_num = num_channels * np.prod(filter_size)

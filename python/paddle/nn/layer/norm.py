@@ -50,6 +50,8 @@ import warnings
 from ...fluid.dygraph.base import no_grad
 from .. import functional as F
 
+__all__ = []
+
 
 class _InstanceNormBase(layers.Layer):
     """

@@ -51,6 +51,8 @@ import six
 from six.moves import cPickle as pickle
 from paddle.utils import try_import
 
+__all__ = []
+
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'
 LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
 SETID_URL = 'http://paddlemodels.bj.bcebos.com/flowers/setid.mat'
