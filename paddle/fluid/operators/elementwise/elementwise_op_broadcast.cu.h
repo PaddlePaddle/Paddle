@@ -123,7 +123,28 @@ void CommonElementwiseCore(const platform::CUDADeviceContext &ctx,
           data_processor, main_tid, tail_tid);
       break;
     }
-    default: { ; }
+    case 7: {
+      auto data_processor = DataProcessor<T, OffsetT, N, vec_size, 7>(
+          ins, p_offset_pre, out, vec_len);
+      CommonElementwiseKernel<T, decltype(data_processor), N,
+                              vec_size><<<blocks, threads, 0, stream>>>(
+          data_processor, main_tid, tail_tid);
+      break;
+    }
+    case 8: {
+      auto data_processor = DataProcessor<T, OffsetT, N, vec_size, 8>(
+          ins, p_offset_pre, out, vec_len);
+      CommonElementwiseKernel<T, decltype(data_processor), N,
+                              vec_size><<<blocks, threads, 0, stream>>>(
+          data_processor, main_tid, tail_tid);
+      break;
+    }
+    default: {
+      PADDLE_ENFORCE_GT(dim_size, MAX_DIMS, platform::errors::InvalidArgument(
+                                                "Quantity of Input tensor"
+                                                "is %d, the limitation is %d\n",
+                                                dim_size, MAX_DIMS));
+    }
   }
 }
 

@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 
-#define MAX_DIMS 10
+#define MAX_DIMS \
+  8  //!< The maximum number of dimensions supported for a tensor. According to
+     //! NvInferRuntimeCommon.h file
 #define MAX_TENSORS 4
 #define INT_BITS 32
 
