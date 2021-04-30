@@ -152,7 +152,7 @@ class LazyZerosNPU {
     auto place = dev_ctx.GetPlace();
     auto stream = dev_ctx.stream();
     Tensor* zero_tensor;
-    void* src_ptr;
+    void* zero_ptr;
     if (found_inf_vec[0]) {
       int max_num = -1;
       for (size_t i = 0; i < xs.size(); ++i) {
@@ -169,16 +169,19 @@ class LazyZerosNPU {
           NpuOpRunner("ZerosLike", {*zero_tensor}, {*zero_tensor});
       runner_zeros.Run(stream);
       zero_tensor->check_memory_size();
-      src_ptr = zero_tensor->data<void>();
+      zero_ptr = zero_tensor->data<void>();
     }
 
     for (size_t i = 0; i < xs.size(); ++i) {
       auto* out = outs[i];
+      auto* x = xs[i];
       auto dst_ptr = out->mutable_data<T>(place);
-      if (found_inf_vec[0] && src_ptr != dst_ptr) {
+      if (!found_inf_vec[0]) {
+        framework::TensorCopy(*x, place, dev_ctx, out);
+      } else if (zero_ptr != dst_ptr) {
         auto size = out->numel() * framework::SizeOfType(out->type());
         memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place), dst_ptr,
-                     BOOST_GET_CONST(platform::NPUPlace, place), src_ptr, size,
+                     BOOST_GET_CONST(platform::NPUPlace, place), zero_ptr, size,
                      stream);
       }
     }
