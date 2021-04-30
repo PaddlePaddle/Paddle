@@ -322,7 +322,7 @@ def sampcd_extract_to_file(srccom, name, htype="def", hname=""):
     codeblocks = extract_code_blocks_from_docstr(srccom)
     if len(codeblocks) == 0:
         # detect sample codes using >>> to format and consider this situation as wrong
-        logger.info(htype + " name:" + hname)
+        logger.info(htype + " name:" + name)
         logger.info("-----------------------")
         if srccom.find("Examples:") != -1:
             logger.info("----example code check----")
@@ -550,6 +550,7 @@ if __name__ == '__main__':
                      args.mode)
         sys.exit("Invalid arguments")
     RUN_ON_DEVICE = args.mode
+    get_test_capacity()
     logger.info("API check -- Example Code")
     logger.info("sample_test running under python %s",
                 platform.python_version())
@@ -613,8 +614,8 @@ if __name__ == '__main__':
             logger.info("%d sample codes ran success",
                         len(SUMMARY_INFO['success']))
         for k, v in SUMMARY_INFO.items():
-            if k not in ['success', 'failed', 'skipptest']:
-                logger.info("%d sample codes required not match", len(v))
+            if k not in ['success', 'failed', 'skiptest']:
+                logger.info("%d sample codes required not match for %s", len(v), k)
         if len(SUMMARY_INFO['skiptest']):
             logger.info("%d sample codes skipped",
                         len(SUMMARY_INFO['skiptest']))
