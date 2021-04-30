@@ -85,11 +85,6 @@ def deprecated(update_to="", since="", reason="", level=0):
 
         if level == 0:
             return func
-        elif level == 1:
-            pass
-        elif level == 2:
-            raise RuntimeError('API "{}.{}" has been deprecated.'.format(
-                func.__module__, func.__name__))
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -98,6 +93,11 @@ def deprecated(update_to="", since="", reason="", level=0):
                2. since version is empty, in this case, API is deprecated in all versions.
                3. current version is newer than since version.
             """
+
+            if level == 2:
+                raise RuntimeError('API "{}.{}" has been deprecated.'.format(
+                    func.__module__, func.__name__))
+
             warningmsg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
             v_current = [int(i) for i in paddle.__version__.split(".")]
             v_current += [0] * (4 - len(v_current))
