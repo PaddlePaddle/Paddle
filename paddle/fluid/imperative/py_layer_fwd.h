@@ -63,15 +63,16 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
-py::object PyLayerApply(const platform::Place& place, const py::object& cls,
+py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
                         const py::args args, const py::kwargs kwargs) {
+  py::gil_scoped_acquire guard;
   auto bk_function = cls.attr("_backward_function");
   auto context = bk_function();
   auto forward = cls.attr("forward");
 
   auto result_forward = forward(context, *args, **kwargs);
   std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
-      std::make_shared<operators::PyLayerContext>(context.release().ptr());
+      std::make_shared<operators::PyLayerContext>(context.ptr());
   // make inputs to varbase
   std::vector<std::shared_ptr<imperative::VarBase>> input_vars;
   // process args,`input_vars` only collect `imperative::VarBase`
