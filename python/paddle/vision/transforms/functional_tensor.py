@@ -33,17 +33,11 @@ def _assert_image_tensor(img, data_format):
             format(type(img), img.ndim, data_format))
 
 
-def _assert_image_data_format(data_format):
-    assert data_format.lower() in ('chw', 'hwc'
-                                   ), "data_format should in ('chw', 'hwc')"
-
-
 def _get_image_h_axis(data_format):
     if data_format.lower() == 'chw':
         return -2
     elif data_format.lower() == 'hwc':
         return -3
-    raise ValueError('data_format')
 
 
 def _get_image_w_axis(data_format):
@@ -51,7 +45,6 @@ def _get_image_w_axis(data_format):
         return -1
     elif data_format.lower() == 'hwc':
         return -2
-    raise ValueError('data_format')
 
 
 def _get_image_c_axis(data_format):
@@ -59,7 +52,6 @@ def _get_image_c_axis(data_format):
         return -3
     elif data_format.lower() == 'hwc':
         return -1
-    raise ValueError('data_format')
 
 
 def _get_image_n_axis(data_format):
@@ -67,7 +59,6 @@ def _get_image_n_axis(data_format):
         return None
     elif len(data_format) == 4:
         return 0
-    raise ValueError('data_format')
 
 
 def _is_channel_last(data_format):
