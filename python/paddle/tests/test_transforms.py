@@ -365,11 +365,9 @@ class TestTransformsTensor(TestTransformsCV2):
         np.testing.assert_equal(self.get_shape(fake_img_padded), (3, 220, 170))
         trans_pad1 = transforms.Pad([1, 2])
         trans_pad2 = transforms.Pad([1, 2, 3, 4])
-        trans_pad3 = transforms.Pad([1])
         trans_pad4 = transforms.Pad(1, padding_mode='edge')
         img = trans_pad1(fake_img)
         img = trans_pad2(img)
-        img = trans_pad3(img)
         img = trans_pad4(img)
 
     def test_random_crop(self):
