@@ -1665,6 +1665,44 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
   }
 }
 
+template <typename T, int N>
+struct GetVecType;
+
+template <typename T>
+struct GetVecType<T, 1> {
+  using Type = T;
+};
+
+template <>
+struct GetVecType<paddle::platform::float16, 2> {
+  using Type = half2;
+};
+
+template <>
+struct GetVecType<paddle::platform::float16, 4> {
+  using Type = float2;
+};
+
+template <>
+struct GetVecType<float, 2> {
+  using Type = float2;
+};
+
+template <>
+struct GetVecType<float, 4> {
+  using Type = float4;
+};
+
+template <>
+struct GetVecType<double, 2> {
+  using Type = double2;
+};
+
+template <>
+struct GetVecType<double, 4> {
+  using Type = double4;
+};
+
 // each matrix is divided into "tile_num" tiles by dimension "n"
 // each tile compute "pre * post" elemwise_grad result
 // post number continuous threads deal with a tile
@@ -1695,7 +1733,7 @@ static __global__ void ElemwiseGradBroadcast2ThreadVecCUDAKernel(
   for (int k = 0; k < vec_size; k++) s_data[elem_thread_start + k] = (AccT)0;
 
   // vectorize data read and write
-  using VecT = typename details::GetVecType<T, vec_size>::Type;
+  using VecT = typename GetVecType<T, vec_size>::Type;
   VecT vec_out, vec_dout;
   T *buf_out = reinterpret_cast<T *>(&vec_out);
   T *buf_dout = reinterpret_cast<T *>(&vec_dout);

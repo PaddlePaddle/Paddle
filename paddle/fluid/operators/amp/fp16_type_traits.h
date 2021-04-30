@@ -32,44 +32,6 @@ class MPTypeTrait<platform::float16> {
   using Type = float;
 };
 
-template <typename T, int N>
-struct GetVecType;
-
-template <typename T>
-struct GetVecType<T, 1> {
-  using Type = T;
-};
-
-template <>
-struct GetVecType<paddle::platform::float16, 2> {
-  using Type = half2;
-};
-
-template <>
-struct GetVecType<paddle::platform::float16, 4> {
-  using Type = float2;
-};
-
-template <>
-struct GetVecType<float, 2> {
-  using Type = float2;
-};
-
-template <>
-struct GetVecType<float, 4> {
-  using Type = float4;
-};
-
-template <>
-struct GetVecType<double, 2> {
-  using Type = double2;
-};
-
-template <>
-struct GetVecType<double, 4> {
-  using Type = double4;
-};
-
 }  // namespace details
 }  // namespace operators
 }  // namespace paddle
