@@ -1904,10 +1904,10 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
 
 template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
-    void -
-    ElementwiseComputeEx(const framework::ExecutionContext &ctx,
-                         const framework::Tensor *x, const framework::Tensor *y,
-                         int axis, Functor func, framework::Tensor *z) {
+void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
+                          const framework::Tensor *x,
+                          const framework::Tensor *y, int axis, Functor func,
+                          framework::Tensor *z) {
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
