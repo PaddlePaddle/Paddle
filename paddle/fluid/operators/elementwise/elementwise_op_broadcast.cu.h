@@ -19,8 +19,8 @@
 namespace paddle {
 namespace operators {
 
-template <typename T, typename fetch_t, int N>
-__device__ inline void BScalarizedKernelImpl(fetch_t data_processor, int tid) {
+template <typename T, typename ProcessT, int N>
+__device__ inline void BScalarizedKernelImpl(ProcessT data_processor, int tid) {
   T args[N];
   data_processor.load_scalar(args, tid);
 
@@ -31,8 +31,8 @@ __device__ inline void BScalarizedKernelImpl(fetch_t data_processor, int tid) {
   data_processor.store_scalar(args, tid);
 }
 
-template <typename T, typename fetch_t, int N, int vec_size>
-__device__ inline void BVectorizedKernelImpl(fetch_t data_processor, int tid) {
+template <typename T, typename ProcessT, int N, int vec_size>
+__device__ inline void BVectorizedKernelImpl(ProcessT data_processor, int tid) {
   using VecT = CudaAlignedVector<T, vec_size>;
   VecT args[N];
   data_processor.load_vector(args, tid);
@@ -47,15 +47,15 @@ __device__ inline void BVectorizedKernelImpl(fetch_t data_processor, int tid) {
   data_processor.store_vector(args, tid);
 }
 
-template <typename T, typename fetch_t, int N, int vec_size>
-__global__ void CommonElementwiseKernel(fetch_t data_processor, int main_tid,
+template <typename T, typename ProcessT, int N, int vec_size>
+__global__ void CommonElementwiseKernel(ProcessT data_processor, int main_tid,
                                         int tail_tid) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid < main_tid) {
-    BVectorizedKernelImpl<T, fetch_t, N, vec_size>(data_processor, tid);
+    BVectorizedKernelImpl<T, ProcessT, N, vec_size>(data_processor, tid);
   }
   if (tid < tail_tid) {
-    BScalarizedKernelImpl<T, fetch_t, N>(data_processor, tid);
+    BScalarizedKernelImpl<T, ProcessT, N>(data_processor, tid);
   }
 }
 
