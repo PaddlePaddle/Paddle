@@ -144,6 +144,11 @@ class TestSelectedRowsSumOp(unittest.TestCase):
                 self.check_with_place(place, inplace)
 
 
+class TestSelectedRowsSumOpInt(TestSelectedRowsSumOp):
+    def init_kernel_type(self):
+        self.dtype = np.int32
+
+
 @unittest.skipIf(not core.supports_bfloat16(),
                  'place does not support BF16 evaluation')
 class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
