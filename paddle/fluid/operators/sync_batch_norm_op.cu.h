@@ -110,6 +110,17 @@ __global__ void KeSyncAndMovingStats(
   }
 }
 
+template <typename T>
+static __global__ void set_status(BatchNormParamType<T> *status, int C){
+  for (int gid = blockIdx.x + threadIdx.x; gid < C * 2 + 1; gid += gridDim.x * blockDim.x){
+    status[gid] = static_cast<BatchNormParamType<T>>(0.1);
+    if (gid == C * 2){
+      status[gid] = static_cast<BatchNormParamType<T>>(1.0);
+    }
+  }
+
+}
+
 template <typename T, framework::DataLayout layout>
 static __global__ void KeNormAffine(const T *x,
                                     const BatchNormParamType<T> *scale,
@@ -233,7 +244,7 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     size_t workspace_size = 0;
     size_t reserve_space_size = 0;
     
-
+    if (false){
     PADDLE_ENFORCE_CUDA_SUCCESS(
             platform::dynload::
                 cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
@@ -313,7 +324,9 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
                 workspace_size,
                 reserve_space_ptr,
                 reserve_space_size));
+    }
 
+    // max_threads
     /**
      * 总共有(max_threads + threads - 1) / threads个block， 实际最多需要C(grid)个block
      * 但是当C超过实际存在的block时， 会将grid设置为最大值(max_threads + threads - 1) / threads
@@ -331,14 +344,9 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     //       x_d, N, H * W * D, C, stats);
     // }
     //至此， 把该mini_batch(单卡上)的所有数据的x_sum 和x2_sum都计算出来了，同时因为是单卡，所以stats最后一个元素恒为1
-int c;
-for (c = 0; c < C*2 ;c ++){
-  printf("c: %d\n", c);
-  stats[c] = static_cast<BatchNormParamType<T>>(0.1);
-  printf("done: %d\n", c);
-}
-stats[c] = static_cast<BatchNormParamType<T>>(0.1);
-printf("last_done: %d\n", c);
+
+
+set_status<T> <<<128, 128 >>> (stats, C);
 
 #define PADDLE_WITH_NCCL
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -374,15 +382,15 @@ printf("last_done: %d\n", c);
   }
 
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
-  if (layout == framework::DataLayout::kNCHW) {
-    KeNormAffine<T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-        x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
-        y_d);
-  } else {
-    KeNormAffine<T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-        x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
-        y_d);
-  }
+  // if (layout == framework::DataLayout::kNCHW) {
+  //   KeNormAffine<T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+  //       x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
+  //       y_d);
+  // } else {
+  //   KeNormAffine<T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+  //       x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
+  //       y_d);
+  // }
 }
 
 template <typename T, const int BlockDim, framework::DataLayout layout>
