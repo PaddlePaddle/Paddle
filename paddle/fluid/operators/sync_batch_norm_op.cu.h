@@ -635,7 +635,7 @@ void SyncBatchNormGradFunctor(
         comm, stream));
   }
 #endif
-
+  if (false){
   if (layout == framework::DataLayout::kNCHW) {
     if (d_scale && d_bias) {
       KeBNBackwardScaleBias<
@@ -668,6 +668,7 @@ void SyncBatchNormGradFunctor(
           saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C, fsize,
           x->numel(), d_x->data<T>());
     }
+  }
   }
 }
 
