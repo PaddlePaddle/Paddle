@@ -49,7 +49,7 @@ template <typename T, int BlockDim, framework::DataLayout layout>
 __global__ void KeLocalStats(const T *x, int N, int M, int C,
                              BatchNormParamType<T> *mean_var) {
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
+  __shared__ typename BlockReduce::TempStorage temp_storage;// 每一个线程都需要申请空间，有可能会导致速度变慢
   for (int k = blockIdx.x; k < C; k += gridDim.x) {
     BatchNormParamType<T> x_sum = 0.;
     BatchNormParamType<T> x2_sum = 0.;
@@ -61,6 +61,9 @@ __global__ void KeLocalStats(const T *x, int N, int M, int C,
       x_sum += x_in;
       x2_sum += x_in * x_in;
     }
+
+    //等待x2_sum 和x_sum 都计算完成, 可能会影响速度，
+    //可以考虑x_sum和x2_sum 同时计算
     __syncthreads();
     auto out = BlockReduce(temp_storage).Reduce(x_sum, cub::Sum());
     __syncthreads();
@@ -74,6 +77,7 @@ __global__ void KeLocalStats(const T *x, int N, int M, int C,
     }
   }
   if (blockIdx.x == 0 && threadIdx.x == 0) {
+    //因为这是在单卡上做的并行计算，因此恒为1.0
     mean_var[2 * C] = static_cast<BatchNormParamType<T>>(1.0);
   }
 }
@@ -92,7 +96,7 @@ __global__ void KeSyncAndMovingStats(
   for (int i = gid; i < C; i += stride) {
     auto mean = means[i] / (*num_dev);
     auto var = variances[i] / (*num_dev);
-    var = var - mean * mean;
+    var = var - mean * mean; //note liupeng: 经过推理，验证正确
 
     // sync stats
     sv_mean_data[i] = mean;
@@ -147,11 +151,18 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
                         "The Input dim size should be less than 6."));
   int N, C, H, W, D;
   ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+  auto dtype = platform::CudnnDataType<T>::type;
   int x_numel = x->numel();
 
   const T *x_d = x->data<T>();
   const auto *s_d = ctx.Input<Tensor>("Scale")->data<BatchNormParamType<T>>();
   const auto *b_d = ctx.Input<Tensor>("Bias")->data<BatchNormParamType<T>>();
+  const auto *scale = ctx.Input<Tensor>("Scale");
+  const auto *bias = ctx.Input<Tensor>("Bias");
+
+  const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
 
   T *y_d = y->mutable_data<T>(ctx.GetPlace());
 
@@ -175,18 +186,148 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     alloc_ptr = memory::Alloc(dev_ctx, bytes);
 
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
-    const int threads = 256;
-    int grid = std::min(C, (max_threads + threads - 1) / threads);
-    if (layout == framework::DataLayout::kNCHW) {
-      KeLocalStats<T, threads,
-                   framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-          x_d, N, H * W * D, C, stats);
+    // const int threads = 256;
+
+    auto handle = dev_ctx.cudnn_handle();
+#define FLAGS_cudnn_batchnorm_spatial_persistent 1
+// #define CUDNN_BATCHNORM_OPS_BN 0
+    cudnnTensorDescriptor_t data_desc_;
+    cudnnTensorDescriptor_t bn_param_desc_;
+    cudnnBatchNormMode_t mode_;
+    mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+    bool test_mode = false;
+
+    const bool fast_nhwc_batch_norm =
+        false ||
+        (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
+
+    auto compute_format =
+        fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
+            ? DataLayout::kNHWC
+            : DataLayout::kNCHW;
+
+    VLOG(3) << "Setting descriptors.";
+    std::vector<int> dims;
+    std::vector<int> strides;
+    if (compute_format == DataLayout::kNCHW) {
+      dims = {N, C, H, W, D};
+      strides = {C * H * W * D, H * W * D, W * D, D, 1};
     } else {
-      KeLocalStats<T, threads,
-                   framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-          x_d, N, H * W * D, C, stats);
+      dims = {N, C, H, W, D};
+      strides = {H * W * D * C, 1, W * D * C, D * C, C};
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
+        data_desc_, CudnnDataType<T>::type,
+        x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
+    // Note: PERSISTENT not implemented for inference
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDeriveBNTensorDescriptor(
+            bn_param_desc_, data_desc_,
+            test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
+    size_t workspace_size = 0;
+    size_t reserve_space_size = 0;
+    
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::
+                cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
+                    /*handle=*/handle,
+                    /*mode=*/mode_,
+                    /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
+                    /*xDesc=*/data_desc_,
+                    /*zDesc=*/nullptr,
+                    /*yDesc=*/data_desc_,
+                    /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
+                    /*activationDesc=*/nullptr,
+                    /*sizeInBytes=*/&workspace_size));
+
+        // -------------- cudnn batchnorm reserve space --------------
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::
+                cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+                    /*handle=*/handle,
+                    /*mode=*/mode_,
+                    /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
+                    /*activationDesc=*/nullptr,
+                    /*xDesc=*/data_desc_,
+                    /*sizeInBytes=*/&reserve_space_size));
+
+        void *reserve_space_ptr = nullptr;
+        void *workspace_ptr = nullptr;
+        Tensor workspace_tensor;
+        auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+
+        Tensor transformed_x(x->type());
+        Tensor transformed_y(y->type());
+
+        if (data_layout == DataLayout::kNHWC &&
+        compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
+        VLOG(3) << "Transform input tensor from NHWC to NCHW.";
+        ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
+                                                           &transformed_x);
+        TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
+                                                          &transformed_x);
+        ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, y,
+                                                           &transformed_y);
+    } else {
+      transformed_x.ShareDataWith(*x);
+      transformed_y.ShareDataWith(*y);
     }
 
+        reserve_space_ptr = reserve_space->mutable_data(
+            ctx.GetPlace(), transformed_x.type(), reserve_space_size);
+        workspace_ptr = workspace_tensor.mutable_data(
+            ctx.GetPlace(), transformed_x.type(), workspace_size);
+
+        double this_factor = 1. - momentum;
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
+                handle,
+                mode_,
+                CUDNN_BATCHNORM_OPS_BN,
+                CudnnDataType<T>::kOne(),
+                CudnnDataType<T>::kZero(),
+                data_desc_,
+                transformed_x.template data<T>(),
+                nullptr,
+                nullptr,
+                data_desc_,
+                transformed_y.template data<T>(),
+                bn_param_desc_,
+                scale->template data<BatchNormParamType<T>>(),
+                bias->template data<BatchNormParamType<T>>(),
+                this_factor,
+                mean_out->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+                variance_out->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+                epsilon,
+                saved_mean->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+                saved_variance->template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+                nullptr,
+                workspace_ptr,
+                workspace_size,
+                reserve_space_ptr,
+                reserve_space_size));
+
+    /**
+     * 总共有(max_threads + threads - 1) / threads个block， 实际最多需要C(grid)个block
+     * 但是当C超过实际存在的block时， 会将grid设置为最大值(max_threads + threads - 1) / threads
+     * pytorch 占满了线程， 这里最多使用了threads(256)个线程
+     * to replace
+     */
+    // int grid = std::min(C, (max_threads + threads - 1) / threads);
+    // if (layout == framework::DataLayout::kNCHW) {
+    //   KeLocalStats<T, threads,
+    //                framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
+    //       x_d, N, H * W * D, C, stats);
+    // } else {
+    //   KeLocalStats<T, threads,
+    //                framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
+    //       x_d, N, H * W * D, C, stats);
+    // }
+    //至此， 把该mini_batch(单卡上)的所有数据的x_sum 和x2_sum都计算出来了，同时因为是单卡，所以stats最后一个元素恒为1
+
+
+#define PADDLE_WITH_NCCL
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *comm = dev_ctx.nccl_comm();
     if (comm) {
@@ -386,6 +527,7 @@ void SyncBatchNormGradFunctor(
 
   int N, C, H, W, D;
   ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+  auto dtype = platform::CudnnDataType<T>::type;
   PADDLE_ENFORCE_EQ(scale->dims()[0], C,
                     platform::errors::InvalidArgument(
                         "Expected first dim for input parameter(scale) of "
