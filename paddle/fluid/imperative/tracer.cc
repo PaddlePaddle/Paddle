@@ -158,6 +158,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   NameVarBaseMap new_ins = ins;
   if (enable_autocast_) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
+    // printf("Auto mixed precision run operator: %s\n", type.c_str());
     new_ins = AutoCastInputs(type, ins);
   }
 

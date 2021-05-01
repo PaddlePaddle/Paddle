@@ -133,12 +133,14 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
   if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
-      if ((op_type == "batch_norm" || op_type == "layer_norm") &&
+      if ((op_type == "batch_norm" || op_type == "layer_norm" || op_type == "sync_batch_norm") &&
           pair.first != "X") {
         continue;
       }
 
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to float16";
+      std::cout << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float16";
       for (auto& var : pair.second) {
         var = CastToFP16(var);
