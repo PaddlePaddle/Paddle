@@ -325,8 +325,8 @@ def which_distributed_mode(args):
 
     if fluid.core.is_compiled_with_cuda():
         accelerators = fluid.core.get_cuda_device_count()
-    elif fluid.core.is_compiled_with_ascend():
-        accelerators = fluid.core.NPUDevice.get_device_count()
+    elif fluid.core.is_compiled_with_npu():
+        accelerators = fluid.core.get_npu_device_count()
     elif fluid.core.is_compiled_with_xpu():
         accelerators = fluid.core.get_xpu_device_count()
     else:
