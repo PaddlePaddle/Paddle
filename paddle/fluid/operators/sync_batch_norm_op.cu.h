@@ -331,7 +331,14 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     //       x_d, N, H * W * D, C, stats);
     // }
     //至此， 把该mini_batch(单卡上)的所有数据的x_sum 和x2_sum都计算出来了，同时因为是单卡，所以stats最后一个元素恒为1
-
+int c;
+for (c = 0; c < C*2 ;c ++){
+  printf("c: %d\n", c);
+  stats[c] = static_cast<BatchNormParamType<T>>(0.1);
+  printf("done: %d\n", c);
+}
+stats[c] = static_cast<BatchNormParamType<T>>(0.1);
+printf("last_done: %d\n", c);
 
 #define PADDLE_WITH_NCCL
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -344,6 +351,7 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
           comm, stream));
     }
 #endif
+
 
     auto *est_mean_data =
         mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
