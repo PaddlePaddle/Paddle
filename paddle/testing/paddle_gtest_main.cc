@@ -29,8 +29,7 @@ int main(int argc, char** argv) {
 
   std::vector<std::string> envs;
   std::vector<std::string> undefok;
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_GRPC) && \
-    !defined(PADDLE_WITH_PSLIB)
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   std::string str_max_body_size;
   if (::GFLAGS_NAMESPACE::GetCommandLineOption("max_body_size",
                                                &str_max_body_size)) {

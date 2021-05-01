@@ -15,8 +15,6 @@
 # TODO: define the initializers of Kaiming functions in neural network
 from ...fluid.initializer import MSRAInitializer
 
-__all__ = ['KaimingUniform', 'KaimingNormal']
-
 
 class KaimingNormal(MSRAInitializer):
     r"""Implements the Kaiming Normal initializer

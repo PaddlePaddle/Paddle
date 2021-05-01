@@ -26,8 +26,10 @@
 #include <vector>
 #include "gflags/gflags.h"
 
+#include "butil/object_pool.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/depends/initializers.h"
+#include "paddle/fluid/distributed/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
@@ -46,6 +48,10 @@ namespace paddle {
 namespace distributed {
 
 enum Mode { training, infer };
+
+static const int SPARSE_SHARD_BUCKET_NUM_BITS = 6;
+static const size_t SPARSE_SHARD_BUCKET_NUM = (size_t)1
+                                              << SPARSE_SHARD_BUCKET_NUM_BITS;
 
 struct VALUE {
   explicit VALUE(size_t length)
@@ -66,11 +72,11 @@ struct VALUE {
   bool is_entry_;    // whether knock-in
 };
 
-inline bool count_entry(std::shared_ptr<VALUE> value, int threshold) {
+inline bool count_entry(VALUE *value, int threshold) {
   return value->count_ >= threshold;
 }
 
-inline bool probility_entry(std::shared_ptr<VALUE> value, float threshold) {
+inline bool probility_entry(VALUE *value, float threshold) {
   UniformInitializer uniform = UniformInitializer({"uniform", "0", "0", "1"});
   return uniform.GetValue() >= threshold;
 }
@@ -145,7 +151,7 @@ class ValueBlock {
                            const std::vector<int> &value_dims) {
     auto pts = std::vector<float *>();
     pts.reserve(value_names.size());
-    auto &values = values_.at(id);
+    auto values = GetValue(id);
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
       PADDLE_ENFORCE_EQ(
           value_dims[i], value_dims_[i],
@@ -159,35 +165,48 @@ class ValueBlock {
   // pull
   float *Init(const uint64_t &id, const bool with_update = true,
               const int counter = 1) {
-    if (!Has(id)) {
-      values_[id] = std::make_shared<VALUE>(value_length_);
-    }
+    size_t hash = _hasher(id);
+    size_t bucket = compute_bucket(hash);
 
-    auto &value = values_.at(id);
+    auto &table = values_[bucket];
+    auto res = table.find(id);
+
+    VALUE *value = nullptr;
+    if (res == table.end()) {
+      value = butil::get_object<VALUE>(value_length_);
+
+      table[id] = value;
+
+    } else {
+      value = res->second;
+    }
 
     if (with_update) {
       AttrUpdate(value, counter);
     }
-
     return value->data_.data();
   }
 
   VALUE *InitGet(const uint64_t &id, const bool with_update = true,
                  const int counter = 1) {
-    if (!Has(id)) {
-      values_[id] = std::make_shared<VALUE>(value_length_);
+    size_t hash = _hasher(id);
+    size_t bucket = compute_bucket(hash);
+
+    auto &table = values_[bucket];
+    auto res = table.find(id);
+
+    VALUE *value = nullptr;
+    if (res == table.end()) {
+      value = butil::get_object<VALUE>(value_length_);
+      // value = _alloc.acquire(value_length_);
+      table[id] = value;
+    } else {
+      value = (VALUE *)(void *)(res->second);
     }
-
-    auto &value = values_.at(id);
-
-    if (with_update) {
-      AttrUpdate(value, counter);
-    }
-
-    return value.get();
+    return value;
   }
 
-  void AttrUpdate(std::shared_ptr<VALUE> value, const int counter) {
+  void AttrUpdate(VALUE *value, const int counter) {
     // update state
     value->unseen_days_ = 0;
     value->count_ += counter;
@@ -211,42 +230,73 @@ class ValueBlock {
 
   // dont jude if (has(id))
   float *Get(const uint64_t &id) {
-    auto &value = values_.at(id);
+    size_t hash = _hasher(id);
+    size_t bucket = compute_bucket(hash);
+    auto &table = values_[bucket];
+
+    // auto &value = table.at(id);
+    // return value->data_.data();
+    auto res = table.find(id);
+    VALUE *value = res->second;
     return value->data_.data();
   }
 
   // for load, to reset count, unseen_days
-  std::shared_ptr<VALUE> GetValue(const uint64_t &id) { return values_.at(id); }
+  VALUE *GetValue(const uint64_t &id) {
+    size_t hash = _hasher(id);
+    size_t bucket = compute_bucket(hash);
+
+    auto &table = values_[bucket];
+    auto res = table.find(id);
+    return res->second;
+  }
 
   bool GetEntry(const uint64_t &id) {
-    auto &value = values_.at(id);
+    auto value = GetValue(id);
     return value->is_entry_;
   }
 
   void SetEntry(const uint64_t &id, const bool state) {
-    auto &value = values_.at(id);
+    auto value = GetValue(id);
     value->is_entry_ = state;
   }
 
   void Shrink(const int threshold) {
-    for (auto iter = values_.begin(); iter != values_.end();) {
-      auto &value = iter->second;
-      value->unseen_days_++;
-      if (value->unseen_days_ >= threshold) {
-        iter = values_.erase(iter);
-      } else {
-        ++iter;
+    for (auto &table : values_) {
+      for (auto iter = table.begin(); iter != table.end();) {
+        // VALUE* value = (VALUE*)(void*)(iter->second);
+        VALUE *value = iter->second;
+        value->unseen_days_++;
+        if (value->unseen_days_ >= threshold) {
+          butil::return_object(iter->second);
+          //_alloc.release(iter->second);
+          //_alloc.release(value);
+          iter = table.erase(iter);
+        } else {
+          ++iter;
+        }
       }
     }
     return;
   }
 
   float GetThreshold() { return threshold_; }
+  size_t compute_bucket(size_t hash) {
+    if (SPARSE_SHARD_BUCKET_NUM == 1) {
+      return 0;
+    } else {
+      return hash >> (sizeof(size_t) * 8 - SPARSE_SHARD_BUCKET_NUM_BITS);
+    }
+  }
 
  private:
   bool Has(const uint64_t id) {
-    auto got = values_.find(id);
-    if (got == values_.end()) {
+    size_t hash = _hasher(id);
+    size_t bucket = compute_bucket(hash);
+    auto &table = values_[bucket];
+
+    auto got = table.find(id);
+    if (got == table.end()) {
       return false;
     } else {
       return true;
@@ -254,8 +304,9 @@ class ValueBlock {
   }
 
  public:
-  std::unordered_map<uint64_t, std::shared_ptr<VALUE>> values_;
+  robin_hood::unordered_map<uint64_t, VALUE *> values_[SPARSE_SHARD_BUCKET_NUM];
   size_t value_length_ = 0;
+  std::hash<uint64_t> _hasher;
 
  private:
   const std::vector<std::string> &value_names_;
@@ -263,7 +314,7 @@ class ValueBlock {
   const std::vector<int> &value_offsets_;
   const std::unordered_map<std::string, int> &value_idx_;
 
-  std::function<bool(std::shared_ptr<VALUE>)> entry_func_;
+  std::function<bool(VALUE *)> entry_func_;
   std::vector<std::shared_ptr<Initializer>> initializers_;
   float threshold_;
 };

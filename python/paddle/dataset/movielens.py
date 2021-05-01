@@ -34,11 +34,6 @@ import functools
 import six
 import paddle.compat as cpt
 
-__all__ = [
-    'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
-    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info'
-]
-
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
 #URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'

@@ -537,6 +537,12 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
   }
 
+  if (config_.dlnne_enabled()) {
+    LOG(INFO) << "Dlnne subgraph is enabled";
+    argument_.SetUseDlnne(true);
+    argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
+  }
+
   if (config_.lite_engine_enabled()) {
     argument_.SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
@@ -546,6 +552,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetLiteZeroCopy(config_.lite_zero_copy_);
     argument_.SetUseXpu(config_.use_xpu_);
     argument_.SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
+    argument_.SetXpuLocked(config_.xpu_locked_);
+    argument_.SetXpuAutotune(config_.xpu_autotune_);
+    argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
+    argument_.SetXpuPrecision(config_.xpu_precision_);
+    argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
@@ -617,7 +628,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   // This function can only be executed once per process.
   static std::once_flag custom_operators_registered;
   std::call_once(custom_operators_registered,
-                 []() { paddle::RegisterAllCustomOperator(); });
+                 []() { inference::RegisterAllCustomOperator(); });
 
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;

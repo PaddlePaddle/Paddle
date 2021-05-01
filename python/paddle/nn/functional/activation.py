@@ -12,48 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define activation functions of neural network
-from ...fluid.layers import brelu  #DEFINE_ALIAS
-# from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import maxout  #DEFINE_ALIAS
-# from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import swish  #DEFINE_ALIAS
-from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...tensor.math import tanh  #DEFINE_ALIAS
-from ...tensor.math import tanh_  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid  # noqa: F401
+from ...tensor.math import tanh  # noqa: F401
+from ...tensor.math import tanh_  # noqa: F401
 
 from ...tensor.manipulation import _print_warning_in_static_mode
-
-__all__ = [
-    'brelu',
-    'elu',
-    'elu_',
-    'gelu',
-    'hardshrink',
-    'hardtanh',
-    'hardsigmoid',
-    'hardswish',
-    'leaky_relu',
-    'log_sigmoid',
-    'maxout',
-    'prelu',
-    'relu',
-    'relu_',
-    'relu6',
-    'selu',
-    'softmax',
-    'softmax_',
-    'softplus',
-    'softshrink',
-    'softsign',
-    'sigmoid',
-    'swish',
-    'tanh',
-    'tanh_',
-    'tanhshrink',
-    'thresholded_relu',
-    'log_softmax',
-]
+from ...tensor.manipulation import chunk
+from ...tensor.math import multiply
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
@@ -758,6 +723,39 @@ def selu(x,
     return out
 
 
+def silu(x, name=None):
+    """
+    silu activation.
+    .. math:
+        silu(x) = \frac{x}{1 + e^{-x}}
+    
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+    
+    Examples:
+        .. code-block:: python
+        import paddle
+        import paddle.nn.functional as F
+        
+        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+        out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.silu(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'silu')
+    helper = LayerHelper("silu", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='silu', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
 def softmax(x, axis=-1, dtype=None, name=None):
     r"""
     This operator implements the softmax layer. The calculation process is as follows:
@@ -1275,4 +1273,51 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis})
 
+    return out
+
+
+def glu(x, axis=-1, name=None):
+    r"""
+    The gated linear unit. The input is evenly splited into 2 parts along a 
+    given axis. The first part is used as the content, and the second part is
+    passed through a sigmoid function then used as the gate. The output is a
+    elementwise multiplication of the content and the gate.
+
+    .. math::
+
+        \mathrm{GLU}(a, b) = a \otimes \sigma(b)
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        axis (int, optional): The axis along which split the input tensor. It 
+            should be in range [-D, D), where D is the dimensions of ``x`` . 
+            If ``axis`` < 0, it works the same way as :math:`axis + D` . 
+            Default is -1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type as x. The size of the given aixs is 
+        halved.
+    
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+            from paddle.nn import functional as F
+            
+            x = paddle.to_tensor(
+                [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
+                 [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+            )
+            print(F.glu(x).numpy())
+            # array([[-0.15216254, -0.9004892 ],
+            #        [-1.0577879 , -0.46985325]], dtype=float32)
+        
+    """
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             "glu")
+    a, b = chunk(x, 2, axis=axis, name=name)
+    gate = sigmoid(b, name=name)
+    out = paddle.multiply(a, gate, name=name)
     return out
