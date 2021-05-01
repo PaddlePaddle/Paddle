@@ -18,6 +18,7 @@ extern "C" {
 #include <xxhash.h>
 }
 
+#include <functional>
 #include <list>
 #include <memory>
 #include <string>
@@ -51,13 +52,13 @@ class Scope;
  */
 class Scope {
  public:
-  Scope() {}
+  explicit Scope(const std::function<void(Scope*)> f = {});
   ~Scope();
 
   /// Create a sub-scope. Returns a reference other than a pointer so
   /// to prevent from manual deletion.
   /// Mark it to const because that new kid scope cannot change parent scope.
-  Scope& NewScope() const;
+  Scope& NewScope(const std::function<void(Scope*)> f = {}) const;
 
   /// Create a sub-scope for current scope but do not record it in the kids to
   /// avoid performance problems.
@@ -130,7 +131,7 @@ class Scope {
 
  private:
   // Call Scope::NewScope for a sub-scope.
-  explicit Scope(Scope const* parent) : parent_(parent) {}
+  explicit Scope(Scope const* parent, const std::function<void(Scope*)> f = {});
 
   // Called by Var.
   Variable* VarInternal(const std::string& name);
@@ -155,6 +156,8 @@ class Scope {
   mutable std::list<Scope*> kids_;
   const Scope* parent_{nullptr};
 
+  // Release cache
+  const std::function<void(Scope*)> fn_;
   DISABLE_COPY_AND_ASSIGN(Scope);
 
 #ifndef PADDLE_ON_INFERENCE
