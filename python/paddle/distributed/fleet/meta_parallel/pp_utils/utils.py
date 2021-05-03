@@ -62,10 +62,6 @@ class Generator():
         self.stage_id = stage_id
         self.prev_stage = self.stage_id - 1
         self.next_stage = self.stage_id + 1
-        assert self.micro_batches >= self.stages, (
-            "micro_batches {} "
-            "must be greater than or equal to {}".format(self.micro_batches,
-                                                         self.stages))
 
     @abc.abstractmethod
     def generate(self):
@@ -105,6 +101,7 @@ class TrainGenerator(Generator):
         while (backward_steps < self.micro_batches):
             cmds.append(Backward(cache_id=backward_steps))
             backward_steps += 1
+        cmds.append(Optimize())
         yield cmds
 
 
