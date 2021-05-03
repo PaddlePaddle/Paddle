@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <math.h>
 #include <memory>
 #include <string>
 #include <string>
@@ -280,7 +281,7 @@ int GraphIndex::load(std::string filename) {
       uint64_t item_id = graph_item.item_id();
 
       if (item_path_dict_.find(item_id) == item_path_dict_.end()) {
-        std::vector<int64_t> path_ids;
+        std::vector<uint32_t> path_ids;
         for (int i = 0; i < graph_item.path_id_size(); i++) {
           path_ids.push_back(graph_item.path_id(i));
           VLOG(0) << "Graph insert item: " << item_id
@@ -304,7 +305,7 @@ int GraphIndex::load(std::string filename) {
   return 0;
 }
 
-std::vector<int64_t> GraphIndex::create_path(uint64_t item_id) {
+std::vector<uint32_t> GraphIndex::create_path(uint64_t item_id) {
   if (item_path_dict_.find(item_id) == item_path_dict_.end()) {
     item_path_dict_[item_id] = generate_random_path();
     for (auto path : item_path_dict_[item_id]) {
@@ -314,16 +315,23 @@ std::vector<int64_t> GraphIndex::create_path(uint64_t item_id) {
   return item_path_dict_[item_id];
 }
 
-std::vector<int64_t> GraphIndex::generate_random_path() {
+std::vector<uint32_t> GraphIndex::generate_random_path() {
   int h = height(), w = width(), path_nums = item_path_nums();
-  std::vector<int64_t> vec(path_nums, 0);
+  uint32_t total_num = pow(h, w) + 0.2;
+  std::vector<uint32_t> vec(path_nums, 0);
+  std::unordered_set<uint32_t> path_set;
   for (int i = 0; i < path_nums; i++) {
-    for (int j = 0; j < w; j++) vec[i] = vec[i] * h + rand() % h;
+    uint32_t path_id;
+    do {
+      path_id = rand() % total_num;
+    } while (path_set.find(path_id) != path_set.end());
+    vec[i] = path_id;
+    path_set.insert(path_id);
   }
   return vec;
 }
 
-void GraphIndex::add_item(uint64_t item_id, std::vector<int64_t> vec) {
+void GraphIndex::add_item(uint64_t item_id, std::vector<uint32_t> vec) {
   if (item_path_dict_.find(item_id) != item_path_dict_.end()) {
     auto path_vec = item_path_dict_[item_id];
     for (auto path : path_vec) {
@@ -340,18 +348,19 @@ void GraphIndex::add_item(uint64_t item_id, std::vector<int64_t> vec) {
   }
 }
 
-std::vector<std::vector<int64_t>> GraphIndex::get_path_of_item(
+std::vector<std::vector<uint32_t>> GraphIndex::get_path_of_item(
     std::vector<uint64_t>& items) {
-  std::vector<std::vector<int64_t>> result;
+  std::vector<std::vector<uint32_t>> result;
   for (auto& item : items) {
     // result.push_back(item_path_dict_[item]);
+
     result.push_back(create_path(item));
   }
   return result;
 }
 
 std::vector<std::vector<uint64_t>> GraphIndex::get_item_of_path(
-    std::vector<int64_t>& paths) {
+    std::vector<uint32_t>& paths) {
   std::vector<std::vector<uint64_t>> result;
   for (auto& path : paths) {
     result.push_back(std::vector<uint64_t>(path_item_set_dict_[path].begin(),

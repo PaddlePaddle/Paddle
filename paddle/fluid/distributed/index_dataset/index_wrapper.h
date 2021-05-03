@@ -70,36 +70,36 @@ class GraphIndex : public Index {
   GraphIndex() {}
   ~GraphIndex() {}
 
-  int height() { return meta_.height(); }
-  int width() { return meta_.width(); }
-  int item_path_nums() { return meta_.item_path_nums(); }
+  uint32_t height() { return meta_.height(); }
+  uint32_t width() { return meta_.width(); }
+  uint32_t item_path_nums() { return meta_.item_path_nums(); }
 
-  void set_height(int height) { meta_.set_height(height); }
+  void set_height(uint32_t height) { meta_.set_height(height); }
 
-  void set_width(int weight) { meta_.set_width(weight); }
+  void set_width(uint32_t weight) { meta_.set_width(weight); }
 
-  void set_item_path_nums(int num) { meta_.set_item_path_nums(num); }
+  void set_item_path_nums(uint32_t num) { meta_.set_item_path_nums(num); }
 
   void reset_mapping() {
     item_path_dict_.clear();
     path_item_set_dict_.clear();
   }
 
-  std::vector<int64_t> create_path(uint64_t item_id);
-  std::vector<int64_t> generate_random_path();
-  void add_item(uint64_t item_id, std::vector<int64_t> vec);
+  std::vector<uint32_t> create_path(uint64_t item_id);
+  std::vector<uint32_t> generate_random_path();
+  void add_item(uint64_t item_id, std::vector<uint32_t> vec);
 
-  std::unordered_map<uint64_t, std::vector<int64_t>> get_item_path_dict() {
+  std::unordered_map<uint64_t, std::vector<uint32_t>> get_item_path_dict() {
     return item_path_dict_;
   }
   int load(std::string path);
 
   int save(std::string filename);
   int writeToFile(FILE* fp, KVItem& item);
-  std::vector<std::vector<int64_t>> get_path_of_item(
+  std::vector<std::vector<uint32_t>> get_path_of_item(
       std::vector<uint64_t>& items);
   std::vector<std::vector<uint64_t>> get_item_of_path(
-      std::vector<int64_t>& paths);
+      std::vector<uint32_t>& paths);
 
   int update_Jpath_of_item(
       std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
@@ -108,8 +108,9 @@ class GraphIndex : public Index {
  private:
   GraphMeta meta_;
 
-  std::unordered_map<uint64_t, std::vector<int64_t>> item_path_dict_;
-  std::unordered_map<int64_t, std::unordered_set<uint64_t>> path_item_set_dict_;
+  std::unordered_map<uint64_t, std::vector<uint32_t>> item_path_dict_;
+  std::unordered_map<uint32_t, std::unordered_set<uint64_t>>
+      path_item_set_dict_;
 };
 
 using TreePtr = std::shared_ptr<TreeIndex>;
