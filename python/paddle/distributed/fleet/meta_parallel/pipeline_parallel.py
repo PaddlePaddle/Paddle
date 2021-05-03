@@ -25,6 +25,8 @@ from .meta_parallel_base import MetaParallelBase
 from .pp_utils.utils import get_tensor_bytes, is_float_tensor
 from .pp_utils import utils
 from .parallel_layers.pp_layers import PipelineLayer
+from ..utils.hybrid_parallel_util import *
+from ..utils.log_util import logger
 
 
 class PipelineParallel(MetaParallelBase):
@@ -50,6 +52,8 @@ class PipelineParallel(MetaParallelBase):
         self.current_loss = paddle.to_tensor(0.0)
         self.total_loss = None
 
+        self.use_amp = self._strategy.amp
+        self.init_loss_scaling = self._strategy.amp_configs['init_loss_scaling']
         self.micro_batch_size = self._strategy.pipeline_configs[
             'micro_batch_size']
         self.accumulate_steps = self._strategy.pipeline_configs[
@@ -59,11 +63,18 @@ class PipelineParallel(MetaParallelBase):
         self.stage_id = self._hcg.get_stage_id()
         self.prev_stage_id = self.stage_id - 1
         self.next_stage_id = self.stage_id + 1
+        logger.info("Pipeline Info -- num_stages: {}, stage_id: {}".format(
+            self.num_stages, self.stage_id))
+
+        if self.use_model_parallel:
+            logger.info("start broadcast mp parameters")
+            broadcast_mp_parameters(self._layers, self._hcg)
+
+        if self.use_data_parallel:
+            logger.info("start broadcast mp parameters")
+            broadcast_dp_parameters(self._layers, self._hcg)
 
     def _allocate_caches(self, num_caches):
-        for key in self.caches:
-            self.caches[key] = []
-            self.num_caches = 0
         if self.num_caches >= num_caches:
             return
 
@@ -100,12 +111,11 @@ class PipelineParallel(MetaParallelBase):
                 assert type(cmd) in self._COMMAND_MAP, "unknow cmd: {}".format(
                     type(cmd))
                 self._apply_cmd = MethodType(self._COMMAND_MAP[type(cmd)], self)
-                print("run a command: {}".format(type(cmd)))
                 self._apply_cmd(**cmd.kwargs)
 
     def _allreduce_grads(self):
-        assert self.use_data_parallel <= 1, ("Do not support data parallel "
-                                             "with pipeline parallel now.")
+        if self.use_data_parallel <= 1: return
+        fused_allreduce_gradients(list(self._layers.parameters()), self._hcg)
 
     def _forward(self, cache_id):
         # load data
@@ -129,6 +139,11 @@ class PipelineParallel(MetaParallelBase):
 
         if self.stage_id == self.num_stages - 1:
             self.current_loss = outputs
+            if self.use_data_parallel:
+                self.current_loss = self.current_loss / self._hcg.get_data_parallel_world_size(
+                )
+            if self.accumulate_steps > 1:
+                self.current_loss = self.current_loss / self.accumulate_steps
             self.caches['outputs'][cache_id] = self.current_loss.clone()
             if isinstance(self.current_loss, paddle.Tensor):
                 if self.total_loss is None:
@@ -147,7 +162,6 @@ class PipelineParallel(MetaParallelBase):
     def _backward(self, cache_id):
         assert self.optimizer is not None
         if self.stage_id == self.num_stages - 1:
-            print("output to grad:", self.caches['outputs'][cache_id])
             paddle.autograd.backward(self.caches['outputs'][cache_id])
             self._send_gradients(cache_id)
             return
@@ -159,13 +173,9 @@ class PipelineParallel(MetaParallelBase):
         if isinstance(outputs, tuple):
             out_tensors = [t for t in outputs if is_float_tensor(t)]
             assert len(out_tensors) == len(grad_tensors)
-            print("output to grad:", out_tensors)
-            print("output to grad grad:", grad_tensors)
             paddle.autograd.backward(
                 tensors=out_tensors, grad_tensors=grad_tensors)
         else:
-            print("output to grad:", out_tensors)
-            print("output to grad grad:", grad_tensors)
             paddle.autograd.backward(
                 tensors=[outputs], grad_tensors=[grad_tensors])
 
@@ -185,8 +195,8 @@ class PipelineParallel(MetaParallelBase):
             data = self.data
         if self.use_model_parallel and (self.stage_id == 0 or
                                         self.stage_id == self.num_stages - 1):
-            assert isinstance(data, [tuple, Paddle.Tensor])
-            if isinstance(data, Paddle.Tensor):
+            assert isinstance(data, [tuple, paddle.Tensor])
+            if isinstance(data, paddle.Tensor):
                 paddle.distributed.broadcast(
                     d, src=0, group=self._hcg.get_model_parallel_group())
             else:
@@ -364,12 +374,13 @@ class PipelineParallel(MetaParallelBase):
         if self.grad_tensors is None:
             if isinstance(outputs, paddle.Tensor):
                 s = list(outputs.shape)
-                dtype = 'float32'
+                dtype = 'float16' if self.use_amp else "float32"
                 self.grad_tensors = self._allocate_buffer(
                     s, dtype, num_buffers=1)[0]
             else:
                 sizes = [list(d.shape) for d in outputs if is_float_tensor(d)]
-                dtypes = ['float32'] * len(sizes)
+                dtypes = ['float16'] * len(
+                    sizes) if self.use_amp else ['float32'] * len(sizes)
                 self.grad_tensors = self._allocate_buffers(
                     sizes, dtypes, num_caches=1)[0]
 
@@ -382,7 +393,8 @@ class PipelineParallel(MetaParallelBase):
                 paddle.distributed.recv(
                     d, self.next_stage_id, use_calc_stream=True)
 
-    def _step(self, lr_kwargs=None):
+    def _step(self):
+        self._allreduce_grads()
         self.optimizer.step()
         self.optimizer.clear_gradients()
 
