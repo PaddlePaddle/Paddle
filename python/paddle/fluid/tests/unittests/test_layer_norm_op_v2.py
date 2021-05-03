@@ -82,5 +82,60 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             self.assertTrue(np.allclose(y1, y2))
 
 
+class TestLayerNormFunction(unittest.TestCase):
+    def test_dygraph(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            shape = [4, 10, 4, 4]
+
+            def compute_v0(x):
+                with fluid.dygraph.guard(p):
+                    ln = fluid.dygraph.LayerNorm(shape[1:])
+                    y = ln(fluid.dygraph.to_variable(x))
+                return y.numpy()
+
+            def compute_v1(x):
+                with fluid.dygraph.guard(p):
+                    x = fluid.dygraph.to_variable(x)
+                    y = paddle.nn.functional.layer_norm(x, shape[1:])
+                return y.numpy()
+
+            def compute_v2(x):
+                with fluid.dygraph.guard(p):
+                    x = fluid.dygraph.to_variable(x)
+                    y = paddle.nn.functional.layer_norm(x, tuple(shape[1:]))
+                return y.numpy()
+
+            def compute_v3(x):
+                with fluid.dygraph.guard(p):
+                    ln = fluid.dygraph.LayerNorm(shape[-1])
+                    y = ln(fluid.dygraph.to_variable(x))
+                return y.numpy()
+
+            def compute_v4(x):
+                with fluid.dygraph.guard(p):
+                    x = fluid.dygraph.to_variable(x)
+                    y = paddle.nn.functional.layer_norm(x, shape[-1])
+                return y.numpy()
+
+            x = np.random.randn(*shape).astype("float32")
+            y0 = compute_v0(x)
+            y1 = compute_v1(x)
+            y2 = compute_v2(x)
+            self.assertTrue(np.allclose(y0, y1))
+            self.assertTrue(np.allclose(y0, y2))
+            y3 = compute_v3(x)
+            y4 = compute_v4(x)
+            self.assertTrue(np.allclose(y3, y4))
+
+            self.assertRaises(
+                ValueError,
+                paddle.nn.functional.layer_norm,
+                x=x,
+                normalized_shape=1.0)
+
+
 if __name__ == '__main__':
     unittest.main()

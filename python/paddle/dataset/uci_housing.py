@@ -29,7 +29,7 @@ import os
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 
-__all__ = ['train', 'test']
+__all__ = []
 
 URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'

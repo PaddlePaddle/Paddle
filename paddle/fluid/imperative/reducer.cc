@@ -443,10 +443,6 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
     auto *cur_node = q.front();
     q.pop();
 
-    for (auto &cur_op : *cur_node) {
-      cur_op.EnforceHasInOut();
-    }
-
     const auto &grad_pending_nodes = cur_node->GradPendingNodes();
     for (auto &grad_pending_node : grad_pending_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -523,7 +519,6 @@ void Reducer::PrepareForBackward(
     q.pop();
 
     for (const auto &cur_op : *cur_node) {
-      cur_op.EnforceHasInOut();
       auto &bwd_outs = cur_op.GetOutsMap();
       for (const auto &pair : bwd_outs) {
         if (!pair.second.IsGrad()) {
@@ -762,10 +757,11 @@ void Reducer::MarkGroupReady(size_t group_index) {
     // TODO(liuyuhui): Add try catch to deal with exception later,
     // otherwise the main thread will continue to run when an exception is
     // thrown in comm_pool_.
-    comm_pool_->enqueue([&] {
+    auto next_group = next_group_;
+    comm_pool_->enqueue([this, run_order, next_group, &group] {
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
       platform::SetXPUDeviceId(dev_id);
-      FusedAllReduceSchedule(run_order, group, next_group_);
+      FusedAllReduceSchedule(run_order, group, next_group);
       {
         std::lock_guard<std::mutex> lock(mutex_);
         comm_op_count_ -= 1;  // lock
