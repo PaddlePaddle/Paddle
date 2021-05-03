@@ -4597,20 +4597,23 @@ class PipelineOptimizer(object):
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
-        for prog in program_list:
+        for i, prog in enumerate(program_list):
             for op in prog.block(0).ops:
                 if not op.has_attr('sub_block'):
                     continue
                 origin_sub_block_id = op.attr('sub_block').id
                 origin_sub_block = main_program.block(origin_sub_block_id)
                 new_sub_block = prog._create_block(parent_idx=0)
-                for op in origin_sub_block.ops:
-                    op_desc = op.desc
+                for op2 in origin_sub_block.ops:
+                    op_desc = op2.desc
                     ap_op = new_sub_block.desc.append_op()
                     ap_op.copy_from(op_desc)
                 new_sub_block._sync_with_cpp()
                 self._create_vars(new_sub_block, origin_sub_block)
-                op._set_attr('sub_block:', new_sub_block)
+                op._set_attr('sub_block', new_sub_block)
+
+                with open("./details/pipeline_2_"+str(i), "w") as f:
+                    f.write(prog._to_readable_code())
 
     def _get_device_info(self, block):
         for op in block.ops:
@@ -4813,9 +4816,15 @@ class PipelineOptimizer(object):
         # Step3: split program into sections and add pairs of
         # send and recv ops for data var.
         main_program = main_block.program
+        with open("./details/pipeline_main_before_split", "w") as f:
+            f.write(main_program._to_readable_code())
         program_list = self._split_program(main_program, device_list)
-        for p in program_list:
+        for i,p in enumerate(program_list):
+            with open("./details/pipeline_0_" + str(i), "w") as f:
+                f.write(p._to_readable_code())
             self._create_vars(p.global_block(), main_block)
+            with open("./details/pipeline_1_" + str(i), "w") as f:
+                f.write(p._to_readable_code())
 
         # Step4: Special Case: process persistable vars that exist in
         # multiple sections
@@ -4849,8 +4858,15 @@ class PipelineOptimizer(object):
             # accumulate gradients during backward
             self._rename_gradient_var_name(real_block)
             real_block._sync_with_cpp()
+            with open("./details/pipeline_3_"+str(self.local_rank), "w") as f:
+                f.write(real_block._to_readable_code())
             self._accumulate_gradients(real_block)
             real_block._sync_with_cpp()
+            with open("./details/pipeline_4_"+str(self.local_rank), "w") as f:
+                f.write(real_block._to_readable_code())
+
+        with open("./details/pipeline_5_"+str(self.local_rank), "w") as f:
+            f.write(real_block._to_readable_code())
 
         if core.is_compiled_with_cuda():
             place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
