@@ -54,7 +54,10 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     int root = peer;
 
     VLOG(3) << "begin hccl recv, parameter is: "
-            << "root " << root << ", comm: " << comm->comm()
+            << "ring_id:" << ring_id << ", nranks:" << nranks 
+            << ", peer:" << peer << ", numel:" << numel
+            << ", ptr:" << ptr << ", dtype:" << dtype
+            << ", root:" << root << ", comm: " << comm->comm()
             << ", stream: " << stream;
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
