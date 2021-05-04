@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL)
 #include <float.h>
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
