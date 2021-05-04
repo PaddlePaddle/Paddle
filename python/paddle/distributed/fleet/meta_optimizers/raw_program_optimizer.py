@@ -151,32 +151,28 @@ class RawProgramOptimizer(MetaOptimizerBase):
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and \
                     OP_ROLE_VAR_KEY in op.attr_names:
-                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
+                op_role_var = op.attr(OP_ROLE_VAR_KEY)
                 if len(op_role_var) == 0:
                     continue
                 assert len(op_role_var) % 2 == 0
-                offset = 0
+                offset = 1
                 for i in range(0, len(op_role_var), 2):
                     param_name = op_role_var[i]
-                    param = block.vars[op_role_var[i]]
+                    param = block.var(param_name)
                     grad_name = op_role_var[i + 1]
-                    grad = block.vars[grad_name]
+                    grad = block.var(grad_name)
                     if param.is_distributed:
                         continue
 
                     block._insert_op(
                         idx + offset,
-                        type='c_allreduce_sum',
+                        type='c_sync_calc_stream',
                         inputs={'X': grad},
                         outputs={'Out': grad},
-                        attrs={
-                            'ring_id': ring_id,
-                            'use_calc_stream': False,
-                            OP_ROLE_KEY: OpRole.Backward,
-                        })
+                        attrs={OP_ROLE_KEY: OpRole.Backward, })
                     offset += 1
                     block._insert_op(
-                        offset,
+                        idx + offset,
                         type='c_allreduce_sum',
                         inputs={'X': grad},
                         outputs={'Out': grad},
