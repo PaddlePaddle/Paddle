@@ -4116,7 +4116,7 @@ class PipelineOptimizer(object):
         device = op.attr(self._op_device_key) \
             if op.has_attr(self._op_device_key) else None
         if device:
-            assert device[0:3] == 'gpu', "Now, only gpu devices are " \
+            assert device[0:3] == 'gpu' or device[0:3] == 'npu', "Now, only gpu devices are " \
                 "supported in pipeline parallemism."
         return device
 
@@ -4272,7 +4272,7 @@ class PipelineOptimizer(object):
                             "{} has not been set.".format(op.type))
             if device == "gpu:all": continue
             dev_type = device.split(':')[0]
-            assert dev_type == "gpu", ("Now only gpu devices are supported "
+            assert dev_type == "gpu" or dev_type == 'npu', ("Now only gpu and npu devices are supported "
                                        "for pipeline parallelism.")
             if not device in device_list:
                 device_list.append(device)

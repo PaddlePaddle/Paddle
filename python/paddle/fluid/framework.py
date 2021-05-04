@@ -6126,9 +6126,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu', 'gpu' or 'npu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])
