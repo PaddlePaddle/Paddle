@@ -160,7 +160,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     auto dst_type = GetPromoteType(ins);
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
-      if ((op_type == "batch_norm" || op_type == "layer_norm") &&
+      if ((op_type == "batch_norm" || op_type == "layer_norm" || op_type == "sync_batch_norm") &&
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
