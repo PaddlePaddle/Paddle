@@ -21,11 +21,12 @@ import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+import paddle.utils.deprecated as deprecated
 
 
 class TensorHookRemoveHelper(object):
@@ -238,8 +239,16 @@ def monkey_patch_varbase():
                 "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
+    @deprecated(
+        since="2.1.0",
+        reason="Please use x.grad, which returns the tensor value of the gradient."
+    )
     def gradient(self):
         """
+        .. warning::
+          This API will be deprecated in the future, it is recommended to use
+          :code:`x.grad` which returns the tensor value of the gradient.
+
         Get the Gradient of Current Tensor.
 
         Returns:
@@ -253,7 +262,7 @@ def monkey_patch_varbase():
                 x = paddle.to_tensor(5., stop_gradient=False)
                 y = paddle.pow(x, 4.0)
                 y.backward()
-                print("grad of x: {}".format(x.grad))
+                print("grad of x: {}".format(x.gradient()))
                 # [500.]
 
         """
@@ -337,10 +346,28 @@ def monkey_patch_varbase():
     @property
     def grad(self):
         """
-        The alias of gradient().
-        """
+        .. warning::
+          This API will return the tensor value of the gradient. If you want 
+          to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`.
 
-        return self.gradient()
+        Get the Gradient of Current Tensor.
+
+        Returns:
+            Tensor: the gradient of current Tensor
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                x = paddle.to_tensor(5., stop_gradient=False)
+                y = paddle.pow(x, 4.0)
+                y.backward()
+                print("grad of x: {}".format(x.grad))
+                # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
+
+        """
+        return self._grad_ivar()
 
     def clear_grad(self):
         """
@@ -437,6 +464,31 @@ def monkey_patch_varbase():
     def __array__(self, dtype=None):
         return self.numpy().astype(dtype)
 
+    def __getitem__(self, item):
+        def contain_tensor(item):
+            if not isinstance(item, tuple):
+                item = [item]
+
+            for slice_item in item:
+                if isinstance(slice_item, slice):
+                    if isinstance(slice_item.start, Variable)  \
+                        or isinstance(slice_item.stop, Variable) \
+                           or isinstance(slice_item.step, Variable):
+                        return True
+                else:
+                    if isinstance(slice_item, Variable):
+                        return True
+            return False
+
+        if contain_tensor(item):
+            # 1. Call _getitem_impl_ when item contains tensor.
+            # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
+            return _getitem_impl_(self, item)
+
+        else:
+            # 2. Call c++ func getitem_index_not_tensor to speedup.
+            return self._getitem_index_not_tensor(item)
+
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
@@ -445,7 +497,8 @@ def monkey_patch_varbase():
         ("gradient", gradient), ("register_hook", register_hook),
         ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
-        ("__name__", "Tensor"), ("__array__", __array__)):
+        ("__name__", "Tensor"), ("__array__", __array__),
+        ("__getitem__", __getitem__)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
