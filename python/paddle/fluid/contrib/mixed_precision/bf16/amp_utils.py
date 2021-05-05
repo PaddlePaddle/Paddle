@@ -232,7 +232,7 @@ def bf16_guard():
         yield
 
 
-def correct_post_op(post_ops, keep_fp32_ops):
+def are_post_ops_bf16(post_ops, keep_fp32_ops):
     for post_op in post_ops:
         for op in post_op:
             if op.type in keep_fp32_ops:
@@ -263,7 +263,7 @@ def cast_initializers_to_bf16(startup_prog,
                     op_post_ops.append(post_op)
                     op_out_vars.append(out_var)
 
-            if change_op and correct_post_op(op_post_ops, keep_fp32_ops):
+            if change_op and are_post_ops_bf16(op_post_ops, keep_fp32_ops):
                 for out_var in op_out_vars:
                     if out_var.dtype == core.VarDesc.VarType.FP32:
                         out_var.desc.set_dtype(core.VarDesc.VarType.BF16)

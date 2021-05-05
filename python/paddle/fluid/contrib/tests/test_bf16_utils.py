@@ -155,9 +155,12 @@ class AMPTest2(unittest.TestCase):
 
         op1 = block.append_op(
             type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]})
-        res = amp.bf16.amp_utils.find_true_post_op(
+        result = amp.bf16.amp_utils.find_true_post_op(
+            block.ops, inititializer_op, "X", search_all=False)
+        assert (len(result) == 0)
+        result = amp.bf16.amp_utils.find_true_post_op(
             block.ops, inititializer_op, "X", search_all=True)
-        assert (res == [op1])
+        assert (result == [op1])
 
 
 if __name__ == '__main__':
