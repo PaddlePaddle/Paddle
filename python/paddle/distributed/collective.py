@@ -1258,23 +1258,24 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32 or int64.
         dst (int): The destination rank id.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Whether to use calculate stream or communication stream.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+            # required: distributed
             import paddle
-            #from paddle.distributed import init_parallel_env
-            #init_parallel_env()
-            #if paddle.distributed.ParallelEnv().rank == 0:
-            #    data = paddle.to_tensor([7, 8, 9])
-            #    paddle.distributed.send(data, dst=1)
-            #else:
-            #    data = paddle.to_tensor([1,2,3])
-            #    paddle.distributed.recv(data, src=0)
-            #out = data.numpy()
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
+                paddle.distributed.send(data, dst=1)
+            else:
+                data = paddle.to_tensor([1,2,3])
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
     """
     if group is not None and not group.is_member():
         return
@@ -1307,23 +1308,24 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         tensor (Tensor): The Tensor to receive. Its data type
             should be float16, float32, float64, int32 or int64.
         src (int): The source rank id.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Whether to use calculate stream or communication stream.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+            # required: distributed
             import paddle
-            #from paddle.distributed import init_parallel_env
-            #init_parallel_env()
-            #if paddle.distributed.ParallelEnv().rank == 0:
-            #    data = paddle.to_tensor([7, 8, 9])
-            #    paddle.distributed.send(data, dst=1)
-            #else:
-            #    data = paddle.to_tensor([1,2,3])
-            #    paddle.distributed.recv(data, src=0)
-            #out = data.numpy()
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
+                paddle.distributed.send(data, dst=1)
+            else:
+                data = paddle.to_tensor([1,2,3])
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
     """
     if group is not None and not group.is_member():
         return
