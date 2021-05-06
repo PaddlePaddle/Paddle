@@ -13,20 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 #include <string>
 #include <vector>
-
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/text_format.h"
-#include "paddle/fluid/framework/async_executor.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/data_feed.pb.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/io.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace py = pybind11;
 
