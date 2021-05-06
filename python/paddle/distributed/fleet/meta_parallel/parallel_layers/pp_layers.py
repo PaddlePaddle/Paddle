@@ -108,7 +108,6 @@ class PipelineLayer(Layer):
         # construct layer
         self.run_function = []
         self._build_layer()
-        self.to(paddle.CUDAPlace(self.device_id))
 
     def _segment_network(self, seg_method):
         logger.info("start segment network..")
