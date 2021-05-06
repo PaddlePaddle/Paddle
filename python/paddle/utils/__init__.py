@@ -26,11 +26,6 @@ from . import download  # noqa: F401
 from . import image_util  # noqa: F401
 from . import cpp_extension  # noqa: F401
 
-__all__ = [     #noqa
-           'deprecated',
-           'download',
-           'run_check',
-           'unique_name',
-           'require_version',
-           'try_import'
+__all__ = [  #noqa
+    'deprecated', 'run_check', 'require_version', 'try_import'
 ]
