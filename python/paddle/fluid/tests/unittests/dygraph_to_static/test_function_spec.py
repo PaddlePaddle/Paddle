@@ -76,7 +76,7 @@ class TestFunctionSpec(unittest.TestCase):
 
     def test_args_to_input_spec(self):
         a_spec = InputSpec([None, 10], name='a')
-        b_spec = InputSpec([10], name='b')
+        b_spec = InputSpec([4, 10], name='b')
 
         a_tensor = paddle.static.data(name='a_var', shape=[4, 10])
         b_tensor = paddle.static.data(name='b_var', shape=[4, 10])
