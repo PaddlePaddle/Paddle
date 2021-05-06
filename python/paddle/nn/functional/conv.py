@@ -13,15 +13,6 @@
 # limitations under the License.
 from __future__ import print_function
 
-__all__ = [
-    'conv1d',
-    'conv1d_transpose',
-    'conv2d',
-    'conv2d_transpose',
-    'conv3d',
-    'conv3d_transpose',
-]
-
 import numpy as np
 from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode
@@ -30,6 +21,8 @@ from ...fluid.layers import nn, utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
 from ...fluid.layer_helper import LayerHelper
+
+__all__ = []
 
 
 def _is_list_or_tuple(input):

@@ -24,6 +24,8 @@ from ..fluid.dygraph import base as imperative_base
 
 import paddle
 
+__all__ = []
+
 
 class Adam(Optimizer):
     r"""
@@ -58,7 +60,8 @@ class Adam(Optimizer):
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
+        epsilon (float|Tensor, optional): A small float value for numerical stability.
+            It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 1e-08.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
@@ -144,12 +147,18 @@ class Adam(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        if not 0 <= beta1 < 1:
-            raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
-        if not 0 <= beta2 < 1:
-            raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
-        if not 0 <= epsilon:
-            raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
+        if not isinstance(beta1, Variable):
+            if not 0 <= beta1 < 1:
+                raise ValueError(
+                    "Invaild value of beta1, expect beta1 in [0,1).")
+        if not isinstance(beta2, Variable):
+            if not 0 <= beta2 < 1:
+                raise ValueError(
+                    "Invaild value of beta2, expect beta2 in [0,1).")
+        if not isinstance(epsilon, Variable):
+            if not 0 <= epsilon:
+                raise ValueError(
+                    "Invaild value of epsilon, expect epsilon >= 0.")
         super(Adam, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
@@ -295,7 +304,6 @@ class Adam(Optimizer):
             "Beta2PowOut": [beta2_pow_acc],
         }
         attrs = {
-            "epsilon": self._epsilon,
             "lazy_mode": self._lazy_mode,
             "min_row_size_to_use_multithread": 1000,
             "multi_precision": find_master
@@ -309,6 +317,10 @@ class Adam(Optimizer):
             inputs['Beta2Tensor'] = self._beta2
         else:
             attrs['beta2'] = self._beta2
+        if isinstance(self._epsilon, Variable):
+            inputs['EpsilonTensor'] = self._epsilon
+        else:
+            attrs['epsilon'] = self._epsilon
 
         if find_master:
             inputs["MasterParam"] = master_weight

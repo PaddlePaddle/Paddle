@@ -40,6 +40,8 @@ import paddle
 import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated
 
+__all__ = []
+
 DATA_URL = ("http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz")
 DATA_MD5 = "0c38be43600334966403524a40dcd81e"
 

@@ -14,29 +14,13 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
+from ...fluid.dygraph import Flatten  # noqa: F401
 from ...fluid.dygraph import layers
 from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
-__all__ = [
-    'Embedding',
-    'Linear',
-    'Upsample',
-    'Pad1D',
-    'Pad2D',
-    'Pad3D',
-    'UpsamplingNearest2D',
-    'UpsamplingBilinear2D',
-    'CosineSimilarity',
-    'Dropout',
-    'Dropout2D',
-    'Dropout3D',
-    'Bilinear',
-    'AlphaDropout',
-    'Unfold',
-]
+__all__ = []
 
 
 def _npairs(x, n):

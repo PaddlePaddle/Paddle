@@ -32,8 +32,7 @@ if (WITH_GPU OR WITH_ROCM)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_batch_norm_act);\n")
     endif()
     # conv_fusion_op needs cudnn 7 above
-    # HIP not support cudnnConvolutionBiasActivationForward
-    if ((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7100))
+    if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
         op_library(conv_fusion_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
     endif()
