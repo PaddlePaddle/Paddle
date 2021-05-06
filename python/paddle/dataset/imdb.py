@@ -80,6 +80,7 @@ def build_dict(pattern, cutoff):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def reader_creator(pos_pattern, neg_pattern, word_idx):
     UNK = word_idx['<unk>']
@@ -102,6 +103,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(word_idx):
     """
@@ -123,6 +125,7 @@ def train(word_idx):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(word_idx):
     """
@@ -144,6 +147,7 @@ def test(word_idx):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def word_dict():
     """
@@ -159,6 +163,7 @@ def word_dict():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(URL, 'imdb', MD5)
