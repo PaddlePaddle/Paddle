@@ -26,6 +26,8 @@ ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+__all__ = []
+
 
 def detach_variable(inputs):
     out = []
