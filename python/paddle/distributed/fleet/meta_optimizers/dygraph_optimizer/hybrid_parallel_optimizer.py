@@ -23,6 +23,8 @@ from paddle.fluid import framework
 from paddle.fluid.framework import Variable
 from ...utils.log_util import logger
 
+__all__ = []
+
 
 class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
