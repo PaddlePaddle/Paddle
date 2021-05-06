@@ -1344,7 +1344,8 @@ class BatchNorm(layers.Layer):
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
-                                 ['float16', 'float32', 'float64'], 'BatchNorm')
+                                 ['float16', 'float32', 'float64', 'uint16'],
+                                 'BatchNorm')
 
         attrs = {
             "momentum": self._momentum,
