@@ -126,7 +126,8 @@ struct MemEvenRecorder {
 
 struct RecordEvent {
   RecordEvent(const std::string& name,
-              const EventRole role = EventRole::kOrdinary);
+              const EventRole role = EventRole::kOrdinary,
+              const std::string attr = "none");
 
   ~RecordEvent();
 
@@ -200,8 +201,10 @@ void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                   const Place& place, const std::string& annotation);
 void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                  const Place& place, const std::string& annotation);
-Event* PushEvent(const std::string& name, const EventRole role);
-void PopEvent(const std::string& name, const EventRole role);
+Event* PushEvent(const std::string& name, const EventRole role,
+                 const std::string attr = "none");
+void PopEvent(const std::string& name, const EventRole role,
+              const std::string attr = "none");
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();
