@@ -326,4 +326,6 @@ REGISTER_OP_CPU_KERNEL(
     sum, ops::SumKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SumKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SumKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SumKernel<paddle::platform::CPUDeviceContext,
+                   paddle::platform::bfloat16>,
     ops::SumKernel<paddle::platform::CPUDeviceContext, int64_t>);
