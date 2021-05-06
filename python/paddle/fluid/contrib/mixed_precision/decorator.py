@@ -386,7 +386,19 @@ class OptimizerWithMixedPrecision(object):
                         self._decr_ratio,
                         name="update_loss_scaling")
 
-        optimize_ops = self._optimizer.apply_gradients(params_grads)
+        with layers.Switch() as switch:
+            with switch.case(layers.logical_not(found_inf)):
+                # Create grad block in the switch control flow
+                # This is only for applying gradients in the control flow
+                current_program = default_main_program()
+                switch_fwd_block_idx = current_program.current_block_idx
+                switch_fwd_block = current_program.block(switch_fwd_block_idx)
+                switch_grad_block = current_program._create_block(
+                    parent_idx=switch_fwd_block.parent_idx)
+                switch_grad_block._set_forward_block_idx(switch_fwd_block_idx)
+                current_program.current_block_idx = switch_fwd_block_idx
+
+                optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):
