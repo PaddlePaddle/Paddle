@@ -44,7 +44,6 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
     {"assign", {"X"}},
-    {"send_v2", {"X"}},
     {"reshape2", {"X", "Shape"}},
     {"expand", {"X", "ExpandTimes"}},
     {"slice", {"Input", "StartsTensor", "EndsTensor"}},

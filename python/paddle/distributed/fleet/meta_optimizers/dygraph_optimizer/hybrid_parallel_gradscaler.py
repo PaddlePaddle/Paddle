@@ -23,6 +23,8 @@ import types
 from paddle.fluid import core
 import paddle
 
+__all__ = []
+
 
 class HybridParallelGradScaler:
     def __init__(self, scaler, hcg):

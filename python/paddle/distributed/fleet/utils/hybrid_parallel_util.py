@@ -23,6 +23,8 @@ from paddle.fluid.dygraph.parallel import _split_tensors, sync_params_buffers, b
 from collections import OrderedDict
 from .log_util import logger
 
+__all__ = []
+
 
 def _apply_collective_grads(parameters, comm_group):
     grad_var_set = set()
