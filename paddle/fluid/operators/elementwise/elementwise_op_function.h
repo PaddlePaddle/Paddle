@@ -104,6 +104,67 @@ inline void get_mid_dims(const framework::DDim &x_dims,
   }
 }
 
+inline void GetPartialValue(int *x_dims, int *y_dims, int *pre, int *n,
+                            int *post, int *m, int max_dim,
+                            const bool is_xsize_larger) {
+  int i = 0;
+  int anchor_n = 0;
+  int anchor_post = 0;
+  *pre = 1;
+  *n = 1;
+  *post = 1;
+  *m = 1;
+  auto tmp_dims = (is_xsize_larger) ? x_dims : y_dims;
+
+  for (i = 0; i < max_dim; ++i) {
+    if (x_dims[i] == y_dims[i]) {
+      (*pre) *= tmp_dims[i];
+      break;
+    }
+  }
+  if (i == max_dim - 1) {
+    *post = (*pre);
+    *pre = 1;
+    for (int j = 0; j < max_dim - 1; ++j) {
+      *n *= tmp_dims[j];
+    }
+    return;
+  }
+
+  for (++i; i < max_dim; ++i) {
+    if (x_dims[i] == y_dims[i]) {
+      (*pre) *= tmp_dims[i];
+    } else {
+      anchor_n = i;
+      break;
+    }
+  }
+  for (++i; i < max_dim; ++i) {
+    if (x_dims[i] == y_dims[i]) {
+      anchor_post = i;
+      break;
+    }
+  }
+
+  for (int j = anchor_n; j < anchor_post; ++j) {
+    (*n) *= tmp_dims[j];
+  }
+  for (i = anchor_post; i < max_dim; ++i) {
+    if (x_dims[i] == y_dims[i]) {
+      (*post) *= tmp_dims[i];
+    } else {
+      break;
+    }
+  }
+  if (i == max_dim) {
+    return;
+  } else {
+    for (int j = i; j < max_dim; ++j) {
+      (*m) *= tmp_dims[j];
+    }
+  }
+}
+
 inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
                                const int *index_array) {
   int index_ = 0;
@@ -207,16 +268,12 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernel(const T *__restrict__ x_data,
-                                  const T *__restrict__ y_data,
-                                  OutType *__restrict__ out_data, int n,
-                                  int post, const size_t total, Functor func) {
+__global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int pre,
+                                  int n, int post, int total, Functor func) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
-  int stride = blockDim.x * gridDim.x;
-
-  for (int i = tid; i < total; i += stride) {
-    int idx = i / post % n;
-    out_data[i] = func(x_data[i], y_data[idx]);
+  int idx = tid / post % n;
+  if (tid < total) {
+    out[tid] = func(x[tid], y[idx]);
   }
 }
 
@@ -233,16 +290,14 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   int numel = pre * n * post;
   int threads = 256;
   int blocks = (numel + threads - 1) / threads;
-
   if (is_xsize_larger) {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        x_data, y_data, out_data, n, post, numel, func);
-
+        x_data, y_data, out_data, pre, n, post, numel, func);
   } else {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        y_data, x_data, out_data, n, post, numel, func);
+        y_data, x_data, out_data, pre, n, post, numel, func);
   }
 }
 
@@ -269,6 +324,39 @@ __global__ void CommonForwardBroadcastCUDAKernel(
     } else {
       out[out_index] = func(y[y_index], x[x_index]);
     }
+  }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+__global__ void CommonForwardBroadcastCUDAKernel2(
+    const T *__restrict__ x_data, const T *__restrict__ y_data,
+    OutType *out_data, const int pre, const int n, const int post, const int m,
+    const int total_value_num, const int value_without_pre, Functor func) {
+  int large_arr_idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int small_arr_idx =
+      (large_arr_idx / value_without_pre) * post + (large_arr_idx / m) % post;
+
+  if (large_arr_idx < total_value_num) {
+    out_data[large_arr_idx] =
+        func(x_data[large_arr_idx], y_data[small_arr_idx]);
+  }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+__global__ void CommonForwardBroadcastCUDAKernel3(
+    const T *__restrict__ x_data, const T *__restrict__ y_data,
+    OutType *out_data, const int pre_x, const int n_x, const int post_x,
+    const int m_x, const int pre_y, const int n_y, const int post_y,
+    const int m_y, const int value_without_pre_x, const int value_without_pre_y,
+    const int total_value_num, Functor func) {
+  int large_arr_idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int small_x_idx = (large_arr_idx / value_without_pre_x) * post_x +
+                    (large_arr_idx / m_x) % post_x;
+  int small_y_idx = (large_arr_idx / value_without_pre_y) * post_y +
+                    (large_arr_idx / m_y) % post_y;
+
+  if (large_arr_idx < total_value_num) {
+    out_data[large_arr_idx] = func(x_data[small_x_idx], y_data[small_y_idx]);
   }
 }
 
@@ -325,6 +413,54 @@ void CommonForwardBroadcastCUDA(
       y_data, out_data, out_size, max_dim, func, is_xsize_larger);
 }
 
+template <typename Functor, typename T, typename OutType = T>
+void CommonForwardBroadcastCUDA2(
+    const platform::CUDADeviceContext &ctx, const framework::Tensor *x,
+    const framework::Tensor *y, framework::Tensor *z, int pre, int n, int post,
+    int m, int pre_x, int n_x, int post_x, int m_x, int pre_y, int n_y,
+    int post_y, int m_y, Functor func, const bool is_xsize_larger = true,
+    const bool is_out_size_larger = false) {
+  const T *x_data = x->data<T>();
+  const T *y_data = y->data<T>();
+  OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
+
+  if (is_out_size_larger) {
+    const int numel = pre_x * n_x * post_x * m_x;
+    const int value_without_pre_x = n_x * post_x * m_x;
+    const int value_without_pre_y = n_y * post_y * m_y;
+    int threads = platform::RoundToPowerOfTwo(numel);
+    int blocks = (numel + threads - 1) / threads;
+
+    if (is_xsize_larger) {
+      CommonForwardBroadcastCUDAKernel3<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          x_data, y_data, out_data, pre_x, n_x, post_x, m_x, pre_y, n_y, post_y,
+          m_y, value_without_pre_x, value_without_pre_y, numel, func);
+    } else {
+      CommonForwardBroadcastCUDAKernel3<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          y_data, x_data, out_data, pre_y, n_y, post_y, m_y, pre_x, n_x, post_x,
+          m_x, value_without_pre_y, value_without_pre_x, numel, func);
+    }
+  } else {
+    const int numel = pre * n * post * m;
+    const int value_without_pre = n * post * m;
+    int threads = platform::RoundToPowerOfTwo(numel);
+    int blocks = (numel + threads - 1) / threads;
+
+    if (is_xsize_larger) {
+      CommonForwardBroadcastCUDAKernel2<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          x_data, y_data, out_data, pre, n, post, m, numel, value_without_pre,
+          func);
+    } else {
+      CommonForwardBroadcastCUDAKernel2<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          y_data, x_data, out_data, pre, n, post, m, numel, value_without_pre,
+          func);
+    }
+  }
+}
 #endif  // __NVCC__ or __HIPCC__
 
 template <typename T, typename DX_OP, typename DY_OP>
@@ -1846,11 +1982,40 @@ void CommonElementwiseBroadcastForward(
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    CommonForwardBroadcastCUDA<Functor, T, OutType>(
-        x, y, z, x_dims_array.data(), y_dims_array.data(),
-        out_dims_array.data(), max_dim,
-        ctx.template device_context<platform::CUDADeviceContext>(), func,
-        is_xsize_larger);
+    /* Current opitmization notion doesn`t take the condition below into accout,
+      1. The max dimension is bigger than 4 (which stands for the nchw
+      dimension)
+      2. The first dimension coordinate is not equal between 2 input tensor. */
+    if (x_dims_array[0] != y_dims_array[0] || max_dim > 4) {
+      CommonForwardBroadcastCUDA<Functor, T, OutType>(
+          x, y, z, x_dims_array.data(), y_dims_array.data(),
+          out_dims_array.data(), max_dim,
+          ctx.template device_context<platform::CUDADeviceContext>(), func,
+          is_xsize_larger);
+    } else {
+      int m = 1, pre = 1, post = 1, n = 1;
+      int m_x = 1, pre_x = 1, post_x = 1, n_x = 1;
+      int m_y = 1, pre_y = 1, post_y = 1, n_y = 1;
+      const int out_size = std::accumulate(out_dims_array.data(),
+                                           out_dims_array.data() + max_dim, 1,
+                                           std::multiplies<int>());
+      const bool out_dims_size_larger =
+          (is_xsize_larger ? (out_size > x->numel() ? true : false)
+                           : (out_size > y->numel() ? true : false));
+      if (out_dims_size_larger) {
+        GetPartialValue(out_dims_array.data(), x_dims_array.data(), &pre_x,
+                        &n_x, &post_x, &m_x, max_dim, out_dims_size_larger);
+        GetPartialValue(out_dims_array.data(), y_dims_array.data(), &pre_y,
+                        &n_y, &post_y, &m_y, max_dim, out_dims_size_larger);
+      } else {
+        GetPartialValue(x_dims_array.data(), y_dims_array.data(), &pre, &n,
+                        &post, &m, max_dim, is_xsize_larger);
+      }
+      CommonForwardBroadcastCUDA2<Functor, T, OutType>(
+          ctx.template device_context<platform::CUDADeviceContext>(), x, y, z,
+          pre, n, post, m, pre_x, n_x, post_x, m_x, pre_y, n_y, post_y, m_y,
+          func, is_xsize_larger, out_dims_size_larger);
+    }
 #endif
   } else {
     CommonForwardBroadcastCPU<Functor, T, OutType>(
@@ -1950,6 +2115,10 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   // special case for common implementation.
   // case 1: x=[2,3,1,5], y=[2,1,4,1]
   // case 2: x=[2,3,4], y=[1,1,4]
+  // case 3: x=[3,2,128,128], y = [3,1,1,128]
+  // case 4: x=[3,2,128,128], y = [3,2,1,128]
+  // case 5: x=[3,2,128,128], y = [3,1,128,1]
+  // case 6: x=[3,2,128,128], y = [3,1,128,128]
   if (is_run_common_broadcast == 1) {
     CommonElementwiseBroadcastForward<Functor, DeviceContext, T, OutType>(
         ctx, x, y, z, x_dims, y_dims, func, axis, is_xsize_larger);
