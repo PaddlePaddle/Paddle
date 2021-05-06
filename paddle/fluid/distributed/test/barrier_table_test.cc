@@ -59,6 +59,7 @@ TEST(BarrierTable, Barrier) {
     status.wait();
   }
 
+  std::cout << "tianshuo test" << std::endl;
   ASSERT_EQ(ret, 0);
 }
 
