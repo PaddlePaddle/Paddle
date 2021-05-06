@@ -389,13 +389,22 @@ class ReshapeGradKernel {
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* x_shape = ctx.Input<framework::Tensor>("XShape");
     auto in_dims = d_x->dims();
+
+    VLOG(7) << "Reshape2GradNPUKernel d_x_shape:" << d_x->dims()
+        << ", d_out_shape:" << d_out->dims()
+        << ", x_shape:" << x_shape->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
         *d_out, ctx.GetPlace(),
         ctx.template device_context<platform::DeviceContext>(), d_x);
     d_x->Resize(in_dims);
+
+   VLOG(7) << "Reshape2GradNPUKernel2 d_x_shape:" << d_x->dims()
+        << ", d_out_shape:" << d_out->dims()
+        << ", x_shape:" << x_shape->dims();
   }
 };
 
@@ -512,6 +521,9 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("XShape", framework::GradVarName("X"));
+
+    VLOG(7) << "Reshape2GradOp x_shape:" << x_dims
+        << ", x_shape:" << xshape_dims;
   }
 
  protected:
@@ -683,4 +695,17 @@ REGISTER_OP_XPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                ops::ReshapeGradKernel, plat::complex64,
                                ops::ReshapeGradKernel, plat::complex128,
                                ops::ReshapeGradKernel);
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+REGISTER_OP_NPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
+                               ops::ReshapeKernel, int, ops::ReshapeKernel,
+                               int64_t, ops::ReshapeKernel, plat::float16,
+                               ops::ReshapeKernel, bool, ops::ReshapeKernel);
+REGISTER_OP_NPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
+                               double, ops::ReshapeGradKernel, int,
+                               ops::ReshapeGradKernel, int64_t,
+                               ops::ReshapeGradKernel, plat::float16,
+                               ops::ReshapeGradKernel, bool, ops::ReshapeGradKernel);
+
 #endif

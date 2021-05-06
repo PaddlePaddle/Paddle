@@ -29,6 +29,12 @@ class TransposeNPUKernel : public framework::OpKernel<T> {
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     framework::NPUAttributeMap attr_input = {{"perm", axis}};
     out->mutable_data<T>(ctx.device_context().GetPlace());
+
+    std::ostringstream oss_axis;
+    std::copy(axis.begin(), axis.end(), std::ostream_iterator<int>(oss_axis, ",")); 
+    VLOG(7) << "transposed input_shape:" << x->dims() 
+        << " axis:" << oss_axis.str();
+
     auto runner = NpuOpRunner("TransposeD", {*x}, {*out}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -52,6 +58,15 @@ class TransposeGradNPUKernel : public framework::OpKernel<T> {
     }
     x_grad->mutable_data<T>(ctx.GetPlace());
     framework::NPUAttributeMap attr_input = {{"perm", reversed_axis}};
+
+    std::ostringstream oss_axis;
+    std::copy(axis.begin(), axis.end(), std::ostream_iterator<int>(oss_axis, ",")); 
+    std::ostringstream oss_r_axis;
+    std::copy(reversed_axis.begin(), reversed_axis.end(), std::ostream_iterator<int>(oss_r_axis, ",")); 
+
+    VLOG(7) << "transposed out_grad_shape:" << out_grad->dims() 
+        << " axis:" << oss_axis.str() << " reversed_axis:" << oss_r_axis.str();
+
     auto runner = NpuOpRunner("TransposeD", {*out_grad}, {*x_grad}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
