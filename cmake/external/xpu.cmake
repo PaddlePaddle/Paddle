@@ -9,7 +9,7 @@ SET(XPU_RT_LIB_NAME             "libxpurt.so")
 
 if(NOT XPU_SDK_ROOT)
   if (WITH_AARCH64)
-      SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/aarch64/xpu_2021_01_13.tar.gz" CACHE STRING "" FORCE)
+      SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/aarch64/xpu_2021_03_02.tar.gz" CACHE STRING "" FORCE)
   elseif(WITH_SUNWAY)
       SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/sunway/xpu_2021_01_13.tar.gz" CACHE STRING "" FORCE)
   else()
