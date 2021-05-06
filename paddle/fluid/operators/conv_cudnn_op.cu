@@ -51,6 +51,13 @@ template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    PADDLE_ENFORCE_EQ(
+        std::is_same_v<T, platform::bfloat16>, true,
+        platform::errors::Unavailable(
+            "conv2d supports bfloat16 data type , but it only works when "
+            "the version of cudnn is larger than 8.1.0"));
+#endif
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
@@ -362,6 +369,13 @@ template <typename T>
 class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    PADDLE_ENFORCE_EQ(
+        std::is_same_v<T, platform::bfloat16>, true,
+        platform::errors::Unavailable(
+            "conv2d supports bfloat16 data type , but it only works when "
+            "the version of cudnn is larger than 8.1.0"));
+#endif
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
@@ -839,6 +853,13 @@ template <typename T>
 class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    PADDLE_ENFORCE_EQ(
+        std::is_same_v<T, platform::bfloat16>, true,
+        platform::errors::Unavailable(
+            "conv2d supports bfloat16 data type , but it only works when "
+            "the version of cudnn is larger than 8.1.0"));
+#endif
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
@@ -1390,14 +1411,7 @@ REGISTER_OP_KERNEL(
     conv2d_grad_grad, CUDNN, plat::CUDAPlace,
     paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
     paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
-// ROCM has limit thread in depthwise_conv.cu and willl result in accuracy issue
-// Use depthwise_conv2d in MIOPEN to resolve this issue
-REGISTER_OP_KERNEL(depthwise_conv2d, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNConvOpKernel<float>,
-                   paddle::operators::CUDNNConvOpKernel<plat::float16>);
-REGISTER_OP_KERNEL(depthwise_conv2d_grad, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNConvGradOpKernel<float>,
-                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
+
 REGISTER_OP_CUDA_KERNEL(
     depthwise_conv2d_grad_grad,
     paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
@@ -1416,22 +1430,26 @@ REGISTER_OP_KERNEL(
 REGISTER_OP_KERNEL(conv2d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,
                    paddle::operators::CUDNNConvOpKernel<double>,
-                   paddle::operators::CUDNNConvOpKernel<plat::float16>);
+                   paddle::operators::CUDNNConvOpKernel<plat::float16>,
+                   paddle::operators::CUDNNConvOpKernel<plat::bfloat16>);
 REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
                    paddle::operators::CUDNNConvGradOpKernel<double>,
-                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
+                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>,
+                   paddle::operators::CUDNNConvGradOpKernel<plat::bfloat16>);
 REGISTER_OP_KERNEL(
     conv2d_grad_grad, CUDNN, plat::CUDAPlace,
     paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
     paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
-    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(
     depthwise_conv2d_grad_grad,
     paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
     paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
-    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::bfloat16>);
 
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,

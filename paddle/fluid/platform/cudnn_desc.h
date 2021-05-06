@@ -79,6 +79,11 @@ inline cudnnDataType_t ToCudnnDataType(
     case framework::proto::VarType::FP64:
       type = CUDNN_DATA_DOUBLE;
       break;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    case framework::proto::VarType::BF16:
+      type = CUDNN_DATA_BFLOAT16;
+      break;
+#endif
     default:
       break;
   }

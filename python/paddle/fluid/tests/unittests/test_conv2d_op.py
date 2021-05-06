@@ -167,6 +167,37 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
     globals()[cls_name] = TestConv2DCUDNNFp16
 
 
+def create_test_cudnn_bf16_class(parent, grad_check=True):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+        "core is not compiled with CUDA and cudnn version need larger than 8.1.0"
+    )
+    class TestConv2DCUDNNBF16(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2)
+
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            if grad_check:
+                self.check_grad_with_place(
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter']))
+
+        def test_check_grad_no_input(self):
+            place = core.CUDAPlace(0)
+            if grad_check:
+                self.check_grad_with_place(
+                    place, ['Filter'], 'Output', no_grad_set=set(['Input']))
+
+    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNBF16")
+    TestConv2DCUDNNBF16.__name__ = cls_name
+    globals()[cls_name] = TestConv2DCUDNNBF16
+
+
 def create_test_channel_last_class(parent):
     class TestChannelLastCase(parent):
         def init_data_format(self):
@@ -553,6 +584,15 @@ create_test_cudnn_fp16_class(TestWithStride, grad_check=False)
 create_test_cudnn_fp16_class(TestWithGroup, grad_check=False)
 create_test_cudnn_fp16_class(TestWith1x1, grad_check=False)
 create_test_cudnn_fp16_class(TestWithInput1x1Filter1x1, grad_check=False)
+
+#----------------Conv2DCUDNN bf16----------------
+
+create_test_cudnn_bf16_class(TestConv2DOp, grad_check=False)
+create_test_cudnn_bf16_class(TestWithPad, grad_check=False)
+create_test_cudnn_bf16_class(TestWithStride, grad_check=False)
+create_test_cudnn_bf16_class(TestWithGroup, grad_check=False)
+create_test_cudnn_bf16_class(TestWith1x1, grad_check=False)
+create_test_cudnn_bf16_class(TestWithInput1x1Filter1x1, grad_check=False)
 
 #----------------TestDepthwiseConv -----
 
