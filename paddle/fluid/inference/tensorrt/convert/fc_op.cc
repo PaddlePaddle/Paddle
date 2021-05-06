@@ -187,7 +187,10 @@ class FcOpConverter : public OpConverter {
                                 static_cast<size_t>(bias_num)};
 
     auto x_dim = X->getDimensions();
-
+    // Running the TRT Static Shape mode: x_num_col_dims-1
+    if (!engine_->with_dynamic_shape()) {
+      x_num_col_dims--;
+    }
     PADDLE_ENFORCE_GT(
         x_dim.nbDims, x_num_col_dims,
         platform::errors::InvalidArgument(
@@ -195,11 +198,6 @@ class FcOpConverter : public OpConverter {
             "converter expects x_dim.nbDims > x_num_col_dims, but "
             "x_dim.nbDims : %d, x_num_col_dims : %d.",
             x_dim.nbDims, x_num_col_dims));
-
-    // Running the TRT Static Shape mode: x_num_col_dims-1
-    if (!engine_->with_dynamic_shape()) {
-      x_num_col_dims--;
-    }
     // add shuffle before fc
     nvinfer1::Dims reshape_before_fc_dim;
     reshape_before_fc_dim.nbDims = x_num_col_dims + 3;
