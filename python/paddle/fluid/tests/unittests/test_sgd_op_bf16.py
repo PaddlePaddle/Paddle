@@ -76,8 +76,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)
         grad_selected_rows.set_rows(rows)
-        # grad_array = np.random.random((len(rows), row_numel)).astype('float32')
-        grad_array = np.full((len(rows), row_numel), 2, np.float32)
+        grad_array = np.random.random((len(rows), row_numel)).astype('float32')
         np_array_bf16 = convert_float_to_uint16(grad_array)
 
         grad_tensor = grad_selected_rows.get_tensor()
@@ -87,8 +86,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
 
     def create_dense_param_var(self, scope, place, height, width):
         param_tensor = scope.var('Param').get_tensor()
-        # param_array = np.random.random((height, width)).astype('float32')
-        param_array = np.full((height, width), 5, np.float32)
+        param_array = np.random.random((height, width)).astype('float32')
         param_array_bf16 = convert_float_to_uint16(param_array)
         param_tensor.set(param_array_bf16, place)
 
@@ -109,8 +107,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
 
     def create_dense_lr_var(self, scope, place):
         lr_tensor = scope.var('LearningRate').get_tensor()
-        # lr_value = np.random.uniform()
-        lr_value = 2
+        lr_value = np.random.uniform()
         lr_array = np.full((1), lr_value, np.float32)
         lr_array_bf16 = convert_float_to_uint16(lr_array)
         lr_tensor.set(lr_array_bf16, place)
