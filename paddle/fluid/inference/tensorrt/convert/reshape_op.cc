@@ -41,7 +41,6 @@ class ReshapeOpConverter : public OpConverter {
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
     int nbDims_num = shape.size();
     nvinfer1::Dims reshape_dim;
-
     if (engine_->with_dynamic_shape()) {  // running the TRT Dynamic Shape mode
       reshape_dim.nbDims = nbDims_num;
       for (int i = 0; i < nbDims_num; ++i) {
