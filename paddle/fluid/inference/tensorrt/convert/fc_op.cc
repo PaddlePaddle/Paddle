@@ -143,14 +143,9 @@ class FcOpConverter : public OpConverter {
             ("fc_layer_before(Output: " + output_name + ")").c_str());
         // add shuffle after fc
         nvinfer1::Dims reshape_after_fc_dim;
-        if (x_num_col_dims == 0) {
-          reshape_after_fc_dim.nbDims = 1;
-          reshape_after_fc_dim.d[0] = -1;
-        } else {
-          reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
-          for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
-            reshape_after_fc_dim.d[i] = 0;
-          }
+        reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
+        for (int i = 0; i < reshape_after_fc_dim.nbDims; i++) {
+          reshape_after_fc_dim.d[i] = 0;
         }
         auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(
             engine_, Shuffle, *fc_layer_before->getOutput(0));
@@ -216,7 +211,11 @@ class FcOpConverter : public OpConverter {
       if (i < x_num_col_dims) {
         reshape_before_fc_dim.d[i] = 0;
       } else {
-        reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
+          if (x_dim.d[i] < 0) {
+            reshape_before_fc_dim.d[x_num_col_dims] = -1;
+            break;
+          }
+          reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
       }
     }
     auto* reshape_before_fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
