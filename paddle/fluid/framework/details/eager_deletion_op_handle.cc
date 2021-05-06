@@ -36,7 +36,6 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     const std::unordered_set<ir::MemOptVarInfo *> &vars, GarbageCollector *gc)
     : OpHandleBase(node),
       scope_(scope),
-      pre_scope_(scope),
       scope_idx_(scope_idx),
       place_(place),
       var_infos_(vars.begin(), vars.end()),
@@ -114,7 +113,6 @@ void EagerDeletionOpHandle::RunImpl() {
   // if (vars_.size() != var_infos_.size() ||
   //     pre_scope_ != local_exec_scopes_[0]) {
   //   pre_scope_ = scope_;
-  VLOG(3) << "call once with var_infos_.size: " << var_infos_.size();
   CallOnce();
   // }
 
@@ -124,7 +122,7 @@ void EagerDeletionOpHandle::RunImpl() {
     auto *var_info = var_infos_[i];
     if (var_info->IsSkippedAllMemoryOptimization() ||
         !var_info->DecreaseRefCnt()) {
-      VLOG(3) << "skip memory optimization with var: " << var_info;
+      VLOG(1) << "skip memory optimization with var: " << var_info->Name();
       continue;
     }
 
@@ -133,14 +131,11 @@ void EagerDeletionOpHandle::RunImpl() {
     Variable *var = vars_[i];
 
     if (var->IsType<LoDTensor>()) {
-      VLOG(3) << var << " is LoDTensor";
       garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
     } else if (var->IsType<SelectedRows>()) {
-      VLOG(3) << var << " is SelectedRows";
       garbages.emplace_back(
           var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());
     } else if (var->IsType<LoDTensorArray>()) {
-      VLOG(3) << var << " is LoDTensorArray";
       auto *tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto &t : *tensor_arr) {
         garbages.emplace_back(t.MoveMemoryHolder());

@@ -45,20 +45,21 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       }
     }
     if (graph->IsConstructedByPartialProgram()) {
-      PADDLE_ENFORCE_LE(
-          target_ops.size(), 1,
-          "Unsupport multi device if graph is constructed by partial program.");
+      PADDLE_ENFORCE_LE(target_ops.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Unsupport multi device if graph is constructed by "
+                            "partial program."));
       size_t scope_idx = 0;
       auto &while_ops = target_ops[scope_idx].first;
       auto &while_grad_ops = target_ops[scope_idx].second;
 
       auto all_ops = graph->OriginProgram().Block(0).AllOps();
       if (while_ops.empty()) {
-        operators::AppendOpVariantByOpName(all_ops, &while_ops,
-                                           std::string("while"));
+        operators::AppendOpVariantByOpName(all_ops, std::string("while"),
+                                           &while_ops);
       } else if (while_grad_ops.empty()) {
-        operators::AppendOpVariantByOpName(all_ops, &while_grad_ops,
-                                           std::string("while_grad"));
+        operators::AppendOpVariantByOpName(all_ops, std::string("while_grad"),
+                                           &while_grad_ops);
       } else {
         PADDLE_THROW("One of while_ops or while_grad_ops should be empty.");
       }

@@ -69,8 +69,8 @@ const void *OpVariant::RawPointer() const {
 }
 
 void AppendOpVariantByOpName(const std::vector<framework::OpDesc *> &op_descs,
-                             std::vector<OpVariant> *result_ops,
-                             const std::string &candidate_op_name) {
+                             const std::string &candidate_op_name,
+                             std::vector<OpVariant> *result_ops) {
   PADDLE_ENFORCE_NOT_NULL(
       result_ops,
       platform::errors::Unavailable("result_ops should not be a null_ptr."));

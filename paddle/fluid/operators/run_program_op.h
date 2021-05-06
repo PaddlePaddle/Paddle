@@ -219,12 +219,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
 
       // Step 3. run ops
-      VLOG(3) << "start to call pe.Run()...";
       auto skip_eager_vars = framework::details::ParseSafeEagerDeletionSkipVars(
           *program, end_op_index, output_var_names);
       parallel_executor->RunWithoutFetch(skip_eager_vars);
-
-      VLOG(3) << "successfully to call pe.Run()...";
     }
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
@@ -316,10 +313,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                                                  &skip_eager_vars);
 
       // Step 3. run ops
-      // TODO(Aurelius84): Skip fetch_tensor overhead and just run all ops.
-      VLOG(3) << "start to call pe.Run()...";
       parallel_executor->RunWithoutFetch(/*skip_eager_vars*/ skip_eager_vars);
-      VLOG(3) << "successfully to call pe.Run()...";
     }
 
     // Step 4. get outputs

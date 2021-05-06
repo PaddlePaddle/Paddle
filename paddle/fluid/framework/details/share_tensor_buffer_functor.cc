@@ -40,9 +40,9 @@ static inline const Tensor &GetTensorFromVar(const Variable *var) {
   if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>();
   } else {
-    VLOG(3) << "not support " << var->Type();
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor."));
+        "Variable must be type of LoDTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
   }
 }
 
@@ -50,9 +50,9 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else {
-    VLOG(3) << "not support " << var->Type();
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor."));
+        "Variable must be type of LoDTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
   }
 }
 

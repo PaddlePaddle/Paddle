@@ -84,7 +84,6 @@ class Graph {
                  int64_t end_op_index);
 
   virtual ~Graph() {
-    VLOG(3) << "deleting graph: " << this;
     for (auto &attr : attrs_) {
       attr_dels_[attr.first]();
     }
@@ -268,7 +267,7 @@ class Graph {
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
   size_t num_node_created_{0};  // help to generate a unique node id.
-  bool is_partial_{false};  // whether is constructed with partial programDesc
+  bool is_partial_{false};  // whether is constructed with partial ProgramDesc
 };
 
 bool IsControlDepVar(const ir::Node &var);

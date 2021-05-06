@@ -37,7 +37,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
   PADDLE_ENFORCE_GE(start_op_index, 0,
                     platform::errors::InvalidArgument(
                         "Required start_op_index >= 0, but received "
-                        "start_op_index = ",
+                        "start_op_index = %d",
                         start_op_index));
   PADDLE_ENFORCE_GE(end_op_index, start_op_index,
                     platform::errors::InvalidArgument(
@@ -57,7 +57,8 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
   PADDLE_ENFORCE_LE(
       end_op_index, all_ops.size(),
       platform::errors::InvalidArgument(
-          "Required end_op_index <= %d, but received %d", end_op_index));
+          "Required end_op_index <= %d, but received end_op_index = %d",
+          all_ops.size(), end_op_index));
 
   for (auto i = start_op_index; i < end_op_index; ++i) {
     auto *op = all_ops[i];

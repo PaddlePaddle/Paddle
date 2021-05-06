@@ -690,40 +690,30 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place, Scope *scope,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate({place}, scope)) {
   // Initialize necessary info of member_ with strategy.
-  VLOG(1) << "Step 1: InitExecutorPrivateMemberInfo";
   InitExecutorPrivateMemberInfo(exec_strategy, build_strategy,
                                 /*device_count*/ 1, *graph);
 
-  VLOG(1) << "Step 2: CreateLocalScopes";
   CreateLocalScopes(scope, /*local_scope*/ {scope}, /*create_new*/ false);
 
   // Apply BuildStrategy to compile graph.
-  VLOG(1) << "Step 3: CompileGraphWithBuildStrategy";
-  std::vector<ir::Graph *> graphs = {graph};  // fake devices graph, not used
+  std::vector<ir::Graph *> graphs = {graph};
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, /*loss_var_name*/ "");
 
-  VLOG(1) << "Step 4: ApplyMemoryOptimizePass";
   graph = member_->ApplyMemoryOptimizePass(graph);
 
-  // Step 5. Create vars in each scope. Passes may also create new vars.
+  // Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
-  VLOG(1) << "Step 5: CreateVariableInfos";
   CreateVariableInfos(&var_infos_, graph);
 
-  // Step 6. Create local execution scopes
-  // TODO(Aurelius84): We can create scope_map dicrectly with {scope: scope}
-  VLOG(1) << "Step 6: CreateLocalExecScopes";
+  // Create local execution scopes
   std::unordered_map<Scope *, Scope *> scope_map =
       CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ false);
 
-  // Step 7. Create SSAGraph executor
-  VLOG(1) << "Step 7: CreateSSAGraphExecutor";
   std::vector<ir::Graph *> final_graphs =
       CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
-  // Step 8. Set scope_map of op from each graph
-  VLOG(1) << "Step 8: ReSetOpScopeMapOfGraphs";
+  // Set scope_map of op from each graph
   ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
 }
 
@@ -732,7 +722,7 @@ void ParallelExecutor::PrepareLocalExeScopes(Scope *scope) {
     auto var = scope->FindVar(info.name_);
     if (var != nullptr) {
       VLOG(2) << info.name_
-              << " has been initialized beforehand in global scope, skipped";
+              << " has been initialized beforehand in global scope, skipped.";
       continue;
     }
     InitializeVariable(scope->Var(info.name_), info.type_);
@@ -1530,14 +1520,6 @@ void ParallelExecutor::ReSetOpScopeMapOfGraphs(
   auto inner_graph = const_cast<ir::Graph *>(&Graph());
   std::vector<ir::Graph *> graphs = {inner_graph};
   ResetOpHandleScopeMapOfGraphs(graphs, scope_map);
-  // TODO(Aurelius84): Shall we reset scope infos of memeber_ (need remove
-  // this?)
-  // member_->local_scopes_.clear();
-  // member_->local_exec_scopes_.clear();
-  // for(auto &scopes : scope_map){
-  //   member_->local_scopes_.emplace_back(scopes.second);
-  //   member_->local_exec_scopes_.emplace_back(scopes.second);
-  // }
 }
 
 void ParallelExecutor::SetReaderOpDeviceInfoOfGraphs(

@@ -200,16 +200,8 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const framework::ProgramDesc &program,
     const std::vector<OpVariant> &while_ops,
     const std::vector<OpVariant> &while_grad_ops) {
-  std::vector<OpVariant> fwd_ops, bwd_ops;
-  fwd_ops.reserve(while_ops.size());
-  for (auto &op : while_ops) {
-    fwd_ops.emplace_back(op);
-  }
-
-  bwd_ops.reserve(while_grad_ops.size());
-  for (auto &op : while_grad_ops) {
-    bwd_ops.emplace_back(op);
-  }
+  std::vector<OpVariant> fwd_ops = while_ops;
+  std::vector<OpVariant> bwd_ops = while_grad_ops;
 
   PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(program, &fwd_ops,
                                                       &bwd_ops);

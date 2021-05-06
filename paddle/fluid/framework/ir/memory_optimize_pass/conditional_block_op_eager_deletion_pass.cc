@@ -44,20 +44,21 @@ class ConditionalOpEagerDeletionPass : public Pass {
     }
 
     if (graph->IsConstructedByPartialProgram()) {
-      PADDLE_ENFORCE_LE(
-          target_ops.size(), 1,
-          "Unsupport multi device if graph is constructed by partial program.");
+      PADDLE_ENFORCE_LE(target_ops.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Unsupport multi devices if graph is constructed "
+                            "with partial program."));
       size_t scope_idx = 0;
       auto &ifelse_ops = target_ops[scope_idx].first;
       auto &ifelse_grad_ops = target_ops[scope_idx].second;
 
       auto all_ops = graph->OriginProgram().Block(0).AllOps();
       if (ifelse_ops.empty()) {
-        operators::AppendOpVariantByOpName(all_ops, &ifelse_ops,
-                                           std::string("conditional_block"));
+        operators::AppendOpVariantByOpName(
+            all_ops, std::string("conditional_block"), &ifelse_ops);
       } else if (ifelse_grad_ops.empty()) {
         operators::AppendOpVariantByOpName(
-            all_ops, &ifelse_grad_ops, std::string("conditional_block_grad"));
+            all_ops, std::string("conditional_block_grad"), &ifelse_grad_ops);
       } else {
         PADDLE_THROW("One of ifelse_ops or ifelse_grad_ops should be empty.");
       }

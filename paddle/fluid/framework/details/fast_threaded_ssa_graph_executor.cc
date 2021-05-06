@@ -63,8 +63,6 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
       new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
-  VLOG(3) << "PrepareAtomicOpDeps in single thread. Thread nums: "
-          << strategy_.num_threads_;
   PrepareAtomicOpDeps();
   size_t num_ops = op_deps->size();
 
@@ -78,7 +76,6 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
   exception_.Clear();
-  VLOG(3) << "Insert Fetch ops.";
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
                  &fetch_ops, &ready_fetch_ops, return_merged);
   event.reset(nullptr);
@@ -97,8 +94,8 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     traced_ops_.clear();
     remaining_ = 0;
     auto complete_q = std::make_shared<BlockingQueue<size_t>>();
-    VLOG(3) << "bootstrap_ops_.size():" << bootstrap_ops_.size();
-    VLOG(3) << "ready_fetch_ops.size():" << ready_fetch_ops.size();
+    VLOG(3) << "number of bootstrap_ops_: " << bootstrap_ops_.size();
+    VLOG(3) << "number of ready_fetch_ops: " << ready_fetch_ops.size();
     for (auto op : bootstrap_ops_) {
       RunOpAsync(op_deps.get(), op, complete_q);
     }
@@ -256,17 +253,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
         return;
       }
       auto &outputs = op_to_run->Outputs();
-      VLOG(3) << "post process for op: " << op_to_run->Name()
-              << " outputs.size: " << outputs.size();
       op_to_run = nullptr;
       for (auto &output : outputs) {
-        VLOG(3) << "before for output, ptr_addredd: " << output
-                << " graph ptr: " << graph_;
-        VLOG(3) << "pending op size of " << output << " : "
-                << output->PendingOps().size();
         for (auto &pending_op : output->PendingOps()) {
-          VLOG(3) << "DINE :" << pending_op;
-          VLOG(3) << "after DINE pending op is " << pending_op->Name();
           std::atomic<int> &deps = op_deps->at(pending_op);
           if (deps.fetch_sub(1) != 1) continue;
 
@@ -286,7 +275,6 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           }
         }
       }
-      VLOG(3) << "ending...... op_to_run: " << op_to_run;
 
       if (op_to_run != nullptr) {
         op_queue.push_front(op_to_run);
