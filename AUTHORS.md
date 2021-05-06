@@ -24,6 +24,7 @@
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
 | jacquesqiao | Long-Fei Qiao |
+| jakpiase | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg) | Jacek Czaja |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
