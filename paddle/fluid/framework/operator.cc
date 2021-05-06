@@ -1147,7 +1147,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
   }
 
-  if (!transfered_inplace_vars.empty()) {
+  if (!transfered_inplace_vars.empty()){
     // there is inplace variable has been transferred.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
@@ -1299,7 +1299,9 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
-    original_tensor->Resize(original_dims);
+    if(type_ != "reshape2" && type_ != "reshape2_grad") {
+        original_tensor->Resize(original_dims);
+    }
   }
 }
 
