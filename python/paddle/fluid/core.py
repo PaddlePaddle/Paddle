@@ -38,7 +38,9 @@ try:
     if os.name == 'nt':
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
         # Will load shared library from 'path' on windows
-        os.environ['path'] = current_path + ';' + third_lib_path + ';' + os.environ['path']
+        os.environ[
+            'path'] = current_path + ';' + third_lib_path + ';' + os.environ[
+                'path']
         sys.path.insert(0, third_lib_path)
         # Note: from python3.8, PATH will not take effect
         # https://github.com/python/cpython/pull/12302
