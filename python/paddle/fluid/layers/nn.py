@@ -3000,8 +3000,6 @@ def inplace_abn(input,
                              'inplace_abn')
     dtype = helper.input_dtype()
 
-    if core.is_compiled_with_rocm():
-        dtype = 'float32'
     input_shape = input.shape
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
