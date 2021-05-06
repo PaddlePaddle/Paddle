@@ -76,13 +76,23 @@ struct EigenReverse {
 };
 
 template <typename EigenDevice, typename T>
-struct EigenIncrement {
+struct EigenAdd {
   using InType = Eigen::TensorMap<Eigen::TensorFixedSize<
       const T, Eigen::Sizes<>, Eigen::RowMajor, Eigen::DenseIndex>>;
   using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<
       T, Eigen::Sizes<>, Eigen::RowMajor, Eigen::DenseIndex>>;
   static void Eval(const EigenDevice& dev, OutType out, const InType& in,
                    const T value);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenSub {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType out, const InType& left,
+                   const InType& right);
 };
 
 template <typename EigenDevice, typename T, int Rank>
@@ -108,8 +118,8 @@ struct EigenSlice {
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenPad {
-  using Array = Eigen::array<std::pair<int64_t, int64_t>, Rank>;
-  using Array32Bit = Eigen::array<std::pair<int, int>, Rank>;
+  using Array = std::array<std::pair<int64_t, int64_t>, Rank>;
+  using Array32Bit = std::array<std::pair<int, int>, Rank>;
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
   using InType32BitIndex =
@@ -178,6 +188,26 @@ struct EigenRankLossGrad {
   static void EvalRight(const EigenDevice& dev, OutType dright,
                         const InType& dout, const InType& label,
                         const InType& left, const InType& right);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenHingeLoss {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType loss, const InType& pred,
+                   const InType& label);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenHingeLossGrad {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev, OutType dpred, const InType& dloss,
+                   const InType& pred, const InType& label);
 };
 
 template <typename EigenDevice, typename T>

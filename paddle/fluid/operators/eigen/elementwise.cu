@@ -17,7 +17,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct EigenIncrement<Eigen::GpuDevice, T> {
+struct EigenAdd<Eigen::GpuDevice, T> {
   using InType = Eigen::TensorMap<Eigen::TensorFixedSize<
       const T, Eigen::Sizes<>, Eigen::RowMajor, Eigen::DenseIndex>>;
   using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<
@@ -28,10 +28,24 @@ struct EigenIncrement<Eigen::GpuDevice, T> {
   }
 };
 
-template struct EigenIncrement<Eigen::GpuDevice, float>;
-template struct EigenIncrement<Eigen::GpuDevice, double>;
-template struct EigenIncrement<Eigen::GpuDevice, int>;
-template struct EigenIncrement<Eigen::GpuDevice, int64_t>;
+template struct EigenAdd<Eigen::GpuDevice, float>;
+template struct EigenAdd<Eigen::GpuDevice, double>;
+template struct EigenAdd<Eigen::GpuDevice, int>;
+template struct EigenAdd<Eigen::GpuDevice, int64_t>;
+
+template <typename T>
+struct EigenSub<Eigen::GpuDevice, T> {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const Eigen::GpuDevice& dev, OutType out, const InType& left,
+                   const InType& right) {
+    out.device(dev) = left - right;
+  }
+};
+
+template struct EigenSub<Eigen::GpuDevice, float>;
 
 }  // namespace operators
 }  // namespace paddle

@@ -17,7 +17,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct EigenIncrement<Eigen::DefaultDevice, T> {
+struct EigenAdd<Eigen::DefaultDevice, T> {
   using InType = Eigen::TensorMap<Eigen::TensorFixedSize<
       const T, Eigen::Sizes<>, Eigen::RowMajor, Eigen::DenseIndex>>;
   using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<
@@ -28,10 +28,24 @@ struct EigenIncrement<Eigen::DefaultDevice, T> {
   }
 };
 
-template struct EigenIncrement<Eigen::DefaultDevice, float>;
-template struct EigenIncrement<Eigen::DefaultDevice, double>;
-template struct EigenIncrement<Eigen::DefaultDevice, int>;
-template struct EigenIncrement<Eigen::DefaultDevice, int64_t>;
+template struct EigenAdd<Eigen::DefaultDevice, float>;
+template struct EigenAdd<Eigen::DefaultDevice, double>;
+template struct EigenAdd<Eigen::DefaultDevice, int>;
+template struct EigenAdd<Eigen::DefaultDevice, int64_t>;
+
+template <typename T>
+struct EigenSub<Eigen::DefaultDevice, T> {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const Eigen::DefaultDevice& dev, OutType out,
+                   const InType& left, const InType& right) {
+    out.device(dev) = left - right;
+  }
+};
+
+template struct EigenSub<Eigen::DefaultDevice, float>;
 
 }  // namespace operators
 }  // namespace paddle

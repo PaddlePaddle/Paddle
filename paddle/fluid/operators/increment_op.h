@@ -31,7 +31,7 @@ class IncrementKernel : public framework::OpKernel<T> {
     out_tensor->mutable_data<T>(context.GetPlace());
     auto& dev =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenIncrement<std::decay_t<decltype(dev)>, T>::Eval(
+    EigenAdd<std::decay_t<decltype(dev)>, T>::Eval(
         dev, framework::EigenScalar<T>::From(*out_tensor),
         framework::EigenScalar<T>::From(*x_tensor), static_cast<T>(step));
   }

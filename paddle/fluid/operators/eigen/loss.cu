@@ -53,5 +53,38 @@ struct EigenRankLossGrad<Eigen::GpuDevice, T> {
 template struct EigenRankLoss<Eigen::GpuDevice, float>;
 template struct EigenRankLossGrad<Eigen::GpuDevice, float>;
 
+template <typename T>
+struct EigenHingeLoss<Eigen::GpuDevice, T> {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const Eigen::GpuDevice& dev, OutType loss,
+                   const InType& pred, const InType& label) {
+    loss.device(dev) = (static_cast<T>(1) -
+                        pred * (static_cast<T>(2) * label - static_cast<T>(1)))
+                           .cwiseMax(static_cast<T>(0));
+  }
+};
+
+template <typename T>
+struct EigenHingeLossGrad<Eigen::GpuDevice, T> {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const Eigen::GpuDevice& dev, OutType dpred,
+                   const InType& dloss, const InType& pred,
+                   const InType& label) {
+    auto alt_labels = static_cast<T>(2) * label - static_cast<T>(1);
+    dpred.device(dev) =
+        dloss * ((pred * alt_labels) < static_cast<T>(1)).template cast<T>() *
+        (-alt_labels);
+  }
+};
+
+template struct EigenHingeLoss<Eigen::GpuDevice, float>;
+template struct EigenHingeLossGrad<Eigen::GpuDevice, float>;
+
 }  // namespace operators
 }  // namespace paddle

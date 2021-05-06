@@ -20,8 +20,8 @@ namespace operators {
 
 template <typename T, int Rank>
 struct EigenPad<Eigen::DefaultDevice, T, Rank> {
-  using Array = Eigen::array<std::pair<int64_t, int64_t>, Rank>;
-  using Array32Bit = Eigen::array<std::pair<int, int>, Rank>;
+  using Array = std::array<std::pair<int64_t, int64_t>, Rank>;
+  using Array32Bit = std::array<std::pair<int, int>, Rank>;
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
   using InType32BitIndex =

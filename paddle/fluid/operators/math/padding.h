@@ -30,7 +30,7 @@ template <typename DeviceContext, typename T, size_t D>
 void PadFunction(const framework::ExecutionContext& context,
                  const std::vector<int>& pads, const framework::Tensor& src,
                  T pad_value, framework::Tensor* out) {
-  Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
+  std::array<std::pair<int64_t, int64_t>, D> paddings;
 
   for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = pads[i * 2];
@@ -50,7 +50,7 @@ template <typename DeviceContext, typename T, size_t D>
 void PadGradFunction(const framework::ExecutionContext& context,
                      const std::vector<int>& pads, const framework::Tensor& src,
                      framework::Tensor* d_out) {
-  Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
+  std::array<std::pair<int64_t, int64_t>, D> paddings;
   for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = -pads[i * 2];
     paddings[i].second = -pads[i * 2 + 1];
