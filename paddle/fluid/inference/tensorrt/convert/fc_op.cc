@@ -211,11 +211,11 @@ class FcOpConverter : public OpConverter {
       if (i < x_num_col_dims) {
         reshape_before_fc_dim.d[i] = 0;
       } else {
-          if (x_dim.d[i] < 0) {
-            reshape_before_fc_dim.d[x_num_col_dims] = -1;
-            break;
-          }
-          reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
+        if (x_dim.d[i] < 0) {
+          reshape_before_fc_dim.d[x_num_col_dims] = -1;
+          break;
+        }
+        reshape_before_fc_dim.d[x_num_col_dims] *= x_dim.d[i];
       }
     }
     auto* reshape_before_fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
