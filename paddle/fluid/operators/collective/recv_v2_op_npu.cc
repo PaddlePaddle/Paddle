@@ -28,6 +28,9 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto x = ctx.Output<framework::LoDTensor>("Out");
+    auto out_dims = x->dims();
+    x->mutable_data<T>(out_dims, ctx.GetPlace());
+
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
     HcclDataType dtype = platform::ToHCCLDataType(x->type());
