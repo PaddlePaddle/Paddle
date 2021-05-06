@@ -155,6 +155,10 @@ class TestProfiler(unittest.TestCase):
                 batch_range=[5, 10],
                 use_new_api=use_new_api)
 
+    def test_cpu_profiler_pe(self):
+        exe = fluid.Executor(fluid.CPUPlace())
+        self.net_profiler(exe, 'CPU', "Default", use_parallel_executor=True)
+
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_cuda_profiler(self):
