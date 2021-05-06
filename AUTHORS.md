@@ -11,7 +11,7 @@
 | chengxiaohua1105 | Xiao-Hua Cheng |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
-| ddokupil | Darius Dokupil |
+| ddokupil | Dariusz Dokupil |
 | dzhwinter | Zhi-Hong Dong |
 | dragonwarrior | Long Wang |
 | dyning | Yuning Du |
@@ -46,7 +46,7 @@
 | pakchoi | Chuan-Jiang Song |
 | panyx0718 | Xin Pan |
 | pengli09 | Peng Li |
-| pmajchrzak |Piort Majchrzak |
+| pmajchrzak |Piotr Majchrzak |
 | pkuyym | Ya-Ming Yang |
 | pzelazko-intel | Pawel Zelazko |
 | [pawelpiotrowicz](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)  | Pawel Piotrowicz |
