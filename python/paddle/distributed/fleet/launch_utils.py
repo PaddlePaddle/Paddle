@@ -653,8 +653,8 @@ def get_xpus(xpus):
 
 
 def get_device_mode():
-    if fluid.core.is_compiled_with_ascend() and \
-            fluid.core.NPUDevice.get_device_count() > 0:
+    if fluid.core.is_compiled_with_npu() and \
+            fluid.core.get_npu_device_count() > 0:
         print("launch train in ascend npu mode!")
         return DeviceMode.ASCEND_NPU
 
