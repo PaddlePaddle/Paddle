@@ -27,8 +27,9 @@ function check_whl {
 
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
+    cd build
     make -j `nproc`
-    unzip -q build/python/dist/*.whl -d /tmp/develop
+    unzip -q python/dist/*.whl -d /tmp/develop
 
     diff_whl=`diff /tmp/pr/paddlepaddle_gpu-0.0.0.dist-info/RECORD /tmp/develop/paddlepaddle_gpu-0.0.0.dist-info/RECORD|wc -l`
     if [ ${diff_whl} -eq 0 ];then
