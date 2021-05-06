@@ -88,7 +88,8 @@ class TestDygraphModel(unittest.TestCase):
             for i in range(self.batch_num)
         ]
 
-        self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
+        self.devices = ['gpu'] if not IS_MAC and paddle.is_compiled_with_cuda(
+        ) else ['cpu']
 
         # for saving model
         self.model_path_template = "infer_model/custom_relu_dygaph_model_{}.pdparams"

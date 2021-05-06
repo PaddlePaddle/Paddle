@@ -36,7 +36,7 @@ class TestCacheProgram(unittest.TestCase):
     def test_cache(self):
         prev_ops, cur_ops = Counter(), Counter()
         prev_out, cur_out = None, None
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with fluid.dygraph.guard():
             static_net = self.dygraph_class()
             for batch_id in range(self.batch_num):
                 out = static_net(self.data)

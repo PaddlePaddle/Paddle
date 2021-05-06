@@ -171,8 +171,7 @@ class TestPruneUnusedParamInProgram(unittest.TestCase):
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with fluid.dygraph.guard():
             model = GPT2LMHeadModel()
             model.eval()
             input_ids = paddle.to_tensor(input_ids)

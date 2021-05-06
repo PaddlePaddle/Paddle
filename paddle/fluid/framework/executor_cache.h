@@ -69,7 +69,7 @@ class ExecutorInfoCache {
     }
 
     const ProgramDesc* program_desc_;
-    const platform::Place& place_;
+    platform::Place place_;
     int64_t start_op_index_;
     int64_t end_op_index_;
     bool is_grad_;
