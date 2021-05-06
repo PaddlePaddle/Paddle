@@ -36,6 +36,8 @@ struct PD_PaddleBuf {
 
 struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor;
+  std::vector<std::string> in_names;
+  std::vector<std::string> out_names;
 };
 
 namespace paddle {
