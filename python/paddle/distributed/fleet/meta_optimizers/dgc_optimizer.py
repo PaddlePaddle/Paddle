@@ -15,6 +15,8 @@ from paddle.fluid.optimizer import Momentum, DGCMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
+__all__ = []
+
 
 class DGCOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

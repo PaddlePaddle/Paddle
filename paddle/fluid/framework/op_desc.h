@@ -65,6 +65,7 @@ class OpDesc {
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
+  void RemoveOutput(const std::string &name);
 
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();

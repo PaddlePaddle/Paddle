@@ -30,11 +30,7 @@ import paddle.dataset.common
 import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated
 
-__all__ = [
-    'train',
-    'test',
-    'get_dict',
-]
+__all__ = []
 
 URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
                 'cslm_joint_paper/data/dev+test.tgz')
