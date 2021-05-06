@@ -310,6 +310,60 @@ void NPUAllocator::Free(void* p, size_t size, size_t index) {
 }
 
 bool NPUAllocator::UseGpu() const { return true; }
+
+void* NPUPinnedAllocator::Alloc(size_t* index, size_t size) {
+  if (size <= 0) return nullptr;
+
+  size_t usable =
+      paddle::platform::NPUPinnedMaxAllocSize() - npu_pinnd_alloc_size_;
+
+  if (size > usable) {
+    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
+                 << " MB pinned memory."
+                 << ", available " << usable / 1024.0 / 1024.0 << " MB";
+    return nullptr;
+  }
+
+  void* p;
+  // PINNED memory is visible to all NPU contexts.
+  auto result = aclrtMallocHost(&p, size);
+
+  if (result == ACL_ERROR_NONE) {
+    *index = 1;  // PINNED memory
+    npu_pinnd_alloc_size_ += size;
+    return p;
+  } else {
+    LOG(WARNING) << "aclrtMallocHost failed.";
+    return nullptr;
+  }
+
+  return nullptr;
+}
+
+void NPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
+  aclError err;
+  PADDLE_ENFORCE_EQ(index, 1, platform::errors::InvalidArgument(
+                                  "The index should be 1, but got %d", index));
+
+  PADDLE_ENFORCE_GE(npu_pinnd_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated npu pinned memory (%d)",
+                        size, npu_pinnd_alloc_size_));
+  npu_pinnd_alloc_size_ -= size;
+  err = aclrtFreeHost(p);
+
+  if (err != ACL_ERROR_NONE) {
+    PADDLE_ENFORCE_EQ(
+        err, 0,
+        platform::errors::Fatal(
+            "aclrtFreeHost failed in NPUPinnedAllocator, error code is %d",
+            err));
+  }
+}
+
+bool NPUPinnedAllocator::UseGpu() const { return false; }
+
 #endif
 
 }  // namespace detail

@@ -245,7 +245,7 @@ void Copy<platform::CPUPlace, platform::NPUPlace>(platform::CPUPlace dst_place,
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     static_cast<platform::NPUDeviceContext*>(pool.Get(src_place))->Wait();
 
-    platform::RecordEvent record_event("GpuMemcpySync:NPU->CPU");
+    platform::RecordEvent record_event("NpuMemcpySync:NPU->CPU");
     platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST);
   }
 }
@@ -294,6 +294,86 @@ void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
     }
   }
 }
+
+template <>
+void Copy<platform::CPUPlace, platform::NPUPinnedPlace>(
+    platform::CPUPlace dst_place, void* dst, platform::NPUPinnedPlace src_place,
+    const void* src, size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<platform::NPUPinnedPlace, platform::CPUPlace>(
+    platform::NPUPinnedPlace dst_place, void* dst, platform::CPUPlace src_place,
+    const void* src, size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<platform::NPUPinnedPlace, platform::NPUPinnedPlace>(
+    platform::NPUPinnedPlace dst_place, void* dst,
+    platform::NPUPinnedPlace src_place, const void* src, size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<platform::NPUPinnedPlace, platform::NPUPlace>(
+    platform::NPUPinnedPlace dst_place, void* dst, platform::NPUPlace src_place,
+    const void* src, size_t num, aclrtStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetNPUDeviceId(src_place.device);
+
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by thream(" << stream << ")";
+
+  if (stream) {
+    platform::RecordEvent record_event("NpuMemcpyAsync:NPU->NPUPinned");
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST, stream);
+  } else {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    static_cast<platform::NPUDeviceContext*>(pool.Get(src_place))->Wait();
+
+    platform::RecordEvent record_event("NpuMemcpySync:NPU->NPUPinned");
+    platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST);
+  }
+}
+
+template <>
+void Copy<platform::NPUPlace, platform::NPUPinnedPlace>(
+    platform::NPUPlace dst_place, void* dst, platform::NPUPinnedPlace src_place,
+    const void* src, size_t num, aclrtStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetNPUDeviceId(dst_place.device);
+
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by thream(" << stream << ")";
+
+  if (stream) {
+    platform::RecordEvent record_event("NpuMemcpyAsync:NPUPinned->NPU");
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+  } else {
+    // On NPU, async operation after sync operation is ok, while sync operation
+    // after async is not ok, since the async operation may not done.
+    // So, its needed to do wait before sync operation.
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    static_cast<platform::NPUDeviceContext*>(pool.Get(dst_place))->Wait();
+
+    platform::RecordEvent record_event("NpuMemcpySync:NPUPinned->NPU");
+    platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE);
+  }
+}
+
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
