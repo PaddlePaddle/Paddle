@@ -378,7 +378,7 @@ def adjust_hue(img, hue_factor):
 
     """
     if not (-0.5 <= hue_factor <= 0.5):
-        raise ValueError('hue_factor is not in [-0.5, 0.5].'.format(hue_factor))
+        raise ValueError('hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor))
 
     input_mode = img.mode
     if input_mode in {'L', '1', 'I', 'F'}:
