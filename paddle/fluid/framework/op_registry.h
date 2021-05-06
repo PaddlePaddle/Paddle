@@ -298,6 +298,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
+#else
+#define REGISTER_OP_CUDA_KERNEL(op_type, ...)
 #endif
 
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
