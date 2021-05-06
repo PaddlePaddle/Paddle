@@ -241,7 +241,8 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     @deprecated(
         since="2.1.0",
-        reason="Please use x.grad, which returns the tensor value of the gradient."
+        level=1,
+        reason="Please use tensor.grad, which returns the tensor value of the gradient."
     )
     def gradient(self):
         """
@@ -367,6 +368,9 @@ def monkey_patch_varbase():
                 # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
 
         """
+        msg = "tensor.grad will return the tensor value of the gradient."
+        warning_msg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
+        warnings.warn(warning_msg)
         return self._grad_ivar()
 
     def clear_grad(self):
