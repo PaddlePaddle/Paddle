@@ -55,7 +55,7 @@ except:
 import logging
 logger = logging.getLogger(__name__)
 
-__all__ = []
+__all__ = ['get_weights_path_from_url']
 
 WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 
