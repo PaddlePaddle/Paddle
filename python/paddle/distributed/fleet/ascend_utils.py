@@ -17,6 +17,8 @@ import json
 import paddle
 from paddle.distributed.fleet.launch_utils import get_cluster, logger, get_host_name_ip, DeviceMode
 
+__all__ = []
+
 
 def _get_ascend_rankfile(rank_table_file_path):
     """

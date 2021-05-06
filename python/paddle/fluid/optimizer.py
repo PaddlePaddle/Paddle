@@ -1890,7 +1890,8 @@ class AdamOptimizer(Optimizer):
         beta2 (float|Variable, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a Variable with shape [1] and data type as float32.
             The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
+        epsilon (float|Tensor, optional): A small float value for numerical stability.
+            It should be a float number or a Variable with shape [1] and data type as float32.
             The default value is 1e-08.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
@@ -1959,7 +1960,7 @@ class AdamOptimizer(Optimizer):
                 avg_cost = fluid.layers.mean(cost)
 
                 # define beta decay variable
-                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
+                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate, epsilon_init):
                     global_step = lr_scheduler._decay_step_counter()
 
                     beta1 = fluid.layers.create_global_var(
@@ -1976,6 +1977,13 @@ class AdamOptimizer(Optimizer):
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta2")
+                    epsilon = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(epsilon_init),
+                        dtype='float32',
+                        # set persistable for save checkpoints and resume
+                        persistable=True,
+                        name="epsilon")
 
                     div_res = global_step / decay_steps
                     decayed_beta1 = beta1_init * (decay_rate**div_res)
@@ -1983,13 +1991,14 @@ class AdamOptimizer(Optimizer):
                     fluid.layers.assign(decayed_beta1, beta1)
                     fluid.layers.assign(decayed_beta2, beta2)
 
-                    return beta1, beta2
+                    return beta1, beta2, epsilon
 
-                beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
+                beta1, beta2, epsilon = get_decayed_betas(0.9, 0.99, 1e5, 0.9, 1e-8)
                 adam_optimizer = fluid.optimizer.AdamOptimizer(
                                                     learning_rate=0.01,
                                                     beta1=beta1,
-                                                    beta2=beta2)
+                                                    beta2=beta2,
+                                                    epsilon=epsilon)
                 adam_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -2099,7 +2108,6 @@ class AdamOptimizer(Optimizer):
             "Beta2PowOut": [beta2_pow_acc],
         }
         attrs = {
-            "epsilon": self._epsilon,
             "lazy_mode": self._lazy_mode,
             "min_row_size_to_use_multithread": 1000
         }
@@ -2112,6 +2120,10 @@ class AdamOptimizer(Optimizer):
             inputs['Beta2Tensor'] = self._beta2
         else:
             attrs['beta2'] = self._beta2
+        if isinstance(self._epsilon, Variable):
+            inputs['EpsilonTensor'] = self._epsilon
+        else:
+            attrs['epsilon'] = self._epsilon
 
         adam_op = block.append_op(
             type=self.type,
@@ -4104,7 +4116,7 @@ class PipelineOptimizer(object):
         device = op.attr(self._op_device_key) \
             if op.has_attr(self._op_device_key) else None
         if device:
-            assert device[0:3] == 'gpu', "Now, only gpu devices are " \
+            assert device[0:3] == 'gpu' or dev_type == 'npu', "Now, only gpu and npu devices are " \
                 "supported in pipeline parallemism."
         return device
 
@@ -4592,13 +4604,13 @@ class PipelineOptimizer(object):
                 origin_sub_block_id = op.attr('sub_block').id
                 origin_sub_block = main_program.block(origin_sub_block_id)
                 new_sub_block = prog._create_block(parent_idx=0)
-                for op in origin_sub_block.ops:
-                    op_desc = op.desc
+                for sub_op in origin_sub_block.ops:
+                    op_desc = sub_op.desc
                     ap_op = new_sub_block.desc.append_op()
                     ap_op.copy_from(op_desc)
                 new_sub_block._sync_with_cpp()
                 self._create_vars(new_sub_block, origin_sub_block)
-                op._set_attr('sub_block:', new_sub_block)
+                op._set_attr('sub_block', new_sub_block)
 
     def _get_device_info(self, block):
         for op in block.ops:
