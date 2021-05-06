@@ -90,4 +90,5 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 - [Forums](https://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
 
 ## Copyright and License
+
 PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).
