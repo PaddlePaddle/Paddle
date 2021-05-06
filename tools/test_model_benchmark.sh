@@ -25,6 +25,7 @@ function check_whl {
     mkdir -p /tmp/pr && mkdir -p /tmp/develop
     unzip build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl -d /tmp/pr
 
+    git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     make -j `nproc`
     unzip build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl -d /tmp/develop
