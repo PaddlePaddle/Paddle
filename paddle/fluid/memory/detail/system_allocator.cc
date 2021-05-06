@@ -55,11 +55,19 @@ void* AlignedMalloc(size_t size) {
 #ifdef _WIN32
   p = _aligned_malloc(size, alignment);
 #else
+  alignment = 1 << 21;  // 2MB alignment for THP
   int error = posix_memalign(&p, alignment, size);
   PADDLE_ENFORCE_EQ(
       error, 0,
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
+  error = madvise(p, size, MADV_HUGEPAGE | MADV_SEQUENTIAL);
+  PADDLE_ENFORCE_EQ(
+      error, 0,
+      platform::errors::InvalidArgument(
+          "Fail to set advice to CPU memory of %ld size. Error code is  %d.",
+          size, error));
+
 #endif
   PADDLE_ENFORCE_NOT_NULL(p, platform::errors::ResourceExhausted(
                                  "Fail to alloc memory of %ld size.", size));
