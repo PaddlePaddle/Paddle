@@ -31,6 +31,8 @@ function check_whl {
     make -j `nproc`
     unzip -q python/dist/*.whl -d /tmp/develop
 
+    sed -i '/version.py/d' /tmp/pr/paddlepaddle_gpu-0.0.0.dist-info/RECORD
+    sed -i '/version.py/d' /tmp/develop/paddlepaddle_gpu-0.0.0.dist-info/RECORD
     diff_whl=`diff /tmp/pr/paddlepaddle_gpu-0.0.0.dist-info/RECORD /tmp/develop/paddlepaddle_gpu-0.0.0.dist-info/RECORD|wc -l`
     if [ ${diff_whl} -eq 0 ];then
         echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
