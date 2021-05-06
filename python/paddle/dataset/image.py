@@ -32,6 +32,7 @@ the image layout as follows.
 
 from __future__ import print_function
 
+import os
 import six
 import numpy as np
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
@@ -40,7 +41,7 @@ if six.PY3:
     import subprocess
     import sys
     import_cv2_proc = subprocess.Popen(
-        [sys.executable, "-c", "import cv2"],
+        [os.path.join(sys.prefix, 'python.exe'), "-c", "import cv2"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     out, err = import_cv2_proc.communicate()
