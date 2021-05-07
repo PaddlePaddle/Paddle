@@ -25,10 +25,7 @@ from paddle.utils import try_import
 
 from .progressbar import ProgressBar
 
-__all__ = [
-    'Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL', 'LRScheduler',
-    'EarlyStopping', 'ReduceLROnPlateau'
-]
+__all__ = []
 
 
 def config_callbacks(callbacks=None,
@@ -364,7 +361,7 @@ class ProgBarLogger(Callback):
         }
         if self._is_print():
             print(
-                "The loss value printed in the log is the current step, and the metric is the average value of previous step."
+                "The loss value printed in the log is the current step, and the metric is the average value of previous steps."
             )
 
     def on_epoch_begin(self, epoch=None, logs=None):

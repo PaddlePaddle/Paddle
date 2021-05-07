@@ -19,8 +19,7 @@ import paddle.fluid as fluid
 import paddle
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSumDefaultONEDNNOp(OpTest):
+class TestReduceSumDefaultOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -32,8 +31,12 @@ class TestReduceSumDefaultONEDNNOp(OpTest):
         self.check_output()
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum4DONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceDefaultWithGradOneDNNOp(TestReduceSumDefaultOneDNNOp):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -44,34 +47,19 @@ class TestReduceSum4DONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum4DReduceAllWithoutReduceAllAttributeONEDNNOp(
-        TestReduceSumDefaultONEDNNOp):
+class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
+        TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
-        self.inputs = {'X': np.random.random((5, 10, 5, 5)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 10, 5, 3)).astype("float32")}
         self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1, 2, 3]}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsONEDNNOp(
-        TestReduceSumDefaultONEDNNOp):
-    def setUp(self):
-        self.op_type = "reduce_sum"
-        self.use_mkldnn = True
-        self.inputs = {'X': np.random.random((5, 10, 5, 5)).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [-1, -2, -3, -4]}
-        self.outputs = {
-            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
-        }
-
-
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum5DKeepDimsONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceSum5DKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -83,8 +71,8 @@ class TestReduceSum5DKeepDimsONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum5DReduceAllKeepDimsONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceSum5DReduceAllKeepDimsOneDNNOp(
+        TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -95,8 +83,7 @@ class TestReduceSum5DReduceAllKeepDimsONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceSum4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -108,7 +95,7 @@ class TestReduceSum4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMax3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceMax3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -124,8 +111,8 @@ class TestReduceMax3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMax4DNegativeAndPositiveDimsONEDNNOp(
-        TestReduceSumDefaultONEDNNOp):
+class TestReduceMax4DNegativeAndPositiveDimsOneDNNOp(
+        TestReduceSumDefaultOneDNNOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -141,7 +128,7 @@ class TestReduceMax4DNegativeAndPositiveDimsONEDNNOp(
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMin3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceMin3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -154,8 +141,7 @@ class TestReduceMin3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceMean3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceMean3DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -166,8 +152,7 @@ class TestReduceMean3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceMean4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
+class TestReduceMean4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -177,16 +162,6 @@ class TestReduceMean4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
             'Out':
             self.inputs['X'].sum() / np.asarray(self.inputs['X'].shape).prod()
         }
-
-
-@skip_check_grad_ci(reason="not implemented")
-class TestReduceMeanNoReduce1DOp(TestReduceSumDefaultONEDNNOp):
-    def setUp(self):
-        self.op_type = "reduce_mean"
-        self.use_mkldnn = True
-        self.inputs = {'X': np.random.random((1)).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': self.inputs['X']}
 
 
 if __name__ == '__main__':

@@ -13,14 +13,6 @@
 # limitations under the License.
 
 # TODO: define the classes of Transformer neural network
-__all__ = [
-    'MultiHeadAttention',
-    'TransformerEncoderLayer',
-    'TransformerEncoder',
-    'TransformerDecoderLayer',
-    'TransformerDecoder',
-    'Transformer',
-]
 
 import copy
 import collections
@@ -35,6 +27,8 @@ from ...fluid import layers
 from ...fluid.dygraph import Layer, LayerList
 from ...fluid.param_attr import ParamAttr
 from ...fluid.data_feeder import convert_dtype
+
+__all__ = []
 
 
 def _convert_param_attr_to_list(param_attr, n):
@@ -461,14 +455,14 @@ class TransformerEncoderLayer(Layer):
             normalization and post-precess includes dropout, residual connection.
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default False
-        weight_attr(ParamAttr|tuple, optional): To specify the weight parameter property.
-            If it is a tuple, `weight_attr[0]` would be used as `weight_attr` for
+        weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
+            If it is a list/tuple, `weight_attr[0]` would be used as `weight_attr` for
             MHA, and `weight_attr[1]` would be used as `weight_attr` for linear in FFN.
             Otherwise, MHA and FFN both use it as `weight_attr` to create parameters.
             Default: None, which means the default weight parameter property is used.
             See usage for details in :code:`ParamAttr` . 
-        bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
-            If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
+        bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
+            If it is a list/tuple, `bias_attr[0]` would be used as `bias_attr` for
             MHA, and `bias_attr[1]` would be used as `bias_attr` for linear in FFN.
             Otherwise, MHA and FFN both use it as `bias_attr` to create parameters.
             The `False` value means the corresponding layer would not have trainable
@@ -747,16 +741,16 @@ class TransformerDecoderLayer(Layer):
             normalization and post-precess includes dropout, residual connection.
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default False
-        weight_attr(ParamAttr|tuple, optional): To specify the weight parameter property.
-            If it is a tuple, `weight_attr[0]` would be used as `weight_attr` for
+        weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
+            If it is a list/tuple, `weight_attr[0]` would be used as `weight_attr` for
             self attention, `weight_attr[1]` would be used as `weight_attr` for
             cross attention, and `weight_attr[2]` would be used as `weight_attr`
             for linear in FFN. Otherwise, the three sub-layers all uses it as
             `weight_attr` to create parameters. Default: None, which means the
             default weight parameter property is used. See usage for details
             in :ref:`api_paddle_fluid_param_attr_ParamAttr` . 
-        bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
-            If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
+        bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
+            If it is a list/tuple, `bias_attr[0]` would be used as `bias_attr` for
             self attention, `bias_attr[1]` would be used as `bias_attr` for
             cross attention, and `bias_attr[2]` would be used as `bias_attr`
             for linear in FFN. Otherwise, the three sub-layers all uses it as
@@ -1129,8 +1123,8 @@ class Transformer(Layer):
             normalization and post-precess includes dropout, residual connection.
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default False
-        weight_attr(ParamAttr|tuple, optional): To specify the weight parameter property.
-            If it is a tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3, 
+        weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
+            If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3, 
             `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]` 
             would be used as `weight_attr` for cross attention of `TransformerDecoder`, 
             and `weight_attr[2]` would be used as `weight_attr` for linear in FFN. 
@@ -1142,8 +1136,8 @@ class Transformer(Layer):
             Default: None, which means the default weight parameter property is used. 
             See usage for details
             in :code:`ParamAttr` . 
-        bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
-            If it is a tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3, 
+        bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
+            If it is a list/tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3, 
             `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]` 
             would be used as `bias_attr` for cross attention of `TransformerDecoder`, 
             and `bias_attr[2]` would be used as `bias_attr` for linear in FFN. 

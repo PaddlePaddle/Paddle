@@ -64,8 +64,10 @@ aclFormat ConvertToNpuFormat(DataLayout layout) {
   return iter->second;
 }
 
-aclrtStream GetCurrentNPUStream() {
-  int device_id = platform::GetCurrentNPUDeviceId();
+aclrtStream GetCurrentNPUStream(int device_id) {
+  if (device_id == -1) {
+    device_id = platform::GetCurrentNPUDeviceId();
+  }
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
       pool.Get(platform::NPUPlace(device_id)));
@@ -299,5 +301,6 @@ void NpuOpRunner::Run(aclrtStream stream) {
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
+
 }  // namespace operators
 }  // namespace paddle
