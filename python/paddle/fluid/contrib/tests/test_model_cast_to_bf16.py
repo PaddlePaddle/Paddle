@@ -53,19 +53,27 @@ class TestModelCastBF16(unittest.TestCase):
             with fluid.program_guard(prog, startup_prog):
                 yield
 
-    def get_static_graph_result(self, feed, fetch_list, amp_fun,
-                                with_lod=False):
+    def get_static_graph_result(self,
+                                feed,
+                                fetch_list,
+                                amp_fun,
+                                with_lod=False,
+                                startup_prog=None):
         exe = fluid.Executor(core.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe.run(fluid.default_startup_program()
+                if startup_prog is None else startup_prog)
         prog = fluid.default_main_program()
         if amp_fun is not None:
-            amp_fun(prog)
+            if startup_prog is not None:
+                amp_fun(prog, startup_prog)
+            else:
+                amp_fun(prog)
         return exe.run(prog,
                        feed=feed,
                        fetch_list=fetch_list,
                        return_numpy=(not with_lod))
 
-    def _graph_common(self, _amp_fun):
+    def _graph_common(self, _amp_fun, startup_prog=None):
         size = 3
         n = np.ones([size, size], dtype='float32') * 3.2
         nn = np.ones([size, size], dtype='float32') * -2.7
@@ -122,7 +130,8 @@ class TestModelCastBF16(unittest.TestCase):
                 self.get_static_graph_result(
                     feed={'t': n, 'tt': nn},
                     fetch_list=[ret],
-                    amp_fun=_amp_fun
+                    amp_fun=_amp_fun,
+                    startup_prog=startup_prog
                 )
         self.assertTrue(
             static_ret_bf16, np.ones(
@@ -132,16 +141,17 @@ class TestModelCastBF16(unittest.TestCase):
         self._graph_common(lambda prog: amp.bf16.rewrite_program_bf16(
             prog,
             amp.bf16.AutoMixedPrecisionListsBF16(
-                custom_fp32_varnames={'elementwise_add_0.tmp_0'}),
+                custom_fp32_varnames={'elementwise_add_0.tmp_0'})
         ))
 
     def test_graph_cast(self):
-        self._graph_common(lambda prog: amp.bf16.cast_model_to_bf16(
+        self._graph_common(lambda prog, startup_prog: amp.bf16.cast_model_to_bf16(
             prog,
+            startup_prog,
             amp.bf16.AutoMixedPrecisionListsBF16(
                 custom_fp32_list={'elementwise_mul'}),
             use_bf16_guard=True
-        ))
+        ), startup_prog=fluid.default_startup_program())
 
 
 if __name__ == '__main__':
