@@ -50,7 +50,7 @@ class RunProgramOpTest(unittest.TestCase):
     def check_output(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places = [fluid.CUDAPlace(0), fluid.CPUPlace()]
         for place in places:
             # TODO: RunProgramOp is not recommended for use in static mode now
             self.expect_outs = self.run_static_model(place, is_test=True)
@@ -59,7 +59,7 @@ class RunProgramOpTest(unittest.TestCase):
     def check_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places = [fluid.CUDAPlace(0), fluid.CPUPlace()]
         for place in places:
             # TODO: RunProgramOp is not recommended for use in static mode now
             self.expect_grads = self.run_static_model(place, is_test=False)
@@ -308,7 +308,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         # sparse gradients with staic mode, only run dygraph
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places = [fluid.CUDAPlace(0), fluid.CPUPlace()]
         for place in places:
             # TODO: RunProgramOp is not recommended for use in static mode now
             self.calc_dygraph_grad(place)
@@ -336,4 +336,6 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.enable_static()
     unittest.main()
