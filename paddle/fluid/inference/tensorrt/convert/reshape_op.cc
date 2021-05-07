@@ -45,12 +45,12 @@ class ReshapeOpConverter : public OpConverter {
 
     std::vector<int> shape =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
+    int nbDims_num = shape.size();
 
-    for (int i = 0; i < shape.size(); i++) {
+    for (int i = 0; i < nbDims_num; i++) {
       std::cout << "shape[i]: " << shape[i] << std::endl;
     }
 
-    int nbDims_num = shape.size();
     nvinfer1::Dims reshape_dim;
     if (engine_->with_dynamic_shape()) {  // running the TRT Dynamic Shape mode
       reshape_dim.nbDims = nbDims_num;
@@ -73,9 +73,9 @@ class ReshapeOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "reshape", {output_name}, test_mode);
 
-    for (int i = 0; i < layer->getDimensions().nbDims; i++) {
+    for (int i = 0; i < layer->getOutput(0)->getDimensions().nbDims; i++) {
       std::cout << "reshape_out->getDimensions(): "
-                << layer->getDimensions().d[i] << std::endl;
+                << layer->getOutput(0)->getDimensions().d[i] << std::endl;
     }
   }
 };
