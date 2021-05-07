@@ -80,11 +80,10 @@ function add_failed(){
     echo_list="${echo_list[@]}$1"
 }
 
-function run_test_sampcd_processor() {
+function run_tools_test() {
     CUR_PWD=$(pwd)
     cd ${PADDLE_ROOT}/tools
-    python test_sampcd_processor.py
-    python test_print_signatures.py
+    python $1
     cd ${CUR_PWD}
 }
 
@@ -146,7 +145,10 @@ for API_FILE in ${API_FILES[*]}; do
           check_approval 1 29231
       elif [ "${API_FILE}" == "tools/sampcd_processor.py" ];then
           echo_line="test_sampcd_processor.py will be executed for changed sampcd_processor.py.\n"
-          run_test_sampcd_processor
+          run_tools_test test_sampcd_processor.py
+      elif [ "${API_FILE}" == "tools/print_signatures.py" ];then
+          echo_line="test_print_signatures.py will be executed for changed print_signatures.py.\n"
+          run_tools_test test_print_signatures.py
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
 	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
 	      check_approval 1 35824027 38231817
