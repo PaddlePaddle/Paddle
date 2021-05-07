@@ -1903,6 +1903,7 @@ function main() {
     local parallel_number=$2
     init
     if [ "$CMD" != "assert_file_approvals" ];then
+      python -m pip install distro
       python ${PADDLE_ROOT}/tools/summary_env.py
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
