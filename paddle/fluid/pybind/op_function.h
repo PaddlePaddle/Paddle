@@ -604,8 +604,9 @@ static inline std::shared_ptr<imperative::VarBase> GetVarBaseFromArgs(
         ((PyTypeObject*)((PyObject*)inst)->ob_type)->tp_name));  // NOLINT
   }
 
-  return *((std::shared_ptr<paddle::imperative::VarBase>*)
-               inst->simple_value_holder);  // NOLINT
+  void** vh = inst->simple_layout ? inst->simple_value_holder
+                                  : &inst->nonsimple.values_and_holders[0];
+  return reinterpret_cast<std::shared_ptr<paddle::imperative::VarBase>&>(vh[1]);
 }
 
 static inline std::vector<std::shared_ptr<imperative::VarBase>>
@@ -640,8 +641,11 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
             op_type, arg_name, arg_idx,
             ((PyTypeObject*)((PyObject*)item)->ob_type)->tp_name));  // NOLINT
       }
-      result.emplace_back(*((std::shared_ptr<paddle::imperative::VarBase>*)
-                                item->simple_value_holder));  // NOLINT
+      void** vh = item->simple_layout ? item->simple_value_holder
+                                      : &item->nonsimple.values_and_holders[0];
+      result.emplace_back(
+          reinterpret_cast<std::shared_ptr<paddle::imperative::VarBase>&>(
+              vh[1]));
     }
   } else if (PyTuple_Check(list)) {
     Py_ssize_t len = PyTuple_Size(list);
@@ -657,8 +661,11 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
             op_type, arg_name, arg_idx,
             ((PyTypeObject*)((PyObject*)item)->ob_type)->tp_name));  // NOLINT
       }
-      result.emplace_back(*((std::shared_ptr<paddle::imperative::VarBase>*)
-                                item->simple_value_holder));
+      void** vh = item->simple_layout ? item->simple_value_holder
+                                      : &item->nonsimple.values_and_holders[0];
+      result.emplace_back(
+          reinterpret_cast<std::shared_ptr<paddle::imperative::VarBase>&>(
+              vh[1]));
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
