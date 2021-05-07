@@ -22,8 +22,6 @@ limitations under the License. */
 #endif
 #include <windows.h>  // VirtualLock/VirtualUnlock
 #else
-#include <errno.h>
-#include <string.h>
 #include <sys/mman.h>  // for mlock and munlock
 #endif
 #include "gflags/gflags.h"
@@ -68,11 +66,9 @@ void* AlignedMalloc(size_t size) {
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
 // TODO(jczaja): Enable MacOS Huge Pages if desired
 #ifdef __linux__
-  error = madvise(p, size, MADV_HUGEPAGE | MADV_SEQUENTIAL);
-  PADDLE_ENFORCE_EQ(
-      error, 0, platform::errors::InvalidArgument(
-                    "Fail to set advice to CPU memory of %ld size. Error: %s.",
-                    size, strerror(errno)));
+  // Advise may fail due to platform capabilities
+  // so we will ignore returned error
+  madvise(p, size, MADV_HUGEPAGE | MADV_SEQUENTIAL);
 #endif
 
 #endif
