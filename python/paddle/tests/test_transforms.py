@@ -525,10 +525,10 @@ class TestFunctional(unittest.TestCase):
             image_load('tmp.jpg', backend=1)
 
     def test_normalize(self):
-        np_img = (np.random.rand(28, 24, 3)).astype('uint8')
+        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img)
         tensor_img = F.to_tensor(pil_img)
-        tensor_img_hwc = F.to_tensor(pil_img, data_format='HWC')
+        tensor_img_hwc = F.to_tensor(pil_img, data_format='HWC') * 255
 
         mean = [0.5, 0.5, 0.5]
         std = [0.5, 0.5, 0.5]
@@ -539,17 +539,17 @@ class TestFunctional(unittest.TestCase):
 
         normalized_img_pil = F.normalize(pil_img, mean, std, data_format='HWC')
         normalized_img_np = F.normalize(
-            np_img, mean, std, data_format='HWC', to_rgb=True)
+            np_img, mean, std, data_format='HWC', to_rgb=False)
 
         np.testing.assert_almost_equal(
             np.array(normalized_img_pil), normalized_img_np)
-        np.testing.assert_almost_equal(normalized_img_tensor.numpy(),
-                                       normalized_img_np)
+        np.testing.assert_almost_equal(
+            normalized_img_tensor.numpy(), normalized_img_np, decimal=4)
 
     def test_center_crop(self):
-        np_img = (np.random.rand(28, 24, 3)).astype('uint8')
+        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img)
-        tensor_img = F.to_tensor(pil_img, data_format='CHW')
+        tensor_img = F.to_tensor(pil_img, data_format='CHW') * 255
 
         np_cropped_img = F.center_crop(np_img, 4)
         pil_cropped_img = F.center_crop(pil_img, 4)
@@ -557,23 +557,25 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_almost_equal(np_cropped_img,
                                        np.array(pil_cropped_img))
-        np.testing.assert_almost_equal(np_cropped_img,
-                                       tensor_cropped_img.numpy().transpose(
-                                           (1, 2, 0)))
+        np.testing.assert_almost_equal(
+            np_cropped_img,
+            tensor_cropped_img.numpy().transpose((1, 2, 0)),
+            decimal=4)
 
     def test_pad(self):
-        np_img = (np.random.rand(28, 24, 3)).astype('uint8')
+        np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img)
-        tensor_img = F.to_tensor(pil_img, 'CHW')
+        tensor_img = F.to_tensor(pil_img, 'CHW') * 255
 
         np_padded_img = F.pad(np_img, [1, 2], padding_mode='reflect')
         pil_padded_img = F.pad(pil_img, [1, 2], padding_mode='reflect')
         tensor_padded_img = F.pad(tensor_img, [1, 2], padding_mode='reflect')
 
         np.testing.assert_almost_equal(np_padded_img, np.array(pil_padded_img))
-        np.testing.assert_almost_equal(np_padded_img,
-                                       tensor_padded_img.numpy().transpose(
-                                           (1, 2, 0)))
+        np.testing.assert_almost_equal(
+            np_padded_img,
+            tensor_padded_img.numpy().transpose((1, 2, 0)),
+            decimal=3)
 
         tensor_padded_img = F.pad(tensor_img, 1, padding_mode='reflect')
         tensor_padded_img = F.pad(tensor_img, [1, 2, 1, 2],
@@ -584,9 +586,9 @@ class TestFunctional(unittest.TestCase):
         pil_padded_img = F.pad(pil_p_img, [1, 2], padding_mode='reflect')
 
     def test_resize(self):
-        np_img = (np.zeros([28, 24, 3])).astype('uint8')
+        np_img = (np.zeros([28, 24, 3]) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img)
-        tensor_img = F.to_tensor(pil_img, 'CHW')
+        tensor_img = F.to_tensor(pil_img, 'CHW') * 255
 
         np_reseized_img = F.resize(np_img, 40)
         pil_reseized_img = F.resize(pil_img, 40)
@@ -595,12 +597,14 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_almost_equal(np_reseized_img,
                                        np.array(pil_reseized_img))
-        np.testing.assert_almost_equal(np_reseized_img,
-                                       tensor_reseized_img.numpy().transpose(
-                                           (1, 2, 0)))
-        np.testing.assert_almost_equal(np_reseized_img,
-                                       tensor_reseized_img2.numpy().transpose(
-                                           (1, 2, 0)))
+        np.testing.assert_almost_equal(
+            np_reseized_img,
+            tensor_reseized_img.numpy().transpose((1, 2, 0)),
+            decimal=3)
+        np.testing.assert_almost_equal(
+            np_reseized_img,
+            tensor_reseized_img2.numpy().transpose((1, 2, 0)),
+            decimal=3)
 
         gray_img = (np.zeros([28, 32])).astype('uint8')
         gray_resize_img = F.resize(gray_img, 40)
