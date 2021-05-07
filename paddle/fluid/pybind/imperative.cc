@@ -469,6 +469,39 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
   if (!PyTuple_Check(_index)) Py_DecRef(index);
 }
 
+template <typename P>
+static void VarBaseCopy(const imperative::VarBase &src,
+                        imperative::VarBase &dst, const P &dst_device,
+                        const bool blocking) {
+  if (dst.SharedVar()->IsEmpty()) {
+    VLOG(3) << "deep copy Variable from " << src.Name() << " to " << dst.Name();
+    dst.SetPersistable(src.Persistable());
+    dst.SetDataType(src.DataType());
+    dst.SetType(src.Type());
+    dst.SetOverridedStopGradient(src.OverridedStopGradient());
+    if (!src.SharedVar()->IsEmpty()) {
+      // const platform::Place& place = src.Place();
+      if (src.Var().IsType<framework::LoDTensor>()) {
+        auto &src_tensor = src.Var().Get<framework::LoDTensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+        dst_tensor->set_lod(src_tensor.lod());
+        framework::TensorCopy(src_tensor, dst_device, dst_tensor);
+      } else if (src.Var().IsType<framework::SelectedRows>()) {
+        auto &src_selected_rows = src.Var().Get<framework::SelectedRows>();
+        auto *dst_selected_rows =
+            dst.MutableVar()->GetMutable<framework::SelectedRows>();
+        dst_selected_rows->set_height(src_selected_rows.height());
+        dst_selected_rows->set_rows(src_selected_rows.rows());
+        framework::TensorCopy(src_selected_rows.value(), dst_device,
+                              dst_selected_rows->mutable_value());
+      }
+      if (blocking) {
+        platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+      }
+    }
+  }
+}
+
 // Bind Methods
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
@@ -1638,6 +1671,10 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::ParallelStrategy &self, int nrings) {
             self.nrings_ = nrings;
           });
+
+  m.def("varbase_copy", &VarBaseCopy<platform::Place>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
 
   m.def(
       "dygraph_partial_grad",
