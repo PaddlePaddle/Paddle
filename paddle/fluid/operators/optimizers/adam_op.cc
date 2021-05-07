@@ -198,7 +198,7 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")
         .SetDefault(false);
-    // TODO(zhiqiu): We could set Beta1Pow, Beta2Pow, Beta1PowOut, Beta2PowOut
+    // TODO(zhiqiu): We could set Beta1PowOut and Beta2PowOut
     // as dispensable since they are not used when use_global_beta_pow is true.
     AddAttr<bool>("use_global_beta_pow",
                   "(bool, default false) "
@@ -262,7 +262,7 @@ REGISTER_OP_VERSION(adam)
             "use_global_beta_pow",
             "If true, Adam will use global beta_pow for whole model "
             "instead of creating beta_pow for each parameter."
-            "In that case, the inputs(Beta1Pow, Beta12Pow) and the "
-            "outputs(Beta1PowOut, Beta2PowOut) will not be used in adam op, "
+            "In that case, the outputs(Beta1PowOut, Beta2PowOut) will not be "
+            "used in adam op, "
             "and beta_pow will be updated after all adam op in the model.",
             false));

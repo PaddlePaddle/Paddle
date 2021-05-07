@@ -59,6 +59,8 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
 
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+
     param_out->mutable_data<T>(ctx.GetPlace());
     mom1_out->mutable_data<T>(ctx.GetPlace());
     mom2_out->mutable_data<T>(ctx.GetPlace());
@@ -174,12 +176,14 @@ class AdamNPUKernel : public framework::OpKernel<T> {
           *mom2, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), mom2_out);
     }
-    auto runner_m1 =
-        NpuOpRunner("Mul", {*beta1_pow, *beta1_tensor}, {*beta1_pow_out}, {});
-    runner_m1.Run(stream);
-    auto runner_m2 =
-        NpuOpRunner("Mul", {*beta2_pow, *beta2_tensor}, {*beta2_pow_out}, {});
-    runner_m2.Run(stream);
+    if (!use_global_beta_pow) {
+      auto runner_m1 =
+          NpuOpRunner("Mul", {*beta1_pow, *beta1_tensor}, {*beta1_pow_out}, {});
+      runner_m1.Run(stream);
+      auto runner_m2 =
+          NpuOpRunner("Mul", {*beta2_pow, *beta2_tensor}, {*beta2_pow_out}, {});
+      runner_m2.Run(stream);
+    }
   }
 };
 
