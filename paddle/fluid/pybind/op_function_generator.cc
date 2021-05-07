@@ -259,16 +259,15 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args)-1 , attrs);
-    {
-      py::gil_scoped_release release;
-      auto tracer = imperative::GetCurrentTracer();
-      %s
-      imperative::NameVarBaseMap outs = %s;
-      imperative::NameVarBaseMap ins = %s;
-      %s
-      tracer->TraceOp("%s", ins, outs, attrs, {%s});
-      return %s;
-    }
+    PyThreadState *tstate = PyEval_SaveThread();
+    auto tracer = imperative::GetCurrentTracer();
+    %s
+    imperative::NameVarBaseMap outs = %s;
+    imperative::NameVarBaseMap ins = %s;
+    %s
+    tracer->TraceOp("%s", ins, outs, attrs, {%s});
+    PyEval_RestoreThread(tstate);
+    return %s;
   }
   catch(...) {
     throw_exception_to_python(std::current_exception());

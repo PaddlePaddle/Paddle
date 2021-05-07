@@ -148,7 +148,7 @@ def train(conf_dict, to_static):
             left_feat, pos_score = net(left, pos_right)
             pred = pos_score
             _, neg_score = net(left, neg_right)
-            avg_cost = loss.compute(int(pos_score), int(neg_score))
+            avg_cost = loss.compute(pos_score, neg_score)
             losses.append(np.mean(avg_cost.numpy()))
             avg_cost.backward()
             optimizer.minimize(avg_cost)

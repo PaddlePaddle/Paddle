@@ -232,19 +232,9 @@ class TestTileAPI(unittest.TestCase):
             np_x = np.random.random([12, 14]).astype("float32")
             x = paddle.to_tensor(np_x)
 
-            positive_2 = np.array([2]).astype("int32")
-            positive_2 = paddle.to_tensor(positive_2)
-
-            repeat_times = np.array([2, 3]).astype("int32")
-            repeat_times = paddle.to_tensor(repeat_times)
-
             out_1 = paddle.tile(x, repeat_times=[2, 3])
-            out_2 = paddle.tile(x, repeat_times=[positive_2, 3])
-            out_3 = paddle.tile(x, repeat_times=repeat_times)
 
             assert np.array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
-            assert np.array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
-            assert np.array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
 
 
 if __name__ == "__main__":
