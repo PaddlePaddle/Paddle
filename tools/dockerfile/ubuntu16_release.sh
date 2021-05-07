@@ -96,7 +96,7 @@ function install_gcc(){
 
 
 function install_jupyter() {
-  if [[ ${WITH_NOTEBOOK} == "ON" ]]; then
+  if [[ ${WITH_NOTEBOOK} == "ON" ]];then
     # install jupyter notebook
   fi
 }

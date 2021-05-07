@@ -46,7 +46,10 @@ ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 
 # Install Python3.7
-RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
+RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
+    tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
+    ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
+    wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
     tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.7.0 --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
@@ -71,8 +74,8 @@ WORKDIR pip-20.0.1
 RUN python3.7 setup.py install
 
 WORKDIR /home
-RUN rm Python-$version.tgz setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
-    rm -r Python-$version setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1
+RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
+    rm -r setuptools-50.3.2 pip-20.0.1
 
 # Install Go and glide
 WORKDIR /home
