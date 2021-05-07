@@ -294,27 +294,27 @@ class Test_execute_samplecode(unittest.TestCase):
         os.remove(self.failedSampleCodeFile)
 
     def test_run_success(self):
-        result, tfname, msg = execute_samplecode(self.successSampleCodeFile)
+        result, tfname, msg, exec_time = execute_samplecode(
+            self.successSampleCodeFile)
         self.assertTrue(result)
         self.assertEqual(self.successSampleCodeFile, tfname)
         self.assertIsNotNone(msg)
         self.assertLess(msg.find('skipped'), 0)
+        self.assertLess(exec_time, 10)
 
     def test_run_failed(self):
-        result, tfname, msg = execute_samplecode(self.failedSampleCodeFile)
+        result, tfname, msg, exec_time = execute_samplecode(
+            self.failedSampleCodeFile)
         self.assertFalse(result)
         self.assertEqual(self.failedSampleCodeFile, tfname)
         self.assertIsNotNone(msg)
         self.assertLess(msg.find('skipped'), 0)
+        self.assertLess(exec_time, 10)
 
 
 def clear_summary_info():
-    sampcd_processor.SUMMARY_INFO = {
-        'success': [],
-        'failed': [],
-        'skiptest': [],
-        # ... required not-match
-    }
+    for k in sampcd_processor.SUMMARY_INFO.keys():
+        sampcd_processor.SUMMARY_INFO[k].clear()
 
 
 class Test_sampcd_extract_to_file(unittest.TestCase):
