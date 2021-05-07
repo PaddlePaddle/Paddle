@@ -406,7 +406,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
-    bool use_global_beta_pow = ctx.Attr<int64_t>("use_global_beta_pow");
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
 
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
