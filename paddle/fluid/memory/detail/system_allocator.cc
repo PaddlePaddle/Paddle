@@ -48,8 +48,8 @@ void* AlignedMalloc(size_t size) {
   void* p = nullptr;
   size_t alignment = 32ul;
 #ifdef PADDLE_WITH_MKLDNN
-  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
-  // memory alignment
+// refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
+// memory alignment
 #ifdef __linux__
   alignment = 1 << 21;
 #else
@@ -64,7 +64,7 @@ void* AlignedMalloc(size_t size) {
       error, 0,
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
-//TODO(jczaja): Enable MacOS Huge Pages if desired
+// TODO(jczaja): Enable MacOS Huge Pages if desired
 #ifdef __linux__
   error = madvise(p, size, MADV_HUGEPAGE | MADV_SEQUENTIAL);
   PADDLE_ENFORCE_EQ(
