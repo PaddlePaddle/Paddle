@@ -115,13 +115,13 @@ class InstanceNorm1D(_InstanceNormBase):
 
     ..  math::
         
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
+        \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
+        \mu_{\\beta})^2 \qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Note:
         `H` means height of feature map, `W` means width of feature map.
@@ -187,13 +187,13 @@ class InstanceNorm2D(_InstanceNormBase):
 
     ..  math::
         
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
+        \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Note:
         `H` means height of feature map, `W` means width of feature map.
@@ -257,13 +257,13 @@ class InstanceNorm3D(_InstanceNormBase):
 
     ..  math::
         
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//\
+        \ mean\ of\ one\  feature\ map\ in\ mini-batch \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Note:
         `H` means height of feature map, `W` means width of feature map.
@@ -450,11 +450,11 @@ class LayerNorm(layers.Layer):
 
     ..  math::
 
-        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} x_i
+        \mu & = \frac{1}{H}\sum_{i=1}^{H} x_i \\
 
-        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}{(x_i - \\mu)^2} + \\epsilon}
+        \sigma & = \sqrt{\frac{1}{H}\sum_{i=1}^{H}{(x_i - \mu)^2} + \epsilon} \\
 
-        y & = f(\\frac{g}{\\sigma}(x - \\mu) + b)
+        y & = f(\frac{g}{\sigma}(x - \mu) + b)
 
     - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
     - :math:`H`: the number of hidden units in a layers
@@ -672,10 +672,10 @@ class BatchNorm1D(_BatchNormBase):
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//\
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance
 
     When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
@@ -690,9 +690,9 @@ class BatchNorm1D(_BatchNormBase):
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
     - :math:`\\gamma` : trainable proportional parameter
@@ -776,13 +776,13 @@ class BatchNorm2D(_BatchNormBase):
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//\
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance
 
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
@@ -794,13 +794,13 @@ class BatchNorm2D(_BatchNormBase):
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable proportional parameter
-    - :math:`\\beta` : trainable deviation parameter
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable proportional parameter
+    - :math:`\beta` : trainable deviation parameter
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -859,19 +859,19 @@ class BatchNorm3D(_BatchNormBase):
     r"""
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When use_global_stats = False, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
+    When use_global_stats = False, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//\
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance
 
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
@@ -883,13 +883,13 @@ class BatchNorm3D(_BatchNormBase):
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable proportional parameter
-    - :math:`\\beta` : trainable deviation parameter
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable proportional parameter
+    - :math:`\beta` : trainable deviation parameter
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -970,22 +970,22 @@ class SyncBatchNorm(_BatchNormBase):
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    When model in training mode, the :math:`\\mu_{\\beta}` 
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
+    When model in training mode, the :math:`\mu_{\beta}` 
+    and :math:`\sigma_{\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
     Calculated as follows:
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//\
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance 
 
     - :math:`x` : whole mini-batch data in all gpus
     - :math:`m` : the size of the whole mini-batch data
 
-    When model in evaluation mode, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are global statistics (moving_mean and moving_variance, 
+    When model in evaluation mode, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance, 
     which usually got from the pre-trained model). Global statistics calculated as follows:
 
     .. math::
@@ -996,13 +996,13 @@ class SyncBatchNorm(_BatchNormBase):
  
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\eps}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \eps}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\eps` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable scale parameter vector
-    - :math:`\\beta` : trainable shift parameter vector 
+    - :math:`\eps` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable scale parameter vector
+    - :math:`\beta` : trainable shift parameter vector 
 
     Note:
         If you want to use container to pack your model and has ``SyncBatchNorm`` in the 

@@ -158,7 +158,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
 Sigmoid Activation Operator
 
-$$out = \\frac{1}{1 + e^{-x}}$$
+$$out = \frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -171,7 +171,7 @@ $$out = x * \\frac{1}{1 + e^{-x}}$$
 UNUSED constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
-$$out = \\log \\frac{1}{1 + e^{-x}}$$
+$$out = \log \frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -192,21 +192,21 @@ $$out = \max(x, 0)$$
 UNUSED constexpr char TanhDoc[] = R"DOC(
 Tanh Activation Operator.
 
-$$out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
 UNUSED constexpr char TanhShrinkDoc[] = R"DOC(
 TanhShrink Activation Operator.
 
-$$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-$$out=\\sqrt{x}=x^{1/2}$$
+$$out = \sqrt{x} = x^{1/2}$$
 
 **Note**:
   input value must be greater than or equal to zero.
@@ -218,21 +218,21 @@ Rsqrt Activation Operator.
 
 Please make sure input is legal in case of numeric errors.
 
-$$out = \\frac{1}{\\sqrt{x}}$$
+$$out = \frac{1}{\sqrt{x}}$$
 
 )DOC";
 
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \\lceil x \\rceil$$
+$$out = \left \lceil x \right \rceil$$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator. Computes floor of x element-wise.
 
-$$out = \\lfloor x \\rfloor$$
+$$out = \left \lfloor x \right \rfloor$$
 
 )DOC";
 
@@ -293,7 +293,7 @@ The OP rounds the values in the input to the nearest integer value.
 UNUSED constexpr char ReciprocalDoc[] = R"DOC(
 Reciprocal Activation Operator.
 
-$$out = \\frac{1}{x}$$
+$$out = \frac{1}{x}$$
 
 )DOC";
 
@@ -343,7 +343,7 @@ $$out = x^2$$
 UNUSED constexpr char SoftsignDoc[] = R"DOC(
 Softsign Activation Operator.
 
-$$out = \\frac{x}{1 + \|x\|}$$
+$$out = \frac{x}{1 + \|x\|}$$
 
 )DOC";
 
@@ -457,9 +457,9 @@ class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
 
 ..  math::
     out = \begin{cases}
-         x - \lambda, \text{if } x > \lambda \\
-         x + \lambda, \text{if } x < -\lambda \\
-         0,  \text{otherwise}
+         x - \lambda, & \text{if } x > \lambda \\
+         x + \lambda, & \text{if } x < -\lambda \\
+         0, & \text{otherwise}
          \end{cases}
 
 )DOC");
@@ -606,7 +606,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 STanh Activation Operator.
 
-$$out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
+$$out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
 )DOC");
   }
@@ -626,8 +626,8 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
 ..  math::
 
     out = \begin{cases}
-             x,  \text{if } x > threshold \\
-             0,  \text{otherwise}
+             x, & \text{if } x > threshold \\
+             0, & \text{otherwise}
           \end{cases}
 )DOC");
   }
@@ -670,7 +670,7 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Swish Activation Operator.
 
-$$out = \\frac{x}{1 + e^{- \beta \ x}}$$
+$$out = \frac{x}{1 + e^{- \beta \ x}}$$
 
 )DOC");
   }
@@ -1051,18 +1051,19 @@ namespace plat = paddle::platform;
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,              \
                     ops::ActivationGradOpInplaceInferer);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name, functor,        \
-                                       grad_functor)                      \
-  REGISTER_OP_CPU_KERNEL(                                                 \
-      act_type, ops::ActivationKernel<paddle::platform::CPUDeviceContext, \
-                                      ops::functor<float>>,               \
-      ops::ActivationKernel<paddle::platform::CPUDeviceContext,           \
-                            ops::functor<double>>);                       \
-  REGISTER_OP_CPU_KERNEL(                                                 \
-      act_type##_grad,                                                    \
-      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
-                                ops::grad_functor<float>>,                \
-      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
+#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name, functor,  \
+                                       grad_functor)                \
+  REGISTER_OP_CPU_KERNEL(                                           \
+      act_type,                                                     \
+      ops::ActivationKernel<paddle::platform::CPUDeviceContext,     \
+                            ops::functor<float>>,                   \
+      ops::ActivationKernel<paddle::platform::CPUDeviceContext,     \
+                            ops::functor<double>>);                 \
+  REGISTER_OP_CPU_KERNEL(                                           \
+      act_type##_grad,                                              \
+      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext, \
+                                ops::grad_functor<float>>,          \
+      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext, \
                                 ops::grad_functor<double>>);
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
@@ -1174,8 +1175,9 @@ REGISTER_OPERATOR(
 
 REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
 REGISTER_OP_CPU_KERNEL(
-    elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
-                                            ops::ELUGradGradFunctor<float>>,
+    elu_grad_grad,
+    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::ELUGradGradFunctor<float>>,
     ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                              ops::ELUGradGradFunctor<double>>,
     ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
@@ -1202,8 +1204,9 @@ REGISTER_OPERATOR(
 
 REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
 REGISTER_OP_CPU_KERNEL(
-    sqrt_grad_grad, ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
-                                              ops::SqrtGradGradFunctor<float>>,
+    sqrt_grad_grad,
+    ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::SqrtGradGradFunctor<float>>,
     ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
                               ops::SqrtGradGradFunctor<double>>,
     ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
@@ -1267,8 +1270,9 @@ REGISTER_OP_CPU_KERNEL(square,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::SquareFunctor<int64_t>>);
 REGISTER_OP_CPU_KERNEL(
-    square_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           ops::SquareGradFunctor<float>>,
+    square_grad,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::SquareGradFunctor<float>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::SquareGradFunctor<double>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
@@ -1336,8 +1340,9 @@ REGISTER_OP_CPU_KERNEL(exp,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::ExpFunctor<int64_t>>);
 REGISTER_OP_CPU_KERNEL(
-    exp_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                        ops::ExpGradFunctor<float>>,
+    exp_grad,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::ExpGradFunctor<float>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::ExpGradFunctor<double>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
@@ -1367,8 +1372,9 @@ REGISTER_OPERATOR(
 REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
 
 REGISTER_OP_CPU_KERNEL(
-    log_grad_grad, ops::LogDoubleGradKernel<plat::CPUDeviceContext,
-                                            ops::LogGradGradFunctor<float>>,
+    log_grad_grad,
+    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::LogGradGradFunctor<float>>,
     ops::LogDoubleGradKernel<plat::CPUDeviceContext,
                              ops::LogGradGradFunctor<double>>,
     ops::LogDoubleGradKernel<plat::CPUDeviceContext,
@@ -1394,14 +1400,12 @@ REGISTER_OP_VERSION(hard_shrink)
                 "((x < -threshold) + (x > threshold)); after checkpoint: out = "
                 "x * (((x < -threshold) + (x > threshold)) > 0)"));
 
-REGISTER_OP_VERSION(softplus)
-    .AddCheckpoint(
-        R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
-         " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
+REGISTER_OP_VERSION(softplus).AddCheckpoint(
+    R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
+         " softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\ \text{For numerical"
          " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("beta", "The beta value of the new formula", 1.0f)
-            .NewAttr("threshold", "The threshold value of the new formula",
-                     20.0f));
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("beta", "The beta value of the new formula", 1.0f)
+        .NewAttr("threshold", "The threshold value of the new formula", 20.0f));
 
 /* ========================================================================== */
