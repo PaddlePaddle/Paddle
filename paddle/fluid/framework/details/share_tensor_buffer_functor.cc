@@ -59,12 +59,14 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names, bool share_dims)
+    const std::vector<std::string> &out_var_names, const bool &is_variant_scope,
+    bool share_dims)
     : scope_(scope),
       scope_idx_(scope_idx),
       op_type_(op_type),
       in_var_infos_(in_var_infos),
       out_var_names_(out_var_names),
+      is_variant_scope_(is_variant_scope),
       share_dims_(share_dims) {
   PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size(),
                     platform::errors::PreconditionNotMet(
@@ -129,24 +131,19 @@ void ShareTensorBufferFunctor::CallOnce() {
 }
 
 void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
-  // if (!exec_scope_ || exec_scope_ != exec_scope) {
-  //   PADDLE_ENFORCE_NOT_NULL(exec_scope,
-  //                           platform::errors::InvalidArgument(
-  //                               "The given execution scope should not be NULL
-  //                               "
-  //                               "if the cached scope is NULL."));
-  exec_scope_ = exec_scope;
-  CallOnce();
-  // } else {
-  //   // TOOD(Aurelius84): remove this.
-  //   VLOG(3)<< "not run call once, exec_scope_: " << exec_scope_ <<"
-  //   exec_scope: " << exec_scope;
-  //   PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,
-  //                     platform::errors::InvalidArgument(
-  //                         "The given execution scope and the cached execution
-  //                         "
-  //                         "scope should be the same."));
-  // }
+  if (!exec_scope_ || is_variant_scope_) {
+    PADDLE_ENFORCE_NOT_NULL(exec_scope,
+                            platform::errors::InvalidArgument(
+                                "The given execution scope should not be NULL"
+                                "if the cached scope is NULL."));
+    exec_scope_ = exec_scope;
+    CallOnce();
+  } else {
+    PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,
+                      platform::errors::InvalidArgument(
+                          "The given execution scope and the cached execution"
+                          "scope should be the same."));
+  }
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     const auto &in_tensor = GetTensorFromVar(in_out_vars_[i].first);

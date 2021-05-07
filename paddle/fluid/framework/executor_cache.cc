@@ -99,6 +99,7 @@ std::vector<std::string> ParseSafeEagerDeletionSkipVars(
   // prevent it being deleted when grad op is called multiple times.
   for (const std::string &var_name : op_inputs) {
     if (op_outputs.find(var_name) == op_outputs.end()) {
+      VLOG(2) << "skip eager var: " << var_name;
       skip_eager_vars.emplace_back(var_name);
     }
   }

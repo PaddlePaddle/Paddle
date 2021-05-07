@@ -136,6 +136,10 @@ class OpHandleBase {
   void SetLocalExecScopes(
       const std::unordered_map<Scope *, Scope *> &scope_map);
 
+  void SetIsVariantScope(bool is_variant_scope) {
+    is_variant_scope_ = is_variant_scope;
+  }
+
  protected:
   virtual std::vector<Scope *> GetLocalScopes() = 0;
 
@@ -156,6 +160,7 @@ class OpHandleBase {
 
   std::vector<Scope *> local_exec_scopes_;
   bool skip_running_ = false;
+  bool is_variant_scope_ = false;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::unordered_map<int, gpuEvent_t> events_;

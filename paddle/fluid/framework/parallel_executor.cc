@@ -1511,6 +1511,7 @@ void ParallelExecutor::ResetOpHandleScopeMapOfGraphs(
     auto ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*g);
     for (auto *op : ops) {
       op->SetLocalExecScopes(scope_map);
+      op->SetIsVariantScope(true);
     }
   }
 }

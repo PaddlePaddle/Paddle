@@ -91,7 +91,6 @@ void EagerDeletionOpHandle::InitCUDA() {
 }
 
 void EagerDeletionOpHandle::CallOnce() {
-  vars_.clear();
   PADDLE_ENFORCE_EQ(
       vars_.empty(), true,
       platform::errors::InvalidArgument(
@@ -110,11 +109,10 @@ void EagerDeletionOpHandle::CallOnce() {
 std::string EagerDeletionOpHandle::Name() const { return "eager_deletion"; }
 
 void EagerDeletionOpHandle::RunImpl() {
-  // if (vars_.size() != var_infos_.size() ||
-  //     pre_scope_ != local_exec_scopes_[0]) {
-  //   pre_scope_ = scope_;
-  CallOnce();
-  // }
+  if (vars_.size() != var_infos_.size() || is_variant_scope_) {
+    vars_.clear();
+    CallOnce();
+  }
 
   platform::RecordEvent record_event(Name());
   std::deque<std::shared_ptr<memory::Allocation>> garbages;

@@ -67,7 +67,7 @@ ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
     const std::vector<std::string> &out_var_names, bool share_dims)
     : OpHandleBase(node),
       functor_(scope, scope_idx, op_type, in_var_infos, out_var_names,
-               share_dims) {}
+               is_variant_scope_, share_dims) {}
 
 std::unordered_map<std::string, std::string>
 ShareTensorBufferOpHandle::ReusedVars() const {
