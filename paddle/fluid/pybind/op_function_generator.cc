@@ -268,6 +268,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     %s
     tracer->TraceOp("%s", ins, outs, attrs, {%s});
     PyEval_RestoreThread(tstate);
+    tstate = nullptr;
     return %s;
   }
   catch(...) {
