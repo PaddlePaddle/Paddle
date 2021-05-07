@@ -37,8 +37,19 @@ class ReshapeOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
+
+    for (int i = 0; i < input->getDimensions().nbDims; i++) {
+      std::cout << "reshape_input->getDimensions(): "
+                << input->getDimensions().d[i] << std::endl;
+    }
+
     std::vector<int> shape =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
+
+    for (int i = 0; i < shape.size(); i++) {
+      std::cout << "shape[i]: " << shape[i] << std::endl;
+    }
+
     int nbDims_num = shape.size();
     nvinfer1::Dims reshape_dim;
     if (engine_->with_dynamic_shape()) {  // running the TRT Dynamic Shape mode
@@ -52,10 +63,20 @@ class ReshapeOpConverter : public OpConverter {
         reshape_dim.d[i] = shape[i + 1];
       }
     }
+
+    for (int i = 0; i < reshape_dim.nbDims; i++) {
+      std::cout << "reshape_dim.d[i]: " << reshape_dim.d[i] << std::endl;
+    }
+
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     layer->setReshapeDimensions(reshape_dim);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "reshape", {output_name}, test_mode);
+
+    for (int i = 0; i < layer->getDimensions().nbDims; i++) {
+      std::cout << "reshape_out->getDimensions(): "
+                << layer->getDimensions().d[i] << std::endl;
+    }
   }
 };
 
