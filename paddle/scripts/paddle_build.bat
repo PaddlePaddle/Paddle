@@ -26,11 +26,10 @@ set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
-taskkill /f /im op_function_generator.exe  2>NUL
 taskkill /f /im cmake.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im CL.exe 2>NUL
-taskkill /f /im Lib.exe 2>NUL
+taskkill /f /im cl.exe 2>NUL
+taskkill /f /im lib.exe 2>NUL
 taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
@@ -47,8 +46,8 @@ wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
@@ -110,6 +109,17 @@ if %ERRORLEVEL% EQU 0 (
 ) else (
     rmdir build /s/q
     git branch last_pr
+)
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day.txt
+    type %cache_dir%\day.txt
+    rmdir build /s/q
+    goto :mkbuild
 )
 
 :: git diff HEAD origin/develop --stat --name-only
@@ -373,6 +383,7 @@ set build_times=1
 rem clcache.exe -z
 
 rem -------clean up environment again-----------
+taskkill /f /im cmake.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL
 taskkill /f /im lib.exe 2>NUL
@@ -387,12 +398,13 @@ taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
 taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
+wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
@@ -766,8 +778,8 @@ wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 echo Windows CI run successfully!
 exit /b 0
