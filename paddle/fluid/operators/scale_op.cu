@@ -18,14 +18,17 @@ limitations under the License. */
 
 namespace plat = paddle::platform;
 
+namespace paddle {
+namespace operators {
+
 template <typename T>
-struct CudaAbsFunctor {
+struct CudaScaleFunctor {
   T one = static_cast<T>(1.0f);
   float scale;
   float bias;
   bool bias_after_scale;
 
-  CudaAbsFunctor(float s, float b, bool bas)
+  CudaScaleFunctor(float s, float b, bool bas)
       : scale(s), bias(b), bias_after_scale(bas) {}
 
   // scale(x) = scale * x + bias, if bias_after_scale is True
@@ -34,7 +37,7 @@ struct CudaAbsFunctor {
   __device__ __forceinline__ T operator()(const T* args) const {
     T s = static_cast<T>(scale);
     T b = static_cast<T>(bias);
-    T bas = static_cast<T>(bias_after_scale);
+    T bas = static_cast<T>(!bias_after_scale);
     return args[0] * s + b + (s - one) * b * bas;
   }
 };
@@ -74,15 +77,20 @@ class ScaleKernel<platform::CUDADeviceContext, T>
                           "but input dim is %s, output dim is %s",
                           in->dims(), out->dims()));
 
-    auto& dev = ctx.template device_context<DeviceContext>();
+    auto& dev = ctx.template device_context<platform::CUDADeviceContext>();
 
-    std::vector<const framework::Tensor*> ins = {x};
+    std::vector<const framework::Tensor*> ins = {in};
     std::vector<framework::Tensor*> outs = {out};
-    auto functor = CudaAbsFunctor();
+    auto functor =
+        CudaScaleFunctor<T>(static_cast<float>(scale), static_cast<float>(bias),
+                            static_cast<bool>(bias_after_scale));
     LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T>(dev, ins, &outs,
                                                             functor);
   }
 };
+
+}  // namespace operators
+}  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(
     scale, paddle::operators::ScaleKernel<plat::CUDADeviceContext, float>,
