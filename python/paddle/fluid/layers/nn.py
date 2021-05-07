@@ -435,7 +435,7 @@ def embedding(input,
         It will pad all-zero data when ids is 0.
 
     Args:
-        input(Variable): A Tensor or LoDTensor with type int64, which contains the id information.
+        input(Variable): A Tensor or LoDTensor with type int64 in GPU and CPU, type int32 in NPU, which contains the id information.
             The last dimension of Tensor shape must be equal to 1. The value of the input id should
             satisfy :math:`0<= id < size[0]` .
         size(tuple|list): The shape of lookup table parameter. It should have two elements which
@@ -490,8 +490,12 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    check_variable_and_dtype(input, 'input', ['int64'],
-                             'fluid.layers.embedding')
+    if core.is_compiled_with_npu():
+        check_variable_and_dtype(input, 'input', ['int32'],
+                                 'fluid.layers.embedding')
+    else:
+        check_variable_and_dtype(input, 'input', ['int64'],
+                                 'fluid.layers.embedding')
     check_dtype(dtype, 'dtype', ['uint16', 'float16', 'float32', 'float64'],
                 'fluid.layers.embedding')
 
