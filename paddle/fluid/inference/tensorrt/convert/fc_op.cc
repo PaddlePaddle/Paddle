@@ -60,11 +60,6 @@ class FcOpConverter : public OpConverter {
             : (op_desc.HasAttr("in_num_col_dims")
                    ? BOOST_GET_CONST(int, op_desc.GetAttr("in_num_col_dims"))
                    : 1);
-    PADDLE_ENFORCE_GE(x_num_col_dims, 1,
-                      platform::errors::InvalidArgument(
-                          "converter expects x_num_col_dims >= 1, but "
-                          "x_num_col_dims = %d.",
-                          x_num_col_dims));
     const std::string activation_type =
         op_desc.HasAttr("activation_type")
             ? BOOST_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
