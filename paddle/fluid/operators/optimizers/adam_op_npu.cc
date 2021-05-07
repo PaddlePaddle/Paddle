@@ -15,6 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/optimizers/adam_op.h"
 
@@ -61,27 +62,71 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     param_out->mutable_data<T>(ctx.GetPlace());
     mom1_out->mutable_data<T>(ctx.GetPlace());
     mom2_out->mutable_data<T>(ctx.GetPlace());
-    beta1_pow_out->mutable_data<T>(ctx.GetPlace());
-    beta2_pow_out->mutable_data<T>(ctx.GetPlace());
 
-    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+    // NOTE(zhiqiu): beta1_pow and beta2_pow may on CPU and not transform place.
+    if (beta1_pow->place() == platform::CPUPlace()) {
+      T beta1 = *beta1_pow->data<T>();
+      // `mutable_data` operation needs to be done after getting data
+      beta1_pow_out->mutable_data<T>(ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(beta1_pow_out, beta1);
+    } else {
+      beta1_pow_out->mutable_data<T>(ctx.GetPlace());
+    }
+    if (beta2_pow->place() == platform::CPUPlace()) {
+      T beta2 = *beta2_pow->data<T>();
+      beta2_pow_out->mutable_data<T>(ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(beta2_pow_out, beta2);
+    } else {
+      beta2_pow_out->mutable_data<T>(ctx.GetPlace());
+    }
+
+    const Tensor* beta1_tensor = nullptr;
+    const Tensor* beta2_tensor = nullptr;
+    const Tensor* epsilon_tensor = nullptr;
+
+    Tensor beta1_tmp(framework::proto::VarType::FP32);
+    Tensor beta2_tmp(framework::proto::VarType::FP32);
+    Tensor epsilon_tmp(framework::proto::VarType::FP32);
+
     if (ctx.HasInput("Beta1Tensor")) {
-      auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+      beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
       PADDLE_ENFORCE_EQ(beta1_tensor->numel(), 1,
                         platform::errors::InvalidArgument(
                             "Input(Beta1Tensor) size must be 1, but get %d",
                             beta1_tensor->numel()));
-      beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
+    } else {
+      T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+      beta1_tmp.mutable_data<T>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&beta1_tmp, beta1);
+      beta1_tensor = &beta1_tmp;
     }
-    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+
     if (ctx.HasInput("Beta2Tensor")) {
-      auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
-      PADDLE_ENFORCE_EQ(beta2_tensor->numel(), 1,
+      beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+      PADDLE_ENFORCE_EQ(beta1_tensor->numel(), 1,
                         platform::errors::InvalidArgument(
                             "Input(Beta2Tensor) size must be 1, but get %d",
                             beta2_tensor->numel()));
-      beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
+    } else {
+      T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+      beta2_tmp.mutable_data<T>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&beta2_tmp, beta2);
+      beta2_tensor = &beta2_tmp;
     }
+
+    if (ctx.HasInput("EpsilonTensor")) {
+      epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+      PADDLE_ENFORCE_EQ(epsilon_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(EpsilonTensor) size must be 1, but get %d",
+                            epsilon_tensor->numel()));
+    } else {
+      T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+      epsilon_tmp.mutable_data<T>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&epsilon_tmp, epsilon);
+      epsilon_tensor = &epsilon_tmp;
+    }
+
     VLOG(3) << "beta1_pow.numel() : " << beta1_pow->numel()
             << "beta2_pow.numel() : " << beta2_pow->numel();
     VLOG(3) << "param.numel(): " << param->numel();
@@ -97,21 +142,6 @@ class AdamNPUKernel : public framework::OpKernel<T> {
                           "beta2 pow output size should be 1, but received "
                           "value is:%d.",
                           beta2_pow_out->numel()));
-
-    // reshape
-    Tensor beta1_tensor(framework::proto::VarType::FP32);
-    beta1_tensor.mutable_data<float>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{beta1}, ctx.device_context(),
-                     &beta1_tensor);
-    Tensor beta2_tensor(framework::proto::VarType::FP32);
-    beta2_tensor.mutable_data<float>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{beta2}, ctx.device_context(),
-                     &beta2_tensor);
-
-    Tensor epsilon_tensor(framework::proto::VarType::FP32);
-    epsilon_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{epsilon}, ctx.device_context(),
-                     &epsilon_tensor);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -119,7 +149,7 @@ class AdamNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("ApplyAdamD",
                     {
                         *param, *mom1, *mom2, *beta1_pow, *beta2_pow, *lr,
-                        beta1_tensor, beta2_tensor, epsilon_tensor, *grad,
+                        *beta1_tensor, *beta2_tensor, *epsilon_tensor, *grad,
                     },
                     {
                         *param_out, *mom1_out, *mom2_out,
@@ -130,22 +160,25 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     // NOTE(zhiqiu): ApplyAdamD updates params inplace, so
     // if param and param_out is not same, we need to do copy.
     if (param_out->data<T>() != param->data<T>()) {
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-      framework::TensorCopySync(*param, ctx.GetPlace(), param_out);
+      framework::TensorCopy(
+          *param, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), param_out);
     }
     if (mom1_out->data<T>() != mom1->data<T>()) {
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-      framework::TensorCopySync(*mom1, ctx.GetPlace(), mom1_out);
+      framework::TensorCopy(
+          *mom1, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom1_out);
     }
     if (mom2_out->data<T>() != mom2->data<T>()) {
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-      framework::TensorCopySync(*mom2, ctx.GetPlace(), mom2_out);
+      framework::TensorCopy(
+          *mom2, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom2_out);
     }
     auto runner_m1 =
-        NpuOpRunner("Mul", {*beta1_pow, beta1_tensor}, {*beta1_pow_out}, {});
+        NpuOpRunner("Mul", {*beta1_pow, *beta1_tensor}, {*beta1_pow_out}, {});
     runner_m1.Run(stream);
     auto runner_m2 =
-        NpuOpRunner("Mul", {*beta2_pow, beta2_tensor}, {*beta2_pow_out}, {});
+        NpuOpRunner("Mul", {*beta2_pow, *beta2_tensor}, {*beta2_pow_out}, {});
     runner_m2.Run(stream);
   }
 };

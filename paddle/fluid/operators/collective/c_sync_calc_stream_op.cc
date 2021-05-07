@@ -46,7 +46,7 @@ Call calculation stream synchronization.
 };
 
 template <typename T>
-class CSyncCalcStreamCudaKernel : public framework::OpKernel<T> {
+class CSyncCalcStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
@@ -60,6 +60,16 @@ class CSyncCalcStreamCudaKernel : public framework::OpKernel<T> {
 #else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx->stream()));
 #endif
+
+#elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on npu place only for now."));
+
+    auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(dev_ctx->stream()));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -76,5 +86,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream, ops::CSyncCalcStreamOp,
                              ops::CSyncCalcStreamOpMaker);
 
-REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream,
-                        ops::CSyncCalcStreamCudaKernel<float>);
+REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
+
+REGISTER_OP_NPU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);

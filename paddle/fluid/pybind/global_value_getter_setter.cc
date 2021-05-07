@@ -41,6 +41,7 @@ DECLARE_int32(multiple_of_cupti_buffer_size);
 DECLARE_bool(reader_queue_speed_test_mode);
 DECLARE_int32(call_stack_level);
 DECLARE_bool(sort_sum_gradient);
+DECLARE_bool(check_kernel_launch);
 // device management
 DECLARE_int32(paddle_num_threads);
 // executor
@@ -376,7 +377,7 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_fraction_of_gpu_memory_to_use, FLAGS_initial_gpu_memory_in_mb,
       FLAGS_reallocate_gpu_memory_in_mb, FLAGS_enable_cublas_tensor_op_math,
       FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce,
-      FLAGS_conv2d_disable_cudnn);
+      FLAGS_conv2d_disable_cudnn, FLAGS_check_kernel_launch);
 #endif
 #ifdef PADDLE_WITH_XPU
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_xpus);

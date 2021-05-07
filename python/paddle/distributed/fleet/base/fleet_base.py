@@ -27,6 +27,13 @@ from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from . import topology as tp
+from .topology import ParallelMode
+from ..meta_parallel import ModelParallel
+from ..meta_parallel import PipelineParallel
+from ..meta_optimizers import HybridParallelOptimizer
+from ..meta_optimizers import HybridParallelGradScaler
+
+__all__ = []
 
 
 def _inited_runtime_handler_(func):
@@ -219,6 +226,9 @@ class Fleet(object):
 
         if paddle.fluid.framework.in_dygraph_mode():
             if self.worker_num() == 1:
+                # if worker_num is 1, should construct default topology & hcg
+                self._topology = tp.CommunicateTopology()
+                self._hcg = tp.HybridCommunicateGroup(self._topology)
                 return
             if parallel_helper._is_parallel_ctx_initialized():
                 warnings.warn(
@@ -694,10 +704,12 @@ class Fleet(object):
 
         self._context = {}
 
-        # TODO(shenliang03): This is a temporary solution to support amp. In the case of a dynamic graph, 
-        # the optimizer is returned directly. This problem will be fixed in the future.
         if paddle.fluid.framework.in_dygraph_mode():
-            return optimizer
+            if self.worker_num() > 1:
+                return HybridParallelOptimizer(optimizer, self._hcg,
+                                               self._user_defined_strategy)
+            else:
+                return optimizer
         return self
 
     @dygraph_only
@@ -756,15 +768,25 @@ class Fleet(object):
 
 
         """
-        assert model is not None
-        self.model = paddle.DataParallel(
-            model,
-            comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
-            last_comm_buffer_size=self._user_defined_strategy.
-            last_comm_group_size_MB,
-            find_unused_parameters=self._user_defined_strategy.
-            find_unused_parameters)
-        return self.model
+        assert model is not None, "model should not be None"
+        if self.worker_num() <= 1:
+            return model
+        if self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+            distributed_model = paddle.DataParallel(
+                model,
+                comm_buffer_size=self._user_defined_strategy.
+                fuse_grad_size_in_MB,
+                last_comm_buffer_size=self._user_defined_strategy.
+                last_comm_group_size_MB,
+                find_unused_parameters=self._user_defined_strategy.
+                find_unused_parameters)
+        elif self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL:
+            distributed_model = ModelParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
+            distributed_model = PipelineParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        return distributed_model
 
     @dygraph_only
     def state_dict(self):
@@ -1026,6 +1048,28 @@ class Fleet(object):
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
 
+    def _get_amp_optimizer(self):
+        # imitate target optimizer retrieval
+        amp_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'amp_init'):
+                amp_optimizer = optimizer
+                break
+
+        if amp_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'amp_init'):
+                amp_optimizer = self.user_defined_optimizer
+
+        assert amp_optimizer is not None, \
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        return amp_optimizer
+
+    def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
+        amp_optimizer = self._get_amp_optimizer()
+        return amp_optimizer.get_loss_scaling()
+
     def amp_init(self,
                  place,
                  scope=None,
@@ -1086,21 +1130,7 @@ class Fleet(object):
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                     run_example_code()       
         """
-
-        # imitate target optimizer retrieval
-        amp_optimizer = None
-        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
-            if hasattr(optimizer, 'amp_init'):
-                amp_optimizer = optimizer
-                break
-
-        if amp_optimizer is None:
-            if hasattr(self.user_defined_optimizer, 'amp_init'):
-                amp_optimizer = self.user_defined_optimizer
-
-        assert amp_optimizer is not None, \
-            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
-
+        amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
     def _final_strategy(self):
@@ -1312,3 +1342,7 @@ class Fleet(object):
         fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads
+
+    @dygraph_only
+    def distributed_scaler(self, scaler):
+        return HybridParallelGradScaler(scaler, self._hcg)

@@ -105,7 +105,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
     int actual_place = place_type;
 
     if (actual_place == -1) {
-      bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
+      bool cpu_place = (force_cpu || ctx.GetPlace() == platform::CPUPlace() ||
+                        data_type == framework::proto::VarType::BF16);
       if (cpu_place) {
         actual_place = 0;
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -116,6 +117,9 @@ class FillConstantKernel : public framework::OpKernel<T> {
     }
 
     if (actual_place == 0) {
+      VLOG(4) << "[CPU] FillConstantKernel"
+              << ((data_type == framework::proto::VarType::BF16) ? "<bfloat16>"
+                                                                 : "<T>");
       tensor->mutable_data(platform::CPUPlace(), data_type);
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),

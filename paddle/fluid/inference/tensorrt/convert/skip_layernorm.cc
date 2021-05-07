@@ -52,57 +52,57 @@ class SkipLayerNormOpConverter : public OpConverter {
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
     nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      if (engine_->use_oss()) {
-        auto creator = GetPluginRegistry()->getPluginCreator(
-            "CustomSkipLayerNormPluginDynamic", "2");
-        assert(creator != nullptr);
-        int type = static_cast<int>((engine_->WithFp16() == 1)
-                                        ? nvinfer1::DataType::kHALF
-                                        : nvinfer1::DataType::kFLOAT);
-        int ld = input1->getDimensions().d[2];  // hidden dimension
-        assert(ld > 0);
 
-        if (enable_int8) {
-          type = static_cast<int>(nvinfer1::DataType::kHALF);
-        }
-
-        const std::vector<nvinfer1::PluginField> fields{
-            {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
-            {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
-            {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
-            {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size},
-        };
-        nvinfer1::PluginFieldCollection* pluginPtr =
-            static_cast<nvinfer1::PluginFieldCollection*>(
-                malloc(sizeof(*pluginPtr) +
-                       fields.size() *
-                           sizeof(nvinfer1::PluginField)));  // remember to free
-        pluginPtr->nbFields = static_cast<int>(fields.size());
-        pluginPtr->fields = fields.data();
-
-        auto pluginObj = creator->createPlugin(
-            "CustomSkipLayerNormPluginDynamic", pluginPtr);
-        auto plugin_layer = engine_->network()->addPluginV2(
-            inputs.data(), inputs.size(), *pluginObj);
-
-        assert(plugin_layer != nullptr);
-        layer = plugin_layer;
-      } else {
-        float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-        plugin::SkipLayerNormPluginDynamic* plugin =
-            new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
-                                                   scale_size, eps, with_fp16);
-        layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
+    if (engine_->use_oss()) {
+      auto creator = GetPluginRegistry()->getPluginCreator(
+          "CustomSkipLayerNormPluginDynamic", "2");
+      PADDLE_ENFORCE_NE(
+          creator, nullptr,
+          platform::errors::InvalidArgument(
+              "fail to get creator of CustomSkipLayerNormPluginDynamic"));
+      int type = static_cast<int>((engine_->WithFp16() == 1)
+                                      ? nvinfer1::DataType::kHALF
+                                      : nvinfer1::DataType::kFLOAT);
+      int ld = input1->getDimensions().d[2];  // hidden dimension
+      PADDLE_ENFORCE_GT(ld, 0, platform::errors::InvalidArgument(
+                                   "in CustomSkipLayerNormPluginDynamic hidden "
+                                   "dimension should > 0"));
+      if (enable_int8) {
+        type = static_cast<int>(nvinfer1::DataType::kHALF);
       }
+
+      const std::vector<nvinfer1::PluginField> fields{
+          {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
+          {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
+          {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
+          {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size},
+      };
+      nvinfer1::PluginFieldCollection* pluginPtr =
+          static_cast<nvinfer1::PluginFieldCollection*>(
+              malloc(sizeof(*pluginPtr) +
+                     fields.size() *
+                         sizeof(nvinfer1::PluginField)));  // remember to free
+      pluginPtr->nbFields = static_cast<int>(fields.size());
+      pluginPtr->fields = fields.data();
+
+      auto pluginObj =
+          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+      auto plugin_layer = engine_->network()->addPluginV2(
+          inputs.data(), inputs.size(), *pluginObj);
+
+      PADDLE_ENFORCE_NE(
+          plugin_layer, nullptr,
+          platform::errors::InvalidArgument(
+              "fail to add CustomSkipLayerNormPluginDynamic layer"));
+      layer = plugin_layer;
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the Ernie(Bert) model in static"
-          "shape mode, which is not supported for the time being.\n"
-          "You can use the config.SetTRTDynamicShapeInfo(...) interface"
-          " to set the shape information to run the dynamic shape mode."));
+      float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      plugin::SkipLayerNormPluginDynamic* plugin =
+          new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
+                                                 scale_size, eps, with_fp16);
+      layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
     }
 
     auto output_name = op_desc.Output("Out")[0];

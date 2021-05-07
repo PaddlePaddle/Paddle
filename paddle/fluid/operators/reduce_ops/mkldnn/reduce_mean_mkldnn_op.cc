@@ -25,6 +25,32 @@ class ReduceMeanMKLDNNKernel : public ReduceMKLDNNKernel<T> {
   }
 };
 
+template <typename T>
+class ReduceMeanGradMKLDNNKernel : public ReduceGradMKLDNNKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const auto* input_x = ctx.Input<Tensor>("X");
+    auto input_dims = framework::vectorize(input_x->dims());
+    auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
+
+    int number_of_elements = 1;
+    if (!ctx.Attr<bool>("reduce_all")) {
+      for (size_t i = 0; i < reduce_dims.size(); ++i) {
+        reduce_dims[i] = (reduce_dims[i] >= 0)
+                             ? reduce_dims[i]
+                             : input_dims.size() + reduce_dims[i];
+        number_of_elements *= input_dims[reduce_dims[i]];
+      }
+    } else {
+      number_of_elements = input_x->numel();
+    }
+
+    this->RunKernel(ctx, dnnl::algorithm::binary_add,
+                    dnnl::algorithm::reduction_mean, 0.0f,
+                    1.0L / number_of_elements);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -32,3 +58,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(reduce_mean, MKLDNN, paddle::platform::CPUPlace,
                    ops::ReduceMeanMKLDNNKernel<float>,
                    ops::ReduceMeanMKLDNNKernel<paddle::platform::bfloat16>);
+
+REGISTER_OP_KERNEL(reduce_mean_grad, MKLDNN, paddle::platform::CPUPlace,
+                   ops::ReduceMeanGradMKLDNNKernel<float>,
+                   ops::ReduceMeanGradMKLDNNKernel<paddle::platform::bfloat16>);

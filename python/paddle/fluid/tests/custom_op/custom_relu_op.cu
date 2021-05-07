@@ -45,8 +45,12 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
   int grid = (numel + block - 1) / block;
   PD_DISPATCH_FLOATING_AND_HALF_TYPES(
       x.type(), "relu_cuda_forward_kernel", ([&] {
+        auto cpu_input = x.copy_to<data_t>(paddle::PlaceType::kCPU);
+        auto gpu_input = cpu_input.copy_to<data_t>(paddle::PlaceType::kGPU);
         relu_cuda_forward_kernel<data_t><<<grid, block, 0, x.stream()>>>(
-            x.data<data_t>(), out.mutable_data<data_t>(x.place()), numel);
+            gpu_input.data<data_t>(),
+            out.mutable_data<data_t>(x.place()),
+            numel);
       }));
 
   return {out};
