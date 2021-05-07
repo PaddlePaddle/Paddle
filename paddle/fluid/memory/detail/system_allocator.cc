@@ -22,6 +22,8 @@ limitations under the License. */
 #endif
 #include <windows.h>  // VirtualLock/VirtualUnlock
 #else
+#include <errno.h>
+#include <string.h>
 #include <sys/mman.h>  // for mlock and munlock
 #endif
 #include "gflags/gflags.h"
@@ -48,9 +50,13 @@ void* AlignedMalloc(size_t size) {
   void* p = nullptr;
   size_t alignment = 32ul;
 #ifdef PADDLE_WITH_MKLDNN
-  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
-  // memory alignment
+// refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
+// memory alignment
+#ifdef __linux__
+  alignment = 1 << 21;
+#else
   alignment = 4096ul;
+#endif
 #endif
 #ifdef _WIN32
   p = _aligned_malloc(size, alignment);
@@ -60,6 +66,17 @@ void* AlignedMalloc(size_t size) {
       error, 0,
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
+// TODO(jczaja): Enable MacOS Huge Pages if desired
+#ifdef __linux__
+  // Advise may fail due to platform capabilities
+  // so we will ignore returned error
+  error = madvise(p, size, MADV_HUGEPAGE | MADV_SEQUENTIAL);
+  if (error != 0) {
+    VLOG(4) << "Memory Advice (madvice) ignored for size: " << size
+            << " due to error: " << strerror(errno);
+  }
+#endif
+
 #endif
   PADDLE_ENFORCE_NOT_NULL(p, platform::errors::ResourceExhausted(
                                  "Fail to alloc memory of %ld size.", size));
