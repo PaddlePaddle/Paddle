@@ -491,7 +491,7 @@ def _save_binary_var(obj, path):
             format(type(obj)))
 
 
-def save(obj, path, protocol=2, **configs):
+def save(obj, path, protocol=4, **configs):
     '''
     Save an object to the specified path.
     
