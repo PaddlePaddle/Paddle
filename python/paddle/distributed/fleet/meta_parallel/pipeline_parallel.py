@@ -136,9 +136,9 @@ class PipelineParallel(MetaParallelBase):
             self._recv_activations(cache_id)
 
         if isinstance(self.caches['inputs'][cache_id], tuple):
-            inputs = tuple(t.clone() for t in self.caches['inputs'][cache_id])
+            inputs = tuple(t for t in self.caches['inputs'][cache_id])
         else:
-            inputs = self.caches['inputs'][cache_id].clone()
+            inputs = self.caches['inputs'][cache_id]
 
         self._clear_grads(inputs)
         outputs = self._layers.forward(inputs)
