@@ -27,11 +27,11 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto x = ctx.Output<framework::LoDTensor>("Out");
-    x->mutable_data<T>(x->dims(), ctx.GetPlace());
-    void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
-    int numel = x->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(x->type());
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+    out->mutable_data<T>(out->dims(), ctx.GetPlace());
+    void* ptr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
+    int numel = out->numel();
+    HcclDataType dtype = platform::ToHCCLDataType(out->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
