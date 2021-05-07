@@ -22,6 +22,8 @@ limitations under the License. */
 #endif
 #include <windows.h>  // VirtualLock/VirtualUnlock
 #else
+#include <errno.h>
+#include <string.h>
 #include <sys/mman.h>  // for mlock and munlock
 #endif
 #include "gflags/gflags.h"
@@ -68,7 +70,11 @@ void* AlignedMalloc(size_t size) {
 #ifdef __linux__
   // Advise may fail due to platform capabilities
   // so we will ignore returned error
-  madvise(p, size, MADV_HUGEPAGE | MADV_SEQUENTIAL);
+  error = madvise(p, size, MADV_HUGEPAGE | MADV_SEQUENTIAL);
+  if (error != 0) {
+    VLOG(4) << "Memory Advice (madvice) ignored for size: " << size
+            << " due to error: " << strerror(errno);
+  }
 #endif
 
 #endif
