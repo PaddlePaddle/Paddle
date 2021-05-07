@@ -134,82 +134,84 @@ def extract_code_blocks_from_docstr(docstr):
     cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
     cb_required_pat = re.compile(r"^\s*#\s*require[s|d]\s*:\s*(\S+)\s*$")
 
-    cb_started = False
-    cb_cur = []
-    cb_cur_indent = -1
-    cb_cur_name = None
-    cb_cur_seq_id = 0
-    cb_required = None
+    cb_info = {}
+    cb_info['cb_started'] = False
+    cb_info['cb_cur'] = []
+    cb_info['cb_cur_indent'] = -1
+    cb_info['cb_cur_name'] = None
+    cb_info['cb_cur_seq_id'] = 0
+    cb_info['cb_required'] = None
 
     def _cb_started():
-        nonlocal cb_started, cb_cur_name, cb_required, cb_cur_seq_id
-        cb_started = True
-        cb_cur_seq_id += 1
-        cb_cur_name = None
-        cb_required = None
+        # nonlocal cb_started, cb_cur_name, cb_required, cb_cur_seq_id
+        cb_info['cb_started'] = True
+        cb_info['cb_cur_seq_id'] += 1
+        cb_info['cb_cur_name'] = None
+        cb_info['cb_required'] = None
 
     def _append_code_block():
-        nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id, cb_required
+        # nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id, cb_required
         code_blocks.append({
-            'codes': inspect.cleandoc("\n".join(cb_cur)),
-            'name': cb_cur_name,
-            'id': cb_cur_seq_id,
-            'required': cb_required,
+            'codes': inspect.cleandoc("\n".join(cb_info['cb_cur'])),
+            'name': cb_info['cb_cur_name'],
+            'id': cb_info['cb_cur_seq_id'],
+            'required': cb_info['cb_required'],
         })
 
     for lineno, linecont in enumerate(ds_list):
         if re.search(cb_start_pat, linecont):
-            if not cb_started:
+            if not cb_info['cb_started']:
                 _cb_started()
                 continue
             else:
                 # cur block end
-                if len(cb_cur):
+                if len(cb_info['cb_cur']):
                     _append_code_block()
                 _cb_started()  # another block started
-                cb_cur_indent = -1
-                cb_cur = []
+                cb_info['cb_cur_indent'] = -1
+                cb_info['cb_cur'] = []
         else:
-            if cb_started:
+            if cb_info['cb_started']:
                 # handle the code-block directive's options
                 mo_p = cb_param_pat.match(linecont)
                 if mo_p:
                     if mo_p.group(1) == 'name':
-                        cb_cur_name = mo_p.group(2)
+                        cb_info['cb_cur_name'] = mo_p.group(2)
                     continue
                 # read the required directive
                 mo_r = cb_required_pat.match(linecont)
                 if mo_r:
-                    cb_required = mo_r.group(1)
+                    cb_info['cb_required'] = mo_r.group(1)
                 # docstring end
                 if lineno == lastlineindex:
                     mo = re.search(r"\S", linecont)
-                    if mo is not None and cb_cur_indent <= mo.start():
-                        cb_cur.append(linecont)
-                    if len(cb_cur):
+                    if mo is not None and cb_info['cb_cur_indent'] <= mo.start(
+                    ):
+                        cb_info['cb_cur'].append(linecont)
+                    if len(cb_info['cb_cur']):
                         _append_code_block()
                     break
                 # check indent for cur block start and end.
                 mo = re.search(r"\S", linecont)
                 if mo is None:
                     continue
-                if cb_cur_indent < 0:
+                if cb_info['cb_cur_indent'] < 0:
                     # find the first non empty line
-                    cb_cur_indent = mo.start()
-                    cb_cur.append(linecont)
+                    cb_info['cb_cur_indent'] = mo.start()
+                    cb_info['cb_cur'].append(linecont)
                 else:
-                    if cb_cur_indent <= mo.start():
-                        cb_cur.append(linecont)
+                    if cb_info['cb_cur_indent'] <= mo.start():
+                        cb_info['cb_cur'].append(linecont)
                     else:
                         if linecont[mo.start()] == '#':
                             continue
                         else:
                             # block end
-                            if len(cb_cur):
+                            if len(cb_info['cb_cur']):
                                 _append_code_block()
-                            cb_started = False
-                            cb_cur_indent = -1
-                            cb_cur = []
+                            cb_info['cb_started'] = False
+                            cb_info['cb_cur_indent'] = -1
+                            cb_info['cb_cur'] = []
     return code_blocks
 
 
