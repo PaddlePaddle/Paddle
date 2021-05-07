@@ -70,13 +70,13 @@ class ElementwiseWeightOpConverter : public OpConverter {
       nvinfer1::IShuffleLayer* expand_layer = nullptr;
       nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
       int dynamic_shape_offset = engine_->with_dynamic_shape() ? 1 : 0;
-      if (X->getDimensions().nbDims < 3 + dynamic_shape_offset) {
+      auto input_dim = X->getDimensions();
+      if (input_dim.nbDims < 3 + dynamic_shape_offset) {
         nvinfer1::Dims expand_shape;
         expand_shape.nbDims = 3 + dynamic_shape_offset;
         for (int i = 0; i < expand_shape.nbDims; i++) {
-          if (i < X->getDimensions().nbDims) {
-            expand_shape.d[i] =
-                X->getDimensions().d[i] < 0 ? 0 : X->getDimensions().d[i];
+          if (i < input_dim.nbDims) {
+            expand_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
           } else {
             expand_shape.d[i] = 1;
           }
@@ -96,12 +96,11 @@ class ElementwiseWeightOpConverter : public OpConverter {
             shift_weights.get(), power_weights.get());
         layer = scale_layer;
       }
-      if (X->getDimensions().nbDims < 3 + dynamic_shape_offset) {
+      if (input_dim.nbDims < 3 + dynamic_shape_offset) {
         nvinfer1::Dims squeeze_shape;
-        squeeze_shape.nbDims = X->getDimensions().nbDims;
+        squeeze_shape.nbDims = input_dim.nbDims;
         for (int i = 0; i < squeeze_shape.nbDims; i++) {
-          squeeze_shape.d[i] =
-              X->getDimensions().d[i] < 0 ? 0 : X->getDimensions().d[i];
+          squeeze_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
         }
         squeeze_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
