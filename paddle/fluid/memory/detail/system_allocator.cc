@@ -23,6 +23,8 @@ limitations under the License. */
 #include <windows.h>  // VirtualLock/VirtualUnlock
 #else
 #include <sys/mman.h>  // for mlock and munlock
+#include <errno.h>
+#include <string.h>
 #endif
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -70,8 +72,8 @@ void* AlignedMalloc(size_t size) {
   PADDLE_ENFORCE_EQ(
       error, 0,
       platform::errors::InvalidArgument(
-          "Fail to set advice to CPU memory of %ld size. Error code is  %d.",
-          size, error));
+          "Fail to set advice to CPU memory of %ld size. Error: %s.",
+          size, strerror(errno)));
 #endif
 
 #endif
