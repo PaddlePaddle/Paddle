@@ -269,10 +269,10 @@ from .fluid.layers import crop_tensor as crop  # noqa: F401
 
 # high-level api
 from .hapi import Model  # noqa: F401
-from .hapi import callbacks  # noqa: F401
+from . import callbacks  # noqa: F401
 from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
-from .hapi import hub  # noqa: F401
+from . import hub  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -335,10 +335,8 @@ __all__ = [     #noqa
            'unsqueeze_',
            'argmax',
            'Model',
-           'callbacks',
            'summary',
            'flops',
-           'hub',
            'sort',
            'split',
            'logical_and',
