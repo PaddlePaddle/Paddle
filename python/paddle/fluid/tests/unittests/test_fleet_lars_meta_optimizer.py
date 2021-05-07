@@ -18,7 +18,7 @@ from paddle import fluid
 import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-
+os.environ['FLAGS_infcheck_adamoptimizer'] = "True"
 paddle.enable_static()
 
 
