@@ -403,7 +403,8 @@ def execute_samplecode(tfname):
     end_time = time.time()
 
     if subprc.returncode != 0:
-        logger.warning("""Sample code error found in %s:
+        with open(tfname, 'r') as f:
+            logger.warning("""Sample code error found in %s:
 -----------------------
 %s
 -----------------------
@@ -411,7 +412,7 @@ subprocess return code: %d
 Error Raised from Sample Code:
 stderr: %s
 stdout: %s
-""", tfname, open(tfname).read(), subprc.returncode, err, msg)
+""", tfname, f.read(), subprc.returncode, err, msg)
         logger.info("----example code check failed----")
         result = False
     else:
