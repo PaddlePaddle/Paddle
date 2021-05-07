@@ -212,13 +212,13 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-  auto %s = GetVarBaseFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetVarBaseFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-  auto %s = GetVarBaseListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetVarBaseListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
-  auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* ARG_TEMPLATE = R"(const %s& %s)";
 
@@ -254,12 +254,13 @@ const char* OP_FUNCTION_TEMPLATE =
 R"(
 static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 {
+  PyThreadState *tstate = nullptr;
   try
   {
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args)-1 , attrs);
-    PyThreadState *tstate = PyEval_SaveThread();
+    tstate = PyEval_SaveThread();
     auto tracer = imperative::GetCurrentTracer();
     %s
     imperative::NameVarBaseMap outs = %s;
@@ -270,6 +271,9 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     return %s;
   }
   catch(...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
     throw_exception_to_python(std::current_exception());
     return NULL;
   }

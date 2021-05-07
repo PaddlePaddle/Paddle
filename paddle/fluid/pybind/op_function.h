@@ -629,6 +629,12 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
 
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type, arg_name, arg_idx));
+    }
     ::pybind11::detail::instance* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = (::pybind11::detail::instance*)PyList_GetItem(list, i);
@@ -649,6 +655,12 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
     }
   } else if (PyTuple_Check(list)) {
     Py_ssize_t len = PyTuple_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type, arg_name, arg_idx));
+    }
     ::pybind11::detail::instance* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = (::pybind11::detail::instance*)PyTuple_GetItem(list, i);  // NOLINT
@@ -746,7 +758,7 @@ struct TupleVarBasesResult<Tuple, 1> {
 
 template <typename... Args>
 static inline PyObject* MakeReturnPyObject(const std::tuple<Args...>& out) {
-  auto len = sizeof...(Args);  // std::tuple_size<decltype(out)>::value;
+  auto len = sizeof...(Args);
   PyObject* result = PyTuple_New(len);
 
   TupleVarBasesResult<decltype(out), sizeof...(Args)>::Run(out, result);
