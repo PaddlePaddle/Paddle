@@ -172,6 +172,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
             ? DataLayout::kNHWC
             : DataLayout::kNCHW;
+#endif
 
     Tensor transformed_x(x->type());
     Tensor transformed_y(y->type());
@@ -209,6 +210,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
+#endif
 
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -226,6 +228,9 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     } else {
       mode_ = CUDNN_BATCHNORM_SPATIAL;
     }
+#else
+    mode_ = CUDNN_BATCHNORM_SPATIAL;
+#endif  // CUDNN_VERSION_MIN(7, 0, 1)
 
     VLOG(3) << "Setting descriptors.";
     std::vector<int> dims;
@@ -257,6 +262,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         platform::dynload::cudnnDeriveBNTensorDescriptor(
             bn_param_desc_, data_desc_,
             test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
+#endif
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -446,7 +452,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
             ctx.GetPlace(), transformed_x.type(), reserve_space_size);
         workspace_ptr = workspace_tensor.mutable_data(
             ctx.GetPlace(), transformed_x.type(), workspace_size);
-        std::cout << "traing with cudnnBatchNormalizationForwardTrainingEx\n";
         PADDLE_ENFORCE_CUDA_SUCCESS(
             platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
                 handle, mode_, CUDNN_BATCHNORM_OPS_BN, CudnnDataType<T>::kOne(),
@@ -547,6 +552,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                       ctx.GetPlace()),
                   saved_variance->template mutable_data<BatchNormParamType<T>>(
                       ctx.GetPlace())));
+#endif
         }
       }
     }
