@@ -177,15 +177,11 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
-
-    /**to replace */
     if (layout == framework::DataLayout::kNCHW) {
-      // std::cout << "Data Fromat: NCHW\n";
       KeLocalStats<T, threads,
                    framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
           x_d, N, H * W * D, C, stats);
     } else {
-      // std::cout << "Data Format: not NCHW\n";
       KeLocalStats<T, threads,
                    framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
           x_d, N, H * W * D, C, stats);

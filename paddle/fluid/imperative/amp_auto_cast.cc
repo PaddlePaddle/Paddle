@@ -140,8 +140,6 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
 
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float16";
-      // std::cout << "Op(" << op_type << "): Cast " << pair.first << " from "
-      //         << GetDtypeStr(*pair.second.cbegin()) << " to float16";
       for (auto& var : pair.second) {
         var = CastToFP16(var);
       }
