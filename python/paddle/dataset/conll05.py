@@ -206,6 +206,7 @@ def reader_creator(corpus_reader,
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Conll05st",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_dict():
     """
@@ -223,6 +224,7 @@ def get_dict():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Conll05st",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_embedding():
     """
@@ -234,6 +236,7 @@ def get_embedding():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Conll05st",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
     """
@@ -258,6 +261,7 @@ def test():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Conll05st",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(WORDDICT_URL, 'conll05st', WORDDICT_MD5)

@@ -231,13 +231,13 @@ def cast(x, dtype):
         out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return out
 
-    check_variable_and_dtype(
-        x, 'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
-        'cast')
+    check_variable_and_dtype(x, 'x', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'uint16'
+    ], 'cast')
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64',
-        'uint8'
+        'uint8', 'uint16'
     ], 'cast')
 
     helper = LayerHelper('cast', **locals())

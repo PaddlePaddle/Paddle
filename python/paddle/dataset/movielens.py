@@ -168,6 +168,7 @@ def __reader__(rand_seed=0, test_ratio=0.1, is_test=False):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def __reader_creator__(**kwargs):
     return lambda: __reader__(**kwargs)
@@ -180,6 +181,7 @@ test = functools.partial(__reader_creator__, is_test=True)
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_movie_title_dict():
     """
@@ -199,6 +201,7 @@ def __max_index_info__(a, b):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def max_movie_id():
     """
@@ -211,6 +214,7 @@ def max_movie_id():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def max_user_id():
     """
@@ -230,6 +234,7 @@ def __max_job_id_impl__(a, b):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def max_job_id():
     """
@@ -243,6 +248,7 @@ def max_job_id():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def movie_categories():
     """
@@ -255,6 +261,7 @@ def movie_categories():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def user_info():
     """
@@ -267,6 +274,7 @@ def user_info():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def movie_info():
     """
@@ -288,6 +296,7 @@ def unittest():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(URL, "movielens", MD5)

@@ -146,7 +146,8 @@ import paddle.utils.deprecated as deprecated
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.funcitional.diag_embed",
-    reason="diag_embed in paddle.nn will removed in future")
+    level=1,
+    reason="diag_embed in paddle.nn will be removed in future")
 def diag_embed(*args):
     '''
         alias name of paddle.nn.functional.diag_embed
@@ -157,7 +158,8 @@ def diag_embed(*args):
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.remove_weight_norm",
-    reason="remove_weight_norm in paddle.nn will removed in future")
+    level=1,
+    reason="remove_weight_norm in paddle.nn will be removed in future")
 def remove_weight_norm(*args):
     '''
         alias name of paddle.nn.utils.remove_weight_norm
@@ -168,7 +170,8 @@ def remove_weight_norm(*args):
 @deprecated(
     since="2.0.0",
     update_to="paddle.nn.utils.weight_norm",
-    reason="weight_norm in paddle.nn will removed in future")
+    level=1,
+    reason="weight_norm in paddle.nn will be removed in future")
 def weight_norm(*args):
     '''
         alias name of paddle.nn.utils.weight_norm
@@ -203,7 +206,7 @@ __all__ = [     #noqa
            'Dropout3D',
            'Bilinear',
            'AlphaDropout',
-           'Unfold'
+           'Unfold',
            'RNNCellBase',
            'SimpleRNNCell',
            'LSTMCell',

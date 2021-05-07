@@ -94,7 +94,8 @@ class OptimizerWithMixedPrecision(object):
 
             if self._use_pure_bf16:
                 self._to_bf16_var_names = cast_model_to_bf16(
-                    self._train_program, self._amp_lists, self._use_bf16_guard)
+                    self._train_program, startup_program, self._amp_lists,
+                    self._use_bf16_guard)
             else:
                 rewrite_program_bf16(self._train_program, self._amp_lists)
 
@@ -168,10 +169,12 @@ class OptimizerWithMixedPrecision(object):
                                     self._to_bf16_var_names)
         if test_program is not None:
             if self._use_pure_bf16:
-                cast_model_to_bf16(test_program, self._amp_lists,
-                                   self._use_bf16_guard)
+                cast_model_to_bf16(
+                    test_program,
+                    amp_lists=self._amp_lists,
+                    use_bf16_guard=self._use_bf16_guard)
             elif use_bf16_test:
-                rewrite_program_bf16(test_program, self._amp_lists)
+                rewrite_program_bf16(test_program, amp_lists=self._amp_lists)
 
     def apply_gradients(self, params_grads):
         """

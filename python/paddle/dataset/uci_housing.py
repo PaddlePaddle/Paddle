@@ -87,6 +87,7 @@ def load_data(filename, feature_num=14, ratio=0.8):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
     """
@@ -111,6 +112,7 @@ def train():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
     """
@@ -146,6 +148,7 @@ def fluid_model():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def predict_reader():
     """
@@ -162,6 +165,7 @@ def predict_reader():
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.UCIHousing",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)

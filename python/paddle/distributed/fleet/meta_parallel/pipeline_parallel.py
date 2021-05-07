@@ -25,8 +25,19 @@ from .meta_parallel_base import MetaParallelBase
 from .pp_utils.utils import get_tensor_bytes, is_float_tensor
 from .pp_utils import utils
 from .parallel_layers.pp_layers import PipelineLayer
-from ..utils.hybrid_parallel_util import *
+
+from ..utils.hybrid_parallel_util import broadcast_mp_parameters
+from ..utils.hybrid_parallel_util import broadcast_dp_parameters
+from ..utils.hybrid_parallel_util import fused_allreduce_gradients
 from ..utils.log_util import logger
+
+__all__ = []
+
+FLOAT_TYPES = [
+    paddle.float16,
+    paddle.float32,
+    paddle.float64,
+]
 
 
 class PipelineParallel(MetaParallelBase):
@@ -125,9 +136,9 @@ class PipelineParallel(MetaParallelBase):
             self._recv_activations(cache_id)
 
         if isinstance(self.caches['inputs'][cache_id], tuple):
-            inputs = tuple(t.clone() for t in self.caches['inputs'][cache_id])
+            inputs = tuple(t for t in self.caches['inputs'][cache_id])
         else:
-            inputs = self.caches['inputs'][cache_id].clone()
+            inputs = self.caches['inputs'][cache_id]
 
         self._clear_grads(inputs)
         outputs = self._layers.forward(inputs)

@@ -640,7 +640,7 @@ class BroadcastDataMKLDNNHandler
                              platform::Place cpu_place, const Tensor* x,
                              const Tensor* y, float scale_x, float scale_y,
                              const std::string& uniq_name,
-                             std::vector<int64_t>& input_dims)
+                             const std::vector<int64_t>& input_dims)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
