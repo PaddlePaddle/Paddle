@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -52,11 +54,20 @@ struct EigenSlice<Eigen::DefaultDevice, T, Rank> {
   template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 3>; \
   template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 4>; \
   template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 5>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 6>
+  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 6>; \
+  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 7>; \
+  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 8>; \
+  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 9>
+INSTANTIATION(EigenSlice, bool);
 INSTANTIATION(EigenSlice, int);
+INSTANTIATION(EigenSlice, int8_t);
+INSTANTIATION(EigenSlice, uint8_t);
+INSTANTIATION(EigenSlice, int16_t);
 INSTANTIATION(EigenSlice, int64_t);
 INSTANTIATION(EigenSlice, float);
 INSTANTIATION(EigenSlice, double);
+INSTANTIATION(EigenSlice, platform::float16);
+INSTANTIATION(EigenSlice, platform::bfloat16);
 INSTANTIATION(EigenSlice, platform::complex64);
 INSTANTIATION(EigenSlice, platform::complex128);
 #undef INSTANTIATION
