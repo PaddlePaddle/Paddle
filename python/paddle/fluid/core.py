@@ -277,6 +277,8 @@ if avx_supported():
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
         from .core_avx import _promote_types_if_complex_exists
+        from .core_avx import _device_synchronize
+        from .core_avx import _get_current_stream
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
             from .core_avx import _erase_process_pids
@@ -336,6 +338,8 @@ if load_noavx:
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
         from .core_noavx import _promote_types_if_complex_exists
+        from .core_noavx import _device_synchronize
+        from .core_noavx import _get_current_stream
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids
