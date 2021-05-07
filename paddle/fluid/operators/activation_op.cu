@@ -1074,6 +1074,7 @@ struct CudaHardSigmoidFunctor : public BaseActivationFunctor<T> {
   // hard_sigmoid(x) = 0, when x <= -3
   //                   1, when x >= 3
   //                   x * slope + offset, otherwise
+  // slope = 1/6, offset = 3 by default
   // Inputs: args[0], the input x
   __device__ __forceinline__ T operator()(const T* args) const {
     T temp = args[0] * static_cast<T>(slope) + static_cast<T>(offset);
@@ -1095,6 +1096,7 @@ struct CudaHardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 
   // dx = (out > 0 && out < 1) ? dout * slope : 0
+  // slope = 1/6, offset = 3 by default
   // Inputs: args[0], the input dout
   //         args[1], the input out
   __device__ __forceinline__ T operator()(const T* args) const {
