@@ -951,11 +951,11 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars()))
 
-        fluid.io.save_vars(
-            executor,
-            main_program=main_program,
-            dirname=dirname,
-            vars=remaining_vars)
+        import paddle
+        for var in remaining_vars:
+            tensor = var.get_value()
+            paddle.save(
+                tensor, os.path.join(dirname, var.name), use_binary_format=True)
 
     def _ps_inference_save_persistables(self,
                                         executor,
@@ -976,20 +976,19 @@ class TheOnePSRuntime(RuntimeBase):
 
         if isinstance(executor, ParallelExecutor):
             raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
+                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
             )
 
         if not isinstance(executor, Executor):
             raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type"
-            )
+                "in fleet.save() function, executor must be as Executor type")
 
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(
-                "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
+                "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
         # Todo(MrChengmo): Save optimizer status
@@ -1011,37 +1010,33 @@ class TheOnePSRuntime(RuntimeBase):
 
         if isinstance(executor, ParallelExecutor):
             raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
+                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
             )
 
         if not isinstance(executor, Executor):
             raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type"
+                "in fleet.save() function, executor must be as Executor type")
+
+        program = self.origin_main_program if main_program is None else main_program
+
+        if isinstance(program, CompiledProgram):
+            raise TypeError(
+                "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        if main_program is not None:
-            if isinstance(main_program, CompiledProgram):
-                raise TypeError(
-                    "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
-                )
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor, main_program,
-                                          None, None, export_for_deployment)
-        else:
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor,
-                                          self.origin_main_program, None, None,
-                                          export_for_deployment, True)
-            model_basename = "__model__"
-            model_filename = os.path.join(dirname, model_basename)
+        import paddle
+        feed_vars = [
+            program.global_block().var(name) for name in feeded_var_names
+        ]
+        infer_program = paddle.static.normalize_program(program, feed_vars,
+                                                        target_vars)
+        infer_program._copy_dist_param_info_from(program)
 
-            with open(model_filename, "rb") as f:
-                program_desc_str = f.read()
+        model_basename = "__model__"
+        model_basename = os.path.join(dirname, model_basename)
+        paddle.save(infer_program, model_basename)
 
-            program = Program.parse_from_string(program_desc_str)
-            program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(executor, dirname, program,
-                                                 mode)
+        self._ps_inference_save_persistables(executor, dirname, program, mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)

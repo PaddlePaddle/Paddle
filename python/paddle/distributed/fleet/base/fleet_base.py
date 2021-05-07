@@ -578,6 +578,48 @@ class Fleet(object):
         """
         self._runtime_handle._stop_worker()
 
+    def save(self, dirname, feed=[], fetch=[], **configs):
+        inference = True
+
+        if not feed and not fetch:
+            inference = False
+
+        place = paddle.CPUPlace()
+        executor = paddle.static.Executor(place)
+
+        if inference:
+            feeded_var_names = []
+            fetch_var_names = []
+
+            for var in feed:
+                if isinstance(var, str):
+                    feeded_var_names.append(var)
+                elif isinstance(var, paddle.static.Variable):
+                    feeded_var_names.append(var.name)
+                else:
+                    raise ValueError("feed must be [str|Variable]")
+
+            for var in fetch:
+                if isinstance(var, str):
+                    fetch_var_names.append(var)
+                elif isinstance(var, paddle.static.Variable):
+                    fetch_var_names.append(var.name)
+                else:
+                    raise ValueError("feed must be [str|Variable]")
+
+            fetch_vars = [
+                paddle.static.default_main_program().global_block().var(name)
+                for name in fetch_var_names
+            ]
+
+            self.save_inference_model(executor, dirname, feeded_var_names,
+                                      fetch_vars)
+        else:
+            increment_mode = 0
+            if "mode" in configs:
+                increment_mode = int(configs["mode"])
+            self.save_persistables(executor, dirname, mode=increment_mode)
+
     def save_inference_model(self,
                              executor,
                              dirname,
@@ -605,6 +647,9 @@ class Fleet(object):
                 fleet.init_server()
 
         """
+        warnings.warn(
+            "'save_inference_model' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
+        )
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
@@ -651,6 +696,9 @@ class Fleet(object):
                 fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
 
         """
+        warnings.warn(
+            "'save_persistables' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
+        )
 
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
