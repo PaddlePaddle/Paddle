@@ -78,6 +78,7 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
+rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
@@ -147,10 +148,11 @@ goto :CASE_%1
 
 echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
-echo "wincheck_mkl: run Windows MKL/GPU/UnitTest CI tasks on Windows"
-echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
+echo "wincheck_mkl: run Windows MKL/GPU PR CI tasks on Windows"
+echo "wincheck_openbals: run Windows OPENBLAS/CPU PR CI tasks on Windows"
 echo "build_avx_whl: build Windows avx whl package on Windows"
 echo "build_no_avx_whl: build Windows no avx whl package on Windows"
+echo "build_inference_lib: build Windows inference library on Windows"
 exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
@@ -210,6 +212,7 @@ goto:success
 
 rem ------Build windows inference library------
 :CASE_build_inference_lib
+set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
 
@@ -259,9 +262,10 @@ if "%WITH_GPU%"=="ON" (
 )
 
 rem ------initialize the python environment------
+@ECHO ON
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
-if %WITH_PYTHON% == "OFF" (
+if %WITH_PYTHON% == "ON" (
     where python
     where pip
     pip install wheel --user
