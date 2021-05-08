@@ -88,16 +88,12 @@ cc_library(eager_deletion_op_handle SRCS eager_deletion_op_handle.cc DEPS lod_te
 
 set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
     multi_devices_helper
-    sequential_execution_pass
-    modify_op_lock_and_record_event_pass
-    all_reduce_deps_pass
     reference_count_pass
     eager_deletion_pass
     buffer_shared_inplace_op_pass
     buffer_shared_cross_op_memory_reuse_pass
     inplace_addto_op_pass
-    set_reader_device_info_utils
-    add_reader_dependency_pass)
+    set_reader_device_info_utils)
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
@@ -132,6 +128,10 @@ set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
     multi_batch_merge_pass 
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass
+    sequential_execution_pass
+    all_reduce_deps_pass
+    add_reader_dependency_pass
+    modify_op_lock_and_record_event_pass
     coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
     fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass
     sync_batch_norm_pass runtime_context_cache_pass)

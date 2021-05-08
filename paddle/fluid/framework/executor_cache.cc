@@ -16,7 +16,6 @@
 
 namespace paddle {
 namespace framework {
-class BlockDesc;
 class ProgramDesc;
 }  // namespace framework
 }  // namespace paddle
@@ -26,45 +25,88 @@ namespace framework {
 
 namespace details {
 
-static void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
-                                   std::vector<std::string> *all_vars) {
+static ExecutionStrategy GetExecutionStrategy(
+    const ExecutorInfoCache::CacheKey &cache_key) {
+  framework::ExecutionStrategy execution_strategy;
+
+  switch (cache_key.device_type_) {
+    case platform::DeviceType::CPU: {
+      execution_strategy.num_threads_ = 2;
+      break;
+    }
+    case platform::DeviceType::CUDA: {
+      execution_strategy.num_threads_ = 4;
+      break;
+    }
+    case platform::DeviceType::XPU: {
+      execution_strategy.num_threads_ = 1;
+      break;
+    }
+    default:
+      PADDLE_THROW(platform::errors::Unavailable("Unsupport Device type %d.",
+                                                 cache_key.device_type_));
+  }
+  execution_strategy.use_device_ = cache_key.device_type_;
+
+  return execution_strategy;
+}
+
+void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
+                            std::vector<std::string> *all_vars) {
   for (auto &var : append_vars) {
     all_vars->emplace_back(var);
   }
 }
 
-static void AppendSafeEagerDeletionSkipVars(
-    const framework::ProgramDesc &program,
-    std::vector<std::string> *skip_vars) {
-  const framework::BlockDesc &block = program.Block(0);
-  const std::vector<framework::OpDesc *> &all_ops = block.AllOps();
+/*
+ * NOTE(Aurelius84): In ParallelExecutor, memory optimized pass will be applied.
+ * To avoid eagerly deleting last alive variables which are necessary in
+ * backward program, we firstly parse these variable names as
+ * skip_eager_vars. While executing pe.run skip_eager_vars are used to
+ * skip memory optimization.
+ *
+ * Variables satisfying the following rules are considered as skip_eager_var:
+ *
+ *   1. it is an output var in run_program_op
+ *   2. it is an input var used in backward_op
+ */
+std::vector<std::string> ParseSafeEagerDeletionSkipVars(
+    const ProgramDesc &program, int64_t forward_op_nums,
+    const std::vector<std::string> &output_var_names) {
+  // step 1: all out_vars are skip_eager_var
+  std::vector<std::string> skip_eager_vars(output_var_names);
+  std::unordered_set<std::string> visited_vars;
 
-  std::unordered_set<std::string> grad_op_output;
-  std::unordered_set<std::string> grad_op_input;
-  for (const framework::OpDesc *op : all_ops) {
-    int op_role = BOOST_GET_CONST(
-        int, op->GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
-    if ((op_role & static_cast<int>(framework::OpRole::kBackward)) == 0) {
-      continue;
-    }
+  auto all_ops = program.Block(0).AllOps();
+  size_t backward_op_start_index =
+      forward_op_nums + (output_var_names.size() * 2);
 
+  // step 2: parse the necessary variable of backward op
+  std::unordered_set<std::string> op_outputs;
+  std::unordered_set<std::string> op_inputs;
+  for (auto i = backward_op_start_index; i < all_ops.size(); ++i) {
+    framework::OpDesc *op = all_ops[i];
     for (const std::string &in_arg_name : op->InputArgumentNames()) {
-      grad_op_input.emplace(in_arg_name);
+      op_inputs.emplace(in_arg_name);
     }
     for (const std::string &out_arg_name : op->OutputArgumentNames()) {
-      grad_op_output.emplace(out_arg_name);
+      op_outputs.emplace(out_arg_name);
     }
   }
 
   // For the grad op input variables, if it is not output of grad_op, it may
   // be output of forward op and we should set the variables as skip_var to
   // prevent it being deleted when grad op is called multiple times.
-  for (const std::string &var_name : grad_op_input) {
-    if (grad_op_output.find(var_name) == grad_op_output.end()) {
-      skip_vars->emplace_back(var_name);
+  for (const std::string &var_name : op_inputs) {
+    if (op_outputs.find(var_name) == op_outputs.end()) {
+      VLOG(2) << "skip eager var: " << var_name;
+      skip_eager_vars.emplace_back(var_name);
     }
   }
+  VLOG(3) << "Found skip_eager_vars: " << skip_eager_vars.size();
+  return skip_eager_vars;
 }
+
 }  // namespace details
 
 // C++11 removes the need for manual locking. Concurrent execution shall wait if
@@ -75,38 +117,49 @@ ExecutorInfoCache &ExecutorInfoCache::Instance() {
   return g_exe_cache_info_map;
 }
 
-std::shared_ptr<framework::ExecutorPrepareContext> GetExecutorInfoFromCache(
-    const framework::Executor &exe, const framework::ExecutionContext &ctx,
-    const std::vector<std::vector<std::string>> &ctx_output_names,
-    bool is_grad) {
-  auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+void ExecutorInfoCache::Finalize() {
+  // NOTE(Aurelius84): DO NOT perform finalize in destructor
+  // to avoid problems caused by destructor order of static
+  // object.
+  info_map_.clear();
+}
 
+std::shared_ptr<framework::ParallelExecutor> GetExecutorInfoFromCache(
+    const ExecutorInfoCache::CacheKey &cache_key, framework::Scope *scope,
+    const std::vector<std::string> &output_var_names) {
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
-  auto cache_key = framework::ExecutorInfoCache::KeyInfo(program, is_grad);
 
   if (!cached_exe_info.Has(cache_key)) {
-    VLOG(1) << "create exe_info for program: " << program
-            << " is_grad: " << is_grad;
-    // skip delete vars
-    std::vector<std::string> skip_vars;
-    for (auto &output_names : ctx_output_names) {
-      details::AppendSkipDeletionVars(output_names, &skip_vars);
-    }
-    if (is_grad) {
-      details::AppendSafeEagerDeletionSkipVars(*program, &skip_vars);
-    }
+    VLOG(1) << "create exe_info for " << cache_key.DebugString();
 
-    VLOG(2) << "Prepare to skip " << skip_vars.size()
-            << " var(s): " << string::join_strings(skip_vars, ' ');
-    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx =
-        std::move(exe.Prepare(*program, /*block_id=*/0, skip_vars));
+    framework::BuildStrategy build_strategy;
+    auto execution_strategy = details::GetExecutionStrategy(cache_key);
 
-    cached_exe_info.Insert(cache_key, exe_ctx);
-    return exe_ctx;
+    auto graph = std::make_shared<framework::ir::Graph>(
+        *cache_key.program_desc_, cache_key.start_op_index_,
+        cache_key.end_op_index_);
+    auto parallel_executor = std::make_shared<framework::ParallelExecutor>(
+        cache_key.place_, scope, execution_strategy, build_strategy,
+        graph.get());
+    parallel_executor->PrepareLocalExeScopes(scope);
+
+    framework::ExecutorInfoCache::ValueType cache_val = {parallel_executor,
+                                                         graph};
+    cached_exe_info.Insert(cache_key, cache_val);
+
+    return parallel_executor;
   } else {
-    VLOG(1) << "get exe_info from cache by program: " << program
-            << " is_grad: " << is_grad;
-    return cached_exe_info.Get(cache_key);
+    VLOG(1) << "get exe_info from cache by: " << cache_key.DebugString();
+    auto cache_val = cached_exe_info.GetMutable(cache_key);
+    auto parallel_executor = cache_val.first;
+    // update op_handle scope_map in pe->executor_->Graph
+    std::unordered_map<Scope *, Scope *> scope_map = {
+        {parallel_executor->GetLocalScopes().front(), scope}};
+    parallel_executor->ReSetOpScopeMapOfGraphs(scope_map);
+    // need to re-create tmp variable in new scope
+    parallel_executor->PrepareLocalExeScopes(scope);
+
+    return parallel_executor;
   }
 }
 

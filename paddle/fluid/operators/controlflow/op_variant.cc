@@ -68,5 +68,20 @@ const void *OpVariant::RawPointer() const {
   return boost::apply_visitor(RawPointerVisitor(), op_);
 }
 
+void AppendOpVariantByOpName(const std::vector<framework::OpDesc *> &op_descs,
+                             const std::string &candidate_op_name,
+                             std::vector<OpVariant> *result_ops) {
+  PADDLE_ENFORCE_NOT_NULL(
+      result_ops,
+      platform::errors::Unavailable("result_ops should not be a null_ptr."));
+  for (auto *op_desc : op_descs) {
+    PADDLE_ENFORCE_NOT_NULL(op_desc, platform::errors::Unavailable(
+                                         "op_desc should not be a null_ptr."));
+    if (op_desc->Type() == candidate_op_name) {
+      result_ops->emplace_back(op_desc);
+    }
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle
