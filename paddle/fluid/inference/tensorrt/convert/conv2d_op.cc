@@ -160,7 +160,7 @@ class Deconv2dOpConverter : public OpConverter {
             nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IDeconvolutionLayer* {
           auto* layer =
-              TRT_ENGINE_ADD_LAYER(engine_, Deconvolution, *inputs, n_input,
+              TRT_ENGINE_ADD_LAYER(engine_, Deconvolution, *inputs, n_output,
                                    ksize, weight.get(), bias.get());
           return layer;
         },

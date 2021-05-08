@@ -411,7 +411,8 @@ void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::MKLDNNDeviceContext* dev_ctx =
       (platform::MKLDNNDeviceContext*)pool.Get(predictor_.place_);
-  dev_ctx->ResetBlobMap();
+  dev_ctx->ResetBlobMap(
+      paddle::platform::MKLDNNDeviceContext::tls().get_curr_exec());
 }
 
 void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {

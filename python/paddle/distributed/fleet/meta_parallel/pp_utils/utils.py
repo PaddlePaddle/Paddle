@@ -16,7 +16,18 @@ import abc
 import paddle
 from ...utils import hybrid_parallel_util as hp_util
 
-__all__ = ['get_tensor_bytes', ]
+__all__ = []
+
+FLOAT_TYPES = [
+    paddle.float16,
+    paddle.float32,
+    paddle.float64,
+]
+
+
+def is_float_tensor(tensor):
+    """Is a float tensor"""
+    return tensor.dtype in FLOAT_TYPES
 
 
 def get_tensor_bytes(tensor):
@@ -48,10 +59,6 @@ class Generator():
         self.stage_id = stage_id
         self.prev_stage = self.stage_id - 1
         self.next_stage = self.stage_id + 1
-        assert self.micro_batches >= self.stages, (
-            "micro_batches {} "
-            "must be greater than or equal to {}".format(self.micro_batches,
-                                                         self.stages))
 
     @abc.abstractmethod
     def generate(self):
@@ -73,18 +80,25 @@ class TrainGenerator(Generator):
         cmds = []
         forward_steps = 0
         backward_steps = 0
-        while (forward_steps < startup_steps):
-            cmds.append(Forward)
-            forward_steps += 1
+        #while (forward_steps < startup_steps):
+        #    cmds.append(Forward(cache_id=forward_steps))
+        #    forward_steps += 1
+        #while (forward_steps < self.micro_batches):
+        #    cmds.append(Forward(cache_id=forward_steps))
+        #    forward_steps += 1
+        #    cmds.append(Backward(cache_id=backward_steps))
+        #    backward_steps += 1
+        #while (backward_steps < self.micro_batches):
+        #    cmds.append(Backward(cache_id=backward_steps))
+        #    backward_steps += 1
+        #cmds.append(Optimize())
         while (forward_steps < self.micro_batches):
-            cmds.append(Forward)
+            cmds.append(Forward(cache_id=forward_steps))
             forward_steps += 1
-            cmds.append(Backward)
-            backward_steps += 1
         while (backward_steps < self.micro_batches):
-            cmds.append(Backward)
+            cmds.append(Backward(cache_id=backward_steps))
             backward_steps += 1
-        cmds.append(Optimize)
+        cmds.append(Optimize())
         yield cmds
 
 

@@ -575,7 +575,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     // SavedVariance have been reverted in forward operator
     const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
@@ -584,6 +584,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
+    use_global_stats = is_test || use_global_stats;
 
     // batch_norm with inplace as false will take X as grad input, which
     // is same as cuDNN batch_norm backward calculation, batch_norm
@@ -604,13 +606,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                         platform::errors::InvalidArgument(
                             "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
     }
-
-    PADDLE_ENFORCE_EQ(
-        is_test, false,
-        platform::errors::InvalidArgument(
-            "`is_test = True` CANNOT be used in train program. If "
-            "you want to use global status in pre_train model, "
-            "please set `use_global_stats = True`"));
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]

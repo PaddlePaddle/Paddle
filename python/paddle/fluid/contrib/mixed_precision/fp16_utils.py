@@ -157,7 +157,8 @@ def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
         return num_cast_ops
 
     assert target_var.dtype == src_dtype, \
-           "The real dtype({}) is not equal to the src dtype({})".format(_dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype))
+        "The real dtype({}) is not equal to the src dtype({})".format(
+            _dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype))
 
     cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
     cast_var = block.vars.get(cast_name)
@@ -209,7 +210,7 @@ def find_true_prev_op(ops, cur_op, var_name):
     return None
 
 
-def find_true_post_op(ops, cur_op, var_name):
+def find_true_post_op(ops, cur_op, var_name, search_all=False):
     """
     if there are post ops, return them, if there is no post op,
     return None instead.
@@ -217,11 +218,22 @@ def find_true_post_op(ops, cur_op, var_name):
         ops (list): A list of ops.
         cur_op (Operator): Current operator which has var_name variable.
         var_name (string): Variable name.
+        search_all (bool): The type of operator search. Use if \"cur_op\" is not in the \"ops\" set. 
     """
     post_op = []
-    for idx, op in enumerate(ops):
-        if op == cur_op:
-            break
+    if search_all:
+        """
+        \"cur_op\" do not have to be in list of \"ops\". E.g. \"cur_op\" can come 
+        from startup_prog block and \"ops\" list from main_prog block. 
+        By setting idx to -1, we'll start looking for post-ops from the top of the list. 
+        If search_all is False, assume that \"cur_op\" is in \"ops\" list, 
+        so to reduce the time of search we can start iterating from \"cur_op\" idx. 
+        """
+        idx = -1
+    else:
+        for idx, op in enumerate(ops):
+            if op == cur_op:
+                break
 
     for i in range(idx + 1, len(ops)):
         op = ops[i]
@@ -270,7 +282,7 @@ def _need_keep_fp32(op, unsupported_op_list, use_fp16_guard):
 
     if use_fp16_guard:
         if op.has_attr("op_namescope") and \
-            (_fp16_guard_pattern in op.attr("op_namescope")):
+                (_fp16_guard_pattern in op.attr("op_namescope")):
             # op in fp16 guard
             return False
         else:
@@ -496,8 +508,8 @@ def rewrite_program(main_prog, amp_lists):
     black_op_set = set()
     for op in ops:
 
-        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder, 
-        # we don't need to handle reader op and the input of 'create_py_reader' is not 
+        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder,
+        # we don't need to handle reader op and the input of 'create_py_reader' is not
         # in block, which may result in errors.
         # See GeneratorLoader._init_non_iterable() for details.
         if op.type == 'create_py_reader' or op.type == 'read':
@@ -612,7 +624,7 @@ def update_role_var_grad(main_prog, params_grads):
                 raise ValueError("The cast op {0}'s output should not be"
                                  "used by a non-optimize op, however, it"
                                  "is used by {1}".format(op, post_ops[0]))
-            #add new op in the python and cpp at the same time 
+            # add new op in the python and cpp at the same time
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(op.desc)
             new_op = framework.Operator(
