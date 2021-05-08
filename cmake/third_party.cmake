@@ -261,6 +261,14 @@ if(WITH_PSLIB)
     if(WITH_PSLIB_BRPC)
         include(external/pslib_brpc) # download, build, install pslib_brpc
         list(APPEND third_party_deps extern_pslib_brpc)
+    else()    
+        include(external/snappy)
+        list(APPEND third_party_deps extern_snappy)
+
+        include(external/leveldb)
+        list(APPEND third_party_deps extern_leveldb)
+        include(external/brpc)
+        list(APPEND third_party_deps extern_brpc)
     endif()
 endif(WITH_PSLIB)
 

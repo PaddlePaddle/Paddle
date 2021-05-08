@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -129,8 +128,6 @@ void PSGPUWorker::Initialize(const TrainerDesc& desc) {
       }
     }
   }
-  // pull_queue_ = paddle::framework::MakeChannel<std::shared_ptr<HeterTask>>();
-  // push_queue_ = paddle::framework::MakeChannel<std::shared_ptr<HeterTask>>();
 }
 
 void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {

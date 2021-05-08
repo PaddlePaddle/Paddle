@@ -20,6 +20,8 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/service/heter_client.h"
 #include "paddle/fluid/distributed/service/heter_server.h"
+#include "paddle/fluid/framework/op_registry.h"
+
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::distributed;

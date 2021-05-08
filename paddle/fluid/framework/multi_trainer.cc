@@ -176,6 +176,7 @@ void MultiTrainer::Run() {
 
 #ifdef PADDLE_WITH_HETERPS
 void MultiTrainer::MergeDenseParam() {
+#ifdef PADDLE_WTIH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
   auto& recv_ctx = communicator->GetRecvCtxMap();
   Scope* thread_scope = workers_[0]->GetThreadScope();
@@ -189,6 +190,7 @@ void MultiTrainer::MergeDenseParam() {
       TensorCopy((*tensor), root_tensor->place(), root_tensor);
     }
   }
+#endif
 }
 #endif
 

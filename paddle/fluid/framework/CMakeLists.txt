@@ -100,8 +100,16 @@ if (WITH_GPU)
 endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
+set(BRPC_DEPS "")
+if(WITH_PSLIB OR WITH_PSCORE)
+    set(BRPC_DEPS brpc)
+    if(WITH_PSLIB_BRPC)
+        set(BRPC_DEPS pslib_brpc)
+    endif()
+endif()
+
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
-cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope)
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
 cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
@@ -243,9 +251,16 @@ if(WITH_DISTRIBUTE)
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
-    heter_service_proto pslib_brpc)
+    heter_service_proto ${BRPC_DEP})
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(DISTRIBUTE_COMPILE_FLAGS
+                "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(hetercpu_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heterxpu_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   elseif(WITH_PSCORE)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -280,7 +295,7 @@ elseif(WITH_PSLIB)
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
-  graph_to_program_pass variable_helper timer monitor pslib_brpc )
+  graph_to_program_pass variable_helper timer monitor ${BRPC_DEP})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
