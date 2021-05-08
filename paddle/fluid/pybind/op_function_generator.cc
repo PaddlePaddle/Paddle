@@ -273,7 +273,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
       PyEval_RestoreThread(tstate);
     }
     throw_exception_to_python(std::current_exception());
-    return NULL;
+    return Py_None;
   }
 })";
 
@@ -486,7 +486,7 @@ std::string GenerateOpFunctionsBody(
         viwe_input_name, viwe_output_name);
   }
   if (outs_num == 0) {
-    return_str = "NULL";
+    return_str = "Py_None";
   } else if (outs_num == 1) {
     return_str = "MakeReturnPyObject(" + return_str + ")";
   } else {
