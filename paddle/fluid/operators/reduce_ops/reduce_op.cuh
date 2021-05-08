@@ -144,7 +144,6 @@ struct Array {
 };
 
 }  // namespace detail
-// reduce config
 
 enum ReduceType {
   kReduceAll = 0x00,
@@ -153,6 +152,7 @@ enum ReduceType {
   kReduceAny = 0x03,
 };
 
+// reduce config
 struct ReduceConfig {
   ReduceConfig(std::vector<int> origin_reduce_dims, std::vector<int> x_dim)
       : reduce_dims_origin(origin_reduce_dims), x_dim(x_dim) {}

@@ -25,6 +25,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
 template <typename T>
 struct CustomMin {
   __device__ __forceinline__ T operator()(const T &a, const T &b) const {
