@@ -19,9 +19,7 @@ from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
 
-__all__ = [
-    'VocabParallelEmbedding', 'ColumnParallelLinear', 'RowParallelLinear'
-]
+__all__ = []
 
 # Follow this paper to achieve the file:
 # Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter 

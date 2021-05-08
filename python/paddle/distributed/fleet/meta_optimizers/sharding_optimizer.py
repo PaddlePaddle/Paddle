@@ -37,7 +37,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 from functools import reduce
 
-__all__ = ["ShardingOptimizer"]
+__all__ = []
 
 
 class ShardingOptimizer(MetaOptimizerBase):

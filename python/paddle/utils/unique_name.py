@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fs import LocalFS  # noqa: F401
-from .fs import HDFSClient  # noqa: F401
-from .ps_util import DistributedInfer  # noqa: F401
-from .recompute import recompute  # noqa: F401
-
-from . import log_util  # noqa: F401
-from . import hybrid_parallel_util  # noqa: F401
+from ..fluid.unique_name import generate  # noqa: F401
+from ..fluid.unique_name import switch  # noqa: F401
+from ..fluid.unique_name import guard  # noqa: F401
 
 __all__ = [  #noqa
-    "LocalFS", "recompute", "DistributedInfer", "HDFSClient"
+    'generate', 'switch', 'guard'
 ]

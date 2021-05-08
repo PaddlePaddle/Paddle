@@ -16,10 +16,7 @@ import abc
 import paddle
 from ...utils import hybrid_parallel_util as hp_util
 
-__all__ = [
-    'get_tensor_bytes',
-    'is_float_tensor',
-]
+__all__ = []
 
 FLOAT_TYPES = [
     paddle.float16,

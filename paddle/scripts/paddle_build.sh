@@ -248,6 +248,12 @@ function cmake_base() {
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
 
+    if [ "$CMD" != "assert_file_approvals" ];then
+      python -m pip install distro
+      python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
+    fi
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -1902,10 +1908,6 @@ function main() {
     local CMD=$1 
     local parallel_number=$2
     init
-    if [ "$CMD" != "assert_file_approvals" ];then
-      python ${PADDLE_ROOT}/tools/summary_env.py
-      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
-    fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}

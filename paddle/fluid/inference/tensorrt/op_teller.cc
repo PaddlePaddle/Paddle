@@ -633,6 +633,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "fc") {
+      int x_num_col_dims =
+          desc.HasAttr("x_num_col_dims")
+              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              : (desc.HasAttr("in_num_col_dims")
+                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     : 1);
+      if (x_num_col_dims < 1) {
+        VLOG(3) << "converter expects x_num_col_dims >= 1, "
+                   "but x_num_col_dims = %d.";
+        return false;
+      }
+    }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
