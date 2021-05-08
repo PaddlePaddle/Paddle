@@ -99,7 +99,7 @@ class ExecutorInfoCache {
       hash_combine(&seed, key.start_op_index_);
       hash_combine(&seed, key.end_op_index_);
       hash_combine(&seed, key.is_grad_);
-      VLOG(1) << "hash value is : " << seed
+      VLOG(3) << "hash value is : " << seed
               << " of key:  " << key.DebugString();
       return seed;
     }
@@ -139,6 +139,8 @@ class ExecutorInfoCache {
                                    key.DebugString()));
     info_map_.insert({key_val, value});
   }
+
+  void Finalize();
 
  private:
   ExecutorInfoCache() = default;

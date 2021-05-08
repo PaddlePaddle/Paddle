@@ -81,7 +81,7 @@ std::vector<std::string> ParseSafeEagerDeletionSkipVars(
   size_t backward_op_start_index =
       forward_op_nums + (output_var_names.size() * 2);
 
-  // step 2: parse the necegssary variable of backward op
+  // step 2: parse the necessary variable of backward op
   std::unordered_set<std::string> op_outputs;
   std::unordered_set<std::string> op_inputs;
   for (auto i = backward_op_start_index; i < all_ops.size(); ++i) {
@@ -115,6 +115,13 @@ std::vector<std::string> ParseSafeEagerDeletionSkipVars(
 ExecutorInfoCache &ExecutorInfoCache::Instance() {
   static ExecutorInfoCache g_exe_cache_info_map;
   return g_exe_cache_info_map;
+}
+
+void ExecutorInfoCache::Finalize() {
+  // NOTE(Aurelius84): DO NOT perform finalize in destructor
+  // to avoid problems caused by destructor order of static
+  // object.
+  info_map_.clear();
 }
 
 std::shared_ptr<framework::ParallelExecutor> GetExecutorInfoFromCache(
