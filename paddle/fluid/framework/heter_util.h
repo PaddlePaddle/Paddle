@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_PSLIB
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -26,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/timer.h"
-#ifdef PADDLE_WITH_PSLIB
 
 namespace paddle {
 namespace framework {
