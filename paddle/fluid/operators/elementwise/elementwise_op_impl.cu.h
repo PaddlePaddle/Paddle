@@ -189,6 +189,7 @@ void LaunchElementwiseCudaKernel(
   T *out = (*outs)[0]->data<T>();
   // cuda kernel
   auto stream = ctx.stream();
+
   switch (vec_size) {
     case 4:
       VectorizedKernel<ET, 4><<<grid_size, block_size, 0, stream>>>(
