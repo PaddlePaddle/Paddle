@@ -486,6 +486,13 @@ static void VarBaseCopy(const imperative::VarBase &src,
         auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
         dst_tensor->set_lod(src_tensor.lod());
         framework::TensorCopy(src_tensor, dst_device, dst_tensor);
+        if (blocking) {
+          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          auto src_device = src_tensor.place();
+          if (!(src_device == dst_device)) {
+            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+          }
+        }
       } else if (src.Var().IsType<framework::SelectedRows>()) {
         auto &src_selected_rows = src.Var().Get<framework::SelectedRows>();
         auto *dst_selected_rows =
@@ -494,11 +501,22 @@ static void VarBaseCopy(const imperative::VarBase &src,
         dst_selected_rows->set_rows(src_selected_rows.rows());
         framework::TensorCopy(src_selected_rows.value(), dst_device,
                               dst_selected_rows->mutable_value());
+        if (blocking) {
+          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          auto src_device = src_selected_rows.value().place();
+          if (!(src_device == dst_device)) {
+            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+          }
+        }
       }
-      if (blocking) {
-        platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
-      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The source Tensor(%s) can not copy when it is empty.", src.Name()));
     }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The destion Tensor(%s) can not copy when it is not empty.",
+        dst.Name()));
   }
 }
 

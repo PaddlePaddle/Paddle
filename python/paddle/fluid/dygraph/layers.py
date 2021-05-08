@@ -1426,28 +1426,22 @@ class Layer(core.Layer):
             if dtype is None:
                 dtype = t.dtype
 
+            new_t = t._copy_to(device, blocking)
             if isinstance(t, framework.ParamBase):
-                state = copy.deepcopy(t.__dict__)
-                new_param = framework.ParamBase(t.shape, dtype, **state)
-                core.varbase_copy(t, new_param, device, blocking)
-
                 if dtype is not None and dtype != t.dtype:
                     framework._dygraph_tracer().trace_op(
                         type='cast',
-                        inputs={'X': new_param},
-                        outputs={'Out': new_param},
+                        inputs={'X': new_t},
+                        outputs={'Out': new_t},
                         attrs={
                             'in_dtype': t.dtype,
                             'out_dtype': convert_np_dtype_to_dtype_(dtype)
                         })
-
-                return new_param
             else:
-                new_t = t._copy_to(device, blocking)
                 if dtype is not None and dtype != t.dtype:
                     new_t = new_t.cast(dtype=dtype)
 
-                return new_t
+            return new_t
 
         self._apply(transform, device, dtype, blocking)
 
