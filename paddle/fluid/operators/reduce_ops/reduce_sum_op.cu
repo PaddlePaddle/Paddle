@@ -26,6 +26,11 @@ struct IdentityFunctor {
 };
 
 template <typename T>
+struct SumFunctor_fp16 {
+  T operator()(const T& a, const T& b) const { return a + b; }
+};
+
+template <typename T>
 class ReduceSumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -67,11 +72,59 @@ class ReduceSumKernel : public framework::OpKernel<T> {
   }
 };
 
+template <>
+class ReduceSumKernel<paddle::platform::float16>
+    : public framework::OpKernel<paddle::platform::float16> {
+ public:
+  using T = paddle::platform::float16;
+  void Compute(const framework::ExecutionContext& context) const override {
+    std::cout << "Hello" << std::endl;
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    auto* input = context.Input<Tensor>("X");
+    auto* output = context.Output<Tensor>("Out");
+    auto out_dtype = context.Attr<int>("out_dtype");
+
+    auto dims = context.Attr<std::vector<int>>("dim");
+    bool keep_dim = context.Attr<bool>("keep_dim");
+
+    std::vector<int> reduce_dims;
+    if (reduce_all) {
+      reduce_dims.resize(input->dims().size());
+      for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
+    } else {
+      for (auto e : dims) {
+        reduce_dims.push_back(e >= 0 ? e : e + input->dims().size());
+      }
+    }
+
+    int reduce_num = 1;
+    for (int i = 0; i < reduce_dims.size(); ++i) {
+      reduce_num *= input->dims()[reduce_dims[i]];
+    }
+
+    auto stream = context.cuda_device_context().stream();
+    if (out_dtype >= 0) {
+      framework::VisitDataTypeSmall(
+          static_cast<framework::proto::VarType::Type>(out_dtype),
+          TensorReduceFunctor<T, SumFunctor_fp16<T>, IdentityFunctor<T>>(
+              *input, output, reduce_dims, static_cast<double>(0.0),
+              SumFunctor_fp16<T>(), IdentityFunctor<T>(), stream));
+    } else {
+      //  TensorReduce<T, T, SumFunctor_fp16<T>, IdentityFunctor<T>>(
+      //      *input, output, reduce_dims, static_cast<T>(0),
+      //      SumFunctor_fp16<T>(),
+      //      IdentityFunctor<T>(), stream);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(reduce_sum, ops::ReduceSumKernel<float>,
-                        ops::ReduceSumKernel<double>, ops::ReduceSumKernel<int>,
+                        ops::ReduceSumKernel<double>,
+                        // ops::ReduceSumKernel<paddle::platform::float16>,
+                        ops::ReduceSumKernel<int>,
                         ops::ReduceSumKernel<int64_t>,
                         ops::ReduceSumKernel<paddle::platform::complex64>,
                         ops::ReduceSumKernel<paddle::platform::complex128>);
