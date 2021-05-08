@@ -210,7 +210,8 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.BatchNorm1D(1)
         self.assertEqual(
             str(module),
-            'BatchNorm1D(num_features=1, momentum=0.9, epsilon=1e-05)')
+            'BatchNorm1D(num_features=1, momentum=0.9, epsilon=1e-05, data_format=NCL)'
+        )
 
         module = nn.BatchNorm2D(1)
         self.assertEqual(
@@ -220,7 +221,8 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.BatchNorm3D(1)
         self.assertEqual(
             str(module),
-            'BatchNorm3D(num_features=1, momentum=0.9, epsilon=1e-05)')
+            'BatchNorm3D(num_features=1, momentum=0.9, epsilon=1e-05, data_format=NCDHW)'
+        )
 
         module = nn.SyncBatchNorm(2)
         self.assertEqual(

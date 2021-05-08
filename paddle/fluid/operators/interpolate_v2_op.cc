@@ -14,6 +14,9 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -73,9 +76,12 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     if (scale.size() > 0) {
       float scale_w = -1;
       scale_w = scale[0];
-      PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
-                                               "scale  of Op(interpolate) "
-                                               "should be greater than 0."));
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
       if (scale_w > 0.) {
         // round down
         out_w = (data_layout == DataLayout::kNCHW
@@ -96,8 +102,11 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got dimention = %d .",
             out_size_dim.size()));
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 1, platform::errors::InvalidArgument(
-                                              "OutSize's dim[0] must be 1"));
+    PADDLE_ENFORCE_EQ(
+        out_size_dim[0], 1,
+        platform::errors::InvalidArgument(
+            "OutSize's 0-th dimension's value must be 1, but got value = %d .",
+            out_size_dim[0]));
     ctx->ShareLoD("X", "Out");
     return;
   }
@@ -170,9 +179,17 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       scale_h = scale[0];
       scale_w = scale[1];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
       if (scale_h > 0. && scale_w > 0.) {
         // round down
         out_h = (data_layout == DataLayout::kNCHW
@@ -278,9 +295,23 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
       scale_h = scale[1];
       scale_w = scale[2];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0 && scale_h > 0 && scale_d > 0, true,
-          platform::errors::InvalidArgument("scale  of Op(interpolate) "
-                                            "should be greater than 0."));
+          scale_w > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_w in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_h in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
+      PADDLE_ENFORCE_EQ(
+          scale_d > 0, true,
+          platform::errors::InvalidArgument(
+              "The scale_d in Attr(scale) of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_d));
       if (scale_d > 0. && scale_h > 0. && scale_w > 0.) {
         // round down
         out_d = (data_layout == DataLayout::kNCHW
@@ -359,13 +390,41 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    auto interp_method = ctx.Attr<std::string>("interp_method");
+    // TODO(danqing): support other interp_method
+    if (this->CanMKLDNNBeUsed(ctx, data_type) &&
+        (interp_method == "nearest" || interp_method == "bilinear")) {
+      layout = framework::DataLayout::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_layout");
+      auto dl = framework::StringToDataLayout(data_format);
+      // Some models may have intentionally set "AnyLayout" for pool
+      // op. Treat this as NCHW (default data_format value)
+      if (dl != framework::DataLayout::kAnyLayout) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(), dl);
+      }
+    }
+#endif
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
@@ -436,6 +495,9 @@ class InterpolateV2OpMaker : public framework::OpProtoAndCheckerMaker {
                  "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
                  "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
@@ -672,6 +734,8 @@ REGISTER_OP_CPU_KERNEL(bilinear_interp_v2_grad,
                        ops::InterpolateV2GradKernel<double>);
 REGISTER_OP_CPU_KERNEL(nearest_interp_v2, ops::InterpolateV2Kernel<float>,
                        ops::InterpolateV2Kernel<double>,
+                       ops::InterpolateV2Kernel<int>,
+                       ops::InterpolateV2Kernel<int64_t>,
                        ops::InterpolateV2Kernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(nearest_interp_v2_grad,
                        ops::InterpolateV2GradKernel<float>,

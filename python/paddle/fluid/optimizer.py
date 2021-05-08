@@ -1890,7 +1890,8 @@ class AdamOptimizer(Optimizer):
         beta2 (float|Variable, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a Variable with shape [1] and data type as float32.
             The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
+        epsilon (float|Tensor, optional): A small float value for numerical stability.
+            It should be a float number or a Variable with shape [1] and data type as float32.
             The default value is 1e-08.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
@@ -1959,7 +1960,7 @@ class AdamOptimizer(Optimizer):
                 avg_cost = fluid.layers.mean(cost)
 
                 # define beta decay variable
-                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
+                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate, epsilon_init):
                     global_step = lr_scheduler._decay_step_counter()
 
                     beta1 = fluid.layers.create_global_var(
@@ -1976,6 +1977,13 @@ class AdamOptimizer(Optimizer):
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta2")
+                    epsilon = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(epsilon_init),
+                        dtype='float32',
+                        # set persistable for save checkpoints and resume
+                        persistable=True,
+                        name="epsilon")
 
                     div_res = global_step / decay_steps
                     decayed_beta1 = beta1_init * (decay_rate**div_res)
@@ -1983,13 +1991,14 @@ class AdamOptimizer(Optimizer):
                     fluid.layers.assign(decayed_beta1, beta1)
                     fluid.layers.assign(decayed_beta2, beta2)
 
-                    return beta1, beta2
+                    return beta1, beta2, epsilon
 
-                beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
+                beta1, beta2, epsilon = get_decayed_betas(0.9, 0.99, 1e5, 0.9, 1e-8)
                 adam_optimizer = fluid.optimizer.AdamOptimizer(
                                                     learning_rate=0.01,
                                                     beta1=beta1,
-                                                    beta2=beta2)
+                                                    beta2=beta2,
+                                                    epsilon=epsilon)
                 adam_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -2099,7 +2108,6 @@ class AdamOptimizer(Optimizer):
             "Beta2PowOut": [beta2_pow_acc],
         }
         attrs = {
-            "epsilon": self._epsilon,
             "lazy_mode": self._lazy_mode,
             "min_row_size_to_use_multithread": 1000
         }
@@ -2112,6 +2120,10 @@ class AdamOptimizer(Optimizer):
             inputs['Beta2Tensor'] = self._beta2
         else:
             attrs['beta2'] = self._beta2
+        if isinstance(self._epsilon, Variable):
+            inputs['EpsilonTensor'] = self._epsilon
+        else:
+            attrs['epsilon'] = self._epsilon
 
         adam_op = block.append_op(
             type=self.type,
@@ -4033,6 +4045,12 @@ class PipelineOptimizer(object):
         """
         Find the post op that has variable named var_name as input.
         """
+        # bugfix for uniform hybrid parallelism
+        if '.cast_fp32' in var_name:
+            var_name = var_name.replace('.cast_fp32', '')
+        if '.cast_fp16' in var_name:
+            var_name = var_name.replace('.cast_fp16', '')
+
         post_ops = self.input_var_to_op[var_name]
         if post_ops == None: return None
         result_op = None
@@ -4098,7 +4116,7 @@ class PipelineOptimizer(object):
         device = op.attr(self._op_device_key) \
             if op.has_attr(self._op_device_key) else None
         if device:
-            assert device[0:3] == 'gpu', "Now, only gpu devices are " \
+            assert device[0:3] == 'gpu' or dev_type == 'npu', "Now, only gpu and npu devices are " \
                 "supported in pipeline parallemism."
         return device
 
@@ -4114,7 +4132,23 @@ class PipelineOptimizer(object):
             # For LRSched ops, we should put them on all sub-programs to
             # make sure each sub-program update the lr correctly
             op._set_attr(self._op_device_key, "gpu:all")
-        elif op.type == "scale" and self._is_backward_op(op):
+        # bugfix in hybrid parallelism
+        elif op.type == "sum" and self._is_backward_op(op):
+            # For sum ops that compute the sum of @RENAMED@ vars
+            for name in op.desc.input_arg_names():
+                assert '@RENAME@' in name, \
+                    "The op must be sum used to accumulate renamed vars."
+            assert len(op.desc.output_arg_names()) == 1
+            out_name = op.desc.output_arg_names()[0]
+            post_op = self._find_post_op(idx, out_name)
+            assert post_op.has_attr(
+                'op_device'), "{} has no op_device attr for var {}".format(
+                    post_op.type, out_name)
+            device = post_op.attr(self._op_device_key)
+            assert device, "The post op must have op_device set."
+            op._set_attr(self._op_device_key, device)
+        elif (op.type == "cast" or
+              op.type == "scale") and self._is_backward_op(op):
             prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
             op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
         elif op.type == "memcpy" and not self._is_optimize_op(op):
@@ -4249,11 +4283,19 @@ class PipelineOptimizer(object):
         Insert a pair of send and recv ops for every two
         consecutive ops on different devices.
         """
-        extra_index_info = {'index': 0}
-
         # A map from var to device where op takes it as input,
         # avoiding multiple send and recv ops.
         input_var_to_device = dict()
+        # bugfix hybrid parallelism
+        first_optimize_index = None
+        for index, op in enumerate(list(block.ops)):
+            if self._is_optimize_op(op):
+                first_optimize_index = index
+                break
+        extra_index_info = {
+            'index': 0,
+            'first_optimize_index': first_optimize_index
+        }
 
         for index, op in enumerate(list(block.ops)):
             cur_device = op.attr(self._op_device_key)
@@ -4322,7 +4364,7 @@ class PipelineOptimizer(object):
                         ring_id = self._pp_ring_map[pair_key]
 
                     if self.schedule_mode == 'F-then-B':  # F-then-B
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='send_v2',
                             inputs={'X': var},
@@ -4334,7 +4376,7 @@ class PipelineOptimizer(object):
                                 'ring_id': ring_id
                             })
                         extra_index_info['index'] += 1
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
@@ -4349,7 +4391,7 @@ class PipelineOptimizer(object):
                             })
                         extra_index_info['index'] += 1
                     elif self.schedule_mode == '1F1B':  # 1F1B
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='c_sync_calc_stream',
                             inputs={'X': [var]},
@@ -4359,7 +4401,7 @@ class PipelineOptimizer(object):
                                 self._op_role_key: op_role,
                             })
                         extra_index_info['index'] += 1
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='send_v2',
                             inputs={'X': var},
@@ -4371,21 +4413,30 @@ class PipelineOptimizer(object):
                                 'peer': 1,
                             })
                         extra_index_info['index'] += 1
-                        block._insert_op(
-                            index=index + extra_index_info['index'],
+                        insert_index = None
+                        if int(op_role) == int(self._op_role.Backward):
+                            insert_index = extra_index_info[
+                                'first_optimize_index']
+                            new_op_role = self._op_role.Optimize
+                        else:
+                            insert_index = index
+                            new_op_role = self._op_role.Backward
+                        block._insert_op_without_sync(
+                            index=insert_index + extra_index_info['index'],
                             type='c_sync_comm_stream',
                             inputs={'X': [var]},
                             outputs={'Out': [var]},
                             attrs={
                                 self._op_device_key: prev_dev,
-                                self._op_role_key: self._op_role.Backward,
+                                self._op_role_key: new_op_role,
                                 'ring_id': ring_id,
                             })
-                        extra_index_info['index'] += 1
+                        if int(op_role) == int(self._op_role.Forward):
+                            extra_index_info['index'] += 1
                         var_shape = list(var.shape)
                         var_shape[0] = self.micro_batch_size if var_shape[
                             0] < 0 else var_shape[0]
-                        block._insert_op(
+                        block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
@@ -4553,13 +4604,13 @@ class PipelineOptimizer(object):
                 origin_sub_block_id = op.attr('sub_block').id
                 origin_sub_block = main_program.block(origin_sub_block_id)
                 new_sub_block = prog._create_block(parent_idx=0)
-                for op in origin_sub_block.ops:
-                    op_desc = op.desc
+                for sub_op in origin_sub_block.ops:
+                    op_desc = sub_op.desc
                     ap_op = new_sub_block.desc.append_op()
                     ap_op.copy_from(op_desc)
                 new_sub_block._sync_with_cpp()
                 self._create_vars(new_sub_block, origin_sub_block)
-                op._set_attr('sub_block:', new_sub_block)
+                op._set_attr('sub_block', new_sub_block)
 
     def _get_device_info(self, block):
         for op in block.ops:
@@ -4768,8 +4819,9 @@ class PipelineOptimizer(object):
 
         # Step4: Special Case: process persistable vars that exist in
         # multiple sections
-        self._process_persistable_vars_in_multi_sections(
-            main_program, startup_program, program_list)
+        # FIXME 
+        # self._process_persistable_vars_in_multi_sections(
+        #     main_program, startup_program, program_list)
 
         # Step5: Add sub blocks for section programs
         self._add_sub_blocks(main_block, program_list)
@@ -4778,7 +4830,10 @@ class PipelineOptimizer(object):
         place_list = []
         for dev in device_list:
             dev_index = int(dev.split(":")[1])
-            place_list.append(core.CUDAPlace(0))
+            if core.is_compiled_with_cuda():
+                place_list.append(core.CUDAPlace(dev_index % 1))
+            elif core.is_compiled_with_npu():
+                place_list.append(core.NPUPlace(dev_index % 1))
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
@@ -4797,7 +4852,10 @@ class PipelineOptimizer(object):
             self._accumulate_gradients(real_block)
             real_block._sync_with_cpp()
 
-        place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        if core.is_compiled_with_cuda():
+            place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        elif core.is_compiled_with_npu():
+            place_id = int(os.getenv("FLAGS_selected_npus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",

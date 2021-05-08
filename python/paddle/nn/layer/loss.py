@@ -21,19 +21,7 @@ import paddle
 from .. import functional as F
 from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
-__all__ = [
-    'BCEWithLogitsLoss',
-    'CrossEntropyLoss',
-    'HSigmoidLoss',
-    'MSELoss',
-    'L1Loss',
-    'NLLLoss',
-    'BCELoss',
-    'KLDivLoss',
-    'MarginRankingLoss',
-    'CTCLoss',
-    'SmoothL1Loss',
-]
+__all__ = []
 
 
 class BCEWithLogitsLoss(fluid.dygraph.Layer):
@@ -295,7 +283,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             Indicate whether compute softmax before cross_entropy.
             Default is ``True``.
 
-        - **name** (str，optional)
+        - **name** (str, optional)
 
             The name of the operator. Default is ``None`` .
             For more information, please refer to :ref:`api_guide_Name` .
@@ -318,7 +306,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
         - **label** (Tensor)
 
-            1. If soft_label=False，the shape is 
+            1. If soft_label=False, the shape is 
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
@@ -1060,6 +1048,7 @@ class CTCLoss(fluid.dygraph.Layer):
         labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
         input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
+        norm_by_times (bool, default false) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
@@ -1122,10 +1111,20 @@ class CTCLoss(fluid.dygraph.Layer):
         self.blank = blank
         self.reduction = reduction
 
-    def forward(self, log_probs, labels, input_lengths, label_lengths):
-        return paddle.nn.functional.ctc_loss(log_probs, labels, input_lengths,
-                                             label_lengths, self.blank,
-                                             self.reduction)
+    def forward(self,
+                log_probs,
+                labels,
+                input_lengths,
+                label_lengths,
+                norm_by_times=False):
+        return paddle.nn.functional.ctc_loss(
+            log_probs,
+            labels,
+            input_lengths,
+            label_lengths,
+            self.blank,
+            self.reduction,
+            norm_by_times=norm_by_times)
 
 
 class SmoothL1Loss(fluid.dygraph.Layer):

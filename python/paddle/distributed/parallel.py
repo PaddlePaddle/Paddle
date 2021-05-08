@@ -15,7 +15,8 @@
 import os
 import six
 import warnings
-from multiprocessing import Process, Manager
+from multiprocessing import Process  # noqa: F401
+from multiprocessing import Manager  # noqa: F401
 import time
 import sys
 
@@ -26,9 +27,11 @@ from paddle.fluid import core
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
 
-__all__ = ["init_parallel_env"]
+__all__ = [  #noqa
+    "init_parallel_env"
+]
 
 ParallelStrategy = core.ParallelStrategy
 

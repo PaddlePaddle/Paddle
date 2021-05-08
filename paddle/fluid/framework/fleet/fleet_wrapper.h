@@ -34,6 +34,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/platform/type_defs.h"
+#endif
 
 namespace paddle {
 namespace framework {

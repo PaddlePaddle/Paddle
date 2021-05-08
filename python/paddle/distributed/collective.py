@@ -15,8 +15,14 @@
 import numpy as np
 import os
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.framework import Variable
+from ..fluid.framework import OpProtoHolder
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import convert_np_dtype_to_dtype_
+from ..fluid.data_feeder import convert_dtype
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.data_feeder import check_type
+from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 from ..fluid.dygraph.parallel import prepare_context
@@ -25,19 +31,7 @@ from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-__all__ = [
-    'wait',
-    'new_group',
-    'get_group',
-    'broadcast',
-    'all_reduce',
-    'reduce',
-    'all_gather',
-    'scatter',
-    'barrier',
-    'split',
-    'ReduceOp',
-]
+__all__ = []
 
 
 class ReduceOp:
@@ -160,6 +154,46 @@ def get_group(id=0):
     return gm[group] if group in gm else None
 
 
+def barrier(group=None):
+    """
+
+    Barrier among all participators in the group.
+
+    Args:
+        group (Group): The group instance return by new_group or None for global default group.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            paddle.distributed.barrier()
+    """
+    if group is not None and not group.is_member():
+        return
+
+    ring_id = 0 if group is None else group.id
+
+    op_type = 'barrier'
+    temp = fill_constant([1], dtype="int32", value="1")
+    if in_dygraph_mode():
+        return core.ops.barrier(temp, temp, 'ring_id', ring_id)
+    if not isinstance(ring_id, int):
+        raise ValueError("The type of 'group' for barrier must be int.")
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [temp]},
+        outputs={'Out': [temp]},
+        attrs={'ring_id': ring_id})
+
+
 def new_group(ranks=None, backend=None):
     """
 
@@ -220,7 +254,8 @@ def new_group(ranks=None, backend=None):
         core.NCCLParallelContext(strategy, place).init_with_ring_id(ring_id)
     else:
         assert False, ("no cuda device found")
-
+    # need to barrier to construct group
+    barrier(gp)
     return gp
 
 
@@ -397,23 +432,22 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         return
 
     ring_id = 0 if group is None else group.id
-
     if in_dygraph_mode():
         if op == ReduceOp.SUM:
-            return core.ops.c_allreduce_sum(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
+            return core.ops.c_allreduce_sum_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.MAX:
-            return core.ops.c_allreduce_max(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
+            return core.ops.c_allreduce_max_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.MIN:
-            return core.ops.c_allreduce_min(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
+            return core.ops.c_allreduce_min_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         elif op == ReduceOp.PROD:
-            return core.ops.c_allreduce_prod(tensor, tensor, 'use_calc_stream',
-                                             use_calc_stream, 'ring_id',
-                                             ring_id)
+            return core.ops.c_allreduce_prod_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
+        return out
 
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -620,7 +654,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     Args:
         tensor (Tensor): The output Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
-        tensor_list (list): A list of Tensors to scatter. Every element in the list must be a Tensor whose data type
+        tensor_list (list|tuple): A list/tuple of Tensors to scatter. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64. Default value is None.
         src (int): The source rank id. Default value is 0.
         group (Group): The group instance return by new_group or None for global default group.
@@ -636,6 +670,8 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
+
+            # required: gpu
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
@@ -692,55 +728,178 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         })
 
 
-def barrier(group=None):
+def _c_identity(tensor, group=None):
     """
-
-    Barrier among all participators in the group.
+    Return a copy of the tensor, mainly used with model parallel.
 
     Args:
-        group (Group): The group instance return by new_group or None for global default group.
+        tensor (Tensor): The input Tensor. Its data type
+            should be float16, float32, float64, int32 or int64.
+        group (int): The id of the process group to work on.
 
     Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            from paddle.distributed import init_parallel_env
-
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            paddle.distributed.barrier()
+        Tensor.
     """
     if group is not None and not group.is_member():
         return
-
     ring_id = 0 if group is None else group.id
 
-    op_type = 'barrier'
-    temp = fill_constant([1], dtype="int32", value="1")
     if in_dygraph_mode():
-        return core.ops.barrier(temp, temp, 'ring_id', ring_id)
-    if not isinstance(ring_id, int):
-        raise ValueError("The type of 'group' for barrier must be int.")
+        return core.ops.c_identity(tensor, 'use_calc_stream', True, 'ring_id',
+                                   ring_id, 'use_model_parallel', True)
+    op_type = 'c_identity'
     helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        '_c_identity')
+
     helper.append_op(
         type=op_type,
-        inputs={'X': [temp]},
-        outputs={'Out': [temp]},
-        attrs={'ring_id': ring_id})
+        inputs={'X': tensor},
+        outputs={'Out': out},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            'use_model_parallel': True,
+        })
+    return out
 
 
-def _parallel_linear(x, num_rows, num_cols, axis, param_attr, bias_attr,
-                     gather_out, inner_rank, name):
+def _c_concat(tensor, nranks, group=None):
+    """
+    Return allgather of the tensor, mainly used with model parallel.
+
+    Args:
+        tensor (Tensor): The input Tensor. Its data type
+            should be float16, float32, float64, int32 or int64.
+        group (int): The id of the process group to work on.
+
+    Returns:
+        Tensor.
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    if in_dygraph_mode():
+        return core.ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
+                                 True, 'nranks', nranks, 'use_model_parallel',
+                                 True)
+
+    op_type = 'c_concat'
+    helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        '_c_concat')
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': tensor},
+        outputs={'Out': out},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            'use_model_parallel': True,
+            'nranks': nranks
+        })
+    return out
+
+
+def _c_split(tensor, rank, nranks, group=None):
+    """
+    Split tensor evenly among all members, mainly used with model parallel.
+
+    Args:
+        tensor (Tensor): The input Tensor. Its data type
+            should be float16, float32, float64, int32 or int64.
+        rank (int): The rank of the current process.
+        group (int): The id of the process group to work on.
+
+    Returns:
+        Tensor.
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    if in_dygraph_mode():
+        return core.ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
+                                ring_id, 'rank', rank, 'nranks', nranks,
+                                'use_model_parallel', True)
+
+    op_type = 'c_split'
+    helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        '_c_split')
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': tensor},
+        outputs={'Out': out},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            'rank': rank,
+            'nranks': nranks,
+            'use_model_parallel': True,
+        })
+    return out
+
+
+def _mp_allreduce(tensor,
+                  op=ReduceOp.SUM,
+                  group=None,
+                  use_calc_stream=True,
+                  use_model_parallel=True):
+    """[it is same as allreduce above, but it suuports model parallel. And it support inplace startegy]
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    if in_dygraph_mode():
+        if op == ReduceOp.SUM:
+            return core.ops.c_allreduce_sum_(
+                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
+                "use_model_parallel", use_model_parallel)
+        else:
+            raise ValueError("Unknown parameter: {}.".format(op))
+    else:
+        raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
+
+
+def _parallel_linear(x,
+                     num_rows,
+                     num_cols,
+                     axis,
+                     param_attr,
+                     bias_attr,
+                     gather_out,
+                     inner_rank,
+                     nranks,
+                     split_tensor,
+                     name,
+                     group=None):
     """
     Parallel Linear
     """
-    if not name:
-        name = "fc_by_row_rank_%d" % inner_rank if axis == 0 else "fc_by_col_rank_%d" % inner_rank
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    if axis == 0:
+        if split_tensor:
+            x = _c_split(x, inner_rank, nranks, group=group)
     else:
-        name = name + "_by_row_rank_%d" % inner_rank if axis == 0 else name + "_by_col_rank_%d" % inner_rank
+        x = _c_identity(x, group=group)
+
     linear = paddle.nn.Linear(
         num_rows,
         num_cols,
@@ -748,33 +907,63 @@ def _parallel_linear(x, num_rows, num_cols, axis, param_attr, bias_attr,
         bias_attr=bias_attr,
         name=name)
 
-    weight = linear.weight
-    weight.is_distributed = True
     linear_out = linear(x)
     startup_block = paddle.static.default_startup_program().global_block()
     main_block = paddle.static.default_main_program().global_block()
-    startup_block.vars[weight.name].is_distributed = True
-    main_block.vars[weight.name].is_distributed = True
+    startup_block.vars[linear.weight.name].is_distributed = True
+    main_block.vars[linear.weight.name].is_distributed = True
 
-    if gather_out:
-        if axis == 0:
-            paddle.distributed.all_reduce(linear_out)
-        else:
-            output = []
-            paddle.distributed.all_gather(output, linear_out)
-            linear_out = paddle.concat(output, axis=len(linear_out.shape) - 1)
-    return linear_out
+    if not gather_out: return linear_out
+
+    op_type = 'c_allreduce_sum' if axis == 0 else 'c_concat'
+    out_shape = list(linear_out.shape)
+    out_shape[0] *= 1 if axis == 0 else nranks
+    out = main_block.create_var(
+        shape=out_shape,
+        dtype=linear_out.dtype,
+        type=linear_out.type,
+        lod_level=linear_out.lod_level,
+        persistable=False,
+        is_data=False,
+        need_check_feed=linear_out.desc.need_check_feed())
+    if axis == 0:
+        main_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': linear_out},
+            outputs={'Out': out},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': True,
+                'use_model_parallel': True
+            })
+    else:
+        main_block.append_op(
+            type='c_concat',
+            inputs={'X': linear_out},
+            outputs={'Out': out},
+            attrs={
+                'ring_id': ring_id,
+                'nranks': nranks,
+                'use_calc_stream': True,
+                'use_model_parallel': True
+            })
+    return out
 
 
-def _parallel_embedding(x, per_part_embeddings, origin_size, param_attr,
-                        inner_rank, num_partitions, name):
+def _parallel_embedding(x,
+                        per_part_embeddings,
+                        origin_size,
+                        param_attr,
+                        inner_rank,
+                        num_partitions,
+                        name,
+                        group=None):
     """
     Parallel Embedding
     """
-    if not name:
-        name = "emb_rank_%d" % inner_rank
-    else:
-        name = name + "_rank_%d" % inner_rank
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
 
     origin_num_embeddings = origin_size[0]
     embedding = paddle.nn.Embedding(
@@ -795,15 +984,29 @@ def _parallel_embedding(x, per_part_embeddings, origin_size, param_attr,
                                  inner_rank, per_part_embeddings - 1)
     if len(origin_input_shape) == 2:
         x_shard = paddle.squeeze(x_shard, axis=-1)
-
-    embedding.weight.is_distributed = True
     emb_out = embedding(x_shard)
     startup_block = paddle.static.default_startup_program().global_block()
     main_block = paddle.static.default_main_program().global_block()
     startup_block.vars[embedding.weight.name].is_distributed = True
     main_block.vars[embedding.weight.name].is_distributed = True
-    paddle.distributed.all_reduce(emb_out, group=None)
-    return emb_out
+    out = main_block.create_var(
+        shape=emb_out.shape,
+        dtype=emb_out.dtype,
+        type=emb_out.type,
+        lod_level=emb_out.lod_level,
+        persistable=False,
+        is_data=False,
+        need_check_feed=emb_out.desc.need_check_feed())
+    main_block.append_op(
+        type='c_allreduce_sum',
+        inputs={'X': emb_out},
+        outputs={'Out': out},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            'use_model_parallel': True
+        })
+    return out
 
 
 def split(x,
@@ -871,10 +1074,12 @@ def split(x,
             import paddle
             from paddle.distributed import init_parallel_env
 
+            # required: gpu
+
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             data = paddle.randint(0, 8, shape=[10,4])
-            emb_out = padle.distributed.split(
+            emb_out = paddle.distributed.split(
                 data,
                 (8, 8),
                 operation="embedding",
@@ -896,8 +1101,10 @@ def split(x,
         "paddle.distributed.split must be one of {}.".format(
             supported_operations))
     if in_dygraph_mode():
-        rank = paddle.distributed.get_rank()
-        nranks = paddle.distributed.get_world_size()
+        raise ValueError(
+            "paddle.distributed.split cannot be used in dynamic "
+            "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "
+            "ParallelColumnLinear instead.")
     else:
         assert fleet._role_maker, ("To use paddle.distributed.split, "
                                    "you must call fleet.init() firstly.")
@@ -915,10 +1122,18 @@ def split(x,
         if inner_rank == num_partitions - 1: per_part_size = last_part_size
         per_part_size += 1  # make the last row as the padding index
 
-        emb_out = _parallel_embedding(x, per_part_size, size, weight_attr,
-                                      inner_rank, num_partitions, name)
+        emb_out = _parallel_embedding(
+            x,
+            per_part_size,
+            size,
+            weight_attr,
+            inner_rank,
+            num_partitions,
+            name,
+            group=None)
         return emb_out
     else:
+        should_split = False
         if axis == 0:
             assert size[0] % num_partitions == 0, (
                 "Number of rows of the weight for linear ({}) must be"
@@ -926,11 +1141,7 @@ def split(x,
                                                            num_partitions))
             per_part_size = size[0] // num_partitions
             linear_size = (per_part_size, size[1])
-            assert x.shape[-1] == per_part_size, (
-                "The width ({}) of the input "
-                "x must be equal to the height ({}) of the weight. Maybe you "
-                "should split the input x using paddle.split.".format(
-                    x.shape[-1], per_part_size))
+            if x.shape[-1] == size[0]: should_split = True
 
         elif axis == 1:
             assert size[1] % num_partitions == 0, (
@@ -952,5 +1163,181 @@ def split(x,
             bias_attr,
             gather_out,
             inner_rank,
-            name=name)
+            num_partitions,
+            should_split,
+            name=name,
+            group=None)
         return linear_out
+
+
+def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
+    """
+    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
+    Args:
+        in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
+            should be float16, float32, float64, int32 or int64.
+        out_tensor_list (Tensor): A list of output Tensors. The data type of its elements should be the same as the
+            data type of the input Tensors.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+    Returns:
+        None.
+    Examples:
+        .. code-block:: python
+            # required: distributed
+            import numpy as np
+            import paddle
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            out_tensor_list = []
+            if paddle.distributed.ParallelEnv().rank == 0:
+                np_data1 = np.array([[1, 2, 3], [4, 5, 6]])
+                np_data2 = np.array([[7, 8, 9], [10, 11, 12]])
+            else:
+                np_data1 = np.array([[13, 14, 15], [16, 17, 18]])
+                np_data2 = np.array([[19, 20, 21], [22, 23, 24]])
+            data1 = paddle.to_tensor(np_data1)
+            data2 = paddle.to_tensor(np_data2)
+            paddle.distributed.all_to_all([data1, data2], out_tensor_list)
+            # out for rank 0: [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]
+            # out for rank 1: [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]]
+    """
+    if group is not None and not group.is_member():
+        return
+
+    ring_id = 0 if group is None else group.id
+    op_type = 'alltoall'
+    temp = paddle.concat(in_tensor_list, axis=0)
+    helper = LayerHelper(op_type, **locals())
+    nranks = len(in_tensor_list)
+    out = helper.create_variable_for_type_inference(
+        dtype=in_tensor_list[0].dtype)
+    if in_dygraph_mode():
+        core.ops.alltoall_(temp, 'use_calc_stream', use_calc_stream, 'ring_id',
+                           ring_id)
+    else:
+        if not isinstance(in_tensor_list, list):
+            raise ValueError("The type of 'in_tensor_list' for all_to_all "
+                             "should be list.")
+        for elem in in_tensor_list:
+            check_variable_and_dtype(
+                elem, 'in_tensor_list',
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                'all_to_all')
+        if not isinstance(out_tensor_list, list):
+            raise ValueError("The type of 'out_tensor_list' for all_to_all "
+                             "should be list.")
+        if len(out_tensor_list) != 0:
+            raise ValueError("The 'out_tensor_list' for all_to_all "
+                             "must be an empty list.")
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [temp]},
+            outputs={'Out': [out]},
+            attrs={
+                'ring_id': group,
+                'use_calc_stream': use_calc_stream,
+            })
+    out_tensor_list.extend(paddle.split(out, nranks, 0))
+
+
+def send(tensor, dst=0, group=None, use_calc_stream=True):
+    """
+    Send a tensor to the receiver.
+
+    Args:
+        tensor (Tensor): The Tensor to send. Its data type
+            should be float16, float32, float64, int32 or int64.
+        dst (int): The destination rank id.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            # required: distributed
+            import paddle
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
+                paddle.distributed.send(data, dst=1)
+            else:
+                data = paddle.to_tensor([1,2,3])
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    op_type = 'send_v2'
+    if in_dygraph_mode():
+        return core.ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                'ring_id', ring_id, 'peer', dst)
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'send')
+
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'peer': dst,
+            'use_calc_stream': use_calc_stream,
+        })
+
+
+def recv(tensor, src=0, group=None, use_calc_stream=True):
+    """
+    Receive a tensor to the sender.
+
+    Args:
+        tensor (Tensor): The Tensor to receive. Its data type
+            should be float16, float32, float64, int32 or int64.
+        src (int): The source rank id.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            # required: distributed
+            import paddle
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
+                paddle.distributed.send(data, dst=1)
+            else:
+                data = paddle.to_tensor([1,2,3])
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    op_type = 'recv_v2'
+    if in_dygraph_mode():
+        return core.ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
+                                'ring_id', ring_id, 'peer', src, 'dtype',
+                                tensor.dtype, 'out_shape', tensor.shape)
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'recv')
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        outputs={'Out': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'peer': src,
+            'out_shape': tensor.shape,
+            'dtype': tensor.dtype,
+            'use_calc_stream': use_calc_stream,
+        })
