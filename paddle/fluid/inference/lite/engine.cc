@@ -59,8 +59,14 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
 #endif
 
 #ifdef LITE_SUBGRAPH_WITH_XPU
+  // Deprecated in Paddle-Lite release/v2.8
   lite_cxx_config.set_xpu_workspace_l3_size_per_thread(
       cfg.xpu_l3_workspace_size);
+  lite_cxx_config.set_xpu_l3_cache_method(cfg.xpu_l3_workspace_size,
+                                          cfg.locked);
+  lite_cxx_config.set_xpu_conv_autotune(cfg.autotune, cfg.autotune_file);
+  lite_cxx_config.set_xpu_multi_encoder_method(cfg.precision,
+                                               cfg.adaptive_seqlen);
 #endif
 
   // create predictor

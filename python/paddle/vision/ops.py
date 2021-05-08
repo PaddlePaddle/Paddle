@@ -22,7 +22,10 @@ from ..fluid.initializer import Normal
 
 from paddle.common_ops_import import *
 
-__all__ = ['yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D']
+__all__ = [
+    'yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D', 'read_file',
+    'decode_jpeg'
+]
 
 
 def yolo_loss(x,
@@ -336,7 +339,7 @@ def yolo_box(x,
         import paddle
         import numpy as np
 
-	x = np.random.random([2, 14, 8, 8]).astype('float32')
+        x = np.random.random([2, 14, 8, 8]).astype('float32')
         img_size = np.ones((2, 2)).astype('int32')
 
         x = paddle.to_tensor(x)
@@ -454,13 +457,13 @@ def deform_conv2d(x,
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
         bias (Tensor, optional): The bias with shape [M,].
-        stride (int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|list|tuple, optional): The padding size. If padding is a tuple, it must
+        padding (int|list|tuple, optional): The padding size. If padding is a list/tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
         deformable_groups (int): The number of deformable group partitions.
@@ -644,13 +647,13 @@ class DeformConv2D(Layer):
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
         kernel_size(int|list|tuple): The size of the convolving kernel.
-        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
-        padding (int|list|tuple, optional): The padding size. If padding is a tuple, it must
+        padding (int|list|tuple, optional): The padding size. If padding is a list/tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
         deformable_groups (int): The number of deformable group partitions.
@@ -782,3 +785,95 @@ class DeformConv2D(Layer):
             groups=self._groups,
             mask=mask)
         return out
+
+
+def read_file(filename, name=None):
+    """
+    Reads and outputs the bytes contents of a file as a uint8 Tensor
+    with one dimension.
+
+    Args:
+        filename (str): Path of the file to be read.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A uint8 tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import cv2
+            import paddle
+
+            fake_img = (np.random.random(
+                        (400, 300, 3)) * 255).astype('uint8')
+
+            cv2.imwrite('fake.jpg', fake_img)
+
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
+            
+            print(img_bytes.shape)
+
+    """
+
+    if in_dygraph_mode():
+        return core.ops.read_file('filename', filename)
+
+    inputs = dict()
+    attrs = {'filename': filename}
+
+    helper = LayerHelper("read_file", **locals())
+    out = helper.create_variable_for_type_inference('uint8')
+    helper.append_op(
+        type="read_file", inputs=inputs, attrs=attrs, outputs={"Out": out})
+
+    return out
+
+
+def decode_jpeg(x, mode='unchanged', name=None):
+    """
+    Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
+    Optionally converts the image to the desired format. 
+    The values of the output tensor are uint8 between 0 and 255.
+
+    Args:
+        x (Tensor): A one dimensional uint8 tensor containing the raw bytes 
+            of the JPEG image.
+        mode (str): The read mode used for optionally converting the image. 
+            Default: 'unchanged'.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
+
+    Examples:
+        .. code-block:: python
+            import cv2
+            import paddle
+
+            fake_img = (np.random.random(
+                        (400, 300, 3)) * 255).astype('uint8')
+
+            cv2.imwrite('fake.jpg', fake_img)
+
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
+            img = paddle.vision.ops.decode_jpeg(img_bytes)
+
+            print(img.shape)
+    """
+
+    if in_dygraph_mode():
+        return core.ops.decode_jpeg(x, "mode", mode)
+
+    inputs = {'X': x}
+    attrs = {"mode": mode}
+
+    helper = LayerHelper("decode_jpeg", **locals())
+    out = helper.create_variable_for_type_inference('uint8')
+    helper.append_op(
+        type="decode_jpeg", inputs=inputs, attrs=attrs, outputs={"Out": out})
+
+    return out

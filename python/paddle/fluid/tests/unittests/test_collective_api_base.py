@@ -33,7 +33,7 @@ from paddle.fluid import core
 
 
 class TestCollectiveAPIRunnerBase(object):
-    def get_model(self, train_prog, startup_prog, rank):
+    def get_model(self, train_prog, startup_prog, rank, indata=None):
         raise NotImplementedError(
             "get model should be implemented by child class.")
 
@@ -44,24 +44,31 @@ class TestCollectiveAPIRunnerBase(object):
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        result = self.get_model(train_prog, startup_prog, rank)
         paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
                 device_id)  #if args.use_gpu else fluid.CPUPlace()
+        elif args['backend'] == 'bkcl':
+            device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+            place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(startup_prog)
         np.random.seed(os.getpid())
         indata = np.random.random((10, 1000)).astype("float32")
-        fetch_list = []
-        for elem in result:
-            fetch_list.append(elem.name)
-        out = exe.run(train_prog,
-                      feed={'tindata': indata},
-                      fetch_list=fetch_list)
+        if args['static_mode']:
+            result = self.get_model(train_prog, startup_prog, rank)
+            exe = fluid.Executor(place)
+            exe.run(startup_prog)
+            fetch_list = []
+            for elem in result:
+                fetch_list.append(elem.name)
+            out = exe.run(train_prog,
+                          feed={'tindata': indata},
+                          fetch_list=fetch_list)
+        else:
+            out = self.get_model(train_prog, startup_prog, rank, indata)
+            #print(out, sys.stderr)
         if six.PY2:
             print(pickle.dumps(out))
         else:
@@ -71,7 +78,6 @@ class TestCollectiveAPIRunnerBase(object):
 def runtime_main(test_class, col_type):
     args = {}
     model = test_class()
-    args["deviceid"] = os.getenv("FLAGS_selected_gpus")
     args["trainerid"] = int(os.getenv("PADDLE_TRAINER_ID"))
     args["trainernum"] = int(os.getenv("PADDLE_TRAINERS_NUM"))
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
@@ -79,6 +85,7 @@ def runtime_main(test_class, col_type):
     args["col_type"] = col_type
     args["backend"] = os.getenv("BACKEND")
     args["path_id"] = int(os.getenv("PATH_ID"))
+    args["static_mode"] = int(os.getenv("STATIC_MODE"))
     model.run_trainer(args)
 
 
@@ -112,21 +119,38 @@ class TestDistBase(unittest.TestCase):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
-        env0 = {
-            "FLAGS_selected_gpus": "0",
-            "PADDLE_TRAINER_ID": "0",
-            "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-            "PADDLE_CURRENT_ENDPOINT": w0_ep
-        }
+        if core.is_compiled_with_cuda():
+            env0 = {
+                "FLAGS_selected_gpus": "0",
+                "PADDLE_TRAINER_ID": "0",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": w0_ep
+            }
 
-        env1 = {
-            "FLAGS_selected_gpus": "1",
-            "PADDLE_TRAINER_ID": "1",
-            "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-            "PADDLE_CURRENT_ENDPOINT": w1_ep
-        }
+            env1 = {
+                "FLAGS_selected_gpus": "1",
+                "PADDLE_TRAINER_ID": "1",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": w1_ep
+            }
+        elif core.is_compiled_with_xpu():
+            env0 = {
+                "FLAGS_selected_xpus": "0",
+                "PADDLE_TRAINER_ID": "0",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": w0_ep
+            }
+
+            env1 = {
+                "FLAGS_selected_xpus": "1",
+                "PADDLE_TRAINER_ID": "1",
+                "PADDLE_TRAINERS_NUM": "2",
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": w1_ep
+            }
         #update environment
         env0.update(envs)
         env1.update(envs)
@@ -167,9 +191,13 @@ class TestDistBase(unittest.TestCase):
                          col_type,
                          backend="nccl",
                          path_id="0",
+                         static_mode="1",
                          check_error_log=False,
                          need_envs={}):
-        with_gloo = '0' if backend == "nccl" else '1'
+        if backend == "nccl" or backend == "bkcl":
+            with_gloo = '0'
+        else:
+            with_gloo = '1'
         required_envs = {
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_eager_delete_tensor_gb": "0.0",
@@ -177,8 +205,10 @@ class TestDistBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-            "GLOG_v": "0",
+            "FLAGS_call_stack_level": "2",
+            "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
+            "STATIC_MODE": static_mode,
             "PADDLE_WITH_GLOO": with_gloo,
             "BACKEND": backend,
             "PATH_ID": path_id
@@ -247,5 +277,23 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     result_data, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "alltoall":
+            need_result1 = np.vstack((input1[0:input1.shape[0] // 2, :],
+                                      input2[0:input2.shape[0] // 2, :]))
+            need_result2 = np.vstack((input1[input1.shape[0] // 2:, :],
+                                      input2[input2.shape[0] // 2:, :]))
+            tr0_out = np.vstack(tr0_out)
+            tr1_out = np.vstack(tr1_out)
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+        elif col_type == "sendrecv":
+            result_data = tr1_out[0]
+            self.assertTrue(
+                np.allclose(
+                    input1, result_data, rtol=1e-05, atol=1e-05))
         else:
             pass

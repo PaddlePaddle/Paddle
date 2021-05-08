@@ -110,6 +110,16 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "transpose_flatten_concat_fuse_pass",
 });
 
+const std::vector<std::string> kDlnneSubgraphPasses({
+    "is_test_pass",                  //
+    "delete_dropout_op_pass"         //
+    "simplify_with_basic_ops_pass",  //
+    "conv_bn_fuse_pass",             //
+    "depthwise_conv_bn_fuse_pass",   //
+    "shuffle_channel_detect_pass",   //
+    "dlnne_subgraph_pass",           //
+});
+
 const std::vector<std::string> kLiteSubgraphPasses({
 #ifdef PADDLE_WITH_LITE
     "lite_subgraph_pass",

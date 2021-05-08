@@ -17,10 +17,19 @@ import numpy
 import warnings
 from paddle import Tensor
 
-__all__ = [
-    'LRScheduler', 'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay',
-    'InverseTimeDecay', 'PolynomialDecay', 'LinearWarmup', 'ExponentialDecay',
-    'MultiStepDecay', 'StepDecay', 'LambdaDecay', 'ReduceOnPlateau',
+__all__ = [ #noqa
+    'LRScheduler',
+    'NoamDecay',
+    'PiecewiseDecay',
+    'NaturalExpDecay',
+    'InverseTimeDecay',
+    'PolynomialDecay',
+    'LinearWarmup',
+    'ExponentialDecay',
+    'MultiStepDecay',
+    'StepDecay',
+    'LambdaDecay',
+    'ReduceOnPlateau',
     'CosineAnnealingDecay'
 ]
 
@@ -303,8 +312,8 @@ class PiecewiseDecay(LRScheduler):
             learning_rate = 0.1
 
     Args:
-        boundaries(list): A list of steps numbers. The type of element in the list is python int. 
-        values(list): A list of learning rate values that will be picked during different epoch boundaries. 
+        boundaries(list|tuple): A list/tuple of steps numbers. The type of element in the list is python int. 
+        values(list|tuple): A list/tuple of learning rate values that will be picked during different epoch boundaries. 
             The type of element in the list is python float.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .

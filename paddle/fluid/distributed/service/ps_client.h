@@ -118,6 +118,17 @@ class PSClient {
                                            const uint64_t *keys, size_t num,
                                            bool is_training) = 0;
 
+  virtual ::std::future<int32_t> pull_sparse_ptr(char **select_values,
+                                                 size_t table_id,
+                                                 const uint64_t *keys,
+                                                 size_t num) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
   virtual std::future<int32_t> print_table_stat(uint32_t table_id) = 0;
 
   // 确保所有积攒中的请求都发起发送
@@ -150,7 +161,7 @@ class PSClient {
   virtual std::future<int32_t> send_client2client_msg(int msg_type,
                                                       int to_client_id,
                                                       const std::string &msg) {
-    LOG(FATAL) << "Did not implement";
+    VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
     promise.set_value(-1);

@@ -110,7 +110,8 @@ class TestDistTraning(unittest.TestCase):
 
     def check_acc(self, grad, grad_sum, acc_grad):
         if grad is not None:
-            grad_sum = grad_sum + grad
+            grad_sum = grad_sum + grad.numpy()
+            acc_grad = acc_grad.numpy() if acc_grad is not None else None
             np.testing.assert_allclose(grad_sum, acc_grad, rtol=1e-6)
         return grad_sum
 
