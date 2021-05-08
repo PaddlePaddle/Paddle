@@ -49,6 +49,7 @@ class AutoMixedPrecisionListsBF16(object):
         self.bf16_list = copy.copy(bf16_list)
         self.fp32_list = copy.copy(fp32_list)
         self.gray_list = copy.copy(gray_list)
+        self.bf16_initializer_list = copy.copy(bf16_initializer_list)
         self.unsupported_list = copy.copy(unsupported_list)
         self.fp32_varnames = copy.copy(custom_fp32_varnames)
         self._update_list()
@@ -78,6 +79,8 @@ class AutoMixedPrecisionListsBF16(object):
                 self.fp32_list.add(op_name)
                 self.unsupported_list.add(op_name)
 
+
+bf16_initializer_list = {'fill_constant', 'uniform_random'}
 
 # always bf16
 bf16_list = {'elementwise_add', }
