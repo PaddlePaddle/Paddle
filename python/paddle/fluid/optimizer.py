@@ -650,7 +650,7 @@ class Optimizer(object):
                         "Optimizer set error, {} should in state dict".format( var_name )
                 var.set_value(self._accumulators_holder[var_name])
 
-        self._global_accumulators[var_name] = var
+        self._global_accumulators[name] = var
         return var
 
     def _get_accumulator(self, name, param):
@@ -2146,6 +2146,19 @@ class AdamOptimizer(Optimizer):
                             else self._beta2,
                     shape=[1],
                     type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
+        if self._use_global_beta_pow:
+            self._add_global_accumulator(
+                name=self._beta1_pow_acc_str,
+                fill_value=0.9 if isinstance(self._beta1, Variable) \
+                        else self._beta1,
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
+            self._add_global_accumulator(
+                name=self._beta2_pow_acc_str,
+                fill_value=0.999 if isinstance(self._beta2, Variable) \
+                        else self._beta2,
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -2253,7 +2266,7 @@ class AdamOptimizer(Optimizer):
                 inputs = {"X": beta2_pow_acc}
                 attrs = {}
                 if isinstance(self._beta2, Variable):
-                    inputs['ScaleTensor'] = self._beta1
+                    inputs['ScaleTensor'] = self._beta2
                 else:
                     attrs['scale'] = self._beta2
                 block.append_op(
