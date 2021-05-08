@@ -159,7 +159,7 @@ def count_adap_avgpool(m, x, y):
     total_div = 1
     kernel_ops = total_add + total_div
     num_elements = y.numel()
-    total_ops = kernel_ops * num_elements
+    total_ops = float(kernel_ops) * num_elements
     m.total_ops += abs(int(total_ops))
 
 
