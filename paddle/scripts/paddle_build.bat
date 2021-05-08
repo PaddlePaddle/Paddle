@@ -78,6 +78,7 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
+rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
@@ -259,9 +260,10 @@ if "%WITH_GPU%"=="ON" (
 )
 
 rem ------initialize the python environment------
+@ECHO ON
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
-if %WITH_PYTHON% == "OFF" (
+if %WITH_PYTHON% == "ON" (
     where python
     where pip
     pip install wheel --user
