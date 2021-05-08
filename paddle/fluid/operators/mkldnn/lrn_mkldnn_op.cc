@@ -59,7 +59,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto workspace_memory = handler.AcquireWorkspaceMemory(mid);
     mid->set_layout(framework::DataLayout::kMKLDNN);
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (!workspace_memory->get_desc().is_zero()) {
       mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
       lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
@@ -118,7 +118,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto lrn_bwd = handler.AcquireBackwardPrimitive();
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     lrn_bwd->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
                                {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
                                {MKLDNN_ARG_DIFF_SRC, *diff_src_memory},

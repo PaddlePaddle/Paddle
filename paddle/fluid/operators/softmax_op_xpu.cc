@@ -41,8 +41,21 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::softmax<T>(dev_ctx.x_context(), x->data<float>(),
-                            out->data<float>(), x_dims, axis);
+
+    int r = XPU_SUCCESS;
+    Tensor clip_x;
+    int len = x->numel();
+    T* clip_x_data =
+        clip_x.mutable_data<T>(context.GetPlace(), len * sizeof(T));
+    r = xpu::clip(dev_ctx.x_context(), x->data<float>(), clip_x_data, len,
+                  -1e30, 1e30);
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External("XPU API(clip) return wrong "
+                                                 "value[%d %s]",
+                                                 r, XPUAPIErrorMsg[r]));
+
+    r = xpu::softmax<T>(dev_ctx.x_context(), clip_x_data, out->data<float>(),
+                        x_dims, axis);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU API(softmax2d_forward) return wrong "

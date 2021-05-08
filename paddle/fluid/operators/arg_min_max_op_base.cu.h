@@ -14,9 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 
-#include <cub/cub.cuh>
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include <limits>
 #include <string>
 #include <typeinfo>
@@ -175,12 +181,13 @@ class ArgMinMaxOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dtype = ctx.Attr<int>("dtype");
     if (dtype < 0) {
-      framework::VisitDataType(static_cast<framework::proto::VarType::Type>(
-                                   framework::proto::VarType::INT64),
-                               VisitDataCudaArgMinMaxFunctor<T, Reducer>(ctx));
+      framework::VisitDataTypeTiny(
+          static_cast<framework::proto::VarType::Type>(
+              framework::proto::VarType::INT64),
+          VisitDataCudaArgMinMaxFunctor<T, Reducer>(ctx));
       return;
     }
-    framework::VisitDataType(
+    framework::VisitDataTypeTiny(
         static_cast<framework::proto::VarType::Type>(dtype),
         VisitDataCudaArgMinMaxFunctor<T, Reducer>(ctx));
   }

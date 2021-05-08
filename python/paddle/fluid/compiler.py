@@ -18,8 +18,8 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
-from .framework import cuda_places, cpu_places
-
+from .framework import _get_paddle_place, _get_paddle_place_list
+from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
@@ -28,6 +28,7 @@ ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
+DeviceType = core.DeviceType
 
 
 def _place_obj(place):
@@ -201,7 +202,7 @@ class CompiledProgram(object):
                 Tensors to other devices when it is first executed, the CompiledProgram
                 specified by share_vars_from must be run before the current CompiledProgram.
                 The default is None.
-            places(list(CUDAPlace)|list(CPUPlace)|None): This parameter specifies the device
+            places(list(CUDAPlace)|list(CPUPlace)|list(str)|None): This parameter specifies the device
                 on which the model is running. If you want to run on GPU0 and GPU1, places are
                 [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]; if you want to run with 2 CPUs, places are
                 [fluid.CPUPlace()] * 2. If the parameter is not set, i.e. the parameter is None,
@@ -212,7 +213,8 @@ class CompiledProgram(object):
                 CPU number is obtained from the environment variable CPU_NUM. For example,
                 export CPU_NUM=4, if the environment variable is not set, the executor will
                 add the variable to the environment variable and set its value to 1.
-                The default is None.
+                The default is None. If ``places`` is the list of string, the string in the list
+                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs. 
 
         Returns:
             CompiledProgram
@@ -281,7 +283,10 @@ class CompiledProgram(object):
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
-        self._places = places
+        if isinstance(places, (list, tuple)):
+            self._places = _get_paddle_place_list(places)
+        else:
+            self._places = _get_paddle_place(places)
 
         if _has_backward_op(self._graph):
             assert self._loss_name is not None, "The loss name of CompiledProgram is None. The loss name should be set if CompiledProgram contains backward part."
@@ -316,7 +321,7 @@ class CompiledProgram(object):
             "Subclass of CompiledProgram should implement _with_distributed method."
         )
 
-    def _compile_data_parallel(self, places, use_cuda=False, scope=None):
+    def _compile_data_parallel(self, places, use_device, scope=None):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
@@ -342,13 +347,16 @@ class CompiledProgram(object):
 
         if self._exec_strategy is None:
             self._exec_strategy = ExecutionStrategy()
-        self._exec_strategy.use_cuda = use_cuda
+        self._exec_strategy._use_device = use_device
 
         if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy.use_cuda:
+            if self._exec_strategy._use_device == DeviceType.CUDA:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
                 self._exec_strategy.num_threads = len(places) * 4
+            elif self._exec_strategy._use_device == DeviceType.XPU:
+                # Currently only single thread is supported in Kunlun XPU.
+                self._exec_strategy.num_threads = 1
             else:
                 self._exec_strategy.num_threads = len(places) * 2
 
@@ -377,7 +385,7 @@ class CompiledProgram(object):
             self._build_strategy.enable_sequential_execution = True
 
         if self._program is not None and self._program._enable_dgc:
-            assert use_cuda, "DGC only used under CUDA environment."
+            assert self._exec_strategy._use_device == DeviceType.CUDA, "DGC only used under CUDA environment."
             assert self._build_strategy.num_trainers * len(
                 places) > 1, "DGC is not avaliable for single card training."
             assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
@@ -447,11 +455,14 @@ class CompiledProgram(object):
                 raise NotImplementedError(
                     "If optimizer is used in control flow, "
                     "training on multi-places is not supported now.")
-
+            if isinstance(self._place, core.CUDAPlace):
+                use_device = DeviceType.CUDA
+            elif isinstance(self._place, core.XPUPlace):
+                use_device = DeviceType.XPU
+            else:
+                use_device = DeviceType.CPU
             self._executor = self._compile_data_parallel(
-                use_cuda=isinstance(self._place, core.CUDAPlace),
-                scope=self._scope,
-                places=self._places)
+                use_device=use_device, scope=self._scope, places=self._places)
         return self
 
     def _get_places(self, place, place_list):
@@ -461,7 +472,11 @@ class CompiledProgram(object):
                 assert p._type() == place._type(), \
                     "Place type not match. You may set wrong type of places."
         else:
-            place_list = cuda_places() if isinstance(
-                place, core.CUDAPlace) else cpu_places()
+            if isinstance(place, core.CUDAPlace):
+                place_list = cuda_places()
+            elif isinstance(place, core.XPUPlace):
+                place_list = xpu_places()
+            else:
+                place_list = cpu_places()
         assert place_list, "No places for execution."
         return place_list

@@ -228,20 +228,19 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsX(
       pattern->NewNode(elementwise_add_pattern.elementwise_add_y_repr()));
   conv_output->AsIntermediate();
 
-  auto get_node_from_elementwise_add =
-      [&elementwise_add_pattern](
-          const GraphPatternDetector::subgraph_t& subgraph)
+  auto get_node_from_elementwise_add = [&elementwise_add_pattern](
+      const GraphPatternDetector::subgraph_t& subgraph)
       -> std::tuple<Node*, Node*, Node*> {
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_y, elementwise_add_y,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_y, elementwise_add_y,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
+                                  elementwise_add_pattern);
 
-    return std::make_tuple(elementwise_add_op, elementwise_add_y,
-                           elementwise_add_out);
-  };
+        return std::make_tuple(elementwise_add_op, elementwise_add_y,
+                               elementwise_add_out);
+      };
 
   return ExecuteHandleOnGraph<IdentityFuseHandle>(
       &gpd, graph_with_stats,
@@ -266,20 +265,19 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
       conv_output);
   conv_output->AsIntermediate();
 
-  auto get_node_from_elementwise_add =
-      [&elementwise_add_pattern](
-          const GraphPatternDetector::subgraph_t& subgraph)
+  auto get_node_from_elementwise_add = [&elementwise_add_pattern](
+      const GraphPatternDetector::subgraph_t& subgraph)
       -> std::tuple<Node*, Node*, Node*> {
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_x, elementwise_add_x,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_x, elementwise_add_x,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
+                                  elementwise_add_pattern);
 
-    return std::make_tuple(elementwise_add_op, elementwise_add_x,
-                           elementwise_add_out);
-  };
+        return std::make_tuple(elementwise_add_op, elementwise_add_x,
+                               elementwise_add_out);
+      };
 
   return ExecuteHandleOnGraph<IdentityFuseHandle>(
       &gpd, graph_with_stats,
@@ -306,17 +304,16 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
   conv_x_output->AsIntermediate();
   conv_y_output->AsIntermediate();
 
-  auto get_node_from_elementwise_add =
-      [&elementwise_add_pattern](
-          const GraphPatternDetector::subgraph_t& subgraph)
+  auto get_node_from_elementwise_add = [&elementwise_add_pattern](
+      const GraphPatternDetector::subgraph_t& subgraph)
       -> std::tuple<Node*, Node*> {
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
+                                  elementwise_add_pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
+                                  elementwise_add_pattern);
 
-    return std::make_tuple(elementwise_add_op, elementwise_add_out);
-  };
+        return std::make_tuple(elementwise_add_op, elementwise_add_out);
+      };
 
   return ExecuteHandleOnGraph<ProjectionFuseHandle>(
       &gpd, graph_with_stats,
@@ -351,4 +348,4 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("elementwise_add", 0));
+            .LE("elementwise_add", 1));

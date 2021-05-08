@@ -135,13 +135,14 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
   return mkldnn::memory::desc({dims}, data_type, format);
 }
 
-inline void ClearMKLDNNCache(const platform::Place& place) {
+inline void ClearMKLDNNCache(const platform::Place& place,
+                             void* ptr = nullptr) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place);
-    dev_ctx->ResetBlobMap();
+    dev_ctx->ResetBlobMap(ptr);
     platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
         paddle::framework::DataLayout::kNCHW);
   }
@@ -188,7 +189,7 @@ MKLDNNGetDataType<paddle::platform::bfloat16>() {
 inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                     const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
-  mkldnn::stream astream(engine);
+  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
@@ -276,6 +277,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
           return mkldnn::memory::format_tag::Acdeb8a;
+        }
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return mkldnn::memory::format_tag::Abcde8a;
         }
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
@@ -435,14 +440,26 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
 inline void AttachPointerHashToMKLDNNKey(void* ptr,
                                          const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::MKLDNNDeviceContext* dev_ctx =
-        (platform::MKLDNNDeviceContext*)pool.Get(place);
-    dev_ctx->SetKeySuffix("E" +
-                          std::to_string(reinterpret_cast<uintptr_t>(ptr)));
-    // When NaiveExecutor/Executor is used no info on thread id is needed in a
-    // key
-    dev_ctx->DisableThreadInfoInKey();
+    // Static vars will remember first executor and its thread
+    // so both of them need to be processed by the same thread within
+    // critical section
+    static std::mutex static_vars_barrier;
+    static_vars_barrier.lock();
+    static auto first_exec = ptr;
+    static auto first_thread = ThreadIDasStr();
+    static_vars_barrier.unlock();
+
+    if (first_exec != ptr) {
+      paddle::platform::MKLDNNDeviceContext::tls().set_key_suffix(
+          "E" + std::to_string(reinterpret_cast<uintptr_t>(ptr)));
+    }
+    // Let's register adress of current executor
+    paddle::platform::MKLDNNDeviceContext::tls().set_curr_exec(ptr);
+
+    // For first thread
+    if (first_thread == ThreadIDasStr()) {
+      paddle::platform::MKLDNNDeviceContext::tls().disable_tid_in_key();
+    }
   }
 }
 
@@ -453,13 +470,14 @@ inline std::string CreateKey(const platform::MKLDNNDeviceContext& dev_ctx,
   key.reserve(64);
   using expand_type = int[];
   expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
-  key += dev_ctx.GetKeySuffix();
+  key += paddle::platform::MKLDNNDeviceContext::tls().get_key_suffix();
   return key;
 }
 
 inline std::string ExtendKeyWithThreadInfoIfNeeded(
     const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
-  return ((dev_ctx.IsThreadIdUsedInKey() == true) &&
+  return ((paddle::platform::MKLDNNDeviceContext::tls().is_tid_used_in_key() ==
+           true) &&
           (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
            platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default))
              ? key + "-t:" + ThreadIDasStr()
@@ -485,6 +503,19 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
     int padding_right = paddings[3];
 
     return {{padding_top, padding_left}, {padding_bottom, padding_right}};
+  }
+}
+
+// The function adjusts the vector of weight dimensions for group convolutions
+inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
+                                  const int groups) {
+  if (groups > 1) {
+    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
+    // else [o, i, h, w] -> [g, o/g, i, h, w]
+    weights_tz.push_back(0);
+    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
+    weights_tz[0] = groups;
+    weights_tz[1] = weights_tz[1] / groups;
   }
 }
 

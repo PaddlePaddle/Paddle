@@ -17,7 +17,6 @@ include(ExternalProject)
 
 set(THIRD_PARTY_PATH  "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
     "A path setting third party libraries download & build directories.")
-
 set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
     "A path cache third party source code to avoid repeated download.")
 
@@ -30,9 +29,9 @@ set(third_party_deps)
 # 2. REPOSITORY:    specify git REPOSITORY of 3rd party
 # 3. TAG:           specify git tag/branch/commitID of 3rd party
 # 4. DIR:           overwrite the original SOURCE_DIR when cache directory
-# 
+#
 # The function Return 1 PARENT_SCOPE variables:
-#  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add, 
+#  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add,
 #                            and you no longer need to set any donwnload steps in ExternalProject_Add.
 # For example:
 #    Cache_third_party(${TARGET}
@@ -53,7 +52,7 @@ FUNCTION(cache_third_party TARGET)
         SET(${TARGET_NAME}_DOWNLOAD_CMD
                 GIT_REPOSITORY  ${cache_third_party_REPOSITORY})
         IF(cache_third_party_TAG)
-            LIST(APPEND   ${TARGET_NAME}_DOWNLOAD_CMD  
+            LIST(APPEND   ${TARGET_NAME}_DOWNLOAD_CMD
                     GIT_TAG     ${cache_third_party_TAG})
         ENDIF()
     ELSEIF(cache_third_party_URL)
@@ -131,7 +130,7 @@ ENDFUNCTION()
 # Correction of flags on different Platform(WIN/MAC) and Print Warning Message
 if (APPLE)
     if(WITH_MKL)
-        MESSAGE(WARNING 
+        MESSAGE(WARNING
             "Mac is not supported with MKL in Paddle yet. Force WITH_MKL=OFF.")
         set(WITH_MKL OFF CACHE STRING "Disable MKL for building on mac" FORCE)
     endif()
@@ -142,7 +141,7 @@ if(WIN32 OR APPLE)
     SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in Windows and MacOS" FORCE)
 
     if(WITH_LIBXSMM)
-        MESSAGE(WARNING 
+        MESSAGE(WARNING
             "Windows, Mac are not supported with libxsmm in Paddle yet."
             "Force WITH_LIBXSMM=OFF")
         SET(WITH_LIBXSMM OFF CACHE STRING "Disable LIBXSMM in Windows and MacOS" FORCE)
@@ -209,11 +208,6 @@ include(external/warpctc)   # download, build, install warpctc
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
-if(WITH_AMD_GPU)
-    include(external/rocprim)   # download, build, install rocprim
-    list(APPEND third_party_deps extern_rocprim)
-endif()
-
 include(cblas)              	# find first, then download, build, install openblas
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
@@ -228,7 +222,7 @@ if(WITH_MKLDNN)
 endif()
 
 include(external/protobuf)  	# find first, then download, build, install protobuf
-if(NOT PROTOBUF_FOUND OR WIN32)
+if(TARGET extern_protobuf)
     list(APPEND third_party_deps extern_protobuf)
 endif()
 
@@ -238,7 +232,7 @@ if(WITH_PYTHON)
     list(APPEND third_party_deps extern_pybind)
 endif()
 
-IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
+IF(WITH_TESTING OR WITH_DISTRIBUTE)
     include(external/gtest)     # download, build, install gtest
     list(APPEND third_party_deps extern_gtest)
 ENDIF()
@@ -280,14 +274,28 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
-if(WITH_DISTRIBUTE)
-
-    if(WITH_GRPC)
-        list(APPEND third_party_deps extern_grpc)
-    else()
-        list(APPEND third_party_deps extern_leveldb)
-        list(APPEND third_party_deps extern_brpc)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
+    include(external/ascend)
+    if(WITH_ASCEND OR WITH_ASCEND_CL)
+        list(APPEND third_party_deps extern_ascend)
     endif()
+    if(WITH_ASCEND_CL)
+        list(APPEND third_party_deps extern_ascend_cl)
+    endif()
+endif ()
+
+if (WITH_PSCORE)
+    include(external/snappy)
+    list(APPEND third_party_deps extern_snappy)
+
+    include(external/leveldb)
+    list(APPEND third_party_deps extern_leveldb)
+
+    include(external/brpc)
+    list(APPEND third_party_deps extern_brpc)
+
+    include(external/libmct)     # download, build, install libmct
+    list(APPEND third_party_deps extern_libmct)
 endif()
 
 if(WITH_XBYAK)
@@ -308,11 +316,14 @@ if(WITH_DGC)
 endif()
 
 if (WITH_LITE)
+    message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    list(APPEND third_party_deps extern_cryptopp)
+    add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

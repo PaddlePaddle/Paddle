@@ -22,13 +22,15 @@ import unittest
 from convert import convert_params_for_net
 from rnn_numpy import SimpleRNN, LSTM, GRU
 
+bidirectional_list = ["bidirectional", "bidirect"]
+
 
 class TestSimpleRNN(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super(TestSimpleRNN, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -109,7 +111,7 @@ class TestGRU(unittest.TestCase):
         super(TestGRU, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -196,7 +198,7 @@ class TestLSTM(unittest.TestCase):
         super(TestLSTM, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -270,6 +272,7 @@ class TestLSTM(unittest.TestCase):
 
     def test_predict(self):
         predict_test_util(self.place, "LSTM")
+        predict_test_util(self.place, "LSTM", False)
 
     def runTest(self):
         self.test_with_initial_state()
@@ -278,7 +281,7 @@ class TestLSTM(unittest.TestCase):
         self.test_predict()
 
 
-def predict_test_util(place, mode):
+def predict_test_util(place, mode, stop_gradient=True):
     place = paddle.set_device(place)
     paddle.seed(123)
     np.random.seed(123)
@@ -296,7 +299,7 @@ def predict_test_util(place, mode):
             return self.rnn(input)
 
     x = paddle.randn((4, 10, 16))
-    x.stop_gradient = False
+    x.stop_gradient = stop_gradient
     seq_len = paddle.to_tensor(np.array([10, 6, 8, 5]))
     mask = sequence_mask(seq_len, maxlen=10, dtype=x.dtype)
     mask = paddle.unsqueeze(mask, [2])
@@ -339,7 +342,7 @@ def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
         else ["cpu"]
-    for direction in ["forward", "backward", "bidirectional"]:
+    for direction in ["forward", "bidirectional", "bidirect"]:
         for time_major in [True, False]:
             for device in devices:
                 for test_class in [TestSimpleRNN, TestLSTM, TestGRU]:

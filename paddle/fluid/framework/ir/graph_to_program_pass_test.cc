@@ -13,10 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
-#include <memory>
-#include <string>
-#include <unordered_set>
-#include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/program_desc.h"
 

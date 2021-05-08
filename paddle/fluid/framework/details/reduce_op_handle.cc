@@ -14,17 +14,9 @@
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 
-#include <memory>
-
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
-#if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/collective_client.h"
-#include "paddle/fluid/operators/distributed/collective_server.h"
-#include "paddle/fluid/operators/distributed/request_handler.h"
-#endif
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(
@@ -50,106 +42,6 @@ void ReduceOpHandle::Wait(
     dev_ctx.second->Wait();
   }
 }
-
-#if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
-template <typename DevCtx, typename DataType>
-void ReduceOpHandle::GatherSelectedRows(
-    const std::vector<const SelectedRows *> &src_selected_rows,
-    const std::vector<platform::Place> &in_places,
-    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-    VarHandle *out_var_handle, const platform::Place &out_place,
-    SelectedRows *dst_selected_rows) {
-  const CollectiveContext &collective_context =
-      *CollectiveContext::GetInstance();
-
-  // 1. gather local selected rows, merge them
-  std::string gathered_var_name = out_var_handle->name() + "_gathered_tmp";
-  auto scope = local_scopes_.at(out_var_handle->scope_idx());
-  auto gathered_var_mid = scope->Var(gathered_var_name);
-  auto gathered_select_rows =
-      gathered_var_mid->GetMutable<framework::SelectedRows>();
-  GatherLocalSelectedRowsFunctor functor(
-      src_selected_rows, in_places, dev_ctxes, out_place, gathered_select_rows);
-  WaitInputVarGenerated();
-  functor();
-
-  // FIXME(gongwb): remove this Wait.
-  Wait(dev_ctxes);
-
-  // merge them
-  auto merged_dev_ctx = dynamic_cast<DevCtx *>(dev_ctxes.at(out_place));
-  std::string merged_var_name =
-      GetRemoteVarName(out_var_handle->name(), collective_context.trainer_id_);
-  auto merged_select_rows =
-      scope->Var(merged_var_name)->GetMutable<SelectedRows>();
-  operators::math::scatter::MergeAdd<DevCtx, DataType> merge_func;
-  merge_func(*merged_dev_ctx, *gathered_select_rows, merged_select_rows);
-
-  // 2. start collective server if it doesn't exist
-  operators::distributed::CollectiveServer *server =
-      operators::distributed::CollectiveServer::GetInstance(
-          collective_context.endpoints_[collective_context.trainer_id_],
-          collective_context.endpoints_.size() - 1);
-
-  auto rpc_server = server->GetRPCServer();
-  rpc_server->RegisterVar(merged_var_name,
-                          operators::distributed::kRequestGetMonomerVariable,
-                          scope, merged_dev_ctx);
-
-  // 3. gather them from all remote nodes.
-  std::vector<const SelectedRows *> remote;
-  operators::distributed::CollectiveClient *client =
-      operators::distributed::CollectiveClient::GetInstance();
-
-  std::vector<operators::distributed::RemoteVar> vars;
-  for (unsigned int i = 0; i < collective_context.endpoints_.size(); i++) {
-    if (i == (unsigned)collective_context.trainer_id_) continue;
-
-    operators::distributed::RemoteVar var;
-    var.trainer_id_ = i;
-    var.var_name_ = GetRemoteVarName(out_var_handle->name(), i);
-    var.ep_ = collective_context.endpoints_[i];
-
-    vars.push_back(var);
-    VLOG(4) << "gather from:" << var.String();
-  }
-
-  // erase gathered vars
-  merged_dev_ctx->Wait();
-  scope->EraseVars(std::vector<std::string>{gathered_var_name});
-
-  PADDLE_ENFORCE_EQ(
-      client->Gather(vars, &remote, *merged_dev_ctx, scope), true,
-      platform::errors::PreconditionNotMet("Gather SelectedRows failed."));
-  PADDLE_ENFORCE_EQ(remote.size(), vars.size(),
-                    platform::errors::PreconditionNotMet(
-                        "The number of remotes should be equal to the number "
-                        "of variables to be gathered, but got the number of "
-                        "remotes is %d and the number of variables is %d.",
-                        remote.size(), vars.size()));
-
-  // 4. merged local selected rows.
-  std::vector<const SelectedRows *> all;
-  all.resize(collective_context.endpoints_.size());
-  for (auto v : vars) {
-    all[v.trainer_id_] =
-        scope->FindVar(v.var_name_)->GetMutable<SelectedRows>();
-  }
-  all[collective_context.trainer_id_] = merged_select_rows;
-
-  merge_func(*merged_dev_ctx, all, dst_selected_rows);
-
-  rpc_server->WaitVarBarrier(merged_var_name);
-  rpc_server->ClearVar(merged_var_name);
-
-  // 5. clear mid vars
-  std::vector<std::string> tmp_vars{merged_var_name};
-  for (auto r : vars) {
-    tmp_vars.push_back(r.var_name_);
-  }
-  scope->EraseVars(tmp_vars);
-}
-#endif
 
 void ReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
@@ -241,25 +133,6 @@ void ReduceOpHandle::RunImpl() {
         functor();
         return;
       }
-
-#if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
-      if (in_selected_rows[0]->value().type() ==
-          framework::proto::VarType::FP32) {
-        GatherSelectedRows<platform::CUDADeviceContext, float>(
-            in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
-            out_var->GetMutable<framework::SelectedRows>());
-      } else if (in_selected_rows[0]->value().type() ==
-                 framework::proto::VarType::FP64) {
-        GatherSelectedRows<platform::CUDADeviceContext, double>(
-            in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
-            out_var->GetMutable<framework::SelectedRows>());
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Only support double or float when gather SelectedRows, but got "
-            "%s.",
-            framework::DataTypeToString(in_selected_rows[0]->value().type())));
-      }
-#endif
     });
   } else {
     std::vector<const LoDTensor *> lod_tensors =
@@ -292,7 +165,7 @@ void ReduceOpHandle::RunImpl() {
         }
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
@@ -337,9 +210,63 @@ void ReduceOpHandle::RunImpl() {
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
+    } else if (paddle::platform::is_xpu_place(lod_tensors[0]->place())) {
+#if defined(PADDLE_WITH_XPU_BKCL)
+      auto pre_in = pre_in_var->Get<framework::LoDTensor>();
+      VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
+      VariableVisitor::GetMutableTensor(out_var).mutable_data(
+          out_var_handle->place(), pre_in.type());
+
+      auto out_p = out_var_handle->place();
+      int root_id = BOOST_GET_CONST(platform::XPUPlace, out_p).device;
+      std::vector<std::function<void()>> all_reduce_calls;
+      for (size_t i = 0; i < var_scopes.size(); ++i) {
+        auto &p = in_places[i];
+        auto &lod_tensor = *lod_tensors[i];
+
+        int dev_id = BOOST_GET_CONST(platform::XPUPlace, p).device;
+        auto &bkcl_ctx = bkcl_ctxs_->at(dev_id);
+
+        void *buffer = const_cast<void *>(lod_tensor.data<void>());
+        void *recvbuffer = nullptr;
+        if (root_id == dev_id) {
+          recvbuffer =
+              out_var->GetMutable<framework::LoDTensor>()->mutable_data(
+                  out_var_handle->place());
+        }
+
+        int type = platform::ToBKCLDataType(lod_tensor.type());
+        size_t numel = static_cast<size_t>(lod_tensor.numel());
+        all_reduce_calls.emplace_back([buffer, recvbuffer, type, numel, root_id,
+                                       &bkcl_ctx] {
+          PADDLE_ENFORCE_EQ(bkcl_reduce(bkcl_ctx.comm(), buffer, recvbuffer,
+                                        numel, static_cast<BKCLDataType>(type),
+                                        BKCL_ADD, root_id, nullptr),
+                            BKCL_SUCCESS, platform::errors::Unavailable(
+                                              "bkcl_all_reduce failed"));
+        });
+      }
+
+      WaitInputVarGenerated();
+      this->RunAndRecordEvent([&] {
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_start(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_start failed"));
+        for (auto &call : all_reduce_calls) {
+          call();
+        }
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_end(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_end failed"));
+      });
+#else
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with XPU."));
+#endif
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "The place of tensor should be CPUPlace or CUDAPlace, but got %s.",
+          "The place of tensor should be CPUPlace, CUDAPlace or XPUPlace, but "
+          "got %s.",
           lod_tensors[0]->place()));
     }
   }

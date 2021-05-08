@@ -105,7 +105,8 @@ __global__ void GPUROIAlignForward(
     const int nthreads, const T* input_data, const T* input_rois,
     const float spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
-    const int sampling_ratio, int* roi_batch_id_data, T* output_data) {
+    const int sampling_ratio, int* roi_batch_id_data, T* output_data,
+    const bool continuous_coordinate) {
   CUDA_KERNEL_LOOP(i, nthreads) {
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
@@ -115,13 +116,17 @@ __global__ void GPUROIAlignForward(
     const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
 
-    T roi_xmin = offset_input_rois[0] * spatial_scale;
-    T roi_ymin = offset_input_rois[1] * spatial_scale;
-    T roi_xmax = offset_input_rois[2] * spatial_scale;
-    T roi_ymax = offset_input_rois[3] * spatial_scale;
+    T roi_offset = continuous_coordinate ? static_cast<T>(0.5) : 0;
+    T roi_xmin = offset_input_rois[0] * spatial_scale - roi_offset;
+    T roi_ymin = offset_input_rois[1] * spatial_scale - roi_offset;
+    T roi_xmax = offset_input_rois[2] * spatial_scale - roi_offset;
+    T roi_ymax = offset_input_rois[3] * spatial_scale - roi_offset;
 
-    T roi_width = max(roi_xmax - roi_xmin, static_cast<T>(1.));
-    T roi_height = max(roi_ymax - roi_ymin, static_cast<T>(1.));
+    T roi_width = roi_xmax - roi_xmin;
+    T roi_height = roi_ymax - roi_ymin;
+    roi_width = max(roi_width, static_cast<T>(1.));
+    roi_height = max(roi_height, static_cast<T>(1.));
+
     T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
     T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
 
@@ -153,14 +158,12 @@ __global__ void GPUROIAlignForward(
 }
 
 template <typename T>
-__global__ void GPUROIAlignBackward(const int nthreads, const T* input_rois,
-                                    const T* out_grad, const int num_rois,
-                                    const float spatial_scale,
-                                    const int channels, const int height,
-                                    const int width, const int pooled_height,
-                                    const int pooled_width,
-                                    const int sampling_ratio,
-                                    int* roi_batch_id_data, T* input_grad) {
+__global__ void GPUROIAlignBackward(
+    const int nthreads, const T* input_rois, const T* out_grad,
+    const int num_rois, const float spatial_scale, const int channels,
+    const int height, const int width, const int pooled_height,
+    const int pooled_width, const int sampling_ratio, int* roi_batch_id_data,
+    T* input_grad, const bool continuous_coordinate) {
   CUDA_KERNEL_LOOP(i, nthreads) {
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
@@ -169,13 +172,17 @@ __global__ void GPUROIAlignBackward(const int nthreads, const T* input_rois,
     const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
 
-    T roi_xmin = offset_input_rois[0] * spatial_scale;
-    T roi_ymin = offset_input_rois[1] * spatial_scale;
-    T roi_xmax = offset_input_rois[2] * spatial_scale;
-    T roi_ymax = offset_input_rois[3] * spatial_scale;
+    T roi_offset = continuous_coordinate ? T(0.5) : 0;
+    T roi_xmin = offset_input_rois[0] * spatial_scale - roi_offset;
+    T roi_ymin = offset_input_rois[1] * spatial_scale - roi_offset;
+    T roi_xmax = offset_input_rois[2] * spatial_scale - roi_offset;
+    T roi_ymax = offset_input_rois[3] * spatial_scale - roi_offset;
 
-    T roi_width = max(roi_xmax - roi_xmin, static_cast<T>(1.));
-    T roi_height = max(roi_ymax - roi_ymin, static_cast<T>(1.));
+    T roi_width = roi_xmax - roi_xmin;
+    T roi_height = roi_ymax - roi_ymin;
+    roi_width = max(roi_width, static_cast<T>(1.));
+    roi_height = max(roi_height, static_cast<T>(1.));
+
     T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
     T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
 
@@ -236,6 +243,7 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
+    auto aligned = ctx.Attr<bool>("aligned");
 
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
@@ -316,7 +324,7 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     GPUROIAlignForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         output_size, in->data<T>(), rois->data<T>(), spatial_scale, channels,
         height, width, pooled_height, pooled_width, sampling_ratio, roi_id_data,
-        out->mutable_data<T>(ctx.GetPlace()));
+        out->mutable_data<T>(ctx.GetPlace()), aligned);
   }
 };
 
@@ -334,6 +342,7 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
+    auto aligned = ctx.Attr<bool>("aligned");
 
     int rois_num = rois->dims()[0];
     int channels = in->dims()[1];
@@ -390,8 +399,8 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
       GPUROIAlignBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
           output_grad_size, rois->data<T>(), out_grad->data<T>(), rois_num,
           spatial_scale, channels, height, width, pooled_height, pooled_width,
-          sampling_ratio, roi_id_data,
-          in_grad->mutable_data<T>(ctx.GetPlace()));
+          sampling_ratio, roi_id_data, in_grad->mutable_data<T>(ctx.GetPlace()),
+          aligned);
     }
   }
 };

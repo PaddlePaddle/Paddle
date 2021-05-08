@@ -61,7 +61,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
                                                 transpose_src_memory_p);
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     transpose_p->execute(astream, *transpose_src_memory_p,
                          *transpose_dst_memory_p);
     astream.wait();
@@ -116,7 +116,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
                                                 transpose_src_memory_p);
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     transpose_p->execute(astream, *transpose_src_memory_p,
                          *transpose_dst_memory_p);
     astream.wait();

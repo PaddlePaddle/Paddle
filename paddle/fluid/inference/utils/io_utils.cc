@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/utils/io_utils.h"
-#include <string>
-#include <vector>
 #include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {

@@ -48,6 +48,20 @@ class TestDnnlMatMulOp(OpTest):
         self.check_output()
 
 
+class TestDnnlMatMulOpMixedDims1(TestDnnlMatMulOp):
+    def generate_data(self):
+        self.x = np.random.random((17, 2, 3)).astype("float32")
+        self.y = np.random.random((3, 4)).astype("float32")
+        self.out = np.matmul(self.x, self.y)
+
+
+class TestDnnlMatMulOpMixedDims2(TestDnnlMatMulOp):
+    def generate_data(self):
+        self.x = np.random.random((2, 3)).astype("float32")
+        self.y = np.random.random((17, 3, 4)).astype("float32")
+        self.out = np.matmul(self.x, self.y)
+
+
 class TestDnnlMatMulOpAlpha(TestDnnlMatMulOp):
     def generate_data(self):
         self.x = np.random.random((17, 2, 3)).astype("float32")
@@ -396,10 +410,10 @@ class TestMatMulOpTransposeReshapeBasicFloat(
         TestMatMulOpTransposeReshapeEmptyFloat):
     def generate_data(self):
         self.bs = 8
-        self.x = np.random.random(
-            [self.bs, 12, 128, 128]).astype(self.data_type_)
-        self.y = np.random.random(
-            [self.bs, 12, 128, 64]).astype(self.data_type_)
+        self.x = np.random.random([self.bs, 12, 128,
+                                   128]).astype(self.data_type_)
+        self.y = np.random.random([self.bs, 12, 128,
+                                   64]).astype(self.data_type_)
 
     def init_params_and_out(self):
         self.transpose_out = [0, 2, 1, 3]

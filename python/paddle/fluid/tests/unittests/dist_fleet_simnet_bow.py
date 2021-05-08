@@ -242,7 +242,6 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:
                 self.reader.reset()
-        fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
         pass

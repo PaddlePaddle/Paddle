@@ -18,7 +18,11 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#else
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 DECLARE_uint64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_exhaustive_search);
@@ -26,18 +30,16 @@ DECLARE_int64(cudnn_exhaustive_search_times);
 
 namespace paddle {
 namespace operators {
-
-#if CUDNN_VERSION_MIN(6, 0, 5)
+#ifdef PADDLE_WITH_HIP
+static constexpr size_t kNUM_CUDNN_FWD_ALGS = 1;
+static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS = 1;
+static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS = 1;
+#elif CUDNN_VERSION_MIN(6, 0, 5)
 static constexpr size_t kNUM_CUDNN_FWD_ALGS = CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS =
     CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;
 static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS =
     CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
-#else
-// cuDNN v5 has no CUDNN_CONVOLUTION_FWD_ALGO_COUNT etc.
-static constexpr size_t kNUM_CUDNN_FWD_ALGS = 7;
-static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS = 4;
-static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS = 5;
 #endif
 
 }  // namespace operators

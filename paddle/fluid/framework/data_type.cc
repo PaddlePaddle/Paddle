@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_type.h"
+
 #include <string>
-#include <unordered_map>
+
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/float16.h"
 
 using float16 = paddle::platform::float16;
 using bfloat16 = paddle::platform::bfloat16;
@@ -83,6 +86,10 @@ std::string DataTypeToString(const proto::VarType::Type type) {
   auto it = gDataTypeMap().proto_to_str_.find(static_cast<int>(type));
   if (it != gDataTypeMap().proto_to_str_.end()) {
     return it->second;
+  }
+  // deal with RAW type
+  if (type == proto::VarType::RAW) {
+    return "RAW(runtime decided type)";
   }
   PADDLE_THROW(platform::errors::Unimplemented(
       "Not support proto::VarType::Type(%d) as tensor type.",

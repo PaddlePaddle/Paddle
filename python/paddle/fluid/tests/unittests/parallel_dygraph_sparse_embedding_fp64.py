@@ -55,6 +55,12 @@ class SimpleNet(Layer):
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale))
+        self.tmp = self.create_parameter(
+            attr=paddle.ParamAttr(),
+            shape=[self.hidden_size, self.vocab_size],
+            dtype=dtype,
+            default_initializer=paddle.nn.initializer.Uniform(
+                low=-self.init_scale, high=self.init_scale))
 
     def forward(self, input, label):
         x_emb = self.embedding(input)

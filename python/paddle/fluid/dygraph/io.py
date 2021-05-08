@@ -413,6 +413,23 @@ class _ProgramHolder(object):
         # Therefore, in order to reuse the method of backward.py, build the program here.
         program = _build_program_by_desc(program_desc_copy)
 
+        # 3. Add the outputs which is only used for training and not saved in
+        # inference program.
+        for block_idx in six.moves.range(program.num_blocks):
+            block = program.block(block_idx)
+            for op in block.ops:
+                if op.type == "batch_norm":
+                    if "ReserveSpace" not in op.output_names or len(
+                            op.output("ReserveSpace")) == 0:
+                        reserve_space = block.create_var(
+                            name=unique_name.generate_with_ignorable_key(
+                                ".".join(["reserve_space", 'tmp'])),
+                            dtype=block.var(op.input("X")[0]).dtype,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=True)
+                        op.desc.set_output("ReserveSpace", [reserve_space.name])
+
         targets = []
         for out in self._output_descs:
             targets.append(program.global_block().var(out.name()))
@@ -600,9 +617,13 @@ def _construct_program_holders(model_path, model_filename=None):
                 model_file_path = os.path.join(model_path, model_filename)
             elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
                     model_name):
-                func_name = filename[len(model_name) + 1:-len(
-                    INFER_MODEL_SUFFIX)]
-                model_file_path = os.path.join(model_path, filename)
+                parsing_names = filename[len(model_name):-len(
+                    INFER_MODEL_SUFFIX) + 1].split('.')
+                if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
+                    func_name = parsing_names[1]
+                    model_file_path = os.path.join(model_path, filename)
+                else:
+                    continue
             else:
                 continue
             program_holder_dict[func_name] = _ProgramHolder(
@@ -629,6 +650,7 @@ def _construct_params_and_buffers(model_path,
                                   append_suffix=True):
     var_info_filename = str(params_filename) + ".info"
     var_info_path = os.path.join(model_path, var_info_filename)
+    params_path = os.path.join(model_path, str(params_filename))
 
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
@@ -636,16 +658,23 @@ def _construct_params_and_buffers(model_path,
         model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
         #Load every file that meets the requirements in the directory model_path.
         for file_name in os.listdir(model_path):
-            if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
-                    model_name) and file_name != params_filename:
-                func_name = file_name[len(model_name) + 1:-len(
-                    INFER_PARAMS_SUFFIX)]
+            if file_name.startswith(model_name) and file_name.endswith(
+                    INFER_PARAMS_SUFFIX):
+                parsing_names = file_name[len(model_name):-len(
+                    INFER_PARAMS_SUFFIX) + 1].split('.')
+                if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
+                    func_name = parsing_names[1]
+                else:
+                    continue
             else:
                 continue
             var_info_path = os.path.join(model_path, var_info_filename)
             var_dict.update(
                 _load_persistable_vars(model_path, var_info_path, programs[
                     func_name], file_name))
+    elif params_filename is not None and not os.path.exists(params_path):
+        # When saving XX, there is only '*.pdmodel'
+        return dict()
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
@@ -1139,6 +1168,10 @@ class TranslatedLayer(layers.Layer):
 
         # 4. create TranslatedLayer's execution method
         for method_name, program_holder in programs.items():
+            if translated_layer._input_args_names is None:
+                translated_layer._input_args_names = [
+                    ins.name() for ins in program_holder.input_descs
+                ]
             setattr(TranslatedLayer, method_name,
                     TranslatedLayer._execution_method_creator(method_name,
                                                               program_holder))

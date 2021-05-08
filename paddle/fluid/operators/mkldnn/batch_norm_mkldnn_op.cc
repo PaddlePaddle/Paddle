@@ -54,9 +54,14 @@ class BatchNormMKLDNNHandler
       const float epsilon = ctx.Attr<float>("epsilon");
       const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
+      std::vector<std::string> DataLayout_error_msg = {"kNHWC", "kNCHW",
+                                                       "kAnyLayout", "kMKLDNN"};
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor"));
+          platform::errors::InvalidArgument(
+              "Wrong layout set for X tensor. Expected layout is `kMKLDNN`, "
+              "But received %s.",
+              DataLayout_error_msg[static_cast<int>(DataLayout::kMKLDNN)]));
       PADDLE_ENFORCE_NE(
           x->format(), MKLDNNMemoryFormat::undef,
           platform::errors::InvalidArgument("Wrong format set for X tensor"));
@@ -215,7 +220,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     y->set_layout(DataLayout::kMKLDNN);
     y->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     batch_norm_p->execute(astream,
                           {{MKLDNN_ARG_SRC, *src_memory},
                            {MKLDNN_ARG_SCALE_SHIFT, *scaleshift_memory},
@@ -316,7 +321,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // finally create batch_norm backward primitive
     auto batch_norm_bwd_p = handler.AcquireBackwardPrimitive();
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     batch_norm_bwd_p->execute(
         astream, {{MKLDNN_ARG_SRC, *src_memory},
                   {MKLDNN_ARG_MEAN, *mean_memory},

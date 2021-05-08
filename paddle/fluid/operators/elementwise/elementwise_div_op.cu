@@ -43,7 +43,7 @@ struct SameDimsElemwiseDiv<platform::CUDADeviceContext, platform::float16> {
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
     auto size = x->numel();
-    dim3 grid_size = dim3(((size + 1) / 2 + PADDLE_CUDA_THREAD_SIZE - 1) /
+    dim3 grid_size = dim3(((size + 7) / 8 + PADDLE_CUDA_THREAD_SIZE - 1) /
                               PADDLE_CUDA_THREAD_SIZE,
                           1);
     dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
@@ -71,6 +71,45 @@ static __global__ void SimpleElemwiseDivGradCUDAKernel(const T* x, const T* y,
     T o = dout[col];
     dx[col] = o / y[col];
     dy[col] = -o * out[col] / y[col];
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <>
+__global__ void SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex64>(
+    const paddle::platform::complex64* x, const paddle::platform::complex64* y,
+    const paddle::platform::complex64* out,
+    const paddle::platform::complex64* dout, int64_t size,
+    paddle::platform::complex64* dx, paddle::platform::complex64* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    paddle::platform::complex64 o = dout[col];
+    paddle::platform::complex64 y_conj(y[col].real, -y[col].imag);
+    paddle::platform::complex64 out_div_y_conj((out[col] / y[col]).real,
+                                               -(out[col] / y[col]).imag);
+    dx[col] = o / y_conj;
+    dy[col] = -o * out_div_y_conj;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <>
+__global__ void SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex128>(
+    const paddle::platform::complex128* x,
+    const paddle::platform::complex128* y,
+    const paddle::platform::complex128* out,
+    const paddle::platform::complex128* dout, int64_t size,
+    paddle::platform::complex128* dx, paddle::platform::complex128* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    paddle::platform::complex128 o = dout[col];
+    paddle::platform::complex128 y_conj(y[col].real, -y[col].imag);
+    paddle::platform::complex128 out_div_y_conj((out[col] / y[col]).real,
+                                                -(out[col] / y[col]).imag);
+    dx[col] = o / y_conj;
+    dy[col] = -o * out_div_y_conj;
     col += blockDim.x * gridDim.x;
   }
 }

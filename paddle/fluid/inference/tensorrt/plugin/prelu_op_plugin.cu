@@ -39,6 +39,13 @@ int PReluPlugin::initialize() {
   return 0;
 }
 
+void PReluPlugin::terminate() {
+  if (p_gpu_weight_) {
+    cudaFree(p_gpu_weight_);
+    p_gpu_weight_ = nullptr;
+  }
+}
+
 nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
                                                 const nvinfer1::Dims *inputDims,
                                                 int nbInputs) {

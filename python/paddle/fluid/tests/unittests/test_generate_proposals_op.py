@@ -21,7 +21,6 @@ import math
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
-from test_multiclass_nms_op import nms
 from test_anchor_generator_op import anchor_generator_in_python
 import copy
 
@@ -111,18 +110,19 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     return proposals, scores
 
 
-def box_coder(all_anchors, bbox_deltas, variances):
+def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     """
     Decode proposals by anchors and bbox_deltas from RPN 
     """
+    offset = 1 if pixel_offset else 0
     #proposals: xmin, ymin, xmax, ymax
     proposals = np.zeros_like(bbox_deltas, dtype=np.float32)
 
     #anchor_loc: width, height, center_x, center_y
     anchor_loc = np.zeros_like(bbox_deltas, dtype=np.float32)
 
-    anchor_loc[:, 0] = all_anchors[:, 2] - all_anchors[:, 0] + 1
-    anchor_loc[:, 1] = all_anchors[:, 3] - all_anchors[:, 1] + 1
+    anchor_loc[:, 0] = all_anchors[:, 2] - all_anchors[:, 0] + offset
+    anchor_loc[:, 1] = all_anchors[:, 3] - all_anchors[:, 1] + offset
     anchor_loc[:, 2] = all_anchors[:, 0] + 0.5 * anchor_loc[:, 0]
     anchor_loc[:, 3] = all_anchors[:, 1] + 0.5 * anchor_loc[:, 1]
 
@@ -152,51 +152,60 @@ def box_coder(all_anchors, bbox_deltas, variances):
             pred_bbox[i, 3] = math.exp(
                 min(bbox_deltas[i, 3], math.log(1000 / 16.0))) * anchor_loc[i,
                                                                             1]
-
     proposals[:, 0] = pred_bbox[:, 0] - pred_bbox[:, 2] / 2
     proposals[:, 1] = pred_bbox[:, 1] - pred_bbox[:, 3] / 2
-    proposals[:, 2] = pred_bbox[:, 0] + pred_bbox[:, 2] / 2 - 1
-    proposals[:, 3] = pred_bbox[:, 1] + pred_bbox[:, 3] / 2 - 1
+    proposals[:, 2] = pred_bbox[:, 0] + pred_bbox[:, 2] / 2 - offset
+    proposals[:, 3] = pred_bbox[:, 1] + pred_bbox[:, 3] / 2 - offset
 
     return proposals
 
 
-def clip_tiled_boxes(boxes, im_shape):
+def clip_tiled_boxes(boxes, im_shape, pixel_offset=True):
     """Clip boxes to image boundaries. im_shape is [height, width] and boxes
     has shape (N, 4 * num_tiled_boxes)."""
     assert boxes.shape[1] % 4 == 0, \
         'boxes.shape[1] is {:d}, but must be divisible by 4.'.format(
         boxes.shape[1]
     )
+    offset = 1 if pixel_offset else 0
     # x1 >= 0
-    boxes[:, 0::4] = np.maximum(np.minimum(boxes[:, 0::4], im_shape[1] - 1), 0)
+    boxes[:, 0::4] = np.maximum(
+        np.minimum(boxes[:, 0::4], im_shape[1] - offset), 0)
     # y1 >= 0
-    boxes[:, 1::4] = np.maximum(np.minimum(boxes[:, 1::4], im_shape[0] - 1), 0)
+    boxes[:, 1::4] = np.maximum(
+        np.minimum(boxes[:, 1::4], im_shape[0] - offset), 0)
     # x2 < im_shape[1]
-    boxes[:, 2::4] = np.maximum(np.minimum(boxes[:, 2::4], im_shape[1] - 1), 0)
+    boxes[:, 2::4] = np.maximum(
+        np.minimum(boxes[:, 2::4], im_shape[1] - offset), 0)
     # y2 < im_shape[0]
-    boxes[:, 3::4] = np.maximum(np.minimum(boxes[:, 3::4], im_shape[0] - 1), 0)
+    boxes[:, 3::4] = np.maximum(
+        np.minimum(boxes[:, 3::4], im_shape[0] - offset), 0)
     return boxes
 
 
-def filter_boxes(boxes, min_size, im_info):
+def filter_boxes(boxes, min_size, im_info, pixel_offset=True):
     """Only keep boxes with both sides >= min_size and center within the image.
     """
     # Scale min_size to match image scale
     im_scale = im_info[2]
     min_size = max(min_size, 1.0)
-    ws = boxes[:, 2] - boxes[:, 0] + 1
-    hs = boxes[:, 3] - boxes[:, 1] + 1
-    ws_orig_scale = (boxes[:, 2] - boxes[:, 0]) / im_scale + 1
-    hs_orig_scale = (boxes[:, 3] - boxes[:, 1]) / im_scale + 1
-    x_ctr = boxes[:, 0] + ws / 2.
-    y_ctr = boxes[:, 1] + hs / 2.
-    keep = np.where((ws_orig_scale >= min_size) & (hs_orig_scale >= min_size) &
-                    (x_ctr < im_info[1]) & (y_ctr < im_info[0]))[0]
+    offset = 1 if pixel_offset else 0
+    ws = boxes[:, 2] - boxes[:, 0] + offset
+    hs = boxes[:, 3] - boxes[:, 1] + offset
+    if pixel_offset:
+        ws_orig_scale = (boxes[:, 2] - boxes[:, 0]) / im_scale + 1
+        hs_orig_scale = (boxes[:, 3] - boxes[:, 1]) / im_scale + 1
+        x_ctr = boxes[:, 0] + ws / 2.
+        y_ctr = boxes[:, 1] + hs / 2.
+        keep = np.where((ws_orig_scale >= min_size) & (
+            hs_orig_scale >= min_size) & (x_ctr < im_info[1]) & (y_ctr <
+                                                                 im_info[0]))[0]
+    else:
+        keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
 
 
-def iou(box_a, box_b):
+def iou(box_a, box_b, pixel_offset=True):
     """
 	Apply intersection-over-union overlap between box_a and box_b
     """
@@ -209,9 +218,9 @@ def iou(box_a, box_b):
     ymin_b = min(box_b[1], box_b[3])
     xmax_b = max(box_b[0], box_b[2])
     ymax_b = max(box_b[1], box_b[3])
-
-    area_a = (ymax_a - ymin_a + 1) * (xmax_a - xmin_a + 1)
-    area_b = (ymax_b - ymin_b + 1) * (xmax_b - xmin_b + 1)
+    offset = 1 if pixel_offset else 0
+    area_a = (ymax_a - ymin_a + offset) * (xmax_a - xmin_a + offset)
+    area_b = (ymax_b - ymin_b + offset) * (xmax_b - xmin_b + offset)
     if area_a <= 0 and area_b <= 0:
         return 0.0
 
@@ -220,14 +229,14 @@ def iou(box_a, box_b):
     xb = min(xmax_a, xmax_b)
     yb = min(ymax_a, ymax_b)
 
-    inter_area = max(xb - xa + 1, 0.0) * max(yb - ya + 1, 0.0)
+    inter_area = max(xb - xa + offset, 0.0) * max(yb - ya + offset, 0.0)
 
     iou_ratio = inter_area / (area_a + area_b - inter_area)
 
     return iou_ratio
 
 
-def nms(boxes, scores, nms_threshold, eta=1.0):
+def nms(boxes, scores, nms_threshold, eta=1.0, pixel_offset=True):
     """Apply non-maximum suppression at test time to avoid detecting too many
     overlapping bounding boxes for a given object.
     Args:
@@ -252,7 +261,9 @@ def nms(boxes, scores, nms_threshold, eta=1.0):
         for k in range(len(selected_indices)):
             if keep:
                 kept_idx = selected_indices[k]
-                overlap = iou(boxes[idx], boxes[kept_idx])
+                overlap = iou(boxes[idx],
+                              boxes[kept_idx],
+                              pixel_offset=pixel_offset)
                 keep = True if overlap <= adaptive_threshold else False
             else:
                 break

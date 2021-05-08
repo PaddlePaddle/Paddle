@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda_runtime.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/allclose_op.h"
@@ -67,7 +66,11 @@ struct AllcloseFunctor<platform::CUDADeviceContext, T> {
     int block = 1024;
     int grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
+#ifdef PADDLE_WITH_HIP
+    hipMemset(out_data, true, sizeof(bool));
+#else
     cudaMemset(out_data, true, sizeof(bool));
+#endif
     AllcloseCUDAKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, other_data, rtol, atol, equal_nan, num, out_data);
   }

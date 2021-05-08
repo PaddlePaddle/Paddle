@@ -17,7 +17,12 @@ math functions
 from __future__ import print_function
 import numpy as np
 
-from paddle.common_ops_import import *
+from paddle.common_ops_import import VarDesc
+from paddle.common_ops_import import dygraph_only
+from paddle.common_ops_import import OpProtoHolder
+from paddle.common_ops_import import templatedoc
+from paddle.common_ops_import import dygraph_utils
+
 from paddle.tensor import cast
 import paddle
 from ..fluid import layers
@@ -25,109 +30,43 @@ from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable,
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
+from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 
 # TODO: define math functions
 # yapf: disable
-from ..fluid.layers import abs    #DEFINE_ALIAS
-from ..fluid.layers import acos    #DEFINE_ALIAS
-from ..fluid.layers import asin    #DEFINE_ALIAS
-from ..fluid.layers import ceil    #DEFINE_ALIAS
-from ..fluid.layers import cos    #DEFINE_ALIAS
-from ..fluid.layers import tan    #DEFINE_ALIAS
-from ..fluid.layers import sinh    #DEFINE_ALIAS
-from ..fluid.layers import cosh    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
-# from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
-from ..fluid.layers import exp    #DEFINE_ALIAS
-from ..fluid.layers import floor    #DEFINE_ALIAS
-from ..fluid.layers import log    #DEFINE_ALIAS
-from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_all    #DEFINE_ALIAS
-from ..fluid.layers import reduce_any    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_max    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_min    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
-# from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
-from ..fluid.layers import round    #DEFINE_ALIAS
-from ..fluid.layers import rsqrt    #DEFINE_ALIAS
-from ..fluid.layers import scale    #DEFINE_ALIAS
-from ..fluid.layers import square    #DEFINE_ALIAS
-from ..fluid.layers import stanh    #DEFINE_ALIAS
-from ..fluid.layers import atan    #DEFINE_ALIAS
-from ..fluid.layers import erf    #DEFINE_ALIAS
-from ..fluid.layers import sqrt    #DEFINE_ALIAS
-from ..fluid.layers import sin    #DEFINE_ALIAS
+from ..fluid.layers import abs    # noqa: F401
+from ..fluid.layers import acos    # noqa: F401
+from ..fluid.layers import asin    # noqa: F401
+from ..fluid.layers import ceil    # noqa: F401
+from ..fluid.layers import ceil_    # noqa: F401
+from ..fluid.layers import cos    # noqa: F401
+from ..fluid.layers import tan    # noqa: F401
+from ..fluid.layers import sinh    # noqa: F401
+from ..fluid.layers import cosh    # noqa: F401
+from ..fluid.layers import exp    # noqa: F401
+from ..fluid.layers import exp_    # noqa: F401
+from ..fluid.layers import floor    # noqa: F401
+from ..fluid.layers import floor_    # noqa: F401
+from ..fluid.layers import log    # noqa: F401
+from ..fluid.layers import reciprocal    # noqa: F401
+from ..fluid.layers import reciprocal_    # noqa: F401
+from ..fluid.layers import round    # noqa: F401
+from ..fluid.layers import round_    # noqa: F401
+from ..fluid.layers import rsqrt    # noqa: F401
+from ..fluid.layers import rsqrt_    # noqa: F401
+from ..fluid.layers import scale    # noqa: F401
+from ..fluid.layers import square    # noqa: F401
+from ..fluid.layers import stanh    # noqa: F401
+from ..fluid.layers import atan    # noqa: F401
+from ..fluid.layers import erf    # noqa: F401
+from ..fluid.layers import sqrt    # noqa: F401
+from ..fluid.layers import sqrt_    # noqa: F401
+from ..fluid.layers import sin    # noqa: F401
 
-from ..fluid.layers import multiplex    #DEFINE_ALIAS
+from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
 
-
-__all__ = [
-        'abs',
-        'acos',
-        'asin',
-        'atan',
-        'ceil',
-        'cos',
-        'cosh',
-        'cumsum',
-        'exp',
-        'floor',
-        'increment',
-        'log',
-        'log2',
-        'log10',
-        'logsumexp',
-        'mul',
-        'multiplex',
-        'pow',
-        'prod',
-        'reciprocal',
-        'round',
-        'rsqrt',
-        'scale',
-        'sign',
-        'sin',
-        'sinh',
-        'sqrt',
-        'square',
-        'stanh',
-        'sum',
-        'tanh',
-        'add_n',
-        'max',
-        'maximum',
-        'min',
-        'minimum',
-        'mm',
-        'divide',
-        'floor_divide',
-        'remainder',
-        'mod',
-        'floor_mod',
-        'multiply',
-        'add',
-        'subtract',
-        'atan',
-        'logsumexp',
-        'inverse',
-        'log1p',
-        'erf',
-        'addmm',
-        'clip',
-        'trace',
-        'kron',
-        'isfinite',
-        'isinf',
-        'isnan',
-        'broadcast_shape'
-]
-# yapf: enable.
+__all__ = []
 
 _supported_int_dtype_ = [
     VarDesc.VarType.UINT8,
@@ -142,6 +81,19 @@ _supported_float_dtype_ = [
     VarDesc.VarType.FP64,
 ]
 
+
+@inplace_apis_in_dygraph_only
+def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
+    """
+    Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_scale`.
+    """
+    _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
+    return core.ops.scale_(x, 'scale',
+                            float(_scale), 'bias',
+                            float(bias), 'bias_after_scale', bias_after_scale)
+
+
 def pow(x, y, name=None):
     """
     Compute the power of tensor elements. The equation is:
@@ -155,11 +107,11 @@ def pow(x, y, name=None):
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
-        y (Tensor): An N-D Tensor with type float32, float64, int32 or int64.
+        y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
-        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
 
     Examples:
 
@@ -167,16 +119,24 @@ def pow(x, y, name=None):
 
             import paddle
 
-            # example 1: y is a float
-            x = paddle.to_tensor([1, 2, 3])
-            y = 2
-            res = paddle.pow(x, y)
-            print(res) # [1 4 9]
-            
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+
+            # example 1: y is a float or int
+            res = paddle.pow(x, 2)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
+            res = paddle.pow(x, 2.5)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1.         , 5.65685415 , 15.58845711])
+
             # example 2: y is a Tensor
-            y = paddle.full(shape=[1], fill_value=2, dtype='float32')
+            y = paddle.to_tensor([2], dtype='float32')
             res = paddle.pow(x, y)
-            print(res) # [1 4 9]
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
 
     """
     # in dynamic graph mode
@@ -281,6 +241,24 @@ def add(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@inplace_apis_in_dygraph_only
+def add_(x, y, name=None):
+    """
+    Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_add`.
+    """
+    op_type = 'elementwise_add_'
+    axis = -1
+
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+
+    out = _elementwise_op_in_dygraph(
+        x, y, axis=axis, op_name=op_type)
+    return out
+
+
 def subtract(x, y, name=None):
     """
     Substract two tensors element-wise. The equation is:
@@ -340,6 +318,24 @@ def subtract(x, y, name=None):
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+@inplace_apis_in_dygraph_only
+def subtract_(x, y, name=None):
+    """
+    Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_subtract`.
+    """
+    axis = -1
+    act = None
+
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
+
+    out = _elementwise_op_in_dygraph(
+        x, y, axis=axis, act=act, op_name='elementwise_sub_')
+    return out
 
 
 def divide(x, y, name=None):
@@ -461,8 +457,8 @@ def remainder(x, y, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-mod = remainder  #DEFINE_ALIAS
-floor_mod = remainder  #DEFINE_ALIAS
+mod = remainder  # noqa: F841
+floor_mod = remainder  # noqa: F841
 
 
 def multiply(x, y, name=None):
@@ -814,7 +810,7 @@ def add_n(inputs, name=None):
                               [14, 16, 18]]
 
     Args:
-        inputs (Tensor|list(Tensor)):  A Tensor list. The shape and data type of the list elements should be consistent.
+        inputs (Tensor|list[Tensor]|tuple[Tensor]):  A Tensor or a list/tuple of Tensors. The shape and data type of the list/tuple elements should be consistent.
             Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
@@ -1144,7 +1140,7 @@ def max(x, axis=None, keepdim=False, name=None):
     Args:
         x(Tensor): A tensor, the data type is float32,
             float64, int32, int64.
-        axis(list|int, optional): The axis along which the maximum is computed.
+        axis(int|list|tuple, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
@@ -1236,7 +1232,7 @@ def min(x, axis=None, keepdim=False, name=None):
 
     Args:
         x(Tensor): A tensor, the data type is float32, float64, int32, int64.
-        axis(list|int, optional): The axis along which the minimum is computed.
+        axis(int|list|tuple, optional): The axis along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
@@ -1464,10 +1460,10 @@ def clip(x, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-        x (Tensor): An N-D Tensor with data type float32 or float64.
-        min (float32|Tensor): The lower bound with type ``float32`` or a ``Tensor``
+        x (Tensor): An N-D Tensor with data type float32, float64, int32 or int64.
+        min (float|int|Tensor): The lower bound with type ``float`` , ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        max (float32|Tensor): The upper bound with type ``float32`` or a ``Tensor``
+        max (float|int|Tensor): The upper bound with type ``float``, ``int`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -1492,16 +1488,24 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
-    fmin = float(np.finfo(np.float32).min)
-    fmax = float(np.finfo(np.float32).max)
+    x_dtype = str(x.dtype)
+    if x_dtype == 'paddle.int32':
+        min_ = np.iinfo(np.int32).min
+        max_ = np.iinfo(np.int32).max - 2**7
+    elif x_dtype == 'paddle.int64':
+        min_ = np.iinfo(np.int64).min
+        max_ = np.iinfo(np.int64).max - 2**39
+    else:
+        min_ = float(np.finfo(np.float32).min)
+        max_ = float(np.finfo(np.float32).max)
 
     if in_dygraph_mode():
         if isinstance(min, Variable):
             min = min.numpy().item(0)
         if isinstance(max, Variable):
             max = max.numpy().item(0)
-        min = fmin if min is None else min
-        max = fmax if max is None else max
+        min = min_ if min is None else min
+        max = max_ if max is None else max
         return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
@@ -1515,10 +1519,10 @@ def clip(x, min=None, max=None, name=None):
             check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
                         'clip', '(When the type of max in clip is Variable.)')
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'clip')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip')
 
     inputs = {'X': x}
-    attrs = {'min': fmin, 'max': fmax}
+    attrs = {'min': min_, 'max': max_}
 
     if isinstance(min, Variable):
         min.stop_gradient = True
@@ -1539,6 +1543,24 @@ def clip(x, min=None, max=None, name=None):
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
     return output
+
+
+@inplace_apis_in_dygraph_only
+def clip_(x, min=None, max=None, name=None):
+    """
+    Inplace version of ``clip`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_clip`.
+    """
+    fmin = float(np.finfo(np.float32).min)
+    fmax = float(np.finfo(np.float32).max)
+    if isinstance(min, Variable):
+        min = min.numpy().item(0)
+    if isinstance(max, Variable):
+        max = max.numpy().item(0)
+    min = fmin if min is None else min
+    max = fmax if max is None else max
+    return core.ops.clip_(x, "min", min, "max", max)
+
 
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
@@ -1960,6 +1982,15 @@ def tanh(x, name=None):
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
     return out
 
+@inplace_apis_in_dygraph_only
+def tanh_(x, name=None):
+    r"""
+    Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_tanh`.
+    """
+    return core.ops.tanh_(x)
+
+
 def increment(x, value=1.0, name=None):
     """
     The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
@@ -2026,16 +2057,14 @@ def all(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [False]
             out1 = paddle.all(x)  # [False]
@@ -2050,8 +2079,8 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, out4 should be [[False], [True]], out.shape should be (2,1)
-            out4 = paddle.all(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[False], [True]]
+            out4 = paddle.all(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[False], [True]]
             print(out4)
             
     """
@@ -2122,16 +2151,14 @@ def any(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [False, False]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [True]
             out1 = paddle.any(x)  # [True]
@@ -2146,8 +2173,8 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
-            out4 = paddle.any(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[True], [False]]
+            out4 = paddle.any(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
             print(out4)
             
     """
@@ -2214,3 +2241,44 @@ def broadcast_shape(x_shape, y_shape):
     """
 
     return core.broadcast_shape(x_shape, y_shape)
+
+def conj(x, name=None):
+    r"""
+    This function computes the conjugate of the Tensor elementwisely.
+
+    Args:
+        x (Tensor): The input tensor which hold the complex numbers. 
+            Optional data types are: complex64, complex128, float32, float64, int32 or int64.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        out (Tensor): The conjugate of input. The shape and data type is the same with input.
+            If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          data=paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
+          #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+          #       [[(1+1j), (2+2j), (3+3j)],
+          #        [(4+4j), (5+5j), (6+6j)]])
+
+          conj_data=paddle.conj(data)
+          #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+          #       [[(1-1j), (2-2j), (3-3j)],
+          #        [(4-4j), (5-5j), (6-6j)]])
+
+    """
+    if in_dygraph_mode():
+        return core.ops.conj(x)
+
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'conj')
+
+    helper = LayerHelper('conj', **locals())
+    out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+
+    helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
+    return out

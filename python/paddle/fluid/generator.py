@@ -14,6 +14,7 @@
 """This is definition of generator class, which is for managing the state of the algorithm that produces pseudo random numbers."""
 
 from . import core
+from .framework import _get_paddle_place
 
 __all__ = ['Generator']
 
@@ -26,14 +27,15 @@ class Generator(core.Generator):
         Create a generator object which manages the random number generation. ( Experimental Feature )
 
         Parameters:
-            place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
-                CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
+            place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str,optional): The place to allocate Tensor. Can be  
+                CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
+                string, it can be ``cpu`` and ``gpu:x``, where ``x`` is the index of the GPUs.
 
         Returns:
             Generator: A generator object.
 
         """
-        self.place = place
+        self.place = _get_paddle_place(place)
         if not place:
             place = core.CPUPlace()
         if isinstance(place, core.CPUPlace):

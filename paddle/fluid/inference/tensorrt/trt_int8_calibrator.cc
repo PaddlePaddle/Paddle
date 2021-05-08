@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+
 #include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {

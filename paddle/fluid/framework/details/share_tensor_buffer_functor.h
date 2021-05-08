@@ -28,6 +28,7 @@
 namespace paddle {
 namespace framework {
 class Scope;
+
 namespace ir {
 class MemOptVarInfo;
 }  // namespace ir

@@ -58,19 +58,15 @@ NativeConfig GetConfig() {
   config.model_dir = FLAGS_word2vec_dirname;
   LOG(INFO) << "dirname  " << config.model_dir;
   config.fraction_of_gpu_memory = 0.15;
-#ifdef PADDLE_WITH_CUDA
-  config.use_gpu = true;
-#else
-  config.use_gpu = false;
-#endif
   config.device = 0;
   return config;
 }
 
-void MainWord2Vec(bool use_gpu) {
+void MainWord2Vec(const paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
   auto predictor = CreatePaddlePredictor<NativeConfig>(config);
-  config.use_gpu = use_gpu;
+  config.use_gpu = paddle::gpu_place_used(place);
+  config.use_xpu = paddle::xpu_place_used(place);
 
   framework::LoDTensor first_word, second_word, third_word, fourth_word;
   framework::LoD lod{{0, 1}};
@@ -117,11 +113,12 @@ void MainWord2Vec(bool use_gpu) {
   }
 }
 
-void MainImageClassification(bool use_gpu) {
+void MainImageClassification(const paddle::PaddlePlace& place) {
   int batch_size = 2;
   bool repeat = false;
   NativeConfig config = GetConfig();
-  config.use_gpu = use_gpu;
+  config.use_gpu = paddle::gpu_place_used(place);
+  config.use_xpu = paddle::xpu_place_used(place);
   config.model_dir =
       FLAGS_book_dirname + "/image_classification_resnet.inference.model";
 
@@ -162,9 +159,10 @@ void MainImageClassification(bool use_gpu) {
   }
 }
 
-void MainThreadsWord2Vec(bool use_gpu) {
+void MainThreadsWord2Vec(const paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
-  config.use_gpu = use_gpu;
+  config.use_gpu = paddle::gpu_place_used(place);
+  config.use_xpu = paddle::xpu_place_used(place);
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   // prepare inputs data and reference results
@@ -223,11 +221,12 @@ void MainThreadsWord2Vec(bool use_gpu) {
   }
 }
 
-void MainThreadsImageClassification(bool use_gpu) {
+void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
   constexpr int num_jobs = 4;  // each job run 1 batch
   constexpr int batch_size = 1;
   NativeConfig config = GetConfig();
-  config.use_gpu = use_gpu;
+  config.use_gpu = paddle::gpu_place_used(place);
+  config.use_xpu = paddle::xpu_place_used(place);
   config.model_dir =
       FLAGS_book_dirname + "/image_classification_resnet.inference.model";
 
@@ -276,29 +275,42 @@ void MainThreadsImageClassification(bool use_gpu) {
   }
 }
 
-TEST(inference_api_native, word2vec_cpu) { MainWord2Vec(false /*use_gpu*/); }
+TEST(inference_api_native, word2vec_cpu) {
+  MainWord2Vec(paddle::PaddlePlace::kCPU);
+}
 TEST(inference_api_native, word2vec_cpu_threads) {
-  MainThreadsWord2Vec(false /*use_gpu*/);
+  MainThreadsWord2Vec(paddle::PaddlePlace::kCPU);
 }
 TEST(inference_api_native, image_classification_cpu) {
-  MainImageClassification(false /*use_gpu*/);
+  MainImageClassification(paddle::PaddlePlace::kCPU);
 }
 TEST(inference_api_native, image_classification_cpu_threads) {
-  MainThreadsImageClassification(false /*use_gpu*/);
+  MainThreadsImageClassification(paddle::PaddlePlace::kCPU);
 }
 
-#ifdef PADDLE_WITH_CUDA
-TEST(inference_api_native, word2vec_gpu) { MainWord2Vec(true /*use_gpu*/); }
+#ifdef PADDLE_WITH_XPU
+TEST(inference_api_native, word2vec_xpu) {
+  MainWord2Vec(paddle::PaddlePlace::kXPU);
+}
+TEST(inference_api_native, image_classification_xpu) {
+  MainImageClassification(paddle::PaddlePlace::kXPU);
+}
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(inference_api_native, word2vec_gpu) {
+  MainWord2Vec(paddle::PaddlePlace::kGPU);
+}
 // Turn off temporarily for the unstable result.
 // TEST(inference_api_native, word2vec_gpu_threads) {
-//   MainThreadsWord2Vec(true /*use_gpu*/);
+//   MainThreadsWord2Vec(paddle::PaddlePlace::kGPU);
 // }
 TEST(inference_api_native, image_classification_gpu) {
-  MainImageClassification(true /*use_gpu*/);
+  MainImageClassification(paddle::PaddlePlace::kGPU);
 }
 // Turn off temporarily for the unstable result.
 // TEST(inference_api_native, image_classification_gpu_threads) {
-//   MainThreadsImageClassification(true /*use_gpu*/);
+//   MainThreadsImageClassification(paddle::PaddlePlace::kGPU);
 // }
 #endif
 

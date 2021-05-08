@@ -19,6 +19,8 @@ import numpy as np
 import random
 import unittest
 import logging
+import warnings
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -29,10 +31,10 @@ from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutScaleForInferencePass, QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
-from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
-from paddle.fluid.dygraph.nn import Pool2D
+from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
+from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger
+from paddle.fluid.dygraph import nn
 
 paddle.enable_static()
 
@@ -44,13 +46,20 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
+def get_vaild_warning_num(warning, w):
+    num = 0
+    for i in range(len(w)):
+        if warning in str(w[i].message):
+            num += 1
+    return num
+
+
 def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
     conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
     conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
     fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
     fc_w2_attr = fluid.ParamAttr(name="fc_w_2")
     fc_w3_attr = fluid.ParamAttr(name="fc_w_3")
-    conv2d_b1_attr = fluid.ParamAttr(name="conv2d_b_1")
     conv2d_b2_attr = fluid.ParamAttr(name="conv2d_b_2")
     fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
     fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
@@ -62,7 +71,7 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
         stride=1,
         padding=1,
         param_attr=conv2d_w1_attr,
-        bias_attr=conv2d_b1_attr)
+        bias_attr=False)
     batch_norm1 = layers.batch_norm(conv1)
     relu1 = layers.relu(batch_norm1)
     pool1 = fluid.layers.pool2d(
@@ -76,9 +85,9 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
         param_attr=conv2d_w2_attr,
         bias_attr=conv2d_b2_attr)
     batch_norm2 = layers.batch_norm(conv2)
-    relu6_1 = layers.relu6(batch_norm2)
+    prelu1 = layers.prelu(batch_norm2, mode='all')
     pool2 = fluid.layers.pool2d(
-        relu6_1, pool_size=2, pool_type='max', pool_stride=2)
+        prelu1, pool_size=2, pool_type='max', pool_stride=2)
 
     fc1 = fluid.layers.fc(input=pool2,
                           size=120,
@@ -99,14 +108,13 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
 
 
 class ImperativeLenet(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
         fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
         fc_w2_attr = fluid.ParamAttr(name="fc_w_2")
         fc_w3_attr = fluid.ParamAttr(name="fc_w_3")
-        conv2d_b1_attr = fluid.ParamAttr(name="conv2d_b_1")
         conv2d_b2_attr = fluid.ParamAttr(name="conv2d_b_2")
         fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
         fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
@@ -119,11 +127,11 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 stride=1,
                 padding=1,
                 weight_attr=conv2d_w1_attr,
-                bias_attr=conv2d_b1_attr),
-            BatchNorm(6),
+                bias_attr=False),
+            BatchNorm2D(6),
             ReLU(),
-            Pool2D(
-                pool_size=2, pool_type='max', pool_stride=2),
+            MaxPool2D(
+                kernel_size=2, stride=2),
             Conv2D(
                 in_channels=6,
                 out_channels=16,
@@ -132,10 +140,10 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 padding=0,
                 weight_attr=conv2d_w2_attr,
                 bias_attr=conv2d_b2_attr),
-            BatchNorm(16),
-            ReLU6(),
-            Pool2D(
-                pool_size=2, pool_type='max', pool_stride=2))
+            BatchNorm2D(16),
+            PReLU(),
+            MaxPool2D(
+                kernel_size=2, stride=2))
 
         self.fc = Sequential(
             Linear(
@@ -188,10 +196,10 @@ class TestImperativeOutSclae(unittest.TestCase):
         reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
         weight_quantize_type = 'abs_max'
-        activation_quant_type = 'moving_average_abs_max'
+        activation_quantize_type = 'moving_average_abs_max'
         param_init_map = {}
         seed = 1000
-        lr = 0.1
+        lr = 0.001
         dynamic_out_scale_list = []
         static_out_scale_list = []
 
@@ -199,7 +207,9 @@ class TestImperativeOutSclae(unittest.TestCase):
         _logger.info(
             "--------------------------dynamic graph qat--------------------------"
         )
-        imperative_out_scale = ImperativeQuantAware()
+        imperative_out_scale = ImperativeQuantAware(
+            weight_quantize_type=weight_quantize_type,
+            activation_quantize_type=activation_quantize_type)
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
@@ -245,6 +255,10 @@ class TestImperativeOutSclae(unittest.TestCase):
 
             lenet.eval()
 
+        param_save_path = "test_save_quantized_model/lenet.pdparams"
+        save_dict = lenet.state_dict()
+        paddle.save(save_dict, param_save_path)
+
         path = "./dynamic_outscale_infer_model/lenet"
         dynamic_save_dir = "./dynamic_outscale_infer_model"
 
@@ -282,14 +296,20 @@ class TestImperativeOutSclae(unittest.TestCase):
         with fluid.scope_guard(scope):
             exe.run(startup)
         for param in main.all_parameters():
+            if "batch_norm" in param.name:
+                param_name = param.name.replace("norm", "norm2d")
+            elif 'prelu' in param.name:
+                param_name = param.name.replace("prelu", 'p_re_lu')
+            else:
+                param_name = param.name
             param_tensor = scope.var(param.name).get_tensor()
-            param_tensor.set(param_init_map[param.name], place)
+            param_tensor.set(param_init_map[param_name], place)
         main_graph = IrGraph(core.Graph(main.desc), for_test=False)
         infer_graph = IrGraph(core.Graph(infer.desc), for_test=True)
         transform_pass = QuantizationTransformPass(
             scope=scope,
             place=place,
-            activation_quantize_type=activation_quant_type,
+            activation_quantize_type=activation_quantize_type,
             weight_quantize_type=weight_quantize_type,
             quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'])
         transform_pass.apply(main_graph)
@@ -336,7 +356,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                     "diff({}) at {}, dynamic loss = {}, static loss = {}".
                     format(diff, i, loss_d, loss_s))
                 break
-
         self.assertTrue(
             np.allclose(
                 np.array(dynamic_loss_rec),
@@ -372,11 +391,91 @@ class TestImperativeOutSclae(unittest.TestCase):
             if 'fake' in op.type:
                 static_ops.remove(op)
 
+        op_count = 0
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
+                op_count += 1
+                self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
+                if dynamic_ops[i].attr("out_threshold") != static_ops[i].attr(
+                        "out_threshold"):
+                    _logger.info(dynamic_ops[i].attr("out_threshold"))
+                    _logger.info(static_ops[i].attr("out_threshold"))
+                self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
+                                static_ops[i].attr("out_threshold"))
+
+        _logger.info("op_cout: {}".format(op_count))
+        self.assertTrue(op_count == 14)
+
+
+class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
+    def test_save_quantized_model(self):
+        weight_quantize_type = 'abs_max'
+        activation_quantize_type = 'moving_average_abs_max'
+        load_param_path = "test_save_quantized_model/lenet.pdparams"
+        path = "./dynamic_outscale_infer_model_from_checkpoint/lenet"
+        dynamic_model_save_dir = "./dynamic_outscale_infer_model_from_checkpoint"
+        static_model_save_dir = "./static_outscale_infer_model"
+
+        imperative_out_scale = ImperativeQuantAware(
+            weight_quantize_type=weight_quantize_type,
+            activation_quantize_type=activation_quantize_type)
+
+        with fluid.dygraph.guard():
+            lenet = ImperativeLenet()
+            load_dict = paddle.load(load_param_path)
+            imperative_out_scale.quantize(lenet)
+            lenet.set_dict(load_dict)
+
+        imperative_out_scale.save_quantized_model(
+            layer=lenet,
+            path=path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ])
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = fluid.Executor(place)
+
+        # load dynamic model
+        [dynamic_inference_program, feed_target_names, fetch_targets] = (
+            fluid.io.load_inference_model(
+                dirname=dynamic_model_save_dir,
+                executor=exe,
+                model_filename="lenet" + INFER_MODEL_SUFFIX,
+                params_filename="lenet" + INFER_PARAMS_SUFFIX))
+        # load static model
+        [static_inference_program, feed_target_names, fetch_targets] = (
+            fluid.io.load_inference_model(
+                dirname=static_model_save_dir,
+                executor=exe,
+                model_filename="lenet" + INFER_MODEL_SUFFIX,
+                params_filename="lenet" + INFER_PARAMS_SUFFIX))
+
+        dynamic_ops = dynamic_inference_program.global_block().ops
+        static_ops = static_inference_program.global_block().ops
+
+        for op in dynamic_ops[:]:
+            if op.type == "flatten2" or 'fake' in op.type:
+                dynamic_ops.remove(op)
+
+        for op in static_ops[:]:
+            if 'fake' in op.type:
+                static_ops.remove(op)
+
+        op_count = 0
+        for i in range(len(dynamic_ops)):
+            if dynamic_ops[i].has_attr("out_threshold"):
+                op_count += 1
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
+
+        _logger.info("op_cout: {}".format(op_count))
+        self.assertTrue(op_count == 14)
 
 
 if __name__ == '__main__':

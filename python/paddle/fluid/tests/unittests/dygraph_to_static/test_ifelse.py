@@ -342,5 +342,28 @@ class TestDiffModeNet2(TestDiffModeNet):
         self.Net = DiffModeNet2
 
 
+class TestNewVarCreateInOneBranch(unittest.TestCase):
+    def test_var_used_in_another_for(self):
+        def case_func(training):
+            # targets and targets_list is dynamically defined by training
+            if training:
+                targets = [1, 2, 3]
+                targets_list = [targets]
+
+            num_step = 3
+            for i in range(num_step):
+                if i > 0:
+                    rois, rosi_num = 1, 2
+                    # targets is in loop_vars.
+                    if training:
+                        ros, rosi_num, targets = -1, -2, [-1, -2, -3]
+                        targets_list.append(targets)
+
+            return rosi_num
+
+        self.assertEqual(paddle.jit.to_static(case_func)(False), 2)
+        self.assertEqual(paddle.jit.to_static(case_func)(True), -2)
+
+
 if __name__ == '__main__':
     unittest.main()

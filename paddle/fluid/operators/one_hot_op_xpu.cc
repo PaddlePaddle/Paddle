@@ -16,7 +16,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/operators/one_hot_op.h"
 
 namespace paddle {
@@ -35,7 +34,7 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
     if (context.HasInput("depth_tensor")) {
       auto* depth_tensor = context.Input<Tensor>("depth_tensor");
       auto* depth_data = depth_tensor->data<int32_t>();
-      if (depth_tensor->place() == platform::XPUPlace()) {
+      if (platform::is_xpu_place(depth_tensor->place())) {
         xpu_memcpy(static_cast<void*>(&depth),
                    static_cast<const void*>(depth_data), sizeof(int32_t),
                    XPU_DEVICE_TO_HOST);

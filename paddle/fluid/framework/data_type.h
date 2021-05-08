@@ -20,15 +20,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace platform {
 struct bfloat16;
-struct float16;
-struct complex64;
 struct complex128;
+struct complex64;
+struct float16;
 }  // namespace platform
 }  // namespace paddle
 
@@ -149,6 +150,20 @@ extern inline bool IsComplexType(const proto::VarType::Type type) {
 
 extern proto::VarType::Type PromoteTypesIfComplexExists(
     const proto::VarType::Type type_a, const proto::VarType::Type type_b);
+
+extern inline proto::VarType::Type ToComplexType(proto::VarType::Type t) {
+  switch (t) {
+    case proto::VarType::FP32:
+      return proto::VarType::COMPLEX64;
+    case proto::VarType::FP64:
+      return proto::VarType::COMPLEX128;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unknown complex value data type (%s), now only support float32 and "
+          "float64.",
+          DataTypeToString(t)));
+  }
+}
 
 }  // namespace framework
 }  // namespace paddle

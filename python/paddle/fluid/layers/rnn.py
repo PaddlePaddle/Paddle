@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import sys
 from functools import partial, reduce
+import warnings
 
 import paddle
 from paddle.utils import deprecated
@@ -1378,14 +1379,21 @@ def _dynamic_decode_imperative(decoder,
             # To confirm states.finished/finished be consistent with
             # next_finished.
             tensor.assign(next_finished, finished)
-        next_sequence_lengths = nn.elementwise_add(
-            sequence_lengths,
-            tensor.cast(
-                control_flow.logical_not(finished), sequence_lengths.dtype))
+            next_sequence_lengths = nn.elementwise_add(
+                sequence_lengths,
+                tensor.cast(
+                    control_flow.logical_not(finished), sequence_lengths.dtype))
+            if impute_finished:  # rectify the states for the finished.
+                next_states = map_structure(
+                    lambda x, y: _maybe_copy(x, y, finished), states,
+                    next_states)
+        else:
+            warnings.warn(
+                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+            ) if not hasattr(next_states, "lengths") else None
+            next_sequence_lengths = getattr(next_states, "lengths",
+                                            sequence_lengths)
 
-        if impute_finished:  # rectify the states for the finished.
-            next_states = map_structure(
-                lambda x, y: _maybe_copy(x, y, finished), states, next_states)
         outputs = map_structure(
             lambda x: ArrayWrapper(x),
             step_outputs) if step_idx == 0 else map_structure(
@@ -1500,17 +1508,22 @@ def _dynamic_decode_declarative(decoder,
             # finished.
             next_finished = control_flow.logical_or(next_finished,
                                                     global_finished)
-        next_sequence_lengths = nn.elementwise_add(
-            sequence_lengths,
-            tensor.cast(
-                control_flow.logical_not(global_finished),
-                sequence_lengths.dtype))
-
-        if impute_finished:  # rectify the states for the finished.
-            next_states = map_structure(
-                lambda x, y: _maybe_copy(x, y, global_finished),
-                states,
-                next_states, )
+            next_sequence_lengths = nn.elementwise_add(
+                sequence_lengths,
+                tensor.cast(
+                    control_flow.logical_not(global_finished),
+                    sequence_lengths.dtype))
+            if impute_finished:  # rectify the states for the finished.
+                next_states = map_structure(
+                    lambda x, y: _maybe_copy(x, y, global_finished),
+                    states,
+                    next_states, )
+        else:
+            warnings.warn(
+                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+            ) if not hasattr(next_states, "lengths") else None
+            next_sequence_lengths = getattr(next_states, "lengths",
+                                            sequence_lengths)
 
         # create tensor array in global block after dtype[s] of outputs can be got
         outputs_arrays = map_structure(
@@ -1595,13 +1608,13 @@ def dynamic_decode(decoder,
             attr:`False`, the data layout would be batch major with shape
             `[batch_size, seq_len, ...]`.  If attr:`True`, the data layout would
             be time major with shape `[seq_len, batch_size, ...]`. Default: `False`.
-        impute_finished(bool, optional): If `True`, then states get copied through
-            for batch entries which are marked as finished, which differs with the
-            unfinished using the new states returned by :code:`decoder.step()` and
-            ensures that the final states have the correct values. Otherwise, states
-            wouldn't be copied through when finished. If the returned `final_states`
-            is needed, it should be set as True, which causes some slowdown.
-            Default `False`.
+        impute_finished(bool, optional): If `True` and `decoder.tracks_own_finished`
+            is False, then states get copied through for batch entries which are
+            marked as finished, which differs with the unfinished using the new states
+            returned by :code:`decoder.step()` and ensures that the final states have
+            the correct values. Otherwise, states wouldn't be copied through when
+            finished. If the returned `final_states` is needed, it should be set as
+            True, which causes some slowdown. Default `False`.
         is_test(bool, optional): A flag indicating whether to use test mode. In
             test mode, it is more memory saving. Default `False`.
         return_length(bool, optional):  A flag indicating whether to return an

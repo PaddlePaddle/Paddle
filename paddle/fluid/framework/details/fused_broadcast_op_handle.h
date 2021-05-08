@@ -36,7 +36,7 @@ struct NCCLContextMap;
 }  // namespace platform
 }  // namespace paddle
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -46,17 +46,24 @@ namespace details {
 
 struct FusedBroadcastOpHandle : public BroadcastOpHandle {
  public:
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   FusedBroadcastOpHandle(ir::Node *node,
                          const std::vector<Scope *> local_scopes,
                          const std::vector<platform::Place> &places,
                          const platform::NCCLContextMap *nccl_ctx)
       : BroadcastOpHandle(node, local_scopes, places, nccl_ctx) {}
-#else
-  FusedBroadcastOpHandle(ir::Node* node, const std::vector<Scope*> local_scopes,
-                         const std::vector<platform::Place>& places)
-      : BroadcastOpHandle(node, local_scopes, places) {}
 #endif
+#if defined(PADDLE_WITH_XPU_BKCL)
+  FusedBroadcastOpHandle(ir::Node *node,
+                         const std::vector<Scope *> local_scopes,
+                         const std::vector<platform::Place> &places,
+                         const platform::BKCLContextMap *bkcl_ctx)
+      : BroadcastOpHandle(node, local_scopes, places, bkcl_ctx) {}
+#endif
+  FusedBroadcastOpHandle(ir::Node *node,
+                         const std::vector<Scope *> local_scopes,
+                         const std::vector<platform::Place> &places)
+      : BroadcastOpHandle(node, local_scopes, places) {}
   std::string Name() const override;
 
  protected:

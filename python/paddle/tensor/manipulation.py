@@ -16,53 +16,61 @@ from __future__ import print_function
 
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_, device_guard
+from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_, device_guard, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 import numpy as np
 import six
 # TODO: define functions to manipulate a tensor  
-from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import slice  #DEFINE_ALIAS
-from ..fluid.layers import transpose  #DEFINE_ALIAS
-from ..fluid.layers import unstack  #DEFINE_ALIAS
+from ..fluid.layers import cast  # noqa: F401
+from ..fluid.layers import slice  # noqa: F401
+from ..fluid.layers import transpose  # noqa: F401
+from ..fluid.layers import unstack  # noqa: F401
 
-from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
-from ..fluid.layers import shard_index  #DEFINE_ALIAS
+from ..fluid.layers import scatter_nd  # noqa: F401
+from ..fluid.layers import shard_index  # noqa: F401
 from ..fluid import layers
+from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 
-__all__ = [
-    'cast',
-    'concat',
-    'expand',
-    'broadcast_to',
-    'expand_as',
-    'flatten',
-    'gather',
-    'gather_nd',
-    'reshape',
-    'reverse',
-    'scatter',
-    'scatter_nd_add',
-    'scatter_nd',
-    'shard_index',
-    'slice',
-    'split',
-    'chunk',
-    'squeeze',
-    'stack',
-    'strided_slice',
-    'transpose',
-    'unique',
-    'unsqueeze',
-    'unstack',
-    'flip',
-    'unbind',
-    'roll',
-    'tile',
-]
+__all__ = []
+
+
+@dygraph_only
+def tolist(x):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function translate the paddle.Tensor to python list.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to translate to list
+
+    Returns:
+        list: A list that contain the same value of current Tensor.
+
+    Returns type:
+        list: dtype is same as current Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            t = paddle.to_tensor([0,1,2,3,4])
+            expectlist = t.tolist()
+            print(expectlist)   #[0, 1, 2, 3, 4]
+
+            expectlist = paddle.tolist(t)
+            print(expectlist)   #[0, 1, 2, 3, 4]
+
+    """
+    return x.numpy().tolist()
+
+
+setattr(core.VarBase, 'tolist', tolist)
 
 
 def concat(x, axis=0, name=None):
@@ -120,7 +128,7 @@ def flip(x, axis, name=None):
     Args:
         x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
-        axis (list): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
+        axis (list|tuple): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -167,6 +175,10 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
 
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, please 
+    use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
+
     For Example:
 
     .. code-block:: text
@@ -197,7 +209,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     Args:
         x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float32,
-                      float64, int8, int32, int64.
+                      float64, int8, int32, int64, uint8.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
@@ -219,18 +231,23 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             import paddle
 
             image_shape=(2, 3, 4, 4)
-            
+
             x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             img = paddle.reshape(x, image_shape)
-            
+
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
+
+            # out shares data with img in dygraph mode
+            img[0, 0, 0, 0] = -1
+            print(out[0, 0, 0]) # [-1]
     """
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+        'flatten')
     helper = LayerHelper('flatten', **locals())
 
     x_dim = len(x.shape)
@@ -266,6 +283,36 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     return out
 
 
+@inplace_apis_in_dygraph_only
+def flatten_(x, start_axis=0, stop_axis=-1, name=None):
+    """
+    Inplace version of ``flatten`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_flatten`.
+    """
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Tensor")
+
+    x_dim = len(x.shape)
+    if not (isinstance(start_axis, int)) or (
+            start_axis > x_dim - 1) or start_axis < -x_dim:
+        raise ValueError(
+            "The start_axis should be a int, and in range [-rank(x), rank(x))")
+    if not (isinstance(stop_axis, int)) or (
+            stop_axis > x_dim - 1) or stop_axis < -x_dim:
+        raise ValueError(
+            "The stop_axis should be a int, and in range [-rank(x), rank(x))")
+    if start_axis < 0:
+        start_axis = start_axis + x_dim
+    if stop_axis < 0:
+        stop_axis = stop_axis + x_dim
+    if start_axis > stop_axis:
+        raise ValueError("The stop_axis should be larger than stat_axis")
+
+    dy_out, _ = core.ops.flatten_contiguous_range_(x, 'start_axis', start_axis,
+                                                   'stop_axis', stop_axis)
+    return dy_out
+
+
 def roll(x, shifts, axis=None, name=None):
     """
     Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that 
@@ -284,6 +331,7 @@ def roll(x, shifts, axis=None, name=None):
 
     Examples:
         .. code-block:: python
+            
             import paddle
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -478,6 +526,10 @@ def split(x, num_or_sections, axis=0, name=None):
 def squeeze(x, axis=None, name=None):
     """
     This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
+    
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
+    please use `Tensor.clone` like ``squeeze_clone_x = x.squeeze().clone()``.
 
     If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
     If the dimension of given axis is not of size 1, the dimension remain unchanged. 
@@ -519,7 +571,7 @@ def squeeze(x, axis=None, name=None):
 
     Args:
         x (Tensor): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
-        axis (int|list|tuple, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
+        axis (int|list|tuple, optional): An integer or list/tuple of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-ndim(x), ndim(x))`.
                           If axis is negative, :math:`axis = axis + ndim(x)`.
                           If axis is None, all the dimensions of x of size 1 will be removed.
@@ -535,7 +587,13 @@ def squeeze(x, axis=None, name=None):
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
+
+            print(x.shape)  # [5, 1, 10]
             print(output.shape)  # [5, 10]
+
+            # output shares data with x in dygraph mode
+            x[0, 0, 0] = 10.
+            print(output[0, 0]) # [10.]
 
     """
     if axis is None:
@@ -546,6 +604,23 @@ def squeeze(x, axis=None, name=None):
         axis = list(axis)
 
     return layers.squeeze(x, axis, name)
+
+
+@inplace_apis_in_dygraph_only
+def squeeze_(x, axis=None, name=None):
+    """
+    Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_squeeze`.
+    """
+    if axis is None:
+        axis = []
+    elif isinstance(axis, int):
+        axis = [axis]
+    elif isinstance(axis, tuple):
+        axis = list(axis)
+
+    out, _ = core.ops.squeeze2_(x, 'axes', axis)
+    return out
 
 
 def unique(x,
@@ -677,6 +752,10 @@ def unsqueeze(x, axis, name=None):
     required argument axis, a dimension or list of dimensions that will be inserted.
     Dimension indices in axis are as seen in the output tensor.
 
+    Note that the output Tensor will share data with origin Tensor and doesn't have a 
+    Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version, 
+    please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
+
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` . 
@@ -705,10 +784,35 @@ def unsqueeze(x, axis, name=None):
             axis = paddle.to_tensor([0, 1, 2])
             out3 = paddle.unsqueeze(x, axis=axis) 
             print(out3.shape)  # [1, 1, 1, 5, 10]
+
+            # out1, out2, out3 share data with x in dygraph mode
+            x[0, 0] = 10.
+            print(out1[0, 0, 0]) # [10.]
+            print(out2[0, 0, 0, 0]) # [10.]
+            print(out3[0, 0, 0, 0, 0]) # [10.]
             
     """
 
     return layers.unsqueeze(x, axis, name)
+
+
+@inplace_apis_in_dygraph_only
+def unsqueeze_(x, axis, name=None):
+    """
+    Inplace version of ``unsqueeze`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_unsqueeze`.
+    """
+    if isinstance(axis, int):
+        axis = [axis]
+    elif isinstance(axis, Variable):
+        axis = axis.numpy().tolist()
+    elif isinstance(axis, (list, tuple)):
+        axis = [
+            item.numpy().item(0) if isinstance(item, Variable) else item
+            for item in axis
+        ]
+    out, _ = core.ops.unsqueeze2_(x, 'axes', axis)
+    return out
 
 
 def gather(x, index, axis=None, name=None):
@@ -935,6 +1039,15 @@ def scatter(x, index, updates, overwrite=True, name=None):
         attrs={'overwrite': overwrite},
         outputs={"Out": out})
     return out
+
+
+@inplace_apis_in_dygraph_only
+def scatter_(x, index, updates, overwrite=True, name=None):
+    """
+    Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_scatter`.
+    """
+    return core.ops.scatter_(x, index, updates, 'overwrite', overwrite)
 
 
 def scatter_nd_add(x, index, updates, name=None):
@@ -1337,7 +1450,8 @@ def expand(x, shape, name=None):
                     'Elements in shape must be 1-D Tensors or integers.')
 
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'expand')
     check_type(shape, 'shape', (list, tuple, Variable), 'expand')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
         raise ValueError("When the data type of input 'x' for expand is bool, "
@@ -1354,7 +1468,7 @@ def expand(x, shape, name=None):
         attrs_expand_shape = []
         for idx, shape in enumerate(list_expand_shape):
             if isinstance(shape, Variable):
-                attrs_expand_shape.append(-1)
+                attrs_expand_shape.append(-2)
             else:
                 attrs_expand_shape.append(shape)
                 assert shape > 0 or shape == -1, (
@@ -1380,6 +1494,11 @@ def expand(x, shape, name=None):
 def reshape(x, shape, name=None):
     """
     This operator changes the shape of ``x`` without changing its data.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode. 
+    If you want to use the Tensor copy version, please use `Tensor.clone` like 
+    ``reshape_clone_x = x.reshape([-1]).clone()``.
 
     Some tricks exist when specifying the target shape.
 
@@ -1429,18 +1548,45 @@ def reshape(x, shape, name=None):
 
             x = paddle.rand([2, 4, 6], dtype="float32")
             positive_four = paddle.full([1], 4, "int32")
+
             out = paddle.reshape(x, [-1, 0, 3, 2])
             print(out)
             # the shape is [2,4,3,2].
+
             out = paddle.reshape(x, shape=[positive_four, 12])
             print(out)
             # the shape of out_2 is [4, 12].
+
             shape_tensor = paddle.to_tensor(np.array([8, 6]).astype("int32"))
             out = paddle.reshape(x, shape=shape_tensor)
             print(out)
             # the shape is [8, 6].
+            # out shares data with x in dygraph mode
+            x[0, 0, 0] = 10.
+            print(out[0, 0])
+            # the value is [10.]
+
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
+
+
+@inplace_apis_in_dygraph_only
+def reshape_(x, shape, name=None):
+    """
+    Inplace version of ``reshape`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_reshape`.
+    """
+    if isinstance(shape, (list, tuple)):
+        shape = [
+            item.numpy().item(0) if isinstance(item, Variable) else item
+            for item in shape
+        ]
+        out, _ = core.ops.reshape2_(x, None, 'shape', shape)
+        return out
+    elif isinstance(shape, Variable):
+        shape.stop_gradient = True
+        out, _ = core.ops.reshape2_(x, shape)
+        return out
 
 
 def gather_nd(x, index, name=None):

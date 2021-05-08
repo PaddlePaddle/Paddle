@@ -15,11 +15,12 @@
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import Variable
+from paddle.fluid import core
 
 __all__ = ['check_finite_and_unscale', 'update_loss_scaling']
 
 
-def check_finite_and_unscale(x, scale, name=None):
+def check_finite_and_unscale(x, scale, name=None, float_status=None):
     """
     Check if input X contains all finite data, if yes, scale it by input Scale.
 
@@ -29,19 +30,26 @@ def check_finite_and_unscale(x, scale, name=None):
     FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of 
     Out should not be used, and its data may not be deterministic. 
     Otherwise, FoundInfinite will be 0 (False).
+
     Args:
         x(list|tuple): The input tensors of check_finite_and_unscale operator.
         scale: The scale of check_finite_and_unscale operator.
+        float_status(Tensor): (Only used on NPU) The float status to check overflow.
     """
     check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
     for e in x:
-        check_variable_and_dtype(e, "x", ['float32', 'float64'],
+        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                  'check_finite_and_unscale')
 
     helper = LayerHelper("check_finite_and_unscale", **locals())
     found_inf = helper.create_variable_for_type_inference(dtype='bool')
 
     inputs = {'X': x, 'Scale': scale}
+    if core.is_compiled_with_npu():
+        check_variable_and_dtype(float_status, "float_status",
+                                 ['float16', 'float32'],
+                                 'check_finite_and_unscale')
+        inputs['FloatStatus'] = float_status
     outputs = {'Out': x, 'FoundInfinite': found_inf}
     helper.append_op(
         type='check_finite_and_unscale', inputs=inputs, outputs=outputs)
@@ -58,6 +66,7 @@ def update_loss_scaling(x,
                         decr_every_n_nan_or_inf,
                         incr_ratio,
                         decr_ratio,
+                        stop_update=False,
                         name=None):
     """
     Update loss scaling according to overall gradients. If all gradients is 
@@ -90,9 +99,13 @@ def update_loss_scaling(x,
                              ['float32', 'float64'], "update_loss_scaling")
     check_type(x, 'x', (tuple, list), 'update_loss_scaling')
     for e in x:
-        check_variable_and_dtype(e, "x", ['float32', 'float64'],
+        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                  'update_loss_scaling')
-        assert prev_loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
+        if e.dtype == core.VarDesc.VarType.FP16:
+            assert prev_loss_scaling.dtype == core.VarDesc.VarType.FP32, \
+                "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+        else:
+            assert prev_loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
 
     helper = LayerHelper("update_loss_scaling", **locals())
 
@@ -116,6 +129,7 @@ def update_loss_scaling(x,
         'decr_every_n_nan_or_inf': decr_every_n_nan_or_inf,
         'incr_ratio': incr_ratio,
         'decr_ratio': decr_ratio,
+        'stop_update': stop_update
     }
 
     helper.append_op(

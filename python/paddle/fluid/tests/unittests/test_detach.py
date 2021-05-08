@@ -152,14 +152,8 @@ class Test_Detach(unittest.TestCase):
     def test_detach_exception(self):
         x = fluid.layers.data(name="a", shape=[3, 4], dtype='float32')
         y = fluid.layers.fc(input=x, size=10, bias_attr=True)
-        try:
+        with self.assertRaises(AssertionError):
             y_detach = y.detach()
-        except Exception as e:
-            # Here is to check
-            assert type(e) == AssertionError
-            assert str(
-                e
-            ) == "'detach' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
 
 
 class TestInplace(unittest.TestCase):

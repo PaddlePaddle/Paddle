@@ -24,6 +24,25 @@ import six
 import subprocess
 from contextlib import closing
 import socket
+from paddle.fluid import core
+
+__all__ = [     #noqa
+           'get_host_name_ip',
+           'Trainer',
+           'get_cluster',
+           'start_local_trainers',
+           'watch_local_trainers',
+           'find_free_ports',
+           'JobServer',
+           'Cluster',
+           'Pod',
+           'Hdfs',
+           'add_arguments',
+           'terminate_local_procs',
+           'TrainerProc',
+           'get_logger',
+           'pull_worker_log'
+]
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -401,13 +420,24 @@ def find_free_ports(num):
 
 
 def _prepare_trainer_env(cluster, trainer):
-    proc_env = {
-        "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in trainer.gpus]),
-        "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-        "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
-        "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-        "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
-    }
+    if core.is_compiled_with_xpu():
+        proc_env = {
+            "FLAGS_selected_xpus":
+            "%s" % ",".join([str(g) for g in trainer.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
+    elif core.is_compiled_with_cuda():
+        proc_env = {
+            "FLAGS_selected_gpus":
+            "%s" % ",".join([str(g) for g in trainer.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
     return proc_env
 
 

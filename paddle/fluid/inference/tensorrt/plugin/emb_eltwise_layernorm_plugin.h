@@ -39,6 +39,8 @@ class EmbEltwiseLayernormPluginDynamicImplBase {
                       const nvinfer1::PluginTensorDesc* outputDesc,
                       const void* const* inputs, void* const* outputs,
                       void* workspace, cudaStream_t stream) = 0;
+  virtual void shareGPUData(
+      const EmbEltwiseLayernormPluginDynamicImplBase* anthor) = 0;
 };
 
 template <typename T>
@@ -67,6 +69,7 @@ class EmbEltwiseLayernormPluginDynamicImpl
               const nvinfer1::PluginTensorDesc* outputDesc,
               const void* const* inputs, void* const* outputs, void* workspace,
               cudaStream_t stream);
+  void shareGPUData(const EmbEltwiseLayernormPluginDynamicImplBase* anthor);
 
  private:
   std::vector<float*> embs_;
@@ -87,6 +90,7 @@ class EmbEltwiseLayernormPluginDynamicImpl
   framework::Tensor in_ptr_tensor_, emb_ptr_tensor_;
   int device_id_{0};
   uintptr_t old_input_ptr_{0};
+  bool is_initialized_{false};
 };
 
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
@@ -189,6 +193,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     auto ptr = new EmbEltwiseLayernormPluginDynamic(
         embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
         eps_, with_fp16_);
+    ptr->shareGPUData(this);
     return ptr;
   }
 
@@ -295,11 +300,16 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
   bool own_host_buff_{false};
   EmbEltwiseLayernormPluginDynamicImplBase* impl_{nullptr};
+
+  void shareGPUData(const EmbEltwiseLayernormPluginDynamic* anthor) {
+    impl_->shareGPUData(anthor->impl_);
+  }
 };
 
-class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
+class EmbEltwiseLayernormPluginDynamicCreator
+    : public nvinfer1::IPluginCreator {
  public:
-  EmbEltwiseLayernormPluginV2Creator() {}
+  EmbEltwiseLayernormPluginDynamicCreator() {}
   const char* getPluginName() const override {
     return "fused_embedding_eltwise_layernorm_plugin";
   }
@@ -336,7 +346,7 @@ class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-REGISTER_TRT_PLUGIN_V2(EmbEltwiseLayernormPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(EmbEltwiseLayernormPluginDynamicCreator);
 
 #endif
 }  // namespace plugin

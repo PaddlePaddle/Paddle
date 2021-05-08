@@ -20,8 +20,13 @@
 #include <memory>
 #include <string>
 #include <utility>
-
 #include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/distributed/table/depends/sparse_utils.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -35,14 +40,25 @@ class Table {
 
   virtual int32_t pull_dense(float *values, size_t num) = 0;
   virtual int32_t push_dense(const float *values, size_t num) = 0;
+  // for push global_step
+  virtual int32_t push_dense(const int64_t *values, const int32_t trainer_id) {
+    return 0;
+  }
   virtual int32_t push_dense_param(const float *values, size_t num) {
     return 0;
   }
 
-  virtual int32_t pull_sparse(float *values, const uint64_t *keys,
-                              size_t num) = 0;
+  virtual int32_t pull_sparse_ptr(char **pull_values, const uint64_t *keys,
+                                  size_t num) {
+    VLOG(0) << "NOT IMPLEMENT";
+    return 0;
+  }
+  virtual int32_t pull_sparse(float *values,
+                              const PullSparseValue &pull_value) = 0;
   virtual int32_t push_sparse(const uint64_t *keys, const float *values,
                               size_t num) = 0;
+  virtual int32_t push_sparse(const uint64_t *keys, const float **values,
+                              size_t num){};
   virtual int32_t push_sparse_param(const uint64_t *keys, const float *values,
                                     size_t num) {
     return 0;
@@ -67,11 +83,23 @@ class Table {
     return 0;
   }
 
+  // only for tensor table
+  virtual int32_t set_program_env(
+      framework::Scope *scope, platform::Place place,
+      const std::vector<framework::ProgramDesc> *sub_program) {
+    return 0;
+  }
+
+  virtual int32_t set_global_lr(float *lr) {
+    _global_lr = lr;
+    return 0;
+  }
+
   virtual int32_t pour() { return 0; }
 
   virtual void clear() = 0;
   virtual int32_t flush() = 0;
-  virtual int32_t shrink() = 0;
+  virtual int32_t shrink(const std::string &param) = 0;
 
   //指定加载路径
   virtual int32_t load(const std::string &path,
@@ -105,9 +133,10 @@ class Table {
   size_t _shard_idx;  // table 分片编号
   size_t _shard_num;  // table 分片总数
   TableParameter _config;
+  float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accesor;
 };
-REGISTER_REGISTERER(Table);
+REGISTER_PSCORE_REGISTERER(Table);
 
 class TableManager {
  public:
@@ -121,5 +150,6 @@ class TableManager {
   TableManager() {}
   ~TableManager() {}
 };
+
 }  // namespace distributed
 }  // namespace paddle

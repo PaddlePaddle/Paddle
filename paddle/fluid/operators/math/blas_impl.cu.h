@@ -275,6 +275,15 @@ struct CUBlas<platform::complex64> {
         reinterpret_cast<cuFloatComplex *>(C), ldc));
   }
 
+  static void AXPY(cublasHandle_t handle, int n, const complex64 *alpha,
+                   const complex64 *X, const int incX, complex64 *Y,
+                   const int incY) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasCaxpy(
+        handle, n, reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(X), incX,
+        reinterpret_cast<cuFloatComplex *>(Y), incY));
+  }
+
   static void GEMM_STRIDED_BATCH(cublasHandle_t handle,
                                  cublasOperation_t transa,
                                  cublasOperation_t transb, int m, int n, int k,
@@ -360,6 +369,15 @@ struct CUBlas<platform::complex128> {
         reinterpret_cast<const cuDoubleComplex *>(B), ldb,
         reinterpret_cast<const cuDoubleComplex *>(beta),
         reinterpret_cast<cuDoubleComplex *>(C), ldc));
+  }
+
+  static void AXPY(cublasHandle_t handle, int n, const complex128 *alpha,
+                   const complex128 *X, const int incX, complex128 *Y,
+                   const int incY) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasZaxpy(
+        handle, n, reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(X), incX,
+        reinterpret_cast<cuDoubleComplex *>(Y), incY));
   }
 
   static void GEMM_STRIDED_BATCH(cublasHandle_t handle,

@@ -14,14 +14,17 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <functional>
 #include <memory>
+#include <random>
 #include <string>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/generator.h"
+
+#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 
 namespace paddle {
 namespace distributed {
@@ -33,6 +36,18 @@ class Initializer {
   explicit Initializer(const std::vector<std::string> &attrs) {}
 
   virtual float GetValue() = 0;
+
+  virtual void GetValue(std::vector<float> *values, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      values->push_back(GetValue());
+    }
+  }
+
+  virtual void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = GetValue();
+    }
+  }
 
   virtual ~Initializer() {}
 
@@ -54,6 +69,11 @@ class UniformInitializer : public Initializer {
   }
 
   float GetValue() override { return dist_(*random_engine_); }
+  void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = dist_(*random_engine_);
+    }
+  }
 
  private:
   float min_;
@@ -77,6 +97,11 @@ class GaussianInitializer : public Initializer {
   }
 
   float GetValue() override { return dist_(*random_engine_); }
+  void GetValue(float *value, int numel) {
+    for (int x = 0; x < numel; ++x) {
+      value[x] = dist_(*random_engine_);
+    }
+  }
 
  private:
   float std_;
@@ -84,6 +109,40 @@ class GaussianInitializer : public Initializer {
 
   std::shared_ptr<std::mt19937_64> random_engine_;
   std::normal_distribution<float> dist_;
+};
+
+class TruncatedGaussianInitializer : public Initializer {
+ public:
+  explicit TruncatedGaussianInitializer(const std::vector<std::string> &attrs) {
+    name_ = attrs[0];
+    seed_ = static_cast<unsigned int>(std::stoi(attrs[1]));
+    mean_ = std::stof(attrs[2]);
+    std_ = std::stof(attrs[3]);
+
+    std::uniform_real_distribution<float> dist_(
+        std::numeric_limits<float>::min(), 1.0);
+    random_engine_ = framework::GetCPURandomEngine(seed_);
+  }
+
+  float GetValue() override {
+    paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
+    float value = truncated_normal(dist_(*random_engine_));
+    return value;
+  }
+
+  void GetValue(float *value, int numel) {
+    paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
+    for (int x = 0; x < numel; ++x) {
+      value[x] = truncated_normal(dist_(*random_engine_));
+    }
+  }
+
+ private:
+  float std_;
+  float mean_;
+
+  std::shared_ptr<std::mt19937_64> random_engine_;
+  std::uniform_real_distribution<float> dist_;
 };
 
 class FillConstantInitializer : public Initializer {
@@ -94,6 +153,7 @@ class FillConstantInitializer : public Initializer {
   }
 
   float GetValue() override { return value_; }
+  void GetValue(float *value, int numel) { std::fill_n(value, numel, value_); }
 
  private:
   float value_;

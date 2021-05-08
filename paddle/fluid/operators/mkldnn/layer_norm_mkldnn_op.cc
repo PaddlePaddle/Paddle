@@ -120,7 +120,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto layer_norm_p = handler.AcquireForwardPrimitive();
 
-    dnnl::stream astream(dev_ctx.GetEngine());
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     std::unordered_map<int, dnnl::memory> args;
 
     args.insert({DNNL_ARG_SRC, *src_memory});

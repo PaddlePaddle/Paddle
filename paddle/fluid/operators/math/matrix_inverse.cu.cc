@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
@@ -32,6 +33,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& a, framework::Tensor* a_inv) {
+#ifndef PADDLE_WITH_HIP
     const auto& mat_dims = a.dims();
     const int rank = mat_dims.size();
     int n = mat_dims[rank - 1];
@@ -106,9 +108,14 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
     for (int i = 0; i < batch_size; ++i) {
       PADDLE_ENFORCE_EQ(info[i], 0,
                         platform::errors::PreconditionNotMet(
-                            "For batch [%d]: U(%d, %d) is zero, singular U.", i,
-                            info[i], info[i]));
+                            "For batch [%d]: U(%d, %d) is zero, singular U. "
+                            "Please check the matrix value and change it to a "
+                            "non-singular matrix",
+                            i, info[i], info[i]));
     }
+#else
+    compute_inverse_eigen<platform::CUDADeviceContext, T>(context, a, a_inv);
+#endif
   }
 };
 

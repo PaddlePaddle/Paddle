@@ -20,6 +20,8 @@ import os
 import platform
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 class ParameterServerOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -37,6 +39,23 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         return True if k_steps >= 0 else False
+
+    def get_dist_env(self):
+        trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
+        trainer_endpoints = ''
+        current_endpoint = ''
+        num_trainers = 0
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS'):
+            trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+            current_endpoint = trainer_endpoints.split(',')[trainer_id]
+            num_trainers = len(trainer_endpoints.split(','))
+
+        return {
+            'trainer_id': trainer_id,
+            'num_trainers': num_trainers,
+            'current_endpoint': current_endpoint,
+            'trainer_endpoints': trainer_endpoints
+        }
 
     def _get_distributed_strategy(self):
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
@@ -64,17 +83,37 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         _main = compiled_config.origin_main_program.clone()
         _startup = compiled_config.origin_startup_program.clone()
 
-        if not compiled_config.is_geo_mode():
-            # for main program
-            _main = worker.delete_optimizer_pass(_main, compiled_config)
-            _main = worker.distributed_ops_pass(_main, compiled_config)
-            _main = worker.append_send_ops_pass(_main, compiled_config)
+        use_ps_gpu = self.user_defined_strategy.a_sync_configs["use_ps_gpu"]
 
-            # for startup program
+        if not compiled_config.is_geo_mode():
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
+            _add_lr_decay_table_pass(
+                _main, compiled_config,
+                self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
+
+            # for main program
+            _main = worker.distributed_ops_pass(_main, compiled_config,
+                                                use_ps_gpu)
+            if not use_ps_gpu:
+                _main = worker.delete_optimizer_pass(_main, compiled_config)
+                _main = worker.append_send_ops_pass(_main, compiled_config)
+                _startup = worker.delet_extra_optimizes_pass(_startup,
+                                                             compiled_config)
+
+                # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
-            _startup = worker.init_from_server_pass(_startup, compiled_config)
-            _startup = worker.delet_extra_optimizes_pass(_startup,
-                                                         compiled_config)
+            if use_ps_gpu:
+                _main = worker.ps_gpu_pass(_main)
+                from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+                t = SingleProcessMultiThread()
+                env = self.get_dist_env()
+                t.transpile(
+                    startup_program=_startup,
+                    main_program=_main,
+                    rank=env["trainer_id"],
+                    endpoints=env["trainer_endpoints"],
+                    current_endpoint=env['current_endpoint'],
+                    wait_port=False)
 
             compiled_config.set_origin_ps_main_program(_main)
             compiled_config.set_origin_ps_startup_program(_startup)
@@ -106,19 +145,43 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             wait_server_ready(self.role_maker._get_pserver_endpoints())
 
             # for ps-heter mode, wait heter worker ready
-            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-            ):
-                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+            # if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            # ):
+            #     wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
-        from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
-
         _main = fluid.Program()
         _startup = fluid.Program()
 
+        from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
+
         if not compiled_config.is_geo_mode():
+
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+            is_sgd_adam = False
+
+            main_program = compiled_config.get_origin_main_program()
+            ops = _get_optimize_ops(main_program)
+
+            if len(ops) == 0:
+                return _main, _startup
+
+            from paddle.fluid.incubate.fleet.parameter_server.ir.public import _add_lr_decay_table_pass
+            lr_decay_steps = self.user_defined_strategy.a_sync_configs[
+                "lr_decay_steps"]
+            _add_lr_decay_table_pass(main_program, compiled_config,
+                                     lr_decay_steps)
+
+            for op in ops:
+                if op.type in ["sgd", "adam"]:
+                    is_sgd_adam = True
+                    break
+
+            if is_sgd_adam:
+                return _main, _startup
+
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
             _main = server.add_optimizer_pass(_main, compiled_config)
@@ -139,12 +202,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
             _main = server.add_geo_optimizer_pass(_main, compiled_config)
-            _main = server.large_scale_sparse_pass(_main, _main,
-                                                   compiled_config, False)
             _startup = server.build_pserver_startup_program_pass(
                 _startup, _main, compiled_config)
-            _startup = server.large_scale_sparse_pass(_startup, _main,
-                                                      compiled_config, True)
             _startup = server.delete_unused_in_startup_pass(_startup, _main,
                                                             compiled_config)
 

@@ -173,7 +173,6 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
             model_path = tempfile.mkdtemp()
             fleet.save_persistables(executor=exe, dirname=model_path)
             shutil.rmtree(model_path)
-        fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
         train_file_list = ctr_dataset_reader.prepare_fake_data()
@@ -210,9 +209,6 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
                 debug=int(os.getenv("Debug", "0")))
             pass_time = time.time() - pass_start
             print("do_dataset_training done. using time {}".format(pass_time))
-
-        fleet.stop_worker()
-        print("do_dataset_training stop worker.")
 
 
 if __name__ == "__main__":

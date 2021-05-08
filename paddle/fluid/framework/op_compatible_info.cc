@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/op_compatible_info.h"
-#include <iostream>
-#include <utility>
-#include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
 

@@ -84,9 +84,18 @@ class InplaceABNGradKernel
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+#ifdef PADDLE_WITH_HIP
+// MIOPEN do not support double
+REGISTER_OP_CUDA_KERNEL(inplace_abn,
+                        ops::InplaceABNKernel<plat::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    inplace_abn_grad,
+    ops::InplaceABNGradKernel<plat::CUDADeviceContext, float>);
+#else
 REGISTER_OP_CUDA_KERNEL(inplace_abn,
                         ops::InplaceABNKernel<plat::CUDADeviceContext, float>,
                         ops::InplaceABNKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     inplace_abn_grad, ops::InplaceABNGradKernel<plat::CUDADeviceContext, float>,
     ops::InplaceABNGradKernel<plat::CUDADeviceContext, double>);
+#endif

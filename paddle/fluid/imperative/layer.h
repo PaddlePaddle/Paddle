@@ -30,6 +30,7 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/flags.h"
+#include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
@@ -45,8 +46,8 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-class OpBase;
 class GradOpNode;
+class OpBase;
 class VariableWrapper;
 
 class ThreadSafeNameSet {
@@ -106,6 +107,10 @@ class VarBase {
   const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
 
   void ClearGradVarBase() { grad_var_ = nullptr; }
+
+  void SetGradVarBase(VarBase& grad_var) {
+    MutableGradVarBase()->CopyFrom(grad_var, true);
+  }
 
   const std::shared_ptr<VarBase>& MutableGradVarBase() {
     if (grad_var_ == nullptr) {
@@ -201,6 +206,14 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    var_->SetForwardDataType(data_type);
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return var_->ForwardDataType();
+  }
+
   const platform::Place Place() const { return var_->Place(); }
 
   void ClearGradient();
@@ -211,6 +224,28 @@ class VarBase {
   void CopyFrom(const imperative::VarBase& src, bool blocking);
 
   void BumpInplaceVersion();
+
+  /* Hook related method: now only used for GradVarBase */
+  bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }
+
+  int64_t AddVariableWrapperHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    return var_->AddVariableWrapperHook(
+        std::forward<std::shared_ptr<VariableWrapperHook>>(hook));
+  }
+
+  bool RemoveVariableWrapperHook(const int64_t& hook_id) {
+    return var_->RemoveVariableWrapperHook(hook_id);
+  }
+
+  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>&
+  GetVariableWrapperHooks() const {
+    return var_->GetVariableWrapperHooks();
+  }
+
+  void AddVoidHook(std::shared_ptr<std::function<void()>>&& hook) {
+    var_->AddVoidHook(
+        std::forward<std::shared_ptr<std::function<void()>>>(hook));
+  }
 
  private:
   /**
@@ -248,7 +283,10 @@ class Layer {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const platform::Place& place);
+    const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map);
+
+void ClearNoNeedBufferInputs(OpBase* op);
 
 }  // namespace imperative
 }  // namespace paddle

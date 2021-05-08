@@ -38,11 +38,9 @@ if core.is_compiled_with_cuda():
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-quant_skip_pattern_list = ['skip_qat', 'skip_quant']
-
 
 class ImperativeLenet(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
@@ -135,7 +133,7 @@ class TestImperativeOutSclae(unittest.TestCase):
 
         np.random.seed(seed)
         reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
+            paddle.dataset.mnist.test(), batch_size=512, drop_last=True)
         lenet = ImperativeLenet()
         fixed_state = {}
         for name, param in lenet.named_parameters():
@@ -202,9 +200,12 @@ class TestImperativeOutSclae(unittest.TestCase):
                 params_filename="lenet" + INFER_PARAMS_SUFFIX))
         model_ops = inference_program.global_block().ops
 
-        conv2d_count, mul_count = 0, 0
+        conv2d_count, matmul_count = 0, 0
+        conv2d_skip_count, matmul_skip_count = 0, 0
         for i, op in enumerate(model_ops):
             if op.type == 'conv2d':
+                if op.has_attr("skip_quant"):
+                    conv2d_skip_count += 1
                 if conv2d_count > 0:
                     self.assertTrue(
                         'fake_quantize_dequantize' in model_ops[i - 1].type)
@@ -213,14 +214,19 @@ class TestImperativeOutSclae(unittest.TestCase):
                         'fake_quantize_dequantize' not in model_ops[i - 1].type)
                 conv2d_count += 1
 
-            if op.type == 'mul':
-                if mul_count > 0:
+            if op.type == 'matmul':
+                if op.has_attr("skip_quant"):
+                    matmul_skip_count += 1
+                if matmul_count > 0:
                     self.assertTrue(
                         'fake_quantize_dequantize' in model_ops[i - 1].type)
                 else:
                     self.assertTrue(
                         'fake_quantize_dequantize' not in model_ops[i - 1].type)
-                mul_count += 1
+                matmul_count += 1
+
+        self.assertTrue(conv2d_skip_count == 1)
+        self.assertTrue(matmul_skip_count == 1)
 
 
 if __name__ == '__main__':

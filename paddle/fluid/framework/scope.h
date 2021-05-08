@@ -81,6 +81,10 @@ class Scope {
   /// Caller doesn't own the returned Variable.
   Variable* FindVar(const std::string& name) const;
 
+  // Get a variable in the scope or any of its ancestors. Enforce
+  /// the returned Variable is not nullptr
+  Variable* GetVar(const std::string& name) const;
+
   /// Find a variable in the current scope.
   /// Return nullptr if cannot find.
   /// Caller doesn't own the returned Variable.

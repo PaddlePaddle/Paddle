@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_NCCL
 #pragma once
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include <stdio.h>
 #include <memory>
 #include <string>
@@ -25,7 +25,12 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+#ifdef PADDLE_WITH_RCCL
+#include "paddle/fluid/platform/dynload/rccl.h"
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -81,7 +86,7 @@ struct NCCLContext {
   explicit NCCLContext(int dev_id)
       : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {}
 
-  cudaStream_t stream() const { return ctx_->stream(); }
+  gpuStream_t stream() const { return ctx_->stream(); }
   ncclComm_t comm() const { return comm_; }
 
   int device_id() const {
@@ -132,7 +137,7 @@ struct NCCLContextMap {
           }
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(gpu_id));
+          SetDeviceId(gpu_id);
           PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }

@@ -40,6 +40,7 @@ from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_progr
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import input_specs_compatible
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
@@ -450,15 +451,41 @@ class StaticFunction(object):
                 out_foo = decorated_foo(paddle.rand([10]), paddle.rand([10]))
                 print(decorated_foo.concrete_program)
         """
+        return self.concrete_program_specify_input_spec(input_spec=None)
+
+    def concrete_program_specify_input_spec(self, input_spec=None):
+        """
+        Returns recent ConcreteProgram instance of decorated function while
+        specifying input_spec. If the self._function_spec already has
+        input_spce, it will check the compatibility of input input_spec and
+        the self._function_spec.input_spec. If input input_spec=None, then
+        this method uses self._function_spec.input_spec
+
+        args:
+            input_spec (list[InputSpec], optional): Describes the input of
+                the translate function.
+        """
         # if specific the `input_spec`, the length of program_cache will always 1,
         # else, return the last one.
         cached_program_len = len(self._program_cache)
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
         if cached_program_len == 0:
-            input_spec = self._function_spec.input_spec
-            has_input_spec = (input_spec is not None and len(input_spec) > 0)
+            desired_input_spec = input_spec
+            if self._function_spec.input_spec is not None:
+                if input_spec is not None and not input_specs_compatible(
+                        flatten(input_spec),
+                        flatten(self._function_spec.input_spec)):
+                    raise ValueError(
+                        "The `input_spec`: {} used to construct concrete_program is conflict with the `input_spec`: {} in `@paddle.jit.to_static`".
+                        format(input_spec, self._function_spec.input_spec))
+                # NOTE(chenweihang): we should always translated program based on the `input_spec`
+                # decorated on forward if it is valid
+                desired_input_spec = self._function_spec.input_spec
+
+            has_input_spec = (desired_input_spec is not None)
             if has_input_spec:
-                concrete_program, _ = self.get_concrete_program(*input_spec)
+                concrete_program, _ = self.get_concrete_program(
+                    *desired_input_spec)
                 return concrete_program
             else:
                 raise ValueError(

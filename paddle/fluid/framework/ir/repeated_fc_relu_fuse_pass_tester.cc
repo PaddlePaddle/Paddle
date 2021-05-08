@@ -19,6 +19,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
 
 void TestMain(int num_fc) {

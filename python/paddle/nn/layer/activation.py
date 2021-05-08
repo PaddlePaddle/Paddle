@@ -14,32 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-__all__ = [
-    'ELU',
-    'GELU',
-    'Hardshrink',
-    'Hardswish',
-    'Tanh',
-    'Hardtanh',
-    'PReLU',
-    'ReLU',
-    'ReLU6',
-    'SELU',
-    'LeakyReLU',
-    'Sigmoid',
-    'Hardsigmoid',
-    'Softmax',
-    'Softplus',
-    'Softshrink',
-    'Softsign',
-    'Swish',
-    'Tanhshrink',
-    'ThresholdedReLU',
-    'LogSigmoid',
-    'LogSoftmax',
-    'Maxout',
-]
-
 from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
@@ -47,6 +21,8 @@ from ...fluid.param_attr import ParamAttr
 from ...fluid.initializer import Constant
 from paddle.framework import get_default_dtype
 from .. import functional as F
+
+__all__ = []
 
 
 class ELU(layers.Layer):
@@ -85,6 +61,10 @@ class ELU(layers.Layer):
 
     def forward(self, x):
         return F.elu(x, self._alpha, self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'alpha={}{}'.format(self._alpha, name_str)
 
 
 class GELU(layers.Layer):
@@ -135,6 +115,10 @@ class GELU(layers.Layer):
     def forward(self, x):
         return F.gelu(x, self._approximate, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'approximate={}{}'.format(self._approximate, name_str)
+
 
 class Hardshrink(layers.Layer):
     r"""
@@ -178,6 +162,10 @@ class Hardshrink(layers.Layer):
 
     def forward(self, x):
         return F.hardshrink(x, self._threshold, self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'threshold={}{}'.format(self._threshold, name_str)
 
 
 class Hardswish(layers.Layer):
@@ -225,6 +213,10 @@ class Hardswish(layers.Layer):
     def forward(self, x):
         return F.hardswish(x, self._name)
 
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
+
 
 class Tanh(layers.Layer):
     r"""
@@ -261,6 +253,10 @@ class Tanh(layers.Layer):
 
     def forward(self, x):
         return F.tanh(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
 
 
 class Hardtanh(layers.Layer):
@@ -303,6 +299,10 @@ class Hardtanh(layers.Layer):
 
     def forward(self, x):
         return F.hardtanh(x, self._min, self._max, self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'min={}, max={}{}'.format(self._min, self._max, name_str)
 
 
 class PReLU(layers.Layer):
@@ -371,6 +371,11 @@ class PReLU(layers.Layer):
     def forward(self, x):
         return F.prelu(x, self._weight)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'num_parameters={}, init={}, dtype={}{}'.format(
+            self._num_parameters, self._init, self._dtype, name_str)
+
 
 class ReLU(layers.Layer):
     """
@@ -404,6 +409,10 @@ class ReLU(layers.Layer):
 
     def forward(self, x):
         return F.relu(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
 
 
 class ReLU6(layers.Layer):
@@ -439,6 +448,10 @@ class ReLU6(layers.Layer):
 
     def forward(self, x):
         return F.relu6(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
 
 
 class SELU(layers.Layer):
@@ -486,6 +499,11 @@ class SELU(layers.Layer):
     def forward(self, x):
         return F.selu(x, self._scale, self._alpha, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'scale={:.16f}, alpha={:.16f}{}'.format(self._scale, self._alpha,
+                                                       name_str)
+
 
 class LeakyReLU(layers.Layer):
     r"""
@@ -515,6 +533,7 @@ class LeakyReLU(layers.Layer):
         .. code-block:: python
 
             import paddle
+            import numpy as np
 
             m = paddle.nn.LeakyReLU()
             x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
@@ -528,6 +547,10 @@ class LeakyReLU(layers.Layer):
 
     def forward(self, x):
         return F.leaky_relu(x, self._negative_slope, self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'negative_slope={}{}'.format(self._negative_slope, name_str)
 
 
 class Sigmoid(layers.Layer):
@@ -564,6 +587,10 @@ class Sigmoid(layers.Layer):
 
     def forward(self, x):
         return F.sigmoid(x, self.name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self.name) if self.name else ''
+        return name_str
 
 
 class Hardsigmoid(layers.Layer):
@@ -610,7 +637,11 @@ class Hardsigmoid(layers.Layer):
         self.name = name
 
     def forward(self, x):
-        return F.hardsigmoid(x, self.name)
+        return F.hardsigmoid(x, name=self.name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self.name) if self.name else ''
+        return name_str
 
 
 class Softplus(layers.Layer):
@@ -651,6 +682,11 @@ class Softplus(layers.Layer):
 
     def forward(self, x):
         return F.softplus(x, self._beta, self._threshold, self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'beta={}, threshold={}{}'.format(self._beta, self._threshold,
+                                                name_str)
 
 
 class Softshrink(layers.Layer):
@@ -693,6 +729,10 @@ class Softshrink(layers.Layer):
     def forward(self, x):
         return F.softshrink(x, self._threshold, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'threshold={}{}'.format(self._threshold, name_str)
+
 
 class Softsign(layers.Layer):
     r"""
@@ -727,6 +767,10 @@ class Softsign(layers.Layer):
 
     def forward(self, x):
         return F.softsign(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
 
 
 class Swish(layers.Layer):
@@ -763,6 +807,10 @@ class Swish(layers.Layer):
     def forward(self, x):
         return F.swish(x, self._name)
 
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
+
 
 class Tanhshrink(layers.Layer):
     """
@@ -797,6 +845,10 @@ class Tanhshrink(layers.Layer):
 
     def forward(self, x):
         return F.tanhshrink(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
 
 
 class ThresholdedReLU(layers.Layer):
@@ -838,6 +890,48 @@ class ThresholdedReLU(layers.Layer):
     def forward(self, x):
         return F.thresholded_relu(x, self._threshold, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'threshold={}{}'.format(self._threshold, name_str)
+
+
+class Silu(layers.Layer):
+    """
+    Silu Activation.
+    .. math::
+
+        Silu(x) = \frac{x}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            m = paddle.nn.Silu()
+            out = m(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+    """
+
+    def __init__(self, name=None):
+        super(Silu, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.silu(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
+
 
 class LogSigmoid(layers.Layer):
     r"""
@@ -872,6 +966,10 @@ class LogSigmoid(layers.Layer):
 
     def forward(self, x):
         return F.log_sigmoid(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
 
 
 class Softmax(layers.Layer):
@@ -996,6 +1094,10 @@ class Softmax(layers.Layer):
     def forward(self, x):
         return F.softmax(x, self._axis, self._dtype, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'axis={}{}'.format(self._axis, name_str)
+
 
 class LogSoftmax(layers.Layer):
     r"""
@@ -1049,6 +1151,10 @@ class LogSoftmax(layers.Layer):
 
     def forward(self, x):
         return F.log_softmax(x, self._axis)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'axis={}{}'.format(self._axis, name_str)
 
 
 class Maxout(layers.Layer):
@@ -1110,3 +1216,7 @@ class Maxout(layers.Layer):
 
     def forward(self, x):
         return F.maxout(x, self._groups, self._axis, self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'groups={}, axis={}{}'.format(self._groups, self._axis, name_str)

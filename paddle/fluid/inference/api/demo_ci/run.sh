@@ -88,7 +88,7 @@ for WITH_STATIC_LIB in ON OFF; do
       return 0
     fi
     # -----simple_on_word2vec on windows-----
-    cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=simple_on_word2vec \
       -DWITH_GPU=$TEST_GPU_CPU \
@@ -107,7 +107,7 @@ for WITH_STATIC_LIB in ON OFF; do
 
     # -----vis_demo on windows-----
     rm -rf *
-    cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=vis_demo \
       -DWITH_GPU=$TEST_GPU_CPU \

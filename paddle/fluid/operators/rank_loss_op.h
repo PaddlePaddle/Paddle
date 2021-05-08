@@ -37,7 +37,7 @@ class RankLossKernel : public framework::OpKernel<T> {
 
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     out.device(dev) =
-        (1. + (left - right).exp()).log() - label * (left - right);
+        (1.0f + (left - right).exp()).log() - label * (left - right);
   }
 };
 
@@ -65,14 +65,15 @@ class RankLossGradKernel : public framework::OpKernel<T> {
     if (d_left_t) {
       d_left_t->mutable_data<T>(ctx.GetPlace());
       auto d_left = framework::EigenVector<T>::Flatten(*d_left_t);
-      d_left.device(dev) = d_out * (1. / (1. + (right - left).exp()) - label);
+      d_left.device(dev) =
+          d_out * (1.0f / (1.0f + (right - left).exp()) - label);
     }
     // compute d_right
     if (d_right_t) {
       d_right_t->mutable_data<T>(ctx.GetPlace());
       auto d_right = framework::EigenVector<T>::Flatten(*d_right_t);
       d_right.device(dev) =
-          -d_out * (1.0 / (1. + (right - left).exp()) - label);
+          -d_out * (1.0f / (1.0f + (right - left).exp()) - label);
     }
   }
 };

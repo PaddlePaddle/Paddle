@@ -19,7 +19,7 @@ from ...fluid import layers as F
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
 
-__all__ = ['weight_norm', 'remove_weight_norm']
+__all__ = []
 
 
 def l2_norm(x, axis, epsilon=1e-12, name=None):
@@ -212,6 +212,7 @@ def remove_weight_norm(layer, name='weight'):
 
     Examples:
         .. code-block:: python
+          
           import paddle
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm, remove_weight_norm

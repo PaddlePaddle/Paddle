@@ -14,14 +14,12 @@
 
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 
-#include <algorithm>
-#include <functional>
-#include <limits>
-#include <set>
 #include <string>
 #include <utility>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -96,6 +94,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
   const int fake_batch_size = 1;
 
   auto valid_var = [&](framework::ir::Node* node) -> bool {
+    // lod operator reuse may cause unknown errors.
     std::set<std::string> invalid_op = {"while",
                                         "conditional_block",
                                         "tensorrt_engine",
@@ -103,6 +102,8 @@ void MemoryOptimizePass::CollectVarMemorySize(
                                         "merge_lod_tensor_infer",
                                         "merge_lod_tensor",
                                         "equal",
+                                        "sequence_pool",
+                                        "recurrent",
                                         "lod_reset"};
     for (auto* tmp : node->inputs) {
       CHECK(tmp->IsOp());

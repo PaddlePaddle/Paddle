@@ -72,7 +72,7 @@ TEST(StridedMemcpy, CPUConcat) {
   }
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(StridedMemcpy, GPUCrop) {
   // clang-format off
   int src[] = {

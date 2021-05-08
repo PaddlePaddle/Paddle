@@ -21,15 +21,23 @@ class CUDADeviceContext;
 }  // namespace platform
 }  // namespace paddle
 
-template <typename T>
-using Kernel =
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext, T>;
-REGISTER_OP_CUDA_KERNEL(sequence_concat, Kernel<float>, Kernel<double>,
-                        Kernel<int>, Kernel<int64_t>);
-template <typename T>
-using GradKernel =
+REGISTER_OP_CUDA_KERNEL(
+    sequence_concat,
+    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
+                                       float>,
+    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
+                                       double>,
+    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
+                                       int>,
+    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
+                                       int64_t>);
+REGISTER_OP_CUDA_KERNEL(
+    sequence_concat_grad,
     paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           T>;
-REGISTER_OP_CUDA_KERNEL(sequence_concat_grad, GradKernel<float>,
-                        GradKernel<double>, GradKernel<int>,
-                        GradKernel<int64_t>);
+                                           float>,
+    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
+                                           double>,
+    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
+                                           int>,
+    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
+                                           int64_t>);

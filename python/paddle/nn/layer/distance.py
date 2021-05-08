@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['PairwiseDistance']
-
 import numpy as np
 
 import paddle
@@ -21,6 +19,8 @@ from ...fluid.dygraph import layers
 from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
+
+__all__ = []
 
 
 class PairwiseDistance(layers.Layer):
@@ -100,3 +100,13 @@ class PairwiseDistance(layers.Layer):
             type='p_norm', inputs={'X': sub}, outputs={'Out': out}, attrs=attrs)
 
         return out
+
+    def extra_repr(self):
+        main_str = 'p={p}'
+        if self.epsilon != 1e-6:
+            main_str += ', epsilon={epsilon}'
+        if self.keepdim != False:
+            main_str += ', keepdim={keepdim}'
+        if self.name != None:
+            main_str += ', name={name}'
+        return main_str.format(**self.__dict__)

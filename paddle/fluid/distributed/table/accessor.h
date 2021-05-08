@@ -165,6 +165,6 @@ class ValueAccessor {
   std::unordered_map<int, std::shared_ptr<struct DataConverter>>
       _data_coverter_map;
 };
-REGISTER_REGISTERER(ValueAccessor);
+REGISTER_PSCORE_REGISTERER(ValueAccessor);
 }  // namespace distributed
 }  // namespace paddle

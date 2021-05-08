@@ -25,14 +25,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T>
 class TopkKernel : public framework::OpKernel<T> {
  public:
@@ -70,12 +62,13 @@ class TopkKernel : public framework::OpKernel<T> {
       vec.reserve(col);
       // 1D vector
       if (inputdims.size() == 1) {
-        auto eg_input = EigenVector<T>::Flatten(*input);
+        auto eg_input = framework::EigenVector<T>::Flatten(*input);
         for (size_t j = 0; j < col; j++) {
           vec.push_back(std::pair<T, size_t>(eg_input(j), j));
         }
       } else {
-        auto eg_input = EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
+        auto eg_input =
+            framework::EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
         for (size_t j = 0; j < col; j++) {
           vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
         }

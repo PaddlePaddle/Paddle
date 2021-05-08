@@ -16,6 +16,7 @@ from __future__ import print_function
 import copy
 import warnings
 import paddle
+import os
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
@@ -25,6 +26,14 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
+from . import topology as tp
+from .topology import ParallelMode
+from ..meta_parallel import ModelParallel
+from ..meta_parallel import PipelineParallel
+from ..meta_optimizers import HybridParallelOptimizer
+from ..meta_optimizers import HybridParallelGradScaler
+
+__all__ = []
 
 
 def _inited_runtime_handler_(func):
@@ -195,6 +204,7 @@ class Fleet(object):
         else:
             if isinstance(role_maker, RoleMakerBase):
                 self._role_maker = role_maker
+                self._is_collective = role_maker._is_collective
             else:
                 raise ValueError(
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
@@ -216,12 +226,66 @@ class Fleet(object):
 
         if paddle.fluid.framework.in_dygraph_mode():
             if self.worker_num() == 1:
+                # if worker_num is 1, should construct default topology & hcg
+                self._topology = tp.CommunicateTopology()
+                self._hcg = tp.HybridCommunicateGroup(self._topology)
                 return
             if parallel_helper._is_parallel_ctx_initialized():
                 warnings.warn(
                     "The dygraph parallel environment has been initialized.")
             else:
+                # FLAGS_nccl_nrings is used for dynamic graph multi-stream communication
+                if "FLAGS_nccl_nrings" in os.environ:
+                    warnings.warn(
+                        "You have set the environment variable FLAGS_nccl_nrings "
+                        "outside the program, so the nccl_comm_num in "
+                        "DistributedStrategy will not take effect here.")
+                else:
+                    os.environ["FLAGS_nccl_nrings"] = str(
+                        self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
+
+            # init hybrid parallel environment in dygraph
+            if tp._HYBRID_PARALLEL_GROUP is None:
+                self._init_hybrid_parallel_env()
+            else:
+                warnings.warn(
+                    "The dygraph hybrid parallel environment has been initialized."
+                )
+
+    def _init_hybrid_parallel_env(self):
+        """initialize the hybrid environment
+        """
+        self.hybrid_configs = self._user_defined_strategy.hybrid_configs
+        self.dp_degree = self.hybrid_configs["dp_degree"]
+        self.mp_degree = self.hybrid_configs["mp_degree"]
+        self.pp_degree = self.hybrid_configs["pp_degree"]
+
+        assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
+        assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+
+        self.mp_degree = max(self.mp_degree, 1)
+        self.pp_degree = max(self.pp_degree, 1)
+
+        if self.dp_degree < 0:
+            nranks = paddle.distributed.get_world_size()
+            self.dp_degree = nranks // (self.mp_degree * self.pp_degree)
+
+        self.dp_degree = max(self.dp_degree, 1)
+
+        self._topology = tp.CommunicateTopology(
+            hybrid_group_names=["data", "pipe", "model"],
+            dims=[self.dp_degree, self.pp_degree, self.mp_degree])
+
+        self._hcg = tp.HybridCommunicateGroup(self._topology)
+
+    def get_hybrid_communicate_group(self):
+        assert self._hcg is not None
+        return self._hcg
+
+    def get_hybrid_parallel_topology(self):
+        assert self._topology is not None
+        return self._topology
 
     def is_first_worker(self):
         """
@@ -277,6 +341,18 @@ class Fleet(object):
 
         """
         return self._role_maker._worker_num()
+
+    def node_num(self):
+        return self._role_maker._get_node_num()
+
+    def local_rank(self):
+        return self._role_maker._get_local_rank()
+
+    def local_device_ids(self):
+        return self._role_maker._get_local_device_ids()
+
+    def world_device_ids(self):
+        return self._role_maker._get_world_device_ids()
 
     def is_worker(self):
         """
@@ -510,7 +586,8 @@ class Fleet(object):
                              feeded_var_names,
                              target_vars,
                              main_program=None,
-                             export_for_deployment=True):
+                             export_for_deployment=True,
+                             mode=0):
         """
         save inference model for inference.
 
@@ -533,9 +610,9 @@ class Fleet(object):
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
-            export_for_deployment)
+            export_for_deployment, mode)
 
-    def save_persistables(self, executor, dirname, main_program=None, mode=1):
+    def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
 
         saves all persistable tensors from :code:`main_program` to
@@ -580,6 +657,9 @@ class Fleet(object):
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
+    def shrink(self, threshold):
+        self._runtime_handle._shrink(threshold)
+
     def distributed_optimizer(self, optimizer, strategy=None):
         """
         Optimizer for distributed training.
@@ -613,15 +693,23 @@ class Fleet(object):
         self.user_defined_optimizer = optimizer
 
         if strategy is not None:
-            warnings.warn(
-                "It is recommended to use DistributedStrategy "
-                "in fleet.init(). The strategy here is only for compatibility. "
-                "If the strategy in fleet.distributed_optimizer() is "
-                "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
-                "which will take effect in distributed training.")
+            if self._is_collective:
+                warnings.warn(
+                    "It is recommended to use DistributedStrategy "
+                    "in fleet.init(). The strategy here is only for compatibility. "
+                    "If the strategy in fleet.distributed_optimizer() is "
+                    "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
+                    "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
 
         self._context = {}
+
+        if paddle.fluid.framework.in_dygraph_mode():
+            if self.worker_num() > 1:
+                return HybridParallelOptimizer(optimizer, self._hcg,
+                                               self._user_defined_strategy)
+            else:
+                return optimizer
         return self
 
     @dygraph_only
@@ -680,13 +768,25 @@ class Fleet(object):
 
 
         """
-        assert model is not None
-        self.model = paddle.DataParallel(
-            model,
-            comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
-            last_comm_buffer_size=self._user_defined_strategy.
-            last_comm_group_size_MB)
-        return self.model
+        assert model is not None, "model should not be None"
+        if self.worker_num() <= 1:
+            return model
+        if self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+            distributed_model = paddle.DataParallel(
+                model,
+                comm_buffer_size=self._user_defined_strategy.
+                fuse_grad_size_in_MB,
+                last_comm_buffer_size=self._user_defined_strategy.
+                last_comm_group_size_MB,
+                find_unused_parameters=self._user_defined_strategy.
+                find_unused_parameters)
+        elif self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL:
+            distributed_model = ModelParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
+            distributed_model = PipelineParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        return distributed_model
 
     @dygraph_only
     def state_dict(self):
@@ -948,6 +1048,91 @@ class Fleet(object):
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
 
+    def _get_amp_optimizer(self):
+        # imitate target optimizer retrieval
+        amp_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'amp_init'):
+                amp_optimizer = optimizer
+                break
+
+        if amp_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'amp_init'):
+                amp_optimizer = self.user_defined_optimizer
+
+        assert amp_optimizer is not None, \
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        return amp_optimizer
+
+    def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
+        amp_optimizer = self._get_amp_optimizer()
+        return amp_optimizer.get_loss_scaling()
+
+    def amp_init(self,
+                 place,
+                 scope=None,
+                 test_program=None,
+                 use_fp16_test=False):
+        """
+        Init the amp training, such as cast fp32 parameters to fp16 type.
+  
+        Args:
+            place(CUDAPlace): place is used to initialize 
+                fp16 parameters with fp32 values.
+            scope(Scope): The scope is used to find fp32 parameters.
+            test_program(Program): The program is used for testing.
+            use_fp16_test(bool): Whether to use fp16 testing.
+            
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+                import paddle.nn.functional as F
+                paddle.enable_static()
+
+                def run_example_code():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+                    conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+                    # 1) Use fp16_guard to control the range of fp16 kernels used.
+                    with paddle.static.amp.fp16_guard():
+                        bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                        pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+                        hidden = paddle.static.nn.fc(pool, size=10)
+                        loss = paddle.mean(hidden)
+                    # 2) Create the optimizer and set `multi_precision` to True.
+                    # Setting `multi_precision` to True can avoid the poor accuracy
+                    # or the slow convergence in a way. 
+                    optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+                    # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+                    amp_list = paddle.static.amp.CustomOpLists(
+                        custom_black_list=['pool2d'])
+                    # 4) The entry of Paddle AMP.
+                    # Enable pure fp16 training by setting `use_pure_fp16` to True.
+                    optimizer = paddle.static.amp.decorate(
+                        optimizer,
+                        amp_list,
+                        init_loss_scaling=128.0,
+                        use_dynamic_loss_scaling=True,
+                        use_pure_fp16=True)
+                    # If you don't use the default_startup_program(), you sholud pass
+                    # your defined `startup_program` into `minimize`.
+                    optimizer.minimize(loss)
+                    exe.run(paddle.static.default_startup_program())
+                    # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+                    # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+                    optimizer.amp_init(place, scope=paddle.static.global_scope())
+                    
+                if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+                    run_example_code()       
+        """
+        amp_optimizer = self._get_amp_optimizer()
+        return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
+
     def _final_strategy(self):
         if "valid_strategy" not in self._context:
             print(
@@ -1157,3 +1342,7 @@ class Fleet(object):
         fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads
+
+    @dygraph_only
+    def distributed_scaler(self, scaler):
+        return HybridParallelGradScaler(scaler, self._hcg)

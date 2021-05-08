@@ -179,7 +179,7 @@ def gen_zero_line(dnn_data_num=7, lr_data_num=5):
     return line
 
 
-def prepare_fake_data(file_nums=6, file_lines=1000):
+def prepare_fake_data(file_nums=4, file_lines=500):
     """
     Create fake data with same type as avazu_ctr_data
     """

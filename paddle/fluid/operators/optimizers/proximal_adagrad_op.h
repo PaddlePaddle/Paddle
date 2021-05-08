@@ -20,9 +20,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class ProximalAdagradOpKernel : public framework::OpKernel<T> {
@@ -38,13 +35,14 @@ class ProximalAdagradOpKernel : public framework::OpKernel<T> {
     auto l2 = static_cast<T>(ctx.Attr<float>("l2"));
 
     auto grad = ctx.Input<Tensor>("Grad");
-    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
-    auto m = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
-    auto g = EigenVector<T>::Flatten(*grad);
-    auto lr = EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
+    auto p = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
+    auto m = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
+    auto g = framework::EigenVector<T>::Flatten(*grad);
+    auto lr =
+        framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
 
-    auto p_out = EigenVector<T>::Flatten(*param_out);
-    auto m_out = EigenVector<T>::Flatten(*moment_out);
+    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
+    auto m_out = framework::EigenVector<T>::Flatten(*moment_out);
     auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());

@@ -5,7 +5,7 @@
 预测库包含:
 
 - 头文件 `paddle_inference_api.h` 定义了所有的接口
-- 库文件 `libpaddle_fluid.so/.a(Linux/Mac)` `libpaddle_fluid.lib/paddle_fluid.dll(Windows)` 
+- 库文件 `libpaddle_inference.so/.a(Linux/Mac)` `libpaddle_inference.lib/paddle_inference.dll(Windows)` 
 
 下面是详细的一些 API 概念介绍
 
@@ -76,7 +76,7 @@ CHECK(predictor->Run(slots, &outputs));
 // 获取 outputs ...
 ```
 
-编译时，联编 `libpaddle_fluid.a/.so(Linux/Mac)` 或 `libpaddle_fluid.lib/paddle_fluid.dll(Windows)` 便可。
+编译时，联编 `libpaddle_inference.a/.so(Linux/Mac)` 或 `libpaddle_inference.lib/paddle_inference.dll(Windows)` 便可。
 
 ## 详细代码参考
 
