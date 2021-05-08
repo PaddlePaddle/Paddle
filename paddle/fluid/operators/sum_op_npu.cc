@@ -38,16 +38,26 @@ class SumNPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(n > 1, true,
                       platform::errors::InvalidArgument(
                           "The size of Input(x) list must larger or equal 2"));
+    PADDLE_ENFORCE_NOT_NULL(x[0],
+                            platform::errors::NotFound(
+                                "The first input tensor is not initalized."));
+
+    std::vector<framework::Tensor> inputs;
+    std::vector<std::string> names;
+    for (int i = 0; i < n; ++i) {
+      if (x[i] && x[i]->numel() > 0) {
+        inputs.push_back(*x[i]);
+        names.push_back("x" + std::to_string(i));
+      } else {
+        continue;
+      }
+    }
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-
-    std::vector<paddle::framework::Tensor> x_list;
-    for (int i = 0; i < n; i++) {
-      x_list.push_back(*x[i]);
-    }
-    auto runner = NpuOpRunner("AddN", {x_list}, {*out}, {});
+    auto runner = NpuOpRunner("AddN", {inputs}, {*out}, {{"N", n}});
+    runner.AddInputNames(names);
     runner.Run(stream);
   }
 };
