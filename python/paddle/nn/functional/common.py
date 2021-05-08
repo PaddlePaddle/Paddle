@@ -1463,11 +1463,10 @@ def linear(x, weight, bias=None, name=None):
         attrs = {
             'transpose_X': False,
             'transpose_Y': False,
-            'alpha': 1,
         }
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
-            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
         if bias is not None:
             res = helper.create_variable_for_type_inference(dtype)
             helper.append_op(

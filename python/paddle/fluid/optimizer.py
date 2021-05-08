@@ -4200,6 +4200,8 @@ class PipelineOptimizer(object):
                     op.type == 'elementwise_div'):
                 device = "gpu:all"
             op._set_attr(self._op_device_key, device)
+        elif (op.type == "alloc_float_status"):
+            op._set_attr(self._op_device_key, "gpu:all")
         else:
             other_known_ops = [
                 'update_loss_scaling',
@@ -4207,6 +4209,7 @@ class PipelineOptimizer(object):
                 'concat',
                 'sum',
                 'check_finite_and_unscale',
+                'alloc_float_status',
             ]
             assert op.type in other_known_ops, "For other ops without " \
                 "op_device set, they must be one of {}, but it " \

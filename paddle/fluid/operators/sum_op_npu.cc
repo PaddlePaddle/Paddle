@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/sum_op.h"
 
+DECLARE_bool(benchmark);
+
 namespace paddle {
 namespace operators {
 
@@ -49,6 +51,10 @@ class SumNPUKernel : public framework::OpKernel<T> {
     for (int i = 2; i < n; i++) {
       runner = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
       runner.Run(stream);
+      if(FLAGS_benchmark){
+          VLOG(7) << "wait sum_add:" << i;
+          ctx.device_context().Wait();
+      }
     }
   }
 };

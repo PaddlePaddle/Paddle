@@ -1228,6 +1228,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       // will be executed and a warning will be given at the same time.
       if (SupportGPU()) {
         expected_kernel_key.place_ = dev_ctx->GetPlace();
+      } else if(SupportNPU()){
+        expected_kernel_key.place_ = dev_ctx->GetPlace();
       } else {
         expected_kernel_key.place_ = platform::CPUPlace();
         LOG_FIRST_N(WARNING, 1)
