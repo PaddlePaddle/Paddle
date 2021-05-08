@@ -51,13 +51,13 @@ class Reshape2GradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto in_dims = d_x->dims();
+    auto* x_shape = ctx.Input<framework::Tensor>("XShape");
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
         *d_out, ctx.GetPlace(),
         ctx.template device_context<platform::DeviceContext>(), d_x);
-    d_x->Resize(in_dims);
+    d_x->Resize(x_shape->dims());
   }
 };
 }  // namespace operators

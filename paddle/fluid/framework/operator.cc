@@ -1299,7 +1299,9 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
-    original_tensor->Resize(original_dims);
+    if (type_ != "reshape2" && type_ != "reshape2_grad") {
+      original_tensor->Resize(original_dims);
+    }
   }
 }
 

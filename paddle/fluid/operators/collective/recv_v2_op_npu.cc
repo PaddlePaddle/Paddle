@@ -28,6 +28,7 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto x = ctx.Output<framework::LoDTensor>("Out");
+    x->mutable_data<T>(x->dims(), ctx.GetPlace());
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
     HcclDataType dtype = platform::ToHCCLDataType(x->type());
@@ -54,8 +55,10 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     int root = peer;
 
     VLOG(3) << "begin hccl recv, parameter is: "
-            << "root " << root << ", comm: " << comm->comm()
-            << ", stream: " << stream;
+            << "ring_id:" << ring_id << ", nranks:" << nranks
+            << ", peer:" << peer << ", numel:" << numel << ", ptr:" << ptr
+            << ", dtype:" << dtype << ", root:" << root
+            << ", comm: " << comm->comm() << ", stream: " << stream;
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
