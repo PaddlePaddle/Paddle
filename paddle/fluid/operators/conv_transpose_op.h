@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
@@ -40,8 +41,8 @@ static void Slice(const framework::ExecutionContext& context,
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
   auto in_dims = input->dims();
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
+  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = in_dims[i];
@@ -64,7 +65,8 @@ static void Slice(const framework::ExecutionContext& context,
       framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
           *out, out_dims);
 
-  out_t.device(place) = in_t.slice(offsets, extents);
+  EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(place, out_t, in_t,
+                                                        offsets, extents);
   out->Resize(out_dims);
 }
 

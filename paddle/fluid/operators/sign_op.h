@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +32,8 @@ class SignKernel : public framework::OpKernel<T> {
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    eigen_out.device(place) = eigen_in.sign();
+    EigenSign<std::decay_t<decltype(place)>, T>::Eval(place, eigen_out,
+                                                      eigen_in);
   }
 };
 

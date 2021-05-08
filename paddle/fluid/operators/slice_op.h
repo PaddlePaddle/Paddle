@@ -17,6 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/utils.h"
 
@@ -238,8 +239,8 @@ class SliceKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
 
     auto new_out_dims = out->dims();
-    auto offsets = Eigen::array<int64_t, D>();
-    auto extents = Eigen::array<int64_t, D>();
+    auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
     for (size_t i = 0; i < D; ++i) {
       offsets[i] = 0;
       extents[i] = new_out_dims[i];
@@ -268,10 +269,12 @@ class SliceKernel : public framework::OpKernel<T> {
         offsets_32bit[i] = offsets[i];
         extents_32bit[i] = extents[i];
       }
-      framework::To32BitIndex(out_t).device(place) =
-          framework::To32BitIndex(in_t).slice(offsets_32bit, extents_32bit);
+      EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+          place, framework::To32BitIndex(out_t), framework::To32BitIndex(in_t),
+          offsets_32bit, extents_32bit);
     } else {
-      out_t.device(place) = in_t.slice(offsets, extents);
+      EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(place, out_t, in_t,
+                                                            offsets, extents);
     }
 
     out->Resize(out_dims);
@@ -624,10 +627,12 @@ class SliceGradKernel : public framework::OpKernel<T> {
         paddings_32bit[i] =
             std::make_pair(paddings[i].first, paddings[i].second);
       }
-      framework::To32BitIndex(d_in_t).device(place) =
-          framework::To32BitIndex(d_out_t).pad(paddings_32bit, T(0));
+      EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
+          place, framework::To32BitIndex(d_in_t),
+          framework::To32BitIndex(d_out_t), paddings_32bit, static_cast<T>(0));
     } else {
-      d_in_t.device(place) = d_out_t.pad(paddings, T(0));
+      EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
+          place, d_in_t, d_out_t, paddings, static_cast<T>(0));
     }
   }
 };

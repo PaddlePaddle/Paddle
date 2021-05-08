@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
 namespace paddle {
 namespace operators {
@@ -58,8 +59,8 @@ static void RemovePaddingSlice(const framework::ExecutionContext& context,
       *context.template device_context<DeviceContext>().eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
+  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = new_out_dims[i];
@@ -81,7 +82,8 @@ static void RemovePaddingSlice(const framework::ExecutionContext& context,
   auto out_t =
       framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
           *out, new_out_dims);
-  out_t.device(place) = in_t.slice(offsets, extents);
+  EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(place, out_t, in_t,
+                                                        offsets, extents);
 }
 
 template <typename T>
