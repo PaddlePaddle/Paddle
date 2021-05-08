@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
+#include "paddle/fluid/imperative/py_layer_fwd.h"
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -717,7 +718,8 @@ void BindImperative(py::module *m_ptr) {
                {
                  // Release gil and do tracing
                  py::gil_scoped_release release;
-                 tracer->TraceOp("set_value", ins, outs, std::move(attrs));
+                 tracer->TraceOp("set_value", ins, outs, std::move(attrs),
+                                 {{"Input", "Out"}});
                }
              } else {
                auto self_numpy = TensorToPyArray(*self_tensor);
@@ -744,7 +746,7 @@ void BindImperative(py::module *m_ptr) {
              // inplace operator for the VarBase self.
              self->BumpInplaceVersion();
            })
-      .def("__getitem__",
+      .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
                  slice_strides, decrease_axis, infer_flags;
@@ -782,6 +784,70 @@ void BindImperative(py::module *m_ptr) {
                return out;
              }
            })
+      .def(
+          "_getitem_from_offset",
+          [](std::shared_ptr<imperative::VarBase> &self, const py::args &args) {
+            const auto &tensor = self->Var().Get<framework::LoDTensor>();
+            PADDLE_ENFORCE_EQ(
+                tensor.IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "Tensor of %s is Empty, please check if it has no data.",
+                    self->Name()));
+
+            const auto &tensor_dims = tensor.dims();
+
+            std::vector<size_t> dims(tensor_dims.size());
+            std::vector<size_t> strides(tensor_dims.size());
+
+            size_t numel = 1;
+            for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+              strides[i] = numel;
+              dims[i] = static_cast<size_t>(tensor_dims[i]);
+              numel *= dims[i];
+            }
+            size_t offset = 0;
+            if (args.empty()) {
+              PADDLE_ENFORCE_EQ(
+                  numel, 1,
+                  platform::errors::InvalidArgument(
+                      "only one element tensors can be converted to Python "
+                      "scalars when no input coordinates"));
+            } else if (args.size() == 1) {
+              offset = args[0].cast<size_t>();
+              PADDLE_ENFORCE_LT(
+                  offset, numel,
+                  platform::errors::InvalidArgument(
+                      "index %d is out of bounds for size %d", offset, numel));
+            } else {
+              PADDLE_ENFORCE_EQ(args.size(), dims.size(),
+                                platform::errors::InvalidArgument(
+                                    "incorrect number of indices for Tensor"));
+
+              for (size_t i = 0; i < args.size(); ++i) {
+                size_t index = args[i].cast<size_t>();
+                PADDLE_ENFORCE_LT(
+                    index, dims[i],
+                    platform::errors::InvalidArgument(
+                        "index %d is out fo bounds for axis %d with size %d",
+                        index, i, dims[i]));
+                offset += index * strides[i];
+              }
+            }
+#define TENSOR_TO_PY_SCALAR(T, proto_type)                                   \
+  if (tensor.type() == proto_type) {                                         \
+    std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(proto_type); \
+    T b = TensorGetElement<T>(tensor, offset);                               \
+    return py::array(py::dtype(py_dtype_str.c_str()), {}, {},                \
+                     static_cast<void *>(&b));                               \
+  }
+
+            _ForEachDataType_(TENSOR_TO_PY_SCALAR);
+#undef TENSOR_TO_PY_SCALAR
+            PADDLE_THROW(platform::errors::Unimplemented(
+                "Unsupported tensor data type: %s",
+                framework::DataTypeToString(tensor.type())));
+          },
+          py::return_value_policy::copy)
       .def("_inplace_version",
            [](imperative::VarBase &self) -> uint32_t {
              const auto &var = self.MutableVar();
@@ -1032,6 +1098,10 @@ void BindImperative(py::module *m_ptr) {
              return std::shared_ptr<imperative::VarBase>(nullptr);
            },
            py::return_value_policy::copy)
+      .def("_set_grad_ivar",
+           [](imperative::VarBase &self, imperative::VarBase &grad) {
+             self.SetGradVarBase(grad);
+           })
       .def("_is_sparse",
            [](imperative::VarBase &self) {
              return self.Var().IsType<framework::SelectedRows>();
@@ -1065,20 +1135,58 @@ void BindImperative(py::module *m_ptr) {
       .def("_register_grad_hook",
            [](imperative::VarBase &self, const py::handle &hook) {
              PADDLE_ENFORCE_EQ(
-                 self.HasGradVar(), true,
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
                  platform::errors::InvalidArgument(
-                     "Cannot register hook on a tensor without gradient."));
-             return self.GradVarBase()->AddHook(
+                     "Cannot register gradient hook on a Tensor that stop "
+                     "gradient or without gradient."));
+             return self.GradVarBase()->AddVariableWrapperHook(
                  std::make_shared<PyVariableWrapperHook>(hook.ptr()));
            })
       .def("_remove_grad_hook",
            [](imperative::VarBase &self, int64_t hook_id) {
              PADDLE_ENFORCE_EQ(
-                 self.HasGradVar(), true,
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
                  platform::errors::InvalidArgument(
-                     "Cannot remove hook on a tensor without gradient."));
-             return self.GradVarBase()->RemoveHook(hook_id);
+                     "Cannot remove gradient hook on a Tensor that stop "
+                     "gradient or without gradient."));
+             return self.GradVarBase()->RemoveVariableWrapperHook(hook_id);
            })
+      .def("_register_backward_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             PADDLE_ENFORCE_EQ(
+                 self.IsLeaf(), true,
+                 platform::errors::InvalidArgument(
+                     "Only can register backward hook for leaf Tensor."));
+             PADDLE_ENFORCE_EQ(
+                 !self.OverridedStopGradient() && self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot register backward hook on a Tensor that stop "
+                     "gradient or without gradient."));
+             auto py_func = PyObjectCast<std::function<void()>>(hook.ptr());
+             self.GradVarBase()->AddVoidHook(
+                 std::make_shared<std::function<void()>>(py_func));
+           },
+           R"DOC(
+             Registers a backward hook for current Tensor.
+
+             This hook will be called every time the gradient of current Tensor has been fully calculated.
+
+             There are two differences with `_register_grad_hook`:
+             1. This backward hook will be executed after the gradient accumulation completed across batchs,
+                but the hook registered by `_register_grad_hook` will be executed the gradient accumulation
+                completed in current batch.
+             2. This backward hook function should have the following signature:
+
+                  hook() -> None
+
+                It requires no input and no return value.
+
+             Args:
+                 hook(function): A backward hook to be registered for Tensor.gradient
+
+             Returns:
+                 None
+           )DOC")
       .def("cpu",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              if (platform::is_cpu_place(self->Place())) {
@@ -1278,6 +1386,16 @@ void BindImperative(py::module *m_ptr) {
              return new_var;
            },
            py::return_value_policy::copy)
+      .def("_copy_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::Place &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,
@@ -1434,7 +1552,7 @@ void BindImperative(py::module *m_ptr) {
                  allow_ops);
              imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
                  block_ops);
-             VLOG(4) << "AMP operators changed, "
+             VLOG(5) << "AMP operators changed, "
                      << imperative::AmpOperators::Instance();
            })
       .def("_get_amp_op_list",
@@ -1597,6 +1715,29 @@ void BindImperative(py::module *m_ptr) {
            &imperative::BKCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
+  m.def("pylayer_apply",
+        [](const platform::CPUPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::CUDAPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::XPUPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
+
+  m.def("pylayer_apply",
+        [](const platform::CUDAPinnedPlace &place, const py::object &cls,
+           const py::args args, const py::kwargs kwargs) {
+          return imperative::PyLayerApply(place, cls, args, kwargs);
+        });
 }
 
 }  // namespace pybind

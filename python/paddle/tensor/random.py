@@ -21,17 +21,7 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.layers import utils
 import paddle
 
-__all__ = [
-    'bernoulli',
-    'multinomial',
-    'standard_normal',
-    'normal',
-    'uniform',
-    'randn',
-    'rand',
-    'randint',
-    'randperm',
-]
+__all__ = []
 
 
 def bernoulli(x, name=None):
@@ -134,6 +124,9 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
             # [3 1 0]]
 
     """
+
+    assert core.is_compiled_with_rocm() == False, (
+        "multinomial op is not supported on ROCM yet.")
 
     if in_dygraph_mode():
         return core.ops.multinomial(x, 'num_samples', num_samples,

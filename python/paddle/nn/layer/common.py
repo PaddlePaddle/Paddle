@@ -14,28 +14,13 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
+from ...fluid.dygraph import Flatten  # noqa: F401
 from ...fluid.dygraph import layers
 from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
-__all__ = [
-    'Embedding',
-    'Linear',
-    'Upsample',
-    'Pad1D',
-    'Pad2D',
-    'Pad3D',
-    'UpsamplingNearest2D',
-    'UpsamplingBilinear2D',
-    'CosineSimilarity',
-    'Dropout',
-    'Dropout2D',
-    'Dropout3D',
-    'Bilinear',
-    'AlphaDropout',
-]
+__all__ = []
 
 
 def _npairs(x, n):
@@ -299,7 +284,7 @@ class Upsample(layers.Layer):
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -418,7 +403,7 @@ class UpsamplingNearest2D(layers.Layer):
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
-             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -505,7 +490,7 @@ class UpsamplingBilinear2D(layers.Layer):
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
-             Default: None. If a list, each element can be an integer or a Tensor  of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor  of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -679,8 +664,8 @@ class Dropout(layers.Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int): Probability of setting units to zero. Default: 0.5
-        axis (int | list): The axis along which the dropout is performed. Default None.
+        p (float|int): Probability of setting units to zero. Default: 0.5
+        axis (int|list|tuple): The axis along which the dropout is performed. Default None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
                                1. upscale_in_train(default), upscale the output at training time
@@ -1380,3 +1365,73 @@ class Embedding(layers.Layer):
         if self._name is not None:
             main_str += ', name={_name}'
         return main_str.format(**self.__dict__)
+
+
+class Unfold(layers.Layer):
+    """
+    This op returns a col buffer of sliding local blocks of input x, also known
+    as im2col for batched 2D image tensors. For each block under the convolution filter,
+    all element will be rearranged as a column. While the convolution filter sliding over
+    the input feature map, a series of such columns will be formed.
+
+    For each input :math:`x` with shape [N, C, H, W], the output shape [N, Cout, Lout]
+    can be calculated as following.
+
+    See ``paddle.nn.functional.unfold`` for more details.
+
+    
+    Parameters:
+        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        strides(int|list):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [sride, stride].
+                                  For default, strides will be [1, 1].
+        paddings(int|list):       The paddings of each dimension, should be
+                                  [padding_top, padding_left, padding_bottom, padding_right]
+                                  or [padding_h, padding_w] or an integer padding.
+                                  If [padding_h, padding_w] was given, it will expanded to
+                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
+                                  padding was given, [padding, padding, padding, padding] will
+                                  be used. For default, paddings will be [0, 0, 0, 0]
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            x = paddle.randn((100,3,224,224))
+            unfold = nn.Unfold(kernel_sizes=[3, 3])
+            result = unfold(x)
+            print(result)
+   """
+
+    def __init__(self,
+                 kernel_sizes,
+                 dilations=1,
+                 paddings=0,
+                 strides=1,
+                 name=None):
+        super(Unfold, self).__init__()
+
+        self.kernel_sizes = kernel_sizes
+        self.dilations = dilations
+        self.paddings = paddings
+        self.strides = strides
+        self.name = name
+
+    def forward(self, input):
+        return F.unfold(input, self.kernel_sizes, self.dilations, self.paddings,
+                        self.strides, self.name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.\
+                format(self.kernel_sizes, self.dilations, self.paddings, self.strides, name_str)

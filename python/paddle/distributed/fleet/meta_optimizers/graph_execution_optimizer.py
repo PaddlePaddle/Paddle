@@ -19,6 +19,8 @@ from .meta_optimizer_base import MetaOptimizerBase
 from ..base.private_helper_function import wait_server_ready
 import logging
 
+__all__ = []
+
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -61,8 +63,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker._worker_num()
 
-        if trainer_id == 0:
-            wait_server_ready(other_trainers)
+        # FIXME(wangxi): approve this.
+        #if trainer_id == 0:
+        #    wait_server_ready(other_trainers)
 
         if core.is_compiled_with_cuda():
             comm_id_var = startup_program.global_block().create_var(

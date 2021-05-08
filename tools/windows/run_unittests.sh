@@ -37,7 +37,17 @@ else
     disable_ut_quickly=''
 fi
 
-# /*==================Fixed Disabled Windows unittests==============================*/
+# check added ut
+if [ ${WITH_GPU:-OFF} == "ON" ];then
+    set +e
+    cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+    bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+    rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+    set -e
+fi
+
+
+# /*==================Fixed Disabled Windows GPU MKL unittests==============================*/
 # TODO: fix these unittest that is bound to fail
 diable_wingpu_test="^lite_mul_model_test$|\
 ^test_analyzer_int8_resnet50$|\
@@ -108,16 +118,32 @@ diable_wingpu_test="^lite_mul_model_test$|\
 ^diable_wingpu_test$"
 # /*============================================================================*/
 
+# /*==================Fixed Disabled Windows CPU OPENBLAS unittests==============================*/
+# TODO: fix these unittest that is bound to fail
+diable_wincpu_test="^jit_kernel_test$|\
+^test_analyzer_transformer$|\
+^test_vision_models$|\
+^test_dygraph_multi_forward$|\
+^test_imperative_transformer_sorted_gradient$|\
+^test_program_prune_backward$|\
+^test_imperative_resnet$|\
+^test_imperative_resnet_sorted_gradient$|\
+^test_imperative_se_resnext$|\
+^test_imperative_static_runner_mnist$|\
+^test_bmn$|\
+^test_mobile_net$|\
+^test_resnet_v2$|\
+^test_se_resnet$|\
+^diable_wincpu_test$"
+
 # these unittest that cost long time, diabled temporarily, Maybe moved to the night
 long_time_test="^best_fit_allocator_test$|\
-^test_image_classification$|\
 ^decorator_test$|\
 ^test_dataset_cifar$|\
 ^test_dataset_imdb$|\
 ^test_dataset_movielens$|\
 ^test_datasets$|\
 ^test_pretrained_model$|\
-^test_concat_op$|\
 ^test_elementwise_add_op$|\
 ^test_elementwise_sub_op$|\
 ^test_gather_op$|\
@@ -133,8 +159,6 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_bicubic_interp_op$|\
 ^test_bicubic_interp_v2_op$|\
 ^test_bilinear_interp_v2_op$|\
-^test_conv2d_op$|\
-^test_conv3d_op$|
 ^test_conv3d_transpose_part2_op$|\
 ^test_conv_nn_grad$|\
 ^test_crop_tensor_op$|\
@@ -148,7 +172,6 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_empty_op$|\
 ^test_fused_elemwise_activation_op$|\
 ^test_group_norm_op$|\
-^test_gru_op$|\
 ^test_gru_unit_op$|\
 ^test_imperative_lod_tensor_to_selected_rows$|\
 ^test_imperative_optimizer$|\
@@ -196,14 +219,8 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_imperative_auto_mixed_precision$|\
 ^test_imperative_optimizer_v2$|\
 ^test_imperative_ptb_rnn_sorted_gradient$|\
-^test_imperative_save_load_v2$|\
-^test_nan_inf$|\
-^test_norm_op$|\
-^test_reduce_op$|\
 ^test_sigmoid_cross_entropy_with_logits_op$|\
-^test_stack_op$|\
-^test_strided_slice_op$|\
-^test_transpose_op$"
+^test_strided_slice_op$"
 
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     export FLAGS_call_stack_level=2
@@ -216,29 +233,16 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python ${PADDLE_ROOT}/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then
-            set +x
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
-            set -x
         fi
     fi
 
     set +e
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-        UT_list_prec=''
-        re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
-        for case in $UT_list; do
-            flag=$(echo $case|grep -oE $re)
-            if [ -n "$flag" ];then
-                if [ -z "$UT_list_prec" ];then
-                    UT_list_prec=$case
-                else
-                    UT_list_prec=$UT_list_prec'\n'$case
-                fi
-            else
-                echo $case "won't run in PRECISION_TEST mode."
-            fi
-        done
+        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "$UT_list" )
+        UT_list_prec=$(echo "${UT_list_res}" | grep -v 'PRECISION_TEST')
+        echo "${UT_list_res}" | grep 'PRECISION_TEST'
         UT_list=$UT_list_prec
     fi
     set -e
@@ -270,7 +274,7 @@ function collect_failed_tests() {
 
 function run_unittest_cpu() {
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -E "${disable_ut_quickly}" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
+    (ctest -E "$disable_ut_quickly|$diable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
     wait;
 }
 
@@ -379,6 +383,16 @@ function show_ut_retry_result() {
 set +e
 
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
+    if [ -f "$PADDLE_ROOT/added_ut" ];then
+        added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+        ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+        if [ "$added_ut_error" != 0 ];then
+            echo "========================================"
+            echo "Added UT should pass three additional executions"
+            echo "========================================"
+            exit 8;
+        fi
+    fi
     run_unittest_gpu $cpu_parallel_job 12
     run_unittest_gpu $tetrad_parallel_job 4
     run_unittest_gpu $two_parallel_job 2

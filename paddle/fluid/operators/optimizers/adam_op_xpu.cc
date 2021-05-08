@@ -35,8 +35,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
     using paddle::framework::LoDTensor;
 
-    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
-
     auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
                                   "Param", "Adam");
     // auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
@@ -84,6 +82,11 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Beta2Tensor")) {
       auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
       beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
+    }
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    if (ctx.HasInput("EpsilonTensor")) {
+      auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+      epsilon = static_cast<T>(GetAttrFromTensor(epsilon_tensor));
     }
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Grad"), "Input",
