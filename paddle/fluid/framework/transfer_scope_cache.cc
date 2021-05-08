@@ -22,9 +22,25 @@ std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
   return *x;
 }
 
+std::unordered_map<Scope*, size_t>& global_value_key_cache() {
+  thread_local auto* x = new std::unordered_map<Scope*, size_t>;
+  return *x;
+}
+
 std::unordered_set<Scope*>& global_transfer_scope_cache() {
   thread_local auto* x = new std::unordered_set<Scope*>;
   return *x;
+}
+
+void DelItem(Scope* scope) {
+  auto it = global_value_key_cache().find(scope);
+  if (it != global_value_key_cache().end()) {
+    auto it_hash = global_transfer_data_cache().find(it->second);
+    if (it_hash != global_transfer_data_cache().end()) {
+      global_transfer_data_cache().erase(it_hash);
+      global_value_key_cache().erase(it);
+    }
+  }
 }
 
 Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
@@ -39,7 +55,7 @@ Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
   if (it != global_transfer_data_cache().end()) {
     new_scope = global_transfer_data_cache()[infer_cache_key];
   } else {
-    new_scope = &scope->NewScope();
+    new_scope = &scope->NewScope(DelItem);
     global_transfer_data_cache()[infer_cache_key] = new_scope;
   }
   global_transfer_scope_cache().insert(new_scope);

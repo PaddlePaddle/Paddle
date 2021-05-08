@@ -43,10 +43,22 @@ DEFINE_bool(
 namespace paddle {
 namespace framework {
 
-Scope::~Scope() { DropKids(); }
+Scope::Scope(const std::function<void(Scope*)> f) : fn_(f) {}
 
-Scope& Scope::NewScope() const {
-  Scope* child = new Scope(this);
+Scope::Scope(Scope const* parent, const std::function<void(Scope*)> f)
+    : parent_(parent), fn_(f) {}
+
+Scope::~Scope() {
+  DropKids();
+
+  // can't deal with async case
+  if (fn_ && (FLAGS_benchmark || FLAGS_eager_delete_scope)) {
+    fn_(this);
+  }
+}
+
+Scope& Scope::NewScope(const std::function<void(Scope*)> f) const {
+  Scope* child = new Scope(this, f);
   {
     SCOPE_KIDS_WRITER_LOCK
     kids_.push_back(child);
