@@ -14,6 +14,8 @@
 
 from paddle.fluid.dygraph.layers import Layer
 
+__all__ = []
+
 
 class MetaParallelBase(Layer):
     def __init__(self, layers, hcg, strategy):
@@ -21,6 +23,7 @@ class MetaParallelBase(Layer):
               self).__init__(layers.full_name() + "_meta_parallel_base")
         self._layers = layers
         self._hcg = hcg
+        self._strategy = strategy
         self._prepare_for_model()
 
     def _prepare_for_model(self):

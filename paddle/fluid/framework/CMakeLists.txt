@@ -301,8 +301,14 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         fast_threaded_ssa_graph_executor variable_helper)
 
 cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
-cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
-    conditional_block_op executor)
+if(WITH_PSCORE)
+    get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
+    cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+        conditional_block_op executor ${RPC_DEPS})
+else()
+    cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+        conditional_block_op executor)
+endif()
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -368,37 +374,4 @@ cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
-endif()
-
-##### 2.0 New custom op extension mechanism related #####
-
-# if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
-if (WIN32)
-  set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
-
-  set(PADDLE_CUSTOM_OP_SRCS
-      ${CMAKE_CURRENT_SOURCE_DIR}/custom_operator.cc
-      ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_tensor.cc
-      ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_op_meta_info.cc
-      ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc)
-  set(PADDLE_CUSTOM_OP_SRCS ${PADDLE_CUSTOM_OP_SRCS} PARENT_SCOPE)
-
-  cc_library(paddle_custom_op_shared
-      SHARED SRCS ${PADDLE_CUSTOM_OP_SRCS} DEPS ${PADDLE_CUSTOM_OP_MODULES})
-
-  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-  set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
-  target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
-
-  if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-    set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR})
-  else()
-    set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
-  endif()
-  set(PADDLE_CUSTOM_OP_IMPORT_LIB
-      ${paddle_custom_op_lib_path}/paddle_custom_op.lib
-      CACHE INTERNAL "Paddle custom op import lib")
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${paddle_custom_op_lib_path}/paddle_custom_op.dll
-      CACHE INTERNAL "Paddle custom op dll")
 endif()

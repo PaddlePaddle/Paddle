@@ -25,6 +25,8 @@ from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 def conv_indent(indent):
     return "".join([" "] * indent)
@@ -77,10 +79,13 @@ class CommonAccessor:
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
+        opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
+                                          ("LearningRate", 1)]
 
         opt_attr_map = {}
         opt_attr_map["sgd"] = []
         opt_attr_map["sum"] = []
+        opt_attr_map["naive_adagrad"] = []
         opt_attr_map["adam"] = [("beta1", "f"), ("beta2", "f"),
                                 ("epsilon", "f")]
 
@@ -169,6 +174,10 @@ class CommonAccessor:
             param_varnames = self.opt_input_map["sum"]
             attr_varnames = self.opt_attr_map["sum"]
             self.accessor_class = "sum"
+        elif compiled_strategy.use_ps_gpu and is_sparse:
+            param_varnames = self.opt_input_map["naive_adagrad"]
+            attr_varnames = self.opt_attr_map["naive_adagrad"]
+            self.accessor_class = "sgd"
         else:
             param_varnames = self.opt_input_map[oop.type]
             attr_varnames = self.opt_attr_map[oop.type]
@@ -176,20 +185,28 @@ class CommonAccessor:
 
         for (formal_name, shape) in param_varnames:
             params.append(formal_name)
-            param = main_program.global_block().vars[oop.input(formal_name)[0]]
-            if formal_name == "LearningRate" and param.name != "learning_rate_0":
-                warnings.warn("will support decay soon")
-                param = main_program.global_block().vars["learning_rate_0"]
+            if formal_name == "G2Sum":
+                dims.append(1)
+                initializer = "fill_constant&0"
+                initializers.append(initializer)
+            else:
+                param = main_program.global_block().vars[oop.input(formal_name)[
+                    0]]
+                if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                    warnings.warn("will support decay soon")
+                    param = main_program.global_block().vars["learning_rate_0"]
 
-            if shape is None:
-                if is_sparse:
-                    shape = total_dims
-                else:
-                    shape = self.get_shard(total_dims, pserver_num, pserver_id)
-            dims.append(shape)
+                if shape is None:
+                    if is_sparse:
+                        shape = total_dims
+                    else:
+                        shape = self.get_shard(total_dims, pserver_num,
+                                               pserver_id)
+                dims.append(shape)
 
-            initializer = self.get_initializer_attr(param.name, startup_program)
-            initializers.append(initializer)
+                initializer = self.get_initializer_attr(param.name,
+                                                        startup_program)
+                initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
             value = oop.attr(attr_varname)
@@ -435,6 +452,8 @@ class TheOnePSRuntime(RuntimeBase):
         if not strategy:
             raise ValueError("k_steps must be invalid value, please check")
 
+        if dist_strategy.a_sync_configs["use_ps_gpu"]:
+            strategy.use_ps_gpu = True
         return strategy
 
     def build_compiled_startegy(self):
@@ -443,6 +462,8 @@ class TheOnePSRuntime(RuntimeBase):
         compiled_config = CompileTimeStrategy(
             self.origin_main_program, self.origin_main_program,
             self.async_strategy, self.role_maker)
+        if self.async_strategy.use_ps_gpu:
+            compiled_config.use_ps_gpu = True
         return compiled_config
 
     def _init_worker(self):

@@ -46,7 +46,7 @@ Call calculation stream synchronization.
 };
 
 template <typename T>
-class CSyncCalcStreamCudaKernel : public framework::OpKernel<T> {
+class CSyncCalcStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
@@ -86,5 +86,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream, ops::CSyncCalcStreamOp,
                              ops::CSyncCalcStreamOpMaker);
 
-REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream,
-                        ops::CSyncCalcStreamCudaKernel<float>);
+REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
+
+REGISTER_OP_NPU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);

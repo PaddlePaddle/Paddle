@@ -225,7 +225,7 @@ class TestUniform(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Uniform())
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -256,7 +256,7 @@ class TestUniform(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Uniform())
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -287,7 +287,7 @@ class TestUniform(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Uniform(min_value, max_vlaue))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -317,7 +317,7 @@ class TestUniform(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.Uniform(min_value, float(i)))
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op0 = block.ops[0]
         self.assertEqual(init_op0.type, 'uniform_random')
@@ -343,11 +343,8 @@ class TestUniform(unittest.TestCase):
         """Test uniform initializer with bfloat16
         """
         block = self.test_uniform_initializer_default_value("uint16")  #bfloat16
-        self.assertTrue(check_cast_op(block.ops[1]))
         block = self.test_uniform_initializer(dtype="uint16")  #bfloat16
-        self.assertTrue(check_cast_op(block.ops[1]))
         block = self.test_uniform_initializer_two_op("uint16")  #bfloat16
-        self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_uniform_initializer_dygraph(self):
         """Test uniform initializer in dygraph model.
@@ -717,6 +714,18 @@ class TestAssign(unittest.TestCase):
         linear_3 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_3)
 
         self.assertTrue((linear_3.weight.numpy() == [2.0, 2.0]).all(), '')
+
+    def test_assign_initializer_dygraph_4(self):
+        """Test assign initializer in dygraph model.
+        """
+        paddle.disable_static()
+
+        weight_attr_4 = paddle.framework.ParamAttr(
+            name="linear_weight_4",
+            initializer=paddle.nn.initializer.Assign((2, 2)))
+        linear_4 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_4)
+
+        self.assertTrue((linear_4.weight.numpy() == [2.0, 2.0]).all(), '')
 
 
 if __name__ == '__main__':
