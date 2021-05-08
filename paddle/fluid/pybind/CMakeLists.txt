@@ -56,7 +56,8 @@ set(PYBIND_SRCS
   ir.cc
   inference_api.cc
   compatible.cc
-  generator_py.cc)
+  generator_py.cc
+  cuda_streams_py.cc)
 
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
