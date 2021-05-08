@@ -402,13 +402,17 @@ def get_grad_device(grad_name, shard):
     return shard.global_param2device[base_name]
 
 
-def get_first_check_finite_and_unscale_op_idx(block):
+def get_first_check_finite_and_unscale_op_idx(block, raise_error=True):
 
     for idx, op in enumerate(block.ops):
         if op.type == "check_finite_and_unscale":
             return idx
 
-    raise ValueError("check_finite_and_unscale does not exist in block")
+    print("raise_error:", raise_error)
+    if raise_error:
+        raise ValueError("check_finite_and_unscale does not exist in block")
+
+    return -1
 
 
 def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
