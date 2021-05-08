@@ -26,7 +26,7 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, _dygraph_tracer, default_main_program, _varbase_creator, static_only
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -194,7 +194,6 @@ __all__ = [
 ]
 
 
-@dygraph_only
 def _elementwise_op_in_dygraph(x,
                                y,
                                axis=-1,
