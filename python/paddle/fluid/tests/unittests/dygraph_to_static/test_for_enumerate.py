@@ -58,7 +58,7 @@ def for_iter_var_numpy(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
     for x in x_array.numpy():
-        z = z + x
+        z = z + int(x)
     return z
 
 
@@ -70,7 +70,7 @@ def for_enumerate_var_numpy(x_array):
     x_array = fluid.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy()):
         y = y + i
-        z = z + x
+        z = z + int(x)
     return y, z
 
 
@@ -82,7 +82,7 @@ def for_enumerate_var_numpy_with_start(x_array):
     x_array = fluid.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
-        z = z + x
+        z = z + int(x)
     return y, z
 
 
@@ -106,7 +106,7 @@ def for_enumerate_var_numpy_with_break(x_array):
     x_array = fluid.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy()):
         y = y + i
-        z = z + x
+        z = z + int(x)
         if i > 2:
             break
     return y, z
@@ -122,7 +122,7 @@ def for_enumerate_var_numpy_with_continue(x_array):
         y = y + i
         if i > 2:
             continue
-        z = z + x
+        z = z + int(x)
     return y, z
 
 
@@ -134,7 +134,7 @@ def for_enumerate_var_numpy_with_start_break(x_array):
     x_array = fluid.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
-        z = z + x
+        z = z + int(x)
         if i > 2:
             break
     return y, z
@@ -150,7 +150,7 @@ def for_enumerate_var_numpy_with_start_continue(x_array):
         y = y + i
         if i > 2:
             continue
-        z = z + x
+        z = z + int(x)
     return y, z
 
 
