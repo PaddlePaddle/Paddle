@@ -15,6 +15,7 @@
 #ifdef PADDLE_WITH_MKLML
 #include <mkl.h>
 #endif
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -28,6 +29,19 @@
 namespace paddle {
 namespace operators {
 namespace math {
+namespace detail {
+
+template <typename T>
+static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
+                 const int incy) {
+  // Y = Y + alpha * X
+  while (n-- > 0) {
+    *y += alpha * *x;
+    y = y + incy;
+    x = x + incx;
+  }
+}
+}  // namespace detail
 
 template <typename T>
 struct CBlas;
@@ -43,6 +57,11 @@ struct CBlas<int8_t> {
 
 template <>
 struct CBlas<platform::bfloat16> {
+  template <typename... ARGS>
+  static void AXPY(ARGS... args) {
+    detail::axpy(args...);
+  }
+
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     PADDLE_THROW(platform::errors::Unimplemented(

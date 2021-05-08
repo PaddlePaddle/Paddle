@@ -182,7 +182,7 @@ class Accuracy(Metric):
     Encapsulates accuracy metric logic.
 
     Args:
-        topk (int|tuple(int)): Number of top elements to look at
+        topk (int|list[int]|tuple[int]): Number of top elements to look at
             for computing accuracy. Default is (1,).
         name (str, optional): String name of the metric instance. Default
             is `acc`.
@@ -243,7 +243,7 @@ class Accuracy(Metric):
 
     def compute(self, pred, label, *args):
         """
-        Compute the top-k (maxinum value in `topk`) indices.
+        Compute the top-k (maximum value in `topk`) indices.
 
         Args:
             pred (Tensor): The predicted value is a Tensor with dtype
@@ -253,7 +253,7 @@ class Accuracy(Metric):
                 [batch_size, d0, ..., num_classes] in one hot representation.
                 
         Return:
-            Tensor: Correct mask, a tensor with shape [batch_size, topk].
+            Tensor: Correct mask, a tensor with shape [batch_size, d0, ..., topk].
         """
         pred = paddle.argsort(pred, descending=True)
         pred = paddle.slice(
@@ -277,7 +277,7 @@ class Accuracy(Metric):
         returns the accuracy of current step.
         
         Args:
-            correct: Correct mask, a tensor with shape [batch_size, topk].
+            correct: Correct mask, a tensor with shape [batch_size, d0, ..., topk].
 
         Return:
             Tensor: the accuracy of current step.

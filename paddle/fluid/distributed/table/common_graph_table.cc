@@ -18,7 +18,7 @@
 #include <set>
 #include <sstream>
 #include "paddle/fluid/distributed/common/utils.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
@@ -171,7 +171,7 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 
 int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   auto paths = paddle::string::split_string<std::string>(path, ";");
-  int count = 0;
+  int64_t count = 0;
   std::string sample_type = "random";
   bool is_weighted = false;
   int valid_count = 0;

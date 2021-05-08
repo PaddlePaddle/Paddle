@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import copy
+from paddle.fluid import core
+
 from ..fp16_lists import white_list as white_list_fp16, black_list as black_list_fp16,\
-    gray_list as gray_list_fp16, unsupported_fp16_list
+    gray_list as gray_list_fp16
 
 __all__ = ["AutoMixedPrecisionListsBF16"]
 
@@ -47,6 +49,7 @@ class AutoMixedPrecisionListsBF16(object):
         self.bf16_list = copy.copy(bf16_list)
         self.fp32_list = copy.copy(fp32_list)
         self.gray_list = copy.copy(gray_list)
+        self.bf16_initializer_list = copy.copy(bf16_initializer_list)
         self.unsupported_list = copy.copy(unsupported_list)
         self.fp32_varnames = copy.copy(custom_fp32_varnames)
         self._update_list()
@@ -77,16 +80,24 @@ class AutoMixedPrecisionListsBF16(object):
                 self.unsupported_list.add(op_name)
 
 
+bf16_initializer_list = {'fill_constant', 'uniform_random'}
+
 # always bf16
 bf16_list = {'elementwise_add', }
 
 # depends on the prev_op type
 gray_list = {
+    'cast',
+    'fill_constant',
+    'reduce_mean',
     'reshape2',
-    'lookup_table',
+    'scale',
 }
 
-unsupported_list = unsupported_fp16_list.copy().copy()
+_, _, _sys_unsupported_bf16_list = core.op_supported_infos(
+    'CPU', core.VarDesc.VarType.BF16)
+unsupported_list = _sys_unsupported_bf16_list
+
 fp32_list = black_list_fp16.copy().copy()
 fp32_list |= white_list_fp16
 fp32_list |= gray_list_fp16
