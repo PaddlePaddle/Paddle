@@ -47,6 +47,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "acl/acl.h"
+#include "hccl/hccl_types.h"
 #endif  // PADDLE_WITH_ASCEND_CL
 
 #include <fstream>
@@ -990,6 +991,16 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
     }                                                            \
   } while (0)
 
+#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                                 \
+  do {                                                                         \
+    auto res = cudaGetLastError();                                             \
+    if (UNLIKELY(res != cudaSuccess)) {                                        \
+      auto msg = ::paddle::platform::build_nvidia_error_msg(res);              \
+      PADDLE_THROW(platform::errors::Fatal("CUDA error after kernel (%s): %s", \
+                                           OP, msg));                          \
+    }                                                                          \
+  } while (0)
+
 inline void retry_sleep(unsigned milliseconds) {
 #ifdef _WIN32
   Sleep(milliseconds);
@@ -1220,11 +1231,18 @@ struct NPUStatusType {};
   }
 
 DEFINE_NPU_STATUS_TYPE(aclError, ACL_ERROR_NONE);
+DEFINE_NPU_STATUS_TYPE(HcclResult, HCCL_SUCCESS);
 }  // namespace details
 
 inline std::string build_npu_error_msg(aclError stat) {
   std::ostringstream sout;
   sout << " ACL error, the error code is : " << stat << ". ";
+  return sout.str();
+}
+
+inline std::string build_npu_error_msg(HcclResult stat) {
+  std::ostringstream sout;
+  sout << " HCCL error, the error code is : " << stat << ". ";
   return sout.str();
 }
 

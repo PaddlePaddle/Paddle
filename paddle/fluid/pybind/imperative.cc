@@ -718,7 +718,8 @@ void BindImperative(py::module *m_ptr) {
                {
                  // Release gil and do tracing
                  py::gil_scoped_release release;
-                 tracer->TraceOp("set_value", ins, outs, std::move(attrs));
+                 tracer->TraceOp("set_value", ins, outs, std::move(attrs),
+                                 {{"Input", "Out"}});
                }
              } else {
                auto self_numpy = TensorToPyArray(*self_tensor);
@@ -745,7 +746,7 @@ void BindImperative(py::module *m_ptr) {
              // inplace operator for the VarBase self.
              self->BumpInplaceVersion();
            })
-      .def("__getitem__",
+      .def("_getitem_index_not_tensor",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
                  slice_strides, decrease_axis, infer_flags;
@@ -783,6 +784,70 @@ void BindImperative(py::module *m_ptr) {
                return out;
              }
            })
+      .def(
+          "_getitem_from_offset",
+          [](std::shared_ptr<imperative::VarBase> &self, const py::args &args) {
+            const auto &tensor = self->Var().Get<framework::LoDTensor>();
+            PADDLE_ENFORCE_EQ(
+                tensor.IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "Tensor of %s is Empty, please check if it has no data.",
+                    self->Name()));
+
+            const auto &tensor_dims = tensor.dims();
+
+            std::vector<size_t> dims(tensor_dims.size());
+            std::vector<size_t> strides(tensor_dims.size());
+
+            size_t numel = 1;
+            for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+              strides[i] = numel;
+              dims[i] = static_cast<size_t>(tensor_dims[i]);
+              numel *= dims[i];
+            }
+            size_t offset = 0;
+            if (args.empty()) {
+              PADDLE_ENFORCE_EQ(
+                  numel, 1,
+                  platform::errors::InvalidArgument(
+                      "only one element tensors can be converted to Python "
+                      "scalars when no input coordinates"));
+            } else if (args.size() == 1) {
+              offset = args[0].cast<size_t>();
+              PADDLE_ENFORCE_LT(
+                  offset, numel,
+                  platform::errors::InvalidArgument(
+                      "index %d is out of bounds for size %d", offset, numel));
+            } else {
+              PADDLE_ENFORCE_EQ(args.size(), dims.size(),
+                                platform::errors::InvalidArgument(
+                                    "incorrect number of indices for Tensor"));
+
+              for (size_t i = 0; i < args.size(); ++i) {
+                size_t index = args[i].cast<size_t>();
+                PADDLE_ENFORCE_LT(
+                    index, dims[i],
+                    platform::errors::InvalidArgument(
+                        "index %d is out fo bounds for axis %d with size %d",
+                        index, i, dims[i]));
+                offset += index * strides[i];
+              }
+            }
+#define TENSOR_TO_PY_SCALAR(T, proto_type)                                   \
+  if (tensor.type() == proto_type) {                                         \
+    std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(proto_type); \
+    T b = TensorGetElement<T>(tensor, offset);                               \
+    return py::array(py::dtype(py_dtype_str.c_str()), {}, {},                \
+                     static_cast<void *>(&b));                               \
+  }
+
+            _ForEachDataType_(TENSOR_TO_PY_SCALAR);
+#undef TENSOR_TO_PY_SCALAR
+            PADDLE_THROW(platform::errors::Unimplemented(
+                "Unsupported tensor data type: %s",
+                framework::DataTypeToString(tensor.type())));
+          },
+          py::return_value_policy::copy)
       .def("_inplace_version",
            [](imperative::VarBase &self) -> uint32_t {
              const auto &var = self.MutableVar();
@@ -1487,7 +1552,7 @@ void BindImperative(py::module *m_ptr) {
                  allow_ops);
              imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
                  block_ops);
-             VLOG(4) << "AMP operators changed, "
+             VLOG(5) << "AMP operators changed, "
                      << imperative::AmpOperators::Instance();
            })
       .def("_get_amp_op_list",

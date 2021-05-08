@@ -16,20 +16,7 @@ from ...fluid.dygraph import layers
 from ...fluid.layer_helper import LayerHelper
 from .. import functional as F
 
-__all__ = [
-    'AvgPool1D',
-    'AvgPool2D',
-    'AvgPool3D',
-    'MaxPool1D',
-    'MaxPool2D',
-    'MaxPool3D',
-    'AdaptiveAvgPool1D',
-    'AdaptiveAvgPool2D',
-    'AdaptiveAvgPool3D',
-    'AdaptiveMaxPool1D',
-    'AdaptiveMaxPool2D',
-    'AdaptiveMaxPool3D',
-]
+__all__ = []
 
 
 class AvgPool1D(layers.Layer):

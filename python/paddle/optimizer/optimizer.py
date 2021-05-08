@@ -42,7 +42,7 @@ from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 from .lr import LRScheduler
 
-__all__ = ['Optimizer']
+__all__ = []
 
 
 class Optimizer(object):
@@ -55,7 +55,7 @@ class Optimizer(object):
     Args:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
             It can be a float value or any subclass of ``LRScheduler`` .
-        parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
@@ -100,8 +100,19 @@ class Optimizer(object):
                  weight_decay=None,
                  grad_clip=None,
                  name=None):
-        self._parameter_list = list(
-            parameters) if parameters is not None else None
+        if parameters is not None:
+            # paddle.Tensor is also iterable, so here we don't check whether
+            # the input is iterable, if the input is paddle.Tensor, the
+            # list(paddle.Tensor) will be a error value
+            if isinstance(parameters, paddle.Tensor):
+                raise TypeError(
+                    "`parameters` argument given to the optimizer should be "
+                    "an iterable of paddle Tensors, but got argument type is `{}`.".
+                    format(type(parameters)))
+            self._parameter_list = list(parameters)
+        else:
+            self._parameter_list = None
+
         self._name = name
         if framework.in_dygraph_mode():
             if self._parameter_list is None:
@@ -110,7 +121,8 @@ class Optimizer(object):
                 )
             if weight_decay is not None:
                 for param in self._parameter_list:
-                    if param.regularizer is not None:
+                    if hasattr(param,
+                               'regularizer') and param.regularizer is not None:
                         logging.info(
                             "If regularizer of a Parameter has been set by 'paddle.ParamAttr' or 'static.WeightNormParamAttr' already. "
                             "The weight_decay[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
@@ -433,17 +445,20 @@ class Optimizer(object):
     def _create_param_lr(self, param_and_grad):
         # create learning rate tensor for every parameter
         param = param_and_grad[0]
-        param_lr = param.optimize_attr['learning_rate']
-        if type(param_lr) == Variable:
-            return param_lr
-        else:
-            if param_lr == 1.0:
-                return self._global_learning_rate()
+        if hasattr(param, 'optimize_attr'):
+            param_lr = param.optimize_attr['learning_rate']
+            if type(param_lr) == Variable:
+                return param_lr
             else:
-                with default_main_program()._lr_schedule_guard(
-                        is_with_opt=True), framework.name_scope(
-                            'scale_with_param_lr'):
-                    return self._global_learning_rate() * param_lr
+                if param_lr == 1.0:
+                    return self._global_learning_rate()
+                else:
+                    with default_main_program()._lr_schedule_guard(
+                            is_with_opt=True), framework.name_scope(
+                                'scale_with_param_lr'):
+                        return self._global_learning_rate() * param_lr
+        else:
+            return self._global_learning_rate()
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
