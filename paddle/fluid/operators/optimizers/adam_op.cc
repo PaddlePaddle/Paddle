@@ -151,6 +151,11 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
              "as beta2, this has a higher priority than attr(beta2), the "
              "shape of this tensor MUST BE [1].")
         .AsDispensable();
+    AddInput("EpsilonTensor",
+             "(Tensor<float32>, optional) If provided, Adam will use this "
+             "as epsilon, this has a higher priority than attr(epsilon), the "
+             "shape of this tensor MUST BE [1].")
+        .AsDispensable();
     AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
@@ -232,4 +237,13 @@ REGISTER_OP_VERSION(adam)
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "multi_precision",
             "(bool) Whether to use multi-precision during weight updating.",
-            false));
+            false))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam, add 1 dispensable input [EpsilonTensor].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "EpsilonTensor",
+            "If provided, Adam will use this as epsilon, "
+            "this has a higher priority than attr(epsilon). "
+            "For better performance in npu kernel. "));

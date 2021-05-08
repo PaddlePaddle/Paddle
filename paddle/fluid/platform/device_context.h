@@ -57,6 +57,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/stream/npu_stream.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -69,6 +72,11 @@ struct GpuDevice;
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "acl/acl.h"
+#include "paddle/fluid/platform/npu_info.h"
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -77,6 +85,7 @@ namespace platform {
 void SetAllowTF32Cublas(bool active);
 /*Get the global variable allow_tf32_cublas value*/
 bool AllowTF32Cublas();
+extern bool allow_tf32_cudnn;
 /*Set the value of the global variable allow_tf32_cudnn*/
 void SetAllowTF32Cudnn(bool active);
 /*Get the global variable allow_tf32_cudnn value*/
@@ -87,11 +96,13 @@ enum DeviceType {
   CPU = 0,
   CUDA = 1,
   XPU = 2,
+  NPU = 3,
 };
 
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
+constexpr DeviceType kNPU = DeviceType::NPU;
 
 class DeviceContext {
  public:
@@ -163,8 +174,68 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 };
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_ASCEND_CL
+class NPUDeviceContext : public DeviceContext {
+ public:
+  explicit NPUDeviceContext(NPUPlace place);
+  virtual ~NPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  Place GetPlace() const override;
+  aclrtContext context() const;
 
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+
+  /*! \brief  Return npu stream in the device context. */
+  aclrtStream stream() const;
+
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return stream_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return stream_->WaitCallback(); }
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+  /*! \brief  Return hccl communicators. */
+  HcclComm hccl_comm() const { return hccl_comm_; }
+
+  /*! \brief  Set hccl communicators. */
+  void set_hccl_comm(HcclComm comm) { hccl_comm_ = comm; }
+#endif
+
+  // template <typename Callback>
+  // void AddStreamCallback(Callback&& callback) const {
+  //   return stream_->AddCallback(callback);
+  // }
+
+  // void WaitStreamCallback() const { return stream_->WaitCallback(); }
+
+ private:
+  NPUPlace place_;
+  aclrtContext context_;
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  // HCCLContext_t hccl_context_;
+  HcclComm hccl_comm_{nullptr};
+#endif
+
+  // Need to be the same with other DeviceContext,
+  // Eventhough eigen_device_ is not used in NPU
+  // NOTE(zhiqiu): why need?
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  std::shared_ptr<stream::NPUStream> stream_;
+
+  DISABLE_COPY_AND_ASSIGN(NPUDeviceContext);
+};
+
+template <>
+struct DefaultDeviceContextType<platform::NPUPlace> {
+  using TYPE = NPUDeviceContext;
+};
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class CudnnWorkspaceHandle;
 class EigenCudaStreamDevice;
 
@@ -602,6 +673,7 @@ class MKLDNNDeviceContextThreadLocals {
     mkldnn::stream cur_stream;
     std::string key_suffix;  // Key identifying current Executor
     bool key_attach_thread_id = true;
+    void* exec_ptr_ = nullptr;
 
     Body();
     ~Body();
@@ -618,6 +690,8 @@ class MKLDNNDeviceContextThreadLocals {
     const std::string& get_key_suffix(void) const { return key_suffix; }
     void disable_tid_in_key(void) { key_attach_thread_id = false; }
     bool is_tid_used_in_key(void) const { return key_attach_thread_id; }
+    void set_curr_exec(void* exec_ptr) { exec_ptr_ = exec_ptr; }
+    void* get_curr_exec(void) const { return exec_ptr_; }
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
@@ -653,13 +727,19 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   using ShapeBlob = umap_key_string_t<KeyBlob>;
   using BlobMap = umap_value_smart_t<int, ShapeBlob>;
 
+  using ExecMap = std::unordered_map<
+      void*, std::vector<std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>>>;
+
   explicit MKLDNNDeviceContext(CPUPlace place);
 
   /* \brief  Get the active engine */
   const mkldnn::engine& GetEngine() const { return tls().get_engine(); }
 
+  // Register object to currently used executor's map
+  void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;
+
   // Remove all entries from the blob map
-  void ResetBlobMap();
+  void ResetBlobMap(void* ptr);
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
@@ -682,6 +762,9 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
  private:
   std::shared_ptr<BlobMap> p_blobmap_;
+  // Map key is pointer of executor and value is a data(iterator in map) needed
+  // to erase
+  std::shared_ptr<ExecMap> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
 };

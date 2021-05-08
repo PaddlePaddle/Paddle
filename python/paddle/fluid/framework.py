@@ -246,11 +246,11 @@ def _static_only_(func):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
-            "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
-            "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
-            "please use other API to replace '%s'" % (func.__name__,
-                                                      func.__name__))
+            "'%s' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
+            "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
+            "  2. If you are using `@paddle.jit.to_static`, you can turn off ProgramTranslator by calling `paddle.jit.ProgramTranslator().enable(False)`. "
+            "If you have to translate dynamic graph to static graph, please use other API to replace '%s'."
+            % (func.__name__, func.__name__))
 
     return __impl__
 
@@ -418,7 +418,7 @@ def cuda_places(device_ids=None):
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
 
     Parameters:
-        device_ids (list or tuple of int, optional): list of GPU device ids.
+        device_ids (list|tuple, optional): A list/tuple of int of GPU device ids.
 
     Returns:
         list of paddle.CUDAPlace: Created GPU place list.
@@ -429,6 +429,8 @@ def cuda_places(device_ids=None):
             import paddle
             import paddle.static as static
 
+            # required: gpu
+            
             paddle.enable_static()
 
             cuda_places = static.cuda_places()
@@ -1302,6 +1304,10 @@ class Variable(object):
                     print("After clear {}".format(loss2.gradient()))
 
         """
+        pass
+
+    @fake_interface_only
+    def register_hook(self, hook):
         pass
 
     def __str__(self):
@@ -2254,7 +2260,8 @@ class Operator(object):
         'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
         'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
-        'c_wait_comm', 'c_wait_compute'
+        'c_wait_comm', 'c_wait_compute', 'c_gen_hccl_id', 'c_comm_init_hccl',
+        'copy_cross_scope'
     }
 
     def __init__(self,
@@ -3239,10 +3246,7 @@ class Block(object):
             Operator: the insert Operator.
         """
         self._sync_with_cpp()
-        op_desc = self.desc._insert_op(index)
-        op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        self.ops.insert(index, op)
-        return op
+        return self._insert_op_without_sync(index, *args, **kwargs)
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
@@ -5023,6 +5027,9 @@ class Program(object):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op._set_attr('is_test', True)
+                if op.type() == "batch_norm":
+                    # Remove the output ReserveSpace of batch_norm if exists.
+                    op.remove_output("ReserveSpace")
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
@@ -6076,7 +6083,8 @@ def device_guard(device=None):
     A context manager that specifies the device on which the OP will be placed.
 
     Args:
-        device(str|None): Specify the device to use in the context. It should be 'cpu' or 'gpu',
+        device(str|None): Specify the device to use in the context. It should be ``cpu``,
+            ``gpu`` or ``gpu:x``, where ``x`` is the index of the GPUs. 
             When it is set to 'cpu' or 'gpu', all OPs created in the context will be
             placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
             single-card, the device index will be the same as the device on which the
@@ -6116,9 +6124,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])
@@ -6201,7 +6209,7 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6211,9 +6219,11 @@ def _get_paddle_place(place):
     place = place.lower()
     if (place == "cpu"):
         return core.CPUPlace()
+
     if (place == "device"):
         return core.Place()
 
+    # GPU
     avaliable_gpu_place = re.match(r'gpu:\d+', place)
     if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
         if not core.is_compiled_with_cuda():
@@ -6229,6 +6239,8 @@ def _get_paddle_place(place):
             device_id = place_info_list[1]
             device_id = int(device_id)
             return core.CUDAPlace(device_id)
+
+    # XPU
     avaliable_xpu_place = re.match(r'xpu:\d+', place)
     if avaliable_xpu_place:
         if not core.is_compiled_with_xpu():
@@ -6239,9 +6251,22 @@ def _get_paddle_place(place):
         device_id = place_info_list[1]
         device_id = int(device_id)
         return core.XPUPlace(device_id)
+
+    # NPU
+    avaliable_npu_place = re.match(r'npu:\d+', place)
+    if avaliable_npu_place:
+        if not core.is_compiled_with_npu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with NPU".format(avaliable_npu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.NPUPlace(device_id)
+
     raise ValueError(
-        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
-    )
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace and NPUPlace, but received {}.".
+        format(place))
 
 
 def _get_paddle_place_list(places):

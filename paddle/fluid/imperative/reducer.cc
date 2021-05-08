@@ -310,9 +310,8 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   for (size_t global_var_index = 0; global_var_index < vars_.size();
        ++global_var_index) {
     auto var = vars_[global_var_index];
-    var->GradVarBase()->AddMutableHook(
-        std::make_shared<LambdaInplaceVariableWrapperHook>([=](
-            VariableWrapper *grad) { this->AddDistHook(global_var_index); }));
+    var->GradVarBase()->AddVoidHook(std::make_shared<std::function<void()>>(
+        [=]() { this->AddDistHook(global_var_index); }));
     var_index_map_[var->GradVarBase()->SharedVar().get()] = global_var_index;
   }
 
@@ -444,10 +443,6 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
     auto *cur_node = q.front();
     q.pop();
 
-    for (auto &cur_op : *cur_node) {
-      cur_op.EnforceHasInOut();
-    }
-
     const auto &grad_pending_nodes = cur_node->GradPendingNodes();
     for (auto &grad_pending_node : grad_pending_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -524,7 +519,6 @@ void Reducer::PrepareForBackward(
     q.pop();
 
     for (const auto &cur_op : *cur_node) {
-      cur_op.EnforceHasInOut();
       auto &bwd_outs = cur_op.GetOutsMap();
       for (const auto &pair : bwd_outs) {
         if (!pair.second.IsGrad()) {
@@ -763,10 +757,11 @@ void Reducer::MarkGroupReady(size_t group_index) {
     // TODO(liuyuhui): Add try catch to deal with exception later,
     // otherwise the main thread will continue to run when an exception is
     // thrown in comm_pool_.
-    comm_pool_->enqueue([&] {
+    auto next_group = next_group_;
+    comm_pool_->enqueue([this, run_order, next_group, &group] {
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
       platform::SetXPUDeviceId(dev_id);
-      FusedAllReduceSchedule(run_order, group, next_group_);
+      FusedAllReduceSchedule(run_order, group, next_group);
       {
         std::lock_guard<std::mutex> lock(mutex_);
         comm_op_count_ -= 1;  // lock
