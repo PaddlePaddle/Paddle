@@ -21,7 +21,7 @@
 #include <vector>
 
 #ifdef __NVCC__
-#include "cub/cub.cuh"  // NOLINT
+#include "cub/cub.cuh"
 #endif
 
 #ifdef __HIPCC__
@@ -90,8 +90,8 @@ constexpr int kMaxBlockDim = 512;
 
 static inline int GetDesiredBlockDim(int block_dim) {
   return block_dim >= kMaxBlockDim
-           ? kMaxBlockDim
-           : (1 << static_cast<int>(std::log2(block_dim)));
+             ? kMaxBlockDim
+             : (1 << static_cast<int>(std::log2(block_dim)));
 }
 
 static inline void CheckReduceRankIsValid(int reduce_rank, int rank) {
@@ -158,162 +158,159 @@ struct ReduceConfig {
       : reduce_dims_origin(origin_reduce_dims), x_dim(x_dim) {}
 
   void Run() {
-     SetReduceDim();
-     SetStrides();
-     SetReduceType();
-     SetBlockDim();
+    SetReduceDim();
+    SetStrides();
+    SetReduceType();
+    SetBlockDim();
   }
   // update x_dim and reduce_dim
-  private:
-    void SetReduceDim() {
-      std::set<int> reduce_set;
-      std::set<int> x_set;
+ private:
+  void SetReduceDim() {
+    std::set<int> reduce_set;
+    std::set<int> x_set;
 
-      for (auto e : reduce_dims_origin) {
-        auto pos = e >= 0 ? e : e + x_dim.size();
-        reduce_set.insert(pos);
-      }
-
-      std::vector<int> reduce_dims(reduce_set.begin(), reduce_set.end());
-      std::sort(reduce_dims.begin(), reduce_dims.end());
-
-      if (reduce_dims.size() > 1) {
-        for (int i = reduce_dims.size() - 2; i >= 0; i--) {
-          int axis = reduce_dims[i + 1];
-          if (reduce_dims[i + 1] - reduce_dims[i] == 1) {
-            reduce_set.erase(reduce_dims[i + 1]);
-          }
-        }
-      }
-
-      reduce_dims.clear();
-      reduce_dims.assign(reduce_set.begin(), reduce_set.end());
-
-      std::vector<int> new_x_dim, new_reduce_dims;
-      int is_reduced = 0;
-
-      for (auto e : reduce_dims) {
-        auto pos = e >= 0 ? e : e + x_dim.size();
-        is_reduced |= 1 << e;
-      }
-
-      for (int i = 0; i < x_dim.size(); i++) {
-        if ((i == 0) || (((is_reduced >> i) ^ (is_reduced >> (i - 1))) & 1)) {
-          new_x_dim.push_back(x_dim[i]);
-          if ((is_reduced >> i) & 1)
-            new_reduce_dims.push_back(new_x_dim.size() - 1);
-        } else {
-          new_x_dim[new_x_dim.size() - 1] *= x_dim[i];
-        }
-      }
-      // update x_dim and reduce_dim
-      x_dim = new_x_dim;
-      reduce_dims = new_reduce_dims;
-      int x_rank = static_cast<int>(x_dim.size());
-      std::set<int> left_set;
-
-      for (int i = 0; i < x_rank; ++i) {
-        left_set.insert(i);
-      }
-
-      for (auto e : reduce_dims) {
-        left_set.erase(e);
-        reduce_dim.push_back(e);
-      }
-      // update left_dim
-      left_dim.assign(left_set.begin(), left_set.end());
+    for (auto e : reduce_dims_origin) {
+      auto pos = e >= 0 ? e : e + x_dim.size();
+      reduce_set.insert(pos);
     }
 
-    void SetStrides() {
-      x_strides = detail::GetStrides(x_dim);
-      reduce_strides = detail::GetStrides(x_dim, reduce_dim);
-      left_strides = detail::GetStrides(x_dim, left_dim);
-      reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
-      // get left_num
-      left_num = 1;
-      if (left_dim.size()) {
-        left_num = left_strides[0] * x_dim[left_dim[0]];
+    std::vector<int> reduce_dims(reduce_set.begin(), reduce_set.end());
+    std::sort(reduce_dims.begin(), reduce_dims.end());
+
+    if (reduce_dims.size() > 1) {
+      for (int i = reduce_dims.size() - 2; i >= 0; i--) {
+        int axis = reduce_dims[i + 1];
+        if (reduce_dims[i + 1] - reduce_dims[i] == 1) {
+          reduce_set.erase(reduce_dims[i + 1]);
+        }
       }
     }
 
-    void SetReduceType() {
-      int rank = x_dim.size();
-      int reduce_rank = reduce_dim.size();
+    reduce_dims.clear();
+    reduce_dims.assign(reduce_set.begin(), reduce_set.end());
 
-      if (rank == reduce_rank) {
-        reduce_type = static_cast<int>(ReduceType::kReduceAll);
+    std::vector<int> new_x_dim, new_reduce_dims;
+    int is_reduced = 0;
 
-      } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
-        reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
+    for (auto e : reduce_dims) {
+      auto pos = e >= 0 ? e : e + x_dim.size();
+      is_reduced |= 1 << e;
+    }
 
-      } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 0) {
-        reduce_type = static_cast<int>(ReduceType::kReduceFirstDim);
+    for (int i = 0; i < x_dim.size(); i++) {
+      if ((i == 0) || (((is_reduced >> i) ^ (is_reduced >> (i - 1))) & 1)) {
+        new_x_dim.push_back(x_dim[i]);
+        if ((is_reduced >> i) & 1)
+          new_reduce_dims.push_back(new_x_dim.size() - 1);
+      } else {
+        new_x_dim[new_x_dim.size() - 1] *= x_dim[i];
+      }
+    }
+    // update x_dim and reduce_dim
+    x_dim = new_x_dim;
+    reduce_dims = new_reduce_dims;
+    int x_rank = static_cast<int>(x_dim.size());
+    std::set<int> left_set;
+
+    for (int i = 0; i < x_rank; ++i) {
+      left_set.insert(i);
+    }
+
+    for (auto e : reduce_dims) {
+      left_set.erase(e);
+      reduce_dim.push_back(e);
+    }
+    // update left_dim
+    left_dim.assign(left_set.begin(), left_set.end());
+  }
+
+  void SetStrides() {
+    x_strides = detail::GetStrides(x_dim);
+    reduce_strides = detail::GetStrides(x_dim, reduce_dim);
+    left_strides = detail::GetStrides(x_dim, left_dim);
+    reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
+    // get left_num
+    left_num = 1;
+    if (left_dim.size()) {
+      left_num = left_strides[0] * x_dim[left_dim[0]];
+    }
+  }
+
+  void SetReduceType() {
+    int rank = x_dim.size();
+    int reduce_rank = reduce_dim.size();
+
+    if (rank == reduce_rank) {
+      reduce_type = static_cast<int>(ReduceType::kReduceAll);
+
+    } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
+      reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
+
+    } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 0) {
+      reduce_type = static_cast<int>(ReduceType::kReduceFirstDim);
+
+    } else {
+      reduce_type = static_cast<int>(ReduceType::kReduceAny);
+    }
+  }
+
+  void SetBlockDim() {
+    int block_num = detail::GetDesiredBlockDim(reduce_num);
+    // init
+    should_reduce_again = false;
+    dim3 block_dim(block_num, 1);
+    dim3 grid_dim(left_num, 1);
+    block_size_reduce_ny = reduce_num;
+
+    if (reduce_type == ReduceType::kReduceFirstDim) {
+      int device_id = platform::GetCurrentDeviceId();
+      int max_mp = platform::GetCUDAMultiProcessors(device_id);
+      int max_threads_per_mp =
+          platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+      int max_threads = max_threads_per_mp * max_mp;
+      int reduce_nx = x_dim[1];
+      int reduce_ny = x_dim[0];
+      // init
+      block_size_reduce_ny =
+          detail::GetLastPow2(reduce_ny / (max_threads / reduce_nx));
+      if (max_threads / reduce_nx >= 2 && reduce_ny > 512 &&
+          block_size_reduce_ny > 1) {
+        should_reduce_again = true;
+        block_dim.x = 32;
+        block_dim.y = 1;
+        grid_dim.x = (reduce_nx + block_dim.x - 1) / block_dim.x;
+        grid_dim.y =
+            (reduce_ny + block_size_reduce_ny - 1) / block_size_reduce_ny;
 
       } else {
-        reduce_type = static_cast<int>(ReduceType::kReduceAny);
-
+        block_dim.x = 32;
+        block_dim.y = 1;
+        block_size_reduce_ny = reduce_ny;
+        grid.x = (reduce_nx + block_dim.x - 1) / block_dim.x;
+        grid.y = 1;
       }
     }
 
-    void SetBlockDim() {
-      int block_num = detail::GetDesiredBlockDim(reduce_num);
-      // init
-      should_reduce_again = false;
-      dim3 block_dim(block_num, 1);
-      dim3 grid_dim(left_num, 1);
-      block_size_reduce_ny = reduce_num;
+    block = block_dim;
+    grid = grid_dim;
+  }
 
-      if (reduce_type == ReduceType::kReduceFirstDim) {
-        int device_id = platform::GetCurrentDeviceId();
-        int max_mp = platform::GetCUDAMultiProcessors(device_id);
-        int max_threads_per_mp =
-            platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
-        int max_threads = max_threads_per_mp * max_mp;
-        int reduce_nx = x_dim[1];
-        int reduce_ny = x_dim[0];
-        // init
-        block_size_reduce_ny =
-            detail::GetLastPow2(reduce_ny / (max_threads / reduce_nx));
-        if (max_threads / reduce_nx >= 2 && reduce_ny > 512
-            && block_size_reduce_ny > 1) {
-
-          should_reduce_again = true;
-          block_dim.x = 32;
-          block_dim.y = 1;
-          grid_dim.x = (reduce_nx + block_dim.x - 1) / block_dim.x;
-          grid_dim.y =
-              (reduce_ny + block_size_reduce_ny - 1) / block_size_reduce_ny;
-
-        } else {
-          block_dim.x = 32;
-          block_dim.y = 1;
-          block_size_reduce_ny = reduce_ny;
-          grid.x = (reduce_nx + block_dim.x - 1) / block_dim.x;
-          grid.y = 1;
-        }
-      }
-
-      block = block_dim;
-      grid = grid_dim;
-    }
-
-
-  public:
-    std::vector<int> reduce_dims_origin;
-    std::vector<int> reduce_dim;
-    std::vector<int> x_dim;
-    std::vector<int> left_dim;
-    std::vector<int> x_strides;
-    std::vector<int> left_strides;
-    std::vector<int> reduce_strides;
-    int reduce_type;
-    int reduce_num;
-    int left_num;
-    int block_size_reduce_ny;
-    bool should_reduce_again;
-    dim3 block;
-    dim3 grid;
-};  
+ public:
+  std::vector<int> reduce_dims_origin;
+  std::vector<int> reduce_dim;
+  std::vector<int> x_dim;
+  std::vector<int> left_dim;
+  std::vector<int> x_strides;
+  std::vector<int> left_strides;
+  std::vector<int> reduce_strides;
+  int reduce_type;
+  int reduce_num;
+  int left_num;
+  int block_size_reduce_ny;
+  bool should_reduce_again;
+  dim3 block;
+  dim3 grid;
+};
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim>
@@ -364,7 +361,6 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
                           detail::Array<int, ReduceRank> reduce_strides,
                           detail::Array<int, Rank - ReduceRank> left_dim,
                           detail::Array<int, Rank - ReduceRank> left_strides) {
-
   __shared__ typename cub::BlockReduce<Ty, BlockDim>::TempStorage temp_storage;
 
   int sub_index[Rank];
@@ -429,7 +425,6 @@ __device__ void ReduceModule(
         x, y, reducer, transformer, init, reduce_num, x_strides, reduce_dim,
         reduce_strides, left_dim, left_strides);
   }
-
 }
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
@@ -442,12 +437,10 @@ __global__ void ReduceKernelFunction(
     detail::Array<int, ReduceRank> reduce_strides,
     detail::Array<int, Rank - ReduceRank> left_dim,
     detail::Array<int, Rank - ReduceRank> left_strides) {
-
   ReduceModule<Tx, Ty, ReduceOp, TransformOp, BlockDim, Rank, ReduceRank,
                ReduceType>(x, y, reducer, transformer, init, reduce_num,
                            left_num, block_size, x_strides, reduce_dim,
                            reduce_strides, left_dim, left_strides);
-
 }
 
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
@@ -456,7 +449,6 @@ static void launchKernel(const Tx* x_data, Ty* y_data,
                          const platform::Place& place, const ReduceOp& reducer,
                          const TransformOp& transformer, const Ty& init,
                          gpuStream_t stream, ReduceConfig config) {
-
 #define CUB_REDUCE_TYPE_CASE(type)                                           \
   case type: {                                                               \
     constexpr auto kReduceType = type;                                       \
@@ -486,7 +478,6 @@ static void launchReduceKernel(const Tx* x_data, Ty* y_data,
                                const ReduceOp& reducer,
                                const TransformOp& transformer, const Ty& init,
                                gpuStream_t stream, ReduceConfig config) {
-
   int reduce_rank = config.reduce_strides.size();
   int rank = config.x_strides.size();
 
@@ -505,7 +496,6 @@ static void launchReduceKernel(const Tx* x_data, Ty* y_data,
 
   // launch CUB::Reduce
   if (config.reduce_type == static_cast<int>(ReduceType::kReduceAll)) {
-
     cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
         x_data, transformer);
     size_t temp_storage_bytes = 0;
@@ -567,7 +557,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig(origin_reduce_dims, x_dim);
   // get parameter
-  config,run();
+  config, run();
   // malloc
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>(x.place());
