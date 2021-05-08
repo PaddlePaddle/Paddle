@@ -13,11 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
+import re
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+#from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
@@ -601,6 +604,40 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         b = paddle.full([4, 5, 6], True, dtype='bool')
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "run test when gpu is availble.")
+class TestElementwiseAddBfloat16Dtype(unittest.TestCase):
+    # Get cuda runtime version from source file
+    def get_cuda_runtime_version(self):
+        command = os.popen("nvcc --version").read()
+        command = re.split(' ', command)
+        tag = 0
+        for _ in command:
+            tag += 1
+            if _ == 'release':
+                break
+        return int(float(command[tag].replace(',', '')) * 1000)
+
+    def test_bfloat16_datatype(self):
+        if self.get_cuda_runtime_version() >= 11000:
+            paddle.disable_static()
+            # Result using float32
+            x_fp32 = paddle.to_tensor([2, 3, 4], 'float32')
+            y_fp32 = paddle.to_tensor([1, 5, 2], 'float32')
+            res_fp32 = paddle.add(x_fp32, y_fp32)
+            exp = paddle.cast(res_fp32, core.VarDesc.VarType.BF16)
+
+            # Result using bfloat16
+            x_bf16 = paddle.cast(x_fp32, core.VarDesc.VarType.BF16)
+            y_bf16 = paddle.cast(y_fp32, core.VarDesc.VarType.BF16)
+            res = paddle.add(x_bf16, y_bf16)
+
+            self.assertTrue(np.array_equal(res.numpy(), exp.numpy()))
+            paddle.enable_static()
+        else:
+            pass
 
 
 if __name__ == '__main__':
