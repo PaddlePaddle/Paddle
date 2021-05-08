@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+from paddle.fluid.framework import PADDLE_FLAGS
 
 import numpy as np
 from ...device import get_cudnn_version
@@ -533,7 +534,7 @@ def conv2d(x,
     use_cudnn = True if (core.is_compiled_with_cuda() and
                          cudnn_version is not None) else False
 
-    use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+    use_mkldnn = PADDLE_FLAGS["FLAGS_use_mkldnn"]
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
