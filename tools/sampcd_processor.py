@@ -25,7 +25,6 @@ import os
 import sys
 import subprocess
 import multiprocessing
-import math
 import platform
 import inspect
 import json
@@ -346,6 +345,11 @@ Please use '.. code-block:: python' to format the sample code.""")
     sample_code_filenames = []
     for y, cb in enumerate(codeblocks):
         matched = is_required_match(cb['required'], name)
+        # matched has three states:
+        # True - please execute it;
+        # None - no sample code found;
+        # False - it need other special equipment or environment.
+        # so, the following conditional statements are intentionally arranged.
         if matched == True:
             tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
                 name, '.py'
@@ -354,20 +358,18 @@ Please use '.. code-block:: python' to format the sample code.""")
                 sampcd = insert_codes_into_codeblock(cb, name)
                 tempf.write(sampcd)
             sample_code_filenames.append(tfname)
-        else:
-            if matched is None:
-                logger.info('{}\' code block (name:{}, id:{}) is skipped.'.
-                            format(name, cb['name'], cb['id']))
-                SUMMARY_INFO['skiptest'].append("{}-{}".format(name, cb['id']))
-            elif matched == False:
-                logger.info(
-                    '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'.
-                    format(name, cb['name'], cb['id'], cb['required'],
-                           SAMPLE_CODE_TEST_CAPACITY))
-                if cb['required'] not in SUMMARY_INFO:
-                    SUMMARY_INFO[cb['required']] = []
-                SUMMARY_INFO[cb['required']].append("{}-{}".format(name, cb[
-                    'id']))
+        elif matched is None:
+            logger.info('{}\' code block (name:{}, id:{}) is skipped.'.format(
+                name, cb['name'], cb['id']))
+            SUMMARY_INFO['skiptest'].append("{}-{}".format(name, cb['id']))
+        elif matched == False:
+            logger.info(
+                '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'.
+                format(name, cb['name'], cb['id'], cb['required'],
+                       SAMPLE_CODE_TEST_CAPACITY))
+            if cb['required'] not in SUMMARY_INFO:
+                SUMMARY_INFO[cb['required']] = []
+            SUMMARY_INFO[cb['required']].append("{}-{}".format(name, cb['id']))
 
     return sample_code_filenames
 
