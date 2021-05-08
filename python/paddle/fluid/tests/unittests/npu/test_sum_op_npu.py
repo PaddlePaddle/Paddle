@@ -79,7 +79,9 @@ class TestSum2(OpTest):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        # use `AddN` instead of `Add` in `sum` op for better performance, but in
+        # the case of fp16 there will be a loss of accuracy when using `AddN`.
+        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
 
 
 if __name__ == '__main__':
