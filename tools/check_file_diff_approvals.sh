@@ -140,9 +140,6 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py" ];then
           echo_line="You must have one RD (Shixiaowei02 (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators. For more information, please refer to[https://github.com/PaddlePaddle/Paddle/wiki/It's-recommend-to-set-no_grad_set-to-be-None].\n"
           check_approval 1 39303645 6836917 43953930
-      elif [ "${API_FILE}" == "tools/wlist.json" ];then
-          echo_line="You must have one TPM (jzhang533) approval for the api whitelist for the tools/wlist.json.\n"
-          check_approval 1 29231
       elif [ "${API_FILE}" == "tools/sampcd_processor.py" ];then
           echo_line="test_sampcd_processor.py will be executed for changed sampcd_processor.py.\n"
           run_tools_test test_sampcd_processor.py
