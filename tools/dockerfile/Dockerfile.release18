@@ -22,7 +22,7 @@ RUN apt-get update && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
     coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
-    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool module-init-tools vim
+    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool module-init-tools
 
 # Downgrade gcc&&g++
 WORKDIR /usr/bin 
@@ -45,8 +45,8 @@ ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 RUN apt-get update && \
   apt-get install -y python3.7 python3.7-dev && \
-  mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/bin/python3.7 /usr/bin/python
-#   mv /usr/bin/python3 /usr/bin/python3.bak && rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3
+  mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/bin/python3.7 /usr/bin/python && \
+  mv /usr/bin/python3 /usr/bin/python3.bak && ln -s /usr/bin/python3.7 /usr/bin/python3
 
 
 WORKDIR /home
