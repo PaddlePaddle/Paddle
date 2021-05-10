@@ -248,6 +248,12 @@ function cmake_base() {
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
 
+    if [ "$CMD" != "assert_file_approvals" ];then
+      python -m pip install distro
+      python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
+    fi
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -1450,6 +1456,7 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     else
@@ -1901,10 +1908,6 @@ function main() {
     local CMD=$1 
     local parallel_number=$2
     init
-    if [ "$CMD" != "assert_file_approvals" ];then
-      python ${PADDLE_ROOT}/tools/summary_env.py
-      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
-    fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
