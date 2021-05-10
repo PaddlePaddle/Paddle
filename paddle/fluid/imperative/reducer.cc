@@ -540,7 +540,10 @@ void Reducer::PrepareForBackward(
   PADDLE_ENFORCE_EQ(
       groups_need_finalize_, false,
       platform::errors::PreconditionNotMet(
-          "A serious error has occurred here. There may be several reasons: "
+          "A serious error has occurred here. Please "
+          "set find_unused_parameters=True to traverse backward graph "
+          "in each step to prepare reduce in advance. If you have "
+          "set, There may be several reasons for this error: "
           "1) Please note that all forward outputs derived from the module "
           "parameters must participate in the calculation of losses and "
           "subsequent gradient calculations. If not, the wrapper will hang, "
@@ -629,7 +632,9 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   if (vars_marked_ready_[var_index]) {
     auto error_info = string::Sprintf(
         "Error happened, when parameter[%d][%s] has been ready before. "
-        "There may be several reasons for this error: "
+        "Please set find_unused_parameters=True to traverse backward graph "
+        "in each step to prepare reduce in advance. If you have set, "
+        "there may be several reasons for this error: "
         "1) In multiple reentrant backward phase, some parameters are reused."
         "2) Using model parameters outside of forward function. Please "
         "make sure that model parameters are not shared in concurrent "
@@ -697,10 +702,16 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     }
   } else {
     // process sparse group
-    PADDLE_ENFORCE_EQ(HasGrad(var_index), true,
-                      platform::errors::PreconditionNotMet(
-                          "The sparse parameter[%d][%s] must have a gradient",
-                          var_index, vars_[var_index]->Name()));
+    PADDLE_ENFORCE_EQ(
+        HasGrad(var_index), true,
+        platform::errors::PreconditionNotMet(
+            "The sparse parameter[%d][%s] should have gradient. "
+            "Currently, DataParallel does not support sparse "
+            "parameters without generating gradients during training. "
+            "For example, if is_sparese=True is used in Embedding, "
+            "the current step of this parameter cannot generate gradient "
+            "because of stop_gradient/detatch, where error will occur.",
+            var_index, vars_[var_index]->Name()));
     auto var_base = vars_[var_index]->GradVarBase();
     // need to check tensor type
     PADDLE_ENFORCE_EQ(
