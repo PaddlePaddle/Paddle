@@ -14,8 +14,3 @@
 
 from paddle.fluid.core import CUDAStream as Stream
 from paddle.fluid.core import CUDAEvent as Event
-
-__all__ = [
-    'Stream',
-    'Event',
-]

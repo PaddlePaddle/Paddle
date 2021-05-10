@@ -14,15 +14,15 @@
 
 from paddle.fluid import core
 
-from . import streams
-from .streams import *
+from .streams import Stream  # noqa: F401
+from .streams import Event  # noqa: F401
 
 __all__ = [
+    'Stream',
+    'Event',
     'current_stream',
     'synchronize',
 ]
-
-__all__ += streams.__all__
 
 
 def current_stream(device=None):
