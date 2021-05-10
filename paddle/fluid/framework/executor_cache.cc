@@ -133,7 +133,7 @@ std::shared_ptr<framework::ParallelExecutor> GetExecutorInfoFromCache(
     VLOG(1) << "create exe_info for " << cache_key.DebugString();
 
     // TODO(Aurelius84): Consider to use LRU algorithm to replace this.
-    if (cached_exe_info.Size() > 4u /* max_cached_size*/) {
+    if (cached_exe_info.Size() > 2u /* max_cached_size*/) {
       cached_exe_info.Finalize();
     }
 
