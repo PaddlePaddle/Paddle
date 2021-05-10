@@ -45,7 +45,7 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
                   framework::Tensor* z) {
     std::vector<const framework::Tensor*> ins = {x, y};
     std::vector<framework::Tensor*> outs = {z};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         ctx.template device_context<platform::CUDADeviceContext>(), ins, &outs,
         CudaAddFunctor<T>());
   }
