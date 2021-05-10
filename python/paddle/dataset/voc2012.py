@@ -69,6 +69,7 @@ def reader_creator(filename, sub_name):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
     """
@@ -80,6 +81,7 @@ def train():
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
     """
@@ -91,6 +93,7 @@ def test():
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def val():
     """

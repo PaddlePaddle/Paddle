@@ -1096,7 +1096,13 @@ def ctc_loss(log_probs,
     return loss_out
 
 
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.cross_entropy")
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.functional.cross_entropy",
+    level=1,
+    reason=(
+        'Please notice that behavior of "paddle.nn.functional.softmax_with_cross_entropy" '
+        'and "paddle.nn.functional.cross_entropy" is different.'))
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,

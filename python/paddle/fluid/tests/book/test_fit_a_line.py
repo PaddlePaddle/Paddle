@@ -56,7 +56,8 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(),
             use_bf16_guard=False,
             use_pure_bf16=pure_bf16)
-    sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(
+        avg_cost, startup_program=fluid.default_startup_program())
 
     BATCH_SIZE = 20
 
