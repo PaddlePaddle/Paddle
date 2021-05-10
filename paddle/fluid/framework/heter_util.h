@@ -35,6 +35,9 @@ enum HeterTaskState { PULL_SPARSE, OP_RUN, XPU, OP_RUN_END, PUSH_GRAD, DONE };
 
 class HeterTask {
  public:
+  HeterTask() {}
+  virtual ~HeterTask(){};
+
   void Update() {
     if (state_ == PULL_SPARSE) {
       state_ = OP_RUN;
