@@ -1363,7 +1363,7 @@ class OpTest(unittest.TestCase):
                 abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
                 abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
             elif self.is_bfloat16_op():
-                abs_a[abs_a < 3e-3] = 1
+                abs_a[abs_a < 1e-2] = 1
             else:
                 abs_a[abs_a < 1e-3] = 1
 
@@ -1495,13 +1495,9 @@ class OpTest(unittest.TestCase):
 
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
-        fp32_grads = []
-        for grad in analytic_grads:
-            if grad.dtype == np.uint16:
-                grad = convert_uint16_to_float(grad)
-                max_relative_error = 0.03
-            fp32_grads.append(grad)
-        analytic_grads = fp32_grads
+        if self.is_bfloat16_op():
+            max_relative_error = 0.03
+            analytic_grads = list(map(convert_uint16_to_float, analytic_grads))
 
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
@@ -1511,6 +1507,9 @@ class OpTest(unittest.TestCase):
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
                 no_grad_set)
+            if self.is_bfloat16_op():
+                max_relative_error = 0.03
+                dygraph_grad = list(map(convert_uint16_to_float, dygraph_grad))
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
@@ -1554,6 +1553,21 @@ class OpTest(unittest.TestCase):
                 inputs=inputs,
                 outputs=outputs,
                 attrs=attrs_outputs if hasattr(self, "attrs") else None)
+
+            if self.is_bfloat16_op():
+                cast_inputs = self._find_var_in_dygraph(outputs,
+                                                        output_names[0])
+                cast_outputs = block.create_var(
+                    dtype="float32", shape=cast_inputs[0].shape)
+                cast_op = block.append_op(
+                    inputs={"X": cast_inputs},
+                    outputs={"Out": cast_outputs},
+                    type="cast",
+                    attrs={
+                        "in_dtype": core.VarDesc.VarType.BF16,
+                        "out_dtype": core.VarDesc.VarType.FP32
+                    })
+                outputs = {output_names[0]: cast_outputs}
 
             outputs_valid = {}
             for output_name in output_names:
@@ -1668,6 +1682,22 @@ class OpTest(unittest.TestCase):
         inputs = self._get_inputs(block)
         outputs = self._get_outputs(block)
         feed_dict = self.feed_var(inputs, place)
+
+        if self.is_bfloat16_op():
+            cast_inputs = list(map(block.var, output_names))
+            cast_outputs = block.create_var(
+                dtype="float32", shape=cast_inputs[0].shape)
+            cast_op = block.append_op(
+                inputs={"X": cast_inputs},
+                outputs={"Out": cast_outputs},
+                type="cast",
+                attrs={
+                    "in_dtype": core.VarDesc.VarType.BF16,
+                    "out_dtype": core.VarDesc.VarType.FP32
+                })
+            cast_op.desc.infer_var_type(block.desc)
+            cast_op.desc.infer_shape(block.desc)
+            output_names = [cast_outputs.name]
 
         if user_defined_grad_outputs is None:
             loss = append_loss_ops(block, output_names)

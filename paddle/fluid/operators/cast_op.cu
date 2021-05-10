@@ -95,6 +95,12 @@ struct CastOpFunctor<platform::CUDADeviceContext, InT> {
 
 namespace ops = paddle::operators;
 
+#ifdef PADDLE_WITH_HIP
+#define HIDDEN(...)
+#else
+#define HIDDNE(...) __VA_ARGS__,
+#endif
+
 REGISTER_OP_CUDA_KERNEL(
     cast, ops::CastOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CastOpKernel<paddle::platform::CUDADeviceContext, double>,
@@ -104,7 +110,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CastOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::CastOpKernel<paddle::platform::CUDADeviceContext,
                       paddle::platform::float16>,
-    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::complex64>,
+    HIDDNE(ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                             paddle::platform::bfloat16>)
+        ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                          paddle::platform::complex64>,
     ops::CastOpKernel<paddle::platform::CUDADeviceContext,
                       paddle::platform::complex128>);
+
+#undef HIDDNE

@@ -22,6 +22,5 @@ REGISTER_OP_CUDA_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                         ops::FillConstantKernel<int>,
                         ops::FillConstantKernel<bool>,
                         ops::FillConstantKernel<paddle::platform::float16>,
-                        ops::FillConstantKernel<paddle::platform::bfloat16>,
                         ops::FillConstantKernel<paddle::platform::complex64>,
                         ops::FillConstantKernel<paddle::platform::complex128>);

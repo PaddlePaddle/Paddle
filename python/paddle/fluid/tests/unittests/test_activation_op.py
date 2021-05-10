@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -1103,12 +1103,19 @@ class TestRelu(TestActivation):
         self.init_dtype()
 
         np.random.seed(1024)
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        # The same reason with TestAbs
-        x[np.abs(x) < 0.005] = 0.02
-        out = np.maximum(x, 0)
+        if self.dtype == np.uint16:
+            x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+            # The same reason with TestAbs
+            x[np.abs(x) < 0.005] = 0.02
+            out = convert_float_to_uint16(np.maximum(x, 0))
+            self.inputs = {'X': convert_float_to_uint16(x)}
+        else:
+            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            # The same reason with TestAbs
+            x[np.abs(x) < 0.005] = 0.02
+            out = np.maximum(x, 0)
+            self.inputs = {'X': x}
 
-        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -2740,7 +2747,6 @@ create_test_act_fp16_class(TestSwish, grad_atol=0.85)
 create_test_act_fp16_class(TestHardSwish)
 
 
-#------------------ Test BF16 ----------------------
 def create_test_act_bf16_class(parent,
                                atol=1e-2,
                                grad_check=True,

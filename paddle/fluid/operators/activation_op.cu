@@ -1443,23 +1443,23 @@ REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, CudaReluFunctor,
                                 CudaReluGradFunctor);
 #else
 REGISTER_OP_CUDA_KERNEL(
-    relu, ops::ActivationGPUKernel<paddle::platform::CUDADeviceContext,
-                                   ops::CudaReluFunctor<float>>,
-    ops::ActivationGPUKernel<paddle::platform::CUDADeviceContext,
-                             ops::CudaReluFunctor<double>>,
-    ops::ActivationGPUKernel<plat::CUDADeviceContext,
-                             ops::CudaReluFunctor<plat::float16>>,
-    ops::ActivationGPUKernel<plat::CUDADeviceContext,
-                             ops::CudaReluFunctor<plat::bfloat16>>);
+    relu, ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                                    ops::CudaReluFunctor<float>>,
+    ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
+                              ops::CudaReluFunctor<double>>,
+    ops::ActivationCudaKernel<plat::CUDADeviceContext,
+                              ops::CudaReluFunctor<plat::float16>>,
+    ops::ActivationCudaKernel<plat::CUDADeviceContext,
+                              ops::CudaReluFunctor<plat::bfloat16>>);
 REGISTER_OP_CUDA_KERNEL(
-    relu_grad, ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
-                                            ops::CudaReluGradFunctor<float>>,
-    ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
-                                 ops::CudaReluGradFunctor<double>>,
-    ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
-                                 ops::CudaReluGradFunctor<plat::float16>>,
-    ops::ActivationGradGPUKernel<plat::CUDADeviceContext,
-                                 ops::CudaReluGradFunctor<plat::bfloat16>>);
+    relu_grad, ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                             ops::CudaReluGradFunctor<float>>,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaReluGradFunctor<double>>,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaReluGradFunctor<plat::float16>>,
+    ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
+                                  ops::CudaReluGradFunctor<plat::bfloat16>>);
 #endif
 
 REGISTER_OP_CUDA_KERNEL(
