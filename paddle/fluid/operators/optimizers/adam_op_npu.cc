@@ -36,7 +36,6 @@ class AdamNPUKernel : public framework::OpKernel<T> {
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
-    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
@@ -60,27 +59,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
 
     bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
     param_out->mutable_data<T>(ctx.GetPlace());
     mom1_out->mutable_data<T>(ctx.GetPlace());
     mom2_out->mutable_data<T>(ctx.GetPlace());
-
-    // NOTE(zhiqiu): beta1_pow and beta2_pow may on CPU and not transform place.
-    if (beta1_pow->place() == platform::CPUPlace()) {
-      T beta1 = *beta1_pow->data<T>();
-      // `mutable_data` operation needs to be done after getting data
-      beta1_pow_out->mutable_data<T>(ctx.GetPlace());
-      FillNpuTensorWithConstant<T>(beta1_pow_out, beta1);
-    } else {
-      beta1_pow_out->mutable_data<T>(ctx.GetPlace());
-    }
-    if (beta2_pow->place() == platform::CPUPlace()) {
-      T beta2 = *beta2_pow->data<T>();
-      beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-      FillNpuTensorWithConstant<T>(beta2_pow_out, beta2);
-    } else {
-      beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-    }
 
     const Tensor* beta1_tensor = nullptr;
     const Tensor* beta2_tensor = nullptr;
@@ -177,6 +160,25 @@ class AdamNPUKernel : public framework::OpKernel<T> {
           ctx.template device_context<platform::DeviceContext>(), mom2_out);
     }
     if (!use_global_beta_pow) {
+      // NOTE(zhiqiu): beta1_pow and beta2_pow may on CPU and not transform
+      // place.
+      Tensor beta1_pow_tmp;
+      Tensor beta2_pow_tmp;
+      if (beta1_pow->place() == platform::CPUPlace()) {
+        T beta1 = *beta1_pow->data<T>();
+        beta1_pow_tmp.mutable_data<T>(ctx.GetPlace());
+        FillNpuTensorWithConstant<T>(&beta1_pow_tmp, beta1);
+        beta1_pow = &beta1_pow_tmp;
+      }
+      if (beta2_pow->place() == platform::CPUPlace()) {
+        T beta2 = *beta2_pow->data<T>();
+        beta2_pow_tmp.mutable_data<T>(ctx.GetPlace());
+        FillNpuTensorWithConstant<T>(&beta2_pow_tmp, beta2);
+        beta2_pow = &beta2_pow_tmp;
+      }
+
+      beta1_pow_out->mutable_data<T>(ctx.GetPlace());
+      beta2_pow_out->mutable_data<T>(ctx.GetPlace());
       auto runner_m1 =
           NpuOpRunner("Mul", {*beta1_pow, *beta1_tensor}, {*beta1_pow_out}, {});
       runner_m1.Run(stream);

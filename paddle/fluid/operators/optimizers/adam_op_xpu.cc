@@ -74,6 +74,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                           beta2_pow_out->numel()));
 
     bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
