@@ -737,7 +737,7 @@ class TestDistBase(unittest.TestCase):
         self._save_model = False
         self._fuse_all_reduce = None
         self._accumulate_gradient = False
-        self._find_unused_parameters = True
+        self._find_unused_parameters = False
         self._setup_config()
 
         global DIST_UT_PORT
