@@ -1017,14 +1017,16 @@ class TheOnePSRuntime(RuntimeBase):
             raise TypeError(
                 "in fleet.save() function, executor must be as Executor type")
 
-        program = self.origin_main_program if main_program is None else main_program
+        import paddle
+
+        program = paddle.static.default_main_program(
+        ) if main_program is None else main_program
 
         if isinstance(program, CompiledProgram):
             raise TypeError(
                 "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        import paddle
         feed_vars = [
             program.global_block().var(name) for name in feeded_var_names
         ]

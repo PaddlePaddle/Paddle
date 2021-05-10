@@ -117,15 +117,14 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
                           "The data format in txt does not meet the field "
                           "requirements defined in meta"));
 
-    std::transform(start, end, std::back_inserter(val), [](std::string va) {
+    std::transform(start, end, std::back_inserter(val), [id](std::string va) {
       float v = 0.0;
 
       try {
         v = lexical_cast<float>(va);
-      } catch (boost::bad_lexical_cast) {
+      } catch (boost::bad_lexical_cast& e) {
         VLOG(0) << "id: " << id << " get unexpected value: " << va
-                << " and be reset to: 0.0"
-                << " with meta: " << meta.names[x];
+                << " and be reset to: 0.0";
       }
       return v;
     });
@@ -198,7 +197,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
     auto block = blocks->at(shard_id);
 
     std::vector<std::vector<float>> kvalues;
-    ProcessALine(values, meta, &kvalues);
+    ProcessALine(values, meta, id, &kvalues);
 
     block->Init(id, false);
 
