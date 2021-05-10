@@ -563,23 +563,23 @@ void Reducer::PrepareForBackward(
     find_unused_vars_once_ = false;
   }
 
-  if (find_unused_vars_each_step_) {
-    if (unused_vars_.empty()) {
-      LOG_FIRST_N(WARNING, 1)
-          << "All parameters are involved in the backward pass. "
-             "It is recommended to set find_unused_parameters to False "
-             "to improve performance. However, if unused parameters "
-             "appear in subsequent iterative training, then an error "
-             "will occur. Please make it clear that in the subsequent "
-             "training, there will be no parameters that are not used "
-             "in the backward pass, and then set find_unused_parameters";
-    } else if (unused_vars_.size() == vars_.size()) {
-      LOG_FIRST_N(WARNING, 1)
-          << "There is no parameter in the device involved "
-             "in the backward calculation. If there are "
-             "parameters on other devices involved in the "
-             "backward, then a serious error will occur here.";
-    }
+  if (find_unused_vars_each_step_ && unused_vars_.empty()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "All parameters are involved in the backward pass. "
+           "It is recommended to set find_unused_parameters to False "
+           "to improve performance. However, if unused parameters "
+           "appear in subsequent iterative training, then an error "
+           "will occur. Please make it clear that in the subsequent "
+           "training, there will be no parameters that are not used "
+           "in the backward pass, and then set find_unused_parameters";
+  }
+
+  if (unused_vars_.size() == vars_.size()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "There is no parameter in the device involved "
+           "in the backward calculation. If there are "
+           "parameters on other devices involved in the "
+           "backward, then a serious error will occur here.";
   }
 }
 
