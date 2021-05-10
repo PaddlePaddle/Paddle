@@ -44,12 +44,15 @@ else()
     cc_library(gloo_wrapper SRCS gloo_wrapper.cc DEPS framework_proto variable_helper scope)
 endif(WITH_GLOO)
 
+if(WITH_PSLIB)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS
             "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
 set_source_files_properties(heter_wrapper.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+endif()
+
 cc_library(heter_wrapper SRCS heter_wrapper.cc DEPS framework_proto
 device_context heter_service_proto ${BRPC_DEPS})
 
