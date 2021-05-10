@@ -76,6 +76,15 @@ def _get_ascend_rankfile(rank_table_file_path):
         device_list = server['device']
         device_count = len(device_list)
 
+    if os.getenv("FLAGS_MODELARTS", None) == "2":
+        node_ips=[]
+        nodes = os.getenv("DLS_TASK_NUMBER", None)
+        assert nodes is not None, "DLS_TASK_NUMBER didn't set!"
+        for node in range(int(nodes)):
+            node_ip = os.getenv(f"VC_CUSTOM{node}_HOSTS", None)
+            assert node_ip is not None, f"VC_CUSTOM{node}_HOSTS didn't set!"
+            node_ips.append(node_ip)
+        return node_ips, device_count
     return node_ips, device_count
 
 
@@ -91,6 +100,7 @@ def get_cloud_cluster(rank_table_file=None,
     if rank_table_file:
         # multi trainers
         node_ips, device_count = _get_ascend_rankfile(rank_table_file)
+        print("node_ips:", node_ips, "device_count:", device_count)
         if len(node_ips) == 1:
             node_ip = node_ips[0]
         else:
@@ -109,6 +119,7 @@ def get_cloud_cluster(rank_table_file=None,
         node_ip = node_ips[0]
         device_count = 1
 
+    print("node_ips_2:", node_ips, "device_count:", device_count)
     devices_per_proc = [str(x) for x in range(device_count)]
     free_ports = [
         x for x in range(start_port, start_port + len(devices_per_proc))
