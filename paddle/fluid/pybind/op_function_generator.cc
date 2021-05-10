@@ -273,7 +273,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
       PyEval_RestoreThread(tstate);
     }
     throw_exception_to_python(std::current_exception());
-    return Py_None;
+    return NULL;
   }
 })";
 
