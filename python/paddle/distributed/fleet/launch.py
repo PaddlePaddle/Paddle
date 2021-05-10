@@ -75,6 +75,8 @@ from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
 import paddle.distributed.fleet.ascend_utils as ascend_utils
 
+__all__ = []
+
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
@@ -325,8 +327,8 @@ def which_distributed_mode(args):
 
     if fluid.core.is_compiled_with_cuda():
         accelerators = fluid.core.get_cuda_device_count()
-    elif fluid.core.is_compiled_with_ascend():
-        accelerators = fluid.core.NPUDevice.get_device_count()
+    elif fluid.core.is_compiled_with_npu():
+        accelerators = fluid.core.get_npu_device_count()
     elif fluid.core.is_compiled_with_xpu():
         accelerators = fluid.core.get_xpu_device_count()
     else:

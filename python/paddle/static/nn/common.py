@@ -15,7 +15,7 @@
 import paddle
 from paddle.fluid.framework import static_only
 
-__all__ = ['fc', 'deform_conv2d']
+__all__ = []
 
 
 @static_only
@@ -88,7 +88,7 @@ def fc(x,
         out.shape = (1, 2)
 
     Args:
-        x (Tensor|list of Tensor): A tensor or a list of tensor. The number of dimensions
+        x (Tensor|list[Tensor]|tuple[Tensor]): A tensor or a list/tuple of tensors. The number of dimensions
             of each tensor is at least 2. The data type should be float16, float32 or float64.
         size (int): The number of output units in this layer, which also means the feature
             size of output tensor.
@@ -235,16 +235,16 @@ def deform_conv2d(x,
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple): The filter size. If filter_size is a tuple,
+        filter_size (int|list|tuple): The filter size. If filter_size is a list/tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
-        stride (int|tuple, Optional): The stride size. If stride is a tuple, it must
+        stride (int|list|tuple, Optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|tuple, Optional): The padding size. If padding is a tuple, it must
+        padding (int|list|tuple, Optional): The padding size. If padding is a list/tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|tuple, Optional): The dilation size. If dilation is a tuple, it must
+        dilation (int|list|tuple, Optional): The dilation size. If dilation is a list/tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
         groups (int, Optional): The groups number of the deformable conv layer. According to

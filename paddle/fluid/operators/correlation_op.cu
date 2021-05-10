@@ -12,17 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_WITH_HIP
-// HIP not supported yet
-
 #include <algorithm>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
+#ifdef __HIPCC__
+#define __syncwarp() __all(1)
+#endif
+
 namespace paddle {
 namespace operators {
 
+#ifdef __HIPCC__
+#define THREADS_PER_BLOCK 64
+#else
 #define THREADS_PER_BLOCK 32
+#endif
 #define FULL_MASK 0xffffffff
 
 using framework::Tensor;
@@ -30,14 +35,22 @@ using framework::Tensor;
 template <typename T>
 __forceinline__ __device__ T warpReduceSum(T val) {
   for (int offset = 16; offset > 0; offset /= 2) {
+#ifdef __HIPCC__
+    val += __shfl_down(val, offset);
+#else
     val += __shfl_down_sync(FULL_MASK, val, offset);
+#endif
   }
   return val;
 }
 
 template <typename T>
 __forceinline__ __device__ T blockReduceSum(T val) {
+#ifdef __HIPCC__
+  static __shared__ T shared[64];
+#else
   static __shared__ T shared[32];
+#endif
   int lane = threadIdx.x % warpSize;
   int wid = threadIdx.x / warpSize;
 
@@ -483,5 +496,3 @@ REGISTER_OP_CUDA_KERNEL(correlation, ops::CorrelationCUDAKernel<float>,
                         ops::CorrelationCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(correlation_grad, ops::CorrelationCUDAGradKernel<float>,
                         ops::CorrelationCUDAGradKernel<double>);
-
-#endif  // not PADDLE_WITH_HIP
