@@ -424,7 +424,8 @@ class DataParallel(layers.Layer):
 
     Examples:
         .. code-block:: python
-
+        
+            # required: distributed
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
