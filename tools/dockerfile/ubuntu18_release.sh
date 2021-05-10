@@ -22,7 +22,7 @@ function ref_whl(){
       ref_gpu=gpu-cuda${ref_CUDA_MAJOR}-cudnn${CUDNN_MAJOR}
       install_gpu="_gpu"
   else
-      ref_gpu="cpu"
+      ref_gpu="cpu-avx"
       install_gpu=""
   fi
   
@@ -35,7 +35,7 @@ function ref_whl(){
   if [[ ${WITH_GPU} != "ON" ]]; then
     ref_gcc=""
   elif [[ ${gcc_version} == "8.2.0" ]];then
-    ref_gcc=_gcc8.2
+    ref_gcc=-gcc8.2
   fi
 
   if [[ ${ref_CUDA_MAJOR} == "11.0" ]];then
