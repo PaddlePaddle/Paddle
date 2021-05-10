@@ -45,5 +45,64 @@ class TestSynchronize(unittest.TestCase):
             self.assertRaises(ValueError, cuda.synchronize, "gpu:0")
 
 
+class TestCUDAStream(unittest.TestCase):
+    def test_cuda_stream(self):
+        if paddle.is_compiled_with_cuda():
+            s = paddle.devices.cuda.Stream()
+            self.assertIsNotNone(s)
+
+    def test_cuda_stream_synchronize(self):
+        if paddle.is_compiled_with_cuda():
+            s = paddle.devices.cuda.Stream()
+            e1 = paddle.devices.cuda.Event(True, False, False)
+            e2 = paddle.devices.cuda.Event(True, False, False)
+
+            e1.record(s)
+            e1.query()
+            tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
+            tensor2 = paddle.matmul(tensor1, tensor1)
+            s.synchronize()
+            e2.record(s)
+            e2.synchronize()
+
+            self.assertTrue(s.query())
+
+    def test_cuda_stream_wait_event_and_record_event(self):
+        if paddle.is_compiled_with_cuda():
+            s1 = cuda.Stream(0)
+            tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
+            tensor2 = paddle.matmul(tensor1, tensor1)
+            e1 = cuda.Event(False, False, False)
+            s1.record_event(e1)
+
+            s2 = cuda.Stream(1)
+            s2.wait_event(e1)
+            s2.synchronize()
+
+            self.assertTrue(e1.query() and s1.query() and s2.query())
+
+
+class TestCUDAEvent(unittest.TestCase):
+    def test_cuda_event(self):
+        if paddle.is_compiled_with_cuda():
+            e = paddle.devices.cuda.Event(True, False, False)
+            self.assertIsNotNone(e)
+            s = paddle.devices.cuda.current_stream()
+
+    def test_cuda_event_methods(self):
+        if paddle.is_compiled_with_cuda():
+            e = paddle.devices.cuda.Event(True, False, False)
+            s = paddle.devices.cuda.current_stream()
+            event_query_1 = e.query()
+            tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
+            tensor2 = paddle.matmul(tensor1, tensor1)
+            s.record_event(e)
+            e.synchronize()
+            event_query_2 = e.query()
+
+            self.assertTrue(event_query_1)
+            self.assertTrue(event_query_2)
+
+
 if __name__ == "__main__":
     unittest.main()
