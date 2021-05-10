@@ -914,7 +914,7 @@ class TheOnePSRuntime(RuntimeBase):
             self.compiled_strategy.origin_main_program, True)
         values = []
         for id, names in context.items():
-            if names not in distributed_varnames:
+            if names[0] not in distributed_varnames:
                 # only save sparse param to local
                 self._worker.recv_and_save_model(id, dirname)
             # save sparse & distributed param on server
