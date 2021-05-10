@@ -262,7 +262,6 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            fc_out = fluid.layers.fc(input=data, size=200)
             param_attr = fluid.ParamAttr(
                 name='instance_norm_w',
                 initializer=fluid.initializer.Constant(value=1.0))
@@ -270,7 +269,7 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 name='instance_norm_b',
                 initializer=fluid.initializer.Constant(value=0.0))
             out = fluid.layers.instance_norm(
-                input=fc_out, param_attr=param_attr, bias_attr=bias_attr)
+                input=data, param_attr=param_attr, bias_attr=bias_attr)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
