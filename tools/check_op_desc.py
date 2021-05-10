@@ -18,7 +18,7 @@ import operator
 from paddle.utils import OpLastCheckpointChecker
 from paddle.fluid.core import OpUpdateType
 
-SAME = 0
+SAME = 1
 
 INPUTS = "Inputs"
 OUTPUTS = "Outputs"
