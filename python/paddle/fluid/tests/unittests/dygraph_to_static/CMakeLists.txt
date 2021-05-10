@@ -6,6 +6,7 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach(TEST_OP)
 
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
+set_tests_properties(test_lac PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 120)
