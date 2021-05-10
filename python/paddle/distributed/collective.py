@@ -15,8 +15,14 @@
 import numpy as np
 import os
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.framework import Variable
+from ..fluid.framework import OpProtoHolder
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import convert_np_dtype_to_dtype_
+from ..fluid.data_feeder import convert_dtype
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.data_feeder import check_type
+from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 from ..fluid.dygraph.parallel import prepare_context
@@ -25,22 +31,7 @@ from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-__all__ = [
-    'wait',
-    'new_group',
-    'get_group',
-    'broadcast',
-    'all_reduce',
-    'reduce',
-    'all_gather',
-    'scatter',
-    'barrier',
-    'split',
-    'alltoall',
-    'ReduceOp',
-    'send',
-    'recv',
-]
+__all__ = []
 
 
 class ReduceOp:
@@ -1258,23 +1249,24 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32 or int64.
         dst (int): The destination rank id.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Whether to use calculate stream or communication stream.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+            # required: distributed
             import paddle
-            #from paddle.distributed import init_parallel_env
-            #init_parallel_env()
-            #if paddle.distributed.ParallelEnv().rank == 0:
-            #    data = paddle.to_tensor([7, 8, 9])
-            #    paddle.distributed.send(data, dst=1)
-            #else:
-            #    data = paddle.to_tensor([1,2,3])
-            #    paddle.distributed.recv(data, src=0)
-            #out = data.numpy()
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
+                paddle.distributed.send(data, dst=1)
+            else:
+                data = paddle.to_tensor([1,2,3])
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
     """
     if group is not None and not group.is_member():
         return
@@ -1307,23 +1299,24 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         tensor (Tensor): The Tensor to receive. Its data type
             should be float16, float32, float64, int32 or int64.
         src (int): The source rank id.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Whether to use calculate stream or communication stream.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+            # required: distributed
             import paddle
-            #from paddle.distributed import init_parallel_env
-            #init_parallel_env()
-            #if paddle.distributed.ParallelEnv().rank == 0:
-            #    data = paddle.to_tensor([7, 8, 9])
-            #    paddle.distributed.send(data, dst=1)
-            #else:
-            #    data = paddle.to_tensor([1,2,3])
-            #    paddle.distributed.recv(data, src=0)
-            #out = data.numpy()
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
+                paddle.distributed.send(data, dst=1)
+            else:
+                data = paddle.to_tensor([1,2,3])
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
     """
     if group is not None and not group.is_member():
         return

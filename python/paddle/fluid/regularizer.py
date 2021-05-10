@@ -326,19 +326,21 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(block, framework.Block)
 
         if framework.in_dygraph_mode():
+            sign = block.create_var(dtype=param.dtype, shape=param.shape)
             decay = block.create_var(dtype=param.dtype, shape=param.shape)
         else:
+            sign = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         # Append sign op
-        block.append_op(
-            type='sign', inputs={"X": param}, outputs={"Out": decay})
+        block.append_op(type='sign', inputs={"X": param}, outputs={"Out": sign})
 
         # Append scale op to the output of sign op
         block.append_op(
             type='scale',
-            inputs={"X": decay},
+            inputs={"X": sign},
             outputs={"Out": decay},
             attrs={"scale": self._regularization_coeff})
 

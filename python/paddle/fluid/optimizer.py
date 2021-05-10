@@ -4116,7 +4116,7 @@ class PipelineOptimizer(object):
         device = op.attr(self._op_device_key) \
             if op.has_attr(self._op_device_key) else None
         if device:
-            assert device[0:3] == 'gpu', "Now, only gpu devices are " \
+            assert device[0:3] == 'gpu' or dev_type == 'npu', "Now, only gpu and npu devices are " \
                 "supported in pipeline parallemism."
         return device
 
@@ -4604,13 +4604,13 @@ class PipelineOptimizer(object):
                 origin_sub_block_id = op.attr('sub_block').id
                 origin_sub_block = main_program.block(origin_sub_block_id)
                 new_sub_block = prog._create_block(parent_idx=0)
-                for op in origin_sub_block.ops:
-                    op_desc = op.desc
+                for sub_op in origin_sub_block.ops:
+                    op_desc = sub_op.desc
                     ap_op = new_sub_block.desc.append_op()
                     ap_op.copy_from(op_desc)
                 new_sub_block._sync_with_cpp()
                 self._create_vars(new_sub_block, origin_sub_block)
-                op._set_attr('sub_block:', new_sub_block)
+                op._set_attr('sub_block', new_sub_block)
 
     def _get_device_info(self, block):
         for op in block.ops:

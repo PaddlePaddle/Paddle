@@ -31,7 +31,7 @@ import functools
 
 import shutil
 
-__all__ = ['LocalFS', 'HDFSClient']
+__all__ = []
 
 
 class ExecuteError(Exception):

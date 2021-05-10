@@ -18,6 +18,8 @@ from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 import paddle.fluid.core as core
 
+__all__ = []
+
 
 class DatasetBase(object):
     """ Base dataset class. """
@@ -31,6 +33,7 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
 
     def init(self,
              batch_size=1,
@@ -211,6 +214,15 @@ class DatasetBase(object):
         self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_readers()
+
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = use_ps_gpu
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
@@ -529,12 +541,18 @@ class InMemoryDataset(DatasetBase):
 
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     def _set_queue_num(self, queue_num):
