@@ -122,6 +122,23 @@ struct ImagFunctor<T, Complex<T, Real<T>>> {
 };
 
 template <typename T, typename Enable = void>
+struct NegFunctor;
+
+template <typename T>
+struct NegFunctor<T, NoComplex<T, Real<T>>> {
+  NegFunctor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = -(input_[idx]);
+  }
+
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T, typename Enable = void>
 struct AbsFunctor;
 
 template <typename T>
