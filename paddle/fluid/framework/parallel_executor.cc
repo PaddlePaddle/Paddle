@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -725,7 +726,7 @@ void ParallelExecutor::PrepareLocalExeScopes(Scope *scope) {
               << " has been initialized beforehand in global scope, skipped.";
       continue;
     }
-    InitializeVariable(scope->Var(info.name_), info.type_);
+    framework::InitializeVariable(scope->Var(info.name_), info.type_);
   }
 }
 
