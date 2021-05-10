@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
-
 #include <sstream>
 
+#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -25,7 +25,8 @@ class ValueBlock;
 }  // namespace distributed
 }  // namespace paddle
 
-#define PSERVER_SAVE_SUFFIX "_txt"
+#define PSERVER_SAVE_SUFFIX ".shard"
+using boost::lexical_cast;
 
 namespace paddle {
 namespace distributed {
@@ -100,7 +101,7 @@ struct Meta {
 };
 
 void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
-                  std::vector<std::vector<float>>* values) {
+                  const int64_t id, std::vector<std::vector<float>>* values) {
   auto colunmn_size = columns.size();
   auto load_values =
       paddle::string::split_string<std::string>(columns[colunmn_size - 1], ",");
@@ -116,8 +117,19 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
                           "The data format in txt does not meet the field "
                           "requirements defined in meta"));
 
-    std::transform(start, end, std::back_inserter(val),
-                   [](std::string va) { return std::stof(va); });
+    std::transform(start, end, std::back_inserter(val), [](std::string va) {
+      float v = 0.0;
+
+      try {
+        v = lexical_cast<float>(va);
+      } catch (boost::bad_lexical_cast) {
+        VLOG(0) << "id: " << id << " get unexpected value: " << va
+                << " and be reset to: 0.0"
+                << " with meta: " << meta.names[x];
+      }
+      return v;
+    });
+
     values->push_back(val);
     offset += meta.dims[x];
   }
@@ -126,25 +138,29 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
 int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
                    const int mode) {
   int64_t save_num = 0;
+
   for (auto& table : block->values_) {
     for (auto& value : table) {
       if (mode == SaveMode::delta && !value.second->need_save_) {
         continue;
       }
-      save_num += 1;
 
-      auto* vs = value.second->data_.data();
+      ++save_num;
+
       std::stringstream ss;
+      auto* vs = value.second->data_.data();
+
       auto id = value.first;
+
       ss << id << "\t" << value.second->count_ << "\t"
          << value.second->unseen_days_ << "\t" << value.second->is_entry_
          << "\t";
 
-      for (int i = 0; i < block->value_length_; i++) {
-        ss << vs[i];
-        ss << ",";
+      for (int i = 0; i < block->value_length_ - 1; i++) {
+        ss << std::to_string(vs[i]) << ",";
       }
 
+      ss << std::to_string(vs[block->value_length_ - 1]);
       ss << "\n";
 
       os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
@@ -170,7 +186,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
 
   while (std::getline(file, line)) {
     auto values = paddle::string::split_string<std::string>(line, "\t");
-    auto id = std::stoull(values[0]);
+    auto id = lexical_cast<int64_t>(values[0]);
 
     if (id % pserver_num != pserver_id) {
       VLOG(3) << "will not load " << values[0] << " from " << valuepath
@@ -187,10 +203,12 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
     block->Init(id, false);
 
     VALUE* value_instant = block->GetValue(id);
+
     if (values.size() == 5) {
-      value_instant->count_ = std::stoi(values[1]);
-      value_instant->unseen_days_ = std::stoi(values[2]);
-      value_instant->is_entry_ = static_cast<bool>(std::stoi(values[3]));
+      value_instant->count_ = lexical_cast<int>(values[1]);
+      value_instant->unseen_days_ = lexical_cast<int>(values[2]);
+      value_instant->is_entry_ =
+          static_cast<bool>(lexical_cast<int>(values[3]));
     }
 
     std::vector<float*> block_values = block->Get(id, meta.names, meta.dims);
@@ -475,7 +493,7 @@ int32_t CommonSparseTable::pull_sparse_ptr(char** pull_values,
             auto* value = block->InitGet(id);
             // std::copy_n(value + param_offset_, param_dim_,
             //            pull_values + param_dim_ * offset);
-            pull_values[offset] = (char*)value;
+            pull_values[offset] = reinterpret_cast<char*>(value);
           }
 
           return 0;
