@@ -31,6 +31,12 @@ from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 SEED = 2020
 
 program_translator = ProgramTranslator()
+# Add InputSpec to make unittest run faster.
+input_specs = [
+    paddle.static.InputSpec([None, None], 'int64'),
+    paddle.static.InputSpec([None, None], 'int64'),
+    paddle.static.InputSpec([None], 'int64')
+]
 
 
 class DynamicGRU(fluid.dygraph.Layer):
@@ -354,7 +360,7 @@ class LexNet(fluid.dygraph.Layer):
         # share weight
         self.crf_decoding.weight = self.linear_chain_crf.weight
 
-    @declarative
+    @declarative(input_spec=input_specs)
     def forward(self, word, target, length=None):
         """
         Configure the network

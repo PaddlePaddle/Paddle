@@ -222,7 +222,6 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       auto skip_eager_vars = framework::details::ParseSafeEagerDeletionSkipVars(
           *program, end_op_index, output_var_names);
       parallel_executor->RunWithoutFetch(skip_eager_vars);
-      framework::ExecutorInfoCache::Instance().Finalize();
     }
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
@@ -315,7 +314,6 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
       // Step 3. run ops
       parallel_executor->RunWithoutFetch(/*skip_eager_vars*/ skip_eager_vars);
-      framework::ExecutorInfoCache::Instance().Finalize();
     }
 
     // Step 4. get outputs

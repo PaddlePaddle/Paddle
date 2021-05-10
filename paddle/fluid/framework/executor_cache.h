@@ -140,6 +140,8 @@ class ExecutorInfoCache {
     info_map_.insert({key_val, value});
   }
 
+  size_t Size() const { return info_map_.size(); }
+
   void Finalize();
 
  private:
