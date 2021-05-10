@@ -14,6 +14,7 @@
 
 import json
 import sys
+import operator
 from paddle.utils import OpLastCheckpointChecker
 from paddle.fluid.core import OpUpdateType
 
@@ -71,7 +72,8 @@ def diff_vars(origin_vars, new_vars):
     vars_name_only_in_new = set(new_vars.keys()) - set(origin_vars.keys())
 
     for var_name in common_vars_name:
-        if cmp(origin_vars.get(var_name), new_vars.get(var_name)) == SAME:
+        if operator.eq(origin_vars.get(var_name),
+                       new_vars.get(var_name)) == SAME:
             continue
         else:
             error, var_error = True, True
@@ -120,7 +122,8 @@ def diff_attr(ori_attrs, new_attrs):
     attrs_only_in_new = set(new_attrs.keys()) - set(ori_attrs.keys())
 
     for attr_name in common_attrs:
-        if cmp(ori_attrs.get(attr_name), new_attrs.get(attr_name)) == SAME:
+        if operator.eq(ori_attrs.get(attr_name),
+                       new_attrs.get(attr_name)) == SAME:
             continue
         else:
             error, attr_error = True, True
@@ -184,7 +187,7 @@ def compare_op_desc(origin_op_desc, new_op_desc):
     new = json.loads(new_op_desc)
     desc_error_message = {}
     version_error_message = {}
-    if cmp(origin_op_desc, new_op_desc) == SAME:
+    if operator.eq(origin_op_desc, new_op_desc) == SAME:
         return desc_error_message, version_error_message
 
     for op_type in origin:
