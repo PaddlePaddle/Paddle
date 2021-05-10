@@ -1495,7 +1495,7 @@ class OpTest(unittest.TestCase):
 
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
-        if self.is_bfloat16_op():
+        if self.dtype == np.uint16:
             max_relative_error = 0.03
             analytic_grads = list(map(convert_uint16_to_float, analytic_grads))
 
@@ -1507,7 +1507,7 @@ class OpTest(unittest.TestCase):
             dygraph_grad = self._get_dygraph_grad(
                 inputs_to_check, place, output_names, user_defined_grad_outputs,
                 no_grad_set)
-            if self.is_bfloat16_op():
+            if self.dtype == np.uint16:
                 max_relative_error = 0.03
                 dygraph_grad = list(map(convert_uint16_to_float, dygraph_grad))
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
@@ -1554,7 +1554,7 @@ class OpTest(unittest.TestCase):
                 outputs=outputs,
                 attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
-            if self.is_bfloat16_op():
+            if self.dtype == np.uint16:
                 cast_inputs = self._find_var_in_dygraph(outputs,
                                                         output_names[0])
                 cast_outputs = block.create_var(
@@ -1683,7 +1683,7 @@ class OpTest(unittest.TestCase):
         outputs = self._get_outputs(block)
         feed_dict = self.feed_var(inputs, place)
 
-        if self.is_bfloat16_op():
+        if self.dtype == np.uint16:
             cast_inputs = list(map(block.var, output_names))
             cast_outputs = block.create_var(
                 dtype="float32", shape=cast_inputs[0].shape)

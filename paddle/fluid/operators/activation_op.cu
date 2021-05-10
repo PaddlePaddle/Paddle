@@ -1441,6 +1441,14 @@ REGISTER_OP_CUDA_KERNEL(
 #ifdef PADDLE_WITH_HIP
 REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, CudaReluFunctor,
                                 CudaReluGradFunctor);
+REGISTER_OP_CUDA_KERNEL(
+    relu_grad_grad,
+    ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                    ops::ReluGradGradFunctor<float>>,
+    ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                    ops::ReluGradGradFunctor<double>>,
+    ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
+                                    ops::ReluGradGradFunctor<plat::float16>>);
 #else
 REGISTER_OP_CUDA_KERNEL(
     relu, ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,
@@ -1460,8 +1468,6 @@ REGISTER_OP_CUDA_KERNEL(
                                   ops::CudaReluGradFunctor<plat::float16>>,
     ops::ActivationGradCudaKernel<plat::CUDADeviceContext,
                                   ops::CudaReluGradFunctor<plat::bfloat16>>);
-#endif
-
 REGISTER_OP_CUDA_KERNEL(
     relu_grad_grad,
     ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -1472,6 +1478,7 @@ REGISTER_OP_CUDA_KERNEL(
                                     ops::ReluGradGradFunctor<plat::float16>>,
     ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
                                     ops::ReluGradGradFunctor<plat::bfloat16>>);
+#endif
 /* ========================================================================== */
 
 /* ===========================    tanh register  ============================ */
