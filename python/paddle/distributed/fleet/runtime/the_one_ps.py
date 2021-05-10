@@ -30,7 +30,7 @@ def conv_indent(indent):
     return "".join([" "] * indent)
 
 
-PSERVER_SAVE_SUFFIX = "_txt"
+PSERVER_SAVE_SUFFIX = ".shard"
 
 
 class Accessor:
