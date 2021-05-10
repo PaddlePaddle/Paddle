@@ -62,6 +62,7 @@ init_server = fleet.init_server
 run_server = fleet.run_server
 stop_worker = fleet.stop_worker
 distributed_optimizer = fleet.distributed_optimizer
+save = fleet.save
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 minimize = fleet.minimize

@@ -612,13 +612,14 @@ class Fleet(object):
                 for name in fetch_var_names
             ]
 
-            self.save_inference_model(executor, dirname, feeded_var_names,
-                                      fetch_vars)
+            self._runtime_handle._save_inference_model(
+                executor, dirname, feeded_var_names, fetch_vars, None, True, 0)
         else:
             increment_mode = 0
             if "mode" in configs:
                 increment_mode = int(configs["mode"])
-            self.save_persistables(executor, dirname, mode=increment_mode)
+            self._runtime_handle._save_persistables(
+                executor, dirname, main_program=None, mode=increment_mode)
 
     def save_inference_model(self,
                              executor,
