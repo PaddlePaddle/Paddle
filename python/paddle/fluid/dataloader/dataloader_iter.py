@@ -289,10 +289,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         # if user exit python program when dataloader is still
         # iterating, resource may no release safely, so we
-        # add __del__ function to to CleanupFuncRegistrar
-        # to make sure __del__ is always called when program
+        # add _shutdown_on_exit function to to CleanupFuncRegistrar
+        # to make sure _try_shutdown_all is always called when program
         # exit for resoure releasing safely
-        CleanupFuncRegistrar.register(self.__del__)
+        # _try_shutdown_all may re-enter for we register _shutdown_on_exit
+        # to atexit, so we use _shutdown_on_exit (not __del__) for
+        # _shutdown_on_exit add timeout=1 for process.join, which
+        # may hang when re-enter in some OS
+        CleanupFuncRegistrar.register(self._shutdown_on_exit)
 
     def _init_workers(self):
         # multiprocess worker and indice queue list initial as empty
@@ -363,7 +367,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._indices_queues[worker_id].put(None)
             self._worker_status[worker_id] = False
 
-    def _try_shutdown_all(self):
+    def _try_shutdown_all(self, timeout=None):
         if not self._shutdown:
             try:
                 self._exit_thread_expectedly()
@@ -377,7 +381,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._shutdown_worker(i)
 
                 for w in self._workers:
-                    w.join()
+                    w.join(timeout)
                 for q in self._indices_queues:
                     q.cancel_join_thread()
                     q.close()
@@ -559,6 +563,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
     def __del__(self):
         self._try_shutdown_all()
+
+    def _shutdown_on_exit(self):
+        self._try_shutdown_all(1)
 
     def __next__(self):
         try:
