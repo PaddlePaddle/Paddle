@@ -1315,7 +1315,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     if in_dygraph_mode():
         if isinstance(pad, Variable):
-            pad = pad.numpy().tolist()
+            pad = pad.numpy()
         out = core.ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
                              "data_format", data_format, "name", name)
     else:

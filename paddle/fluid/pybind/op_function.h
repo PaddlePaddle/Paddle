@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <numpy/arrayobject.h>
+#include <numpy/arrayscalars.h>
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -183,6 +185,21 @@ static inline void HandleViewBetweenInputAndOutput(
 extern PyTypeObject* g_VarBase_PyType;
 extern PyTypeObject* g_VarType_PyType;
 
+inline bool PyObject_CheckBool(PyObject* obj) { return PyBool_Check(obj); }
+
+inline bool PyObject_CheckLong(PyObject* obj) {
+  return (PyLong_Check(obj) && !PyBool_Check(obj)) ||
+         PyObject_IsInstance(obj, (PyObject*)g_VarType_PyType) ||  // NOLINT
+         PyArray_IsScalar((obj), Integer);
+}
+
+inline bool PyObject_CheckFloat(PyObject* obj) {
+  return PyFloat_Check(obj) || PyLong_Check(obj) ||
+         PyArray_IsScalar(obj, Floating) || PyArray_IsScalar(obj, Integer);
+}
+
+inline bool PyObject_CheckString(PyObject* obj) { return PyUnicode_Check(obj); }
+
 static inline void ConstructAttrMapFromPyArgs(
     const std::string& op_type, PyObject* args, ssize_t attr_start,
     ssize_t attr_end, paddle::framework::AttributeMap& attrs) {  // NOLINT
@@ -198,13 +215,8 @@ static inline void ConstructAttrMapFromPyArgs(
     Py_ssize_t key_len;
     const char* key_prt;
     obj = PyTuple_GET_ITEM(args, arg_pos);
-    if (PyUnicode_Check(obj)) {
-#if PY_MAJOR_VERSION < 3
-      key_len = PyUnicode_GET_DATA_SIZE(obj);
-      key_prt = PyUnicode_AS_DATA(obj);
-#else
+    if (PyObject_CheckString(obj)) {
       key_prt = PyUnicode_AsUTF8AndSize(obj, &key_len);
-#endif
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument (position %d) must be str, but got "
@@ -224,9 +236,8 @@ static inline void ConstructAttrMapFromPyArgs(
 
     switch (iter->second) {
       case paddle::framework::proto::AttrType::INT:
-        if (PyLong_Check(obj) ||
-            PyObject_IsInstance(obj, (PyObject*)g_VarType_PyType)) {  // NOLINT
-          attrs[key] = (int)PyLong_AsLong(obj);                       // NOLINT
+        if (PyObject_CheckLong(obj)) {
+          attrs[key] = (int)PyLong_AsLong(obj);  // NOLINT
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s(): argument (position %d) must be "
@@ -236,7 +247,7 @@ static inline void ConstructAttrMapFromPyArgs(
         }
         break;
       case paddle::framework::proto::AttrType::FLOAT:
-        if (PyFloat_Check(obj) || PyLong_Check(obj)) {
+        if (PyObject_CheckFloat(obj)) {
           attrs[key] = (float)PyFloat_AsDouble(obj);  // NOLINT
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -247,15 +258,10 @@ static inline void ConstructAttrMapFromPyArgs(
         }
         break;
       case paddle::framework::proto::AttrType::STRING:
-        if (PyUnicode_Check(obj)) {
+        if (PyObject_CheckString(obj)) {
           Py_ssize_t size;
           const char* data;
-#if PY_MAJOR_VERSION < 3
-          size = PyUnicode_GET_DATA_SIZE(obj);
-          data = PyUnicode_AS_DATA(obj);
-#else
           data = PyUnicode_AsUTF8AndSize(obj, &size);
-#endif
           attrs[key] = std::string(data, (size_t)size);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -272,9 +278,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<int> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyList_GetItem(obj, i);
-            if (PyLong_Check(item) ||
-                PyObject_IsInstance(obj,
-                                    (PyObject*)g_VarType_PyType)) {  // NOLINT
+            if (PyObject_CheckLong(item)) {
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -291,9 +295,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<int> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
-            if (PyLong_Check(item) ||
-                PyObject_IsInstance(obj,
-                                    (PyObject*)g_VarType_PyType)) {  // NOLINT
+            if (PyObject_CheckLong(item)) {
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -319,7 +321,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<float> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyList_GetItem(obj, i);
-            if (PyFloat_Check(item) || PyLong_Check(item)) {
+            if (PyObject_CheckFloat(item)) {
               value.emplace_back(PyFloat_AsDouble(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -336,7 +338,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<float> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
-            if (PyFloat_Check(item) || PyLong_Check(item)) {
+            if (PyObject_CheckFloat(item)) {
               value.emplace_back(PyFloat_AsDouble(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -362,15 +364,10 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<std::string> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyList_GetItem(obj, i);
-            if (PyUnicode_Check(item)) {
+            if (PyObject_CheckString(item)) {
               Py_ssize_t size;
               const char* data;
-#if PY_MAJOR_VERSION < 3
-              size = PyUnicode_GET_DATA_SIZE(item);
-              data = PyUnicode_AS_DATA(item);
-#else
               data = PyUnicode_AsUTF8AndSize(item, &size);
-#endif
               value.emplace_back(std::string(data, (size_t)size));  // NOLINT
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -387,15 +384,10 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<std::string> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
-            if (PyUnicode_Check(item)) {
+            if (PyObject_CheckString(item)) {
               Py_ssize_t size;
               const char* data;
-#if PY_MAJOR_VERSION < 3
-              size = PyUnicode_GET_DATA_SIZE(item);
-              data = PyUnicode_AS_DATA(item);
-#else
               data = PyUnicode_AsUTF8AndSize(item, &size);
-#endif
               value.emplace_back(std::string(data, (size_t)size));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -415,7 +407,7 @@ static inline void ConstructAttrMapFromPyArgs(
         }
         break;
       case paddle::framework::proto::AttrType::BOOLEAN:
-        if (PyBool_Check(obj)) {
+        if (PyObject_CheckBool(obj)) {
           attrs[key] = (bool)PyLong_AsLong(obj);  // NOLINT
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -432,7 +424,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<bool> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyList_GetItem(obj, i);
-            if (PyBool_Check(item)) {
+            if (PyObject_CheckBool(item)) {
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -449,7 +441,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<bool> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
-            if (PyBool_Check(item)) {
+            if (PyObject_CheckBool(item)) {
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -469,9 +461,8 @@ static inline void ConstructAttrMapFromPyArgs(
         }
         break;
       case paddle::framework::proto::AttrType::LONG:
-        if (PyLong_Check(obj) ||
-            PyObject_IsInstance(obj, (PyObject*)g_VarType_PyType)) {  // NOLINT
-          attrs[key] = (int64_t)PyLong_AsLong(obj);                   // NOLINT
+        if (PyObject_CheckLong(obj)) {
+          attrs[key] = (int64_t)PyLong_AsLong(obj);  // NOLINT
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s(): argument (position %d) must be "
@@ -487,9 +478,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<int64_t> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyList_GetItem(obj, i);
-            if (PyLong_Check(item) ||
-                PyObject_IsInstance(obj,
-                                    (PyObject*)g_VarType_PyType)) {  // NOLINT
+            if (PyObject_CheckLong(item)) {
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -506,9 +495,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<int64_t> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
-            if (PyLong_Check(item) ||
-                PyObject_IsInstance(obj,
-                                    (PyObject*)g_VarType_PyType)) {  // NOLINT
+            if (PyObject_CheckLong(item)) {
               value.emplace_back(PyLong_AsLong(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -534,7 +521,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<double> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyList_GetItem(obj, i);
-            if (PyFloat_Check(item) || PyLong_Check(item)) {
+            if (PyObject_CheckFloat(item)) {
               value.emplace_back(PyFloat_AsDouble(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -551,7 +538,7 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<double> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
-            if (PyFloat_Check(item) || PyLong_Check(item)) {
+            if (PyObject_CheckFloat(item)) {
               value.emplace_back(PyFloat_AsDouble(item));
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
@@ -704,7 +691,7 @@ static inline unsigned long GetUnsignedLongFromArgs(  // NOLINT
     return 0;
   }
 
-  if (PyLong_Check(item)) {
+  if (PyObject_CheckLong(item)) {
     return PyLong_AsUnsignedLong(item);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
