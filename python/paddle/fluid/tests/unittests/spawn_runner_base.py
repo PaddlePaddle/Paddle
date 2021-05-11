@@ -27,6 +27,7 @@ from test_dist_base import RUN_STEP
 class SpawnAssistTestArgs(object):
     update_method = "local"
     trainer_id = 0
+    find_unused_parameters = False
 
 
 class TestDistSpawnRunner(unittest.TestCase):
