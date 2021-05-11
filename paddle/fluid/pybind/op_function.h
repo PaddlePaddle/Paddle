@@ -39,6 +39,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/pybind/imperative.h"
 #pragma GCC diagnostic ignored "-Wconversion-null"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 int init_numpy() {
   import_array();
   return 0;
@@ -202,12 +203,13 @@ inline bool PyObject_CheckBool(PyObject* obj) { return PyBool_Check(obj); }
 inline bool PyObject_CheckLong(PyObject* obj) {
   return (PyLong_Check(obj) && !PyBool_Check(obj)) ||
          PyObject_IsInstance(obj, (PyObject*)g_VarType_PyType) ||  // NOLINT
-         PyArray_IsScalar((obj), Integer);
+         (_import_array() >= 0 && PyArray_IsScalar((obj), Integer));
 }
 
 inline bool PyObject_CheckFloat(PyObject* obj) {
   return PyFloat_Check(obj) || PyLong_Check(obj) ||
-         PyArray_IsScalar(obj, Floating) || PyArray_IsScalar(obj, Integer);
+         (_import_array() >= 0 && PyArray_IsScalar(obj, Floating)) ||
+         (_import_array() >= 0 && PyArray_IsScalar(obj, Integer));
 }
 
 inline bool PyObject_CheckString(PyObject* obj) { return PyUnicode_Check(obj); }
