@@ -19,6 +19,8 @@ from ..fluid.framework import Variable, name_scope
 from ..fluid.layer_helper import LayerHelper
 from ..fluid import unique_name
 from ..fluid import layers
+from ..fluid.clip import append_gradient_clip_ops
+from ..fluid.regularizer import append_regularization_ops
 import paddle.fluid as fluid
 from paddle.fluid.regularizer import L2DecayRegularizer
 
@@ -252,6 +254,79 @@ class Momentum(Optimizer):
                 )
             self._add_accumulator(self._velocity_acc_str, p)
 
+    def apply_gradients(self, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import numpy as np
+
+                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                linear = paddle.nn.Linear(10, 10)
+                inp = paddle.to_tensor(inp)
+                out = linear(inp)
+                loss = paddle.mean(out)
+                optimizer = paddle.optimizer.Adam(learning_rate=0.1,
+                        parameters=linear.parameters())
+                params_grads = optimizer.backward(loss)
+                optimizer.apply_gradients(params_grads)
+
+        """
+
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        # 'optimizer(grad_clip)' or 'set_gradient_clip'
+        if self._grad_clip is not None:
+            params_grads = self._grad_clip(params_grads)
+        else:
+
+            params_grads = append_gradient_clip_ops(params_grads)
+
+        # Add regularization if any
+        if self.regularization is not None:
+            params_grads = append_regularization_ops(params_grads,
+                                                     self.regularization)
+
+        optimize_ops = self._create_optimization_pass(params_grads)
+        return optimize_ops
+
+    def _apply_optimize(self, loss, startup_program, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+        Args:
+            loss (Tensor): loss tensor to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameters`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+        Returns:
+            list: A list of operators appended to the current program.
+        """
+        if framework.in_dygraph_mode():
+            with framework.program_guard(framework.default_main_program(),
+                                         framework.default_startup_program()):
+                if self._grad_clip is not None:
+                    params_grads = self._grad_clip(params_grads)
+                if self.regularization is not None:
+                    params_grads = append_regularization_ops(
+                        params_grads, self.regularization)
+                optimize_ops = self._create_optimization_pass(params_grads)
+        else:
+            program = loss.block.program
+            with framework.program_guard(program, startup_program):
+                optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
@@ -260,6 +335,12 @@ class Momentum(Optimizer):
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
+
+        param = param_and_grad[0]
+        if hasattr(param, 'regularizer') and isinstance(param.regularizer,
+                                                        L2DecayRegularizer):
+            self._regularization_method = "l2_decay"
+            self._regularization_coeff = param.regularizer._regularization_coeff
 
         if framework.in_dygraph_mode():
             if isinstance(param_and_grad, dict):
