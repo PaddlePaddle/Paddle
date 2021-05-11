@@ -106,7 +106,6 @@ diable_wingpu_test="^lite_mul_model_test$|\
 ^test_imperative_static_runner_mnist$|\
 ^test_fuse_all_reduce_pass$|\
 ^test_bert$|\
-^test_lac$|\
 ^test_mnist$|\
 ^test_mobile_net$|\
 ^test_ptb_lm$|\
@@ -274,10 +273,6 @@ function collect_failed_tests() {
 
 function run_unittest_cpu() {
     tmpfile=$tmp_dir/$RANDOM
-    echo "start python lac.py"
-    python ./python/paddle/fluid/tests/unittests/dygraph_to_static/test_lac.py &
-    wait;
-    echo "end python lac.py"
     (ctest -E "$disable_ut_quickly|$diable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
     wait;
 }
