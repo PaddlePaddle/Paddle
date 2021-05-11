@@ -274,8 +274,10 @@ function collect_failed_tests() {
 
 function run_unittest_cpu() {
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -E "$disable_ut_quickly|$diable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -R test_lac | tee $tmpfile) &
+    echo "start python lac.py"
+    python ./python/paddle/fluid/tests/unittests/dygraph_to_static/test_lac.py &
     wait;
+    echo "end python lac.py"
     (ctest -E "$disable_ut_quickly|$diable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
     wait;
 }
