@@ -176,8 +176,9 @@ class CPyLayer(object):
 
 class PyLayerBackward(PyLayerContext):
     def backward(self, *args, **kwargs):
-        with paddle.fluid.dygraph.no_grad():
-            return self._forward_cls.backward(*args, **kwargs)
+        with paddle.fluid.dygraph.guard():
+            with paddle.fluid.dygraph.no_grad():
+                return self._forward_cls.backward(*args, **kwargs)
 
 
 class LayerMeta(type):

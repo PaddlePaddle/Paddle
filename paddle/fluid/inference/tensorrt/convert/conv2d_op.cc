@@ -36,18 +36,6 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 input, but got %d input.",
-                        op_desc.Input("Input").size()));
-  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 filter, but got %d filter.",
-                        op_desc.Input("Filter").size()));
-  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 output, but got %d output.",
-                        op_desc.Output("Output").size()));
 
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
   std::string filter_var_name = op_desc.Input("Filter").front();
@@ -61,13 +49,6 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-    if (op_desc.Type() != "conv2d_transpose") {
-      PADDLE_ENFORCE_EQ(
-          op_desc.HasAttr("Input_scale"), true,
-          platform::errors::InvalidArgument("Input scale not found. TRT int8"
-                                            " requires conv/deconv to have "
-                                            "input quantization scales."));
-    }
     float in_scale =
         BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
     auto weight_scale =
@@ -179,19 +160,11 @@ class Deconv2dOpConverter : public OpConverter {
             nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IDeconvolutionLayer* {
           auto* layer =
-              TRT_ENGINE_ADD_LAYER(engine_, Deconvolution, *inputs, n_input,
+              TRT_ENGINE_ADD_LAYER(engine_, Deconvolution, *inputs, n_output,
                                    ksize, weight.get(), bias.get());
           return layer;
         },
         [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
-          // In trt Deconv, dilation should be 1, ohter values are not
-          // supported.
-          bool condition = (dilations.d[0] == 1 && dilations.d[1] == 1);
-          PADDLE_ENFORCE_EQ(condition, true,
-                            platform::errors::InvalidArgument(
-                                "In Deconv, Dilations must be (1, 1) for "
-                                "tensorRT, but given (%d, %d)",
-                                dilations.d[0], dilations.d[1]));
         },
         "conv2d_transpose");
   }

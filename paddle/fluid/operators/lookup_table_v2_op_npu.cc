@@ -29,11 +29,6 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
     auto *table_t = ctx.Input<framework::LoDTensor>("W");
 
-    // It seems cann 20.1 accepts int64, but cann 20.2+ not.
-    PADDLE_ENFORCE_EQ(ids_t->type(), framework::proto::VarType::INT32,
-                      platform::errors::Unimplemented(
-                          "The index of LookupTableV2 should be int32."));
-
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
         table_var->IsType<framework::LoDTensor>(), true,
@@ -55,19 +50,19 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
-
     auto *output_grad_t =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto *table_grad_t =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
-    auto *p = table_grad_t->mutable_data<T>(ctx.GetPlace());
+    table_grad_t->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    platform::NPUMemsetAsync(static_cast<void *>(p), 0,
-                             table_grad_t->numel() * sizeof(T), stream);
+    auto runner_zeros =
+        NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
+    runner_zeros.Run(stream);
 
     // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
     // can be different tensor, but in cann 20.2+, it does inplace operation.

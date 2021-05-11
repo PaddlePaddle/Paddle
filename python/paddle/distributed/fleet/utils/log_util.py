@@ -15,6 +15,8 @@
 import logging
 import sys
 
+__all__ = []
+
 
 class LoggerFactory:
     @staticmethod
@@ -36,3 +38,16 @@ class LoggerFactory:
 
 
 logger = LoggerFactory.build_logger(name="HybridParallel", level=logging.INFO)
+
+
+def layer_to_str(base, *args, **kwargs):
+    name = base + "("
+    if args:
+        name += ", ".join(str(arg) for arg in args)
+        if kwargs:
+            name += ", "
+    if kwargs:
+        name += ", ".join("{}={}".format(key, str(value))
+                          for key, value in kwargs.items())
+    name += ")"
+    return name

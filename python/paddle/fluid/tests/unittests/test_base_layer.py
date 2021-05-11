@@ -349,7 +349,8 @@ class TestLayerTo(unittest.TestCase):
                          paddle.fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(self.linear.buf_name.dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(np.allclose(self.linear.weight.grad, self.new_grad))
+        self.assertTrue(
+            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
         self.assertTrue(self.linear.weight._grad_ivar().dtype,
                         paddle.fluid.core.VarDesc.VarType.FP64)
 
@@ -358,7 +359,8 @@ class TestLayerTo(unittest.TestCase):
                          paddle.fluid.core.VarDesc.VarType.FP64)
         self.assertEqual(self.linear.buf_name.dtype,
                          paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(np.allclose(self.linear.weight.grad, self.new_grad))
+        self.assertTrue(
+            np.allclose(self.linear.weight.grad.numpy(), self.new_grad))
         self.assertTrue(self.linear.weight._grad_ivar().dtype,
                         paddle.fluid.core.VarDesc.VarType.FP64)
 

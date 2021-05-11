@@ -17,6 +17,8 @@ from __future__ import print_function
 import paddle.dataset.mnist
 import unittest
 
+__all__ = []
+
 
 class TestMNIST(unittest.TestCase):
     def check_reader(self, reader):
