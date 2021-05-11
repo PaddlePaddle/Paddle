@@ -74,22 +74,34 @@ class SoftmaxMKLDNNHandler
     }
   }
 
-  SoftmaxMKLDNNHandler(const std::vector<int64_t>& dims,
-                       const MKLDNNMemoryFormat fmt,
-                       const MKLDNNMemoryFormat diff_fmt, const int& axis,
+  SoftmaxMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                        const platform::MKLDNNDeviceContext& dev_ctx,
-                       platform::Place cpu_place, const std::string& uniq_name)
+                       platform::Place cpu_place, const Tensor* in_x,
+                       const Tensor* out_grad, Tensor* in_x_grad,
+                       const std::string& unique_name)
       : platform::MKLDNNHandlerT<T, mkldnn::softmax_forward,
                                  mkldnn::softmax_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, dims, uniq_name)) {
-    auto data_softmax_md =
-        mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
-    auto diff_softmax_md =
-        mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
+            platform::CreateKey(dev_ctx, framework::vectorize(in_x->dims()),
+                                unique_name)) {
+    if (!this->isBwdCached()) {
+      PADDLE_ENFORCE_EQ(
+          out_grad->dims(), in_x_grad->dims(),
+          platform::errors::InvalidArgument("The shape of softmax_grad's input "
+                                            "and output must be identical."));
 
-    this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
-                                             axis);
+      auto dims = out_grad->dims();  // input and output share the same shape
+      const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
+      auto softmax_tz = paddle::framework::vectorize<int64_t>(dims);
+
+      auto data_softmax_md = platform::MKLDNNMemDesc(
+          softmax_tz, platform::MKLDNNGetDataType<T>(), in_x->format());
+      auto diff_softmax_md = platform::MKLDNNMemDesc(
+          softmax_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
+
+      this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
+                                               axis);
+    }
   }
 };
 
@@ -144,28 +156,18 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL SoftmaxGrad must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+    const Tensor* in_x = ctx.Input<Tensor>("X");
     const Tensor* output = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.template Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx =
+    auto* out_grad = ctx.template Input<Tensor>(framework::GradVarName("Out"));
+    auto* in_x_grad =
         ctx.template Output<framework::Tensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE_EQ(
-        dout->dims(), dx->dims(),
-        platform::errors::InvalidArgument(
-            "The shape of softmax_grad's input and output must be identical."));
-
-    auto dims = dout->dims();  // input and output share the same shape
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
-
-    auto softmax_tz = paddle::framework::vectorize<int64_t>(dims);
-
-    SoftmaxMKLDNNHandler<T> handler(softmax_tz, output->format(),
-                                    dout->format(), axis, dev_ctx,
-                                    ctx.GetPlace(), ctx.InputName("Out"));
+    SoftmaxMKLDNNHandler<T> handler(ctx, dev_ctx, ctx.GetPlace(), in_x,
+                                    out_grad, in_x_grad, ctx.InputName("Out"));
 
     auto dst_memory_p = handler.AcquireDstMemory(output);
-    auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);
-    auto diff_src_memory_p = handler.AcquireDiffSrcMemory(dx);
+    auto diff_dst_memory_p = handler.AcquireDiffDstMemory(out_grad);
+    auto diff_src_memory_p = handler.AcquireDiffSrcMemory(in_x_grad);
 
     auto softmax_bwd_p = handler.AcquireBackwardPrimitive();
 
@@ -176,8 +178,8 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
                             {MKLDNN_ARG_DIFF_SRC, *diff_src_memory_p}});
     astream.wait();
 
-    dx->set_layout(framework::DataLayout::kMKLDNN);
-    dx->set_format(dout->format());
+    in_x_grad->set_layout(framework::DataLayout::kMKLDNN);
+    in_x_grad->set_format(out_grad->format());
   }
 };
 }  // namespace operators
