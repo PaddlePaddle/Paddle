@@ -470,19 +470,19 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
 }
 
 template <typename P>
-static void VarBaseCopy(const imperative::VarBase &src,
+static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,
                         imperative::VarBase &dst, const P &dst_device,
                         const bool blocking) {
   if (dst.SharedVar()->IsEmpty()) {
-    VLOG(3) << "deep copy Variable from " << src.Name() << " to " << dst.Name();
-    dst.SetPersistable(src.Persistable());
-    dst.SetDataType(src.DataType());
-    dst.SetType(src.Type());
-    dst.SetOverridedStopGradient(src.OverridedStopGradient());
-    if (!src.SharedVar()->IsEmpty()) {
-      // const platform::Place& place = src.Place();
-      if (src.Var().IsType<framework::LoDTensor>()) {
-        auto &src_tensor = src.Var().Get<framework::LoDTensor>();
+    VLOG(3) << "deep copy Variable from " << src->Name() << " to "
+            << dst.Name();
+    dst.SetPersistable(src->Persistable());
+    dst.SetDataType(src->DataType());
+    dst.SetType(src->Type());
+    dst.SetOverridedStopGradient(src->OverridedStopGradient());
+    if (!src->SharedVar()->IsEmpty()) {
+      if (src->Var().IsType<framework::LoDTensor>()) {
+        auto &src_tensor = src->Var().Get<framework::LoDTensor>();
         auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
         dst_tensor->set_lod(src_tensor.lod());
         framework::TensorCopy(src_tensor, dst_device, dst_tensor);
@@ -493,8 +493,8 @@ static void VarBaseCopy(const imperative::VarBase &src,
             platform::DeviceContextPool::Instance().Get(src_device)->Wait();
           }
         }
-      } else if (src.Var().IsType<framework::SelectedRows>()) {
-        auto &src_selected_rows = src.Var().Get<framework::SelectedRows>();
+      } else if (src->Var().IsType<framework::SelectedRows>()) {
+        auto &src_selected_rows = src->Var().Get<framework::SelectedRows>();
         auto *dst_selected_rows =
             dst.MutableVar()->GetMutable<framework::SelectedRows>();
         dst_selected_rows->set_height(src_selected_rows.height());
@@ -516,7 +516,7 @@ static void VarBaseCopy(const imperative::VarBase &src,
 
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "The source Tensor(%s) can not copy when it is empty.", src.Name()));
+          "The source Tensor(%s) can not copy when it is empty.", src->Name()));
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
