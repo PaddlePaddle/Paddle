@@ -162,12 +162,15 @@ class Reducer {
   std::vector<std::vector<size_t>> RebuildGruops();
 
   inline bool NeedRebuildGroup() {
-    return !has_rebuilt_group_ && !find_unused_vars_;
+    return !has_rebuilt_group_ && !find_unused_vars_each_step_;
   }
 
   void ProcessUnusedDenseVars();
 
   bool HasGrad(size_t var_index);
+
+  void TraverseBackwardGraph(
+      const std::vector<std::shared_ptr<imperative::VarBase>>& outputs);
 
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
@@ -195,7 +198,8 @@ class Reducer {
   std::unordered_map<VariableWrapper*, size_t> var_index_map_;
   std::vector<size_t> unused_vars_;
   bool has_marked_unused_vars_{false};
-  bool find_unused_vars_{false};
+  bool find_unused_vars_each_step_{false};
+  bool find_unused_vars_once_{true};
   bool groups_need_finalize_{false};
 #ifdef PADDLE_WITH_XPU_BKCL
   // comm_pool_ is used for scheduling allreduce in multi Kunlun cards training.

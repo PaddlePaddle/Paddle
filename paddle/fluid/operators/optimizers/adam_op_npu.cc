@@ -36,7 +36,6 @@ class AdamNPUKernel : public framework::OpKernel<T> {
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           framework::ToTypeName(param_var->Type())));
-    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
