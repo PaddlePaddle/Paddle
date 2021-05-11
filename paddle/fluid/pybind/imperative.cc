@@ -509,6 +509,11 @@ static void VarBaseCopy(const imperative::VarBase &src,
           }
         }
       }
+
+      if (!blocking) {
+        IncreaseVarbaseReferenceCountUntilCopyComplete(src, dst_place);
+      }
+
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The source Tensor(%s) can not copy when it is empty.", src.Name()));
