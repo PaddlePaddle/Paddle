@@ -179,7 +179,8 @@ def retry(exceptions=requests.exceptions.ConnectionError, delay=1, times=3):
                     _e = e
 
             if _e is not None:
-                raise _e
+                raise RuntimeError(
+                    'Downloading failed with exception {}'.format(str(_e)))
 
         return inner
 
