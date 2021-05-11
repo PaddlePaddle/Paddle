@@ -137,6 +137,29 @@ class OpRegistry {
   static std::unique_ptr<OperatorBase> CreateOp(const OpDesc& op_desc);
 };
 
+template <template <typename...> class TKernelType, typename DataType>
+constexpr bool HiddenKernel = false;
+
+#ifdef PADDLE_WITH_HIP
+#define HIP_HIDDEN_KERNEL(...)
+#else
+#define HIP_HIDDEN_KERNEL(...) \
+  template <>                  \
+  constexpr bool ::paddle::framework::HiddenKernel<__VA_ARGS__> = true
+#endif
+
+template <typename TDeviceContextType, template <typename...> class TKernelType,
+          typename... DataTypes>
+struct KernelCont;
+
+template <template <typename...> class TKernelType, typename... DataTypes>
+using CPUKernelCont =
+    KernelCont<platform::CPUDeviceContext, TKernelType, DataTypes...>;
+
+template <template <typename...> class TKernelType, typename... DataTypes>
+using CUDAKernelCont =
+    KernelCont<platform::CUDADeviceContext, TKernelType, DataTypes...>;
+
 template <typename PlaceType>
 inline void CheckKernelLaunch(const char* op_type) {}
 
@@ -195,6 +218,59 @@ struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
                   int customized_type_value) const {}
 };
 
+template <typename PlaceType, size_t I,
+          template <typename...> class TKernelType, typename DeviceContextType,
+          typename... DataTypes>
+struct OpKernelRegistrarFunctor<
+    PlaceType, true, I,
+    KernelCont<DeviceContextType, TKernelType, DataTypes...>> {
+  void operator()(const char* op_type, const char* library_type,
+                  int customized_type_value) const {}
+};
+
+template <template <typename...> class TKernelType, typename PlaceType,
+          typename DeviceContextType, typename DataType,
+          std::enable_if_t<HiddenKernel<TKernelType, DataType>>* = nullptr>
+void OpKernelRegistrarFunctorImpl(const char* op_type, const char* library_type,
+                                  int customized_type_value) {}
+
+template <template <typename...> class TKernelType, typename PlaceType,
+          typename DeviceContextType, typename DataType,
+          std::enable_if_t<!HiddenKernel<TKernelType, DataType>>* = nullptr>
+void OpKernelRegistrarFunctorImpl(const char* op_type, const char* library_type,
+                                  int customized_type_value) {
+  using KERNEL_TYPE = TKernelType<DeviceContextType, DataType>;
+  RegisterKernelClass<PlaceType, DataType>(
+      op_type, library_type, customized_type_value,
+
+      [op_type](const framework::ExecutionContext& ctx) {
+        KERNEL_TYPE().Compute(ctx);
+        CheckKernelLaunch<PlaceType>(op_type);
+      });
+}
+
+template <typename PlaceType, size_t I,
+          template <typename...> class TKernelType, typename DeviceContextType,
+          typename... DataTypes>
+struct OpKernelRegistrarFunctor<
+    PlaceType, false, I,
+    KernelCont<DeviceContextType, TKernelType, DataTypes...>> {
+  using KernelContType =
+      KernelCont<DeviceContextType, TKernelType, DataTypes...>;
+  using DataType = std::tuple_element_t<I, std::tuple<DataTypes...>>;
+
+  void operator()(const char* op_type, const char* library_type,
+                  int customized_type_value) const {
+    OpKernelRegistrarFunctorImpl<TKernelType, PlaceType, DeviceContextType,
+                                 DataType>(op_type, library_type,
+                                           customized_type_value);
+    OpKernelRegistrarFunctor<PlaceType, I + 1 == sizeof...(DataTypes), I + 1,
+                             KernelContType>
+        func;
+    func(op_type, library_type, customized_type_value);
+  }
+};
+
 // User can register many kernel in one place. The data type could be
 // different.
 template <typename PlaceType, typename... KernelType>
@@ -203,6 +279,22 @@ class OpKernelRegistrar : public Registrar {
   explicit OpKernelRegistrar(const char* op_type, const char* library_type,
                              int customized_type_value) {
     OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
+    func(op_type, library_type, customized_type_value);
+  }
+};
+
+template <typename PlaceType, template <typename...> class TKernelType,
+          typename DeviceContextType, typename... DataTypes>
+class OpKernelRegistrar<
+    PlaceType, KernelCont<DeviceContextType, TKernelType, DataTypes...>>
+    : public Registrar {
+ public:
+  explicit OpKernelRegistrar(const char* op_type, const char* library_type,
+                             int customized_type_value) {
+    OpKernelRegistrarFunctor<
+        PlaceType, false, 0,
+        KernelCont<DeviceContextType, TKernelType, DataTypes...>>
+        func;
     func(op_type, library_type, customized_type_value);
   }
 };

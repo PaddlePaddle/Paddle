@@ -18,39 +18,22 @@
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    abs, ops::AbsKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::AbsKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::AbsKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::AbsKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::AbsKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::float16>,
-    ops::AbsKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::complex64>,
-    ops::AbsKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::complex128>);
 
-REGISTER_OP_CUDA_KERNEL(
-    abs_grad, ops::AbsGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::AbsGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::AbsGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::AbsGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::AbsGradKernel<paddle::platform::CUDADeviceContext,
-                       paddle::platform::float16>,
-    ops::AbsGradKernel<paddle::platform::CUDADeviceContext,
-                       paddle::platform::complex64>,
-    ops::AbsGradKernel<paddle::platform::CUDADeviceContext,
-                       paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL(
+    abs, paddle::framework::CUDAKernelCont<
+             paddle::operators::AbsKernel, float, double, int, int64_t,
+             paddle::platform::float16, paddle::platform::complex64,
+             paddle::platform::complex128>);
 
-REGISTER_OP_CUDA_KERNEL(
+REGISTER_OP_CPU_KERNEL(
+    abs_grad, paddle::framework::CUDAKernelCont<
+                  paddle::operators::AbsGradKernel, float, double, int, int64_t,
+                  paddle::platform::float16, paddle::platform::complex64,
+                  paddle::platform::complex128>);
+
+REGISTER_OP_CPU_KERNEL(
     abs_grad_grad,
-    ops::AbsDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::AbsDoubleGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::AbsDoubleGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::AbsDoubleGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::AbsDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::float16>,
-    ops::AbsDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::complex64>,
-    ops::AbsDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::complex128>);
+    paddle::framework::CUDAKernelCont<
+        paddle::operators::AbsDoubleGradKernel, float, double, int, int64_t,
+        paddle::platform::float16, paddle::platform::complex64,
+        paddle::platform::complex128>);

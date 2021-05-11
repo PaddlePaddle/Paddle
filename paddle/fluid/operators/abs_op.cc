@@ -159,34 +159,17 @@ REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
 REGISTER_OPERATOR(abs_grad_grad, ops::AbsDoubleGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    abs, ops::AbsKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex64>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex128>);
+    abs, paddle::framework::CPUKernelCont<
+             paddle::operators::AbsKernel, float, double, int, int64_t,
+             paddle::platform::complex64, paddle::platform::complex128>);
 
 REGISTER_OP_CPU_KERNEL(
-    abs_grad, ops::AbsGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex64>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex128>);
+    abs_grad, paddle::framework::CPUKernelCont<
+                  paddle::operators::AbsGradKernel, float, double, int, int64_t,
+                  paddle::platform::complex64, paddle::platform::complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     abs_grad_grad,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::float16>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex64>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex128>);
+    paddle::framework::CPUKernelCont<
+        paddle::operators::AbsDoubleGradKernel, float, double, int, int64_t,
+        paddle::platform::complex64, paddle::platform::complex128>);
