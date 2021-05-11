@@ -178,7 +178,7 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
                             {MKLDNN_ARG_DIFF_SRC, *diff_src_memory_p}});
     astream.wait();
 
-    in_x_grad->set_layout(DataLayout::kMKLDNN);
+    in_x_grad->set_layout(framework::DataLayout::kMKLDNN);
     in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory_p));
   }
 };
