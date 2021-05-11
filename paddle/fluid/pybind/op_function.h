@@ -38,6 +38,12 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/pybind/imperative.h"
+#pragma GCC diagnostic ignored "-Wconversion-null"
+int init_numpy() {
+  import_array();
+  return 0;
+}
+const static int numpy_initialized = init_numpy();  // NOLINT
 
 namespace py = pybind11;
 namespace paddle {
