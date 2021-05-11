@@ -54,7 +54,7 @@ function ref_whl(){
 
   ref_dev=2.1.0.dev0
   
-  ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
+  ref_web="https:\\/\\/paddle-wheel.bj.bcebos.com\\/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
   
   if [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} == "ON" ]]; then
     ref_paddle38_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp38-cp38-linux_x86_64.whl
@@ -65,11 +65,13 @@ function ref_whl(){
   else
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp38-cp38-linux_x86_64.whl
   fi
+
+  ref_whl_package = ${ref_web}\\/${ref_paddle38_whl}
 }
 
 
 function make_dockerfile(){
-  sed "s/<paddle_whl>/${ref_paddle38_whl}/g" Dockerfile.jupyter_cpu >Dockerfile.tmp
+  sed "s/<paddle_whl>/${ref_whl_package}/g" Dockerfile.jupyter_cpu >Dockerfile.tmp
 }
 
 
