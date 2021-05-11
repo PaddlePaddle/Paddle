@@ -23,7 +23,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ConcatKernel<paddle::platform::CUDADeviceContext, int>);
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, uint8_t>);
 REGISTER_OP_CUDA_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, double>,
@@ -31,4 +32,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int>);
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, uint8_t>);
