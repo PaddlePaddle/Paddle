@@ -164,7 +164,7 @@ def get_path_from_url(url,
     return fullpath
 
 
-def retry(exceptions=requests.exceptions.ConnectionError, delay=1, times=3):
+def retry(exceptions, delay, times):
     def wrapper(func):
         @functools.wraps(func)
         def inner(*args, **kwargs):
