@@ -320,6 +320,23 @@ static inline void ConstructAttrMapFromPyArgs(
             }
           }
           attrs[key] = value;
+        } else if (PySequence_Check(obj)) {
+          Py_ssize_t len = PySequence_Size(obj);
+          PyObject* item = nullptr;
+          std::vector<int> value;
+          for (Py_ssize_t i = 0; i < len; i++) {
+            item = PySequence_GetItem(obj, i);
+            if (PyObject_CheckLong(item)) {
+              value.emplace_back(PyLong_AsLong(item));
+            } else {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "%s(): argument (position %d) must be "
+                  "list of int, but got %s item",
+                  op_type, arg_pos + 1,
+                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            }
+          }
+          attrs[key] = value;
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s(): argument (position %d) must be "
@@ -352,6 +369,23 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<float> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
+            if (PyObject_CheckFloat(item)) {
+              value.emplace_back(PyFloat_AsDouble(item));
+            } else {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "%s(): argument (position %d) must be "
+                  "list of float, but got %s item",
+                  op_type, arg_pos + 1,
+                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            }
+          }
+          attrs[key] = value;
+        } else if (PySequence_Check(obj)) {
+          Py_ssize_t len = PySequence_Size(obj);
+          PyObject* item = nullptr;
+          std::vector<float> value;
+          for (Py_ssize_t i = 0; i < len; i++) {
+            item = PySequence_GetItem(obj, i);
             if (PyObject_CheckFloat(item)) {
               value.emplace_back(PyFloat_AsDouble(item));
             } else {
@@ -520,6 +554,23 @@ static inline void ConstructAttrMapFromPyArgs(
             }
           }
           attrs[key] = value;
+        } else if (PySequence_Check(obj)) {
+          Py_ssize_t len = PySequence_Size(obj);
+          PyObject* item = nullptr;
+          std::vector<int64_t> value;
+          for (Py_ssize_t i = 0; i < len; i++) {
+            item = PySequence_GetItem(obj, i);
+            if (PyObject_CheckLong(item)) {
+              value.emplace_back(PyLong_AsLong(item));
+            } else {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "%s(): argument (position %d) must be "
+                  "list of long, but got %s item",
+                  op_type, arg_pos + 1,
+                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            }
+          }
+          attrs[key] = value;
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s(): argument (position %d) must be "
@@ -552,6 +603,23 @@ static inline void ConstructAttrMapFromPyArgs(
           std::vector<double> value;
           for (Py_ssize_t i = 0; i < len; i++) {
             item = PyTuple_GetItem(obj, i);
+            if (PyObject_CheckFloat(item)) {
+              value.emplace_back(PyFloat_AsDouble(item));
+            } else {
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "%s(): argument (position %d) must be "
+                  "list of float, but got %s item",
+                  op_type, arg_pos + 1,
+                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            }
+          }
+          attrs[key] = value;
+        } else if (PySequence_Check(obj)) {
+          Py_ssize_t len = PySequence_Size(obj);
+          PyObject* item = nullptr;
+          std::vector<double> value;
+          for (Py_ssize_t i = 0; i < len; i++) {
+            item = PySequence_GetItem(obj, i);
             if (PyObject_CheckFloat(item)) {
               value.emplace_back(PyFloat_AsDouble(item));
             } else {
