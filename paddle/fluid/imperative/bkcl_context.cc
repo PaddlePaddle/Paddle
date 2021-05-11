@@ -19,12 +19,11 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/bkcl_helper.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
-
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -77,7 +76,7 @@ void BKCLParallelContext::Init() {
   bkcl_ids.resize(strategy_.nrings_);
 
   if (strategy_.local_rank_ == 0) {
-    // generate the unique ncclid on the root worker
+    // generate the unique bkclid on the root worker
     for (size_t i = 0; i < bkcl_ids.size(); ++i) {
       auto ret = bkcl_get_unique_id(&bkcl_ids[i]);
       PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
@@ -97,6 +96,28 @@ void BKCLParallelContext::Init() {
         &bkcl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, xpu_id,
         ring_id);
   }
+}
+
+void BKCLParallelContext::InitWithRingID(int ring_id) {
+  std::vector<BKCLUniqueId> bkcl_ids;
+  bkcl_ids.resize(1);
+
+  if (strategy_.local_rank_ == 0) {
+    // generate the unique bkclid on the root worker
+    auto ret = bkcl_get_unique_id(&bkcl_ids[0]);
+    PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
+                      platform::errors::PreconditionNotMet(
+                          "BKCL get unique id failed [%d]", ret));
+  }
+  BcastBKCLId(bkcl_ids, 0);
+
+  int xpu_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
+  VLOG(0) << "init BKCL context nranks: " << strategy_.nranks_
+          << " local rank: " << strategy_.local_rank_ << " xpu id: " << xpu_id
+          << " ring id: " << ring_id;
+  // it will assign bkcl_comm in XPUDeviceContext within ring_id
+  platform::BKCLCommContext::Instance().CreateBKCLComm(
+      &bkcl_ids[0], strategy_.nranks_, strategy_.local_rank_, xpu_id, ring_id);
 }
 
 void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
@@ -146,8 +167,6 @@ void BKCLParallelContext::WaitCompute(int ring_id) {
       platform::errors::OutOfRange("Ring id expected < nrings,"
                                    "but got ring id = %d, nrings = %d",
                                    ring_id, strategy_.nrings_));
-  // TODO(wangxi16): [Performance optimize] Maybe need to put Wait and
-  // bkcl_allreduce to comm thread, for bkcl_allreduce is blocking now.
   auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
@@ -165,6 +184,12 @@ void BKCLParallelContext::WaitComm(int ring_id) {
   auto comm_dev_ctx =
       platform::BKCLCommContext::Instance().Get(ring_id, place_)->dev_context();
   comm_dev_ctx->Wait();
+}
+
+void BKCLParallelContext::SynchronizeCompute() {
+  auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place_));
+  compute_dev_ctx->Wait();
 }
 
 }  //  namespace imperative

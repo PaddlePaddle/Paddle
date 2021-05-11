@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/op_base.h"
+#include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -38,7 +39,7 @@ void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
   VLOG(6) << "Set current tracer: " << g_current_tracer;
 }
 
-static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
+void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   for (const auto& pair : outs) {
     for (const auto& var : pair.second) {
       // NOTE(zhiqiu): this happends when None output are passed from python
@@ -83,7 +84,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
   if (gcs_.count(place) == 0) {
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gc.reset(new framework::DefaultStreamGarbageCollector(
           BOOST_GET_CONST(platform::CUDAPlace, place), 0));
 
@@ -94,7 +95,7 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gc.reset(new framework::CUDAPinnedGarbageCollector(
           BOOST_GET_CONST(platform::CUDAPinnedPlace, place), 0));
 
@@ -134,6 +135,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const platform::Place& place, bool trace_backward,
                      const std::map<std::string, std::string>& inplace_map) {
   platform::RecordEvent op_type_record_event(type);
+  platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for

@@ -73,6 +73,17 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.pipeline_configs = configs
         self.assertEqual(strategy.pipeline_configs["accumulate_steps"], 2)
 
+    def test_hybrid_parallel_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": 2,
+            "pp_degree": 4
+        }
+        self.assertEqual(strategy.hybrid_configs["dp_degree"], 1)
+        self.assertEqual(strategy.hybrid_configs["mp_degree"], 2)
+        self.assertEqual(strategy.hybrid_configs["pp_degree"], 4)
+
     def test_localsgd(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.localsgd = True
@@ -178,6 +189,15 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.last_comm_group_size_MB, 50)
         with self.assertRaises(ValueError):
             strategy.last_comm_group_size_MB = -1
+
+    def test_find_unused_parameters(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.find_unused_parameters = True
+        self.assertEqual(strategy.find_unused_parameters, True)
+        strategy.find_unused_parameters = False
+        self.assertEqual(strategy.find_unused_parameters, False)
+        strategy.find_unused_parameters = "True"
+        self.assertEqual(strategy.find_unused_parameters, False)
 
     def test_fuse_grad_size_in_TFLOPS(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()

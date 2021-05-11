@@ -6,15 +6,9 @@ endif()
 if (WITH_NV_JETSON)
   add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
-  set(paddle_known_gpu_archs7 "53")
-  set(paddle_known_gpu_archs8 "53 62")
-  set(paddle_known_gpu_archs9 "53 62")
   set(paddle_known_gpu_archs10 "53 62 72")
 else()
-  set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
-  set(paddle_known_gpu_archs7 "30 35 50 52")
-  set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
-  set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
+  set(paddle_known_gpu_archs "35 50 52 60 61 70 75 80")
   set(paddle_known_gpu_archs10 "35 50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
 endif()
@@ -74,7 +68,7 @@ endfunction()
 #   select_nvcc_arch_flags(out_variable)
 function(select_nvcc_arch_flags out_variable)
   # List of arch names
-  set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "All" "Manual")
+  set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "Ampere" "All" "Manual")
   set(archs_name_default "Auto")
   list(APPEND archs_names "Auto")
 
@@ -91,7 +85,7 @@ function(select_nvcc_arch_flags out_variable)
 
   if(${CUDA_ARCH_NAME} STREQUAL "Manual")
     set(CUDA_ARCH_BIN ${paddle_known_gpu_archs} CACHE STRING "Specify 'real' GPU architectures to build binaries for, BIN(PTX) format is supported")
-    set(CUDA_ARCH_PTX "50"                     CACHE STRING "Specify 'virtual' PTX architectures to build PTX intermediate code for")
+    set(CUDA_ARCH_PTX ""                        CACHE STRING "Specify 'virtual' PTX architectures to build PTX intermediate code for")
     mark_as_advanced(CUDA_ARCH_BIN CUDA_ARCH_PTX)
   else()
     unset(CUDA_ARCH_BIN CACHE)
@@ -108,6 +102,8 @@ function(select_nvcc_arch_flags out_variable)
     set(cuda_arch_bin "70")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
     set(cuda_arch_bin "75")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Ampere")
+    set(cuda_arch_bin "80")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
@@ -158,31 +154,21 @@ function(select_nvcc_arch_flags out_variable)
 endfunction()
 
 message(STATUS "CUDA detected: " ${CMAKE_CUDA_COMPILER_VERSION})
-if (${CMAKE_CUDA_COMPILER_VERSION} LESS 7.0)
-  set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 8.0) # CUDA 7.x
-  set(paddle_known_gpu_archs ${paddle_known_gpu_archs7})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 9.0) # CUDA 8.x
-  set(paddle_known_gpu_archs ${paddle_known_gpu_archs8})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-  # CUDA 8 may complain that sm_20 is no longer supported. Suppress the
-  # warning for now.
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0) # CUDA 9.x
-  set(paddle_known_gpu_archs ${paddle_known_gpu_archs9})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0) # CUDA 10.x
+if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0) # CUDA 10.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.x
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
+elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.2) # CUDA 11.0/11.1
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs11})
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
+elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.2+
+  set(paddle_known_gpu_archs "${paddle_known_gpu_archs11} 86")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
 endif()
 
 if (NOT ${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0)
@@ -198,14 +184,11 @@ select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
 message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 
-# Set C++11 support
+# Set C++14 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-if (NOT WIN32) # windows msvc2015 support c++11 natively.
-    # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-  set(CMAKE_CUDA_STANDARD 11)
-endif(NOT WIN32)
+set(CMAKE_CUDA_STANDARD 14)
 
 # (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
 # So replace /W[1-4] with /W0

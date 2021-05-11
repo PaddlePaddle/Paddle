@@ -302,19 +302,19 @@ def convert_var_shape_simple(x):
         return x.shape
 
 
-def eval_if_exist_else_none(name, local_symbol_table):
+def eval_if_exist_else_none(name, global_symbol_table):
     """
     Args:
         name([str]): Expression passed into `eval`.
-        local_symbol_table(dict): Specified from `locals()`. DO NOT use `globals()`,
-                                  it has a higher priority and will hide away variables
-                                  from `locals()`.
+        local_symbol_table(dict): Specified from `globals()`. DO NOT use `locals()`,
+                                  because all STATIC_CONVERT_VAR_SHAPE_SUFFIX vars is
+                                  declared with keyword `global`.
     
     Returns:
-        Return the variable if found in local_symbol_table else None.
+        Return the variable if found in global_symbol_table else None.
     """
     try:
-        return eval(name, local_symbol_table)
+        return eval(name, global_symbol_table)
     except:
         return None
 

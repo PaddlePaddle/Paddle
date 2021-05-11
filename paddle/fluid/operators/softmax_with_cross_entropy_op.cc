@@ -55,7 +55,7 @@ class SoftmaxWithCrossEntropyOpMaker
         "the given labels as soft labels.")
         .SetDefault(false);
     AddAttr<bool>(
-        "softmax_switch",
+        "use_softmax",
         "(bool, default: true), A flag to indicate whether to do softmax ")
         .SetDefault(true);
     AddAttr<bool>(
@@ -320,7 +320,6 @@ REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
 REGISTER_OP_VERSION(softmax_with_cross_entropy)
     .AddCheckpoint(
         R"ROC(
-              Add a new attribute [softmax_switch] )ROC",
+              Add a new attribute [use_softmax] )ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "softmax_switch", "A flag to indicate whether to do softmax",
-            true));
+            "use_softmax", "A flag to indicate whether to do softmax", true));

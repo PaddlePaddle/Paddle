@@ -28,7 +28,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/heter_service.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -204,7 +205,7 @@ class DeviceWorker {
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
   paddle::platform::Place place_;
-  int64_t batch_num_;
+  int64_t batch_num_ = 0;
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
@@ -265,6 +266,9 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
+#ifdef PADDLE_WITH_HETERPS
+  platform::DeviceContext* dev_ctx_ = nullptr;
+#endif
 };
 
 class DownpourWorker : public HogwildWorker {
@@ -454,7 +458,7 @@ class HeterBoxWorker : public HogwildWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual void ProduceTasks() override;
+  void ProduceTasks() override;
   virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
   virtual void TrainFilesWithProfiler() {}
@@ -555,13 +559,12 @@ class PSGPUWorker : public HogwildWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual void ProduceTasks() override;
+  void ProduceTasks() override;
   virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
   void ResetStat();
 
  protected:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   void PushGradients();
   void DumpParam();
   void CopySparseTable();
@@ -638,7 +641,8 @@ class PSGPUWorker : public HogwildWorker {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}
@@ -659,6 +663,9 @@ class SectionWorker : public DeviceWorker {
   void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
+  void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
+  void SetScheduleMode(int mode) { schedule_mode_ = mode; }
   void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
     microbatch_scopes_ = scope;
   }
@@ -666,11 +673,23 @@ class SectionWorker : public DeviceWorker {
   void SetSkipVars(const std::vector<std::string>& skip_vars) {
     skip_vars_ = skip_vars;
   }
+  void RunBackward(
+      int micro_id, std::unique_ptr<GarbageCollector>&,
+      std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
+  void RunForward(
+      int micro_id, std::unique_ptr<GarbageCollector>&,
+      std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
+  void RunUpdate(
+      std::unique_ptr<GarbageCollector>&,
+      std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
 
  protected:
   int section_id_;
   int thread_id_;
   int num_microbatches_;
+  int num_pipeline_stages_;
+  int pipeline_stage_;
+  int schedule_mode_;  // 0 for F-then-B and 1 for 1F1B
   std::vector<Scope*> microbatch_scopes_;
   std::vector<std::string> skip_vars_;
   const Scope* minibatch_scope_;

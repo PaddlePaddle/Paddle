@@ -22,7 +22,9 @@ import paddle
 from paddle.fluid import core
 
 
-def temporal_shift(x, seg_num, shift_ratio):
+def temporal_shift(x, seg_num, shift_ratio, data_format):
+    if data_format == "NHWC":
+        x = np.transpose(x, (0, 3, 1, 2))
     shape = x.shape
     reshape_x = x.reshape((-1, seg_num, shape[1], shape[2], shape[3]))
     pad_x = np.pad(reshape_x, ((0, 0), (1, 1), (0, 0), (0, 0), (0, 0)),
@@ -33,7 +35,10 @@ def temporal_shift(x, seg_num, shift_ratio):
     slice2 = pad_x[:, 2:seg_num + 2, c1:c2, :, :]
     slice3 = pad_x[:, 1:seg_num + 1, c2:, :, :]
     concat_x = np.concatenate([slice1, slice2, slice3], axis=2)
-    return concat_x.reshape(shape)
+    out = concat_x.reshape(shape)
+    if data_format == "NHWC":
+        out = np.transpose(out, (0, 2, 3, 1))
+    return out
 
 
 class TestTemporalShift(OpTest):
@@ -45,11 +50,13 @@ class TestTemporalShift(OpTest):
         self.attrs = {
             "seg_num": self.seg_num,
             "shift_ratio": self.shift_ratio,
+            "data_format": self.data_format
         }
 
         self.inputs = {"X": x, }
 
-        output = temporal_shift(x, self.seg_num, self.shift_ratio)
+        output = temporal_shift(x, self.seg_num, self.shift_ratio,
+                                self.data_format)
         self.outputs = {"Out": output}
 
     def test_check_output(self):
@@ -63,6 +70,7 @@ class TestTemporalShift(OpTest):
         self.seg_num = 3
         self.shift_ratio = 0.25
         self.dtype = 'float64'
+        self.data_format = 'NCHW'
 
 
 class TestTemporalShift2(TestTemporalShift):
@@ -70,6 +78,7 @@ class TestTemporalShift2(TestTemporalShift):
         self.x_shape = (4, 9, 7, 7)
         self.seg_num = 2
         self.shift_ratio = 0.2
+        self.data_format = 'NCHW'
 
 
 class TestTemporalShift3(TestTemporalShift):
@@ -77,6 +86,15 @@ class TestTemporalShift3(TestTemporalShift):
         self.x_shape = (3, 10, 5, 5)
         self.seg_num = 1
         self.shift_ratio = 0.3
+        self.data_format = 'NCHW'
+
+
+class TestTemporalShift4(TestTemporalShift):
+    def initTestCase(self):
+        self.x_shape = (6, 5, 5, 4)
+        self.seg_num = 3
+        self.shift_ratio = 0.25
+        self.data_format = 'NHWC'
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -87,6 +105,7 @@ class TestTemporalShiftFP16(TestTemporalShift):
         self.seg_num = 1
         self.shift_ratio = 0.3
         self.dtype = 'float16'
+        self.data_format = 'NCHW'
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -113,6 +132,14 @@ class TestTemporalShiftAPI(unittest.TestCase):
             input = paddle.randn([6, 4, 2, 2])
             out = paddle.nn.functional.temporal_shift(
                 x=input, seg_num=2, shift_ratio=0.2)
+
+    def test_error(self):
+        def attr_data_format():
+            input = paddle.randn([6, 4, 2, 2])
+            out = paddle.nn.functional.temporal_shift(
+                x=input, seg_num=2, shift_ratio=0.2, data_format="HWC")
+
+        self.assertRaises(ValueError, attr_data_format)
 
 
 if __name__ == "__main__":

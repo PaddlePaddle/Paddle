@@ -191,29 +191,44 @@ class TestChooseShapeAttrOrApi(unittest.TestCase):
 
 
 class TestEvaIfExistElseNone(unittest.TestCase):
-    def test_locals(self):
-        x_shape = [1, 2, 3]
-        self.assertEqual(eval_if_exist_else_none('x_shape', locals()), x_shape)
-
     def test_globals(self):
+        global x_shape
+        x_shape = [1, 2, 3]
+        self.assertEqual(eval_if_exist_else_none('x_shape', locals()), None)
+        self.assertEqual(eval_if_exist_else_none('x_shape', globals()), x_shape)
+
+        del x_shape
+
+    def test_enclosing_scope(self):
+        global x_shape
         x_shape = [1, 2, 3]
 
         def foo():
-            x_shape = [2, 3, 4]
+            y_shape = [2, 3, 4]
             self.assertEqual(
-                eval_if_exist_else_none('x_shape', locals()), [2, 3, 4])
+                eval_if_exist_else_none('x_shape', globals()), [1, 2, 3])
+            self.assertEqual(
+                eval_if_exist_else_none('y_shape', locals()), [2, 3, 4])
 
         foo()
+        del x_shape
 
-    def test_invisible_of_func(self):
+    def test_global_in_func(self):
         x_shape = [1, 2, 3]
 
         def foo():
-            x_shape = [2, 3, 4]
-            return x_shape
+            global y_shape
+            y_shape = [2, 3, 4]
 
-        self.assertEqual(
-            eval_if_exist_else_none('x_shape', locals()), [1, 2, 3])
+            self.assertEqual(
+                eval_if_exist_else_none('y_shape', globals()), [2, 3, 4])
+            self.assertEqual(eval_if_exist_else_none('x_shape', locals()), None)
+            self.assertEqual(
+                eval_if_exist_else_none('x_shape', globals()), None)
+
+            del y_shape
+
+        foo()
 
     def test_none(self):
         def foo():

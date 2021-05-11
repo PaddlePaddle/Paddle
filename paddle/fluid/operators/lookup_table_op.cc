@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/platform/bfloat16.h"
 
 namespace paddle {
 namespace operators {
@@ -222,9 +223,11 @@ REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
                        ops::LookupTableKernel<double>,
-                       ops::LookupTableKernel<int8_t>);
+                       ops::LookupTableKernel<int8_t>,
+                       ops::LookupTableKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
-                       ops::LookupTableGradKernel<double>);
+                       ops::LookupTableGradKernel<double>,
+                       ops::LookupTableGradKernel<paddle::platform::bfloat16>);
 
 /* ==========================  register checkpoint ===========================*/
 

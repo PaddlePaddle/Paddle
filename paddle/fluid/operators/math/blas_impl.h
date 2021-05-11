@@ -15,18 +15,33 @@
 #ifdef PADDLE_WITH_MKLML
 #include <mkl.h>
 #endif
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
+namespace detail {
+
+template <typename T>
+static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
+                 const int incy) {
+  // Y = Y + alpha * X
+  while (n-- > 0) {
+    *y += alpha * *x;
+    y = y + incy;
+    x = x + incx;
+  }
+}
+}  // namespace detail
 
 template <typename T>
 struct CBlas;
@@ -37,6 +52,21 @@ struct CBlas<int8_t> {
   static void VCOPY(ARGS... args) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Blas VCOPY do not supported on CPU, please check your code"));
+  }
+};
+
+template <>
+struct CBlas<platform::bfloat16> {
+  template <typename... ARGS>
+  static void AXPY(ARGS... args) {
+    detail::axpy(args...);
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Blas VCOPY do not supported on CPU with bfloat16,"
+        " please check your code"));
   }
 };
 

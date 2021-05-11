@@ -522,15 +522,15 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_instance_norm_test SRCS trt_instance_norm_converter_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_INSTANCE_NORM_MODEL}/)
-    inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
+    inference_analysis_test(test_analyzer_capi_exp_gpu SRCS analyzer_capi_exp_gpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(test_analyzer_capi_xpu SRCS analyzer_capi_xpu_tester.cc
+    inference_analysis_test(test_analyzer_capi_exp_xpu SRCS analyzer_capi_exp_xpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
             
     set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
-    if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR}/small_quant_model.tgz)
+    if (NOT EXISTS ${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model.tgz)
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "small_quant_model.tgz")
     endif()
     inference_analysis_test(trt_quant_int8_test SRCS trt_quant_int8_test.cc
@@ -538,7 +538,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
     set(TRT_MODEL_QUANT_YOLOV3_DIR "${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware")
-    if (NOT EXISTS ${TRT_MODEL_QUANT_YOLOV3_DIR}/yolov3_r50_quant_aware.tgz)
+    if (NOT EXISTS ${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware.tgz)
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "yolov3_r50_quant_aware.tgz")
     endif()
     inference_analysis_test(trt_quant_int8_yolov3_r50_test SRCS trt_quant_int8_yolov3_r50_test.cc
@@ -576,8 +576,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
 
-    set(TEST_TRT_ERNIE_UNSER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_unserialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL}/ernie_model_4_unserialized.tgz)
+    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
     endif()
 
@@ -585,8 +584,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
 
-    set(TEST_TRT_ERNIE_UNSER_FP16_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_fp16_unserialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_FP16_MODEL}/ernie_model_4_unserialized.tgz)
+    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL}/ernie_model_4_fp16_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_fp16_unserialized.tgz")
     endif()
 
@@ -606,14 +604,23 @@ inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR})
 
-inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
-            ARGS --infer_model=${RESNET50_MODEL_DIR}/model)
+inference_analysis_test(test_analyzer_capi_exp SRCS analyzer_capi_exp_tester.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
+        ARGS --infer_model=${RESNET50_MODEL_DIR}/model)
 
-inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
+inference_analysis_test(test_analyzer_capi_exp_pd_config SRCS analyzer_capi_exp_pd_config_tester.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
+        ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
+
+inference_analysis_test(test_analyzer_capi_exp_pd_tensor SRCS analyzer_capi_exp_pd_tensor_tester.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
+        ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
+
+if (NOT APPLE AND NOT WIN32)
+    inference_analysis_test(test_analyzer_capi_exp_pd_threads SRCS analyzer_capi_exp_pd_threads_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
-
+endif()
 inference_analysis_test(test_analyzer_zerocopytensor_tensor SRCS analyzer_zerocopy_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${OCR_INSTALL_DIR}/model)        
@@ -623,17 +630,17 @@ inference_analysis_test(test_analyzer_paddletensor_tensor SRCS analyzer_paddle_t
             ARGS --infer_model=${OCR_INSTALL_DIR}/model --infer_data=${OCR_INSTALL_DIR}/data.txt --refer_result=${OCR_INSTALL_DIR}/result.txt)    
             
 if(WITH_MKLDNN)
-  inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
+  inference_analysis_test(test_analyzer_capi_exp_int SRCS analyzer_capi_exp_int_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
- endif()
+endif()
 
-inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
+inference_analysis_test(test_analyzer_capi_exp_ner SRCS analyzer_capi_exp_ner_tester.cc 
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
         ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
 
 if(WITH_GPU)
-  inference_analysis_test(paddle_infer_api_test SRCS paddle_infer_api_test.cc
+    inference_analysis_test(paddle_infer_api_test SRCS paddle_infer_api_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR})
 endif()

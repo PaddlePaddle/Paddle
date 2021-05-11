@@ -187,6 +187,7 @@ size_t VarBase::GradOpNum() const {
 }
 
 void VarBase::ClearGradient() {
+  VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
     if (grad_var_->Var().IsType<framework::SelectedRows>()) {
       auto* grad_t =
@@ -406,7 +407,7 @@ void OpBase::Run(const framework::OperatorBase& op,
   OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, place);
 }
 
-static void ClearNoNeedBufferInputs(OpBase* op) {
+void ClearNoNeedBufferInputs(OpBase* op) {
   auto& inferer = op->Info().NoNeedBufferVarsInferer();
   if (!inferer) return;
   auto* ins = op->GetMutableInsMap();
