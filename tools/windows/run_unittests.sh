@@ -274,6 +274,8 @@ function collect_failed_tests() {
 
 function run_unittest_cpu() {
     tmpfile=$tmp_dir/$RANDOM
+    (ctest -E "$disable_ut_quickly|$diable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -R test_lac | tee $tmpfile) &
+    wait;
     (ctest -E "$disable_ut_quickly|$diable_wincpu_test" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
     wait;
 }
