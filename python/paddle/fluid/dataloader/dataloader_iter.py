@@ -292,10 +292,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # add _shutdown_on_exit function to to CleanupFuncRegistrar
         # to make sure _try_shutdown_all is always called when program
         # exit for resoure releasing safely
-        # _try_shutdown_all may re-enter for we register _shutdown_on_exit
-        # to atexit, so we use _shutdown_on_exit (not __del__) for
-        # _shutdown_on_exit add timeout=1 for process.join, which
-        # may hang when re-enter in some OS
+        # worker join may hang for in _try_shutdown_all call in atexit
+        # for main process is in atexit state in some OS, so we add
+        # timeout=1 for shutdown function call in atexit, for shutdown
+        # function call in __del__, we keep it as it is
         CleanupFuncRegistrar.register(self._shutdown_on_exit)
 
     def _init_workers(self):
@@ -380,11 +380,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 for i in range(self._num_workers):
                     self._shutdown_worker(i)
 
-                for w in self._workers:
-                    w.join(timeout)
-                for q in self._indices_queues:
-                    q.cancel_join_thread()
-                    q.close()
+                if not self._shutdown:
+                    for w in self._workers:
+                        w.join(timeout)
+                    for q in self._indices_queues:
+                        q.cancel_join_thread()
+                        q.close()
             finally:
                 core._erase_process_pids(id(self))
                 self._shutdown = True
