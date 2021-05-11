@@ -20,6 +20,7 @@
 | gongweibao | Wei-Bao Gong |
 | guru4elephant | Daxiang Dong |
 | Guo Sheng | Sheng Guo |
+| [grygielski](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Adam Grygielski |
 | Haichao-Zhang | Hai-Chao Zhang |
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
@@ -53,6 +54,8 @@
 | QiJune | Jun Qi |
 | qingqing01 | Qing-Qing Dang |
 | reyoung | Yang Yu |
+| [Sand3r-](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Michal Gallus |
+| [sfraczek](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Sylwester Fraczek |
 | sneaxiy | Jin-Le Zeng |
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
