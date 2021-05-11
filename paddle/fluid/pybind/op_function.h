@@ -203,13 +203,15 @@ inline bool PyObject_CheckBool(PyObject* obj) { return PyBool_Check(obj); }
 inline bool PyObject_CheckLong(PyObject* obj) {
   return (PyLong_Check(obj) && !PyBool_Check(obj)) ||
          PyObject_IsInstance(obj, (PyObject*)g_VarType_PyType) ||  // NOLINT
-         (_import_array() >= 0 && PyArray_IsScalar((obj), Integer));
+         (_import_array() >= 0 && PyArray_IsScalar((obj), Integer)) ||
+         PyObject_IsInstance(obj, (PyObject*)g_VarBase_PyType);  // NOLINT
 }
 
 inline bool PyObject_CheckFloat(PyObject* obj) {
   return PyFloat_Check(obj) || PyLong_Check(obj) ||
          (_import_array() >= 0 && PyArray_IsScalar(obj, Floating)) ||
-         (_import_array() >= 0 && PyArray_IsScalar(obj, Integer));
+         (_import_array() >= 0 && PyArray_IsScalar(obj, Integer)) ||
+         PyObject_IsInstance(obj, (PyObject*)g_VarBase_PyType);  // NOLINT
 }
 
 inline bool PyObject_CheckString(PyObject* obj) { return PyUnicode_Check(obj); }
