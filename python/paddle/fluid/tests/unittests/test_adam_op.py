@@ -637,7 +637,11 @@ class TestAdamOpV2(unittest.TestCase):
 
 
 class TestNetWithEpsilonTensor(unittest.TestCase):
-    def _test(self, place, use_tensor=True, use_fluid_api=True):
+    def _test(self,
+              place,
+              use_tensor=True,
+              use_fluid_api=True,
+              use_global_beta_pow=False):
         paddle.enable_static()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -690,7 +694,8 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                         learning_rate=0.01,
                         beta1=beta1,
                         beta2=beta2,
-                        epsilon=epsilon)
+                        epsilon=epsilon,
+                        use_global_beta_pow=use_global_beta_pow)
                 else:
                     adam = paddle.optimizer.Adam(
                         learning_rate=0.01,
@@ -703,7 +708,8 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                         learning_rate=0.01,
                         beta1=beta1_init,
                         beta2=beta2_init,
-                        epsilon=epsilon_init)
+                        epsilon=epsilon_init,
+                        use_global_beta_pow=use_global_beta_pow)
                 else:
                     adam = fluid.optimizer.Adam(
                         learning_rate=0.01,
@@ -737,9 +743,11 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
 
         for use_tensor in [True, False]:
             for use_fluid_api in [True, False]:
-                pred, loss = self._test(place, use_tensor, use_fluid_api)
-                preds.append(pred)
-                losses.append(loss)
+                for use_global_beta_pow in [True, False]:
+                    pred, loss = self._test(place, use_tensor, use_fluid_api,
+                                            use_global_beta_pow)
+                    preds.append(pred)
+                    losses.append(loss)
         for pred in preds:
             self.assertTrue(np.allclose(pred, preds[0]))
         for loss in losses:
