@@ -156,9 +156,11 @@ template <template <typename...> class TKernelType, typename... DataTypes>
 using CPUKernelCont =
     KernelCont<platform::CPUDeviceContext, TKernelType, DataTypes...>;
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <template <typename...> class TKernelType, typename... DataTypes>
 using CUDAKernelCont =
     KernelCont<platform::CUDADeviceContext, TKernelType, DataTypes...>;
+#endif
 
 template <typename PlaceType>
 inline void CheckKernelLaunch(const char* op_type) {}
