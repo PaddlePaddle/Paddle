@@ -78,7 +78,3 @@ RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.7 /usr/lib/x86_64-linux-gnu/libc
 ENV LD_LIBRARY_PATH=/usr/local/cuda-10.1/targets/x86_64-linux/lib/:${LD_LIBRARY_PATH}
 
 RUN unset https_proxy http_proxy
-
-RUN wget -q https://paddlepaddledeps.bj.bcebos.com/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl && \
-    pip install paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl && \
-    rm -f paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl

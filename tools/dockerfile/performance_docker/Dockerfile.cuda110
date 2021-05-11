@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.1-cudnn7-runtime-ubuntu16.04
+FROM nvidia/cuda:11.0-cudnn8-runtime-ubuntu16.04
 USER root
 
 ENV HOME_WORK_DIR=/root/paddlejob
@@ -63,22 +63,17 @@ RUN rm -f /usr/bin/python3 /usr/bin/pip /usr/bin/pip3 && \
 RUN rm -f /usr/lib/x86_64-linux-gnu/libcublas.so && \
     ln -s /usr/lib/x86_64-linux-gnu/libcublas.so.10 /usr/lib/x86_64-linux-gnu/libcublas.so
 
-
-RUN wget -q https://paddlepaddledeps.bj.bcebos.com/nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl && \ 
-   pip install nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl && \
-   rm -f nvidia_dali_cuda100-0.24.0-1446725-cp37-cp37m-manylinux2014_x86_64.whl
+RUN wget -q https://paddlepaddledeps.bj.bcebos.com/nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl && \ 
+   pip install nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl && \
+   rm -f nvidia_dali_cuda110-0.24.0-1472979-cp37-cp37m-manylinux2014_x86_64.whl
 
 ADD requirements.txt ${HOME_WORK_DIR} 
 RUN cd ${HOME_WORK_DIR} && pip install -r requirements.txt && rm -f requirements.txt
 
-RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.7 /usr/lib/x86_64-linux-gnu/libcudnn.so && \
+RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.8 /usr/lib/x86_64-linux-gnu/libcudnn.so && \
     ln -s /usr/lib/x86_64-linux-gnu/libnccl.so.2 /usr/lib/x86_64-linux-gnu/libnccl.so && \
-    ln -s /usr/local/cuda-10.1/targets/x86_64-linux/lib/libcusolver.so.10 /usr/local/cuda-10.1/targets/x86_64-linux/lib/libcusolver.so
+    ln -s /usr/local/cuda-11.0/targets/x86_64-linux/lib/libcusolver.so.10 /usr/local/cuda-11.0/targets/x86_64-linux/lib/libcusolver.so
 
-ENV LD_LIBRARY_PATH=/usr/local/cuda-10.1/targets/x86_64-linux/lib/:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/usr/local/cuda-11.0/targets/x86_64-linux/lib/:${LD_LIBRARY_PATH}
 
 RUN unset https_proxy http_proxy
-
-RUN wget -q https://paddlepaddledeps.bj.bcebos.com/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl && \
-    pip install paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl && \
-    rm -f paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
