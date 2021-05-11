@@ -64,6 +64,7 @@ class TestFleetBase(unittest.TestCase):
             fluid.default_main_program())
 
         fleet.save(dirname="/tmp", feed=['x', 'y'], fetch=[avg_cost])
+        fleet.save(dirname="/tmp", feed=[input_x, input_y], fetch=[avg_cost])
         fleet.save(dirname="/tmp")
 
         self.assertRaises(
