@@ -62,18 +62,14 @@ class AbsKernel<platform::CUDADeviceContext, T>
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    abs, paddle::framework::CUDAKernelCont<ops::AbsKernel, float, double, int,
-                                           int64_t, plat::float16,
-                                           plat::complex64, plat::complex128>);
+REGISTER_OP_CUDA_KERNEL_MULTI_DTYPE(abs, ops::AbsKernel, float, double, int,
+                                    int64_t, plat::float16, plat::complex64,
+                                    plat::complex128);
 
-REGISTER_OP_CUDA_KERNEL(abs_grad,
-                        paddle::framework::CUDAKernelCont<
-                            ops::AbsGradKernel, float, double, int, int64_t,
-                            plat::float16, plat::complex64, plat::complex128>);
+REGISTER_OP_CUDA_KERNEL_MULTI_DTYPE(abs_grad, ops::AbsGradKernel, float, double,
+                                    int, int64_t, plat::float16,
+                                    plat::complex64, plat::complex128);
 
-REGISTER_OP_CUDA_KERNEL(
-    abs_grad_grad,
-    paddle::framework::CUDAKernelCont<ops::AbsDoubleGradKernel, float, double,
-                                      int, int64_t, plat::float16,
-                                      plat::complex64, plat::complex128>);
+REGISTER_OP_CUDA_KERNEL_MULTI_DTYPE(abs_grad_grad, ops::AbsDoubleGradKernel,
+                                    float, double, int, int64_t, plat::float16,
+                                    plat::complex64, plat::complex128);

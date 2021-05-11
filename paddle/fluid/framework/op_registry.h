@@ -140,14 +140,6 @@ class OpRegistry {
 template <template <typename...> class TKernelType, typename DataType>
 constexpr bool HiddenKernel = false;
 
-#ifdef PADDLE_WITH_HIP
-#define HIP_HIDDEN_KERNEL(...)
-#else
-#define HIP_HIDDEN_KERNEL(...) \
-  template <>                  \
-  constexpr bool ::paddle::framework::HiddenKernel<__VA_ARGS__> = true
-#endif
-
 template <typename TDeviceContextType, template <typename...> class TKernelType,
           typename... DataTypes>
 struct KernelCont;
@@ -464,6 +456,26 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       op_type, NPU, ::paddle::platform::NPUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
+
+#ifdef PADDLE_WITH_HIP
+#define HIP_HIDDEN_KERNEL(...)                     \
+  namespace paddle {                               \
+  namespace framework {                            \
+  template <>                                      \
+  constexpr bool HiddenKernel<__VA_ARGS__> = true; \
+  }                                                \
+  }
+#else
+#define HIP_HIDDEN_KERNEL(...)
+#endif
+
+#define REGISTER_OP_CPU_KERNEL_MULTI_DTYPE(op_type, ...)      \
+  REGISTER_OP_CPU_KERNEL(                                     \
+    op_type, ::paddle::framework::CPUKernelCont<__VA_ARGS__>)
+
+#define REGISTER_OP_CUDA_KERNEL_MULTI_DTYPE(op_type, ...)      \
+  REGISTER_OP_CUDA_KERNEL(                                     \
+    op_type, ::paddle::framework::CUDAKernelCont<__VA_ARGS__>)
 
 /**
  * Macro to mark what Operator and Kernel

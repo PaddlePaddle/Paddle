@@ -158,18 +158,18 @@ REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
 
 REGISTER_OPERATOR(abs_grad_grad, ops::AbsDoubleGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    abs, paddle::framework::CPUKernelCont<
-             paddle::operators::AbsKernel, float, double, int, int64_t,
-             paddle::platform::complex64, paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL_MULTI_DTYPE(abs, paddle::operators::AbsKernel, float,
+                                   double, int, int64_t,
+                                   paddle::platform::complex64,
+                                   paddle::platform::complex128);
 
-REGISTER_OP_CPU_KERNEL(
-    abs_grad, paddle::framework::CPUKernelCont<
-                  paddle::operators::AbsGradKernel, float, double, int, int64_t,
-                  paddle::platform::complex64, paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL_MULTI_DTYPE(abs_grad, paddle::operators::AbsGradKernel,
+                                   float, double, int, int64_t,
+                                   paddle::platform::complex64,
+                                   paddle::platform::complex128);
 
-REGISTER_OP_CPU_KERNEL(
-    abs_grad_grad,
-    paddle::framework::CPUKernelCont<
-        paddle::operators::AbsDoubleGradKernel, float, double, int, int64_t,
-        paddle::platform::complex64, paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL_MULTI_DTYPE(abs_grad_grad,
+                                   paddle::operators::AbsDoubleGradKernel,
+                                   float, double, int, int64_t,
+                                   paddle::platform::complex64,
+                                   paddle::platform::complex128);

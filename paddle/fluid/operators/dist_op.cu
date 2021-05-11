@@ -18,8 +18,7 @@ namespace ops = paddle::operators;
 // Eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h:922
 // do not support double in HIPCC platform (Eigen3 to be fixed)
 HIP_HIDDEN_KERNEL(ops::DistKernel, double);
-REGISTER_OP_CUDA_KERNEL(
-    dist, paddle::framework::CUDAKernelCont<ops::DistKernel, float, double>);
-REGISTER_OP_CUDA_KERNEL(
-    dist_grad,
-    paddle::framework::CUDAKernelCont<ops::DistGradKernel, float, double>);
+HIP_HIDDEN_KERNEL(ops::DistGradKernel, double);
+REGISTER_OP_CUDA_KERNEL_MULTI_DTYPE(dist, ops::DistKernel, float, double);
+REGISTER_OP_CUDA_KERNEL_MULTI_DTYPE(dist_grad, ops::DistGradKernel, float,
+                                    double);
