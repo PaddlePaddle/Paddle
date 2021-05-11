@@ -14,7 +14,10 @@
 
 import unittest
 import numpy as np
+import paddle
 from op_test import OpTest
+
+paddle.enable_static()
 
 class TestNegOp(OpTest):
     def setUp(self):
