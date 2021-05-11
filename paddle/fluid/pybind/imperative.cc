@@ -511,7 +511,7 @@ static void VarBaseCopy(const imperative::VarBase &src,
       }
 
       if (!blocking) {
-        IncreaseVarbaseReferenceCountUntilCopyComplete(src, dst_place);
+        IncreaseVarbaseReferenceCountUntilCopyComplete(src, dst_device);
       }
 
     } else {
