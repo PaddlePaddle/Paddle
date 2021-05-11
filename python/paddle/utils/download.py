@@ -60,8 +60,6 @@ __all__ = ['get_weights_path_from_url']
 
 WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 
-DOWNLOAD_RETRY_LIMIT = 3
-
 
 def is_url(path):
     """
@@ -180,7 +178,7 @@ def retry(exceptions, delay, times):
 
             if _e is not None:
                 raise RuntimeError(
-                    'Downloading failed with exception {}'.format(str(_e)))
+                    'Downloading failed with exception {}!'.format(str(_e)))
 
         return inner
 
@@ -223,6 +221,10 @@ def _download(url, path, md5sum=None):
                 if chunk:
                     f.write(chunk)
     shutil.move(tmp_fullname, fullname)
+
+    if not (osp.exists(fullname) and _md5check(fullname, md5sum)):
+        raise RuntimeError("Downloading {} error when md5check!".format(
+            fullname))
 
     return fullname
 
