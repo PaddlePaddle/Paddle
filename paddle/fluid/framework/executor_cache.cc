@@ -125,8 +125,7 @@ void ExecutorInfoCache::Finalize() {
 }
 
 std::shared_ptr<framework::ParallelExecutor> GetExecutorInfoFromCache(
-    const ExecutorInfoCache::CacheKey &cache_key, framework::Scope *scope,
-    const std::vector<std::string> &output_var_names) {
+    const ExecutorInfoCache::CacheKey &cache_key, framework::Scope *scope) {
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
 
   if (!cached_exe_info.Has(cache_key)) {

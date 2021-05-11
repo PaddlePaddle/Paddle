@@ -23,8 +23,8 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -156,8 +156,7 @@ class ExecutorInfoCache {
 };
 
 std::shared_ptr<ParallelExecutor> GetExecutorInfoFromCache(
-    const ExecutorInfoCache::CacheKey& cache_key, framework::Scope* scope,
-    const std::vector<std::string>& output_var_names);
+    const ExecutorInfoCache::CacheKey& cache_key, framework::Scope* scope);
 
 }  // namespace framework
 }  // namespace paddle

@@ -213,8 +213,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       auto cache_key = framework::ExecutorInfoCache::CacheKey(
           program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad*/ false);
-      auto parallel_executor = framework::GetExecutorInfoFromCache(
-          cache_key, &scope, output_var_names);
+      auto parallel_executor =
+          framework::GetExecutorInfoFromCache(cache_key, &scope);
       // TODO(Aurelius84): make it only call once
       parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
 
@@ -296,8 +296,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       auto cache_key = framework::ExecutorInfoCache::CacheKey(
           program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad*/ true);
-      auto parallel_executor = framework::GetExecutorInfoFromCache(
-          cache_key, &scope, output_grad_var_names);
+      auto parallel_executor =
+          framework::GetExecutorInfoFromCache(cache_key, &scope);
 
       // TODO(Aurelius84): make it only call once
       parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0,
