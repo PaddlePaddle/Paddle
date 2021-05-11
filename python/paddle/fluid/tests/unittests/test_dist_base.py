@@ -548,7 +548,10 @@ class TestParallelDyGraphRunnerBase(object):
         # 4. train model
         model, train_reader, opt = self.get_model()
         if args.update_method == "nccl2":
-            model = paddle.DataParallel(model)
+            if args.find_unused_parameters:
+                model = paddle.DataParallel(model, find_unused_parameters=True)
+            else:
+                model = paddle.DataParallel(model, find_unused_parameters=False)
 
         out_losses = []
         for step_id, data in enumerate(train_reader()):
@@ -581,8 +584,8 @@ class TestParallelDyGraphRunnerBase(object):
 
         # set strategy
         strategy = fleet.DistributedStrategy()
-        if not args.find_unused_parameters:
-            strategy.find_unused_parameters = False
+        if args.find_unused_parameters:
+            strategy.find_unused_parameters = True
 
         # 3. init parallel env
         if args.update_method == "nccl2" or "bkcl":
@@ -737,7 +740,7 @@ class TestDistBase(unittest.TestCase):
         self._save_model = False
         self._fuse_all_reduce = None
         self._accumulate_gradient = False
-        self._find_unused_parameters = True
+        self._find_unused_parameters = False
         self._setup_config()
 
         global DIST_UT_PORT
