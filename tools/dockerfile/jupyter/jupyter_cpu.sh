@@ -66,7 +66,7 @@ function ref_whl(){
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp38-cp38-linux_x86_64.whl
   fi
 
-  ref_whl_package = ${ref_web}\\/${ref_paddle38_whl}
+  ref_whl_package=${ref_web}\\/${ref_paddle38_whl}
 }
 
 
