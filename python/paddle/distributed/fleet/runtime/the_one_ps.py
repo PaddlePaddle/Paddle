@@ -1018,9 +1018,7 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, executor must be as Executor type")
 
         import paddle
-
-        program = paddle.static.default_main_program(
-        ) if main_program is None else main_program
+        program = self.origin_main_program if main_program is None else main_program
 
         if isinstance(program, CompiledProgram):
             raise TypeError(
@@ -1030,15 +1028,18 @@ class TheOnePSRuntime(RuntimeBase):
         feed_vars = [
             program.global_block().var(name) for name in feeded_var_names
         ]
+
         infer_program = paddle.static.normalize_program(program, feed_vars,
                                                         target_vars)
+
         infer_program._copy_dist_param_info_from(program)
 
         model_basename = "__model__"
         model_basename = os.path.join(dirname, model_basename)
         paddle.save(infer_program, model_basename)
 
-        self._ps_inference_save_persistables(executor, dirname, program, mode)
+        self._ps_inference_save_persistables(executor, dirname, infer_program,
+                                             mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
