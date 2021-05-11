@@ -178,7 +178,7 @@ class CompileTimeStrategy(object):
 
     def is_geo_mode(self):
         trainer = self.strategy.get_trainer_runtime_config()
-        return trainer.mode == DistributedMode.GEO
+        return trainer.mode == DistributedMode.GEO or trainer.mode == DistributedMode.LOCAL_SGD or trainer.mode == DistributedMode.EA_SGD
 
     def is_async_mode(self):
         trainer = self.strategy.get_trainer_runtime_config()

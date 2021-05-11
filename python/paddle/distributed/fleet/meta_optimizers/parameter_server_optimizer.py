@@ -59,6 +59,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
+        extra_mode = self.user_defined_strategy.a_sync_configs["extra_mode"]
         strategy = None
 
         if not self.user_defined_strategy.a_sync and k_steps == 0:
@@ -68,7 +69,13 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             strategy = StrategyFactory.create_async_strategy()
 
         if self.user_defined_strategy.a_sync and k_steps > 0:
-            strategy = StrategyFactory.create_geo_strategy(k_steps)
+            print("extra_mode: {}".format(extra_mode))
+            if extra_mode == "local_sgd":
+                strategy = StrategyFactory.create_local_sgd_strategy(k_steps)
+            elif extra_mode == "ea_sgd":
+                strategy = StrategyFactory.create_ea_sgd_strategy(k_steps)
+            else:
+                strategy = StrategyFactory.create_geo_strategy(k_steps)
 
         if not strategy:
             raise ValueError("k_steps must be invalid value, please check")

@@ -115,6 +115,8 @@ void BindCommunicatorContext(py::module* m) {
 
 using paddle::distributed::AsyncCommunicator;
 using paddle::distributed::GeoCommunicator;
+using paddle::distributed::LocalSGDCommunicator;
+using paddle::distributed::EASGDCommunicator;
 using paddle::distributed::RecvCtxMap;
 using paddle::distributed::RpcCtxMap;
 using paddle::distributed::SyncCommunicator;
@@ -129,6 +131,7 @@ void BindDistCommunicator(py::module* m) {
                        const RpcCtxMap& send_ctx, const RecvCtxMap& recv_ctx,
                        Scope* param_scope,
                        std::map<std::string, std::string>& envs) {
+        VLOG(0) << "DistCommunicator MODE "<< mode;
         if (mode == "ASYNC") {
           Communicator::InitInstance<AsyncCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
@@ -137,6 +140,12 @@ void BindDistCommunicator(py::module* m) {
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else if (mode == "GEO") {
           Communicator::InitInstance<GeoCommunicator>(
+              send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
+        } else if (mode == "LOCAL_SGD"){
+          Communicator::InitInstance<LocalSGDCommunicator>(
+              send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
+        } else if (mode == "EA_SGD"){
+          Communicator::InitInstance<EASGDCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(

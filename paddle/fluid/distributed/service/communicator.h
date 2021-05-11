@@ -494,6 +494,16 @@ class SyncCommunicator : public HalfAsyncCommunicator {
   std::vector<std::string> pserver_endpoints_{};
 };
 
+/*
+GEO-SGD-Async
+Is the local parameter updated during training？ : yes
+Trainer send data type : diff of parameter
+Pserver global parameter update mode : async sum
+Trainer push frequency : each batch push is not required
+Trainer pull frequency : same with push
+Parameter update method after pull : incremental summation
+Is there a lock in parameter update after pull : no
+*/
 class GeoCommunicator : public AsyncCommunicator {
  public:
   GeoCommunicator() : AsyncCommunicator() {}
@@ -553,7 +563,7 @@ class GeoCommunicator : public AsyncCommunicator {
     return param_name;
   }
 
- private:
+ protected:
   // geo push num
   std::atomic_int cur_merge_num_;
   // parameter for delta calc and send
@@ -568,6 +578,65 @@ class GeoCommunicator : public AsyncCommunicator {
       std::shared_ptr<BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>>
       sparse_id_queues_;
 };
+
+
+/*
+Local-SGD-Async
+Is the local parameter updated during training？ : yes
+Trainer send data type : diff of parameter
+Pserver global parameter update mode : async sum
+Trainer push frequency : each batch push is not required
+Trainer pull frequency : same with push
+Parameter update method after pull : local coverage
+Is there a lock in parameter update after pull : yes
+*/
+class LocalSGDCommunicator : public GeoCommunicator {
+ public:
+  LocalSGDCommunicator() : GeoCommunicator() {
+    VLOG(1) << "LocalSGDCommunicator Construct";
+  }
+
+  explicit LocalSGDCommunicator(const std::map<std::string, std::string> &envs)
+      : GeoCommunicator(envs) {}
+
+  void RecvDense(const CommContext &send_ctx);
+
+  void RecvSparse(const std::string &varname, int table_id, int ep_idx);
+
+  void MainThread() override;
+
+  void Send(const std::vector<std::string> &var_names,
+            const framework::Scope &scope) override;
+ private:
+  std::atomic_bool in_communication_{false};
+};
+
+/*
+EA-SGD-Async
+Is the local parameter updated during training？ : yes
+Trainer send data type : parameter
+Pserver global parameter update mode : async weighted summation
+Trainer push frequency : each batch push is not required
+Trainer pull frequency : same with push
+Parameter update method after pull : weighted incremental summation
+Is there a lock in parameter update after pull : yes
+*/
+class EASGDCommunicator : public GeoCommunicator {
+ public:
+  EASGDCommunicator() : GeoCommunicator() {}
+
+  explicit EASGDCommunicator(const std::map<std::string, std::string> &envs)
+      : GeoCommunicator(envs) {}
+
+  void MainThread() override;
+
+  void Send(const std::vector<std::string> &var_names,
+            const framework::Scope &scope) override;
+ private:
+  std::atomic_bool in_communication_{false};
+
+};
+
 
 }  // namespace distributed
 }  // namespace paddle

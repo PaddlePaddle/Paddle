@@ -72,6 +72,18 @@ class TrainerRuntimeConfig(object):
                 'communicator_thread_pool_size', 'communicator_send_wait_times',
                 'communicator_max_merge_var_num', 'communicator_send_queue_size'
             ]
+        elif self.mode == DistributedMode.LOCAL_SGD:
+            mode_str = "LOCAL_SGD"
+            need_keys = [
+                'communicator_thread_pool_size', 'communicator_send_wait_times',
+                'communicator_max_merge_var_num', 'communicator_send_queue_size'
+            ]
+        elif self.mode == DistributedMode.EA_SGD:
+            mode_str = "EA_SGD"
+            need_keys = [
+                'communicator_thread_pool_size', 'communicator_send_wait_times',
+                'communicator_max_merge_var_num', 'communicator_send_queue_size'
+            ]
         else:
             raise ValueError("Unsupported Mode")
 
@@ -407,6 +419,44 @@ class GeoStrategy(DistributedStrategy):
     def check_build_strategy(self):
         self._build_strategy.async_mode = True
 
+class LocalSGDStrategy(GeoStrategy):
+    def __init__(self, update_frequency=100):
+        super(LocalSGDStrategy, self).__init__()
+        self._program_config.geo_sgd_need_push_nums = update_frequency
+        self.check_program_config()
+        self.check_trainer_runtime_config()
+        self.check_server_runtime_config()
+        self.check_build_strategy()
+        self.check_execute_strategy()
+
+    def check_trainer_runtime_config(self):
+        self._trainer_runtime_config.mode = DistributedMode.LOCAL_SGD
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'] = self._program_config.geo_sgd_need_push_nums
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_max_merge_var_num'] = self._program_config.geo_sgd_need_push_nums
+
+class EASGDStrategy(GeoStrategy):
+    def __init__(self, update_frequency=100):
+        super(EASGDStrategy, self).__init__()
+        self._program_config.geo_sgd_need_push_nums = update_frequency
+        self.check_program_config()
+        self.check_trainer_runtime_config()
+        self.check_server_runtime_config()
+        self.check_build_strategy()
+        self.check_execute_strategy()
+
+    def check_trainer_runtime_config(self):
+        self._trainer_runtime_config.mode = DistributedMode.EA_SGD
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'] = self._program_config.geo_sgd_need_push_nums
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_max_merge_var_num'] = self._program_config.geo_sgd_need_push_nums
+
 
 class StrategyFactory(object):
     def __init_(self):
@@ -427,3 +477,11 @@ class StrategyFactory(object):
     @staticmethod
     def create_geo_strategy(update_frequency=100):
         return GeoStrategy(update_frequency)
+
+    @staticmethod
+    def create_local_sgd_strategy(update_frequency=100):
+        return LocalSGDStrategy(update_frequency)
+
+    @staticmethod
+    def create_ea_sgd_strategy(update_frequency=100):
+        return EASGDStrategy(update_frequency)

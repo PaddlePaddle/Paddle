@@ -80,6 +80,10 @@ class Communicator(object):
             mode_str = "HALF_ASYNC"
         elif mode == DistributedMode.GEO:
             mode_str = "GEO"
+        elif mode == DistributedMode.LOCAL_SGD:
+            mode_str = "LOCAL_SGD"
+        elif mode == DistributedMode.EA_SGD:
+            mode_str = "EA_SGD"
 
         self.mode = mode_str
         self.envs = envs

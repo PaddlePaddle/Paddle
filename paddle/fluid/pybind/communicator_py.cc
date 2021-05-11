@@ -33,6 +33,7 @@ using paddle::framework::Scope;
 using paddle::operators::distributed::AsyncCommunicator;
 using paddle::operators::distributed::Communicator;
 using paddle::operators::distributed::GeoCommunicator;
+using paddle::operators::distribured::LocalSGDCommunicator
 using paddle::operators::distributed::HalfAsyncCommunicator;
 using paddle::operators::distributed::SyncCommunicator;
 
@@ -86,6 +87,9 @@ void BindCommunicator(py::module* m) {
                                                        param_scope, envs);
         } else if (mode == "GEO") {
           Communicator::InitInstance<GeoCommunicator>(send_ctx, recv_ctx,
+                                                      param_scope, envs);
+        } else if (mode == "LOCAL_SGD"){
+          Communicator::InitInstance<LocalSGDCommunicator>(send_ctx, recv_ctx,
                                                       param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(

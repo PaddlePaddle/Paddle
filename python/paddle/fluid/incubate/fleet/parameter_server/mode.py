@@ -26,3 +26,5 @@ class DistributedMode:
     ASYNC = 1
     HALF_ASYNC = 2
     GEO = 3
+    LOCAL_SGD = 4
+    EA_SGD = 5

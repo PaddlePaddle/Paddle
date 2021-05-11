@@ -423,6 +423,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         dist_strategy = self.context["valid_strategy"]
         k_steps = dist_strategy.a_sync_configs["k_steps"]
+        extra_mode = dist_strategy.a_sync_configs["extra_mode"]
 
         if not dist_strategy.a_sync and k_steps == 0:
             strategy = StrategyFactory.create_sync_strategy()
@@ -431,7 +432,12 @@ class TheOnePSRuntime(RuntimeBase):
             strategy = StrategyFactory.create_async_strategy()
 
         if dist_strategy.a_sync and k_steps > 0:
-            strategy = StrategyFactory.create_geo_strategy(k_steps)
+            if extra_mode == "local_sgd":
+                strategy = StrategyFactory.create_local_sgd_strategy(k_steps)
+            elif extra_mode == "ea_sgd":
+                strategy = StrategyFactory.create_ea_sgd_strategy(k_steps)
+            else:
+                strategy = StrategyFactory.create_geo_strategy(k_steps)
 
         if not strategy:
             raise ValueError("k_steps must be invalid value, please check")

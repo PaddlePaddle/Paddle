@@ -45,11 +45,12 @@ class SendOp : public framework::OperatorBase {
     // auto table_id = Attr<int>("table_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
-
+    VLOG(3) << "SendOp::communicator Begin "<< send_varnames[0];
     auto* communicator = paddle::distributed::Communicator::GetInstance();
     if (communicator->Check(send_varnames)) {
       communicator->Send(ins, scope);
     }
+    VLOG(3) << "SendOp::communicator End "<< send_varnames[0];
 
     // auto fleet = paddle::distributed::FleetWrapper::GetInstance();
     // if (is_sparse == 0) {

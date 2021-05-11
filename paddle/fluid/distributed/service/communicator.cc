@@ -824,10 +824,10 @@ void SyncCommunicator::BarrierRecv() {
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
-  
+  VLOG(3) << "GeoCommunicator::Send Begin cur_merge_num_ "<<cur_merge_num_ ;
   platform::RecordEvent record_event("GeoCommunicator->Send");
   waiting_ = false;
-  // cur_merge_num_ += 1;
+  cur_merge_num_ += 1;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
   VLOG(3) << "GeoCommunicator::Send cur_merge_num_ " << cur_merge_num_ << " table_name "<<table_name;
@@ -871,8 +871,8 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
   }
 
   auto after_send = GetCurrentUS();
-  // VLOG(2) << "run send op finish. use time " << (after_send - before_send)
-  //         << " cur_merge_num_ " << cur_merge_num_;
+  VLOG(3) << "run send op finish. use time " << (after_send - before_send)
+          << " cur_merge_num_ " << cur_merge_num_;
 }
 
 void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
@@ -912,7 +912,7 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   old_scope_.reset(new Scope());
   pserver_scope_.reset(new Scope());
   xpu_temp_scope_.reset(new Scope());
-  // cur_merge_num_ = 0;
+  cur_merge_num_ = 0;
 }
 
 void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
@@ -958,11 +958,9 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
                                 int table_id) {
   if (trainer_id_ == 0) {
     RpcSendDenseParam(varnames, table_id, *recv_scope_);
-    // BarrierWithTable(1);
     VLOG(1) << "push dense param to table " << table_id
             << " from 0' trainer done";
   } else {
-    // BarrierWithTable(1);
     RpcRecvDense(varnames, table_id, recv_scope_);
     VLOG(1) << "pull dense param to table " << table_id
             << " from 0' trainer done";
@@ -1002,33 +1000,53 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
     if (platform::is_gpu_place(t_latest->place())) {
 #ifdef PADDLE_WITH_CUDA
       // TensorCopy tensor from cuda to cpu
+      VLOG(3)<<"GeoCommunicator::SendDense is_gpu_place";
       Variable *temp_var = xpu_temp_scope_->Var(param_name);
       LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
       temp_tensor->Resize(t_latest->dims());
-      // float *temp_data =
-      // temp_tensor->mutable_data<float>(platform::CPUPlace());
       framework::TensorCopy(*t_latest, platform::CPUPlace(), temp_tensor);
-      t_latest = temp_tensor;
+
+      auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
+
+      auto cpu_ctx = paddle::platform::CPUDeviceContext();
+      auto *var_delta = delta_scope_->Var(varname);
+      auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+      t_delta->mutable_data<float>(temp_tensor->dims(), cpu_ctx.GetPlace());
+
+      auto blas =
+          paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+              cpu_ctx);
+      blas.VSUB(temp_tensor->numel(), temp_tensor->data<float>(),
+                t_timestamp->data<float>(), t_delta->data<float>());
+
+      float coefficient = 1.0 / static_cast<float>(trainers_);
+      blas.SCAL(temp_tensor->numel(), coefficient, t_delta->data<float>());
+
+      blas.VADD(temp_tensor->numel(), t_timestamp->data<float>(),
+                t_delta->data<float>(), t_timestamp->data<float>());
+
 #endif
+    } else {
+      auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
+
+      auto cpu_ctx = paddle::platform::CPUDeviceContext();
+      auto *var_delta = delta_scope_->Var(varname);
+      auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+      t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
+
+      auto blas =
+          paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+              cpu_ctx);
+      blas.VSUB(t_latest->numel(), t_latest->data<float>(),
+                t_timestamp->data<float>(), t_delta->data<float>());
+
+      float coefficient = 1.0 / static_cast<float>(trainers_);
+      blas.SCAL(t_latest->numel(), coefficient, t_delta->data<float>());
+
+      blas.VADD(t_latest->numel(), t_timestamp->data<float>(),
+                t_delta->data<float>(), t_timestamp->data<float>());
     }
-    auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
-
-    auto cpu_ctx = paddle::platform::CPUDeviceContext();
-    auto *var_delta = delta_scope_->Var(varname);
-    auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
-    t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
-
-    auto blas =
-        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-            cpu_ctx);
-    blas.VSUB(t_latest->numel(), t_latest->data<float>(),
-              t_timestamp->data<float>(), t_delta->data<float>());
-
-    float coefficient = 1.0 / static_cast<float>(trainers_);
-    blas.SCAL(t_latest->numel(), coefficient, t_delta->data<float>());
-
-    blas.VADD(t_latest->numel(), t_timestamp->data<float>(),
-              t_delta->data<float>(), t_timestamp->data<float>());
+    
   }
   RpcSendDense(send_ctx, *delta_scope_);
   VLOG(1) << "Finish Send Dense " << var_names[0] << ", table_id: " << table_id;
@@ -1048,43 +1066,58 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
     auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
-    auto t_latest_temp = t_latest;
     if (platform::is_gpu_place(t_latest->place())) {
 #ifdef PADDLE_WITH_CUDA
       // TensorCopy tensor from cuda to cpu
+      VLOG(3)<<"GeoCommunicator::RecvDense is_gpu_place";
       Variable *temp_var = xpu_temp_scope_->Var(varname);
       LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
       temp_tensor->Resize(t_latest->dims());
       framework::TensorCopy(*t_latest, platform::CPUPlace(), temp_tensor);
-      t_latest_temp = temp_tensor;
+      
+      auto *var_old = old_scope_->FindVar(varname);
+      auto t_old = var_old->GetMutable<framework::LoDTensor>();
+
+      auto *var_pserver = pserver_scope_->FindVar(varname);
+      auto t_pserver = var_pserver->Get<framework::LoDTensor>();
+
+      auto *var_delta = delta_scope_->Var(varname);
+      auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+      t_delta->mutable_data<float>(temp_tensor->dims(), cpu_ctx.GetPlace());
+
+      auto blas =
+          paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+              cpu_ctx);
+      blas.VSUB(temp_tensor->numel(), t_pserver.data<float>(),
+                t_old->data<float>(), t_delta->data<float>());
+      blas.VADD(temp_tensor->numel(), temp_tensor->data<float>(),
+                t_delta->data<float>(), temp_tensor->data<float>());
+      blas.VCOPY(temp_tensor->numel(), t_pserver.data<float>(),
+                t_old->data<float>());
+      framework::TensorCopy(*temp_tensor, t_latest->place(), t_latest);
 #endif
+    } else {
+      auto *var_old = old_scope_->FindVar(varname);
+      auto t_old = var_old->GetMutable<framework::LoDTensor>();
+
+      auto *var_pserver = pserver_scope_->FindVar(varname);
+      auto t_pserver = var_pserver->Get<framework::LoDTensor>();
+
+      auto *var_delta = delta_scope_->Var(varname);
+      auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+      t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
+
+      auto blas =
+          paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+              cpu_ctx);
+      blas.VSUB(t_latest->numel(), t_pserver.data<float>(),
+                t_old->data<float>(), t_delta->data<float>());
+      blas.VADD(t_latest->numel(), t_latest->data<float>(),
+                t_delta->data<float>(), t_latest->data<float>());
+      blas.VCOPY(t_latest->numel(), t_pserver.data<float>(),
+                t_old->data<float>());
     }
 
-    auto *var_old = old_scope_->FindVar(varname);
-    auto t_old = var_old->GetMutable<framework::LoDTensor>();
-
-    auto *var_pserver = pserver_scope_->FindVar(varname);
-    auto t_pserver = var_pserver->Get<framework::LoDTensor>();
-
-    auto *var_delta = delta_scope_->Var(varname);
-    auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
-    t_delta->mutable_data<float>(t_latest_temp->dims(), cpu_ctx.GetPlace());
-
-    auto blas =
-        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-            cpu_ctx);
-    blas.VSUB(t_latest_temp->numel(), t_pserver.data<float>(),
-              t_old->data<float>(), t_delta->data<float>());
-    blas.VADD(t_latest_temp->numel(), t_latest_temp->data<float>(),
-              t_delta->data<float>(), t_latest_temp->data<float>());
-    blas.VCOPY(t_latest_temp->numel(), t_pserver.data<float>(),
-               t_old->data<float>());
-
-    if (platform::is_gpu_place(t_latest->place())) {
-#ifdef PADDLE_WITH_CUDA
-      framework::TensorCopy(*t_latest_temp, t_latest->place(), t_latest);
-#endif
-    }
   }
   VLOG(1) << "Finish Recv Dense " << varnames[0] << ", table_id: " << table_id;
   return;
@@ -1094,11 +1127,9 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
   VLOG(1) << "Init Sparse " << var_name << " : table " << table_id << " begin.";
   if (trainer_id_ == 0) {
     RpcSendSparseParam(var_name, table_id, *recv_scope_);
-    // BarrierWithTable(1);
     VLOG(1) << "push sparse param to table " << table_id
             << " from 0' trainer done";
   } else {
-    // BarrierWithTable(1);
     RpcRecvSparse(var_name, table_id, recv_scope_);
     VLOG(1) << "pull sparse param to table " << table_id
             << " from 0' trainer done";
@@ -1165,60 +1196,106 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   if (platform::is_gpu_place(t_latest->place())) {
 #ifdef PADDLE_WITH_CUDA
     // TensorCopy tensor from cuda to cpu
+    VLOG(3)<<"GeoCommunicator::SendSparse is_gpu_place";
     Variable *temp_var = xpu_temp_scope_->Var(param_name);
     LoDTensor *temp_tensor = temp_var->GetMutable<LoDTensor>();
     temp_tensor->Resize(t_latest->dims());
-    // float *temp_data =
-    // temp_tensor->mutable_data<float>(platform::CPUPlace());
     framework::TensorCopy(*t_latest, platform::CPUPlace(), temp_tensor);
     t_latest = temp_tensor;
-#endif
-  }
-  auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+    auto *t_old = var_old->GetMutable<framework::LoDTensor>();
 
-  auto dims1 = t_latest->dims()[1];
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    auto dims1 = t_latest->dims()[1];
+    auto cpu_ctx = paddle::platform::CPUDeviceContext();
 
-  auto *var_delta = delta_scope_->Var(varname);
-  auto *t_delta = var_delta->GetMutable<framework::SelectedRows>();
-  auto *var_t_value = t_delta->mutable_value();
-  var_t_value->Resize({static_cast<int64_t>(sparse_ids.size()), dims1});
-  auto *t_value = var_t_value->mutable_data<float>(cpu_ctx.GetPlace());
+    auto *var_delta = delta_scope_->Var(varname);
+    auto *t_delta = var_delta->GetMutable<framework::SelectedRows>();
+    auto *var_t_value = t_delta->mutable_value();
+    var_t_value->Resize({static_cast<int64_t>(sparse_ids.size()), dims1});
+    auto *t_value = var_t_value->mutable_data<float>(cpu_ctx.GetPlace());
 
-  t_delta->set_rows(sparse_ids);
-  t_delta->set_height(t_latest->dims()[0]);
+    t_delta->set_rows(sparse_ids);
+    t_delta->set_height(t_latest->dims()[0]);
 
-  auto blas =
-      paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-          cpu_ctx);
-  float coefficient = 1.0 / static_cast<float>(trainers_);
+    auto blas =
+        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+            cpu_ctx);
+    float coefficient = 1.0 / static_cast<float>(trainers_);
 
-  std::vector<float *> push_g_vec;
-  for (auto j = 0; j < static_cast<int>(sparse_ids.size()); ++j) {
-    blas.VSUB(dims1, t_latest->data<float>() + sparse_ids[j] * dims1,
-              t_old->data<float>() + sparse_ids[j] * dims1,
-              t_value + j * dims1);
-    blas.SCAL(dims1, coefficient, t_value + j * dims1);
-    blas.VADD(dims1, t_old->data<float>() + sparse_ids[j] * dims1,
-              t_value + j * dims1,
-              t_old->data<float>() + sparse_ids[j] * dims1);
-    push_g_vec.push_back(t_value + j * dims1);
-  }
-
-  ++_async_call_num;
-  DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [this](void *done) {
-    int ret = 0;
-    auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
-    if (closure->check_response(0, PS_PUSH_SPARSE_TABLE) != 0) {
-      ret = -1;
+    std::vector<float *> push_g_vec;
+    for (auto j = 0; j < static_cast<int>(sparse_ids.size()); ++j) {
+      blas.VSUB(dims1, t_latest->data<float>() + sparse_ids[j] * dims1,
+                t_old->data<float>() + sparse_ids[j] * dims1,
+                t_value + j * dims1);
+      blas.SCAL(dims1, coefficient, t_value + j * dims1);
+      blas.VADD(dims1, t_old->data<float>() + sparse_ids[j] * dims1,
+                t_value + j * dims1,
+                t_old->data<float>() + sparse_ids[j] * dims1);
+      push_g_vec.push_back(t_value + j * dims1);
     }
-    closure->set_promise_value(ret);
-    --_async_call_num;
-  });
-  auto status = _worker_ptr->push_sparse_raw_gradient_partial(
-      table_id, (const uint64_t *)sparse_ids.data(),
-      (const float **)push_g_vec.data(), sparse_ids.size(), closure, ep_idx);
-  status.wait();
+
+    ++_async_call_num;
+    DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [this](void *done) {
+      int ret = 0;
+      auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
+      if (closure->check_response(0, PS_PUSH_SPARSE_TABLE) != 0) {
+        ret = -1;
+      }
+      closure->set_promise_value(ret);
+      --_async_call_num;
+    });
+    auto status = _worker_ptr->push_sparse_raw_gradient_partial(
+        table_id, (const uint64_t *)sparse_ids.data(),
+        (const float **)push_g_vec.data(), sparse_ids.size(), closure, ep_idx);
+    status.wait();
+#endif
+  } else {
+    auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+
+    auto dims1 = t_latest->dims()[1];
+    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+
+    auto *var_delta = delta_scope_->Var(varname);
+    auto *t_delta = var_delta->GetMutable<framework::SelectedRows>();
+    auto *var_t_value = t_delta->mutable_value();
+    var_t_value->Resize({static_cast<int64_t>(sparse_ids.size()), dims1});
+    auto *t_value = var_t_value->mutable_data<float>(cpu_ctx.GetPlace());
+
+    t_delta->set_rows(sparse_ids);
+    t_delta->set_height(t_latest->dims()[0]);
+
+    auto blas =
+        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+            cpu_ctx);
+    float coefficient = 1.0 / static_cast<float>(trainers_);
+
+    std::vector<float *> push_g_vec;
+    for (auto j = 0; j < static_cast<int>(sparse_ids.size()); ++j) {
+      blas.VSUB(dims1, t_latest->data<float>() + sparse_ids[j] * dims1,
+                t_old->data<float>() + sparse_ids[j] * dims1,
+                t_value + j * dims1);
+      blas.SCAL(dims1, coefficient, t_value + j * dims1);
+      blas.VADD(dims1, t_old->data<float>() + sparse_ids[j] * dims1,
+                t_value + j * dims1,
+                t_old->data<float>() + sparse_ids[j] * dims1);
+      push_g_vec.push_back(t_value + j * dims1);
+    }
+
+    ++_async_call_num;
+    DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [this](void *done) {
+      int ret = 0;
+      auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
+      if (closure->check_response(0, PS_PUSH_SPARSE_TABLE) != 0) {
+        ret = -1;
+      }
+      closure->set_promise_value(ret);
+      --_async_call_num;
+    });
+    auto status = _worker_ptr->push_sparse_raw_gradient_partial(
+        table_id, (const uint64_t *)sparse_ids.data(),
+        (const float **)push_g_vec.data(), sparse_ids.size(), closure, ep_idx);
+    status.wait();
+  }
+  
 
   VLOG(1) << "Finish Send Sparse " << varname
           << ", ids.size = " << sparse_ids.size() << ", table_id: " << table_id;
@@ -1254,38 +1331,60 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
     // temp_tensor->mutable_data<float>(platform::CPUPlace());
     framework::TensorCopy(*t_latest, platform::CPUPlace(), temp_tensor);
     t_latest_temp = temp_tensor;
-#endif
-  }
-  auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+    auto *t_old = var_old->GetMutable<framework::LoDTensor>();
 
-  auto dims1 = t_latest_temp->dims()[1];
-  auto numel = keys.size() * dims1;
+    auto dims1 = t_latest_temp->dims()[1];
+    auto numel = keys.size() * dims1;
 
-  std::vector<float> v_delta;
-  v_delta.resize(numel);
+    std::vector<float> v_delta;
+    v_delta.resize(numel);
 
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
-  auto blas =
-      paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-          cpu_ctx);
+    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    auto blas =
+        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+            cpu_ctx);
 
-  for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
-    float *latest_data = t_latest_temp->data<float>() + keys[j] * dims1;
-    float *old_data = t_old->data<float>() + keys[j] * dims1;
-    // pserver - old => delta
-    blas.VSUB(dims1, values.data() + j * dims1, old_data,
-              v_delta.data() + j * dims1);
-    // latest + delta => latest
-    blas.VADD(dims1, latest_data, v_delta.data() + j * dims1, latest_data);
-    // pserver => old
-    blas.VCOPY(dims1, values.data() + j * dims1, old_data);
-  }
+    for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
+        float *latest_data = t_latest_temp->data<float>() + keys[j] * dims1;
+        float *old_data = t_old->data<float>() + keys[j] * dims1;
+        // pserver - old => delta
+        blas.VSUB(dims1, values.data() + j * dims1, old_data,
+                  v_delta.data() + j * dims1);
+        // latest + delta => latest
+        blas.VADD(dims1, latest_data, v_delta.data() + j * dims1, latest_data);
+        // pserver => old
+        blas.VCOPY(dims1, values.data() + j * dims1, old_data);
+    }
 
-  if (platform::is_gpu_place(t_latest->place())) {
-#ifdef PADDLE_WITH_CUDA
     framework::TensorCopy(*t_latest_temp, t_latest->place(), t_latest);
 #endif
+  } else {
+    auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+
+    auto dims1 = t_latest_temp->dims()[1];
+    auto numel = keys.size() * dims1;
+
+    std::vector<float> v_delta;
+    v_delta.resize(numel);
+
+    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    auto blas =
+        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+            cpu_ctx);
+
+    for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
+        float *latest_data = t_latest_temp->data<float>() + keys[j] * dims1;
+        float *old_data = t_old->data<float>() + keys[j] * dims1;
+        // pserver - old => delta
+        blas.VSUB(dims1, values.data() + j * dims1, old_data,
+                  v_delta.data() + j * dims1);
+        // latest + delta => latest
+        blas.VADD(dims1, latest_data, v_delta.data() + j * dims1, latest_data);
+        // pserver => old
+        blas.VCOPY(dims1, values.data() + j * dims1, old_data);
+    }
   }
+  
   VLOG(1) << "Finish Recv Sparse " << param << ", table_id: " << table_id;
 }
 
@@ -1300,48 +1399,402 @@ void GeoCommunicator::MainThread() {
   while (running_) {
     std::vector<std::future<void>> tasks;
     tasks.reserve(parallel_task_nums_);
-    // if (cur_merge_num_ < static_cast<size_t>(max_merge_var_num_)) {
-    //   VLOG(4) << "Wait for max_merge_var_num_ " << cur_merge_num_ << " " << max_merge_var_num_;
-    //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    // } else {
-    // cur_merge_num_ -= static_cast<size_t>(max_merge_var_num_);
-    // VLOG(4) << "GeoCommunicator::MainThread cur_merge_num_ "<< cur_merge_num_;
-    for (auto &iter : send_varname_to_ctx_) {
-      auto &ctx = iter.second;
-      auto &varnames = ctx.origin_varnames;
-      auto &table_id = ctx.table_id;
+    if (cur_merge_num_ < static_cast<size_t>(max_merge_var_num_)) {
+      VLOG(4) << "Wait for max_merge_var_num_ " << cur_merge_num_ << " " << max_merge_var_num_;
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    } else {
+      cur_merge_num_ -= static_cast<size_t>(max_merge_var_num_);
+      VLOG(4) << "GeoCommunicator::MainThread cur_merge_num_ "<< cur_merge_num_;
+      for (auto &iter : send_varname_to_ctx_) {
+        auto &ctx = iter.second;
+        auto &varnames = ctx.origin_varnames;
+        auto &table_id = ctx.table_id;
 
-      if (ctx.is_sparse) {
-        PADDLE_ENFORCE_EQ(
-            varnames.size(), 1,
-            platform::errors::InvalidArgument(
-                "sparse variables can only be merged by one variables"));
-        int pserver_num = static_cast<int>(ctx.epmap.size());
-        for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
-          // varname: emb@GRAD, param_name: emb, splited_varname: emb.delta0
-          auto send_recv_task = [this, table_id, ep_idx, &ctx] {
-            auto splited_varname = ctx.splited_varnames[ep_idx];
-            auto sparse_ids = MergeSparseIds(splited_varname);
-            SendSparse(splited_varname, sparse_ids, table_id, ep_idx);
-            RecvSparse(splited_varname, table_id, ep_idx);
+        if (ctx.is_sparse) {
+          PADDLE_ENFORCE_EQ(
+              varnames.size(), 1,
+              platform::errors::InvalidArgument(
+                  "sparse variables can only be merged by one variables"));
+          int pserver_num = static_cast<int>(ctx.epmap.size());
+          for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
+            // varname: emb@GRAD, param_name: emb, splited_varname: emb.delta0
+            auto send_recv_task = [this, table_id, ep_idx, &ctx] {
+              auto splited_varname = ctx.splited_varnames[ep_idx];
+              auto sparse_ids = MergeSparseIds(splited_varname);
+              SendSparse(splited_varname, sparse_ids, table_id, ep_idx);
+              RecvSparse(splited_varname, table_id, ep_idx);
+            };
+            tasks.emplace_back(
+                send_threadpool_->enqueue(std::move(send_recv_task)));
+          }
+        } else {
+          auto send_recv_task = [this, &ctx] {
+            SendDense(ctx);
+            RecvDense(ctx);
           };
           tasks.emplace_back(
               send_threadpool_->enqueue(std::move(send_recv_task)));
         }
-      } else {
-        auto send_recv_task = [this, &ctx] {
-          SendDense(ctx);
-          RecvDense(ctx);
-        };
-        tasks.emplace_back(
-            send_threadpool_->enqueue(std::move(send_recv_task)));
+      }
+      for (auto &task : tasks) {
+        task.wait();
       }
     }
-    for (auto &task : tasks) {
-      task.wait();
-    }
-    // }
   }
+}
+
+void LocalSGDCommunicator::RecvDense(const CommContext &send_ctx){
+  platform::RecordEvent record_event("LocalSGDCommunicator->RecvDense");
+  VLOG(1) << "LocalSGDCommunicator::RecvDense Begin";
+  auto &table_id = send_ctx.table_id;
+  auto &varnames = recv_varname_to_ctx_.at(table_id);
+  // 1. recv from pserver
+  RpcRecvDense(varnames, table_id, pserver_scope_.get());
+
+  // pserver -> latest , pserver -> old
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  for (auto &varname : varnames) {
+    auto *var_latest = recv_scope_->FindVar(varname);
+    auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
+    if (platform::is_gpu_place(t_latest->place())) {
+#ifdef PADDLE_WITH_CUDA
+      // TensorCopy tensor from cuda to cpu
+      VLOG(3)<<"LocalSGDCommunicator::RecvDense is_gpu_place";
+      auto *var_old = old_scope_->FindVar(varname);
+      auto t_old = var_old->GetMutable<framework::LoDTensor>();
+
+      auto *var_pserver = pserver_scope_->FindVar(varname);
+      auto t_pserver = var_pserver->Get<framework::LoDTensor>();
+
+      framework::TensorCopy(t_pserver, t_latest->place(), t_latest);
+      framework::TensorCopy(t_pserver, t_old->place(), t_old);
+#endif
+    } else {
+      auto *var_old = old_scope_->FindVar(varname);
+      auto t_old = var_old->GetMutable<framework::LoDTensor>();
+
+      auto *var_pserver = pserver_scope_->FindVar(varname);
+      auto t_pserver = var_pserver->Get<framework::LoDTensor>();
+
+      framework::TensorCopy(t_pserver, t_latest->place(), t_latest);
+      framework::TensorCopy(t_pserver, t_old->place(), t_old);
+    }
+
+  }
+  VLOG(1) << "Finish Recv Dense " << varnames[0] << ", table_id: " << table_id;
+  return;
+}
+
+void LocalSGDCommunicator::RecvSparse(const std::string &varname, int table_id, int ep_idx){
+  platform::RecordEvent record_event("LocalSGDCommunicator->RecvSparse");
+  VLOG(1) << "LocalSGDCommunicator::RecvSparse Begin";
+  // 1. recv from pserver
+  std::vector<uint64_t> keys;
+  std::vector<float> values;
+  auto status = _worker_ptr->pull_geo_param(table_id, &values, &keys, ep_idx);
+  status.wait();
+
+  std::string param = SplitedGradToParam(varname);
+  VLOG(1) << "RecvSparse receive var: " << varname << " " << param << ", "
+          << table_id << "; ids Size: " << keys.size()
+          << "; values size: " << values.size();
+
+  auto *var_latest = recv_scope_->FindVar(param);
+  auto *var_old = old_scope_->FindVar(param);
+
+  auto *t_latest = var_latest->GetMutable<framework::LoDTensor>();
+  auto t_latest_temp = t_latest;
+  if (platform::is_gpu_place(t_latest->place())) {
+#ifdef PADDLE_WITH_CUDA
+    // TensorCopy tensor from cuda to cpu
+    Variable *temp_var = xpu_temp_scope_->Var(param);
+    auto *temp_tensor = temp_var->GetMutable<LoDTensor>();
+    temp_tensor->Resize(t_latest->dims());
+    framework::TensorCopy(*t_latest, platform::CPUPlace(), temp_tensor);
+    t_latest_temp = temp_tensor;
+    auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+
+    auto dims1 = t_latest_temp->dims()[1];
+    auto numel = keys.size() * dims1;
+
+    std::vector<float> v_delta;
+    v_delta.resize(numel);
+
+    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    auto blas =
+        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+            cpu_ctx);
+
+    for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
+        float *latest_data = t_latest_temp->data<float>() + keys[j] * dims1;
+        float *old_data = t_old->data<float>() + keys[j] * dims1;
+        // pserver => latest
+        blas.VCOPY(dims1, values.data() + j * dims1, latest_data);
+        // pserver => old
+        blas.VCOPY(dims1, values.data() + j * dims1, old_data);
+    }
+
+    framework::TensorCopy(*t_latest_temp, t_latest->place(), t_latest);
+#endif
+  } else {
+    auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+
+    auto dims1 = t_latest_temp->dims()[1];
+    auto numel = keys.size() * dims1;
+
+    std::vector<float> v_delta;
+    v_delta.resize(numel);
+
+    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    auto blas =
+        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
+            cpu_ctx);
+
+    for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
+        float *latest_data = t_latest_temp->data<float>() + keys[j] * dims1;
+        float *old_data = t_old->data<float>() + keys[j] * dims1;
+        // pserver => latest
+        blas.VCOPY(dims1, values.data() + j * dims1, latest_data);
+        // pserver => old
+        blas.VCOPY(dims1, values.data() + j * dims1, old_data);
+    }
+  }
+  
+  VLOG(1) << "Finish Recv Sparse " << param << ", table_id: " << table_id;
+}
+
+void LocalSGDCommunicator::MainThread(){
+  VLOG(3) << "MainThread start and wait";
+
+  while (waiting_ && running_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    VLOG(3) << "wait for running";
+  }
+
+  while (running_) {
+    std::vector<std::future<void>> tasks;
+    tasks.reserve(parallel_task_nums_);
+    if (cur_merge_num_ < static_cast<size_t>(max_merge_var_num_)) {
+      VLOG(4) << "Wait for max_merge_var_num_ " << cur_merge_num_ << " " << max_merge_var_num_;
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    } else {
+      in_communication_ = true;
+      cur_merge_num_ -= static_cast<size_t>(max_merge_var_num_);
+      VLOG(4) << "LocalSGDCommunicator::MainThread cur_merge_num_ "<< cur_merge_num_;
+      for (auto &iter : send_varname_to_ctx_) {
+        auto &ctx = iter.second;
+        auto &varnames = ctx.origin_varnames;
+        auto &table_id = ctx.table_id;
+
+        if (ctx.is_sparse) {
+          PADDLE_ENFORCE_EQ(
+              varnames.size(), 1,
+              platform::errors::InvalidArgument(
+                  "sparse variables can only be merged by one variables"));
+          int pserver_num = static_cast<int>(ctx.epmap.size());
+          for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
+            // varname: emb@GRAD, param_name: emb, splited_varname: emb.delta0
+            auto send_recv_task = [this, table_id, ep_idx, &ctx] {
+              auto splited_varname = ctx.splited_varnames[ep_idx];
+              auto sparse_ids = MergeSparseIds(splited_varname);
+              SendSparse(splited_varname, sparse_ids, table_id, ep_idx);
+              RecvSparse(splited_varname, table_id, ep_idx);
+            };
+            tasks.emplace_back(
+                send_threadpool_->enqueue(std::move(send_recv_task)));
+          }
+        } else {
+          auto send_recv_task = [this, &ctx] {
+            SendDense(ctx);
+            RecvDense(ctx);
+          };
+          tasks.emplace_back(
+              send_threadpool_->enqueue(std::move(send_recv_task)));
+        }
+      }
+      for (auto &task : tasks) {
+        task.wait();
+      }
+      in_communication_ = false;
+    }
+  }
+}
+
+void LocalSGDCommunicator::Send(const std::vector<std::string> &var_names,
+            const framework::Scope &scope){
+  VLOG(3) << "LocalSGDCommunicator::Send Begin cur_merge_num_ "<<cur_merge_num_ ;
+  platform::RecordEvent record_event("LocalSGDCommunicator->Send");
+  waiting_ = false;
+  cur_merge_num_ += 1;
+  auto before_send = GetCurrentUS();
+  auto table_name = var_names[0];
+  VLOG(3) << "LocalSGDCommunicator::Send cur_merge_num_ " << cur_merge_num_ << " table_name "<<table_name;
+
+  // lock for communciation
+  while (in_communication_){
+    VLOG(4) << "Wait for communication ";
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+
+  if (table_name == "LOCAL_STEP") {
+    return;
+  }
+
+  size_t splited_var_nums =
+      send_varname_to_ctx_[table_name].splited_varnames.size();
+
+  std::unordered_map<std::string, std::unordered_set<int64_t>> ids_table;
+
+  for (size_t j = 0; j < splited_var_nums; j++) {
+    ids_table.insert(std::pair<std::string, std::unordered_set<int64_t>>(
+        send_varname_to_ctx_[table_name].splited_varnames[j],
+        std::unordered_set<int64_t>()));
+  }
+
+  auto *var = scope.FindVar(table_name);
+
+  PADDLE_ENFORCE_EQ(var->IsType<framework::SelectedRows>(), true,
+                    platform::errors::InvalidArgument(
+                        "Only need to send Sparse Grad in Geo mode."));
+  auto &rows = var->Get<framework::SelectedRows>().rows();
+
+  // insert ids which has not been record
+  for (size_t j = 0; j < rows.size(); j++) {
+    auto ep_idx = rows[j] % splited_var_nums;
+    ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
+        .insert(rows[j]);
+  }
+
+  for (auto &iter : ids_table) {
+    auto &key = iter.first;
+    auto &sparse_ids_set = iter.second;
+    auto sparse_ids_vec = std::make_shared<std::vector<int64_t>>();
+    sparse_ids_vec->assign(sparse_ids_set.begin(), sparse_ids_set.end());
+    sparse_id_queues_.at(key)->Push(sparse_ids_vec);
+    VLOG(3) << "push " << sparse_ids_vec->size() << " ids to " << key
+            << "'s queue " << " queue_size "<< sparse_id_queues_.at(key)->Size();
+  }
+
+  auto after_send = GetCurrentUS();
+  VLOG(3) << "run send op finish. use time " << (after_send - before_send)
+          << " cur_merge_num_ " << cur_merge_num_;
+}
+
+void EASGDCommunicator::MainThread(){
+  VLOG(3) << "MainThread start and wait";
+
+  while (waiting_ && running_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    VLOG(3) << "wait for running";
+  }
+
+  while (running_) {
+    std::vector<std::future<void>> tasks;
+    tasks.reserve(parallel_task_nums_);
+    if (cur_merge_num_ < static_cast<size_t>(max_merge_var_num_)) {
+      VLOG(4) << "Wait for max_merge_var_num_ " << cur_merge_num_ << " " << max_merge_var_num_;
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    } else {
+      in_communication_ = true;
+      cur_merge_num_ -= static_cast<size_t>(max_merge_var_num_);
+      VLOG(4) << "EASGDCommunicator::MainThread cur_merge_num_ "<< cur_merge_num_;
+      for (auto &iter : send_varname_to_ctx_) {
+        auto &ctx = iter.second;
+        auto &varnames = ctx.origin_varnames;
+        auto &table_id = ctx.table_id;
+
+        if (ctx.is_sparse) {
+          PADDLE_ENFORCE_EQ(
+              varnames.size(), 1,
+              platform::errors::InvalidArgument(
+                  "sparse variables can only be merged by one variables"));
+          int pserver_num = static_cast<int>(ctx.epmap.size());
+          for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
+            // varname: emb@GRAD, param_name: emb, splited_varname: emb.delta0
+            auto send_recv_task = [this, table_id, ep_idx, &ctx] {
+              auto splited_varname = ctx.splited_varnames[ep_idx];
+              auto sparse_ids = MergeSparseIds(splited_varname);
+              SendSparse(splited_varname, sparse_ids, table_id, ep_idx);
+              RecvSparse(splited_varname, table_id, ep_idx);
+            };
+            tasks.emplace_back(
+                send_threadpool_->enqueue(std::move(send_recv_task)));
+          }
+        } else {
+          auto send_recv_task = [this, &ctx] {
+            SendDense(ctx);
+            RecvDense(ctx);
+          };
+          tasks.emplace_back(
+              send_threadpool_->enqueue(std::move(send_recv_task)));
+        }
+      }
+      for (auto &task : tasks) {
+        task.wait();
+      }
+      in_communication_ = false;
+    }
+  }
+}
+
+void EASGDCommunicator::Send(const std::vector<std::string> &var_names,
+            const framework::Scope &scope){
+  VLOG(3) << "EASGDCommunicator::Send Begin cur_merge_num_ "<<cur_merge_num_ ;
+  platform::RecordEvent record_event("EASGDCommunicator->Send");
+  waiting_ = false;
+  cur_merge_num_ += 1;
+  auto before_send = GetCurrentUS();
+  auto table_name = var_names[0];
+  VLOG(3) << "EASGDCommunicator::Send cur_merge_num_ " << cur_merge_num_ << " table_name "<<table_name;
+
+  // lock for communciation
+  while (in_communication_){
+    VLOG(4) << "Wait for communication ";
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+
+  if (table_name == "LOCAL_STEP") {
+    return;
+  }
+
+  size_t splited_var_nums =
+      send_varname_to_ctx_[table_name].splited_varnames.size();
+
+  std::unordered_map<std::string, std::unordered_set<int64_t>> ids_table;
+
+  for (size_t j = 0; j < splited_var_nums; j++) {
+    ids_table.insert(std::pair<std::string, std::unordered_set<int64_t>>(
+        send_varname_to_ctx_[table_name].splited_varnames[j],
+        std::unordered_set<int64_t>()));
+  }
+
+  auto *var = scope.FindVar(table_name);
+
+  PADDLE_ENFORCE_EQ(var->IsType<framework::SelectedRows>(), true,
+                    platform::errors::InvalidArgument(
+                        "Only need to send Sparse Grad in Geo mode."));
+  auto &rows = var->Get<framework::SelectedRows>().rows();
+
+  // insert ids which has not been record
+  for (size_t j = 0; j < rows.size(); j++) {
+    auto ep_idx = rows[j] % splited_var_nums;
+    ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
+        .insert(rows[j]);
+  }
+
+  for (auto &iter : ids_table) {
+    auto &key = iter.first;
+    auto &sparse_ids_set = iter.second;
+    auto sparse_ids_vec = std::make_shared<std::vector<int64_t>>();
+    sparse_ids_vec->assign(sparse_ids_set.begin(), sparse_ids_set.end());
+    sparse_id_queues_.at(key)->Push(sparse_ids_vec);
+    VLOG(3) << "push " << sparse_ids_vec->size() << " ids to " << key
+            << "'s queue " << " queue_size "<< sparse_id_queues_.at(key)->Size();
+  }
+
+  auto after_send = GetCurrentUS();
+  VLOG(3) << "run send op finish. use time " << (after_send - before_send)
+          << " cur_merge_num_ " << cur_merge_num_;
 }
 
 }  // namespace distributed
