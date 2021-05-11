@@ -19,7 +19,7 @@ from ..fluid import framework
 from ..fluid.dygraph import base as imperative_base
 import paddle
 
-__all__ = ['AdamW']
+__all__ = []
 
 
 class AdamW(Adam):
@@ -45,7 +45,7 @@ class AdamW(Adam):
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
-	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
@@ -62,7 +62,7 @@ class AdamW(Adam):
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
         apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
-            will be updated. It only works when we want to specify tensors.
+            will be updated with weight decay. It only works when we want to specify tensors.
             Default: None.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies

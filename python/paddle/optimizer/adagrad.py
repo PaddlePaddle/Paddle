@@ -17,7 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
-__all__ = ["Adagrad"]
+__all__ = []
 
 
 class Adagrad(Optimizer):
@@ -45,7 +45,7 @@ class Adagrad(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \

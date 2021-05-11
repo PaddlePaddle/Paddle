@@ -16,7 +16,7 @@
 import paddle.fluid as fluid
 from paddle.fluid import core
 
-__all__ = ['seed', 'get_cuda_rng_state', 'set_cuda_rng_state']
+__all__ = []
 
 
 def seed(seed):
@@ -83,7 +83,7 @@ def set_cuda_rng_state(state_list):
     Sets generator state for all cuda generators
 
     Args:
-        state_list(list): The cuda states to set back to cuda generators. state_list is obtained from get_cuda_rng_state().
+        state_list(list|tuple): The cuda states to set back to cuda generators. state_list is obtained from get_cuda_rng_state().
 
     Returns:
         None

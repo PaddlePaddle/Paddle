@@ -17,7 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
-__all__ = ["RMSProp"]
+__all__ = []
 
 
 class RMSProp(Optimizer):
@@ -80,7 +80,7 @@ class RMSProp(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \

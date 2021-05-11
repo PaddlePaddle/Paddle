@@ -17,7 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
-__all__ = ["Lamb"]
+__all__ = []
 
 
 class Lamb(Optimizer):

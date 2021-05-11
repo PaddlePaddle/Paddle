@@ -17,7 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 
-__all__ = ["Adamax"]
+__all__ = []
 
 
 class Adamax(Optimizer):
@@ -55,7 +55,7 @@ class Adamax(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \

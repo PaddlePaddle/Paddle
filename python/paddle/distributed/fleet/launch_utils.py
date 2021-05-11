@@ -484,6 +484,11 @@ def start_local_trainers(cluster,
             proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
 
+        elif len(t.
+                 accelerators) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU:
+            proc_env["FLAGS_selected_npus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+
         if len(t.accelerators) > 0:
             proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
@@ -589,17 +594,6 @@ def watch_local_trainers(procs, nranks):
     return alive
 
 
-def get_ascend_npus(npus):
-    if npus is None:
-        count = fluid.core.NPUDevice.get_device_count()
-        if count <= 0:
-            return None
-        ret = [str(x) for x in range(count)]
-    else:
-        ret = [x.strip() for x in npus.split(',')]
-    return ret
-
-
 def get_gpus(gpus):
     if gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
@@ -659,8 +653,8 @@ def get_xpus(xpus):
 
 
 def get_device_mode():
-    if fluid.core.is_compiled_with_ascend() and \
-            fluid.core.NPUDevice.get_device_count() > 0:
+    if fluid.core.is_compiled_with_npu() and \
+            fluid.core.get_npu_device_count() > 0:
         print("launch train in ascend npu mode!")
         return DeviceMode.ASCEND_NPU
 
@@ -697,9 +691,7 @@ def get_device_proc_info(args):
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.ASCEND_NPU:
-        npus = get_ascend_npus(args.ascend_npus)
-        assert args.nproc_per_node is None, "ascend_npus need't nproc_per_node arguments"
-        devices_per_proc = npus
+        devices_per_proc = None
     elif device_mode == DeviceMode.XPU:
         xpus = get_xpus(args.xpus)
         if args.nproc_per_node is not None:
