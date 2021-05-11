@@ -108,6 +108,28 @@ struct NumTraits<complex128> : GenericNumTraits<std::complex<double>> {
   static inline int digits10() { return NumTraits<Real>::digits10(); }
 };
 
+template <typename T>
+struct NumTraits<complex<T>> : GenericNumTraits<std::complex<T>> {
+  typedef T Real;
+  typedef typename NumTraits<T>::Literal Literal;
+  enum {
+    IsComplex = 1,
+    RequireInitialization = NumTraits<T>::RequireInitialization,
+    ReadCost = 2 * NumTraits<T>::ReadCost,
+    AddCost = 2 * NumTraits<Real>::AddCost,
+    MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
+  };
+
+  EIGEN_DEVICE_FUNC
+  static inline Real epsilon() { return NumTraits<Real>::epsilon(); }
+  EIGEN_DEVICE_FUNC
+  static inline Real dummy_precision() {
+    return NumTraits<Real>::dummy_precision();
+  }
+  EIGEN_DEVICE_FUNC
+  static inline int digits10() { return NumTraits<Real>::digits10(); }
+};
+
 template <>
 struct NumTraits<float16> : GenericNumTraits<float16> {
   enum {
