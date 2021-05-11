@@ -75,7 +75,7 @@ class TestCUDAStream(unittest.TestCase):
             e1 = cuda.Event(False, False, False)
             s1.record_event(e1)
 
-            s2 = cuda.Stream(1)
+            s2 = cuda.Stream(0)
             s2.wait_event(e1)
             s2.synchronize()
 
