@@ -763,14 +763,14 @@ void Reducer::MarkGroupReady(size_t group_index) {
         auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
         platform::SetXPUDeviceId(dev_id);
         FusedAllReduceSchedule(run_order, group, next_group);
-      } catch (...) {
-        exception_.Catch(std::current_exception());
-      }
-      {
         std::lock_guard<std::mutex> lock(mutex_);
         comm_op_count_ -= 1;  // lock
-        cv_.notify_all();
+      } catch (...) {
+        exception_.Catch(std::current_exception());
+        std::lock_guard<std::mutex> lock(mutex_);
+        comm_op_count_ = 0;  // lock
       }
+      { cv_.notify_all(); }
     });
 #elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
     FusedAllReduceSchedule(run_order, group, next_group_);
@@ -935,6 +935,7 @@ void Reducer::FinalizeBackward() {
   }
   if (exception_.IsCaught()) {
     VLOG(3) << "caught exception " << exception_.Type() << ", rethrow it";
+    exception_.ReThrow();
   }
 #endif
 
