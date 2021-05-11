@@ -26,7 +26,7 @@ using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class NegKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExectionContext& context) const override {
+  void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
 
@@ -42,6 +42,26 @@ class NegKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class NegGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const {
+    const framework::Tensor* d_out =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    framework::Tensor* d_x =
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
+    auto numel = d_out->numel();
+    auto* dout_data = d_out->data<math::Real<T>>();
+    auto* dx_data = d_x->mutable_data<T>(
+        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    math::NegFunctor<T> functor(dout_data, dx_data, numel);
+    for_range(functor);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

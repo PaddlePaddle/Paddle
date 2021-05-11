@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/neg_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -42,7 +43,7 @@ class NegGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     retv->SetInput("X", this->Input("X"));
     retv->SetAttrMap(this->Attrs());
-    retv->SetOutput(framework::GradVarName("X"), this->InputputGrad("X"));
+    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 
@@ -52,14 +53,54 @@ class NegOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "neg");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out", "neg");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "neg");
 
-    auto in_dims = ctx->GstInputDim("X");
+    auto in_dims = ctx->GetInputDim("X");
 
     ctx->SetOutputDim("Out", in_dims);
-    ctx->ShareLoD("X", "Out"); 
+    ctx->ShareLoD("X", "Out");
+  }
+};
+
+class NegGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+		   "Out@Grad", "NegGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@Grad", "AbsGrad");
+
+    auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
+    ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(neg, ops::NegOp, ops::NegOpMaker,
+                  ops::NegGradMaker<paddle::framework::OpDesc>,
+                  ops::NegGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(neg_grad, ops::NegGradOp);
+
+REGISTER_OP_CPU_KERNEL(neg,
+    ops::NegKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::NegKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::NegKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::NegKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::NegKernel<paddle::platform::CPUDeviceContext,
+                   paddle::platform::float16>);
+
+REGISTER_OP_CPU_KERNEL(neg_grad,
+    ops::NegGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::NegGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::NegGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::NegGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::NegGradKernel<paddle::platform::CPUDeviceContext,
+                       paddle::platform::float16>);
