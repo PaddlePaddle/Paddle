@@ -1097,16 +1097,11 @@ class Optimizer(object):
 
         self.param_groups.append(param_group)
 
-    @framework.dygraph_only
-    def _update_param_groups(self):
+    def _update_param_group(self, parameters):
         """
         Update the param group with new entry
-
         Args:
-            param_group (dict): The extra group of Tensors to be optimzed with
+            parameters (dict): The extra group of Tensors to be optimzed with
             different optimization options.
         """
-        # Update optimization options for each groups
-        for param_group in self.param_groups:
-            for k, v in self.default_dict.items():
-                param_group.setdefault(k, v)
+        return parameters

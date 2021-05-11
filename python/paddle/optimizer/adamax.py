@@ -160,20 +160,11 @@ class Adamax(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        self.default_dict = {
-            'beta1': self._beta1,
-            'beta2': self._beta2,
-            'epsilon': self._epsilon
-        }
-        if self._parameter_list and isinstance(self._parameter_list[0], dict):
-            self._update_param_groups()
+        self.default_dict = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
 
     def _create_accumulators(self, block, parameters):
         if isinstance(parameters, dict):
-            self._beta1 = parameters['beta1']
-            self._beta2 = parameters['beta2']
-            self._epsilon = parameters['epsilon']
-            parameters = parameters['params']
+            parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
@@ -188,10 +179,7 @@ class Adamax(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
-            self._beta1 = param_and_grad['beta1']
-            self._beta2 = param_and_grad['beta2']
-            self._epsilon = param_and_grad['epsilon']
-            param_and_grad = param_and_grad['params']
+            param_and_grad = self._update_param_group(param_and_grad)
 
         moment = self._get_accumulator(self._moment_acc_str, param_and_grad[0])
         inf_norm = self._get_accumulator(self._inf_norm_acc_str,
@@ -249,10 +237,18 @@ class Adamax(Optimizer):
                     [param, grad]), name_scope('adamax'):
                     beta1_pow_acc = self._get_accumulator(
                         self._beta1_pow_acc_str, param)
-                    self._beta1 = parameters_and_grads['beta1']
+                    self._beta1 = parameters_and_grads.get(
+                        'beta1', self.default_dict['beta1'])
                     block.append_op(
                         type="scale",
                         inputs={"X": beta1_pow_acc},
                         outputs={"Out": beta1_pow_acc},
                         attrs={"scale": self._beta1},
                         stop_gradient=True)
+
+    def _update_param_group(self, parameters):
+        self._beta1 = parameters.get('beta1', self.default_dict['beta1'])
+        self._beta2 = parameters.get('beta2', self.default_dict['beta2'])
+        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        parameters = parameters.get('params')
+        return parameters

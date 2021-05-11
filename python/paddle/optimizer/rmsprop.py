@@ -184,20 +184,18 @@ class RMSProp(Optimizer):
         self._momentum = momentum
         self._centered = centered
         self.default_dict = {
-            'rho': self._rho,
-            'epsilon': self._epsilon,
-            'momentum': self._momentum,
-            'centered': self._centered,
+            'rho': rho,
+            'epsilon': epsilon,
+            'momentum': momentum,
+            'centered': centered,
         }
-        if self._parameter_list and isinstance(self._parameter_list[0], dict):
-            self._update_param_groups()
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
 
         if isinstance(parameters, dict):
-            parameters = parameters['params']
+            parameters = parameters.get('params')
 
         for p in parameters:
             self._add_accumulator(self._momentum_acc_str, p)
@@ -209,11 +207,7 @@ class RMSProp(Optimizer):
             raise TypeError("block is not instance of framework.Block.")
 
         if isinstance(param_and_grad, dict):
-            self._epsilon = param_and_grad['epsilon']
-            self._rho = param_and_grad['rho']
-            self._momentum = param_and_grad['momentum']
-            self._centered = param_and_grad['centered']
-            param_and_grad = param_and_grad['params']
+            param_and_grad = self._update_param_group(param_and_grad)
 
         momentum_acc = self._get_accumulator(self._momentum_acc_str,
                                              param_and_grad[0])
@@ -246,3 +240,13 @@ class RMSProp(Optimizer):
             stop_gradient=True)
 
         return rmsprop_op
+
+    def _update_param_group(self, parameters):
+        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self._rho = parameters.get('rho', self.default_dict['rho'])
+        self._momentum = parameters.get('momentum',
+                                        self.default_dict['momentum'])
+        self._centered = parameters.get('centered',
+                                        self.default_dict['centered'])
+        parameters = parameters.get('params')
+        return parameters

@@ -128,29 +128,27 @@ class Adagrad(Optimizer):
         self._epsilon = epsilon
         self.initial_accumulator_value = initial_accumulator_value
         self.default_dict = {
-            'epsilon': self._epsilon,
-            'initial_accumulator_value': self.initial_accumulator_value
+            'epsilon': epsilon,
+            'initial_accumulator_value': initial_accumulator_value,
         }
-        if self._parameter_list and isinstance(self._parameter_list[0], dict):
-            self._update_param_groups()
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
-        fill_value = parameters['initial_accumulator_value'] if isinstance(
-            parameters, dict) else self.initial_accumulator_value
         if isinstance(parameters, dict):
-            parameters = parameters['params']
+            parameters = self._update_param_group(parameters)
+
         for p in parameters:
             self._add_accumulator(
-                self._moment_acc_str, p, fill_value=fill_value)
+                self._moment_acc_str,
+                p,
+                fill_value=self.initial_accumulator_value)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         if isinstance(param_and_grad, dict):
-            self._epsilon = param_and_grad['epsilon']
-            param_and_grad = param_and_grad['params']
+            param_and_grad = self._update_param_group(param_and_grad)
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
@@ -169,3 +167,11 @@ class Adagrad(Optimizer):
             stop_gradient=True)
 
         return adagrad_op
+
+    def _update_param_group(self, parameters):
+        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self.initial_accumulator_value = parameters.get(
+            'initial_accumulator_value',
+            self.default_dict['initial_accumulator_value'])
+        parameters = parameters.get('params')
+        return parameters

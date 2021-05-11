@@ -129,15 +129,16 @@ class Adadelta(Optimizer):
         self.type = "adadelta"
         self._epsilon = epsilon
         self._rho = rho
-        self.default_dict = {'epsilon': self._epsilon, 'rho': self._rho}
-        if self._parameter_list and isinstance(self._parameter_list[0], dict):
-            self._update_param_groups()
+        self.default_dict = {
+            'epsilon': epsilon,
+            'rho': rho,
+        }
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
         if isinstance(parameters, dict):
-            parameters = parameters['params']
+            parameters = parameters.get('params')
 
         for p in parameters:
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
@@ -148,9 +149,7 @@ class Adadelta(Optimizer):
             raise TypeError("block is not instance of framework.Block.")
 
         if isinstance(param_and_grad, dict):
-            self._epsilon = param_and_grad['epsilon']
-            self._rho = param_and_grad['rho']
-            param_and_grad = param_and_grad['params']
+            param_and_grad = self._update_param_group(param_and_grad)
 
         avg_squared_grad_acc = self._get_accumulator(
             self._avg_squared_grad_acc_str, param_and_grad[0])
@@ -176,3 +175,9 @@ class Adadelta(Optimizer):
             stop_gradient=True)
 
         return adadelta_op
+
+    def _update_param_group(self, parameters):
+        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self._rho = parameters.get('rho', self.default_dict['rho'])
+        parameters = parameters.get('params')
+        return parameters

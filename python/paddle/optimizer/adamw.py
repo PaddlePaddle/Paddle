@@ -170,9 +170,7 @@ class AdamW(Adam):
             name=name,
             lazy_mode=lazy_mode,
             multi_precision=multi_precision)
-        self.default_dict = {'coeff': self._coeff}
-        if self._parameter_list and isinstance(self._parameter_list[0], dict):
-            self._update_param_groups()
+        self.default_dict = {'coeff': coeff}
 
     def _append_decoupled_weight_decay(self, block, param_and_grad):
         """
@@ -189,8 +187,7 @@ class AdamW(Adam):
         if not isinstance(param_and_grad, dict):
             param, grad = param_and_grad
         else:
-            param, grad = param_and_grad['params']
-            self._coeff = param_and_grad['coeff']
+            param, grad = self._update_param_group(param_and_grad)
 
         if self._apply_decay_param_fun is not None \
                 and not self._apply_decay_param_fun(param.name):
@@ -241,3 +238,8 @@ class AdamW(Adam):
 
     def __str__(self):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
+
+    def _update_param_group(self, parameters):
+        self._coeff = parameters.get('coeff', self.default_dict['coeff'])
+        parameters = parameters.get('params')
+        return parameters

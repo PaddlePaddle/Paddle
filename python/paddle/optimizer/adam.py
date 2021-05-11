@@ -200,13 +200,11 @@ class Adam(Optimizer):
         self._multi_precision = multi_precision
         self._master_weights = {}
         self.default_dict = {
-            'beta1': self._beta1,
-            'beta2': self._beta2,
-            'epsilon': self._epsilon,
-            'lazy_mode': self._lazy_mode,
+            'beta1': beta1,
+            'beta2': beta2,
+            'epsilon': epsilon,
+            'lazy_mode': lazy_mode,
         }
-        if self._parameter_list and isinstance(self._parameter_list[0], dict):
-            self._update_param_groups()
 
     def _create_master_weight(self, param):
         assert isinstance(self.helper, LayerHelper)
@@ -277,10 +275,7 @@ class Adam(Optimizer):
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
         if isinstance(parameters, dict):
-            self._beta1 = parameters['beta1']
-            self._beta2 = parameters['beta2']
-            self._epsilon = parameters['epsilon']
-            parameters = parameters['params']
+            parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
@@ -298,12 +293,7 @@ class Adam(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
-            self._beta1 = param_and_grad['beta1']
-            self._beta2 = param_and_grad['beta2']
-            self._epsilon = param_and_grad['epsilon']
-            self._lazy_mode = param_and_grad['lazy_mode']
-            self._epsilon = param_and_grad['epsilon']
-            param_and_grad = param_and_grad['params']
+            param_and_grad = self._update_param_group(param_and_grad)
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
                                         param_and_grad[0])
@@ -438,3 +428,12 @@ class Adam(Optimizer):
                      for k, v in param_group.items() if k != 'params'})
                 self._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads)
+
+    def _update_param_group(self, parameters):
+        self._beta1 = parameters.get('beta1', self.default_dict['beta1'])
+        self._beta2 = parameters.get('beta2', self.default_dict['beta2'])
+        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self._lazy_mode = parameters.get('lazy_mode',
+                                         self.default_dict['lazy_mode'])
+        parameters = parameters.get('params')
+        return parameters

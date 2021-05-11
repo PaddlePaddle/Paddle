@@ -161,17 +161,14 @@ class Momentum(Optimizer):
         self._master_weights = {}
 
         self.default_dict = {
-            'momentum': self._momentum,
-            'use_nesterov': self._use_nesterov,
-            'rescale_grad': self._rescale_grad,
+            'momentum': momentum,
+            'use_nesterov': use_nesterov,
+            'rescale_grad': rescale_grad,
             'regularization_method': self._regularization_method,
             'regularization_coeff': self._regularization_coeff,
         }
 
         if framework.in_dygraph_mode():
-            if isinstance(self._parameter_list[0], dict):
-                self._update_param_groups()
-
             self.helper = LayerHelper(self.__class__.__name__)
             if isinstance(self._parameter_list[0], dict):
                 for parameters in self.param_groups:
@@ -258,13 +255,7 @@ class Momentum(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
-            self._momentum = param_and_grad['momentum']
-            self._use_nesterov = param_and_grad['use_nesterov']
-            self._rescale_grad = param_and_grad['rescale_grad']
-            self._regularization_method = param_and_grad[
-                'regularization_method']
-            self._regularization_coeff = param_and_grad['regularization_coeff']
-            param_and_grad = param_and_grad['params']
+            param_and_grad = self._update_param_group(param_and_grad)
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
@@ -320,3 +311,17 @@ class Momentum(Optimizer):
             stop_gradient=True)
 
         return momentum_op
+
+    def _update_param_group(self, parameters):
+        self._momentum = parameters.get('momentum',
+                                        self.default_dict['momentum'])
+        self._use_nesterov = parameters.get('use_nesterov',
+                                            self.default_dict['use_nesterov'])
+        self._rescale_grad = parameters.get('rescale_grad',
+                                            self.default_dict['rescale_grad'])
+        self._regularization_method = parameters.get(
+            'regularization_method', self.default_dict['regularization_method'])
+        self._regularization_coeff = parameters.get(
+            'regularization_coeff', self.default_dict['regularization_coeff'])
+        parameters = parameters.get('params')
+        return parameters

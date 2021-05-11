@@ -144,22 +144,17 @@ class Lamb(Optimizer):
         self._lamb_weight_decay = lamb_weight_decay
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
         self.default_dict = {
-            'beta1': self._beta1,
-            'beta2': self._beta2,
-            'epsilon': self._epsilon,
-            'lamb_weight_decay': self._lamb_weight_decay,
-            'exclude_from_weight_decay_fn': self._exclude_from_weight_decay_fn,
+            'beta1': beta1,
+            'beta2': beta2,
+            'epsilon': epsilon,
+            'lamb_weight_decay': lamb_weight_decay,
+            'exclude_from_weight_decay_fn': exclude_from_weight_decay_fn,
         }
-        if self._parameter_list and isinstance(self._parameter_list[0], dict):
-            self._update_param_groups()
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
         if isinstance(parameters, dict):
-            self._beta1 = parameters['beta1']
-            self._beta2 = parameters['beta2']
-            self._epsilon = parameters['epsilon']
-            parameters = parameters['params']
+            parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
@@ -183,9 +178,7 @@ class Lamb(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
-            self._exclude_from_weight_decay_fn = param_and_grad[
-                'exclude_from_weight_decay_fn']
-            self._lamb_weight_decay = param_and_grad['lamb_weight_decay']
+            param_and_grad = self._update_param_group(param_and_grad)
 
         block.program._use_lamb = True
 
@@ -246,3 +239,15 @@ class Lamb(Optimizer):
             stop_gradient=True)
 
         return lamb_op
+
+    def _update_param_group(self, parameters):
+        self._beta1 = parameters.get('beta1', self.default_dict['beta1'])
+        self._beta2 = parameters.get('beta2', self.default_dict['beta2'])
+        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self._lamb_weight_decay = parameters.get(
+            'lamb_weight_decay', self.default_dict['lamb_weight_decay'])
+        self._exclude_from_weight_decay_fn = parameters.get(
+            'exclude_from_weight_decay_fn',
+            self.default_dict['exclude_from_weight_decay_fn'])
+        parameters = parameters.get('params')
+        return parameters
