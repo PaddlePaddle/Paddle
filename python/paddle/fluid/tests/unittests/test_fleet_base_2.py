@@ -63,9 +63,10 @@ class TestFleetBase(unittest.TestCase):
         compiled_prog = fluid.compiler.CompiledProgram(
             fluid.default_main_program())
 
-        fleet.save(dirname="/tmp", feed=['x', 'y'], fetch=[avg_cost])
-        fleet.save(dirname="/tmp", feed=[input_x, input_y], fetch=[avg_cost])
-        fleet.save(dirname="/tmp")
+        fleet.fleet.save(dirname="/tmp", feed=['x', 'y'], fetch=[avg_cost])
+        fleet.fleet.save(
+            dirname="/tmp", feed=[input_x, input_y], fetch=[avg_cost])
+        fleet.fleet.save(dirname="/tmp")
 
         self.assertRaises(
             Exception,

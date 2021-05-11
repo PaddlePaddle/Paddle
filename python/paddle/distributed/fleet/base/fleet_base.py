@@ -648,9 +648,9 @@ class Fleet(object):
                 fleet.init_server()
 
         """
-        warnings.warn(
-            "'save_inference_model' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
-        )
+        # warnings.warn(
+        #     "'save_inference_model' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
+        # )
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
@@ -697,9 +697,9 @@ class Fleet(object):
                 fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
 
         """
-        warnings.warn(
-            "'save_persistables' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
-        )
+        # warnings.warn(
+        #     "'save_persistables' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
+        # )
 
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
