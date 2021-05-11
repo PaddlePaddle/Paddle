@@ -86,7 +86,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(neg, ops::NegOp, ops::NegOpMaker,
                   ops::NegGradMaker<paddle::framework::OpDesc>,
                   ops::NegGradMaker<paddle::imperative::OpBase>);
-
 REGISTER_OPERATOR(neg_grad, ops::NegGradOp);
 
 REGISTER_OP_CPU_KERNEL(neg,
