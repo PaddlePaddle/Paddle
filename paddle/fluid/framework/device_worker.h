@@ -29,7 +29,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/heter_service.h"
+#include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -266,6 +266,9 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
+#ifdef PADDLE_WITH_HETERPS
+  platform::DeviceContext* dev_ctx_ = nullptr;
+#endif
 };
 
 class DownpourWorker : public HogwildWorker {
@@ -639,7 +642,7 @@ class PSGPUWorker : public HogwildWorker {
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(WITH_ASCEND_CL)
+    defined(PADDLE_WITH_ASCEND_CL)
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}

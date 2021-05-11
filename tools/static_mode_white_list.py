@@ -498,6 +498,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_truncated_gaussian_random_op',
     'test_unbind_op',
     'test_unfold_op',
+    'test_uniform_random_bf16_op',
     'test_uniform_random_op',
     'test_unique',
     'test_unique_with_counts',
