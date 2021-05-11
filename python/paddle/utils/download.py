@@ -177,8 +177,8 @@ def retry(exceptions, delay, times):
                     _e = e
 
             if _e is not None:
-                raise RuntimeError(
-                    'Downloading failed with exception {}!'.format(str(_e)))
+                raise RuntimeError('Retry failed with exception {}!'.format(
+                    str(_e)))
 
         return inner
 
