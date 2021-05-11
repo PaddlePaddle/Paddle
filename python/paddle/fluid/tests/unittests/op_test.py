@@ -1704,9 +1704,9 @@ class OpTest(unittest.TestCase):
                         "in_dtype": core.VarDesc.VarType.BF16,
                         "out_dtype": core.VarDesc.VarType.FP32
                     })
-            cast_op.desc.infer_var_type(block.desc)
-            cast_op.desc.infer_shape(block.desc)
-            output_names = [cast_outputs.name]
+                cast_op.desc.infer_var_type(block.desc)
+                cast_op.desc.infer_shape(block.desc)
+                output_names = [cast_outputs.name]
             loss = append_loss_ops(block, output_names)
             param_grad_list = append_backward(
                 loss=loss,
