@@ -45,8 +45,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 if ten is not None:
                     ten.set(np.zeros_like(np.array(ten)), place)
                     new_t = np.array(scope.find_var(var.name).get_tensor())
-                    if paddle.fluid.core.is_compiled_with_cuda(
-                    ) and place.is_gpu_place():
+                    if paddle.fluid.core.is_compiled_with_cuda():
                         fluid.core._cuda_synchronize(place)
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
@@ -91,8 +90,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    if paddle.fluid.core.is_compiled_with_cuda(
-                    ) and place.is_gpu_place():
+                    if paddle.fluid.core.is_compiled_with_cuda():
                         fluid.core._cuda_synchronize(place)
                     # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
@@ -111,8 +109,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 if var.persistable:
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    if paddle.fluid.core.is_compiled_with_cuda(
-                    ) and place.is_gpu_place():
+                    if paddle.fluid.core.is_compiled_with_cuda():
                         fluid.core._cuda_synchronize(place)
                     base_t = base_map[var.name]
 
@@ -127,8 +124,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 if var.persistable:
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    if paddle.fluid.core.is_compiled_with_cuda(
-                    ) and place.is_gpu_place():
+                    if paddle.fluid.core.is_compiled_with_cuda():
                         fluid.core._cuda_synchronize(place)
                     base_t = base_map[var.name]
 
@@ -161,8 +157,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                     break
 
             origin = np.array(var.get_value())
-            if paddle.fluid.core.is_compiled_with_cuda() and place.is_gpu_place(
-            ):
+            if paddle.fluid.core.is_compiled_with_cuda():
                 fluid.core._cuda_synchronize(place)
             var.set_value(np.zeros_like(origin))
             is_zeros = np.array(var.get_value())
