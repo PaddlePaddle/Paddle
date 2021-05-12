@@ -873,36 +873,35 @@ class Layer(core.Layer):
         pass
 
     def __call__(self, *inputs, **kwargs):
-        with param_guard(self._parameters), param_guard(self._buffers):
-            for forward_pre_hook in self._forward_pre_hooks.values():
-                hook_result = forward_pre_hook(self, inputs)
-                if hook_result is not None:
-                    if not isinstance(hook_result, tuple):
-                        hook_result = (hook_result, )
-                    inputs = hook_result
+        for forward_pre_hook in self._forward_pre_hooks.values():
+            hook_result = forward_pre_hook(self, inputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result, )
+                inputs = hook_result
 
-            if not self._built:
-                with program_desc_tracing_guard(False):
-                    self._build_once(*inputs, **kwargs)
+        if not self._built:
+            with program_desc_tracing_guard(False):
+                self._build_once(*inputs, **kwargs)
 
-                    # TODO(liuyuhui) Only xpu broadcast parameters here. 
-                    # The other device is to call _sync_params_buffers in DataParallel 
-                    # to realize the parameter synchronization among multiply cards.
-                    if parallel_helper._is_data_parallel_mode(
-                    ) and paddle.is_compiled_with_xpu():
-                        parallel_helper._broadcast_parameters(
-                            self._parameters.values())
+                # TODO(liuyuhui) Only xpu broadcast parameters here. 
+                # The other device is to call _sync_params_buffers in DataParallel 
+                # to realize the parameter synchronization among multiply cards.
+                if parallel_helper._is_data_parallel_mode(
+                ) and paddle.is_compiled_with_xpu():
+                    parallel_helper._broadcast_parameters(
+                        self._parameters.values())
 
-                self._built = True
+            self._built = True
 
-            outputs = self.forward(*inputs, **kwargs)
+        outputs = self.forward(*inputs, **kwargs)
 
-            for forward_post_hook in self._forward_post_hooks.values():
-                hook_result = forward_post_hook(self, inputs, outputs)
-                if hook_result is not None:
-                    outputs = hook_result
+        for forward_post_hook in self._forward_post_hooks.values():
+            hook_result = forward_post_hook(self, inputs, outputs)
+            if hook_result is not None:
+                outputs = hook_result
 
-            return outputs
+        return outputs
 
     def forward(self, *inputs, **kwargs):
         """
