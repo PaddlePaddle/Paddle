@@ -354,7 +354,7 @@ template <typename T>
 HOSTDEVICE inline bool(isnan)(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  return isnan(a.real) || isnan(a.imag);
+  return ::isnan(a.real) || ::isnan(a.imag);
 #else
   return std::isnan(a.real) || std::isnan(a.imag);
 #endif
@@ -364,7 +364,7 @@ template <typename T>
 HOSTDEVICE inline bool isinf(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  return isinf(a.real) || isinf(a.imag);
+  return ::isinf(a.real) || ::isinf(a.imag);
 #else
   return std::isinf(a.real) || std::isinf(a.imag);
 #endif
@@ -374,7 +374,7 @@ template <typename T>
 HOSTDEVICE inline bool isfinite(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  return isfinite(a.real) || isfinite(a.imag);
+  return ::isfinite(a.real) || ::isfinite(a.imag);
 #else
   return std::isfinite(a.real) || std::isfinite(a.imag);
 #endif
