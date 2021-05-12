@@ -89,7 +89,21 @@ NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
 }
 
 NpuOpRunner::~NpuOpRunner() {
-  // TODO(zhiqiu): handle free
+  VLOG(5) << "Free NpuOpRunner of " << op_type_;
+  // Is it safe to free the descs/buffers after run called in host ?
+  PADDLE_ENFORCE_NPU_SUCCESS(aclopDestroyAttr(attr_));
+  for (auto desc : input_descs_) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(desc));
+  }
+  for (auto desc : output_descs_) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(desc));
+  }
+  for (auto desc : input_buffers_) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(desc));
+  }
+  for (auto desc : output_buffers_) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(desc));
+  }
 }
 
 const std::string &NpuOpRunner::Type() { return op_type_; }
