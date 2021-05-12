@@ -425,7 +425,7 @@ class OpAttrChecker {
 
   void InitDefaultMap() {
     for (const auto& checker : attr_checkers_) {
-      checker(&default_values_map_, true);
+      checker(&default_values_map_, true, false);
     }
   }
 
