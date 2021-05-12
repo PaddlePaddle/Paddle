@@ -37,10 +37,13 @@ class RollOp : public framework::OperatorWithKernel {
     auto dims = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     auto shifts = ctx->Attrs().Get<std::vector<int64_t>>("shifts");
 
-    PADDLE_ENFORCE_EQ(dims.size(), shifts.size(),
+    PADDLE_ENFORCE_EQ(dims.size() == shifts.size() ||
+                          (dims.size() == 0 && shifts.size() == 1),
+                      true,
                       platform::errors::InvalidArgument(
                           "Attr(dims).size() should be equl to "
-                          "Attr(shifts).size(). But received "
+                          "Attr(shifts).size(), or Attr(dims).size() == 0 and "
+                          "Attr(shifts).size() == 1. But received "
                           "Attr(dims).size() = %d, Attr(shifts).size() = %d",
                           dims.size(), shifts.size()));
 
@@ -95,7 +98,7 @@ class RollOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>(
         "axis",
         "Axis along which to roll. It must have the same size "
-        "with shifts.")
+        "with shifts or size = 0")
         .SetDefault({});
     AddComment(R"DOC(
     Roll the tensor along the given dimension(s). 
@@ -151,8 +154,9 @@ REGISTER_OP_VERSION(roll)
         paddle::framework::compatible::OpVersionDesc()
             .NewAttr("axis",
                      "(std::vector<int64_t>) Axis along which to roll. "
-                     "It must have the same size with shifts.",
+                     "It must have the same size with shifts, or size = 0.",
                      std::vector<int64_t>())
-            .DeleteAttr("dims",
-                        "(std::vector<int64_t>) Dims along which to roll. "
-                        "It must have the same size with shifts."));
+            .DeleteAttr(
+                "dims",
+                "(std::vector<int64_t>) Dims along which to roll. "
+                "It must have the same size with shifts, or size = 0."));
