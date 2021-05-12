@@ -142,29 +142,30 @@ class TestDeformConv2D(TestCase):
 
     def dygraph_case_dcn(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.input)
-        offset = paddle.to_tensor(self.offset)
-        mask = paddle.to_tensor(self.mask)
+        with paddle.fluid.dygraph.guard(place=self.place):
+            x = paddle.to_tensor(self.input)
+            offset = paddle.to_tensor(self.offset)
+            mask = paddle.to_tensor(self.mask)
 
-        bias = None if self.no_bias else paddle.to_tensor(self.bias)
+            bias = None if self.no_bias else paddle.to_tensor(self.bias)
 
-        deform_conv2d = paddle.vision.ops.DeformConv2D(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            kernel_size=self.kernel_size,
-            stride=self.stride,
-            padding=self.padding,
-            dilation=self.dilation,
-            deformable_groups=self.deformable_groups,
-            groups=self.groups,
-            weight_attr=I.Assign(self.weight),
-            bias_attr=False if self.no_bias else I.Assign(self.bias))
+            deform_conv2d = paddle.vision.ops.DeformConv2D(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=self.kernel_size,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                deformable_groups=self.deformable_groups,
+                groups=self.groups,
+                weight_attr=I.Assign(self.weight),
+                bias_attr=False if self.no_bias else I.Assign(self.bias))
 
-        y_v1 = deform_conv2d(x, offset)
-        y_v2 = deform_conv2d(x, offset, mask)
+            y_v1 = deform_conv2d(x, offset)
+            y_v2 = deform_conv2d(x, offset, mask)
 
-        out_v1 = y_v1.numpy()
-        out_v2 = y_v2.numpy()
+            out_v1 = y_v1.numpy()
+            out_v2 = y_v2.numpy()
 
         return out_v1, out_v2
 
@@ -306,37 +307,38 @@ class TestDeformConv2DFunctional(TestCase):
 
     def dygraph_case_dcn(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.input)
-        offset = paddle.to_tensor(self.offset)
-        mask = paddle.to_tensor(self.mask)
-        weight = paddle.to_tensor(self.weight)
-        bias = None if self.no_bias else paddle.to_tensor(self.bias)
+        with paddle.fluid.dygraph.guard(place=self.place):
+            x = paddle.to_tensor(self.input)
+            offset = paddle.to_tensor(self.offset)
+            mask = paddle.to_tensor(self.mask)
+            weight = paddle.to_tensor(self.weight)
+            bias = None if self.no_bias else paddle.to_tensor(self.bias)
 
-        y_v1 = paddle.vision.ops.deform_conv2d(
-            x=x,
-            offset=offset,
-            weight=weight,
-            bias=bias,
-            stride=self.stride,
-            padding=self.padding,
-            dilation=self.dilation,
-            deformable_groups=self.deformable_groups,
-            groups=self.groups, )
+            y_v1 = paddle.vision.ops.deform_conv2d(
+                x=x,
+                offset=offset,
+                weight=weight,
+                bias=bias,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                deformable_groups=self.deformable_groups,
+                groups=self.groups, )
 
-        y_v2 = paddle.vision.ops.deform_conv2d(
-            x=x,
-            offset=offset,
-            mask=mask,
-            weight=weight,
-            bias=bias,
-            stride=self.stride,
-            padding=self.padding,
-            dilation=self.dilation,
-            deformable_groups=self.deformable_groups,
-            groups=self.groups, )
+            y_v2 = paddle.vision.ops.deform_conv2d(
+                x=x,
+                offset=offset,
+                mask=mask,
+                weight=weight,
+                bias=bias,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                deformable_groups=self.deformable_groups,
+                groups=self.groups, )
 
-        out_v1 = y_v1.numpy()
-        out_v2 = y_v2.numpy()
+            out_v1 = y_v1.numpy()
+            out_v2 = y_v2.numpy()
 
         return out_v1, out_v2
 
