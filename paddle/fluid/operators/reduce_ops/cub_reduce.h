@@ -66,6 +66,31 @@ struct Array {
   T data_[ElementCount];
 };
 
+// reduce the 1d array to one element
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
+          int BlockDim>
+__global__ void ReduceKernel1D(const Tx* x, Ty* y, ReduceOp reducer,
+                               TransformOp transformer, Ty init,
+                               int reduce_num) {
+  int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+  typedef cub::BlockReduce<Ty, BlockDim> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage temp_storage;
+
+  Ty local_data = init;
+  for (int i = thread_id; i < reduce_num; i += gridDim.x * blockDim.x) {
+    local_data = static_cast<Ty>(
+        reducer(local_data, static_cast<Ty>(transformer(x[i]))));
+  }
+  __syncthreads();
+
+  local_data = BlockReduce(temp_storage).Reduce(local_data, reducer);
+
+  if (threadIdx.x == 0) {
+    y[blockIdx.x] = local_data;
+  }
+}
+
 // reduce the last axis of 2d array
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim>
@@ -192,6 +217,52 @@ static inline void CheckReduceRankIsValid(int reduce_rank, int rank) {
   }
 }
 
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
+          int BlockDim>
+typename std::enable_if<!std::is_same<Tx, paddle::platform::float16>::value,
+                        void>::type
+LaunchCubReduceKernel(const Tx* x_data, Ty* y_data,
+                      const platform::Place& place, const ReduceOp& reducer,
+                      const TransformOp& transformer, const Ty& init,
+                      int reduce_num, gpuStream_t stream) {
+  cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
+                                                                  transformer);
+  size_t temp_storage_bytes = 0;
+  cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
+                            reduce_num, reducer, init, stream);
+  framework::Tensor tmp;
+  auto* temp_storage = tmp.mutable_data<uint8_t>(
+      framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}), place);
+  cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
+                            reduce_num, reducer, init, stream);
+}
+
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
+          int BlockDim>
+typename std::enable_if<std::is_same<Tx, paddle::platform::float16>::value,
+                        void>::type
+LaunchCubReduceKernel(const Tx* x_data, Ty* y_data,
+                      const platform::Place& place, const ReduceOp& reducer,
+                      const TransformOp& transformer, const Ty& init,
+                      int reduce_num, gpuStream_t stream) {
+  int element_per_block = BlockDim * 20;
+  int block_per_grid = (reduce_num + element_per_block - 1) / element_per_block;
+
+  framework::Tensor tmp;
+  auto* temp_storage = tmp.mutable_data<Ty>(
+      framework::make_ddim({static_cast<int64_t>(block_per_grid * sizeof(Ty))}),
+      place);
+
+  // each block reduce number to interim result
+  ReduceKernel1D<Tx, Ty, ReduceOp, TransformOp,
+                 BlockDim><<<block_per_grid, BlockDim, 0, stream>>>(
+      x_data, temp_storage, reducer, transformer, init, reduce_num);
+  // reduce all number to final result
+  ReduceKernel1D<Ty, Ty, ReduceOp, TransformOp,
+                 BlockDim><<<1, BlockDim, 0, stream>>>(
+      temp_storage, y_data, reducer, transformer, init, block_per_grid);
+}
+
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
           typename TransformOp>
 static void TensorReduceImpl(
@@ -223,17 +294,8 @@ static void TensorReduceImpl(
   int rank = x_strides.size();
   int reduce_rank = reduce_strides.size();
   if (rank == reduce_rank) {
-    cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
-        x_data, transformer);
-    size_t temp_storage_bytes = 0;
-    cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
-                              reduce_num, reducer, init, stream);
-    framework::Tensor tmp;
-    auto* temp_storage = tmp.mutable_data<uint8_t>(
-        framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
-        place);
-    cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
-                              reduce_num, reducer, init, stream);
+    LaunchCubReduceKernel<Tx, Ty, ReduceOp, TransformOp, BlockDim>(
+        x_data, y_data, place, reducer, transformer, init, reduce_num, stream);
     return;
   }
   if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
