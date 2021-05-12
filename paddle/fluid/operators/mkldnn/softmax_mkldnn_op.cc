@@ -76,13 +76,13 @@ class SoftmaxMKLDNNHandler
 
   SoftmaxMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                        const platform::MKLDNNDeviceContext& dev_ctx,
-                       platform::Place cpu_place, const Tensor* in_x,
+                       platform::Place cpu_place, const Tensor* out,
                        const Tensor* out_grad, Tensor* in_x_grad,
                        const std::string& unique_name)
       : platform::MKLDNNHandlerT<T, mkldnn::softmax_forward,
                                  mkldnn::softmax_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(in_x->dims()),
+            platform::CreateKey(dev_ctx, framework::vectorize(out->dims()),
                                 unique_name)) {
     if (!this->isBwdCached()) {
       PADDLE_ENFORCE_EQ(
@@ -95,7 +95,7 @@ class SoftmaxMKLDNNHandler
       auto softmax_tz = paddle::framework::vectorize<int64_t>(dims);
 
       auto data_softmax_md = platform::MKLDNNMemDesc(
-          softmax_tz, platform::MKLDNNGetDataType<T>(), in_x->format());
+          softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());
       auto diff_softmax_md = platform::MKLDNNMemDesc(
           softmax_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
 
@@ -156,13 +156,12 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL SoftmaxGrad must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const Tensor* in_x = ctx.Input<Tensor>("X");
     const Tensor* output = ctx.Input<Tensor>("Out");
     auto* out_grad = ctx.template Input<Tensor>(framework::GradVarName("Out"));
     auto* in_x_grad =
         ctx.template Output<framework::Tensor>(framework::GradVarName("X"));
 
-    SoftmaxMKLDNNHandler<T> handler(ctx, dev_ctx, ctx.GetPlace(), in_x,
+    SoftmaxMKLDNNHandler<T> handler(ctx, dev_ctx, ctx.GetPlace(), output,
                                     out_grad, in_x_grad, ctx.InputName("Out"));
 
     auto dst_memory_p = handler.AcquireDstMemory(output);
