@@ -346,7 +346,8 @@ class TypedAttrChecker {
   }
 
   void operator()(AttributeMap* attr_map,
-                  bool get_default_value_only = false) const {
+                  bool get_default_value_only = false,
+                  bool no_default_value = false) const {
     if (get_default_value_only) {
       if (!default_value_setter_.empty()) {
         attr_map->emplace(attr_name_, default_value_setter_[0]());
@@ -354,18 +355,28 @@ class TypedAttrChecker {
       return;
     }
 
-    auto it = attr_map->find(attr_name_);
-    // if (it == attr_map->end()) {
-    //   // user do not set this attr
-    //   PADDLE_ENFORCE_EQ(
-    //       default_value_setter_.empty(), false,
-    //       platform::errors::InvalidArgument(
-    //           "Attribute (%s) is not set correctly.", attr_name_));
-    //   // default_value_setter_ has no more than one element
-    //   attr_map->emplace(attr_name_, default_value_setter_[0]());
-    // }
-    // it = attr_map->find(attr_name_);
-    if (it != attr_map->end()) {
+    if (no_default_value) {
+      auto it = attr_map->find(attr_name_);
+      if (it != attr_map->end()) {
+        ExtractAttribute<T> extract_attr(attr_name_);
+        T* attr_value = extract_attr(it->second);
+        for (const auto& checker : value_checkers_) {
+          checker(*attr_value);
+        }
+      }
+    }
+    else {
+      auto it = attr_map->find(attr_name_);
+      if (it == attr_map->end()) {
+        // user do not set this attr
+        PADDLE_ENFORCE_EQ(
+            default_value_setter_.empty(), false,
+            platform::errors::InvalidArgument(
+                "Attribute (%s) is not set correctly.", attr_name_));
+        // default_value_setter_ has no more than one element
+        attr_map->emplace(attr_name_, default_value_setter_[0]());
+      }
+      it = attr_map->find(attr_name_);
       ExtractAttribute<T> extract_attr(attr_name_);
       T* attr_value = extract_attr(it->second);
       for (const auto& checker : value_checkers_) {
@@ -382,7 +393,7 @@ class TypedAttrChecker {
 
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
-  typedef std::function<void(AttributeMap*, bool)> AttrChecker;
+  typedef std::function<void(AttributeMap*, bool, bool)> AttrChecker;
 
  public:
   template <typename T>
@@ -392,18 +403,18 @@ class OpAttrChecker {
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap* attr_map, bool explicit_only = false) const {
+  void Check(AttributeMap* attr_map, bool explicit_only = false, bool no_default_value = false) const {
     auto checker_num = attr_checkers_.size();
     if (explicit_only) checker_num = explicit_checker_num_;
     for (size_t i = 0; i < checker_num; ++i) {
-      attr_checkers_[i](attr_map, false);
+      attr_checkers_[i](attr_map, false, no_default_value);
     }
   }
 
   AttributeMap GetAttrsDefaultValuesMap() const {
     AttributeMap default_values_map;
     for (const auto& checker : attr_checkers_) {
-      checker(&default_values_map, true);
+      checker(&default_values_map, true, false);
     }
     return default_values_map;
   }
