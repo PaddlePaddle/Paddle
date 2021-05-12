@@ -7,7 +7,7 @@ list(REMOVE_ITEM TEST_OPS test_lac)
 if(NOT ON_INFER)
     py_test_modules(test_lac MODULES test_lac)
     set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
-endif
+endif()
 
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
