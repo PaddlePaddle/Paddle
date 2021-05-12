@@ -613,6 +613,44 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
 
+class TestFusedMomentumWithDecayAPI(unittest.TestCase):
+    def get_loss_and_optimizer(self, input):
+        weight_attr = paddle.ParamAttr(
+            name="weight",
+            initializer=paddle.nn.initializer.Constant(value=0.5),
+            regularizer=paddle.regularizer.L2Decay(0.1))
+        linear = paddle.nn.Linear(10, 10, weight_attr=weight_attr)
+        out = linear(input)
+        loss = paddle.mean(out)
+
+        momentum = paddle.optimizer.Momentum(
+            learning_rate=0.01,
+            momentum=0.9,
+            parameters=linear.parameters(),
+            weight_decay=paddle.regularizer.L1Decay(0.5),
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0))
+        return loss, momentum
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+        x = paddle.to_tensor(inp)
+        loss, optimizer = self.get_loss_and_optimizer(x)
+        loss.backward()
+        optimizer.step()
+        optimizer.clear_grad()
+
+    def test_static(self):
+        paddle.enable_static()
+        inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+        x = paddle.static.data(name='x', shape=[10, 10])
+        loss, optimizer = self.get_loss_and_optimizer(x)
+        optimizer.minimize(loss)
+        exe = paddle.static.Executor()
+        exe.run(paddle.static.default_startup_program())
+        exe.run(feed={"x": inp})
+
+
 class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
     def __update_params(self, momentum, linear):
         for i in range(10):

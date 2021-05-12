@@ -289,7 +289,6 @@ class Momentum(Optimizer):
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
         else:
-
             params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
