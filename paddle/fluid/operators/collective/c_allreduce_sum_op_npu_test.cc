@@ -121,7 +121,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
 }
 
 void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
-                         int iter) {
+                         int iter, bool test_inf=false, bool test_fill=false) {
   // init
   auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
@@ -173,6 +173,59 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   }
 }
 
+void TestHCCLAllReduceOpV2(f::Scope* scope, const p::DeviceContext& ctx,
+                         int iter) {
+  // init
+  auto x = scope->Var("Data");
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+
+  int num1 = 3;
+  int num2 = 128;
+
+  float inf= std::numeric_limits<float>::infinity();;
+  std::vector<float> init;
+  for (int64_t i = 0; i < num1 * num2; ++i) {
+    init.push_back(inf);
+  }
+  PrintDebugInfo("input data", init);
+
+  auto place = ctx.GetPlace();
+
+  TensorFromVector(init, ctx, tensor_x);
+  tensor_x->Resize({num1, num2});
+  ctx.Wait();
+
+  auto out = scope->Var("OutData");
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  tensor_out->Resize({num1, num2});
+  tensor_out->mutable_data<float>(place);  // allocate
+  ctx.Wait();
+
+  // run
+  f::AttributeMap attrs;
+  attrs["tag"] = std::string("tagx_" + std::to_string(iter));
+  attrs["ring_id"] = 0;
+
+  auto op = f::OpRegistry::CreateOp("c_allreduce_sum", {{"X", {"Data"}}},
+                                    {{"Out", {"OutData"}}}, attrs);
+
+  for (int i = 0; i < 10; i++) {
+    op->Run(*scope, place);
+  }
+  ctx.Wait();
+
+  std::vector<float> out_vec;
+  TensorToVector(*tensor_out, ctx, &out_vec);
+  ctx.Wait();
+
+  PrintDebugInfo("output data", out_vec);
+
+  EXPECT_EQ(out_vec.size(), init.size());
+  for (uint32_t i = 0; i < out_vec.size(); i++) {
+    EXPECT_EQ(out_vec[i], inf);
+  }
+}
+
 TEST(c_allreduce_sum, NPU) {
   f::Scope scope;
   HcclRootInfo hccl_id;
@@ -184,6 +237,10 @@ TEST(c_allreduce_sum, NPU) {
   Prepare(&scope, ctx, &hccl_id);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num: " << i;
-    TestHCCLAllReduceOp(&scope, ctx, i);
+    TestHCCLAllReduceOp(&scope, ctx, i, false);
   }
+    for (int i = 2; i < 3; i++) {
+        VLOG(2) << "iter num: " << i;
+        TestHCCLAllReduceOpV2(&scope, ctx, i);
+      }
 }
