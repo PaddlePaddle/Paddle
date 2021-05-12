@@ -33,14 +33,12 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
-
 from paddle.fluid.tests.unittests.testsuite import (
     create_op,
     set_input,
     append_input_output,
     append_loss_ops, )
 from paddle.fluid import unique_name
-
 from paddle.fluid.tests.unittests.white_list import (
     op_accuracy_white_list,
     check_shape_white_list,
@@ -268,7 +266,10 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-        cls._use_system_allocator = _set_use_system_allocator(True)
+        if paddle.is_compiled_with_npu():
+            cls._use_system_allocator = _set_use_system_allocator(False)
+        else:
+            cls._use_system_allocator = _set_use_system_allocator(True)
 
     @classmethod
     def tearDownClass(cls):
