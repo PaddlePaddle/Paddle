@@ -119,6 +119,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
   }
 };
 
+bool found_nan_data()
+
 template <ReduceType red_type, typename T>
 class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
@@ -146,6 +148,11 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
+    }
+
+    nan_or_inf = found_inf_data(ctx, stream, &in);
+    if (nan_or_inf){
+        fill_inf_data(ctx, stream, const_cast<Tensor*>(&in));
     }
 
     HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
@@ -178,6 +185,10 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
         sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
         reinterpret_cast<void*>(stream)));
+
+    if (nan_or_inf){
+        fill_inf_data(ctx, stream, const_cast<Tensor*>(&out));
+    }
 
     out->Resize(in->dims());
 #else

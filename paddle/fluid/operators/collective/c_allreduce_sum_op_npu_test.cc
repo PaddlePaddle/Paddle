@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#include <iostream>
 
 #include "gtest/gtest.h"
 
@@ -41,6 +42,7 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
+using float16 = paddle::platform::float16;
 
 USE_OP(c_allreduce_sum);
 USE_NO_KERNEL_OP(c_gen_hccl_id);
@@ -51,11 +53,11 @@ DECLARE_string(selected_npus);
 
 template <typename T>
 void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
-  std::string debugstring = "";
+    std::cout << preStr ; 
   for (auto ele : data) {
-    debugstring += std::to_string(ele) + std::string(",");
+      std::cout << ele << ",";
   }
-  VLOG(3) << preStr << ":" << std::endl << debugstring;
+  std::cout << "\n";
 }
 
 void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
@@ -67,10 +69,10 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
           << "; rank_id = " << rank_id
           << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
 
-  std::vector<int> rank_ids{0, 1};
+  std::vector<int> rank_ids{0,1,2,3};
   f::AttributeMap gen_hccl_id;
 
-  std::vector<std::string> endpointList = {"127.0.0.1:6175", "127.0.0.1:6177"};
+  std::vector<std::string> endpointList = {"127.0.0.1:6175", "127.0.0.1:6177","127.0.0.1:6178","127.0.0.1:6179"};
   gen_hccl_id["rank"] = rank_id;
   gen_hccl_id["endpoint"] = endpointList[rank_id];
   std::vector<std::string> other_endpoints = {
@@ -106,13 +108,11 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
           << "; rank_id = " << rank_id
           << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
 
-  // std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
   comm_init_attrs["ring_id"] = 0;
-  comm_init_attrs["rank_ids"] = 2;
+  comm_init_attrs["rank_ids"] = 4;
   comm_init_attrs["rank"] = rank_id;
   comm_init_attrs["device_id"] = device_id;
-  // comm_init_attrs["rank_ids"] = rank_ids;
   auto comm_init_op = f::OpRegistry::CreateOp(
       "c_comm_init_hccl", {{"X", {"X"}}}, {}, comm_init_attrs);
   auto place = ctx.GetPlace();
@@ -226,6 +226,60 @@ void TestHCCLAllReduceOpV2(f::Scope* scope, const p::DeviceContext& ctx,
   }
 }
 
+void TestHCCLAllReduceOpV3(f::Scope* scope, const p::DeviceContext& ctx,
+                         int iter) {
+  // init
+  auto x = scope->Var("Data");
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+
+  int num1 = 3;
+  int num2 = 128;
+
+  //float16 inf = (float16)(std::numeric_limits<float>::infinity());
+  float16 inf = (float16)(65536);
+  std::vector<float16> init;
+  for (int64_t i = 0; i < num1 * num2; ++i) {
+    init.push_back(inf);
+  }
+  PrintDebugInfo("input data", init);
+
+  auto place = ctx.GetPlace();
+
+  TensorFromVector(init, ctx, tensor_x);
+  tensor_x->Resize({num1, num2});
+  ctx.Wait();
+
+  auto out = scope->Var("OutData");
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  tensor_out->Resize({num1, num2});
+  tensor_out->mutable_data<float16>(place);  // allocate
+  ctx.Wait();
+
+  // run
+  f::AttributeMap attrs;
+  attrs["tag"] = std::string("tagx_" + std::to_string(iter));
+  attrs["ring_id"] = 0;
+
+  auto op = f::OpRegistry::CreateOp("c_allreduce_sum", {{"X", {"Data"}}},
+                                    {{"Out", {"OutData"}}}, attrs);
+
+  for (int i = 0; i < 10; i++) {
+    op->Run(*scope, place);
+  }
+  ctx.Wait();
+
+  std::vector<float16> out_vec;
+  TensorToVector(*tensor_out, ctx, &out_vec);
+  ctx.Wait();
+
+  PrintDebugInfo("output data", out_vec);
+
+  EXPECT_EQ(out_vec.size(), init.size());
+  for (uint32_t i = 0; i < out_vec.size(); i++) {
+    EXPECT_EQ(std::isinf(out_vec[i]) || (out_vec[i]-(float16)(65504.0)) < float16(0.1),  true);
+  }
+}
+
 TEST(c_allreduce_sum, NPU) {
   f::Scope scope;
   HcclRootInfo hccl_id;
@@ -243,4 +297,9 @@ TEST(c_allreduce_sum, NPU) {
         VLOG(2) << "iter num: " << i;
         TestHCCLAllReduceOpV2(&scope, ctx, i);
       }
+    for (int i = 3; i < 4; i++) {
+        VLOG(2) << "iter num: " << i;
+        TestHCCLAllReduceOpV3(&scope, ctx, i);
+      }
+
 }
