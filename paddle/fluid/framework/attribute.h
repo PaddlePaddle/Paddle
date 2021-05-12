@@ -355,20 +355,22 @@ class TypedAttrChecker {
     }
 
     auto it = attr_map->find(attr_name_);
-    if (it == attr_map->end()) {
-      // user do not set this attr
-      PADDLE_ENFORCE_EQ(
-          default_value_setter_.empty(), false,
-          platform::errors::InvalidArgument(
-              "Attribute (%s) is not set correctly.", attr_name_));
-      // default_value_setter_ has no more than one element
-      attr_map->emplace(attr_name_, default_value_setter_[0]());
-    }
-    it = attr_map->find(attr_name_);
-    ExtractAttribute<T> extract_attr(attr_name_);
-    T* attr_value = extract_attr(it->second);
-    for (const auto& checker : value_checkers_) {
-      checker(*attr_value);
+    // if (it == attr_map->end()) {
+    //   // user do not set this attr
+    //   PADDLE_ENFORCE_EQ(
+    //       default_value_setter_.empty(), false,
+    //       platform::errors::InvalidArgument(
+    //           "Attribute (%s) is not set correctly.", attr_name_));
+    //   // default_value_setter_ has no more than one element
+    //   attr_map->emplace(attr_name_, default_value_setter_[0]());
+    // }
+    // it = attr_map->find(attr_name_);
+    if (it != attr_map->end()) {
+      ExtractAttribute<T> extract_attr(attr_name_);
+      T* attr_value = extract_attr(it->second);
+      for (const auto& checker : value_checkers_) {
+        checker(*attr_value);
+      }
     }
   }
 
@@ -410,8 +412,18 @@ class OpAttrChecker {
     explicit_checker_num_ = attr_checkers_.size();
   }
 
+  void InitDefaultMap() {
+    for (const auto& checker : attr_checkers_) {
+      checker(&default_values_map_, true);
+    }
+  }
+
+  const AttributeMap& default_attr_map() const { return default_values_map_; }
+
  private:
   std::vector<AttrChecker> attr_checkers_;
+
+  AttributeMap default_values_map_;
 
   // in order to improve the efficiency of dynamic graph mode,
   // we divede the attribute into explicit type and implicit type.
