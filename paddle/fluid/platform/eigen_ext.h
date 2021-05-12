@@ -115,7 +115,7 @@ struct NumTraits<complex<float>> : GenericNumTraits<std::complex<float>> {
   enum {
     IsComplex = 1,
     RequireInitialization = NumTraits<float>::RequireInitialization,
-    ReadCost = 2 * NumTraits<T>::ReadCost,
+    ReadCost = 2 * NumTraits<float>::ReadCost,
     AddCost = 2 * NumTraits<Real>::AddCost,
     MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
   };
@@ -137,7 +137,7 @@ struct NumTraits<complex<double>> : GenericNumTraits<std::complex<double>> {
   enum {
     IsComplex = 1,
     RequireInitialization = NumTraits<double>::RequireInitialization,
-    ReadCost = 2 * NumTraits<T>::ReadCost,
+    ReadCost = 2 * NumTraits<double>::ReadCost,
     AddCost = 2 * NumTraits<Real>::AddCost,
     MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
   };
