@@ -105,8 +105,8 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
   template <typename T1,
             typename std::enable_if<std::is_floating_point<T1>::value ||
                                         std::is_integral<T1>::value,
-                                    void>::type>
-  HOSTDEVICE complex(const T1& val) {
+                                    int>::type = 0>
+  HOSTDEVICE explicit complex(const T1& val) {
     real = static_cast<T>(val);
     imag = static_cast<T>(0.0);
   }
