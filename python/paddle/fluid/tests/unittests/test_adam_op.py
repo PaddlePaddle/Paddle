@@ -709,7 +709,8 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                         beta1=beta1_init,
                         beta2=beta2_init,
                         epsilon=epsilon_init,
-                        use_global_beta_pow=use_global_beta_pow)
+                        use_global_beta_pow=use_global_beta_pow,
+                        name='a')
                 else:
                     adam = fluid.optimizer.Adam(
                         learning_rate=0.01,
@@ -758,6 +759,33 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
         self._test_with_place(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self._test_with_place(paddle.CUDAPlace(0))
+
+    def test_adam_exception(self):
+        paddle.enable_static()
+        a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
+        b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+        label = paddle.static.data(name="label", shape=[32, 1], dtype='int64')
+
+        sum = paddle.add(a, b)
+        z = paddle.pow(sum, 2.0)
+
+        fc_1 = fluid.layers.fc(input=z, size=128)
+        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+
+        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = fluid.layers.reduce_mean(cost)
+        adam = fluid.optimizer.Adam(use_global_beta_pow=True)
+        adam.minimize(loss)
+        self.assertRaises(Exception, adam._get_global_accumulator, 'tmp')
+        adam._add_global_accumulator(
+            'tmp', type=core.VarDesc.VarType.LOD_TENSOR)
+        adam._get_global_accumulator('tmp')
+        self.assertRaises(
+            Exception,
+            adam._add_global_accumulator,
+            adam._beta1_pow_acc_str,
+            type=core.VarDesc.VarType.LOD_TENSOR)
+        paddle.disable_static()
 
 
 if __name__ == "__main__":
