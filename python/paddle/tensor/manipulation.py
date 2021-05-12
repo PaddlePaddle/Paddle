@@ -371,8 +371,7 @@ def roll(x, shifts, axis=None, name=None):
         if axis is None:
             x = core.ops.reshape(x, 'shape', [-1, 1])
             axis = [0]
-        out = core.ops.roll(x, 'axis', axis, 'shifts', shifts)
-        return core.ops.reshape(out, 'shape', origin_shape)
+        return core.ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     out = helper.create_variable_for_type_inference(x.dtype)
 
@@ -386,7 +385,6 @@ def roll(x, shifts, axis=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis,
                'shifts': shifts})
-    out = layers.reshape(out, shape=origin_shape)
     return out
 
 

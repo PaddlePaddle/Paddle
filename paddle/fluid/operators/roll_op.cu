@@ -35,9 +35,27 @@ __global__ void roll_cuda_kernel(const T* input, T* output, int64_t N,
   int64_t output_idx = idx;
   int64_t dim_idx, dim_idx_shift;
   for (int64_t i = 0; i < nums; i++) {
-    dim_idx = idx % (strides[i] * sizes[i]) / strides[i];
+    dim_idx = (idx / strides[i]) % sizes[i];
     dim_idx_shift = (dim_idx + shifts[i]) % sizes[i];
     output_idx = output_idx + (dim_idx_shift - dim_idx) * strides[i];
+  }
+  output[output_idx] = input[idx];
+}
+
+template <typename T>
+__global__ void roll_cuda_kernel(const T* input, T* output, int64_t N,
+                                 int64_t shift, int64_t dim_size,
+                                 int64_t size) {
+  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= N) {
+    return;
+  }
+  int64_t output_idx = 0;
+  int64_t dim_idx = (idx / size) % dim_size + shift;
+  if (dim_idx >= dim_size) {
+    output_idx = idx + (shift - dim_size) * size;
+  } else {
+    output_idx = idx + shift * size;
   }
   output[output_idx] = input[idx];
 }
@@ -60,6 +78,20 @@ class RollCUDAKernel : public framework::OpKernel<T> {
     size_t nums = shifts.size();
     auto input_dim = in->dims();
     auto stride_dim = framework::stride(input_dim);
+
+    if (nums == 1) {
+      int64_t dim_idx = dims[0];
+      int64_t size = stride_dim[dim_idx];
+      int64_t dim_size = input_dim[dim_idx];
+      // shift > 0
+      int64_t shift = shifts[0] > 0 ? (shifts[0] % dim_size)
+                                    : (shifts[0] % dim_size + dim_size);
+      roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                             PADDLE_CUDA_NUM_THREADS,
+                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          in_data, out_data, numel, shift, dim_size, size);
+      return;
+    }
 
     int64_t dim, size;
     size_t gpu_memory_size_ = sizeof(int64_t) * nums;
@@ -120,6 +152,21 @@ class RollGradCUDAKernel : public framework::OpKernel<T> {
     size_t nums = shifts.size();
     auto input_dim = in->dims();
     auto stride_dim = framework::stride(input_dim);
+
+    // optimize roll when the num of shift dimension is equal 1
+    if (nums == 1) {
+      int64_t dim_idx = dims[0];
+      int64_t size = stride_dim[dim_idx];
+      int64_t dim_size = input_dim[dim_idx];
+      // shift > 0
+      int64_t shift = shifts[0] > 0 ? (dim_size - shifts[0] % dim_size)
+                                    : (-shifts[0] % dim_size);
+      roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                             PADDLE_CUDA_NUM_THREADS,
+                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+          in_data, out_data, numel, shift, dim_size, size);
+      return;
+    }
 
     int64_t dim, size;
     size_t gpu_memory_size_ = sizeof(int64_t) * nums;
