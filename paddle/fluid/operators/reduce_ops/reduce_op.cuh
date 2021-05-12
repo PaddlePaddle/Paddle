@@ -125,14 +125,15 @@ static inline void CheckReduceRankIsValid(int reduce_rank, int rank) {
 }
 
 template <typename T, size_t ElementCount, typename VectorLikeType>
-static inline Array<T, ElementCount> from(const VectorLikeType& vec) {
+static inline paddle::framework::Array<T, ElementCount> from(
+    const VectorLikeType& vec) {
   PADDLE_ENFORCE_EQ(vec.size(), ElementCount,
                     platform::errors::InvalidArgument(
                         "Cub reduce Array: size not match. Received "
                         "vec.size() %d !=  ElementCount %d.",
                         vec.size(), ElementCount));
   size_t n = static_cast<size_t>(vec.size());
-  Array<T, ElementCount> ret;
+  paddle::framework::Array<T, ElementCount> ret;
   for (size_t i = 0; i < n; ++i) ret[i] = vec[i];
   return ret;
 }
@@ -352,13 +353,13 @@ __device__ void ReduceFirstDim(const Tx* x, Ty* y, ReduceOp reducer,
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim, int Rank, int ReduceRank>
-__device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
-                          TransformOp transformer, Ty init, int reduce_num,
-                          Array<int, Rank> x_strides,
-                          Array<int, ReduceRank> reduce_dim,
-                          Array<int, ReduceRank> reduce_strides,
-                          Array<int, Rank - ReduceRank> left_dim,
-                          Array<int, Rank - ReduceRank> left_strides) {
+__device__ void ReduceAny(
+    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
+    int reduce_num, paddle::framework::Array<int, Rank> x_strides,
+    paddle::framework::Array<int, ReduceRank> reduce_dim,
+    paddle::framework::Array<int, ReduceRank> reduce_strides,
+    paddle::framework::Array<int, Rank - ReduceRank> left_dim,
+    paddle::framework::Array<int, Rank - ReduceRank> left_strides) {
   __shared__ typename cub::BlockReduce<Ty, BlockDim>::TempStorage temp_storage;
 
   int sub_index[Rank];
@@ -402,14 +403,14 @@ __device__ void ReduceAny(const Tx* x, Ty* y, ReduceOp reducer,
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim, int Rank, int ReduceRank, int ReduceType>
-__device__ void ReduceModule(const Tx* x, Ty* y, ReduceOp reducer,
-                             TransformOp transformer, Ty init, int reduce_num,
-                             int left_num, int blocking_size,
-                             Array<int, Rank> x_strides,
-                             Array<int, ReduceRank> reduce_dim,
-                             Array<int, ReduceRank> reduce_strides,
-                             Array<int, Rank - ReduceRank> left_dim,
-                             Array<int, Rank - ReduceRank> left_strides) {
+__device__ void ReduceModule(
+    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
+    int reduce_num, int left_num, int blocking_size,
+    paddle::framework::Array<int, Rank> x_strides,
+    paddle::framework::Array<int, ReduceRank> reduce_dim,
+    paddle::framework::Array<int, ReduceRank> reduce_strides,
+    paddle::framework::Array<int, Rank - ReduceRank> left_dim,
+    paddle::framework::Array<int, Rank - ReduceRank> left_strides) {
   if (ReduceType == ReduceType::kReduceLastDim) {
     ReduceLastDim<Tx, Ty, ReduceOp, TransformOp, BlockDim>(
         x, y, reducer, transformer, init, reduce_num);
@@ -429,10 +430,12 @@ template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim, int Rank, int ReduceRank, int ReduceType>
 __global__ void ReduceKernelFunction(
     const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
-    int reduce_num, int left_num, int block_size, Array<int, Rank> x_strides,
-    Array<int, ReduceRank> reduce_dim, Array<int, ReduceRank> reduce_strides,
-    Array<int, Rank - ReduceRank> left_dim,
-    Array<int, Rank - ReduceRank> left_strides) {
+    int reduce_num, int left_num, int block_size,
+    paddle::framework::Array<int, Rank> x_strides,
+    paddle::framework::Array<int, ReduceRank> reduce_dim,
+    paddle::framework::Array<int, ReduceRank> reduce_strides,
+    paddle::framework::Array<int, Rank - ReduceRank> left_dim,
+    paddle::framework::Array<int, Rank - ReduceRank> left_strides) {
   ReduceModule<Tx, Ty, ReduceOp, TransformOp, BlockDim, Rank, ReduceRank,
                ReduceType>(x, y, reducer, transformer, init, reduce_num,
                            left_num, block_size, x_strides, reduce_dim,
@@ -552,7 +555,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
                   gpuStream_t stream) {
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig(origin_reduce_dims, x_dim);
-  config, run();
+  config.Run();
   // malloc
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>(x.place());
