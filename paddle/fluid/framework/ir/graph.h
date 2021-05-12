@@ -267,7 +267,11 @@ class Graph {
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
   size_t num_node_created_{0};  // help to generate a unique node id.
-  bool is_partial_{false};  // whether is constructed with partial ProgramDesc
+  // NOTE(Aurelius84): Whether is constructed with partial ProgramDesc.
+  // In case of @to_static, whole trainning program is splited into two
+  // parts: forward graph and backward graph, which can be executed
+  // independently.
+  bool is_partial_{false};
 };
 
 bool IsControlDepVar(const ir::Node &var);

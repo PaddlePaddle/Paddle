@@ -124,15 +124,17 @@ void ExecutorInfoCache::Finalize() {
   info_map_.clear();
 }
 
-std::shared_ptr<framework::ParallelExecutor> GetExecutorInfoFromCache(
-    const ExecutorInfoCache::CacheKey &cache_key, framework::Scope *scope) {
+CacheInfo GetExecutorInfoFromCache(const ExecutorInfoCache::CacheKey &cache_key,
+                                   framework::Scope *scope) {
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
 
   if (!cached_exe_info.Has(cache_key)) {
     VLOG(1) << "create exe_info for " << cache_key.DebugString();
 
     // TODO(Aurelius84): Consider to use LRU algorithm to replace this.
-    if (cached_exe_info.Size() > 2u /* max_cached_size*/) {
+    if (cached_exe_info.Size() > 4u /* max_cached_size*/) {
+      VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
+                 "all cache!";
       cached_exe_info.Finalize();
     }
 
@@ -145,25 +147,28 @@ std::shared_ptr<framework::ParallelExecutor> GetExecutorInfoFromCache(
     auto parallel_executor = std::make_shared<framework::ParallelExecutor>(
         cache_key.place_, scope, execution_strategy, build_strategy,
         graph.get());
-    parallel_executor->PrepareLocalExeScopes(scope);
+    parallel_executor->PrepareVariables(scope);
 
     framework::ExecutorInfoCache::ValueType cache_val = {parallel_executor,
                                                          graph};
     cached_exe_info.Insert(cache_key, cache_val);
 
-    return parallel_executor;
+    bool is_new_created = true;
+    return std::make_pair(parallel_executor, is_new_created);
   } else {
     VLOG(1) << "get exe_info from cache by: " << cache_key.DebugString();
+    bool is_new_created = false;
     auto cache_val = cached_exe_info.GetMutable(cache_key);
     auto parallel_executor = cache_val.first;
+
     // update op_handle scope_map in pe->executor_->Graph
     std::unordered_map<Scope *, Scope *> scope_map = {
         {parallel_executor->GetLocalScopes().front(), scope}};
-    parallel_executor->ReSetOpScopeMapOfGraphs(scope_map);
-    // need to re-create tmp variable in new scope
-    parallel_executor->PrepareLocalExeScopes(scope);
+    parallel_executor->ResetOpHandleScopeMapOfGraphs(scope_map);
+    // need to recreate tmp variables in new scope
+    parallel_executor->PrepareVariables(scope);
 
-    return parallel_executor;
+    return std::make_pair(parallel_executor, is_new_created);
   }
 }
 

@@ -213,10 +213,11 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       auto cache_key = framework::ExecutorInfoCache::CacheKey(
           program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad*/ false);
-      auto parallel_executor =
-          framework::GetExecutorInfoFromCache(cache_key, &scope);
-      // TODO(Aurelius84): make it only call once
-      parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
+      auto cache_info = framework::GetExecutorInfoFromCache(cache_key, &scope);
+      auto &parallel_executor = cache_info.first;
+      if (cache_info.second /*is_new_created*/) {
+        parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0, input_var_names);
+      }
 
       // Step 3. run ops
       auto skip_eager_vars = framework::details::ParseSafeEagerDeletionSkipVars(
@@ -296,10 +297,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       auto cache_key = framework::ExecutorInfoCache::CacheKey(
           program, ctx.GetPlace(), start_op_index, end_op_index,
           /*is_grad*/ true);
-      auto parallel_executor =
-          framework::GetExecutorInfoFromCache(cache_key, &scope);
+      auto cache_info = framework::GetExecutorInfoFromCache(cache_key, &scope);
+      auto &parallel_executor = cache_info.first;
 
-      // TODO(Aurelius84): make it only call once
       parallel_executor->SkipMemoryReuse(/*scope_idx*/ 0,
                                          output_grad_var_names);
 

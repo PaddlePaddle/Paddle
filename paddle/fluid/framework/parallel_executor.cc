@@ -718,7 +718,7 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place, Scope *scope,
   ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
 }
 
-void ParallelExecutor::PrepareLocalExeScopes(Scope *scope) {
+void ParallelExecutor::PrepareVariables(Scope *scope) {
   for (auto &info : var_infos_) {
     auto var = scope->FindVar(info.name_);
     if (var != nullptr) {
@@ -1530,7 +1530,7 @@ void ParallelExecutor::ResetOpHandleScopeMapOfGraphs(
   }
 }
 
-void ParallelExecutor::ReSetOpScopeMapOfGraphs(
+void ParallelExecutor::ResetOpHandleScopeMapOfGraphs(
     const std::unordered_map<Scope *, Scope *> &scope_map) {
   auto inner_graph = const_cast<ir::Graph *>(&Graph());
   std::vector<ir::Graph *> graphs = {inner_graph};

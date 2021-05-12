@@ -60,7 +60,7 @@ class ParallelExecutor {
                             const BuildStrategy &build_strategy,
                             ir::Graph *graph);
 
-  // NOTE(Aurelius84): Construct a PE running on single device.
+  // NOTE(Aurelius84): Construct a PE running on single device for @to_static
   explicit ParallelExecutor(const platform::Place &place, Scope *scope,
                             const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
@@ -92,11 +92,11 @@ class ParallelExecutor {
 
   void RunWithoutFetch(const std::vector<std::string> &skip_eager_vars);
 
-  void ReSetOpScopeMapOfGraphs(
+  void ResetOpHandleScopeMapOfGraphs(
       const std::unordered_map<Scope *, Scope *> &scope_map);
 
   const ir::Graph &Graph() const;
-  void PrepareLocalExeScopes(Scope *scope);
+  void PrepareVariables(Scope *scope);
 
   void SkipMemoryReuse(size_t scope_idx,
                        const std::vector<std::string> &skip_vars);

@@ -81,6 +81,8 @@ class ShareTensorBufferFunctor {
 
   std::vector<std::pair<const Variable *, Variable *>> in_out_vars_;
 
+  // NOTE(Aurelius84): Use const reference to always keep consistant with
+  // share_tensor_buffer_op_handle.
   const bool &is_variant_scope_;
   // NOTE(zhiqiu): In the case of inplace addto, if the operator of
   // the in_out_vars is skipped during running, we should set the dims of output

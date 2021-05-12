@@ -104,7 +104,6 @@ void ShareTensorBufferFunctor::AddReuseVarPair(
 }
 
 void ShareTensorBufferFunctor::CallOnce() {
-  in_out_vars_.clear();
   PADDLE_ENFORCE(in_out_vars_.empty(),
                  platform::errors::InvalidArgument(
                      "The input-output variable pairs to be "
@@ -134,14 +133,15 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
   if (!exec_scope_ || is_variant_scope_) {
     PADDLE_ENFORCE_NOT_NULL(exec_scope,
                             platform::errors::InvalidArgument(
-                                "The given execution scope should not be NULL"
+                                "The given execution scope should not be NULL "
                                 "if the cached scope is NULL."));
     exec_scope_ = exec_scope;
+    in_out_vars_.clear();
     CallOnce();
   } else {
     PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,
                       platform::errors::InvalidArgument(
-                          "The given execution scope and the cached execution"
+                          "The given execution scope and the cached execution "
                           "scope should be the same."));
   }
 

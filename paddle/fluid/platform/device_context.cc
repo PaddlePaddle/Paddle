@@ -84,7 +84,7 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::XPU;
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupport place %s to convert into platform::DeviceType.", place));
+        "Unsupported place %s to convert into platform::DeviceType.", place));
   }
 }
 

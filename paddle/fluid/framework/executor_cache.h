@@ -155,8 +155,11 @@ class ExecutorInfoCache {
   std::unordered_map<KeyType, ValueType> info_map_;
 };
 
-std::shared_ptr<ParallelExecutor> GetExecutorInfoFromCache(
-    const ExecutorInfoCache::CacheKey& cache_key, framework::Scope* scope);
+using CacheInfo =
+    std::pair<std::shared_ptr<ParallelExecutor>, bool /*is_new_created*/>;
+
+CacheInfo GetExecutorInfoFromCache(const ExecutorInfoCache::CacheKey& cache_key,
+                                   framework::Scope* scope);
 
 }  // namespace framework
 }  // namespace paddle
