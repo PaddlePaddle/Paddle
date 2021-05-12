@@ -787,6 +787,28 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
             type=core.VarDesc.VarType.LOD_TENSOR)
         paddle.disable_static()
 
+    def test_adam_save_load(self):
+        paddle.disable_static()
+        a = paddle.rand([4, 10])
+        linear = paddle.nn.Linear(10, 10)
+        b = linear(a)
+        state_dict = linear.state_dict()
+        fluid.save_dygraph(state_dict, "paddle_dy")
+
+        scheduler = paddle.optimizer.lr.NoamDecay(
+            d_model=0.01, warmup_steps=100, verbose=True)
+        adam = paddle.fluid.optimizer.Adam(
+            learning_rate=scheduler,
+            parameter_list=linear.parameters(),
+            use_global_beta_pow=True)
+        adam.minimize(b)
+        state_dict = adam.state_dict()
+        fluid.save_dygraph(state_dict, "paddle_dy")
+        para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
+        adam.set_state_dict(opti_state_dict)
+
+        paddle.enable_static()
+
 
 if __name__ == "__main__":
     unittest.main()
