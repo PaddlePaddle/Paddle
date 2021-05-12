@@ -33,7 +33,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     auto* softmax = ctx.Output<Tensor>("Softmax");
     auto* loss = ctx.Output<Tensor>("Loss");
 
-    const bool soft_label = context.Attr<bool>("soft_label");
+    auto soft_label = ctx.Attr<bool>("soft_label");
     PADDLE_ENFORCE_EQ(soft_label, false,
                       platform::errors::Unimplemented(
                           "soft_label=True is not supported in "
@@ -43,7 +43,6 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
     const int n = SizeToAxis(axis, logits->dims());
     const int d = SizeFromAxis(axis, logits->dims());
-    int cls_num = d;
 
     PADDLE_ENFORCE_EQ(
         labels->numel(), n,
@@ -51,6 +50,9 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
             "The size of labels should be equal to SizeToAxis of logits,"
             "but got size of labels is %d and SizeToAxis is %d.",
             labels->numel(), n));
+
+    loss->mutable_data<T>(ctx.GetPlace());
+    softmax->mutable_data<T>(ctx.GetPlace());
 
     Tensor logits_2d, labels_1d, loss_1d;
     logits_2d.ShareDataWith(*logits).Resize({n, d});
@@ -67,8 +69,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     // softmax
-    softmax->mutable_data<T>(ctx.GetPlace());
-    const auto& runner_softmax =
+    const auto& runner_softmax = 
         NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {{"axes", axes}});
     runner_softmax.Run(stream);
 
@@ -76,11 +77,10 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     Tensor backprop(logits->type());
     backprop.Resize(logits->dims());
     backprop.mutable_data<T>(ctx.GetPlace());
-    loss->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner_s =
         NpuOpRunner("SparseSoftmaxCrossEntropyWithLogits",
-                    {logits_2d, labels_1d}, {*loss_1d, backprop}, {});
+                    {logits_2d, labels_1d}, {loss_1d, backprop}, {});
     runner_s.Run(stream);
   }
 };
