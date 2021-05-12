@@ -41,7 +41,6 @@ class NegGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("neg_grad");
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    retv->SetInput("X", this->Input("X"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
@@ -86,6 +85,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(neg, ops::NegOp, ops::NegOpMaker,
                   ops::NegGradMaker<paddle::framework::OpDesc>,
                   ops::NegGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(neg_grad, ops::NegGradOp);
 
 REGISTER_OP_CPU_KERNEL(
