@@ -133,7 +133,7 @@ struct NumTraits<complex<float>> : GenericNumTraits<std::complex<float>> {
 template <>
 struct NumTraits<complex<double>> : GenericNumTraits<std::complex<double>> {
   typedef double Real;
-  typedef typename NumTraits<T>::Literal Literal;
+  typedef typename NumTraits<double>::Literal Literal;
   enum {
     IsComplex = 1,
     RequireInitialization = NumTraits<double>::RequireInitialization,
