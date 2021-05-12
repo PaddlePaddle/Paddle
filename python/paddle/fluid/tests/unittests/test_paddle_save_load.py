@@ -447,7 +447,8 @@ class TestSaveLoadAny(unittest.TestCase):
 
         self.assertTrue(
             np.array_equal(load_tensor3[0].numpy(), obj3[0].numpy()))
-        self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+        self.assertTrue(
+            np.max(np.abs(np.array(load_tensor3[1]) - obj3[1])) < 1e-10)
 
         for k, v in state_dict.items():
             self.assertTrue(
@@ -511,7 +512,8 @@ class TestSaveLoadAny(unittest.TestCase):
             isinstance(load_tensor3[0], paddle.fluid.core.LoDTensor))
         self.assertTrue(
             np.array_equal(np.array(load_tensor3[0]), obj3[0].numpy()))
-        self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+        self.assertTrue(
+            np.max(np.abs(np.array(load_tensor3[1]) - obj3[1])) < 1e-10)
 
         for k, v in state_dict.items():
             self.assertTrue(
@@ -620,7 +622,8 @@ class TestSaveLoadAny(unittest.TestCase):
             self.assertTrue(isinstance(load_tensor3[0], fluid.core.LoDTensor))
             self.assertTrue(np.array_equal(np.array(load_tensor3[0]), obj3[0]))
             self.assertTrue(isinstance(load_tensor3[1], fluid.core.LoDTensor))
-            self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+            self.assertTrue(
+                np.max(np.abs(np.array(load_tensor3[1]) - obj3[1])) < 1e-10)
 
             for k, v in state_dict.items():
                 self.assertTrue(
@@ -695,7 +698,8 @@ class TestSaveLoadAny(unittest.TestCase):
             self.assertTrue(isinstance(load_tensor3[0], fluid.core.VarBase))
             self.assertTrue(np.array_equal(load_tensor3[0].numpy(), obj3[0]))
             self.assertTrue(isinstance(load_tensor3[1], fluid.core.VarBase))
-            self.assertTrue(np.array_equal(load_tensor3[1].numpy(), obj3[1]))
+            self.assertTrue(
+                np.max(np.abs(load_tensor3[1].numpy() - obj3[1])) < 1e-10)
 
             for k, v in state_dict.items():
                 self.assertTrue(
