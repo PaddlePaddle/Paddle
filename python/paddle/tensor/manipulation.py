@@ -369,15 +369,13 @@ def roll(x, shifts, axis=None, name=None):
 
     if in_dygraph_mode():
         if axis is None:
-            x = core.ops.reshape(x, 'shape', [-1, 1])
-            axis = [0]
+            axis = []
         return core.ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     out = helper.create_variable_for_type_inference(x.dtype)
 
     if axis is None:
-        x = reshape(x, shape=[-1, 1])
-        axis = [0]
+        axis = []
 
     helper.append_op(
         type='roll',

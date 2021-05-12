@@ -80,9 +80,13 @@ class RollCUDAKernel : public framework::OpKernel<T> {
     auto stride_dim = framework::stride(input_dim);
 
     if (nums == 1) {
-      int64_t dim_idx = dims[0];
-      int64_t size = stride_dim[dim_idx];
-      int64_t dim_size = input_dim[dim_idx];
+      int64_t size = 1;
+      int64_t dim_size = numel;
+      if (dims.size() > 0) {
+        int64_t dim_idx = dims[0] >= 0 ? dims[0] : dims[0] + input_dim.size();
+        size = stride_dim[dim_idx];
+        dim_size = input_dim[dim_idx];
+      }
       // shift > 0
       int64_t shift = shifts[0] > 0 ? (shifts[0] % dim_size)
                                     : (shifts[0] % dim_size + dim_size);
@@ -155,9 +159,13 @@ class RollGradCUDAKernel : public framework::OpKernel<T> {
 
     // optimize roll when the num of shift dimension is equal 1
     if (nums == 1) {
-      int64_t dim_idx = dims[0];
-      int64_t size = stride_dim[dim_idx];
-      int64_t dim_size = input_dim[dim_idx];
+      int64_t size = 1;
+      int64_t dim_size = numel;
+      if (dims.size() > 0) {
+        int64_t dim_idx = dims[0] >= 0 ? dims[0] : dims[0] + input_dim.size();
+        size = stride_dim[dim_idx];
+        dim_size = input_dim[dim_idx];
+      }
       // shift > 0
       int64_t shift = shifts[0] > 0 ? (dim_size - shifts[0] % dim_size)
                                     : (-shifts[0] % dim_size);
