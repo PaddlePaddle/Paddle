@@ -1966,9 +1966,13 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
     return;
   }
   if (post == 1) {
+    printf("[%s %s %d]: n = %d,\t pre = %d\n", 
+            __FILE__, __func__, __LINE__, n, pre);
     functor.RunRowWise(n, pre);
     return;
   } else {
+    printf("[%s %s %d]: n = %d,\t pre = %d,\t post = %d\n", 
+            __FILE__, __func__, __LINE__, n, pre, post);
     functor.RunMidWise(n, pre, post);
     return;
   }

@@ -69,6 +69,33 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     auto dims_equal = x->dims() == y->dims();
+
+#if 1
+    int size = x->dims().size();
+    auto dim_size = x->dims();
+    std::cout << "x_shape : \t";
+    for (int i = 0; i < size; ++i) {
+      std::cout << dim_size[i] << "\t"; 
+    }
+    std::cout << std::endl;
+
+    size = y->dims().size();
+    dim_size = y->dims();
+    std::cout << "y_shape : \t";
+    for (int i = 0; i < size; ++i) {
+      std::cout << dim_size[i] << "\t"; 
+    }
+    std::cout << std::endl;
+
+    size = z->dims().size();
+    dim_size = z->dims();
+    std::cout << "out_shape : \t";
+    for (int i = 0; i < size; ++i) {
+      std::cout << dim_size[i] << "\t"; 
+    }
+    std::cout << std::endl;
+#endif
+
     if (dims_equal) {
       SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
       same_dims_add(ctx, x, y, z);

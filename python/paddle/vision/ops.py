@@ -536,6 +536,8 @@ def deform_conv2d(x,
             op_type = 'deformable_conv'
             pre_bias = getattr(core.ops, op_type)(x, offset, mask, weight,
                                                   *attrs)
+        print("dygraph Conv_data :\n", pre_bias, '\n')
+        print("dygraph Bias_data :\n", bias, '\n')
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=1)
         else:
