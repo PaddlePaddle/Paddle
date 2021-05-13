@@ -17,12 +17,18 @@
 #include <string>
 #include <vector>
 
+#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/dim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/string/split.h"
+
+constexpr int ALLOC = 100000;
+
+using boost::lexical_cast;
 
 namespace paddle {
 namespace distributed {
@@ -41,9 +47,18 @@ class ShardingMerge {
       DeserializeRowsFromFile(inputs[x], &rows[x]);
     }
 
+    int64_t total_rows = 0;
+    for (auto x = 0; x < rows.size(); x++) {
+      total_rows += rows[x].size();
+    }
+
+    std::vector<int64_t> total_dims = {total_rows,
+                                       static_cast<int64_t>(embedding_dim)};
+
     std::ofstream out(output, std::ios::binary);
     SerializeRowsToStream(out, rows);
-    SerializeValueToStream(os, inputs, embedding_dim);
+    SerializePreTensorToStream(out, total_dims);
+    SerializeValueToStream(out, inputs, embedding_dim);
   }
 
  private:
@@ -75,17 +90,15 @@ class ShardingMerge {
   }
 
   void SerializePreTensorToStream(std::ostream &os,
-                                  const framework::Tensor &tensor) {
+                                  const std::vector<int64_t> &dims) {
     {  // the 1st field, uint32_t version
       constexpr uint32_t version = 0;
       os.write(reinterpret_cast<const char *>(&version), sizeof(version));
     }
     {  // the 2nd field, tensor description
       // int32_t  size
-      // void*    protobuf message
-      proto::VarType::TensorDesc desc;
-      desc.set_data_type(tensor.type());
-      auto dims = framework::vectorize(tensor.dims());
+      framework::proto::VarType::TensorDesc desc;
+      desc.set_data_type(framework::proto::VarType::FP32);
       auto *pb_dims = desc.mutable_dims();
       pb_dims->Resize(static_cast<int>(dims.size()), 0);
       std::copy(dims.begin(), dims.end(), pb_dims->begin());
@@ -93,19 +106,6 @@ class ShardingMerge {
       os.write(reinterpret_cast<const char *>(&size), sizeof(size));
       auto out = desc.SerializeAsString();
       os.write(out.data(), size);
-    }
-
-    {  // the 3rd field, tensor data
-      uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
-
-      auto *data_ptr = tensor.data<void>();
-      PADDLE_ENFORCE_LT(
-          size, (std::numeric_limits<std::streamsize>::max)(),
-          platform::errors::ResourceExhausted(
-              "tensor size %d overflow when writing tensor", size));
-
-      os.write(static_cast<const char *>(data_ptr),
-               static_cast<std::streamsize>(size));
     }
   }
 
@@ -121,13 +121,13 @@ class ShardingMerge {
       std::ifstream file(ins[x]);
 
       while (std::getline(file, line)) {
-        split(line, '\t', &columns);
+        columns = string::Split(line, '\t');
         if (columns.size() != 5) {
           VLOG(0) << "unexpected line: " << line << ", skip it";
           continue;
         }
 
-        split(columns[4], ',', values_str);
+        values_str = string::Split(columns[4], ',');
 
         for (int x = 0; x < embedding_dim; ++x) {
           try {
@@ -137,6 +137,10 @@ class ShardingMerge {
             values[x] = 0.0;
           }
         }
+
+        // the 3rd field, tensor data
+        out.write(reinterpret_cast<const char *>(values.data()),
+                  static_cast<std::streamsize>(sizeof(float) * values.size()));
       }
     }
   }
@@ -150,7 +154,7 @@ class ShardingMerge {
     rows->reserve(ALLOC);
 
     while (std::getline(file, line)) {
-      split(line, '\t', &columns);
+      columns = string::Split(line, '\t');
       if (columns.size() != 5) {
         VLOG(0) << "unexpected line: " << line << ", skip it";
         continue;
