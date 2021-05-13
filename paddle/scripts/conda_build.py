@@ -112,6 +112,7 @@ about:
     """
         self.cuda112 = r"""
     - cudatoolkit>=11.2, <11.3
+    - cudnn>=8.1, <8.2
     """
 
         self.cuda_info = [(self.cuda101, "cuda10.1", ".post101"),
