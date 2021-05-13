@@ -74,8 +74,8 @@ class SoftmaxMKLDNNHandler
     }
   }
 
-  SoftmaxMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                       const platform::MKLDNNDeviceContext& dev_ctx,
+  SoftmaxMKLDNNHandler(const framework::ExecutionContext& ctx,
+                       const MKLDNNDeviceContext& dev_ctx,
                        platform::Place cpu_place, const Tensor* out,
                        const Tensor* out_grad, Tensor* in_x_grad,
                        const std::string& unique_name)
@@ -92,7 +92,7 @@ class SoftmaxMKLDNNHandler
 
       auto dims = out_grad->dims();  // input and output share the same shape
       const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
-      auto softmax_tz = paddle::framework::vectorize<int64_t>(dims);
+      auto softmax_tz = framework::vectorize<int64_t>(dims);
 
       auto data_softmax_md = platform::MKLDNNMemDesc(
           softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());
@@ -158,8 +158,7 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const Tensor* output = ctx.Input<Tensor>("Out");
     auto* out_grad = ctx.template Input<Tensor>(framework::GradVarName("Out"));
-    auto* in_x_grad =
-        ctx.template Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* in_x_grad = ctx.template Output<Tensor>(framework::GradVarName("X"));
 
     SoftmaxMKLDNNHandler<T> handler(ctx, dev_ctx, ctx.GetPlace(), output,
                                     out_grad, in_x_grad, ctx.InputName("Out"));
