@@ -1699,6 +1699,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::CPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
 
   m.def(
       "dygraph_partial_grad",
