@@ -124,6 +124,8 @@ class Optimizer(object):
         # to train. These variables are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
+        # global_accumulator dict, {accum_name : acc_variable, ...}
+        self._global_accumulators = {}
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
@@ -156,6 +158,8 @@ class Optimizer(object):
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
+        for k, v in self._global_accumulators.items():
+            state_dict[v.name] = v
         # global step if use lr decay
         if isinstance(self._learning_rate, LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
@@ -235,36 +239,42 @@ class Optimizer(object):
                         "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
                         type(global_step))
 
+        def _load_state_para(state_dict, param):
+            var = param.value()
+            tensor = var.get_tensor()
+            model_np = np.array(tensor)
+            load_para = state_dict[param.name]
+            if isinstance(load_para, Variable):
+                load_para_np = load_para.numpy()
+            elif isinstance(load_para, core.VarBase):
+                load_para_np = load_para.numpy()
+            elif isinstance(load_para, np.ndarray):
+                load_para_np = load_para
+            else:
+                raise RuntimeError("State dict type {} not supprt".format(
+                    str(type(load_para))))
+
+            assert model_np.shape == load_para_np.shape,  \
+                                        "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
+                                                item.name, model_np.shape, load_para_np.shape)
+
+            assert model_np.dtype == load_para_np.dtype, \
+                                        "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                                            item.name, model_np.dtype, load_para_np.dtype)
+
+            tensor.set(load_para_np, framework._current_expected_place())
+
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 assert var_tmp.name in state_dict, \
                         "optimizer variable {} not found".format( var_tmp.name )
-                var = var_tmp.value()
-                tensor = var.get_tensor()
-                model_np = np.array(tensor)
+                _load_state_para(state_dict, var_tmp)
 
-                load_para = state_dict[var_tmp.name]
-
-                if isinstance(load_para, Variable):
-                    load_para_np = load_para.numpy()
-                elif isinstance(load_para, core.VarBase):
-                    load_para_np = load_para.numpy()
-                elif isinstance(load_para, np.ndarray):
-                    load_para_np = load_para
-                else:
-                    raise RuntimeError("State dict type {} not supprt".format(
-                        str(type(load_para))))
-
-                assert model_np.shape == load_para_np.shape,  \
-                                          "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                                                 item.name, model_np.shape, load_para_np.shape)
-
-                assert model_np.dtype == load_para_np.dtype, \
-                                          "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                                                item.name, model_np.dtype, load_para_np.dtype)
-
-                tensor.set(load_para_np, framework._current_expected_place())
+        for k, v in self._global_accumulators.items():
+            assert v.name in state_dict, \
+                        "optimizer variable {} not found".format( v.name )
+            _load_state_para(state_dict, v)
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict
@@ -588,6 +598,60 @@ class Optimizer(object):
         self._accumulators[name][param.name] = var
         return var
 
+    def _add_global_accumulator(self,
+                                name,
+                                dtype=None,
+                                fill_value=0.0,
+                                shape=None,
+                                type=None,
+                                device=None):
+        """Utility function to add a global accumulator for all parameters in the model
+
+        Args:
+            block: the block in which the loss variable is present
+            name: name of the accumulator
+            dtype: data type of the accumulator variable
+            fill_value: value to initialize the accumulator variable
+            shape: the shape of the accumulator
+            type: the variable type of the accumulator
+            device: the target place of the accumulator
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        if (name in self._global_accumulators):
+            if framework.in_dygraph_mode():
+                return self._global_accumulators[name]
+            raise Exception("Global accumulator {} already exists".format(name))
+        if shape == None:
+            shape = [1]  # most case, global accumulator is of shape [1]
+        assert isinstance(self.helper, LayerHelper)
+
+        var_name = name
+        var_name = unique_name.generate(var_name)
+        self._opti_name_list.append(var_name)
+
+        var = self.helper.create_global_variable(
+            name=var_name,
+            persistable=True,
+            dtype=dtype if dtype else self._dtype,
+            type=type,
+            shape=shape,
+            belong_to_optimizer=True)
+        if device is None:
+            device = 'cpu'
+        with device_guard(device):
+            self.helper.set_variable_initializer(
+                var, initializer=Constant(value=float(fill_value)))
+
+        if framework.in_dygraph_mode():
+            if len(self._accumulators_holder) > 0:
+                assert var_name in self._accumulators_holder, \
+                        "Optimizer set error, {} should in state dict".format( var_name )
+                var.set_value(self._accumulators_holder[var_name])
+
+        self._global_accumulators[name] = var
+        return var
+
     def _get_accumulator(self, name, param):
         """Utility function to fetch an accumulator for a parameter
 
@@ -596,7 +660,7 @@ class Optimizer(object):
             param: parameter variable for which accumulator is to be fetched
 
         Returns:
-            accumulator variable for the parameter
+            accumulator variable
         """
         if self._name is not None:
             name = self._name + "_" + name
@@ -605,6 +669,21 @@ class Optimizer(object):
             raise Exception("Accumulator {} does not exist for parameter {}".
                             format(name, param.name))
         return self._accumulators[name][param.name]
+
+    def _get_global_accumulator(self, name):
+        """Utility function to fetch a global accumulator
+
+        Args:
+            name: name of the accumulator
+
+        Returns:
+            accumulator variable
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        if (name not in self._global_accumulators):
+            raise Exception("Global accumulator {} does not exist".format(name))
+        return self._global_accumulators[name]
 
     def _update_param_device_map(self, parameters_and_grads, target_block):
         for param_and_grad in parameters_and_grads:
@@ -2000,6 +2079,8 @@ class AdamOptimizer(Optimizer):
             gradient in current mini-batch, so it will be much more faster. But this mode has
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
+        use_global_beta_pow (bool, optional): Whether to use global beta_pow. If true, Adam will use global beta_pow 
+            for whole model instead of creating beta_pow for each parameter. Default is false.
 
     Examples:
         .. code-block:: python
@@ -2101,7 +2182,8 @@ class AdamOptimizer(Optimizer):
                  regularization=None,
                  grad_clip=None,
                  name=None,
-                 lazy_mode=False):
+                 lazy_mode=False,
+                 use_global_beta_pow=False):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -2117,6 +2199,7 @@ class AdamOptimizer(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
         self._lazy_mode = lazy_mode
+        self._use_global_beta_pow = use_global_beta_pow
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -2125,16 +2208,30 @@ class AdamOptimizer(Optimizer):
         for p in parameters:
             self._add_accumulator(self._moment1_acc_str, p)
             self._add_accumulator(self._moment2_acc_str, p)
-            self._add_accumulator(
+            if not self._use_global_beta_pow:
+                self._add_accumulator(
+                    name=self._beta1_pow_acc_str,
+                    param=p,
+                    fill_value=0.9 if isinstance(self._beta1, Variable) \
+                            else self._beta1,
+                    shape=[1],
+                    type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
+                self._add_accumulator(
+                    name=self._beta2_pow_acc_str,
+                    param=p,
+                    fill_value=0.999 if isinstance(self._beta2, Variable) \
+                            else self._beta2,
+                    shape=[1],
+                    type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
+        if self._use_global_beta_pow:
+            self._add_global_accumulator(
                 name=self._beta1_pow_acc_str,
-                param=p,
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1],
                 type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
-            self._add_accumulator(
+            self._add_global_accumulator(
                 name=self._beta2_pow_acc_str,
-                param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1],
@@ -2147,10 +2244,16 @@ class AdamOptimizer(Optimizer):
                                         param_and_grad[0])
         moment2 = self._get_accumulator(self._moment2_acc_str,
                                         param_and_grad[0])
-        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                              param_and_grad[0])
-        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                              param_and_grad[0])
+        if self._use_global_beta_pow:
+            beta1_pow_acc = self._get_global_accumulator(
+                self._beta1_pow_acc_str)
+            beta2_pow_acc = self._get_global_accumulator(
+                self._beta2_pow_acc_str)
+        else:
+            beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                                  param_and_grad[0])
+            beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                                  param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
 
@@ -2164,7 +2267,8 @@ class AdamOptimizer(Optimizer):
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
                 moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
                 'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
-                1000, 'beta1', _beta1, 'beta2', _beta2)
+                1000, 'beta1', _beta1, 'beta2', _beta2, 'use_global_beta_pow',
+                self._use_global_beta_pow)
 
             return None
 
@@ -2187,7 +2291,8 @@ class AdamOptimizer(Optimizer):
         attrs = {
             "epsilon": self._epsilon,
             "lazy_mode": self._lazy_mode,
-            "min_row_size_to_use_multithread": 1000
+            "min_row_size_to_use_multithread": 1000,
+            'use_global_beta_pow': self._use_global_beta_pow
         }
 
         if isinstance(self._beta1, Variable):
@@ -2207,6 +2312,43 @@ class AdamOptimizer(Optimizer):
             stop_gradient=True)
 
         return adam_op
+
+    def _finish_update(self, block, parameters_and_grads):
+        r"""Update beta1_pow and beta2_pow accumulator
+        """
+        assert isinstance(block, framework.Block)
+        if self._use_global_beta_pow:
+            beta1_pow_acc = self._get_global_accumulator(
+                self._beta1_pow_acc_str)
+            beta2_pow_acc = self._get_global_accumulator(
+                self._beta2_pow_acc_str)
+
+            with block.program._optimized_guard([]):
+                inputs = {"X": beta1_pow_acc}
+                attrs = {}
+                if isinstance(self._beta1, Variable):
+                    inputs['ScaleTensor'] = self._beta1
+                else:
+                    attrs['scale'] = self._beta1
+                block.append_op(
+                    type="scale",
+                    inputs=inputs,
+                    outputs={"Out": beta1_pow_acc},
+                    attrs=attrs,
+                    stop_gradient=True)
+
+                inputs = {"X": beta2_pow_acc}
+                attrs = {}
+                if isinstance(self._beta2, Variable):
+                    inputs['ScaleTensor'] = self._beta2
+                else:
+                    attrs['scale'] = self._beta2
+                block.append_op(
+                    type="scale",
+                    inputs=inputs,
+                    outputs={"Out": beta2_pow_acc},
+                    attrs=attrs,
+                    stop_gradient=True)
 
 
 class AdamaxOptimizer(Optimizer):

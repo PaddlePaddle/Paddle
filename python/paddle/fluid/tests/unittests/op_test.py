@@ -1087,6 +1087,7 @@ class OpTest(unittest.TestCase):
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
+
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -1176,6 +1177,11 @@ class OpTest(unittest.TestCase):
                 ]:
                     actual_t = convert_uint16_to_float(actual_t)
                     atol = 0.03
+
+                # NOTE(zhiqiu): np.allclose([], [1.]) returns True
+                # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
+                if expect_t.size == 0:
+                    self.assertTrue(actual_t.size == 0)
 
                 self.assertTrue(
                     np.allclose(
