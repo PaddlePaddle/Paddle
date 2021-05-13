@@ -14772,7 +14772,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     the size of the last shard will be less than the calculated `shard_size`
 
     Args:
-        input (Tensor): Input indices with data type int64. It's last dimension must be 1.
+        input (Tensor): Input indices with data type int64 or int32. It's last dimension must be 1.
         index_num (int): An integer defining the range of the index.
         nshards (int): The number of shards.
         shard_id (int): The index of the current shard.
@@ -14793,7 +14793,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             print(shard_label)
             # [[-1], [1]]
     """
-    check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
+    check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
     if shard_id < 0 or shard_id >= nshards:
