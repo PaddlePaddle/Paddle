@@ -94,9 +94,9 @@ class SoftmaxMKLDNNHandler
       const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
       auto softmax_tz = framework::vectorize<int64_t>(dims);
 
-      auto data_softmax_md = platform::MKLDNNMemDesc(
+      auto data_softmax_md = MKLDNNMemDesc(
           softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());
-      auto diff_softmax_md = platform::MKLDNNMemDesc(
+      auto diff_softmax_md = MKLDNNMemDesc(
           softmax_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
 
       this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
