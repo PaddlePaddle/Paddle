@@ -875,7 +875,7 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {
-  return AttrReader(op_.GetAttrMap());
+  return AttrReader(op_.GetAttrMap(), paddle::framework::OpInfoMap::Instance().Get(op_.Type()).checker_->default_attr_map());
 }
 
 std::vector<std::string> CompileTimeInferShapeContext::Inputs(

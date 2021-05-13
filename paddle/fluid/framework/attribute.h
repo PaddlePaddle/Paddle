@@ -208,15 +208,20 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
 class AttrReader {
  public:
-  explicit AttrReader(const AttributeMap& attrs) : attrs_(attrs) {}
+  explicit AttrReader(const AttributeMap& attrs, const AttributeMap& default_values_map) : attrs_(attrs), default_values_map_(default_values_map) {}
 
   template <typename T>
   inline const T& Get(const std::string& name) const {
-    PADDLE_ENFORCE_NE(attrs_.count(name), 0,
-                      platform::errors::NotFound(
+    auto it = attrs_.find(name);
+    if (it == attrs_.end()){
+      it = default_values_map_.find(name);
+      if (it == default_values_map_.end()) {
+        PADDLE_THROW(platform::errors::NotFound(
                           "Attribute (%s) should be in AttributeMap.", name));
+      }
+    }
 
-    Attribute& attr = const_cast<Attribute&>(attrs_.at(name));
+    Attribute& attr = const_cast<Attribute&>(it->second);
     ExtractAttribute<T> extract_attr(name);
     T* attr_value = extract_attr(attr);
     return *attr_value;
@@ -224,6 +229,7 @@ class AttrReader {
 
  private:
   const AttributeMap& attrs_;
+  const AttributeMap& default_values_map_;
 };
 
 // check whether a value(attribute) fit a certain limit

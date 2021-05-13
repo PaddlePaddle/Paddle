@@ -101,7 +101,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   framework::AttrReader Attrs() const override {
-    return framework::AttrReader(*attrs_);
+    return framework::AttrReader(*attrs_, paddle::framework::OpInfoMap::Instance().Get(op_type_).checker_->default_attr_map());
   }
 
   std::vector<std::string> Inputs(const std::string& name) const override {

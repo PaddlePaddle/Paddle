@@ -178,7 +178,7 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
       (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
       (tensor.layout() != framework::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
-    auto ar = paddle::framework::AttrReader(attrs);
+    auto ar = paddle::framework::AttrReader(attrs, paddle::framework::OpInfoMap::Instance().Get(Type()).checker_->default_attr_map());
     const std::string data_layout = ar.Get<std::string>("data_layout");
     auto dl = framework::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
@@ -548,7 +548,7 @@ framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
       (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
       (tensor.layout() != framework::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
-    auto ar = paddle::framework::AttrReader(attrs);
+    auto ar = paddle::framework::AttrReader(attrs, paddle::framework::OpInfoMap::Instance().Get(Type()).checker_->default_attr_map());
     const std::string data_layout = ar.Get<std::string>("data_layout");
     auto dl = framework::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
