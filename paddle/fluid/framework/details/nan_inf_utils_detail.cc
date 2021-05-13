@@ -331,20 +331,12 @@ template <>
 template <>
 template <typename T>
 void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
-    typename std::enable_if<std::is_floating_point<T>::value>::type*) const {
-  // use env strategy control in future, -1=print_all.
-  int print_num = 3;
-  CheckNanInf(tensor_.data<T>(), tensor_.numel(), print_num, op_type_,
-              var_name_);
-}
-
-template <>
-template <typename T>
-void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
     typename std::enable_if<
-        std::is_same<T, paddle::platform::complex<float>>::value ||
-        std::is_same<T, paddle::platform::complex<double>>::value>::type*)
+        std::is_floating_point<T>::value ||
+        std::is_same<T, ::paddle::platform::complex<float>>::value ||
+        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
+  // use env strategy control in future, -1=print_all.
   int print_num = 3;
   CheckNanInf(tensor_.data<T>(), tensor_.numel(), print_num, op_type_,
               var_name_);
