@@ -26,11 +26,10 @@ set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
-taskkill /f /im op_function_generator.exe  2>NUL
 taskkill /f /im cmake.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im CL.exe 2>NUL
-taskkill /f /im Lib.exe 2>NUL
+taskkill /f /im cl.exe 2>NUL
+taskkill /f /im lib.exe 2>NUL
 taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
@@ -47,8 +46,8 @@ wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
@@ -79,6 +78,7 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
+rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
@@ -112,6 +112,17 @@ if %ERRORLEVEL% EQU 0 (
     git branch last_pr
 )
 
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day.txt
+    type %cache_dir%\day.txt
+    rmdir build /s/q
+    goto :mkbuild
+)
+
 :: git diff HEAD origin/develop --stat --name-only
 :: git diff HEAD origin/develop --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
 :: if %ERRORLEVEL% EQU 0 (
@@ -137,10 +148,11 @@ goto :CASE_%1
 
 echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
-echo "wincheck_mkl: run Windows MKL/GPU/UnitTest CI tasks on Windows"
-echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
+echo "wincheck_mkl: run Windows MKL/GPU PR CI tasks on Windows"
+echo "wincheck_openbals: run Windows OPENBLAS/CPU PR CI tasks on Windows"
 echo "build_avx_whl: build Windows avx whl package on Windows"
 echo "build_no_avx_whl: build Windows no avx whl package on Windows"
+echo "build_inference_lib: build Windows inference library on Windows"
 exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
@@ -200,6 +212,7 @@ goto:success
 
 rem ------Build windows inference library------
 :CASE_build_inference_lib
+set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
 
@@ -249,9 +262,10 @@ if "%WITH_GPU%"=="ON" (
 )
 
 rem ------initialize the python environment------
+@ECHO ON
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
-if %WITH_PYTHON% == "OFF" (
+if %WITH_PYTHON% == "ON" (
     where python
     where pip
     pip install wheel --user
@@ -373,6 +387,7 @@ set build_times=1
 rem clcache.exe -z
 
 rem -------clean up environment again-----------
+taskkill /f /im cmake.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL
 taskkill /f /im lib.exe 2>NUL
@@ -387,12 +402,13 @@ taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
 taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
+wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
@@ -766,8 +782,8 @@ wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 echo Windows CI run successfully!
 exit /b 0
