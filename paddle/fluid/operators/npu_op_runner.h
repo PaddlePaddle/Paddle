@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "acl/acl.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/operators/npu_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -101,7 +102,7 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
       platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
   // do async for better performance
   if ((typeid(float) == typeid(T) || typeid(platform::float16) == typeid(T)) &&
-      static_cast<float>(val) > MIN_PRECISION_FOR_POWER) {
+      static_cast<float>(val) > MIN_PRECISION_FOR_POWER && std::isinf(val)) {
     Tensor tmp(tensor->type());
     tmp.Resize(tensor->dims());
     tmp.mutable_data<T>(tensor->place());

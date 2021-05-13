@@ -119,15 +119,13 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-bool found_nan_data()
-
 template <ReduceType red_type, typename T>
 class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto in = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
     auto place = ctx.GetPlace();
     HcclDataType dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();
@@ -150,9 +148,10 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    nan_or_inf = found_inf_data(ctx, stream, &in);
+    bool nan_or_inf = found_inf_data(ctx, stream, in);
     if (nan_or_inf){
-        fill_inf_data(ctx, stream, const_cast<Tensor*>(&in));
+        T inf = static_cast<T>(std::numeric_limits<float>::infinity());
+        FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);
     }
 
     HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
@@ -187,7 +186,8 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         reinterpret_cast<void*>(stream)));
 
     if (nan_or_inf){
-        fill_inf_data(ctx, stream, const_cast<Tensor*>(&out));
+        T inf = static_cast<T>(std::numeric_limits<float>::infinity());
+        FillNpuTensorWithConstant<T>(out, inf);
     }
 
     out->Resize(in->dims());
