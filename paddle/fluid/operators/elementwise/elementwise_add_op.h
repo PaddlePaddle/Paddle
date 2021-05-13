@@ -16,7 +16,6 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-// #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -85,11 +84,6 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     } else {
       BroadcastElemwiseAdd<DeviceContext, T> broadcast_add;
       broadcast_add(ctx, x, y, z);
-      // if (platform::is_gpu_place(ctx.GetPlace())) {
-      //   LaunchBroadElementwiseCudaKernel<DeviceContext, T>(ctx, x, y, z);
-      // } else {
-      //   default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
-      // }
     }
   }
 };

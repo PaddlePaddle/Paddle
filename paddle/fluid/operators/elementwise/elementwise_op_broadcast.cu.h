@@ -23,33 +23,50 @@ struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
   typedef void (*MergeFunctor)(bool &, std::vector<DimVector> &, DimVector &,
                                int, int);
-
   int64_t dim_size;
   DimVector out_dims;
   std::vector<DimVector> in_dims;
 
  private:
   // 1. To compensate the lackage of input_tensors` dimension;
-  void InputDimensionsExtend(int N) {
-    std::reverse(out_dims.begin(), out_dims.end());
-
+  void InputDimensionsExtend(int N, int axis) {
     for (auto &in_dim : in_dims) {
-      std::reverse(in_dim.begin(), in_dim.end());
-
+      int64_t in_idx = 0;
       if (in_dim.size() < dim_size) {
         DimVector tmp_dim(dim_size, 1);
-        in_dim.resize(dim_size, 1);
-        int64_t idx_in = 0, idx_out = 0;
         do {
-          if (in_dim[idx_in] == out_dims[idx_out] || in_dim[idx_in] == 1) {
-            tmp_dim[idx_out++] = in_dim[idx_in++];
+          if (in_dim[in_idx] == out_dims[axis] || in_dim[in_idx] == 1) {
+            tmp_dim[axis] = in_dim[in_idx];
+            in_idx++;
+            axis++;
           } else {
-            idx_out++;
+            PADDLE_THROW(platform::errors::InvalidArgument(
+                "The %dth dimension of input tensor is expected to be equal "
+                "with"
+                "the %dth dimension of output tensor %d or 1, but recieved "
+                "%d.\n",
+                in_idx + 1, axis + 1, out_dims[axis], in_dim[in_idx]));
           }
-        } while (idx_out < dim_size);
+        } while (in_idx < in_dim.size());
+        in_dim.resize(dim_size);
         std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
+      } else {
+        do {
+          if (in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1) {
+            in_idx++;
+          } else {
+            PADDLE_THROW(platform::errors::InvalidArgument(
+                "The %dth dimension of input tensor is expected to be equal "
+                "with"
+                "the %dth dimension of output tensor %d or 1, but recieved "
+                "%d.\n",
+                in_idx + 1, in_idx + 1, out_dims[in_idx], in_dim[in_idx]));
+          }
+        } while (in_idx < dim_size);
       }
+      std::reverse(in_dim.begin(), in_dim.end());
     }
+    std::reverse(out_dims.begin(), out_dims.end());
   }
 
   template <typename MergeFunctor>
@@ -92,7 +109,7 @@ struct DimensionsTransform {
  public:
   explicit DimensionsTransform(
       const std::vector<const framework::Tensor *> &ins,
-      const framework::DDim &dims) {
+      const framework::DDim &dims, int axis) {
     const int N = ins.size();
     dim_size = dims.size();
     out_dims = framework::vectorize<int64_t>(dims);
@@ -100,7 +117,7 @@ struct DimensionsTransform {
     for (int j = 0; j < N; ++j) {
       in_dims[j] = framework::vectorize<int64_t>(ins[j]->dims());
     }
-    InputDimensionsExtend(N);
+    InputDimensionsExtend(N, axis);
 
     auto merge_sequential_dims = [](bool &equal,
                                     std::vector<DimVector> &in_dims,
@@ -178,8 +195,7 @@ struct CalculateInputStrides {
   }
 };
 
-template <typename T, typename OffsetPreCalculator, ElementwiseType ET,
-          int VecSize, int kDims>
+template <typename T, ElementwiseType ET, int VecSize, int kDims>
 struct BroadcastArgsWarpper {
   using DimsVec = CudaAlignedVector<T, VecSize>;
 
@@ -192,7 +208,7 @@ struct BroadcastArgsWarpper {
 
   HOSTDEVICE BroadcastArgsWarpper(
       const std::vector<const framework::Tensor *> &ins,
-      const OffsetPreCalculator &offset_calculator, framework::Tensor *out,
+      const CalculateInputStrides &offset_calculator, framework::Tensor *out,
       int scalar_offset)
       : scalar_offset(scalar_offset) {
     for (int j = 0; j < ET; ++j) {
@@ -330,7 +346,8 @@ __global__ void ElementwiseBroadcastKernel(BroadcastArgsWarpper data_transfer,
 template <typename T, ElementwiseType ET, int VecSize = 1>
 void LaunchBroadcastKernelForDifferentDimSize(
     const platform::CUDADeviceContext &ctx,
-    const std::vector<const framework::Tensor *> &ins, framework::Tensor *out) {
+    const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
+    int axis) {
   int numel = out->numel();
   const int threads = 256;
   int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
@@ -339,79 +356,70 @@ void LaunchBroadcastKernelForDifferentDimSize(
   int vec_len = main_tid * VecSize;
   auto stream = ctx.stream();
 
-  const auto merge_dims = DimensionsTransform(ins, out->dims());
+  const auto merge_dims = DimensionsTransform(ins, out->dims(), axis);
   const auto offset_calculator = CalculateInputStrides(
       merge_dims.dim_size, merge_dims.in_dims, merge_dims.out_dims);
-  using OffsetPreCalculator = decltype(offset_calculator);
 
   switch (merge_dims.dim_size) {
     case 1: {
-      auto data_transfer =
-          BroadcastArgsWarpper<T, OffsetPreCalculator, ET, VecSize, 1>(
-              ins, offset_calculator, out, vec_len);
+      auto data_transfer = BroadcastArgsWarpper<T, ET, VecSize, 1>(
+          ins, offset_calculator, out, vec_len);
       ElementwiseBroadcastKernel<T, decltype(data_transfer), ET,
                                  VecSize><<<blocks, threads, 0, stream>>>(
           data_transfer, main_tid, tail_tid);
       break;
     }
     case 2: {
-      auto data_transfer =
-          BroadcastArgsWarpper<T, OffsetPreCalculator, ET, VecSize, 2>(
-              ins, offset_calculator, out, vec_len);
+      auto data_transfer = BroadcastArgsWarpper<T, ET, VecSize, 2>(
+          ins, offset_calculator, out, vec_len);
       ElementwiseBroadcastKernel<T, decltype(data_transfer), ET,
                                  VecSize><<<blocks, threads, 0, stream>>>(
           data_transfer, main_tid, tail_tid);
       break;
     }
     case 3: {
-      auto data_transfer =
-          BroadcastArgsWarpper<T, OffsetPreCalculator, ET, VecSize, 3>(
-              ins, offset_calculator, out, vec_len);
+      auto data_transfer = BroadcastArgsWarpper<T, ET, VecSize, 3>(
+          ins, offset_calculator, out, vec_len);
       ElementwiseBroadcastKernel<T, decltype(data_transfer), ET,
                                  VecSize><<<blocks, threads, 0, stream>>>(
           data_transfer, main_tid, tail_tid);
       break;
     }
     case 4: {
-      auto data_transfer =
-          BroadcastArgsWarpper<T, OffsetPreCalculator, ET, VecSize, 4>(
-              ins, offset_calculator, out, vec_len);
+      auto data_transfer = BroadcastArgsWarpper<T, ET, VecSize, 4>(
+          ins, offset_calculator, out, vec_len);
       ElementwiseBroadcastKernel<T, decltype(data_transfer), ET,
                                  VecSize><<<blocks, threads, 0, stream>>>(
           data_transfer, main_tid, tail_tid);
       break;
     }
     case 5: {
-      auto data_transfer =
-          BroadcastArgsWarpper<T, OffsetPreCalculator, ET, VecSize, 5>(
-              ins, offset_calculator, out, vec_len);
+      auto data_transfer = BroadcastArgsWarpper<T, ET, VecSize, 5>(
+          ins, offset_calculator, out, vec_len);
       ElementwiseBroadcastKernel<T, decltype(data_transfer), ET,
                                  VecSize><<<blocks, threads, 0, stream>>>(
           data_transfer, main_tid, tail_tid);
       break;
     }
     case 6: {
-      auto data_transfer =
-          BroadcastArgsWarpper<T, OffsetPreCalculator, ET, VecSize, 6>(
-              ins, offset_calculator, out, vec_len);
+      auto data_transfer = BroadcastArgsWarpper<T, ET, VecSize, 6>(
+          ins, offset_calculator, out, vec_len);
       ElementwiseBroadcastKernel<T, decltype(data_transfer), ET,
                                  VecSize><<<blocks, threads, 0, stream>>>(
           data_transfer, main_tid, tail_tid);
       break;
     }
     case 7: {
-      auto data_transfer =
-          BroadcastArgsWarpper<T, OffsetPreCalculator, ET, VecSize, 7>(
-              ins, offset_calculator, out, vec_len);
+      auto data_transfer = BroadcastArgsWarpper<T, ET, VecSize, 7>(
+          ins, offset_calculator, out, vec_len);
       ElementwiseBroadcastKernel<T, decltype(data_transfer), ET,
                                  VecSize><<<blocks, threads, 0, stream>>>(
           data_transfer, main_tid, tail_tid);
       break;
     }
     case 8: {
-      auto data_transfer =
-          BroadcastArgsWarpper<T, OffsetPreCalculator, ET, VecSize, 8>(
-              ins, offset_calculator, out, vec_len);
+      auto data_transfer = BroadcastArgsWarpper<T, ET, VecSize, 8>(
+          ins, offset_calculator, out, vec_len);
       ElementwiseBroadcastKernel<T, decltype(data_transfer), ET,
                                  VecSize><<<blocks, threads, 0, stream>>>(
           data_transfer, main_tid, tail_tid);
@@ -430,7 +438,7 @@ template <ElementwiseType ET, typename T, typename Functor>
 void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
-    Functor func) {
+    Functor func, int axis) {
   int in_vec_size = 4;
   for (auto *in : ins) {
     auto temp_size = GetVectorizedSizeImpl<T>(in->data<T>());
@@ -442,15 +450,15 @@ void LaunchBroadcastElementwiseCudaKernel(
 
   switch (vec_size) {
     case 4: {
-      LaunchBroadcastKernelForDifferentDimSize<T, ET, 4>(ctx, ins, out);
+      LaunchBroadcastKernelForDifferentDimSize<T, ET, 4>(ctx, ins, out, axis);
       break;
     }
     case 2: {
-      LaunchBroadcastKernelForDifferentDimSize<T, ET, 2>(ctx, ins, out);
+      LaunchBroadcastKernelForDifferentDimSize<T, ET, 2>(ctx, ins, out, axis);
       break;
     }
     default: {
-      LaunchBroadcastKernelForDifferentDimSize<T, ET, 1>(ctx, ins, out);
+      LaunchBroadcastKernelForDifferentDimSize<T, ET, 1>(ctx, ins, out, axis);
       break;
     }
   }

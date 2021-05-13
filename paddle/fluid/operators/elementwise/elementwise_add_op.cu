@@ -1,10 +1,10 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.1 (the "License");
+Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.1
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,12 +39,6 @@ struct CudaAddFunctor {
   }
 };
 
-// TODO(limingshu): Need to be refined.
-template <typename T>
-struct BCudaAddFunctor {
-  __device__ __forceinline__ void operator()(T* a, T* b) { *a += *b; }
-};
-
 template <typename T>
 struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
@@ -64,9 +58,11 @@ struct BroadcastElemwiseAdd<platform::CUDADeviceContext, T> {
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* out) {
     std::vector<const framework::Tensor*> ins = {x, y};
+    int axis = ctx.Attr<int>("axis");
+    axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
     LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, T>(
         ctx.template device_context<platform::CUDADeviceContext>(), ins, out,
-        CudaAddFunctor<T>());
+        CudaAddFunctor<T>(), axis);
   }
 };
 
