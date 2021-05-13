@@ -85,8 +85,9 @@ def _convert_into_variable(var_base):
     """
     if isinstance(var_base, core.VarBase):
         # Check whether has been created before.
-        if var_base.name in var_base.block.vars:
-            new_var = var_base.block.vars[var_base.name]
+        new_var = var_base.block._find_var_recursive(var_base.name)
+        if new_var is not None:
+            assert isinstance(new_var, framework.Variable)
         # Convert ParamBase into Parameter with same attributes in dy2stat.
         elif isinstance(var_base, framework.ParamBase):
             new_var = var_base._to_static_var(to_parameter=True)
