@@ -63,31 +63,9 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     runner_inverse.Run(stream);
     tmp_inverse_out = &inverse_out;
 
-    // NOTE(zhiqiu):
-    Tensor tmp;
-    tmp.mutable_data<float>({8}, ctx.GetPlace());
-
     // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
     // tmp is only placeholder.
-    auto runner_float_status =
-        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
-                    {{"message", std::string("check_nan_and_inf")}});
-    runner_float_status.Run(stream);
-
-    Tensor sum;
-    sum.mutable_data<float>({1}, ctx.GetPlace());
-    auto runner_reduce_sum =
-        NpuOpRunner("ReduceSumD", {*float_status}, {sum},
-                    {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
-    runner_reduce_sum.Run(stream);
-
-    std::vector<float> sum_vec;
-    TensorToVector(
-        sum, ctx.template device_context<paddle::platform::NPUDeviceContext>(),
-        &sum_vec);
-    found_inf_data = (sum_vec[0] > 1);
-
-    VLOG(4) << "found_inf_data:" << found_inf_data;
+    found_inf_data = FoundNanOrInf(ctx, stream, float_status);
 
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];

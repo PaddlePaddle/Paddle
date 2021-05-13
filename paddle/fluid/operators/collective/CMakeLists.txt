@@ -30,7 +30,6 @@ if(WITH_XPU_BKCL)
 endif()
 
 if(WITH_ASCEND_CL)
-    op_library(npu_utils SRCS npu_utils.cc)
     cc_library(gen_hccl_id_op_helper SRCS gen_hccl_id_op_helper.cc DEPS dynload_warpctc dynamic_loader scope)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} collective_helper gen_hccl_id_op_helper npu_utils)
     op_library(c_gen_hccl_id_op DEPS ${COLLECTIVE_DEPS})

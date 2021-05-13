@@ -42,7 +42,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/hccl_helper.h"
-#include "paddle/fluid/operators/npu_utils.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 #endif
 
 namespace paddle {

@@ -21,6 +21,10 @@ add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(jit)
 
+if(WITH_ASCEND_CL)
+  cc_library(npu_op_runner SRCS npu_op_runner.cc DEPS operator npu_info)
+  op_library(npu_utils SRCS npu_utils.cc DEPS npu_op_runner)
+endif()
 
 if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
@@ -129,7 +133,6 @@ endif()
 
 if (WITH_ASCEND_CL)
   cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS assign_op)
-  cc_library(npu_op_runner SRCS npu_op_runner.cc DEPS operator npu_info npu_utils)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
 endif()
 
