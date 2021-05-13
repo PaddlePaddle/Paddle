@@ -70,10 +70,12 @@ import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet import launch_utils
 
-# TODO(danleifeng): Don't import * from a module
+#from paddle.distributed.fleet.launch_utils import DistributeMode, DeviceMode, get_logger, get_cluster
 from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
 import paddle.distributed.fleet.ascend_utils as ascend_utils
+
+from paddle.distributed.fleet.elastic import ElasticManager
 
 __all__ = []
 
@@ -175,6 +177,16 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--heter_worker_num", type=int, help="number of heter_workers")
     ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
+    # parameter elastic mode
+    elastic_group = parser.add_argument_group("Elastic Parameters")
+    elastic_group.add_argument("--elastic_server", type=str, help="")
+    elastic_group.add_argument("--job_name", type=str, help="")
+    elastic_group.add_argument("--np", type=int, help="")
+    elastic_group.add_argument("--scale", type=int, default=0, help="")
+    elastic_group.add_argument("--port", type=int, help="")
+    elastic_group.add_argument("--host", type=str, help="")
+    elastic_group.add_argument("--force", type=bool, default=False, help="")
+
     return parser.parse_args()
 
 
@@ -214,65 +226,128 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
                        devices_per_proc)
 
 
-def launch_collective(args):
-    # parse arguments, used for cloud-single-machine and local
-    (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
-    trainers_num = cloud_utils.get_trainers_num()
-    logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
-        trainers_num, device_mode, devices_per_proc))
+class LauncherInterface(object):
+    def __init__(self, args):
+        self.args = args
+        self.procs = []
 
-    cluster = None
-    pod = None
+    def _terminate_procs(self):
+        for p in self.procs:
+            if p.proc.poll() is None:
+                p.proc.terminate()
+                if p.log_fn:
+                    p.log_fn.close()
+                logger.debug("terminate process id:{}".format(p.proc.pid))
 
-    start_port = 6170
-    if os.environ.get('FLAGS_START_PORT') is not None:
-        start_port = os.environ.get('FLAGS_START_PORT')
-    if cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(
-            args.ips, device_mode, devices_per_proc, start_port)
-        logger.debug("get cluster from cloud:{}".format(cluster))
-    elif device_mode == DeviceMode.ASCEND_NPU:
-        # for ascend
-        cluster, pod = ascend_utils.get_cloud_cluster(
-            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-            device_mode=device_mode,
-            start_port=start_port)
-    else:
-        # trainers_num = 1 or not use paddlecloud ips="a,b"
-        cluster, pod = get_cluster_from_args(args, device_mode,
-                                             devices_per_proc)
-        logger.debug("get cluster from args:{}".format(cluster))
+        for step in range(0, 50):
+            alive = False
+            for p in procs:
+                if p.proc.poll() is None:  # not termniate
+                    os.kill(p.proc.pid, signal.SIGKILL)
+                    alive = True
 
-    global_envs = copy.copy(os.environ.copy())
-    gloo_rendezvous_dir = tempfile.mkdtemp()
-    # add gloo env
-    global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
-    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+            if not alive:
+                logger.info("terminate all the procs")
+                return True
 
-    procs = start_local_trainers(
-        cluster,
-        pod,
-        training_script=args.training_script,
-        training_script_args=args.training_script_args,
-        log_dir=args.log_dir,
-        envs=global_envs)
+            time.sleep(1)
+        return False
 
-    for idx, proc in enumerate(procs):
-        print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+    def _check_procs(self):
+        alive = False
+        result = None
+        for p in self.procs:
+            ret = p.proc.poll()
+            if ret is None:
+                alive = True
+            elif ret != 0:
+                logger.error("ERROR rank {} error with code {}".format(p.rank,
+                                                                       ret))
+                result = ret
+        if not alive and result is None:
+            return 0
+        else:
+            return result
 
-    while True:
-        alive = watch_local_trainers(procs, cluster.trainers_nranks())
+    def launch(self):
+        raise NotImplementedError
 
-        if not alive:
-            logger.info("Local processes completed.")
-            logger.debug("POD info:{}".format(pod))
-            break
+    def stop(self):
+        raise NotImplementedError
 
-        time.sleep(3)
+    def watch(self):
+        raise NotImplementedError
 
-    if os.path.exists(gloo_rendezvous_dir):
-        shutil.rmtree(gloo_rendezvous_dir)
+
+class CollectiveLauncher(LauncherInterface):
+    def __init__(self, args):
+        self.args = args
+        self.procs = []
+
+    def launch(self):
+        print("collective lauchner launch ...")
+        args = self.args
+        # parse arguments, used for cloud-single-machine and local
+        (device_mode,
+         devices_per_proc) = launch_utils.get_device_proc_info(args)
+        trainers_num = cloud_utils.get_trainers_num()
+        logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".
+                     format(trainers_num, device_mode, devices_per_proc))
+
+        cluster = None
+        pod = None
+
+        start_port = 6170
+        if os.environ.get('FLAGS_START_PORT') is not None:
+            start_port = os.environ.get('FLAGS_START_PORT')
+        if cloud_utils.use_paddlecloud() and trainers_num != 1:
+            cluster, pod = cloud_utils.get_cloud_cluster(
+                args.ips, device_mode, devices_per_proc, start_port)
+            logger.debug("get cluster from cloud:{}".format(cluster))
+        elif device_mode == DeviceMode.ASCEND_NPU:
+            # for ascend
+            cluster, pod = ascend_utils.get_cloud_cluster(
+                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+                device_mode=device_mode,
+                start_port=start_port)
+        else:
+            # trainers_num = 1 or not use paddlecloud ips="a,b"
+            cluster, pod = get_cluster_from_args(args, device_mode,
+                                                 devices_per_proc)
+            logger.debug("get cluster from args:{}".format(cluster))
+
+        global_envs = copy.copy(os.environ.copy())
+        self.gloo_rendezvous_dir = tempfile.mkdtemp()
+        # add gloo env
+        global_envs["PADDLE_WITH_GLOO"] = str(
+            os.getenv("PADDLE_WITH_GLOO", "0"))
+        global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
+        global_envs["PADDLE_GLOO_FS_PATH"] = self.gloo_rendezvous_dir
+
+        procs = start_local_trainers(
+            cluster,
+            pod,
+            training_script=args.training_script,
+            training_script_args=args.training_script_args,
+            log_dir=args.log_dir,
+            envs=global_envs)
+
+        for idx, proc in enumerate(procs):
+            print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+
+    def stop(self):
+        print("collective lauchner stop ...")
+        self._terminate_procs()
+        if os.path.exists(self.gloo_rendezvous_dir):
+            shutil.rmtree(self.gloo_rendezvous_dir)
+
+    def watch(self):
+        print("collective lauchner watch ...")
+        for p in self.procs:
+            if p.log_fn and p.local_rank == 0:
+                pull_worker_log(p)
+        ret = self._check_procs()
+        return ret
 
 
 def launch_ps(args, distribute_mode):
@@ -361,16 +436,59 @@ def which_distributed_mode(args):
             return DistributeMode.COLLECTIVE
 
 
-def launch():
-    args = _parse_args()
-    logger = get_logger()
-    _print_arguments(args)
-
+def launch_elastic():
     distribute_mode = which_distributed_mode(args)
     if distribute_mode == DistributeMode.COLLECTIVE:
         launch_collective(args)
     else:
         launch_ps(args, distribute_mode)
+
+
+def launch():
+    args = _parse_args()
+    logger = get_logger()
+    _print_arguments(args)
+
+    print('launch host', args.host)
+    elastic = ElasticManager(
+        args.elastic_server,
+        args.job_name,
+        args.np,
+        args.host,
+        scale=args.scale,
+        force=args.force, )
+    signal.signal(signal.SIGTERM, elastic.signal_handler)
+    signal.signal(signal.SIGABRT, elastic.signal_handler)
+    signal.signal(signal.SIGINT, elastic.signal_handler)
+
+    while elastic.ready():
+
+        args.ips = ','.join(elastic.hosts)
+        os.environ['PADDLE_TRAINERS'] = ','.join(elastic.hosts)
+
+        distribute_mode = which_distributed_mode(args)
+        if distribute_mode == DistributeMode.COLLECTIVE:
+            launcher = CollectiveLauncher(args)
+
+        launcher.launch()
+
+        while True:
+
+            ret = launcher.watch()
+
+            if ret == 0:  # completed
+                launcher.stop()
+                elastic.exit(completed=True)
+                exit(0)
+            elif ret is not None:  # error
+                launcher.stop()
+                break
+
+            if not elastic.health():
+                launcher.stop()
+                break
+
+            time.sleep(3)
 
 
 if __name__ == "__main__":
