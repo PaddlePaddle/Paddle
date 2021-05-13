@@ -332,7 +332,8 @@ def fc(input,
         for i, input_x in enumerate(input):
             check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
     dtype = helper.input_dtype()
-    check_dtype(dtype, 'input', ['float16', 'float32', 'float64'], 'fc')
+    check_dtype(dtype, 'input', ['float16', 'uint16', 'float32', 'float64'],
+                'fc')
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
@@ -10523,10 +10524,10 @@ def uniform_random_batch_size_like(input,
 
 
     """
-    check_variable_and_dtype(input, 'Input', ("float32", 'float64'),
+    check_variable_and_dtype(input, 'Input', ("float32", 'float64', "uint16"),
                              'uniform_random_batch_size_like')
     check_type(shape, 'shape', (list, tuple), 'uniform_random_batch_size_like')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'),
+    check_dtype(dtype, 'dtype', ('float32', 'float64', "uint16"),
                 'uniform_random_batch_size_like')
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -13028,7 +13029,10 @@ def grid_sampler(x, grid, name=None):
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x, 'Grid': grid}
 
-    helper.append_op(type='grid_sampler', inputs=ipts, outputs={'Output': out})
+    attrs = {'use_cudnn': False} if core.is_compiled_with_rocm() else {}
+
+    helper.append_op(
+        type='grid_sampler', inputs=ipts, outputs={'Output': out}, attrs=attrs)
     return out
 
 
@@ -15120,7 +15124,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                                        float(max), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64', 'uint16'),
+                'uniform_random/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}

@@ -16,7 +16,7 @@ import paddle
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
 
-__all__ = ['LayerDesc', 'PipelineLayer']
+__all__ = []
 
 
 class SegmentLayers(object):
@@ -77,7 +77,7 @@ class PipelineLayer(Layer):
         self.layers = layers
         self._loss_fn = loss_fn
         self._topo = topology
-        word_size = dist.get_world_size()
+        world_size = dist.get_world_size()
         self.global_rank = dist.get_rank()
 
         if self._topo:
@@ -88,11 +88,11 @@ class PipelineLayer(Layer):
                     self._num_stages)
         else:
             # construct default topology
-            if word_size % num_stages != 0:
+            if world_size % num_stages != 0:
                 raise ValueError("should provide correct num_stages({}) "
-                                 "which can be divided by word_size({})".format(
-                                     num_stages, word_size))
-            dp_num = word_size // num_stages
+                                 "which can be divided by world_size({})".
+                                 format(num_stages, world_size))
+            dp_num = world_size // num_stages
             self._topo = fleet.CommunicateTopology(["data", "pipe", "model"],
                                                    [dp_num, num_stages, 1])
             self._stage_id = self._topo.get_coord(self.global_rank).pipe
@@ -108,7 +108,6 @@ class PipelineLayer(Layer):
         # construct layer
         self.run_function = []
         self._build_layer()
-        self.to(paddle.CUDAPlace(self.device_id))
 
     def _segment_network(self, seg_method):
         logger.info("start segment network..")
