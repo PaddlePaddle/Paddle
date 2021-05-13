@@ -37,6 +37,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 #endif
 
 namespace f = paddle::framework;
@@ -60,7 +61,7 @@ void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   std::cout << "\n";
 }
 
-void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
+void PrepareUniqueId(f::Scope* scope, const p::NPUDeviceContext& ctx,
                      HcclRootInfo* hccl_id) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
@@ -120,8 +121,21 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
   ctx.Wait();
 }
 
-void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
-                         int iter, bool test_inf=false, bool test_fill=false) {
+f::Tensor* alloc_float_status(f::Scope* scope, const p::NPUDeviceContext& ctx){
+    auto float_status_var = scope->Var("float_status");
+    auto float_status = float_status_var->GetMutable<f::Tensor>();
+    float_status->mutable_data<float>(ctx.GetPlace());
+
+    auto runner = paddle::operators::NpuOpRunner("NPUAllocFloatStatus", {}, {*float_status});
+    auto stream = ctx.stream();
+    runner.Run(stream);
+
+    return float_status;
+}
+
+template<typename T>
+void TestHCCLAllReduceOp(f::Scope* scope, const p::NPUDeviceContext& ctx,
+                         int iter, T val) {
   // init
   auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
@@ -130,13 +144,11 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   int num1 = 3;
   int num2 = 128;
 
-  std::vector<float> init;
+  std::vector<T> init;
   for (int64_t i = 0; i < num1 * num2; ++i) {
-    init.push_back(1.0 + rank_id);
+    init.push_back(val + rank_id);
   }
   PrintDebugInfo("input data", init);
-
-  auto place = ctx.GetPlace();
 
   TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num1, num2});
@@ -145,7 +157,8 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   auto out = scope->Var("OutData");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num1, num2});
-  tensor_out->mutable_data<float>(place);  // allocate
+  auto place = ctx.GetPlace();
+  tensor_out->mutable_data<T>(place);  // allocate
   ctx.Wait();
 
   // run
@@ -161,122 +174,21 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   }
   ctx.Wait();
 
-  std::vector<float> out_vec;
+  std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);
 
   EXPECT_EQ(out_vec.size(), init.size());
-  for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], 3.0);
-  }
-}
-
-void TestHCCLAllReduceOpV2(f::Scope* scope, const p::DeviceContext& ctx,
-                         int iter) {
-  // init
-  auto x = scope->Var("Data");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
-
-  int num1 = 3;
-  int num2 = 128;
-
-  float inf= std::numeric_limits<float>::infinity();;
-  std::vector<float> init;
-  for (int64_t i = 0; i < num1 * num2; ++i) {
-    init.push_back(inf);
-  }
-  PrintDebugInfo("input data", init);
-
-  auto place = ctx.GetPlace();
-
-  TensorFromVector(init, ctx, tensor_x);
-  tensor_x->Resize({num1, num2});
-  ctx.Wait();
-
-  auto out = scope->Var("OutData");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
-  tensor_out->Resize({num1, num2});
-  tensor_out->mutable_data<float>(place);  // allocate
-  ctx.Wait();
-
-  // run
-  f::AttributeMap attrs;
-  attrs["tag"] = std::string("tagx_" + std::to_string(iter));
-  attrs["ring_id"] = 0;
-
-  auto op = f::OpRegistry::CreateOp("c_allreduce_sum", {{"X", {"Data"}}},
-                                    {{"Out", {"OutData"}}}, attrs);
-
-  for (int i = 0; i < 10; i++) {
-    op->Run(*scope, place);
-  }
-  ctx.Wait();
-
-  std::vector<float> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
-  ctx.Wait();
-
-  PrintDebugInfo("output data", out_vec);
-
-  EXPECT_EQ(out_vec.size(), init.size());
-  for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], inf);
-  }
-}
-
-void TestHCCLAllReduceOpV3(f::Scope* scope, const p::DeviceContext& ctx,
-                         int iter) {
-  // init
-  auto x = scope->Var("Data");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
-
-  int num1 = 3;
-  int num2 = 128;
-
-  //float16 inf = (float16)(std::numeric_limits<float>::infinity());
-  float16 inf = (float16)(65536);
-  std::vector<float16> init;
-  for (int64_t i = 0; i < num1 * num2; ++i) {
-    init.push_back(inf);
-  }
-  PrintDebugInfo("input data", init);
-
-  auto place = ctx.GetPlace();
-
-  TensorFromVector(init, ctx, tensor_x);
-  tensor_x->Resize({num1, num2});
-  ctx.Wait();
-
-  auto out = scope->Var("OutData");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
-  tensor_out->Resize({num1, num2});
-  tensor_out->mutable_data<float16>(place);  // allocate
-  ctx.Wait();
-
-  // run
-  f::AttributeMap attrs;
-  attrs["tag"] = std::string("tagx_" + std::to_string(iter));
-  attrs["ring_id"] = 0;
-
-  auto op = f::OpRegistry::CreateOp("c_allreduce_sum", {{"X", {"Data"}}},
-                                    {{"Out", {"OutData"}}}, attrs);
-
-  for (int i = 0; i < 10; i++) {
-    op->Run(*scope, place);
-  }
-  ctx.Wait();
-
-  std::vector<float16> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
-  ctx.Wait();
-
-  PrintDebugInfo("output data", out_vec);
-
-  EXPECT_EQ(out_vec.size(), init.size());
-  for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(std::isinf(out_vec[i]) || (out_vec[i]-(float16)(65504.0)) < float16(0.1),  true);
+  if(std::isinf(val)){
+      for (uint32_t i = 0; i < out_vec.size(); i++) {
+        EXPECT_EQ(out_vec[i], 3.0);
+      }
+  }else{
+      for (uint32_t i = 0; i < out_vec.size(); i++) {
+        EXPECT_TRUE(!std::isinf(out_vec[i]));
+      }
   }
 }
 
@@ -291,15 +203,17 @@ TEST(c_allreduce_sum, NPU) {
   Prepare(&scope, ctx, &hccl_id);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num: " << i;
-    TestHCCLAllReduceOp(&scope, ctx, i, false);
+    TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
   }
+
+  /*
     for (int i = 2; i < 3; i++) {
         VLOG(2) << "iter num: " << i;
-        TestHCCLAllReduceOpV2(&scope, ctx, i);
+        TestHCCLAllReduceOp(&scope, ctx, i);
       }
     for (int i = 3; i < 4; i++) {
         VLOG(2) << "iter num: " << i;
-        TestHCCLAllReduceOpV3(&scope, ctx, i);
+        TestHCCLAllReduceOp(&scope, ctx, i);
       }
-
+      */
 }

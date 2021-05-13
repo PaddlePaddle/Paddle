@@ -149,7 +149,14 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    bool nan_or_inf = FoundNanOrInf(ctx, stream, in);
+    VLOG(4) << "ready to FoundNanInf";
+    bool nan_or_inf=false;
+    /*
+    auto framework::Tensor float_status;
+    float_status->mutable_data<float16>(place);
+    float_status->Resize({8});
+    nan_or_inf = FoundNanOrInf(ctx, stream, &float_status);
+    */
     if (nan_or_inf){
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);
