@@ -351,6 +351,16 @@ HOSTDEVICE inline bool operator>=(const complex<T>& a, const complex<T>& b) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> max(const complex<T>& a, const complex<T>& b) {
+  return (a.real >= b.real) ? a : b;
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> min(const complex<T>& a, const complex<T>& b) {
+  return (a.real < b.real) ? a : b;
+}
+
+template <typename T>
 HOSTDEVICE inline bool(isnan)(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
