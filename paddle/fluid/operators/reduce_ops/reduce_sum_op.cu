@@ -12,18 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cuh"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor() {}
-
-  HOSTDEVICE inline T operator()(const T& x) const { return x; }
-};
 
 template <typename T>
 class ReduceSumKernel : public framework::OpKernel<T> {
@@ -54,15 +48,22 @@ class ReduceSumKernel : public framework::OpKernel<T> {
 
     auto stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
-      framework::VisitDataTypeSmall(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunctor<T, cub::Sum, IdentityFunctor<T>>(
-              *input, output, reduce_dims, static_cast<double>(0.0), cub::Sum(),
-              IdentityFunctor<T>(), stream));
+#define VisitDataTypeSmall_t(cpp_type, proto_type)                             \
+  do {                                                                         \
+    if (static_cast<framework::proto::VarType::Type>(out_dtype) ==             \
+        proto_type) {                                                          \
+      TensorReduce<T, cpp_type, CustomSum<cpp_type>,                           \
+                   detail::IdentityFunctor<cpp_type>>(                         \
+          *input, output, reduce_dims, static_cast<cpp_type>(0.0f),            \
+          CustomSum<cpp_type>(), detail::IdentityFunctor<cpp_type>(), stream); \
+    }                                                                          \
+  } while (0)
+      _ForEachDataTypeSmall_(VisitDataTypeSmall_t);
+#undef VisitDataTypeSmall_t
     } else {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
-          *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
-          IdentityFunctor<T>(), stream);
+      TensorReduce<T, T, CustomSum<T>, detail::IdentityFunctor<T>>(
+          *input, output, reduce_dims, static_cast<T>(0), CustomSum<T>(),
+          detail::IdentityFunctor<T>(), stream);
     }
   }
 };
