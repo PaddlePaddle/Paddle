@@ -6,14 +6,10 @@ using float16 = paddle::platform::float16;
 namespace paddle {
 namespace operators {
 
-bool FoundNanOrInf(const framework::ExecutionContext& ctx,
-        aclrtStream stream, const paddle::framework::Tensor* float_status){
-    // NOTE(zhiqiu):
-    Tensor tmp;
-    tmp.mutable_data<float>({8}, ctx.GetPlace());
-
+bool FoundNanOrInf(const framework::ExecutionContext& ctx, aclrtStream stream, 
+        const paddle::framework::Tensor* float_status, Tensor* tmp){
     auto runner_float_status =
-        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
+        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {*tmp},
                     {{"message", std::string("check_nan_and_inf")}});
     runner_float_status.Run(stream);
 

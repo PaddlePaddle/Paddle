@@ -133,7 +133,7 @@ endif()
 
 if (WITH_ASCEND_CL)
   cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS assign_op)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner npu_utils)
 endif()
 
 # FIXME(typhoonzero): operator deps may not needed.

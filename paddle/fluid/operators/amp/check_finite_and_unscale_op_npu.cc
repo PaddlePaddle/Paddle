@@ -65,7 +65,9 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 
     // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
     // tmp is only placeholder.
-    found_inf_data = FoundNanOrInf(ctx, stream, float_status);
+    Tensor tmp;
+    tmp.mutable_data<float>({8}, ctx.GetPlace());
+    found_inf_data = FoundNanOrInf(ctx, stream, float_status, &tmp);
 
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
