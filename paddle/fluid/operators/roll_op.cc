@@ -37,15 +37,25 @@ class RollOp : public framework::OperatorWithKernel {
     auto dims = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     auto shifts = ctx->Attrs().Get<std::vector<int64_t>>("shifts");
 
-    PADDLE_ENFORCE_EQ(dims.size() == shifts.size() ||
-                          (dims.size() == 0 && shifts.size() == 1),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Attr(dims).size() should be equl to "
-                          "Attr(shifts).size(), or Attr(dims).size() == 0 and "
-                          "Attr(shifts).size() == 1. But received "
-                          "Attr(dims).size() = %d, Attr(shifts).size() = %d",
-                          dims.size(), shifts.size()));
+    if (dims.size() != 0) {
+      PADDLE_ENFORCE_EQ(
+          dims.size(), shifts.size(),
+          platform::errors::InvalidArgument(
+              "Attr(dims).size() should be equl to "
+              "Attr(shifts).size(), or Attr(dims).size() == 0 and "
+              "Attr(shifts).size() == 1. But received "
+              "Attr(dims).size() = %d, Attr(shifts).size() = %d",
+              dims.size(), shifts.size()));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size() == 0, shifts.size() == 1,
+          platform::errors::InvalidArgument(
+              "Attr(dims).size() should be equl to "
+              "Attr(shifts).size(), or Attr(dims).size() == 0 and "
+              "Attr(shifts).size() == 1. But received "
+              "Attr(dims).size() = %d, Attr(shifts).size() = %d",
+              dims.size(), shifts.size()));
+    }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     auto type = ctx->GetInputsVarType("X")[0];
