@@ -42,6 +42,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/operators/npu_utils.h"
 #endif
 
 namespace paddle {
@@ -148,7 +149,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    bool nan_or_inf = found_inf_data(ctx, stream, in);
+    bool nan_or_inf = FoundNanOrInf(ctx, stream, in);
     if (nan_or_inf){
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);

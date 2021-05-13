@@ -5,7 +5,7 @@ using float16 = paddle::platform::float16;
 namespace paddle {
 namespace operators {
 
-bool found_inf_data(const framework::ExecutionContext& ctx,
+bool FoundNanOrInf(const framework::ExecutionContext& ctx,
         aclrtStream stream, const paddle::framework::Tensor* float_status);
     auto runner_float_status =
         NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
