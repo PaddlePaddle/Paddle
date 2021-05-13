@@ -14,6 +14,8 @@
 
 from ..meta_optimizers import *
 
+__all__ = []
+
 meta_optimizer_names = list(
     filter(lambda name: name.endswith("Optimizer"), dir()))
 

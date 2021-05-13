@@ -22,6 +22,8 @@ from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
 from ...fluid.layer_helper import LayerHelper
 
+__all__ = []
+
 
 def _is_list_or_tuple(input):
     return isinstance(input, (list, tuple))

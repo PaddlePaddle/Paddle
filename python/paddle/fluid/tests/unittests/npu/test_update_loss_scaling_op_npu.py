@@ -71,8 +71,7 @@ class TestUpdateLossScalingOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(
-            self.place, check_dygraph=False, no_check_set=['Out'])
+        self.check_output_with_place(self.place, check_dygraph=False)
 
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
@@ -102,9 +101,6 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
             'OutGoodSteps': self.zero_steps,
             'OutBadSteps': self.zero_steps
         }
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),

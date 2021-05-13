@@ -18,6 +18,8 @@ from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 from ..fluid.dygraph import no_grad
 
+__all__ = []
+
 
 class SGD(Optimizer):
     r"""

@@ -15,6 +15,8 @@
 from ...fluid.initializer import NormalInitializer
 from ...fluid.initializer import TruncatedNormalInitializer
 
+__all__ = []
+
 
 class Normal(NormalInitializer):
     """The Random Normal (Gaussian) distribution initializer.
