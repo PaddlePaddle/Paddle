@@ -1454,11 +1454,11 @@ set -x
 }
 
 function parallel_test() {
-    ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    ut_total_startTime_s=`date +%s`
     if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     else
