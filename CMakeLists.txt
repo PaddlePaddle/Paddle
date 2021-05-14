@@ -22,9 +22,6 @@ include(system)
 
 project(paddle CXX C)
 
-include(init)
-include(generic)            # simplify cmake module
-
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
@@ -38,6 +35,10 @@ option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
 # to develop some acl related functionality on x86
 option(WITH_ASCEND_CL         "Compile PaddlePaddle with ASCEND CL"        ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11         "Compile PaddlePaddle with ASCEND and CXX11 ABI"        OFF)
+# Note(zhouwei): It use option above, so put here
+include(init)
+include(generic)            # simplify cmake module
+
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
 endif()
@@ -104,8 +105,8 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
-    # NOTE(Avin0323): Less parallel count result in faster compilation.
     math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
+
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -113,7 +114,10 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
+        # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling
+        if(NOT WITH_GPU)
+            set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
+        endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -133,6 +137,9 @@ if(WIN32)
 
     foreach(flag_var CMAKE_SHARED_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_LINKER_FLAGS)
         set(${flag_var} "${${flag_var}} /ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
+        if(MSVC_STATIC_CRT)
+            set(${flag_var} "${${flag_var}} /NODEFAULTLIB:MSVCRT.LIB")
+        endif()
     endforeach(flag_var)
 
     if (WITH_WIN_DUMP_DBG)
@@ -198,6 +205,7 @@ option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
 option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
+option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -345,6 +353,11 @@ if (WITH_MIPS)
     add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if (WITH_HETERPS)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
+    endif()
+endif()
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
@@ -360,6 +373,13 @@ if(ON_INFER)
 else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.
     message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
+endif()
+
+if(WITH_STRIP)
+    find_program(STRIP_PATH strip)
+    if(NOT STRIP_PATH OR NOT LINUX)
+        set(WITH_STRIP OFF CACHE STRING "Command strip is only used on Linux when it exists." FORCE)
+    endif()
 endif()
 
 add_subdirectory(paddle)

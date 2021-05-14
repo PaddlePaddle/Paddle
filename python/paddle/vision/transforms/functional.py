@@ -25,13 +25,6 @@ from PIL import Image
 from numpy import sin, cos, tan
 import paddle
 
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
-
 from . import functional_pil as F_pil
 from . import functional_cv2 as F_cv2
 from . import functional_tensor as F_t
@@ -83,14 +76,18 @@ def to_tensor(pic, data_format='CHW'):
             print(tensor.shape)
 
     """
-    if not (_is_pil_image(pic) or _is_numpy_image(pic)):
-        raise TypeError('pic should be PIL Image or ndarray. Got {}'.format(
-            type(pic)))
+    if not (_is_pil_image(pic) or _is_numpy_image(pic) or
+            _is_tensor_image(pic)):
+        raise TypeError(
+            'pic should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
+            format(type(pic)))
 
     if _is_pil_image(pic):
         return F_pil.to_tensor(pic, data_format)
-    else:
+    elif _is_numpy_image(pic):
         return F_cv2.to_tensor(pic, data_format)
+    else:
+        return pic if data_format.lower() == 'chw' else pic.transpose((1, 2, 0))
 
 
 def resize(img, size, interpolation='bilinear'):
@@ -135,13 +132,16 @@ def resize(img, size, interpolation='bilinear'):
             converted_img = F.resize(fake_img, (200, 150))
             print(converted_img.size)
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.resize(img, size, interpolation)
+    elif _is_tensor_image(img):
+        return F_t.resize(img, size, interpolation)
     else:
         return F_cv2.resize(img, size, interpolation)
 
@@ -153,8 +153,8 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     Args:
         img (PIL.Image|np.array): Image to be padded.
         padding (int|list|tuple): Padding on each border. If a single int is provided this
-            is used to pad all borders. If tuple of length 2 is provided this is the padding
-            on left/right and top/bottom respectively. If a tuple of length 4 is provided
+            is used to pad all borders. If list/tuple of length 2 is provided this is the padding
+            on left/right and top/bottom respectively. If a list/tuple of length 4 is provided
             this is the padding for the left, top, right and bottom borders
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
@@ -196,13 +196,16 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             padded_img = F.pad(fake_img, padding=(2, 1))
             print(padded_img.size)
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.pad(img, padding, fill, padding_mode)
+    elif _is_tensor_image(img):
+        return F_t.pad(img, padding, fill, padding_mode)
     else:
         return F_cv2.pad(img, padding, fill, padding_mode)
 
@@ -236,13 +239,16 @@ def crop(img, top, left, height, width):
             print(cropped_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.crop(img, top, left, height, width)
+    elif _is_tensor_image(img):
+        return F_t.crop(img, top, left, height, width)
     else:
         return F_cv2.crop(img, top, left, height, width)
 
@@ -272,13 +278,16 @@ def center_crop(img, output_size):
             cropped_img = F.center_crop(fake_img, (150, 100))
             print(cropped_img.size)
         """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.center_crop(img, output_size)
+    elif _is_tensor_image(img):
+        return F_t.center_crop(img, output_size)
     else:
         return F_cv2.center_crop(img, output_size)
 
@@ -307,13 +316,16 @@ def hflip(img):
             print(flpped_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.hflip(img)
+    elif _is_tensor_image(img):
+        return F_t.hflip(img)
     else:
         return F_cv2.hflip(img)
 
@@ -342,13 +354,16 @@ def vflip(img):
             print(flpped_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.vflip(img)
+    elif _is_tensor_image(img):
+        return F_t.vflip(img)
     else:
         return F_cv2.vflip(img)
 
@@ -538,10 +553,10 @@ def rotate(img,
             If true, expands the output image to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
             Note that the expand flag assumes rotation around the center and no translation.
-        center (2-tuple, optional): Optional center of rotation.
+        center (2-list|2-tuple, optional): Optional center of rotation.
             Origin is the upper left corner.
             Default is the center of the image.
-        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+        fill (3-list|3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
 
 
@@ -563,13 +578,21 @@ def rotate(img,
             print(rotated_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
+
+    if isinstance(center, list):
+        center = tuple(center)
+    if isinstance(fill, list):
+        fill = tuple(fill)
 
     if _is_pil_image(img):
         return F_pil.rotate(img, angle, interpolation, expand, center, fill)
+    elif _is_tensor_image(img):
+        return F_t.rotate(img, angle, interpolation, expand, center, fill)
     else:
         return F_cv2.rotate(img, angle, interpolation, expand, center, fill)
 
@@ -601,13 +624,16 @@ def to_grayscale(img, num_output_channels=1):
             print(gray_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.to_grayscale(img, num_output_channels)
+    elif _is_tensor_image(img):
+        return F_t.to_grayscale(img, num_output_channels)
     else:
         return F_cv2.to_grayscale(img, num_output_channels)
 
