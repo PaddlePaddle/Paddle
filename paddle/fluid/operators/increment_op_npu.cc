@@ -33,18 +33,44 @@ template <typename DeviceContext, typename T>
 class IncrementalNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x_tensor = context.Input<framework::Tensor>("X");
-    auto* out_tensor = context.Output<framework::Tensor>("Out");
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
     float step = context.Attr<float>("step");
-    out_tensor->mutable_data<T>(context.GetPlace());
+    out->mutable_data<T>(context.GetPlace());
 
-    Tensor step_tensor(x_tensor->type());
+    Tensor step_tensor(x->type());
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
 
     step_tensor.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
 
-    auto runner =
-        NpuOpRunner("Add", {*x_tensor, step_tensor}, {*out_tensor}, {});
+    // NOTE(zhiqiu): Why cast?  I found int64 is not supported in cann-5.0.2
+    Tensor cast_x(x->type());
+    Tensor cast_out(x->type());
+    if (x->type() == framework::proto::VarType::INT64) {
+      cast_x.Resize(x->dims());
+      cast_x.mutable_data<int>(ctx.GetPlace());
+      cast_out.Resize(out->dims());
+      cast_out.mutable_data<int>(ctx.GetPlace());
+      auto dst_dtype = ConvertToNpuDtype(cast_x->type());
+      auto runner_cast_x = NpuOpRunner(
+          "Cast", {*x}, {cast_x}, {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast_x.Run(stream);
+    } else {
+      cast_x.ShareDataWith(*x);
+      cast_out.ShareDataWith(*out);
+    }
+    auto runner = NpuOpRunner("Add", {*cast_x, step_tensor}, {*cast_out}, {});
+
+    if (x->type() == framework::proto::VarType::INT64) {
+      auto dst_dtype = ConvertToNpuDtype(out->type());
+      auto runner_cast_out =
+          NpuOpRunner("Cast", {cast_out}, {*out},
+                      {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast_out.Run(stream);
+    }
 
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
