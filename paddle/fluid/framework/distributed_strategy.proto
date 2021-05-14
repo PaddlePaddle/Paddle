@@ -141,7 +141,6 @@ message PipelineConfig {
 
 message TensorParallelConfig {
   optional int32 tensor_parallel_degree = 1 [ default = 1 ];
-  optional int32 tensor_init_seed = 2 [ default = 2021 ];
 }
 
 message DistributedStrategy {

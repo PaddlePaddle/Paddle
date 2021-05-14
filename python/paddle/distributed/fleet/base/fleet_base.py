@@ -17,7 +17,7 @@ import copy
 import warnings
 import paddle
 import os
-from paddle.fluid.framework import dygraph_only
+from paddle.fluid.framework import dygraph_only, default_main_program
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
@@ -280,8 +280,7 @@ class Fleet(object):
         self._hcg = tp.HybridCommunicateGroup(self._topology)
 
         if self.mp_degree > 1:
-            tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
-            tensor_init_seed = tensor_parallel_configs["tensor_init_seed"]
+            tensor_init_seed = default_main_program().global_block().random_seed
             model_parallel_random_seed(tensor_init_seed)
 
     def get_hybrid_communicate_group(self):
