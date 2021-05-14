@@ -70,6 +70,21 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
                    "expected to be 1, but got %ld. Please check input "
                    "value.",
                    i, rank, out_stride);
+#else
+    if (x_stride != 1) {
+      printf(
+          "When i:%d == rank:%d - 1, x_stride of random_crop_op expected to be "
+          "1, but got %ld. Please check input value.\n",
+          i, rank, x_stride);
+      abort();
+    }
+    if (out_stride != 1) {
+      printf(
+          "When i:%d == rank:%d - 1, out_stride of random_crop_op expected to "
+          "be 1, but got %ld. Please check input value.\n",
+          i, rank, out_stride);
+      abort();
+    }
 #endif
     x += offset_i;
     for (size_t j = 0; j < out_dim_i; ++j) {
