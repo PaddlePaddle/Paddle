@@ -208,16 +208,18 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
 class AttrReader {
  public:
-  explicit AttrReader(const AttributeMap& attrs, const AttributeMap& default_values_map) : attrs_(attrs), default_values_map_(default_values_map) {}
+  explicit AttrReader(const AttributeMap& attrs,
+                      const AttributeMap& default_values_map)
+      : attrs_(attrs), default_values_map_(default_values_map) {}
 
   template <typename T>
   inline const T& Get(const std::string& name) const {
     auto it = attrs_.find(name);
-    if (it == attrs_.end()){
+    if (it == attrs_.end()) {
       it = default_values_map_.find(name);
       if (it == default_values_map_.end()) {
         PADDLE_THROW(platform::errors::NotFound(
-                          "Attribute (%s) should be in AttributeMap.", name));
+            "Attribute (%s) should be in AttributeMap.", name));
       }
     }
 
@@ -351,8 +353,7 @@ class TypedAttrChecker {
     return *this;
   }
 
-  void operator()(AttributeMap* attr_map,
-                  bool get_default_value_only = false,
+  void operator()(AttributeMap* attr_map, bool get_default_value_only = false,
                   bool no_default_value = false) const {
     if (get_default_value_only) {
       if (!default_value_setter_.empty()) {
@@ -370,8 +371,7 @@ class TypedAttrChecker {
           checker(*attr_value);
         }
       }
-    }
-    else {
+    } else {
       auto it = attr_map->find(attr_name_);
       if (it == attr_map->end()) {
         // user do not set this attr
@@ -409,7 +409,8 @@ class OpAttrChecker {
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap* attr_map, bool explicit_only = false, bool no_default_value = false) const {
+  void Check(AttributeMap* attr_map, bool explicit_only = false,
+             bool no_default_value = false) const {
     auto checker_num = attr_checkers_.size();
     if (explicit_only) checker_num = explicit_checker_num_;
     for (size_t i = 0; i < checker_num; ++i) {
