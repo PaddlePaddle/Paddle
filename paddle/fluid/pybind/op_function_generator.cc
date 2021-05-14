@@ -173,7 +173,7 @@ std::set<std::string> inplace_op_duplicable_ins_set = {
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
-    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
+    R"({"%s", {std::make_shared<imperative::VarBase>(tracer->GenerateUniqueName())}})";
 const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE = R"({"%s", ConstructDuplicableOutput(%s)})";
 
 const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
@@ -272,7 +272,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     if (tstate) {
       PyEval_RestoreThread(tstate);
     }
-    throw_exception_to_python(std::current_exception());
+    ThrowExceptionToPython(std::current_exception());
     return NULL;
   }
 })";
@@ -623,7 +623,7 @@ int main(int argc, char* argv[]) {
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.ops failed!\"));\n"
       << "  }\n\n"
-      << "  init_ops_attrtype_map();"
+      << "  InitOpsAttrTypeMap();"
       << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";

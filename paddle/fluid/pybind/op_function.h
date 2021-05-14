@@ -50,10 +50,27 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-std::unordered_map<
-    std::string,
-    std::unordered_map<std::string, paddle::framework::proto::AttrType>>
-    ops_attrtype_map;
+class OpAttrTypeMap {
+ public:
+  static OpAttrTypeMap& Instance() {
+    static OpAttrTypeMap g_op_attr_type_map;
+    return g_op_attr_type_map;
+  }
+
+  std::unordered_map<
+      std::string,
+      std::unordered_map<std::string, paddle::framework::proto::AttrType>>&
+  Map() {
+    return ops_attrtype_map_;
+  }
+
+ private:
+  OpAttrTypeMap() = default;
+  std::unordered_map<
+      std::string,
+      std::unordered_map<std::string, paddle::framework::proto::AttrType>>
+      ops_attrtype_map_;
+};
 
 static inline std::shared_ptr<imperative::VarBase> CastPyHandleToVarBase(
     const std::string& op_type, const std::string& arg_name, int arg_idx,
@@ -224,7 +241,7 @@ static inline void ConstructAttrMapFromPyArgs(
       platform::errors::InvalidArgument(
           "The number of arguments for arributes should be even."));
 
-  auto attr_type_map = &ops_attrtype_map[op_type];
+  auto attr_type_map = &(OpAttrTypeMap::Instance().Map()[op_type]);
 
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end + 1; arg_pos += 2) {
@@ -837,7 +854,7 @@ static inline PyObject* MakeReturnPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
-void init_ops_attrtype_map() {
+void InitOpsAttrTypeMap() {
   auto op_info_map = paddle::framework::OpInfoMap::Instance().map();
   for (auto iter = op_info_map.begin(); iter != op_info_map.end(); ++iter) {
     auto op_proto = iter->second.proto_;
@@ -846,7 +863,7 @@ void init_ops_attrtype_map() {
     }
     auto attrs_proto = op_proto->attrs();
     for (auto& attr : attrs_proto) {
-      ops_attrtype_map[iter->first][attr.name()] = attr.type();
+      OpAttrTypeMap::Instance().Map()[iter->first][attr.name()] = attr.type();
     }
   }
 }
@@ -856,7 +873,7 @@ PyObject* EOFExceptionException =
 PyObject* EnforceNotMetException =
     PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, NULL);
 
-void throw_exception_to_python(std::exception_ptr p) {
+void ThrowExceptionToPython(std::exception_ptr p) {
   try {
     if (p) std::rethrow_exception(p);
   } catch (const platform::EOFException& e) {
