@@ -1,18 +1,17 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import etcd3
 import time
 import socket
 import os
@@ -20,23 +19,25 @@ import six
 import logging
 
 
-class Status:
-    READY = 'ready'
-    RUNNING = 'running'
-    ERROR = 'error'
-    COMPLETED = 'completed'
-
-
 class ElasticManager(object):
     def __init__(self, server, name, np, host=None, scale=0, force=False):
 
-        logging.info('[elastic] init with server {} host {}'.format(server,
-                                                                    host))
+        print('[elastic] init with server {} host {}'.format(server, host))
+
+        self.hosts = []
+        self.stopped = False
+
+        if not server or not name or not np:
+            self.enable = False
+            return
+        else:
+            self.enable = True
+
+        import etcd3
 
         srv, port = server.split(':')
         self.etcd = etcd3.client(host=srv, port=port)
         self.host = host if host else self._get_host()
-        self.hosts = []
 
         # etcd data
         self.prefix = "/paddle/" + name
@@ -59,8 +60,7 @@ class ElasticManager(object):
 
         def host_call_back(event):
             if self.etcd.get(self.host_path)[0] == None:
-                logging.info('[elastic] register host agin {}'.format(
-                    self.host))
+                print('[elastic] register host agin {}'.format(self.host))
                 self.etcd.put(self.host_path, six.b(self.host))
 
         host_watch = self.etcd.add_watch_callback(self.host_path,
@@ -84,8 +84,7 @@ class ElasticManager(object):
         def np_call_back(event):
             gnp = int(self.etcd.get(self.np_path)[0])
             if gnp != self.np:
-                logging.info("[elastic] scale np {} to {} ".format(self.np,
-                                                                   gnp))
+                print("[elastic] scale np {} to {} ".format(self.np, gnp))
                 self.np = gnp
 
         np_watch = self.etcd.add_watch_callback(self.np_path, np_call_back)
@@ -93,7 +92,10 @@ class ElasticManager(object):
         self.watches = [host_watch, np_watch]
 
     def exit(self, completed=False):
-        logging.info('[elastic] manager exist completed {}'.format(completed))
+        print('[elastic] manager exist completed {}'.format(completed))
+
+        if not self.enable:
+            return
 
         if completed:
             self.etcd.put(self.prefix, b'1')
@@ -125,18 +127,28 @@ class ElasticManager(object):
             return False
 
     def ready(self):
-        while True:
+        if not self.enable:
+            return True
+
+        while not self.stopped:
             if self._match():
-                logging.info('[elastic] ready with hosts {}'.format(self.hosts))
+                print('[elastic] ready with hosts {}'.format(self.hosts))
                 return True
-            logging.info('[elastic] not ready for np {} with hosts {}'.format(
+            print('[elastic] not ready for np {} with hosts {}'.format(
                 self.np, self.hosts))
             time.sleep(3)
         return False
 
     def health(self):
+        if self.stopped:
+            return False
+
+        if not self.enable:
+            return True
+
         return self._completed() or self._match()
 
     def signal_handler(self, sigint, frame):
-        self.exit()
-        exit(0)
+        if self.enable:
+            self.exit()
+        self.stopped = True
