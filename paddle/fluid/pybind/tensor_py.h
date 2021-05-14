@@ -170,6 +170,8 @@ DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::bfloat16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex64);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex128);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<float>);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<double>);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
@@ -191,6 +193,10 @@ inline std::string TensorDTypeToPyDTypeStr(
     } else if (std::is_same<T, platform::complex64>::value) {               \
       return "F";                                                           \
     } else if (std::is_same<T, platform::complex128>::value) {              \
+      return "D";                                                           \
+    } else if (std::is_same<T, platform::complex<float>>::value) {          \
+      return "F";                                                           \
+    } else if (std::is_same<T, platform::complex<double>>::value) {         \
       return "D";                                                           \
     } else {                                                                \
       constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
@@ -373,6 +379,14 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   } else if (py::isinstance<py::array_t<paddle::platform::complex128>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::complex128, P>(self, array, place,
                                                            zero_copy);
+  } else if (py::isinstance<py::array_t<paddle::platform::complex<float>>>(
+                 array)) {
+    SetTensorFromPyArrayT<paddle::platform::complex<float>, P>(
+        self, array, place, zero_copy);
+  } else if (py::isinstance<py::array_t<paddle::platform::complex<double>>>(
+                 array)) {
+    SetTensorFromPyArrayT<paddle::platform::complex<double>, P>(
+        self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // since there is still no support for bfloat16 in NumPy,
     // uint16 is used for casting bfloat16
