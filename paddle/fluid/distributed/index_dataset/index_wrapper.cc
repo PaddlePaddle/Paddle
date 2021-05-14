@@ -369,6 +369,15 @@ std::vector<std::vector<uint64_t>> GraphIndex::get_item_of_path(
   return result;
 }
 
+std::vector<uint64_t> GraphIndex::gather_unique_items_of_paths(
+    std::vector<uint32_t>& paths) {
+  std::unordered_set<uint64_t> items;
+  for (auto& path : paths) {
+    for (auto item : path_item_set_dict_[path]) items.insert(item);
+  }
+  return std::vector<uint64_t>(items.begin(), items.end());
+}
+
 int GraphIndex::update_Jpath_of_item(
     std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
     const int J, const double lamd, const int factor) {

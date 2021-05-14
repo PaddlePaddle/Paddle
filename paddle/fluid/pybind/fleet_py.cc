@@ -260,6 +260,8 @@ void BindGraphIndex(py::module* m) {
       .def("height", [](GraphIndex& self) { return self.height(); })
       .def("width", [](GraphIndex& self) { return self.width(); })
       .def("item_path_nums", &GraphIndex::item_path_nums)
+      .def("gather_unique_items_of_paths",
+           &GraphIndex::gather_unique_items_of_paths)
       .def("get_path_of_item",
            [](GraphIndex& self, std::vector<uint64_t>& items) {
              return self.get_path_of_item(items);

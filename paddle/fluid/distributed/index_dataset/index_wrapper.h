@@ -100,7 +100,8 @@ class GraphIndex : public Index {
       std::vector<uint64_t>& items);
   std::vector<std::vector<uint64_t>> get_item_of_path(
       std::vector<uint32_t>& paths);
-
+  std::vector<uint64_t> gather_unique_items_of_paths(
+      std::vector<uint32_t>& paths);
   int update_Jpath_of_item(
       std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
       const int J, const double lamd, const int factor);
