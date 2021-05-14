@@ -36,6 +36,14 @@ static ::DLDataType GetDLDataTypeCode() {
     dtype.code = kDLUInt;
   } else if (std::is_integral<T>::value) {
     dtype.code = kDLInt;
+  } else if (std::is_same<T, platform::complex<float>>::value ||
+             std::is_same<T, platform::complex<double>>::value) {
+    // The current dlpack library version is v0.2, and does not define
+    // kDLComplex value. But kDLComplex is defined by 5U in v0.4, so we set
+    // dtype.code to 5U directly here. After the dlpack library version being
+    // upgraded to v0.4, it should be written as follow.
+    // dtype.code = kDLComplex;
+    dtype.code = 5U;
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported data type (%s), only supports float16, float, unsigned "
@@ -53,7 +61,7 @@ static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
 #define REG_DL_DATA_TYPE(cpp_type, proto_type) \
   result[static_cast<int>(proto_type)] = GetDLDataTypeCode<cpp_type>()
 
-  _ForEachDataTypeWithOutComplexType_(REG_DL_DATA_TYPE);
+  _ForEachDataType_(REG_DL_DATA_TYPE);
 #undef REG_DL_DATA_TYPE
   return result;
 }
