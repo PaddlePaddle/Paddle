@@ -281,8 +281,12 @@ class Fleet(object):
         self._hcg = tp.HybridCommunicateGroup(self._topology)
 
         if self.mp_degree > 1:
-            seed = np.random.randint(0, 65535)
-            model_parallel_random_seed(seed)
+            tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
+            tensor_init_seed = tensor_parallel_configs["tensor_init_seed"]
+            if tensor_init_seed == -1:
+                model_parallel_random_seed()
+            else:
+                model_parallel_random_seed(tensor_init_seed)
 
     def get_hybrid_communicate_group(self):
         assert self._hcg is not None
