@@ -797,9 +797,8 @@ def _getitem_impl_(var, item):
     starts = []
     ends = []
     steps = []
-
-    use_strided_slice = False
     reverse_axis = []
+    use_strided_slice = False
 
     max_integer = 2**31 - 1
     for dim, slice_item in enumerate(item):
@@ -818,11 +817,8 @@ def _getitem_impl_(var, item):
                 reverse_axis.append(dim)
                 continue
 
-            if start is None:
-                start = 0
-
-            if end is None:
-                end = max_integer
+            start = 0 if start is None else start
+            end = max_integer if end is None else end
 
         else:
             decrease_axes.append(dim)
@@ -843,10 +839,10 @@ def _getitem_impl_(var, item):
         'ends': [],
         'decrease_axis': decrease_axes
     }
-    if use_strided_slice == True:
+    if use_strided_slice:
         attrs['strides'] = []
 
-    infer_flags = list(1 for i in range(len(axes)))
+    infer_flags = [1] * len(axes)
     from .layers import utils
 
     def deal_attrs(attr, attr_name, tensor_attr_name, inputs, infer_flags):
@@ -865,50 +861,27 @@ def _getitem_impl_(var, item):
     deal_attrs(starts, "starts", "StartsTensorList", inputs, infer_flags)
     deal_attrs(ends, "ends", "EndsTensorList", inputs, infer_flags)
     deal_attrs(steps, "strides", "StridesTensorList", inputs, infer_flags)
-
-    # infer_flags
     attrs['infer_flags'] = infer_flags
 
     out = var
-    target_block = default_main_program().current_block()
-    if use_strided_slice == False and len(axes) > 0:
-        # append slice_op here
-        slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
-            dtype=var.dtype)
+    if len(axes) > 0:
+        target_block = default_main_program().current_block()
+        op_type = "strided_slice" if use_strided_slice else "slice"
 
+        slice_out_var = target_block.create_var(
+            name=unique_name.generate_with_ignorable_key(var.name + "_" +
+                                                         op_type),
+            dtype=var.dtype)
         target_block.append_op(
-            type="slice",
+            type=op_type,
             inputs=inputs,
             outputs={'Out': [slice_out_var]},
             attrs=attrs)
-
         out = slice_out_var
-    elif use_strided_slice == True and len(axes) > 0:
-        strided_slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name +
-                                                         "_strided_slice"),
-            dtype=var.dtype)
-        target_block.append_op(
-            type="strided_slice",
-            inputs=inputs,
-            outputs={'Out': [strided_slice_out_var]},
-            attrs=attrs)
-
-        out = strided_slice_out_var
 
     if len(reverse_axis) > 0:
-        reverse_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name +
-                                                         "_slice_reverse"),
-            dtype=var.dtype)
-        target_block.append_op(
-            type="reverse",
-            inputs={'X': out},
-            outputs={'Out': [reverse_out_var]},
-            attrs={'axis': reverse_axis})
-
-        out = reverse_out_var
+        from .layers.tensor import reverse
+        out = reverse(out, axis=reverse_axis)
 
     return out
 
