@@ -20,6 +20,9 @@
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
+#endif
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -72,6 +75,7 @@ class AllocatorFacadePrivate {
         for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
         }
+        InitNaiveBestFitNPUPinnedAllocator();
 #endif
         break;
       }
@@ -195,6 +199,12 @@ class AllocatorFacadePrivate {
   void InitNaiveBestFitNPUAllocator(platform::NPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
+
+  void InitNaiveBestFitNPUPinnedAllocator() {
+    allocators_[platform::NPUPinnedPlace()] =
+        std::make_shared<paddle::memory::allocation::NPUPinnedAllocator>();
+  }
+
 #endif
 
   class ZeroSizeAllocator : public Allocator {
@@ -292,6 +302,11 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Release(place);
+}
+
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const platform::Place& place) {
+  return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 
 }  // namespace allocation

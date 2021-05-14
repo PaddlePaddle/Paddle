@@ -35,8 +35,6 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
     using paddle::framework::LoDTensor;
 
-    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
-
     auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
                                   "Param", "Adam");
     // auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
@@ -75,6 +73,9 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                           "value is:%d.",
                           beta2_pow_out->numel()));
 
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
       auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
@@ -84,6 +85,11 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Beta2Tensor")) {
       auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
       beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
+    }
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    if (ctx.HasInput("EpsilonTensor")) {
+      auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+      epsilon = static_cast<T>(GetAttrFromTensor(epsilon_tensor));
     }
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Grad"), "Input",
@@ -108,45 +114,48 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           mom1_out.template mutable_data<T>(ctx.GetPlace()),
           mom2_out.template mutable_data<T>(ctx.GetPlace()),
           param_out.template mutable_data<T>(ctx.GetPlace()), param.numel());
+      if (!use_global_beta_pow) {
+        // update in cpu and then copy to xpu
+        if (beta1_pow.place() == platform::CPUPlace() &&
+            beta2_pow.place() == platform::CPUPlace()) {
+          const T* beta1_pow_p = beta1_pow.template data<T>();
+          beta1_pow_out->mutable_data<T>(platform::CPUPlace())[0] =
+              beta1 * beta1_pow_p[0];
+          const T* beta2_pow_p = beta2_pow.template data<T>();
+          beta2_pow_out->mutable_data<T>(platform::CPUPlace())[0] =
+              beta2 * beta2_pow_p[0];
 
-      // update in cpu and then copy to xpu
-      if (beta1_pow.place() == platform::CPUPlace() &&
-          beta2_pow.place() == platform::CPUPlace()) {
-        const T* beta1_pow_p = beta1_pow.template data<T>();
-        beta1_pow_out->mutable_data<T>(platform::CPUPlace())[0] =
-            beta1 * beta1_pow_p[0];
-        const T* beta2_pow_p = beta2_pow.template data<T>();
-        beta2_pow_out->mutable_data<T>(platform::CPUPlace())[0] =
-            beta2 * beta2_pow_p[0];
-      } else {
-        T cpu_beta1_pow_out_data;
-        T cpu_beta2_pow_out_data;
-        memory::Copy(platform::CPUPlace(), &cpu_beta1_pow_out_data,
-                     BOOST_GET_CONST(platform::XPUPlace, beta1_pow.place()),
-                     beta1_pow_ptr, sizeof(T));
+        } else {
+          T cpu_beta1_pow_out_data;
+          T cpu_beta2_pow_out_data;
 
-        cpu_beta1_pow_out_data = cpu_beta1_pow_out_data * beta1;
-        memory::Copy(platform::CPUPlace(), &cpu_beta2_pow_out_data,
-                     BOOST_GET_CONST(platform::XPUPlace, beta2_pow.place()),
-                     beta2_pow_ptr, sizeof(T));
+          memory::Copy(platform::CPUPlace(), &cpu_beta1_pow_out_data,
+                       BOOST_GET_CONST(platform::XPUPlace, beta1_pow.place()),
+                       beta1_pow_ptr, sizeof(T));
 
-        cpu_beta2_pow_out_data = cpu_beta2_pow_out_data * beta2;
+          cpu_beta1_pow_out_data = cpu_beta1_pow_out_data * beta1;
+          memory::Copy(platform::CPUPlace(), &cpu_beta2_pow_out_data,
+                       BOOST_GET_CONST(platform::XPUPlace, beta2_pow.place()),
+                       beta2_pow_ptr, sizeof(T));
 
-        T* beta1_pow_out_p = beta1_pow_out->mutable_data<T>(ctx.GetPlace());
-        T* beta2_pow_out_p = beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                     beta1_pow_out_p, platform::CPUPlace(),
-                     &cpu_beta1_pow_out_data, sizeof(T));
-        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                     beta2_pow_out_p, platform::CPUPlace(),
-                     &cpu_beta2_pow_out_data, sizeof(T));
+          cpu_beta2_pow_out_data = cpu_beta2_pow_out_data * beta2;
+
+          T* beta1_pow_out_p = beta1_pow_out->mutable_data<T>(ctx.GetPlace());
+          T* beta2_pow_out_p = beta2_pow_out->mutable_data<T>(ctx.GetPlace());
+          memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                       beta1_pow_out_p, platform::CPUPlace(),
+                       &cpu_beta1_pow_out_data, sizeof(T));
+          memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                       beta2_pow_out_p, platform::CPUPlace(),
+                       &cpu_beta2_pow_out_data, sizeof(T));
+        }
+
+        PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                          platform::errors::External(
+                              "XPU API return wrong value[%d], please check "
+                              "where Baidu Kunlun Card is properly installed.",
+                              r));
       }
-
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::External(
-                            "XPU API return wrong value[%d], please check "
-                            "where Baidu Kunlun Card is properly installed.",
-                            r));
     } else {
       PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
                                   "Variable type not supported by adam_op"));
