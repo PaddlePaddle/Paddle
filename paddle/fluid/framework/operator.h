@@ -110,6 +110,15 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   }
 }
 
+inline std::string GradOriginalOpName(const std::string& grad_op_name) {
+  std::size_t pos = grad_op_name.rfind("_grad");
+  if (pos == std::string::npos) {
+    return grad_op_name;
+  } else {
+    return grad_op_name.substr(0, pos);
+  }
+}
+
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 

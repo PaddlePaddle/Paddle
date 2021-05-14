@@ -103,12 +103,13 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     mutable_op_attrs = attrs;
   }
 #endif
-
   // 1. get expected kernel key
   auto expected_kernel_key =
       op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
           op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs,
-          op.Info().Checker()->default_attr_map()));
+          paddle::framework::OpInfoMap::Instance()
+              .Get(framework::GradOriginalOpName(op.Type()))
+              .checker_->default_attr_map()));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   // 2. check if op[type] has kernel registered.
@@ -172,10 +173,11 @@ static void PreparedOpRunImpl(
                                                     op.Type());
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
-
   func(DygraphExecutionContext<VarType>(
       op, scope, *dev_ctx, ctx, ins, outs, attrs,
-      op.Info().Checker()->default_attr_map()));
+      paddle::framework::OpInfoMap::Instance()
+          .Get(framework::GradOriginalOpName(op.Type()))
+          .checker_->default_attr_map()));
 
   /**
    * [ Why need handle complex gradient to real gradient? ]

@@ -347,7 +347,10 @@ class InterpolateOp : public framework::OperatorWithKernel {
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
         (tensor.layout() != framework::DataLayout::kMKLDNN)) {
       auto attrs = Attrs();
-      auto ar = paddle::framework::AttrReader(attrs, paddle::framework::OpInfoMap::Instance().Get(Type()).checker_->default_attr_map());
+      auto ar = paddle::framework::AttrReader(
+          attrs, paddle::framework::OpInfoMap::Instance()
+                     .Get(framework::GradOriginalOpName(Type()))
+                     .checker_->default_attr_map());
       const std::string data_format = ar.Get<std::string>("data_layout");
       auto dl = framework::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for pool

@@ -669,7 +669,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return true;
   }
 
-  AttrReader Attrs() const override { return AttrReader(op_.Attrs(), {{}}); }
+  AttrReader Attrs() const override {
+    return AttrReader(op_.Attrs(), paddle::framework::OpInfoMap::Instance()
+                                       .Get(GradOriginalOpName(op_.Type()))
+                                       .checker_->default_attr_map());
+  }
 
   std::vector<std::string> Inputs(const std::string& name) const override {
     return op_.Inputs(name);
