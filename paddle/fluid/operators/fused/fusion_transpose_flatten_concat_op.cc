@@ -40,7 +40,7 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
     const size_t n = ins.size();
     PADDLE_ENFORCE_GT(n, 0,
                       platform::errors::InvalidArgument(
-                          "The size of Inputs(X)'s dimension should greater "
+                          "The size of Inputs(X)'s dimension should be greater "
                           " than 0, but received %d.",
                           n));
 

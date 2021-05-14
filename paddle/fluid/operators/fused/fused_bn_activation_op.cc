@@ -174,7 +174,7 @@ void FusedBatchNormActOpMaker::Make() {
         PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
                           platform::errors::InvalidArgument(
                               "Attr(epsilon) should be between 0.0 and 0.001, "
-                              "but received value is %d.",
+                              "but received value is %f.",
                               epsilon));
       });
   AddAttr<std::string>("act_type", "The activation type to be fused.")
