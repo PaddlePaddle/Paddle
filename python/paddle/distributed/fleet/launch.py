@@ -195,7 +195,10 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
     if len(node_ips) == 1:
         node_ip = node_ips[0]
     else:
-        _, node_ip = get_host_name_ip()
+        if args.host:
+            node_ip = args.host
+        else:
+            _, node_ip = get_host_name_ip()
 
     assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
         % (node_ip, node_ips)
@@ -241,7 +244,7 @@ class LauncherInterface(object):
 
         for step in range(0, 50):
             alive = False
-            for p in procs:
+            for p in self.procs:
                 if p.proc.poll() is None:  # not termniate
                     os.kill(p.proc.pid, signal.SIGKILL)
                     alive = True
@@ -324,7 +327,7 @@ class CollectiveLauncher(LauncherInterface):
         global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
         global_envs["PADDLE_GLOO_FS_PATH"] = self.gloo_rendezvous_dir
 
-        procs = start_local_trainers(
+        self.procs = start_local_trainers(
             cluster,
             pod,
             training_script=args.training_script,
@@ -332,7 +335,7 @@ class CollectiveLauncher(LauncherInterface):
             log_dir=args.log_dir,
             envs=global_envs)
 
-        for idx, proc in enumerate(procs):
+        for idx, proc in enumerate(self.procs):
             print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
 
     def stop(self):
@@ -436,59 +439,67 @@ def which_distributed_mode(args):
             return DistributeMode.COLLECTIVE
 
 
-def launch_elastic():
-    distribute_mode = which_distributed_mode(args)
-    if distribute_mode == DistributeMode.COLLECTIVE:
-        launch_collective(args)
-    else:
-        launch_ps(args, distribute_mode)
-
-
 def launch():
     args = _parse_args()
     logger = get_logger()
     _print_arguments(args)
 
     print('launch host', args.host)
+    elastic_server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
+    job_name = args.job_name or os.getenv('PADDLE_JOB_NAME')
+    np = args.np or int(os.getenv('PADDLE_NP', 0))
+    host = args.host or os.getenv('POD_IP')
+    scale = args.scale or int(os.getenv('PADDLE_SCALE', 0))
+    force = args.force or os.getenv('PADDLE_FORCE')
+
     elastic = ElasticManager(
-        args.elastic_server,
-        args.job_name,
-        args.np,
-        args.host,
-        scale=args.scale,
-        force=args.force, )
+        elastic_server,
+        job_name,
+        np,
+        host,
+        scale=scale,
+        force=force, )
     signal.signal(signal.SIGTERM, elastic.signal_handler)
     signal.signal(signal.SIGABRT, elastic.signal_handler)
     signal.signal(signal.SIGINT, elastic.signal_handler)
 
     while elastic.ready():
 
-        args.ips = ','.join(elastic.hosts)
-        os.environ['PADDLE_TRAINERS'] = ','.join(elastic.hosts)
+        if elastic.enable:
+            args.ips = ','.join(elastic.hosts)
+            os.environ['PADDLE_TRAINERS'] = ','.join(elastic.hosts)
 
         distribute_mode = which_distributed_mode(args)
         if distribute_mode == DistributeMode.COLLECTIVE:
             launcher = CollectiveLauncher(args)
+        else:
+            # TODO(kuizhiqing) ps elastic support later
+            launch_ps(args, distribute_mode)
+            return
 
         launcher.launch()
 
         while True:
 
             ret = launcher.watch()
+            print("launch watch ret", ret)
 
-            if ret == 0:  # completed
+            if ret is not None:
+                print('job exit', ret)
+                # process is completed if ret >= 0 or error else
+                completed = True if ret == 0 else False
                 launcher.stop()
-                elastic.exit(completed=True)
-                exit(0)
-            elif ret is not None:  # error
-                launcher.stop()
-                break
+                elastic.exit(completed=completed)
+                sys.exit(ret)
 
             if not elastic.health():
                 launcher.stop()
                 break
 
             time.sleep(3)
+
+    launcher.stop()
+    sys.exit(0)
 
 
 if __name__ == "__main__":
