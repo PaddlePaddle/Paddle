@@ -123,7 +123,7 @@ class DownpourServer(Server):
             support_accessor_class = [
                 'DownpourFeatureValueAccessor', 'DownpourCtrAccessor',
                 'DownpourSparseValueAccessor', 'DownpourCtrDoubleAccessor',
-                'DownpourUnitAccessor'
+                'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'
             ]
             if strategy.get('sparse_accessor_class') is not None:
                 accessor_class = strategy.get('sparse_accessor_class')
@@ -394,6 +394,8 @@ class DownpourServer(Server):
                 strategy.get(prefix + 'sparse_learning_rate', 0.05)
             sgd.adagrad.initial_range = \
                 strategy.get(prefix + 'sparse_initial_range', 1e-4)
+            if prefix == "embed_":
+                sgd.adagrad.initial_range = 0
             sgd.adagrad.initial_g2sum = strategy.get(
                 prefix + 'sparse_initial_g2sum', 3)
             bounds = strategy.get(prefix + 'sparse_weight_bounds', [-10, 10])
@@ -403,6 +405,8 @@ class DownpourServer(Server):
                 strategy.get(prefix + 'sparse_learning_rate', 0.05)
             sgd.adagrad.initial_range = \
                 strategy.get(prefix + 'sparse_initial_range', 1e-4)
+            if prefix == "embed_":
+                sgd.adagrad.initial_range = 0
             sgd.adagrad.initial_g2sum = strategy.get(
                 prefix + 'sparse_initial_g2sum', 3)
             bounds = strategy.get(prefix + 'sparse_weight_bounds', [-10, 10])
