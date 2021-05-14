@@ -17,6 +17,7 @@ import copy
 import warnings
 import paddle
 import os
+import numpy as np
 from paddle.fluid.framework import dygraph_only, default_main_program
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
@@ -280,8 +281,8 @@ class Fleet(object):
         self._hcg = tp.HybridCommunicateGroup(self._topology)
 
         if self.mp_degree > 1:
-            tensor_init_seed = default_main_program().global_block().random_seed
-            model_parallel_random_seed(tensor_init_seed)
+            seed = np.random.randint(0, 65535)
+            model_parallel_random_seed(seed)
 
     def get_hybrid_communicate_group(self):
         assert self._hcg is not None
