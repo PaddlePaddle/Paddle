@@ -514,9 +514,8 @@ class TestAddInplaceBroadcastError3(TestAddInplaceBroadcastError):
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
-@skip_check_grad_ci(
-    reason="[skip shape check] Use scalar y_shape to test broadcast result between cpu and cuda."
-)
+@skip_check_grad_ci(reason="[skip shape check] Use scalar y_shape to\
+                     test broadcast result between cpu and cuda.")
 class TestAddBroadcastCPUvsGPU(unittest.TestCase):
     def init_data(self):
         self.x_numpy = np.random.rand(4, 3, 3, 5).astype('float')
@@ -541,18 +540,17 @@ class TestAddBroadcastCPUvsGPU(unittest.TestCase):
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
 
-        with paddlle.fluid.guard(place=fluid.CPUPlace()):
+        with paddle.fluid.dygraph.guard(place=fluid.CPUPlace()):
             cpu_result = fluid.layers.elementwise_add(x, y, self.axis)
 
-        with paddlle.fluid.guard(place=fluid.CUDAPlace(0)):
+        with paddle.fluid.dygraph.guard(place=fluid.CUDAPlace(0)):
             cuda_result = fluid.layers.elementwise_add(x, y, self.axis)
 
         # comparison of cpu_result, cuda_result and numpy_result
-        self.assertEqual((cpu_result.numpy() == cuda_result).all(), True)
-        self.assertEqual((numpy_result_result.numpy() == cpu_result).all(),
+        self.assertEqual((cpu_result.numpy() == cuda_result.numpy()).all(),
                          True)
-        self.assertEqual((numpy_result_result.numpy() == cuda_result).all(),
-                         True)
+        self.assertEqual((numpy_result == cpu_result.numpy()).all(), True)
+        self.assertEqual((numpy_result == cuda_result.numpy()).all(), True)
         paddle.enable_static()
 
 
