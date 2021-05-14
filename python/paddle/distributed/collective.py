@@ -927,6 +927,7 @@ def _linear(x, weight, bias=None, name=None):
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
+        assert x.ndim < 4, "X latitude is not supported greater than 3 now."
 
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'linear')
