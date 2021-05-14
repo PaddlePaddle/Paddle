@@ -514,6 +514,48 @@ class TestAddInplaceBroadcastError3(TestAddInplaceBroadcastError):
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use scalar y_shape to test broadcast result between cpu and cuda."
+)
+class TestAddBroadcastCPUvsGPU(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(4, 3, 3, 5).astype('float')
+        self.y_numpy = np.random.rand(3, ).astype('float')
+        self.axis = 1
+
+    def test_broadcast_cpu_vs_gpu(self):
+        paddle.disable_static()
+        self.init_data()
+
+        # To calculate the elementwise broadcast result of numpy        
+        in_datas = [self.x_numpy, self.y_numpy]
+        larger_dim_idx = 0 if self.x_numpy.ndim > self.y_numpy.ndim else 1
+        broadcast_shape = np.ones(
+            in_datas[larger_dim_idx].ndim, dtype=np.uint32)
+        broadcast_shape[self.axis : self.axis + in_datas[larger_dim_idx ^ 1].ndim] = \
+                                                in_datas[larger_dim_idx ^ 1].shape[:]
+        numpy_result = in_datas[larger_dim_idx] + \
+                       in_datas[larger_dim_idx ^ 1].reshape(broadcast_shape)
+
+        # To calculate the elementwise broadcast result on both cpu and gpu
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+
+        with paddlle.fluid.guard(place=fluid.CPUPlace()):
+            cpu_result = fluid.layers.elementwise_add(x, y, self.axis)
+
+        with paddlle.fluid.guard(place=fluid.CUDAPlace(0)):
+            cuda_result = fluid.layers.elementwise_add(x, y, self.axis)
+
+        # comparison of cpu_result, cuda_result and numpy_result
+        self.assertEqual((cpu_result.numpy() == cuda_result).all(), True)
+        self.assertEqual((numpy_result_result.numpy() == cpu_result).all(),
+                         True)
+        self.assertEqual((numpy_result_result.numpy() == cuda_result).all(),
+                         True)
+        paddle.enable_static()
+
+
 class TestComplexElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
