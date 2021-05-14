@@ -231,7 +231,7 @@ class TestDistTraning(unittest.TestCase):
         # model_b
         check_group = dist.new_group(list(range(self.model_parallel_size)))
         integral_w = []
-        partial_w = model_a.embedding.embedding.weight.clone().detach()
+        partial_w = model_a.embedding.weight.clone().detach()
         paddle.distributed.all_gather(integral_w, partial_w, group=check_group)
         result_w = []
         for idx in range(len(integral_w)):
