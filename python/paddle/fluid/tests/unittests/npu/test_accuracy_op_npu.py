@@ -112,10 +112,8 @@ class TestAccuracy3(TestAccuracy):
             "Total": total
         }
 
-
-class TestAccuracyInt(TestAccuracy):
     def init_dtype(self):
-        self.dtype = np.int
+        self.dtype = np.float16
 
 
 if __name__ == '__main__':

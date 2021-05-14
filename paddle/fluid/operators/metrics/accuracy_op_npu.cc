@@ -118,7 +118,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     accuracy, ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext,
-                           paddle::platform::float16>,
-    ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+                           paddle::platform::float16>);
