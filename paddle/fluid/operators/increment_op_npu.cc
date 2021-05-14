@@ -32,20 +32,17 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class IncrementalNPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
-    float step = context.Attr<float>("step");
-    out->mutable_data<T>(context.GetPlace());
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    float step = ctx.Attr<float>("step");
+    out->mutable_data<T>(ctx.GetPlace());
 
-    Tensor step_tensor(x->type());
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    step_tensor.mutable_data<T>({1}, context.GetPlace());
-    FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
-
+    Tensor step_tensor;
     // NOTE(zhiqiu): Why cast?  I found int64 is not supported in cann-5.0.2
     Tensor cast_x(x->type());
     Tensor cast_out(x->type());
@@ -54,15 +51,21 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
       cast_x.mutable_data<int>(ctx.GetPlace());
       cast_out.Resize(out->dims());
       cast_out.mutable_data<int>(ctx.GetPlace());
-      auto dst_dtype = ConvertToNpuDtype(cast_x->type());
+      auto dst_dtype = ConvertToNpuDtype(cast_x.type());
       auto runner_cast_x = NpuOpRunner(
           "Cast", {*x}, {cast_x}, {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_x.Run(stream);
+      step_tensor.mutable_data<int>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<int>(&step_tensor, static_cast<int>(step));
     } else {
+      step_tensor.mutable_data<T>({1}, ctx.GetPlace());
+      FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
       cast_x.ShareDataWith(*x);
       cast_out.ShareDataWith(*out);
     }
-    auto runner = NpuOpRunner("Add", {*cast_x, step_tensor}, {*cast_out}, {});
+
+    auto runner = NpuOpRunner("Add", {cast_x, step_tensor}, {cast_out}, {});
+    runner.Run(stream);
 
     if (x->type() == framework::proto::VarType::INT64) {
       auto dst_dtype = ConvertToNpuDtype(out->type());
@@ -71,11 +74,6 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_out.Run(stream);
     }
-
-    auto stream =
-        context.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
   }
 };
 
