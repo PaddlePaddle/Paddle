@@ -53,7 +53,7 @@ static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
 #define REG_DL_DATA_TYPE(cpp_type, proto_type) \
   result[static_cast<int>(proto_type)] = GetDLDataTypeCode<cpp_type>()
 
-  _ForEachDataType_(REG_DL_DATA_TYPE);
+  _ForEachDataTypeWithOutComplexType_(REG_DL_DATA_TYPE);
 #undef REG_DL_DATA_TYPE
   return result;
 }

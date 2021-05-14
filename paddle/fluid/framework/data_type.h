@@ -71,6 +71,18 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, ::paddle::platform::complex64, COMPLEX64); \
   _ForEachDataTypeHelper_(callback, ::paddle::platform::complex128, COMPLEX128);
 
+#define _ForEachDataTypeWithOutComplexType_(callback)                    \
+  _ForEachDataTypeHelper_(callback, float, FP32);                        \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);  \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::bfloat16, BF16); \
+  _ForEachDataTypeHelper_(callback, double, FP64);                       \
+  _ForEachDataTypeHelper_(callback, int, INT32);                         \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                     \
+  _ForEachDataTypeHelper_(callback, bool, BOOL);                         \
+  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                     \
+  _ForEachDataTypeHelper_(callback, int16_t, INT16);                     \
+  _ForEachDataTypeHelper_(callback, int8_t, INT8);
+
 #define _ForEachDataTypeSmall_(callback)                                       \
   _ForEachDataTypeHelper_(callback, float, FP32);                              \
   _ForEachDataTypeHelper_(callback, double, FP64);                             \
