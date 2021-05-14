@@ -122,6 +122,43 @@ struct npy_format_descriptor<paddle::platform::complex128> {
   static constexpr auto name = _("complext128");
 };
 
+// we register paddle::platform::complex64 as numpy.complex64.
+template <>
+struct npy_format_descriptor<paddle::platform::complex<float>> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX64);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+
+  static std::string format() {
+    // Note: "F" represents complex64.
+    // Details at:
+    // https://stackoverflow.com/questions/13997087/what-are-the-available-datatypes-for-dtype-with-numpys-loadtxt-an-genfromtx
+    // for k, v in np.sctypeDict.iteritems():
+    //     print '{0:14s} : {1:40s}'.format(str(k), v)
+    return "F";
+  }
+  static constexpr auto name = _("complext64");
+};
+
+template <>
+struct npy_format_descriptor<paddle::platform::complex<double>> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX128);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+
+  static std::string format() {
+    // Note: "D" represents complex128.
+    // Details at:
+    // https://stackoverflow.com/questions/13997087/what-are-the-available-datatypes-for-dtype-with-numpys-loadtxt-an-genfromtx
+    // for k, v in np.sctypeDict.iteritems():
+    //     print '{0:14s} : {1:40s}'.format(str(k), v)
+    return "D";
+  }
+  static constexpr auto name = _("complext128");
+};
+
 }  // namespace detail
 }  // namespace pybind11
 
