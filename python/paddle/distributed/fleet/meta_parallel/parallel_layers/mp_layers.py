@@ -41,6 +41,7 @@ class VocabParallelEmbedding(Layer):
         self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
 
         self.origin_num_embeddings = num_embeddings
+        self.is_mp = (self.world_size > 1)
 
         per_part_size = (
             num_embeddings + self.world_size - 1) // self.world_size
@@ -54,7 +55,15 @@ class VocabParallelEmbedding(Layer):
         self._size = [per_part_size, embedding_dim]
         self._weight_attr = weight_attr
         self._name = name
-        with get_rng_state_tracker().rng_state():
+
+        if self.is_mp:
+            with get_rng_state_tracker().rng_state():
+                self.weight = self.create_parameter(
+                    attr=self._weight_attr,
+                    shape=self._size,
+                    dtype=self._dtype,
+                    is_bias=False)
+        else:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=self._size,
@@ -84,7 +93,7 @@ class VocabParallelEmbedding(Layer):
             sparse=False,
             name=self._name)
 
-        if self.world_size > 1:
+        if self.is_mp:
             emb_out = paddle.distributed.collective._mp_allreduce(
                 emb_out,
                 group=self.model_parallel_group,
@@ -107,8 +116,9 @@ class ColumnParallelLinear(Layer):
         )
         self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
         )
+        self._name = name
+        self.is_mp = (self.world_size > 1)
 
-        self.name = name
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
             "Number of column of the weight for linear ({}) must be"
@@ -119,12 +129,20 @@ class ColumnParallelLinear(Layer):
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
 
-        with get_rng_state_tracker().rng_state():
+        if self.is_mp:
+            with get_rng_state_tracker().rng_state():
+                self.weight = self.create_parameter(
+                    shape=[in_features, self.output_size_per_partition],
+                    attr=self._weight_attr,
+                    dtype=self._dtype,
+                    is_bias=False)
+        else:
             self.weight = self.create_parameter(
                 shape=[in_features, self.output_size_per_partition],
                 attr=self._weight_attr,
                 dtype=self._dtype,
                 is_bias=False)
+
         self.weight.is_distributed = True
 
         if has_bias:
@@ -140,16 +158,16 @@ class ColumnParallelLinear(Layer):
 
     def forward(self, x):
         # use inner api to process identity
-        if self.world_size > 1:
+        if self.is_mp:
             input_parallel = paddle.distributed.collective._c_identity(
                 x, group=self.model_parallel_group)
         else:
             input_parallel = x
 
         output_parallel = F.linear(
-            input_parallel, self.weight, self.bias, name=self.name)
+            input_parallel, self.weight, self.bias, name=self._name)
 
-        if self.gather_output and self.world_size > 1:
+        if self.gather_output and self.is_mp:
             output = paddle.distributed.collective._c_concat(
                 output_parallel,
                 nranks=self.world_size,
@@ -174,7 +192,7 @@ class RowParallelLinear(Layer):
         self.input_is_parallel = input_is_parallel
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
-        self.name = name
+        self._name = name
 
         self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
         )
@@ -182,6 +200,7 @@ class RowParallelLinear(Layer):
         )
         self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
 
+        self.is_mp = (self.world_size > 1)
         assert in_features % self.world_size == 0, (
             "Number of row of the weight for linear ({}) must be"
             " divisible by model parallel size ({})".format(in_features,
@@ -189,7 +208,14 @@ class RowParallelLinear(Layer):
 
         self.input_size_per_partition = in_features // self.world_size
 
-        with get_rng_state_tracker().rng_state():
+        if self.is_mp:
+            with get_rng_state_tracker().rng_state():
+                self.weight = self.create_parameter(
+                    shape=[self.input_size_per_partition, self.out_features],
+                    attr=self._weight_attr,
+                    dtype=self._dtype,
+                    is_bias=False)
+        else:
             self.weight = self.create_parameter(
                 shape=[self.input_size_per_partition, self.out_features],
                 attr=self._weight_attr,
@@ -208,7 +234,7 @@ class RowParallelLinear(Layer):
             self.bias = None
 
     def forward(self, x):
-        if self.input_is_parallel or self.world_size == 1:
+        if self.input_is_parallel or (not self.is_mp):
             input_parallel = x
         else:
             # split last dim
@@ -218,9 +244,9 @@ class RowParallelLinear(Layer):
                 nranks=self.world_size,
                 group=self.model_parallel_group)
 
-        output_parallel = F.linear(input_parallel, self.weight, name=self.name)
+        output_parallel = F.linear(input_parallel, self.weight, name=self._name)
 
-        if self.world_size > 1:
+        if self.is_mp:
             output_ = paddle.distributed.collective._mp_allreduce(
                 output_parallel,
                 group=self.model_parallel_group,
