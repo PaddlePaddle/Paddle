@@ -337,7 +337,9 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   auto& info = op.Info();
   if (info.infer_var_type_) {
     RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(
-        ins, outs, attrs, op.Info().Checker()->default_attr_map());
+        ins, outs, attrs, paddle::framework::OpInfoMap::Instance()
+                              .Get(framework::GradOriginalOpName(op.Type()))
+                              .checker_->default_attr_map());
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
