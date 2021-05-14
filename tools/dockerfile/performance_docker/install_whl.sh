@@ -26,7 +26,7 @@ function ref_whl(){
       ref_dockerfile=cuda101
   fi
 
-  ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-mkl-gcc8.2"
+  ref_web="https://paddle-wheel.bj.bcebos.com/with-trt/${PADDLE_BRANCH}-${ref_gpu}-mkl-gcc8.2"
   ref_paddle37_whl=paddlepaddle_gpu-${PADDLE_VERSION}${ref_version}-cp37-cp37m-linux_x86_64.whl
 }
 

@@ -46,19 +46,38 @@ RUN apt-get update && apt-get install -y software-properties-common && \
     add-apt-repository -y ppa:ubuntu-toolchain-r/test
 RUN apt-get update && apt-get -y upgrade && apt-get -y dist-upgrade
 
+# Downgrade gcc&&g++
+WORKDIR /usr/bin 
+COPY build_scripts /build_scripts 
+RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
+RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
+
 # RUN python3.7 and pip3.7
-RUN add-apt-repository -y ppa:deadsnakes/ppa 
-RUN apt-get update && apt-get install -y python3.7 python3.7-dev
+# Prepare packages for Python
+RUN apt-get -y install zlib1g-dev libffi-dev libssl-dev
 
-RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
-        python3.7 get-pip.py && \
-        pip3.7 --version && rm -f get-pip.py
+WORKDIR ${HOME_WORK_DIR}
+# Install Python3.7
+RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
+    tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
 
-RUN rm -f /usr/bin/python3 /usr/bin/pip /usr/bin/pip3 && \
-       ln -s /usr/bin/python3.7 /usr/bin/python3 && \
-       ln -s /usr/bin/python3.7 /usr/bin/python && \
-       ln -s /usr/bin/pip3.7 /usr/bin/pip && \
-       ln -s /usr/bin/pip3.7 /usr/bin/pip3
+WORKDIR ${HOME_WORK_DIR}
+RUN rm Python-3.7.0.tgz && rm -r Python-3.7.0
+
+RUN python3.7 -m pip install -U pip
+RUN rm -f /usr/bin/python3 /usr/local/bin/pip && \
+       ln -s /usr/local/bin/python3.7 /usr/bin/python3 && \
+       ln -s /usr/local/bin/python3.7 /usr/bin/python && \
+       ln -s /usr/local/bin/pip3.7 /usr/bin/pip && \
+       ln -s /usr/local/bin/pip3.7 /usr/bin/pip3
+RUN rm /usr/bin/lsb_release
 
 RUN rm -f /usr/lib/x86_64-linux-gnu/libcublas.so && \
     ln -s /usr/lib/x86_64-linux-gnu/libcublas.so.10 /usr/lib/x86_64-linux-gnu/libcublas.so
