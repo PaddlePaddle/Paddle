@@ -233,7 +233,7 @@ def __bootstrap__():
             'gpu_memory_limit_mb',
         ]
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
-    core.init_glog(sys.argv[0])
+    # core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
 
