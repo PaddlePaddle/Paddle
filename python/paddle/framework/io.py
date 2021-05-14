@@ -555,26 +555,7 @@ def save(obj, path, protocol=2, **configs):
             paddle.save(obj, path)
 
 
-            # example 3: Save layer
-            import paddle
-            from paddle import nn
-
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super(LinearNet, self).__init__()
-                    self._linear = nn.Linear(224, 10)
-
-                def forward(self, x):
-                    return self._linear(x)
-
-            inps = paddle.randn([1, 224], dtype='float32')
-            layer = LinearNet()
-            layer.eval()
-            path = "example/layer.pdmodel"
-            paddle.save(layer,path)
-
-
-            # example 4: static graph
+            # example 3: static graph
             import paddle
             import paddle.static as static
 
@@ -601,7 +582,7 @@ def save(obj, path, protocol=2, **configs):
             path_state_dict = 'temp/model.pdparams'
             paddle.save(prog.state_dict("param"), path_tensor)
 
-            # example 5: save program
+            # example 4: save program
             import paddle
 
             paddle.enable_static()
@@ -796,27 +777,7 @@ def load(path, **configs):
             obj_load = paddle.load(path)
 
 
-            # example 3: Load layer
-            import paddle
-            from paddle import nn
-
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super(LinearNet, self).__init__()
-                    self._linear = nn.Linear(224, 10)
-
-                def forward(self, x):
-                    return self._linear(x)
-
-            inps = paddle.randn([1, 224], dtype='float32')
-            layer = LinearNet()
-            layer.eval()
-            path = "example/layer.pdmodel"
-            paddle.save(layer,path)
-            layer_load=paddle.load(path)
-
-            
-            # example 4: static graph
+            # example 3: static graph
             import paddle
             import paddle.static as static
 
@@ -846,7 +807,7 @@ def load(path, **configs):
             load_state_dict = paddle.load(path_tensor)
 
 
-            # example 5: load program
+            # example 4: load program
             import paddle
 
             paddle.enable_static()
