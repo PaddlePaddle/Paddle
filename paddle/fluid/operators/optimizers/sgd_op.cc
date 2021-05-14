@@ -106,6 +106,14 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
               "Output parameter, should share the same memory with Param");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
     AddComment(R"DOC(
 
 SGD operator

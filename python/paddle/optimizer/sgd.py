@@ -46,6 +46,9 @@ class SGD(Optimizer):
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
+        rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
+            Often choose to be ``1.0/batch_size``.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` . 
@@ -74,6 +77,8 @@ class SGD(Optimizer):
                  parameters=None,
                  weight_decay=None,
                  grad_clip=None,
+                 multi_precision=False,
+                 rescale_grad=1.0,
                  name=None):
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
@@ -106,3 +111,46 @@ class SGD(Optimizer):
             stop_gradient=True)
 
         return sgd_op
+
+    def _create_master_weight(self, param):
+        assert isinstance(self.helper, LayerHelper)
+
+        var_name = param.name + "_fp32_master"
+        var_name = unique_name.generate(var_name)
+        var = layers.create_global_var(
+            name=var_name,
+            shape=param.shape,
+            value=0,
+            dtype='float32',
+            persistable=True)
+        block = self.helper.startup_program.global_block()
+        block.append_op(
+            type="cast",
+            inputs={"X": [param]},
+            outputs={"Out": [var]},
+            attrs={
+                "in_dtype": param.dtype,
+                "out_dtype": core.VarDesc.VarType.FP32
+            })
+        self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        target_param = self._master_weights[
+            param.name] if find_master else param
+        target_name = target_param.name
+        if (name not in self._accumulators or
+                target_name not in self._accumulators[name]):
+            raise Exception("Accumulator {} does not exist for parameter {}".
+                            format(name, target_name))
+        return self._accumulators[name][target_name]
