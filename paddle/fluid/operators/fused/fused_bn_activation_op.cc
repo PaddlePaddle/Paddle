@@ -171,9 +171,12 @@ void FusedBatchNormActOpMaker::Make() {
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
-        PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
-                          platform::errors::InvalidArgument(
-                              "'epsilon' should be between 0.0 and 0.001."));
+        PADDLE_ENFORCE_EQ(
+            epsilon >= 0.0f && epsilon <= 0.001f, true,
+            platform::errors::InvalidArgument(
+                "Attr(epsilon) should be between 0.0 and 0.001, "
+                "but received value is %d.",
+                epsilon));
       });
   AddAttr<std::string>("act_type", "The activation type to be fused.")
       .SetDefault("relu");
