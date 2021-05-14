@@ -45,8 +45,10 @@ class TestRuntimeInferVarTypeContext
  public:
   TestRuntimeInferVarTypeContext(const NameVarMap<VarType>& inputs,
                                  const NameVarMap<VarType>& outputs,
-                                 const framework::AttributeMap& attrs_map)
-      : RuntimeInferVarTypeContext<VarType>(inputs, outputs, attrs_map) {}
+                                 const framework::AttributeMap& attrs_map,
+                                 const framework::AttributeMap& default_attrs)
+      : RuntimeInferVarTypeContext<VarType>(inputs, outputs, attrs_map,
+                                            default_attrs) {}
 
   bool HasVar(const std::string& name) const {
     return RuntimeInferVarTypeContext<VarType>::HasVar(name);
@@ -125,7 +127,7 @@ TEST(test_layer, test_runtime_context) {
 
   auto* ctx =
       new imperative::TestRuntimeInferVarTypeContext<imperative::VarBase>(
-          ins, outs, attrs);
+          ins, outs, attrs, {});
 
   ASSERT_TRUE(ctx->HasInput("X"));
   ASSERT_TRUE(ctx->HasOutput("Out"));

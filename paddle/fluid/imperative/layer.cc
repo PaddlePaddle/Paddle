@@ -336,7 +336,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                      "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs);
+    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(
+        ins, outs, attrs, op.Info().Checker()->default_attr_map());
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
