@@ -1315,8 +1315,8 @@ class ActivationCudaKernel
     for (auto& attr : attrs) {
       *attr.second = ctx.Attr<float>(attr.first);
     }
-    LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T>(dev_ctx, ins, &outs,
-                                                            functor);
+    LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(dev_ctx, ins,
+                                                               &outs, functor);
   }
 };
 
@@ -1345,17 +1345,17 @@ class ActivationGradCudaKernel
     if (static_cast<int>(Functor::FwdDeps()) == static_cast<int>(kDepOut)) {
       // Only need forward output Out
       ins.push_back(out);
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(dev_ctx, ins,
-                                                               &outs, functor);
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, functor);
     } else if (static_cast<int>(Functor::FwdDeps()) ==
                static_cast<int>(kDepX)) {
       // Only need forward input X
       ins.push_back(x);
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(dev_ctx, ins,
-                                                               &outs, functor);
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          dev_ctx, ins, &outs, functor);
     } else {
-      LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T>(dev_ctx, ins,
-                                                              &outs, functor);
+      LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+          dev_ctx, ins, &outs, functor);
     }
   }
 };

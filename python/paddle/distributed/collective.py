@@ -25,6 +25,7 @@ from ..fluid.data_feeder import check_type
 from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
+from ..fluid.dygraph import layers
 from ..fluid.dygraph.parallel import prepare_context
 import paddle
 from .fleet import fleet
@@ -875,6 +876,85 @@ def _mp_allreduce(tensor,
         raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
 
 
+class _Linear(layers.Layer):
+    """
+    Linear
+    """
+
+    def __init__(self,
+                 in_features,
+                 out_features,
+                 weight_attr=None,
+                 bias_attr=None,
+                 name=None):
+        super(_Linear, self).__init__()
+        self._dtype = self._helper.get_default_dtype()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self.weight = self.create_parameter(
+            shape=[in_features, out_features],
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+        self.bias = self.create_parameter(
+            shape=[out_features],
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            is_bias=True)
+        self.name = name
+
+    def forward(self, input):
+        out = _linear(
+            x=input, weight=self.weight, bias=self.bias, name=self.name)
+        return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'in_features={}, out_features={}, dtype={}{}'.format(
+            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
+
+
+def _linear(x, weight, bias=None, name=None):
+    """
+    Fuction Linear
+    """
+    if in_dygraph_mode():
+        pre_bias = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
+                        'transpose_Y', False, "alpha", 1)
+        return dygraph_utils._append_bias_in_dygraph(
+            pre_bias, bias, axis=len(x.shape) - 1)
+    else:
+        helper = LayerHelper('linear', **locals())
+        dtype = x.dtype
+        assert x.ndim < 4, "X latitude is not supported greater than 3 now."
+
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'linear')
+        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+
+        inputs = {'X': [x], 'Y': [weight]}
+        attrs = {
+            'transpose_X': False,
+            'transpose_Y': False,
+            'alpha': 1,
+        }
+        tmp = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+        if bias is not None:
+            res = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [tmp],
+                        'Y': [bias]},
+                outputs={'Out': [res]},
+                attrs={'axis': len(x.shape) - 1})
+        else:
+            res = tmp
+        return res
+
+
 def _parallel_linear(x,
                      num_rows,
                      num_cols,
@@ -900,12 +980,20 @@ def _parallel_linear(x,
     else:
         x = _c_identity(x, group=group)
 
-    linear = paddle.nn.Linear(
-        num_rows,
-        num_cols,
-        weight_attr=param_attr,
-        bias_attr=bias_attr,
-        name=name)
+    if core.is_compiled_with_npu():
+        linear = _Linear(
+            num_rows,
+            num_cols,
+            weight_attr=param_attr,
+            bias_attr=bias_attr,
+            name=name)
+    else:
+        linear = paddle.nn.Linear(
+            num_rows,
+            num_cols,
+            weight_attr=param_attr,
+            bias_attr=bias_attr,
+            name=name)
 
     linear_out = linear(x)
     startup_block = paddle.static.default_startup_program().global_block()

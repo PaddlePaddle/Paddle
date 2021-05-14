@@ -626,7 +626,7 @@ class DistributedStrategy(object):
         Indicating whether we are using find_unused_parameters to 
         find unused parameters in DataParallel.
 
-        Default value: True
+        Default value: False
 
         Examples:
 

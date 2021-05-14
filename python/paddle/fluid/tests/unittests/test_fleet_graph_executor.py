@@ -80,15 +80,17 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
                 print("cost of step[{}] = {}".format(i, cost_val))
 
-        proc_a = launch_func(node_func, node_a)
-        proc_a.start()
+        # rank 1
+        proc_b = launch_func(node_func, node_b)
+        proc_b.start()
 
+        # rank 0, for wait server ready coverage
         # just for coverage
-        for key in node_b:
-            os.environ[key] = node_b[key]
+        for key in node_a:
+            os.environ[key] = node_a[key]
         node_func()
 
-        proc_a.join()
+        proc_b.join()
 
 
 if __name__ == "__main__":
