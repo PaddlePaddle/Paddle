@@ -18,7 +18,7 @@ import warnings
 import paddle
 import os
 import numpy as np
-from paddle.fluid.framework import dygraph_only, default_main_program
+from paddle.fluid.framework import dygraph_only
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
