@@ -62,8 +62,8 @@ class ASPHelper(object):
     r"""
     ASPHelper is a collection of Auto SParsity (ASP) functions to enable 
 
-    1. training models with weights in 2:4 sparse pattern from scratch.
-    2. pruning well-trained models into 2:4 sparse pattern for fine-tuning.
+    1. training models with weights in 2:4 sparse pattern on FP16 or 1:2 sparse pattern on FP32 from scratch.
+    2. pruning well-trained models into 2:4 sparse pattern on FP16 or 1:2 sparse pattern on FP32 for fine-tuning.
     """
 
     MASKE_APPENDDED_NAME = '_asp_mask'
@@ -389,6 +389,8 @@ class ASPHelper(object):
     def prune_model(cls,
                     place,
                     main_program=None,
+                    n=2,
+                    m=4,
                     func_name=sparsity.MaskAlgo.MASK_1D,
                     with_mask=True):
         r"""
@@ -398,6 +400,9 @@ class ASPHelper(object):
         If :attr:`with_mask` is True, it would also prune parameter related ASP mask Variables,
         else only prunes parameters.
 
+        *Note*: If parameters are supported and in FP16, please set :attr:`n`=2, :attr:`m`=4, 
+        if they in FP32, then :attr:`n`=1, :attr:`m`=2` to further enable Sparse Tensor Core acceleration.
+
         *Note*: If calling this function with :attr:`with_mask`, it should call `ASPHelper.minimize` 
         and initialization (`exe.run(startup_program`)) before (For successfully obtain mask Variable). 
         Typically set `with_mask` as true for training (have called `ASPHelper.minimize`) and false for 
@@ -406,6 +411,8 @@ class ASPHelper(object):
         Args:
             place (fluid.CPUPlace()|fluid.CUDAPlace(N)): Device place for pruned parameter and mask Variables, and N means the GPU's id. It should be the same as created instance of Executor.
             main_program (Program, optional): Program with model definition and its parameters. Default is `paddle.static.default_main_program()
+            n (int): n of `n:m` sparse pattern.
+            m (int): m of `n:m` sparse pattern.
             func_name (MaskAlgo, optional): The function name to generate spase mask. Default is `MaskAlgo.MASK_1D`. All options please refer to `MaskAlgo`.
             with_mask (bool, optional): To prune mask Variables related to parameters or not. Ture is purning also, False is not. Defalut is True.
         Returns:
@@ -459,11 +466,11 @@ class ASPHelper(object):
                 # matrices beforce invoking create_mask. Then we transpose the result maks to make 
                 # sure its shape to be the same as the input weight.
                 weight_sparse_mask = sparsity.create_mask(
-                    weight_nparray.T, func_name=func_name).T
+                    weight_nparray.T, func_name=func_name, n=n, m=m).T
                 weight_pruned_nparray = np.multiply(weight_nparray,
                                                     weight_sparse_mask)
                 weight_tensor.set(weight_pruned_nparray, place)
-                assert sparsity.check_sparsity(weight_pruned_nparray.T,  n=2, m=4, func_name=checked_func_name), \
+                assert sparsity.check_sparsity(weight_pruned_nparray.T,  n=n, m=m, func_name=checked_func_name), \
                         'Pruning {} weight matrix failure!!!'.format(param.name)
                 if with_mask:
                     weight_mask_param = global_scope().find_var(
