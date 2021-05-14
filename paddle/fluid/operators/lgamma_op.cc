@@ -84,7 +84,7 @@ struct LgammaGradFunctorCPU {
   LgammaGradFunctorCPU(const T* dout, const T* x, T* output, int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
-  HOSTDEVICE void operator()(int64_t idx) const {
+  HOST void operator()(int64_t idx) const {
     output_[idx] = dout_[idx] / boost::math::digamma(x_[idx]);
   }
 
