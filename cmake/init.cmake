@@ -14,9 +14,12 @@ if(NOT WIN32)
     set(CMAKE_C_FLAGS_MINSIZEREL "-Os -DNDEBUG")
 
     set(CMAKE_CXX_FLAGS_DEBUG "-g")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fvisibility=hidden")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fvisibility=hidden -fvisibility-inlines-hidden")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG")
     set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -DNDEBUG")
+
+    set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+    set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 else()
     # It can specify CUDA compile flag manualy,
     # its use is to remvoe /Zi to reduce GPU static library size. But it's dangerous
