@@ -63,17 +63,24 @@ class VocabParallelEmbedding(Layer):
                     shape=self._size,
                     dtype=self._dtype,
                     is_bias=False)
+            self.weight[per_part_size - 1] = 0.0
+            self.weight.is_distributed = True
         else:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
-                shape=self._size,
+                shape=[num_embeddings, embedding_dim],
                 dtype=self._dtype,
                 is_bias=False)
 
-        self.weight[per_part_size - 1] = 0.0
-        self.weight.is_distributed = True
-
     def forward(self, x):
+        if not self.is_mp:
+            return F.embedding(
+                x,
+                weight=self.weight,
+                padding_idx=None,
+                sparse=False,
+                name=self._name)
+
         origin_input_shape = x.shape
         if len(origin_input_shape) == 2:
             x = paddle.unsqueeze(x, axis=-1)
@@ -93,12 +100,11 @@ class VocabParallelEmbedding(Layer):
             sparse=False,
             name=self._name)
 
-        if self.is_mp:
-            emb_out = paddle.distributed.collective._mp_allreduce(
-                emb_out,
-                group=self.model_parallel_group,
-                use_calc_stream=True,
-                use_model_parallel=True)
+        emb_out = paddle.distributed.collective._mp_allreduce(
+            emb_out,
+            group=self.model_parallel_group,
+            use_calc_stream=True,
+            use_model_parallel=True)
         return emb_out
 
 
