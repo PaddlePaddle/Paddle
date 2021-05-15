@@ -37,7 +37,9 @@ static ::DLDataType GetDLDataTypeCode() {
   } else if (std::is_integral<T>::value) {
     dtype.code = kDLInt;
   } else if (std::is_same<T, platform::complex<float>>::value ||
-             std::is_same<T, platform::complex<double>>::value) {
+             std::is_same<T, platform::complex<double>>::value ||
+             std::is_same<T, platform::complex64>::value ||
+             std::is_same<T, platform::complex128>::value) {
     // The current dlpack library version is v0.2, and does not define
     // kDLComplex value. But kDLComplex is defined by 5U in v0.4, so we set
     // dtype.code to 5U directly here. After the dlpack library version being
