@@ -69,15 +69,6 @@ struct SameDimsElemwiseAdd<
   }
 };
 
-template <typename T>
-struct BroadcastElemwiseAdd<platform::CPUDeviceContext, T> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    default_elementwise_add<platform::CPUDeviceContext, T>(ctx, x, y, z);
-  }
-};
-
 class ElementwiseAddOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Add"; }

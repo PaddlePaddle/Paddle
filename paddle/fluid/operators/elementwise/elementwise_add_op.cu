@@ -39,30 +39,43 @@ struct CudaAddFunctor {
   }
 };
 
-template <typename T>
-struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    std::vector<const framework::Tensor*> ins = {x, y};
-    std::vector<framework::Tensor*> outs = {z};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        ctx.template device_context<platform::CUDADeviceContext>(), ins, &outs,
-        CudaAddFunctor<T>());
-  }
-};
+#define ELEMENTWISE_BINARY_FUNCTOR(Func, expr)                     \
+  template <typename T>                                            \
+  struct Func##Functor {                                           \
+    inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
+      return a expr b;                                             \
+    }                                                              \
+  };
+
+ELEMENTWISE_BINARY_FUNCTOR(FP32Add, +)
+ELEMENTWISE_BINARY_FUNCTOR(FP32Sub, -)
+ELEMENTWISE_BINARY_FUNCTOR(FP32Mul, *)
+ELEMENTWISE_BINARY_FUNCTOR(FP32Div, /)
+#undef ELEMENTWISE_BINARY_FUNCTOR
 
 template <typename T>
-struct BroadcastElemwiseAdd<platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* out) {
+class ElementwiseAddKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
+    z->mutable_data<T>(ctx.GetPlace());
     std::vector<const framework::Tensor*> ins = {x, y};
-    int axis = ctx.Attr<int>("axis");
-    axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
-    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, T>(
-        ctx.template device_context<platform::CUDADeviceContext>(), ins, out,
-        CudaAddFunctor<T>(), axis);
+    std::vector<framework::Tensor*> outs = {z};
+    const auto& cuda_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+
+    if (x->dims() == y->dims()) {
+      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+          cuda_ctx, ins, &outs, CudaAddFunctor<T>());
+    } else {
+      int axis = ctx.Attr<int>("axis");
+      axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
+      LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, T>(
+          cuda_ctx, ins, z, FP32AddFunctor<T>(), axis);
+    }
   }
 };
 
