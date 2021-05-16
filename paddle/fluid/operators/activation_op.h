@@ -1311,6 +1311,9 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+// mish(x) = x * tanh(softplus(x))
+// softplus(x) = x, if x > threshold
+//             = ln(1 + exp(x)), otherwise
 template <typename T>
 struct MishFunctor : public BaseActivationFunctor<T> {
   float threshold;
@@ -1326,6 +1329,8 @@ struct MishFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// dx = dout * (tanh(sp) + x * (1 - tanh(sp) ** 2) * (1 - exp(-sp)))
+// sp = softplus(x)
 template <typename T>
 struct MishGradFunctor : public BaseActivationFunctor<T> {
   float threshold;
