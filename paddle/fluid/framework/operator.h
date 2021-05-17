@@ -111,6 +111,9 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline std::string GradOriginalOpName(const std::string& grad_op_name) {
+  // Example:
+  // 1. op_grad -> op
+  // 2. op_grad_grad -> op
   std::size_t pos = grad_op_name.find("_grad");
   if (pos == std::string::npos) {
     return grad_op_name;
