@@ -78,6 +78,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
  **/
 #define MIOPEN_DNN_ROUTINE_EACH(__macro)                  \
   __macro(miopenGetVersion);                              \
+  __macro(miopenOpTensor);                                \
   __macro(miopenSet4dTensorDescriptor);                   \
   __macro(miopenSetTensorDescriptor);                     \
   __macro(miopenInitConvolutionNdDescriptor);             \
@@ -109,6 +110,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenActivationBackward);                      \
   __macro(miopenConvolutionBackwardWeights);              \
   __macro(miopenConvolutionForward);                      \
+  __macro(miopenConvolutionForwardBias);                  \
   __macro(miopenConvolutionBackwardBias);                 \
   __macro(miopenConvolutionForwardGetWorkSpaceSize);      \
   __macro(miopenConvolutionBackwardDataGetWorkSpaceSize); \

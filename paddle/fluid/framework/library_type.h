@@ -61,6 +61,8 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     return LibraryType::kPlain;
   } else if (s == std::string("XPU")) {
     return LibraryType::kPlain;
+  } else if (s == std::string("NPU")) {
+    return LibraryType::kPlain;
   } else if (s == std::string("CUDA")) {
     return LibraryType::kPlain;
   } else {

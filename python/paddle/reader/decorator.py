@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    'cache', 'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap_readers', 'multiprocess_reader'
-]
-
 from threading import Thread
 import subprocess
 import multiprocessing
 import six
 import sys
+import warnings
 
 from six.moves.queue import Queue
 from six.moves import zip_longest
@@ -30,7 +26,11 @@ from six.moves import zip
 import itertools
 import random
 import zlib
+
 import paddle.compat as cpt
+from paddle.fluid.reader import QUEUE_GET_TIMEOUT
+
+__all__ = []
 
 # On macOS, the 'spawn' start method is now the default in Python3.8 multiprocessing,
 # Paddle is currently unable to solve this, so forces the process to start using 
@@ -587,13 +587,17 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         raise NotImplementedError(
             "The multiprocess_reader method is not supported on windows.")
 
+    # ujson is ultra fast json encoder and decoder written in pure C with bindings for Python 3.6+.
     try:
         import ujson as json
     except Exception as e:
-        sys.stderr.write("import ujson error: " + str(e) + " use json\n")
+        warnings.warn(
+            "The `ujson` module is not found, use the `json` module, `ujson` encodes and decodes faster, "
+            "you can install `ujson` through `pip install ujson`.")
         import json
 
-    assert type(readers) is list and len(readers) > 0
+    assert isinstance(readers, (list, tuple)) and len(readers) > 0, (
+        "`readers` must be list or tuple.")
 
     def _read_into_queue(reader, queue):
         try:
@@ -616,11 +620,20 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         reader_num = len(readers)
         finish_num = 0
         while finish_num < reader_num:
-            sample = queue.get()
+            try:
+                sample = queue.get(timeout=QUEUE_GET_TIMEOUT)
+            except:
+                logging.error(
+                    "multiprocess_reader failed to get data from the multiprocessing.Queue."
+                )
+                six.reraise(*sys.exc_info())
+
             if sample is None:
                 finish_num += 1
             elif sample == "":
-                raise ValueError("multiprocess reader raises an exception")
+                raise ValueError(
+                    "multiprocess_reader failed to put data into the multiprocessing.Queue."
+                )
             else:
                 yield sample
 
@@ -662,7 +675,9 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
                 elif sample == "":
                     conn.close()
                     conn_to_remove.append(conn)
-                    raise ValueError("multiprocess reader raises an exception")
+                    raise ValueError(
+                        "multiprocess_reader failed to send data into the multiprocessing.Pipe."
+                    )
                 else:
                     yield sample
 

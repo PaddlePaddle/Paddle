@@ -18,10 +18,10 @@ import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_WINDOWS
+from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_WINDOWS, IS_MAC
 from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
 
-# Because Windows don't use docker, the shared lib already exists in the 
+# Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\custom_relu_module_jit\\custom_relu_module_jit.pyd'.format(
     get_build_directory())
@@ -33,11 +33,13 @@ if os.name == 'nt' and os.path.isfile(file):
 # custom_relu_op_dup.cc is only used for multi ops test,
 # not a new op, if you want to test only one op, remove this
 # source file
+sources = ['custom_relu_op.cc', 'custom_relu_op_dup.cc']
+if not IS_MAC:
+    sources.append('custom_relu_op.cu')
+
 custom_module = load(
     name='custom_relu_module_jit',
-    sources=[
-        'custom_relu_op.cc', 'custom_relu_op.cu', 'custom_relu_op_dup.cc'
-    ],
+    sources=sources,
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
@@ -103,15 +105,18 @@ class TestJITLoad(unittest.TestCase):
                 in str(e))
             if IS_WINDOWS:
                 self.assertTrue(
-                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:47"
-                    in str(e))
+                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc" in
+                    str(e))
             else:
                 self.assertTrue(
-                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:47"
-                    in str(e))
+                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc" in
+                    str(e))
         self.assertTrue(caught_exception)
 
         caught_exception = False
+        # MAC-CI don't support GPU
+        if IS_MAC:
+            return
         try:
             x = np.random.uniform(-1, 1, [4, 8]).astype('int32')
             custom_relu_dynamic(custom_module.custom_relu, 'gpu', 'int32', x)
@@ -121,7 +126,7 @@ class TestJITLoad(unittest.TestCase):
                 "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32_t`"
                 in str(e))
             self.assertTrue(
-                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu:50" in
+                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in
                 str(e))
         self.assertTrue(caught_exception)
 

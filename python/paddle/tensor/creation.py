@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 import numpy as np
+from paddle.common_ops_import import fill_constant
+from ..fluid.layers import utils
 
 from ..fluid.layers import tensor
 from ..fluid.framework import Variable
@@ -25,31 +27,11 @@ from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
-from paddle.common_ops_import import *
 # TODO: define functions to get create a tensor  
-from ..fluid.layers import linspace  #DEFINE_ALIAS
+from ..fluid.layers import linspace  # noqa: F401
 import paddle
 
-__all__ = [
-    'to_tensor',
-    'diag',
-    #       'get_tensor_from_selected_rows',
-    'linspace',
-    'ones',
-    'ones_like',
-    'zeros',
-    'zeros_like',
-    'arange',
-    'eye',
-    'full',
-    'full_like',
-    'empty',
-    'empty_like',
-    'triu',
-    'tril',
-    'meshgrid',
-    'assign',
-]
+__all__ = []
 
 
 @dygraph_only
@@ -1036,8 +1018,10 @@ def assign(x, output=None):
     The OP copies the :attr:`x` to the :attr:`output`.
  
     Parameters:
-        x (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
-            float16, float32, float64, int32 and int64.
+        x (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
+            or scalar. Its data type supports float16, float32, float64, int32, int64, and bool.
+            Note: the float64 data will be converted to float32 because of current platform protobuf
+            data limitation.
         output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
  
@@ -1058,5 +1042,6 @@ def assign(x, output=None):
           result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
-    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+    check_type(x, 'x', (Variable, np.ndarray, list, tuple, float, int, bool),
+               'assign')
     return tensor.assign(x, output)

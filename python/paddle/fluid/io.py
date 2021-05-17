@@ -1788,7 +1788,7 @@ def _legacy_save(param_dict, model_path, protocol=2):
 
 
 @static_only
-def save(program, model_path, protocol=2, **configs):
+def save(program, model_path, protocol=4, **configs):
     """
     :api_attr: Static Graph
 
@@ -1802,7 +1802,7 @@ def save(program, model_path, protocol=2, **configs):
         program(Program) : The program to saved.
         model_path(str): the file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: 2
+                                 Default: 4
         configs(dict, optional) : optional keyword arguments.                        
 
     Returns:
@@ -1913,7 +1913,7 @@ def load(program, model_path, executor=None, var_list=None):
         model_path(str): The file prefix store the program
         executor(Executor, optional): The executor used for initialize the parameter
                                       When startup program is not run.
-        var_list(list, optional): The Tensor list to load single model file saved with
+        var_list(list|tuple, optional): The Tensor list/tuple to load single model file saved with
                                   [ save_params, save_persistables, save_vars ].
                                   Default: None
 
@@ -2041,6 +2041,10 @@ def load(program, model_path, executor=None, var_list=None):
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
             place = paddle.fluid.XPUPlace(p.xpu_device_id())
+        elif p.is_npu_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.NPUPlace(p.npu_device_id())
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
@@ -2099,7 +2103,7 @@ def load_program_state(model_path, var_list=None):
 
     Args:
         model_path(str): The file prefix store the program
-        var_list(list, optional): The Tensor list to load saved with
+        var_list(list|tuple, optional): The Tensor list/tuple to load saved with
                                   [ save_params, save_persistables, save_vars ].
                                   Default: None.
                                   The var_list is only used to get name,
@@ -2335,6 +2339,10 @@ def set_program_state(program, state_dict):
                 p = paddle.fluid.core.Place()
                 p.set_place(ten_place)
                 py_place = paddle.fluid.XPUPlace(p.xpu_device_id())
+            elif ten_place.is_npu_place():
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.NPUPlace(p.npu_device_id())
 
             ten.set(new_para_np, py_place)
 

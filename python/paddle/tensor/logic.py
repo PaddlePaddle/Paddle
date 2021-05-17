@@ -17,33 +17,18 @@ from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from .. import fluid
 from ..fluid.framework import in_dygraph_mode
-from paddle.common_ops_import import *
 from ..framework import VarBase as Tensor
 
 # TODO: define logic functions of a tensor  
-from ..fluid.layers import is_empty  #DEFINE_ALIAS
-from ..fluid.layers import logical_and  #DEFINE_ALIAS
-from ..fluid.layers import logical_not  #DEFINE_ALIAS
-from ..fluid.layers import logical_or  #DEFINE_ALIAS
-from ..fluid.layers import logical_xor  #DEFINE_ALIAS
+from ..fluid.layers import is_empty  # noqa: F401
+from ..fluid.layers import logical_and  # noqa: F401
+from ..fluid.layers import logical_not  # noqa: F401
+from ..fluid.layers import logical_or  # noqa: F401
+from ..fluid.layers import logical_xor  # noqa: F401
 
-__all__ = [
-    'equal',
-    'equal_all',
-    'greater_equal',
-    'greater_than',
-    'is_empty',
-    'less_equal',
-    'less_than',
-    'logical_and',
-    'logical_not',
-    'logical_or',
-    'logical_xor',
-    'not_equal',
-    'allclose',
-    'is_tensor'
-    #       'isnan'
-]
+from paddle.common_ops_import import core
+
+__all__ = []
 
 
 def equal_all(x, y, name=None):

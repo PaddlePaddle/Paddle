@@ -30,6 +30,7 @@ class TestDygraphControlFlowSame(TestDistBase):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
+        self._find_unused_parameters = True
 
     def test_net(self):
         if fluid.core.is_compiled_with_cuda():
@@ -46,6 +47,7 @@ class TestFleetDygraphControlFlowSame(TestDygraphControlFlowSame):
         self._nccl2_mode = True
         self._dygraph = True
         self._use_fleet_api = True
+        self._find_unused_parameters = True
 
 
 class TestFleetDygraphControlFlowSameAccGrad(TestDygraphControlFlowSame):
@@ -54,6 +56,7 @@ class TestFleetDygraphControlFlowSameAccGrad(TestDygraphControlFlowSame):
         self._nccl2_mode = True
         self._dygraph = True
         self._accumulate_gradient = True
+        self._find_unused_parameters = True
 
 
 class TestDygraphControlFlowDiff(TestDistBase):
@@ -61,6 +64,7 @@ class TestDygraphControlFlowDiff(TestDistBase):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
+        self._find_unused_parameters = True
 
     def test_net(self):
         if fluid.core.is_compiled_with_cuda():
@@ -77,6 +81,7 @@ class TestFleetDygraphControlFlowDiff(TestDygraphControlFlowDiff):
         self._nccl2_mode = True
         self._dygraph = True
         self._use_fleet_api = True
+        self._find_unused_parameters = True
 
 
 class TestFleetDygraphControlFlowDiffAccGrad(TestDygraphControlFlowDiff):
@@ -85,6 +90,7 @@ class TestFleetDygraphControlFlowDiffAccGrad(TestDygraphControlFlowDiff):
         self._nccl2_mode = True
         self._dygraph = True
         self._accumulate_gradient = True
+        self._find_unused_parameters = True
 
 
 if __name__ == "__main__":
