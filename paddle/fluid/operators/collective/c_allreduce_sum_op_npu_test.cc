@@ -46,9 +46,13 @@ namespace m = paddle::operators::math;
 using float16 = paddle::platform::float16;
 
 USE_OP(c_allreduce_sum);
+USE_OP(alloc_float_status);
+USE_OP(elementwise_div);
 USE_NO_KERNEL_OP(c_gen_hccl_id);
 USE_NO_KERNEL_OP(c_comm_init_hccl);
 USE_OP_DEVICE_KERNEL(c_allreduce_sum, NPU);
+USE_OP_DEVICE_KERNEL(alloc_float_status, NPU);
+USE_OP_DEVICE_KERNEL(elementwise_div, NPU);
 
 DECLARE_string(selected_npus);
 
@@ -123,25 +127,44 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
 
 f::Tensor* alloc_float_status(f::Scope* scope, const p::DeviceContext& ctx){
     auto float_status_var = scope->Var("FloatStatus");
-    auto float_status = float_status_var->GetMutable<f::Tensor>();
-    float_status->mutable_data<float>(ctx.GetPlace());
+    auto float_status = float_status_var->GetMutable<f::LoDTensor>();
     float_status->Resize({8});
-
-    /*
-    auto runner = paddle::operators::NpuOpRunner("NPUAllocFloatStatus", {}, {*float_status});
-    auto stream = ctx.stream();
-    runner.Run(stream);
-    */
+    float_status->mutable_data<float>(ctx.GetPlace());
 
     VLOG(3) << "before alloc status";
-    f::AttributeMap attrs;
-    auto op = f::OpRegistry::CreateOp("NPUAllocFloatStatus", {}, {{"FloatStatus", {"FloatStatus"}}}, {});
+    auto op = f::OpRegistry::CreateOp("alloc_float_status", {}, {{"FloatStatus", {"FloatStatus"}}}, {});
     VLOG(3) << "after alloc status";
 
     op->Run(*scope, ctx.GetPlace());
     VLOG(3) << "after alloc status run";
 
     return float_status;
+}
+
+void touch_inf(f::Scope* scope, const p::DeviceContext& ctx){
+  std::vector<float16> init;
+  for (int64_t i = 0; i < 1; ++i) {
+    init.push_back(static_cast<float16>(0.0));
+  }
+
+  auto x = scope->Var("Ele_x");
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  TensorFromVector(init, ctx, tensor_x);
+  tensor_x->Resize({1});
+
+  auto y = scope->Var("Ele_y");
+  auto tensor_y = y->GetMutable<f::LoDTensor>();
+  TensorFromVector(init, ctx, tensor_y);
+  tensor_y->Resize({1});
+
+  auto out = scope->Var("Ele_out");
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  tensor_out->Resize({1});
+  ctx.Wait();
+
+  auto op = f::OpRegistry::CreateOp("elementwise_div", {{"X", {"Ele_x"}}, {"Y", {"Ele_y"}}},
+                                    {{"Out", {"Ele_out"}}}, {});
+  op->Run(*scope, ctx.GetPlace());
 }
 
 template<typename T>
@@ -157,7 +180,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
 
   std::vector<T> init;
   for (int64_t i = 0; i < num1 * num2; ++i) {
-    init.push_back(val + rank_id);
+    init.push_back(val + static_cast<T>(rank_id));
   }
   PrintDebugInfo("input data", init);
 
@@ -178,6 +201,9 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   attrs["ring_id"] = 0;
 
   alloc_float_status(scope, ctx);
+  if(std::isinf(val)){
+      touch_inf(scope, ctx);
+  }
 
   auto op = f::OpRegistry::CreateOp("c_allreduce_sum", {{"X", {"Data"}}, {"FloatStatus", {"FloatStatus"}}},
                                     {{"Out", {"OutData"}}}, attrs);
@@ -194,13 +220,13 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   PrintDebugInfo("output data", out_vec);
 
   EXPECT_EQ(out_vec.size(), init.size());
-  if(std::isinf(val)){
+  if(!std::isinf(val)){
       for (uint32_t i = 0; i < out_vec.size(); i++) {
-        EXPECT_EQ(out_vec[i], 3.0);
+        EXPECT_EQ(static_cast<float>(out_vec[i]), 3.0);
       }
   }else{
       for (uint32_t i = 0; i < out_vec.size(); i++) {
-        EXPECT_TRUE(!std::isinf(out_vec[i]));
+        EXPECT_TRUE(std::isinf(out_vec[i]));
       }
   }
 }
@@ -214,19 +240,19 @@ TEST(c_allreduce_sum, NPU) {
   // only support one device, if more than one device, use first default
   PrepareUniqueId(&scope, ctx, &hccl_id);
   Prepare(&scope, ctx, &hccl_id);
+  auto inf_all = std::numeric_limits<double>::infinity();
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num: " << i;
+    auto inf = static_cast<float>(inf_all);
     TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
+    TestHCCLAllReduceOp<float>(&scope, ctx, i, inf);
   }
 
-  /*
-    for (int i = 2; i < 3; i++) {
-        VLOG(2) << "iter num: " << i;
-        TestHCCLAllReduceOp(&scope, ctx, i);
-      }
-    for (int i = 3; i < 4; i++) {
-        VLOG(2) << "iter num: " << i;
-        TestHCCLAllReduceOp(&scope, ctx, i);
-      }
-      */
+  for (int i = 0; i < 1; i++) {
+    VLOG(2) << "iter num: " << i;
+    auto inf = static_cast<float16>(inf_all);
+    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0));
+    TestHCCLAllReduceOp<float16>(&scope, ctx, i, inf);
+  }
+
 }

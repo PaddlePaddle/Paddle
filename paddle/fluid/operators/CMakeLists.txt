@@ -26,15 +26,15 @@ if(WITH_ASCEND_CL)
   cc_library(npu_utils SRCS npu_utils.cc DEPS npu_op_runner)
 endif()
 
-if(WITH_DISTRIBUTE)
-    add_subdirectory(collective)
-endif()
-
 if (WITH_PSCORE)
     add_subdirectory(pscore)
 endif()
 
 add_subdirectory(amp)
+
+if(WITH_DISTRIBUTE)
+    add_subdirectory(collective)
+endif()
 
 add_subdirectory(reader)
 

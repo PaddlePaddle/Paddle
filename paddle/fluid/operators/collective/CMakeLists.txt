@@ -46,7 +46,8 @@ if(WITH_ASCEND_CL)
     cc_test(c_broadcast_op_npu_test SRCS c_broadcast_op_npu_test.cc
         DEPS c_broadcast_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
     cc_test(c_allreduce_sum_op_npu_test SRCS c_allreduce_sum_op_npu_test.cc
-        DEPS c_allreduce_sum_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
+        DEPS c_allreduce_sum_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM}
+        alloc_float_status_op elementwise_div)
     cc_test(c_reducescatter_op_npu_test SRCS c_reducescatter_op_npu_test.cc
         DEPS c_reducescatter_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
     cc_test(c_allgather_op_npu_test SRCS c_allgather_op_npu_test.cc
