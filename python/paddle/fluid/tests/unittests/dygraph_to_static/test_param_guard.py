@@ -116,17 +116,20 @@ class TestRawParameterList(unittest.TestCase):
         self.iter_num = 5
         self.prog_trans = ProgramTranslator()
 
-    def train(self, is_iter, to_static):
+    def init_net(self):
+        self.net = NetWithRawParamList(10, 3)
+
+    def train(self, to_static):
         paddle.seed(self.seed)
         np.random.seed(self.seed)
         self.prog_trans.enable(to_static)
+        self.init_net()
 
-        net = NetWithRawParamList(10, 3)
-        sgd = paddle.optimizer.SGD(0.1, parameters=net.parameters())
+        sgd = paddle.optimizer.SGD(0.1, parameters=self.net.parameters())
 
         for batch_id in range(self.iter_num):
             x = paddle.rand([4, 10], dtype='float32')
-            out = net(x)
+            out = self.net(x)
             loss = paddle.mean(out)
             loss.backward()
             sgd.step()
@@ -135,12 +138,33 @@ class TestRawParameterList(unittest.TestCase):
         return loss
 
     def test_parameter_list(self):
-        static_loss = self.train(False, to_static=True)
-        dygraph_loss = self.train(False, to_static=False)
+        static_loss = self.train(to_static=True)
+        dygraph_loss = self.train(to_static=False)
         self.assertTrue(
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph result is {}\nstatic result is {}'.format(dygraph_loss,
                                                                    static_loss))
+
+
+class NetWithSubLayerParamList(paddle.nn.Layer):
+    def __init__(self, sub_layer):
+        super(NetWithSubLayerParamList, self).__init__()
+        self.sub_layer = sub_layer
+        self.params = [sub_layer.weight]
+        self.bias_dict = {'b': sub_layer.bias}
+
+    @to_static
+    def forward(self, x):
+        out = paddle.matmul(x, self.params[0])
+        out = paddle.add(out, self.bias_dict['b'])
+        out = paddle.tanh(out)
+        return out
+
+
+class TestSubLayerParameterList(TestRawParameterList):
+    def init_net(self):
+        fc = paddle.nn.Linear(10, 3)
+        self.net = NetWithSubLayerParamList(fc)
 
 
 if __name__ == '__main__':
