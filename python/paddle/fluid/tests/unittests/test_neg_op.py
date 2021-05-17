@@ -23,12 +23,12 @@ paddle.enable_static()
 class TestNegOp(OpTest):
     def setUp(self):
         self.op_type = 'neg'
-        self.dtype = np.float64
+        self.init_dtype_type()
         self.inputs = {'X': np.random.random((32, 64)).astype(self.dtype)}
         self.outputs = {'Out': np.negative(self.inputs['X'])}
 
     def init_dtype_type(self):
-        pass
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -38,35 +38,29 @@ class TestNegOp(OpTest):
 
 
 class TestNegOpFp32(TestNegOp):
-    def init_dtype(self):
+    def init_dtype_type(self):
         self.dtype = np.float32
-
-    def test_check_output(self):
-        self.check_output()
 
 
 class TestNegOpFp16(TestNegOp):
-    def init_dtype(self):
+    def init_dtype_type(self):
         self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output()
 
 
 class TestNegOpInt64(TestNegOp):
-    def init_dtype(self):
+    def init_dtype_type(self):
         self.dtype = np.int64
 
-    def test_check_output(self):
-        self.check_output()
+    def test_check_grad_normal(self):
+        pass
 
 
 class TestNegOpInt32(TestNegOp):
-    def init_dtype(self):
+    def init_dtype_type(self):
         self.dtype = np.int32
 
-    def test_check_output(self):
-        self.check_output()
+    def test_check_grad_normal(self):
+        pass
 
 
 if __name__ == "__main__":
