@@ -410,12 +410,6 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
                                                         zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::complex64>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::complex64, P>(self, array, place,
-                                                          zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::complex128>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::complex128, P>(self, array, place,
-                                                           zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::complex<float>>>(
                  array)) {
     SetTensorFromPyArrayT<paddle::platform::complex<float>, P>(
