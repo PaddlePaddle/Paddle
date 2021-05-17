@@ -222,9 +222,11 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         // FIXME(gongwb): remove this
         ctx.device_context().Wait();
 
+        /*
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         VLOG(4) << "fill output data constant inf";
         FillNpuTensorWithConstant<T>(out, inf);
+        */
 
         // FIXME(gongwb): remove this
         ctx.device_context().Wait();

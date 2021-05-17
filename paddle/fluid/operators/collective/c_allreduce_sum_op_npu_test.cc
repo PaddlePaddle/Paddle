@@ -228,7 +228,7 @@ TEST(c_allreduce_sum, NPU) {
   // only support one device, if more than one device, use first default
   PrepareUniqueId(&scope, ctx, &hccl_id);
   Prepare(&scope, ctx, &hccl_id);
-  auto inf_all = std::numeric_limits<float>::infinity();
+  //auto inf_all = std::numeric_limits<float>::infinity();
 
   f::Tensor tmp;
   tmp.mutable_data<float>({8}, ctx.GetPlace()); 
@@ -248,12 +248,13 @@ TEST(c_allreduce_sum, NPU) {
 
   touch_inf(&scope, ctx);
 
+  /*
   o::alloc_float_status(ctx, float_status);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num 2: " << i << " float";
-    TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, inf_all);
+    TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
     VLOG(2) << "iter num 2: " << i << " float16";
-    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(inf_all));
+    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(3.0));
   }
 
   for (int i = 0; i < 1; i++) {
@@ -264,9 +265,9 @@ TEST(c_allreduce_sum, NPU) {
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(inf_all), static_cast<float16>(inf_all));
   }
 
+  */
   o::clear_float_status(ctx, float_status, &tmp);
   ctx.Wait();
-  return;
 
   o::alloc_float_status(ctx, float_status);
   for (int i = 0; i < 1; i++) {
