@@ -166,6 +166,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   int rank_id = atoi(getenv("RANK_ID"));
   int num1 = 3;
   int num2 = 128;
+  tensor_x->Resize({num1, num2});
 
   std::vector<T> init;
   for (int64_t i = 0; i < num1 * num2; ++i) {
@@ -200,6 +201,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
+  ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);
 
