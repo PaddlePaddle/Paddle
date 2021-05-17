@@ -79,7 +79,8 @@ class TestSimpleRNNOp(OpTest):
             time_major=True,
             direction=direction,
             dropout=self.dropout,
-            nonlinearity=self.mode)
+            nonlinearity=self.mode,
+            dtype=self.dtype)
 
         flat_w = get_params_for_net(rnn1)
 
