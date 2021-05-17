@@ -91,7 +91,6 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_total(framework::proto::VarType::FP32);
     tmp_total.Resize(total->dims());
     tmp_total.mutable_data<float>(ctx.GetPlace());
-    tmp_total.mutable_data<float>(ctx.GetPlace());
     FillNpuTensorWithConstant<float>(&tmp_total,
                                      static_cast<float>(num_samples));
 
