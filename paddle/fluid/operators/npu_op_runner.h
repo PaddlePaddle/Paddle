@@ -100,9 +100,10 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
   PADDLE_ENFORCE_EQ(
       platform::is_npu_place(tensor->place()), true,
       platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
+  VLOG(10) << "fill constant val:" << val << ", isinf:"<< std::isinf(val);
   // do async for better performance
   if ((typeid(float) == typeid(T) || typeid(platform::float16) == typeid(T)) &&
-      static_cast<float>(val) > MIN_PRECISION_FOR_POWER && std::isinf(val)) {
+      static_cast<float>(val) > MIN_PRECISION_FOR_POWER && !std::isinf(val)) {
     Tensor tmp(tensor->type());
     tmp.Resize(tensor->dims());
     tmp.mutable_data<T>(tensor->place());

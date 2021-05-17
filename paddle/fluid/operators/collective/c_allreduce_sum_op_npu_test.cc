@@ -167,6 +167,18 @@ void touch_inf(f::Scope* scope, const p::DeviceContext& ctx){
   op->Run(*scope, ctx.GetPlace());
 }
 
+void clear_float_status(f::Scope* scope, const p::DeviceContext& ctx, 
+        f::Tensor*float_status){
+    f::Tensor tmp;
+    tmp.mutable_data<float>({8}, ctx.GetPlace()); 
+    auto npu_ctx = dynamic_cast<p::NPUDeviceContext*>(const_cast<p::DeviceContext*>(&ctx));
+
+    auto runner_clear_status =
+        paddle::operators::NpuOpRunner("NPUClearFloatStatus", {*float_status}, {tmp});
+    runner_clear_status.Run(npu_ctx->stream());
+}
+
+
 template<typename T>
 void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
                          int iter, T val) {
@@ -200,7 +212,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   attrs["tag"] = std::string("tagx_" + std::to_string(iter));
   attrs["ring_id"] = 0;
 
-  alloc_float_status(scope, ctx);
+  auto* float_status = alloc_float_status(scope, ctx);
   if(std::isinf(val)){
       touch_inf(scope, ctx);
   }
@@ -215,6 +227,10 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
+
+  if(std::isinf(val)){
+      clear_float_status(scope, ctx, float_status);
+  }
   ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);
@@ -242,17 +258,18 @@ TEST(c_allreduce_sum, NPU) {
   Prepare(&scope, ctx, &hccl_id);
   auto inf_all = std::numeric_limits<double>::infinity();
   for (int i = 0; i < 1; i++) {
-    VLOG(2) << "iter num: " << i;
+    VLOG(2) << "iter num: " << i << " float 1.0";
     auto inf = static_cast<float>(inf_all);
-    TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
+    //TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
+    VLOG(2) << "iter num: " << i << " float inf";
     TestHCCLAllReduceOp<float>(&scope, ctx, i, inf);
   }
 
   for (int i = 0; i < 1; i++) {
-    VLOG(2) << "iter num: " << i;
+    VLOG(2) << "iter num: " << i << " float16 1.0";
     auto inf = static_cast<float16>(inf_all);
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0));
-    TestHCCLAllReduceOp<float16>(&scope, ctx, i, inf);
+    //VLOG(2) << "iter num: " << i << " float16 inf";
+    //TestHCCLAllReduceOp<float16>(&scope, ctx, i, inf);
   }
-
 }

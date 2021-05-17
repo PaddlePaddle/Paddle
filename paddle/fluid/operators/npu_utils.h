@@ -20,6 +20,7 @@ using NPUAttributeMap = framework::NPUAttributeMap;
 
 bool FoundNanOrInf(const framework::ExecutionContext& ctx , aclrtStream stream,
         const paddle::framework::Tensor* float_status, Tensor* tmp);
+
 };
 };
 
