@@ -21,6 +21,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 #include <iostream>
+#include <cmath>        // std::abs
 
 #include "gtest/gtest.h"
 
@@ -205,7 +206,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   EXPECT_EQ(out_vec.size(), init.size());
   if(!std::isinf(val)){
       for (uint32_t i = 0; i < out_vec.size(); i++) {
-        EXPECT_EQ(static_cast<float>(out_vec[i]), 3.0);
+        EXPECT_TRUE(abs(static_cast<float>(out_vec[i]) - 3.0) < 0.01);
       }
   }else{
       for (uint32_t i = 0; i < out_vec.size(); i++) {
@@ -225,11 +226,15 @@ TEST(c_allreduce_sum, NPU) {
   Prepare(&scope, ctx, &hccl_id);
   auto inf_all = std::numeric_limits<double>::infinity();
 
-  f::Tensor tmp, float_status;
+  f::Tensor tmp;
   tmp.mutable_data<float>({8}, ctx.GetPlace()); 
-  float_status.mutable_data<float>({8}, ctx.GetPlace()); 
 
-  o::alloc_float_status(ctx, &float_status);
+  auto float_status_var = scope.Var("FloatStatus");
+  auto float_status = float_status_var->GetMutable<f::LoDTensor>();
+  float_status->Resize({8});
+  float_status->mutable_data<float>(ctx.GetPlace());
+
+  o::alloc_float_status(ctx, float_status);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num: " << i << " float";
     TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
@@ -247,17 +252,17 @@ TEST(c_allreduce_sum, NPU) {
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(inf_all));
   }
 
-  o::clear_float_status(ctx, &float_status, &tmp);
+  o::clear_float_status(ctx, float_status, &tmp);
   ctx.Wait();
 
-  o::alloc_float_status(ctx, &float_status);
+  o::alloc_float_status(ctx, float_status);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num 2: " << i << " float";
     TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
     VLOG(2) << "iter num 2: " << i << " float16";
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0));
   }
-  o::clear_float_status(ctx, &float_status, &tmp);
+  o::clear_float_status(ctx, float_status, &tmp);
   ctx.Wait();
 }
 
