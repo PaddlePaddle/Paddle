@@ -27,7 +27,7 @@ class LgammaOpMaker : public framework::OpProtoAndCheckerMaker {
 Lgamma Operator.
 
 This operator is used to perform elementwise lgamma for input $X$.
-$$out = |x|$$
+$$out = log\Gamma(x)$$
 
 )DOC");
   }
@@ -38,8 +38,8 @@ class LgammaOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lgamma");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "lgamma");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Lgamma");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Lgamma");
 
     auto in_dims = ctx->GetInputDim("X");
 

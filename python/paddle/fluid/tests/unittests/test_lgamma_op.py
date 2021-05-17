@@ -24,21 +24,29 @@ paddle.enable_static()
 class TestLgammaOp(OpTest):
     def setUp(self):
         self.op_type = 'lgamma'
-        self.dtype = np.float64
+        self.init_dtype_type()
         datas = np.random.random((32, 64)).astype(self.dtype)
         self.inputs = {'X': datas}
         for data in np.nditer(datas, op_flags=['readwrite']):
             data = math.lgamma(data)
         self.outputs = {'Out': datas}
 
-        def init_dtype_type(self):
-            pass
+    def init_dtype_type(self):
+        self.dtype = np.float64
 
-        def test_check_output(self):
-            self.check_output()
+    def test_check_output(self):
+        self.check_output()
 
-        def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out')
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestLgammaOpFp32(TestLgammaOp):
+    def init_dtype_type(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == "__main__":
