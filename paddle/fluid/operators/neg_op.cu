@@ -12,8 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/neg_op.h"
 #include "paddle/fluid/platform/float16.h"
+
+namespace paddle {
+namespace operators {
+
+template <typename T, typename Enable = void>
+struct CudaNegFunctor;
+
+template <typename T>
+struct CudaNegFunctor<T, math::NoComplex<T, math::Real<T>>> {
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return -args[0];
+  }
+};
+
+template <typename T>
+class NegKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* x = context.Input<Tensor>("X");
+    Tensor* out = context.Output<Tensor>("Out");
+    out->mutable_data<math::Real<T>>(context.GetPlace());
+
+    auto& dev_ctx = context.device_context<platform::CUDADeviceContext>();
+    std::vector<const framework::Tensor*> ins = {x};
+    std::vector<framework::Tensor*> outs = {out};
+    auto functor = CudaNegFunctor<T>();
+    LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, math::Real<T>>(
+        dev_ctx, ins, &outs, functor);
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(

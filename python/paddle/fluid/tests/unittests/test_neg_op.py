@@ -37,5 +37,37 @@ class TestNegOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestNegOpFp32(TestNegOp):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestNegOpFp16(TestNegOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestNegOpInt64(TestNegOp):
+    def init_dtype(self):
+        self.dtype = np.Int64
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestNegOpInt32(TestNegOp):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+    def test_check_output(self):
+        self.check_output()
+
+
 if __name__ == "__main__":
     unittest.main()

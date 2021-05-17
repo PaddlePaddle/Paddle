@@ -27,7 +27,7 @@ class NegOpMaker : public framework::OpProtoAndCheckerMaker {
 Neg Operator.
 
 This operator is used to perform elementwise neg for input $X$.
-$$out = |x|$$
+$$out = -x$$
 
 )DOC");
   }
@@ -51,8 +51,8 @@ class NegOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "neg");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "neg");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Neg");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Neg");
 
     auto in_dims = ctx->GetInputDim("X");
 
@@ -69,7 +69,7 @@ class NegGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@Grad", "NegGrad");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "AbsGrad");
+                   "X@Grad", "NegGrad");
 
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
