@@ -87,14 +87,13 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     total->mutable_data<int>(ctx.GetPlace());
     FillNpuTensorWithConstant<int>(total, static_cast<int>(num_samples));
 
-    // cast total to float32 for calculating accuracy
+    // use `total` of type `float32` for calculating accuracy
     Tensor tmp_total(framework::proto::VarType::FP32);
     tmp_total.Resize(total->dims());
     tmp_total.mutable_data<float>(ctx.GetPlace());
-    auto runner_cast_total = NpuOpRunner(
-        "Cast", {*total}, {tmp_total},
-        {{"dst_type", static_cast<int>(ConvertToNpuDtype(tmp_total.type()))}});
-    runner_cast_total.Run(stream);
+    tmp_total.mutable_data<float>(ctx.GetPlace());
+    FillNpuTensorWithConstant<float>(&tmp_total,
+                                     static_cast<float>(num_samples));
 
     // [accuracy]
     accuracy->mutable_data<float>(ctx.GetPlace());
