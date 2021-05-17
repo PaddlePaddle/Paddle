@@ -923,6 +923,8 @@ class DistributedStrategy(object):
         **Notes**:
             **Detailed arguments for tensor_parallel_configs**
             **tensor_parallel_degree**: degree of tensor parallel
+            **tensor_init_seed**: parameter initialization random seed
+
 
         Examples:
 
@@ -931,7 +933,8 @@ class DistributedStrategy(object):
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.tensor_parallel = True
-            strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4}
+            strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4,
+                                                "tensor_init_seed": 123}
 
         """
         return get_msg_dict(self.strategy.tensor_parallel_configs)
