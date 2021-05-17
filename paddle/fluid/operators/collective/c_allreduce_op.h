@@ -120,6 +120,15 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+void PrintDebugInfo2(const std::string preStr, const std::vector<T>& data) {
+    std::cout << preStr ;
+  for (auto ele : data) {
+      std::cout << ele << ",";
+  }
+  std::cout << "\n";
+}
+
 template <ReduceType red_type, typename T>
 class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
@@ -166,6 +175,9 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         VLOG(4) << "fill input data constant inf";
         FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);
+
+        // FIXME(gongwb): remove this
+        ctx.device_context().Wait();
     }
 
     HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
@@ -195,6 +207,11 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             << "input num: " << numel << "dtype: " << dtype
             << "hccl_red_type: " << hccl_red_type << ", group is: " << group;
 
+    ctx.device_context().Wait();
+    std::vector<T> out_vec;
+    TensorToVector(*in, ctx.device_context(), &out_vec);
+    PrintDebugInfo2("c_allreduce_kernel input data", out_vec);
+
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
         sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
         reinterpret_cast<void*>(stream)));
@@ -206,9 +223,16 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         VLOG(4) << "fill output data constant inf";
         FillNpuTensorWithConstant<T>(out, inf);
+
+        // FIXME(gongwb): remove this
+        ctx.device_context().Wait();
     }
 
     out->Resize(in->dims());
+
+    ctx.device_context().Wait();
+    TensorToVector(*out, ctx.device_context(), &out_vec);
+    PrintDebugInfo2("c_allreduce_kernel output data", out_vec);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));
