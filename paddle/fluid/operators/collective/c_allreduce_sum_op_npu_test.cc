@@ -229,7 +229,7 @@ TEST(c_allreduce_sum, NPU) {
   tmp.mutable_data<float>({8}, ctx.GetPlace()); 
   float_status.mutable_data<float>({8}, ctx.GetPlace()); 
 
-  o::alloc_float_status(ctx, &float_staus);
+  o::alloc_float_status(ctx, &float_status);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num: " << i << " float";
     TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
