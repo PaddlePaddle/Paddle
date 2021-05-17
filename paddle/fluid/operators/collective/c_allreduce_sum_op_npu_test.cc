@@ -44,6 +44,7 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
+namespace o = paddle::operators;
 using float16 = paddle::platform::float16;
 
 USE_OP(c_allreduce_sum);
@@ -213,7 +214,6 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   }
 }
 
-/*
 TEST(c_allreduce_sum, NPU) {
   f::Scope scope;
   HcclRootInfo hccl_id;
@@ -225,7 +225,11 @@ TEST(c_allreduce_sum, NPU) {
   Prepare(&scope, ctx, &hccl_id);
   auto inf_all = std::numeric_limits<double>::infinity();
 
-  auto* float_status = alloc_float_status(&scope, ctx);
+  f::Tensor tmp, float_status;
+  tmp.mutable_data<float>({8}, ctx.GetPlace()); 
+  float_status.mutable_data<float>({8}, ctx.GetPlace()); 
+
+  o::alloc_float_status(ctx, &float_staus);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num: " << i << " float";
     TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
@@ -243,7 +247,7 @@ TEST(c_allreduce_sum, NPU) {
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(inf_all));
   }
 
-  clear_float_status(&scope, ctx, float_status);
+  o::clear_float_status(ctx, float_status, &tmp);
   ctx.Wait();
 
   for (int i = 0; i < 1; i++) {
@@ -253,25 +257,25 @@ TEST(c_allreduce_sum, NPU) {
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0));
   }
 }
-*/
 
 TEST(nan_or_inf, NPU) {
   f::Scope scope;
-  HcclRootInfo hccl_id;
-
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
-  auto* float_status = alloc_float_status(&scope, ctx);
-  f::Tensor tmp;
+  f::Tensor tmp, float_status;
   tmp.mutable_data<float>({8}, ctx.GetPlace()); 
-  bool nan_or_inf=False;
+  float_status.mutable_data<float>({8}, ctx.GetPlace()); 
+
+  o::alloc_float_status(ctx, &float_status);
+  bool nan_or_inf=false;
 
   touch_inf(&scope, ctx);
-  nan_or_inf= FoundNanOrInf(ctx, ctx.stream(), float_status, &tmp);
+  nan_or_inf= o::FoundNanOrInf(ctx, ctx.stream(), &float_status, &tmp);
   EXPECT_TRUE(nan_or_inf);
+  ctx.Wait();
 
-  clear_float_status(&scope, ctx, float_status, &tmp);
-  nan_or_inf= FoundNanOrInf(ctx, ctx.stream(), float_status, &tmp);
+  o::clear_float_status(ctx, &float_status, &tmp);
+  nan_or_inf= o::FoundNanOrInf(ctx, ctx.stream(), &float_status, &tmp);
   EXPECT_TRUE(!nan_or_inf);
 }
 
