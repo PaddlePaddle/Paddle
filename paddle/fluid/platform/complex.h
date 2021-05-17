@@ -20,8 +20,6 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuComplex.h>
 #include <thrust/complex.h>
@@ -70,9 +68,6 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
   ~complex() = default;
 
   HOSTDEVICE complex(T real, T imag) : real(real), imag(imag) {}
-  HOSTDEVICE complex(T real) : real(real), imag(0.0) {}
-  HOSTDEVICE complex(complex64 c) : real(c.real), imag(c.imag) {}
-  HOSTDEVICE complex(complex128 c) : real(c.real), imag(c.imag) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -110,7 +105,7 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
             typename std::enable_if<std::is_floating_point<T1>::value ||
                                         std::is_integral<T1>::value,
                                     int>::type = 0>
-  HOSTDEVICE explicit complex(const T1& val) {
+  HOSTDEVICE complex(const T1& val) {
     real = static_cast<T>(val);
     imag = static_cast<T>(0.0);
   }
