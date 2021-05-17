@@ -37,14 +37,65 @@ using platform::MKLDNNGetDataType;
 using platform::to_void_cast;
 using Tensor = framework::Tensor;
 
+// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
+// Identity op if the tensor is not of rank 3.
+static framework::Tensor FoldInitDims(const Tensor &input) {
+  auto output = input;
+  auto in_dims = input.dims();
+  if (in_dims.size() == 3) {
+    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
+  }
+  return output;
+}
+
+// Reshape a rank-3 tensor from P x M x N to M x (P * N).
+// (Warning: This requires transposing data and writes into new memory.)
+// Identity op if the tensor is not of rank 3.
+template <typename T>
+static framework::Tensor FoldHeadAndLastDims(const MKLDNNDeviceContext &dev_ctx,
+                                             const Tensor* input) {
+  auto input_dims = framework::vectorize(input->dims());
+  if (input_dims.size() != 3) {
+    return *input;
+  }
+
+  framework::Tensor output;
+  output.Resize({input_dims[1], input_dims[0], input_dims[2]});
+  output.mutable_data<T>(dev_ctx.GetPlace());
+
+  mkldnn::memory::data_type input_type =
+          framework::ToMKLDNNDataType(input->type());
+  std::string key = platform::CreateKey(
+          dev_ctx, input_dims, input->format(), input->format(), input_type);
+  platform::ReorderMKLDNNHandler reorder_handler(
+          input_dims, input->type(), input_type, dev_ctx, dev_ctx.GetEngine(), key);
+
+  auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
+          mkldnn::memory::format_tag::abc, platform::to_void_cast(input->data<T>()));
+  auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+          &output, mkldnn::memory::format_tag::bac, dev_ctx.GetPlace());
+  auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
+                                                  reorder_dst_memory_p);
+
+  platform::RecordEvent record_reorder("int_reorder",
+                                      platform::EventRole::kUniqueOp);
+
+  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+  astream.wait();
+
+  output.Resize({input_dims[1], input_dims[0] * input_dims[2]});
+  return output;
+}
+
 template <typename T>
 class MatMulGradMKLDNNHandler
     : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
  public:
   MatMulGradMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                          const mkldnn::engine engine, platform::Place cpu_place,
-                         Tensor* x, const bool trans_x,
-                         Tensor* y, const bool trans_y,
+                         Tensor* x, bool trans_x,
+                         Tensor* y, bool trans_y,
                          Tensor* out, float scale, const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::matmul>(
             dev_ctx, engine, cpu_place,
@@ -174,38 +225,6 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
 
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
-}
-
-// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
-// Identity op if the tensor is not of rank 3.
-static framework::Tensor FoldInitDims(const framework::Tensor &input) {
-  auto output = input;
-  auto in_dims = input.dims();
-  if (in_dims.size() == 3) {
-    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
-  }
-  return output;
-}
-
-// Reshape a rank-3 tensor from P x M x N to M x (P * N).
-// (Warning: This requires transposing data and writes into new memory.)
-// Identity op if the tensor is not of rank 3.
-template <typename DeviceContext, typename T>
-static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
-                                             const framework::Tensor &input) {
-  auto in_dims = input.dims();
-  if (in_dims.size() != 3) {
-    return input;
-  }
-  framework::Tensor output;
-  output.Resize({in_dims[1], in_dims[0], in_dims[2]});
-  output.mutable_data<T>(context.GetPlace());
-  std::vector<int> axis = {1, 0, 2};
-  math::Transpose<DeviceContext, T, 3> trans;
-  trans(context, input, &output, axis);
-  output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
-
-  return output;
 }
 
 template <typename XT, typename YT, typename OT>
@@ -550,19 +569,32 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  private:
-  void ExecuteMatMul(const ExecutionContext& ctx, 
+  void ExecuteMatMulGrad(const ExecutionContext& ctx, 
                      const MKLDNNDeviceContext &dev_ctx, const mkldnn::engine &engine,
                      Tensor* x, bool trans_x, bool is_fold_init_dims_x,
                      Tensor* y, bool trans_y, bool is_fold_init_dims_y,
                      Tensor *out, int execution_number) const{
+    // gradient is calculated in a different way when broadcasting is used
+    bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
+                          out->dims().size() == 2;
+
+    Tensor x_combined, y_combined;
+    if(!need_combine){
+      x_combined = *x;
+      y_combined = *y;
+    } else{
+      x_combined = is_fold_init_dims_x ? FoldInitDims(*x) : FoldHeadAndLastDims<T>(dev_ctx, x);
+      y_combined = is_fold_init_dims_y ? FoldInitDims(*y) : FoldHeadAndLastDims<T>(dev_ctx, y);
+    }
 
     MatMulGradMKLDNNHandler<T> handler(
-        dev_ctx, engine, ctx.GetPlace(), x, trans_x,
-        y, trans_y, out, ctx.Attr<float>("alpha"),
+        dev_ctx, engine, ctx.GetPlace(), &x_combined, trans_x,
+        &y_combined, trans_y, out, 
+        ctx.Attr<float>("alpha"),
         ctx.InputName(framework::GradVarName("Out")) + std::to_string(execution_number));
 
-    const auto src_memory_p = handler.AcquireSrcMemory(x);
-    const auto weights_memory_p = handler.AcquireWeightsMemory(y);
+    const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
+    const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
     const auto dst_memory_p = handler.AcquireDstMemory(out);
 
     auto matmul_p = handler.AcquireForwardPrimitive();
@@ -611,17 +643,17 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
     }
 
     if (transpose_x && transpose_y) {
-      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, y, true, true, dout, true, false, dx, 0);
-      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, dout, true, true, x, true, false, dy, 1);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, y, true, true, dout, true, false, dx, 0);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, dout, true, true, x, true, false, dy, 1);
     } else if (transpose_x) {
-      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, y, false, false, dout, true, false, dx, 0);
-      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, x, false, false, dout, false, true, dy, 1);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, y, false, false, dout, true, false, dx, 0);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, x, false, false, dout, false, true, dy, 1);
     } else if (transpose_y) {
-      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, dout, false, false, y, false, true, dx, 0);
-      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, dout, true, true, x, false, true, dy, 1);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, dout, false, false, y, false, true, dx, 0);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, dout, true, true, x, false, true, dy, 1);
     } else {
-      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, dout, false, false, y, true, false, dx, 0);
-      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, x, true, true, dout, false, true, dy, 1);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, dout, false, false, y, true, false, dx, 0);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, x, true, true, dout, false, true, dy, 1);
     }
 
     if (dx) {

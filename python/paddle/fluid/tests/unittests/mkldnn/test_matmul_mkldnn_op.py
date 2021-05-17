@@ -51,7 +51,7 @@ class TestDnnlMatMulWithGradOp(TestDnnlMatMulOp):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error= 1e-2)
 
 
-class TestDnnlMatMulOpMixedDims1(TestDnnlMatMulOp):
+class TestDnnlMatMulOpMixedDims1(TestDnnlMatMulWithGradOp):
     def generate_data(self):
         self.x = np.random.random((17, 2, 3)).astype("float32")
         self.y = np.random.random((3, 4)).astype("float32")
@@ -80,7 +80,7 @@ class TestDnnlMatMulOpVectorMultiply2(TestDnnlMatMulWithGradOp):
             'transpose_X': True
         }
 
-class TestDnnlMatMulOpMixedDims2(TestDnnlMatMulOp):
+class TestDnnlMatMulOpMixedDims2(TestDnnlMatMulWithGradOp):
     def generate_data(self):
         self.x = np.random.random((2, 3)).astype("float32")
         self.y = np.random.random((17, 3, 4)).astype("float32")
