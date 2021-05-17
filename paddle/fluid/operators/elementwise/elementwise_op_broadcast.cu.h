@@ -240,18 +240,19 @@ struct BroadcastArgsWarpper {
     return offset;
   }
 
-  __device__ __forceinline__ void VectorizedCommonLoadData(DimsVec *args,
+  __device__ __forceinline__ void VectorizedCommonLoadData(DimsVec *vector_args,
                                                            int tid, int idx) {
-    args[idx] = vec_in_data[idx][tid];
+    *vector_args = vec_in_data[idx][tid];
   }
 
-  __device__ __forceinline__ void VectorizedDivmodLoadData(T *args, int tid,
-                                                           int idx) {
+  __device__ __forceinline__ void VectorizedDivmodLoadData(T *scalar_args,
+                                                           int tid, int idx) {
     int index = tid * VecSize;
 
+#pragma unroll(VecSize)
     for (int i = 0; i < VecSize; ++i) {
       uint32_t offset = GetDivmodOffset(index + i, idx);
-      args[i] = in_data[idx][offset];
+      scalar_args[i] = in_data[idx][offset];
     }
   }
 
@@ -271,8 +272,8 @@ struct BroadcastArgsWarpper {
 #pragma unroll(ET)
     for (int j = 0; j < ET; ++j) {
       if (no_broadcast[j]) {
-        DimsVec *vec_args = reinterpret_cast<DimsVec *>(args[j]);
-        VectorizedCommonLoadData(vec_args, tid, j);
+        DimsVec *vector_args = reinterpret_cast<DimsVec *>(args[j]);
+        VectorizedCommonLoadData(vector_args, tid, j);
       } else {
         VectorizedDivmodLoadData(args[j], tid, j);
       }
@@ -325,7 +326,7 @@ __device__ inline void VectorizedBroadcastKernelImpl(
   for (int j = 1; j < ET; ++j) {
 #pragma unroll(VecSize)
     for (int i = 0; i < VecSize; ++i) {
-      broadcast_warpper.func(args[0][i], args[j][i]);
+      args[0][i] = broadcast_warpper.func(args[0][i], args[j][i]);
     }
   }
   broadcast_warpper.VectorizedStoreData(args, tid);

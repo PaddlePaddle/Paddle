@@ -39,20 +39,6 @@ struct CudaAddFunctor {
   }
 };
 
-#define ELEMENTWISE_BINARY_FUNCTOR(Func, expr)                     \
-  template <typename T>                                            \
-  struct Func##Functor {                                           \
-    inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
-      return a expr b;                                             \
-    }                                                              \
-  };
-
-ELEMENTWISE_BINARY_FUNCTOR(FP32Add, +)
-ELEMENTWISE_BINARY_FUNCTOR(FP32Sub, -)
-ELEMENTWISE_BINARY_FUNCTOR(FP32Mul, *)
-ELEMENTWISE_BINARY_FUNCTOR(FP32Div, /)
-#undef ELEMENTWISE_BINARY_FUNCTOR
-
 template <typename T>
 class ElementwiseAddKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -74,7 +60,7 @@ class ElementwiseAddKernel<platform::CUDADeviceContext, T>
       int axis = ctx.Attr<int>("axis");
       axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
       LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, T>(
-          cuda_ctx, ins, z, FP32AddFunctor<T>(), axis);
+          cuda_ctx, ins, z, AddFunctor<T>(), axis);
     }
   }
 };
