@@ -206,7 +206,8 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   EXPECT_EQ(out_vec.size(), init.size());
   if(!std::isinf(val)){
       for (uint32_t i = 0; i < out_vec.size(); i++) {
-        EXPECT_TRUE(abs(static_cast<float>(out_vec[i]) - 3.0) < 0.01);
+        auto ret = abs(static_cast<float>(out_vec[i]) - 3.0);
+        EXPECT_TRUE(ret < 0.1);
       }
   }else{
       for (uint32_t i = 0; i < out_vec.size(); i++) {
