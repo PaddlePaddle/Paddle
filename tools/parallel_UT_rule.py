@@ -953,6 +953,7 @@ TWO_PARALLEL_JOB = [
     'test_adam_optimizer_fp32_fp64',
     'test_auc_op',
     'test_adam_op',
+    'test_adam_infcheck_op',
     'test_bilinear_tensor_product_op',
     'test_transpose_mkldnn_op',
     'test_callback_reduce_lr_on_plateau',
