@@ -1466,6 +1466,11 @@ function precise_card_test() {
     if (( $# > 1 )); then
         cardnumber=$2
         cuda_list="0"
+        if [ $cardnumber -eq 2 ]; then
+            cuda_list=${CUDA_VISIBLE_DEVICES}
+        else
+            cuda_list="0"
+        fi
     else
         cardnumber=2
         cuda_list=${CUDA_VISIBLE_DEVICES}
@@ -1485,7 +1490,6 @@ function precise_card_test() {
 }
 
 function get_precise_tests_map_file {
-    
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     ut_total_startTime_s=`date +%s`
@@ -1561,14 +1565,14 @@ set -x
     precise_card_test_single "$multiple_card_tests" 2
     precise_card_test_single "$exclusive_tests"
 
-
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
     
     if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
         rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
         precise_card_test_single "$rerun_tests"
     fi
-    
+    wait;
+
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
 
@@ -1577,10 +1581,6 @@ set -x
 
     #generate ut map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
-    
-    mkdir /pre_test_test
-    cp ${PADDLE_ROOT}/build/ut_file_map.json /pre_test_test
-
     wait;
 }
 
