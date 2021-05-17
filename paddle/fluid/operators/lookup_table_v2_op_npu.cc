@@ -29,7 +29,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
     auto *table_t = ctx.Input<framework::LoDTensor>("W");
 
-    It seems cann 20.1 accepts int64, but cann 20.2+ not.
+    // It seems cann 20.1 accepts int64, but cann 20.2+ not.
     PADDLE_ENFORCE_EQ(ids_t->type(), framework::proto::VarType::INT32,
                      platform::errors::Unimplemented(
                           "The index of LookupTableV2 should be int32."));
