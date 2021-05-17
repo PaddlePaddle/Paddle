@@ -247,7 +247,7 @@ TEST(c_allreduce_sum, NPU) {
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(inf_all));
   }
 
-  o::clear_float_status(ctx, float_status, &tmp);
+  o::clear_float_status(ctx, &float_status, &tmp);
   ctx.Wait();
 
   for (int i = 0; i < 1; i++) {
