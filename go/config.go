@@ -37,12 +37,12 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	cconfig := C.PD_ConfigCreate()
-	config := &Config{c: cconfig}
+	cConfig := C.PD_ConfigCreate()
+	config := &Config{c: cConfig}
 	runtime.SetFinalizer(config, func(config *Config) {
 		C.PD_ConfigDestroy(config.c)
 	})
-	return cconfig
+	return config
 }
 
 ///
@@ -78,7 +78,7 @@ func (config *Config) SetModelDir(modelDir string) {
 ///
 /// \param x model file path.
 ///
-func (c *Config) SetProgFile(model string) {
+func (config *Config) SetProgFile(model string) {
 	cmodel := C.CString(model)
 	C.PD_ConfigSetProgFile(config.c, cmodel)
 	defer C.free(unsafe.Pointer(cmodel))
@@ -146,7 +146,7 @@ func (config *Config) DisableFCPadding() {
 /// \return bool Whether fc padding is used.
 ///
 func (config *Config) UseFcPadding() bool {
-	return convertPDBoolToGo(C.PD_ConfigUseFcPadding(config.c))
+	return cvtPDBoolToGo(C.PD_ConfigUseFcPadding(config.c))
 }
 
 ///
@@ -170,8 +170,8 @@ func (config *Config) DisableGpu() {
 ///
 /// \brief Turn on XPU.
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int) {
-	C.PD_ConfigEnableXpu(config.c, C.int32(l3WorkspaceSize))
+func (config *Config) EnableXpu(l3WorkspaceSize int32) {
+	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize))
 }
 
 ///
@@ -180,7 +180,7 @@ func (config *Config) EnableXpu(l3WorkspaceSize int) {
 /// \return bool Whether the GPU is turned on.
 ///
 func (config *Config) UseGpu() bool {
-	return convertPDBoolToGo(C.PD_ConfigUseGpu(config.c))
+	return cvtPDBoolToGo(C.PD_ConfigUseGpu(config.c))
 }
 
 ///
@@ -189,7 +189,7 @@ func (config *Config) UseGpu() bool {
 /// \return bool Whether the XPU is turned on.
 ///
 func (config *Config) UseXpu() bool {
-	return convertPDBoolToGo(C.PD_ConfigUseXpu(config.c))
+	return cvtPDBoolToGo(C.PD_ConfigUseXpu(config.c))
 }
 
 ///
@@ -252,7 +252,7 @@ func (config *Config) FractionOfGpuMemoryForPool() float32 {
 /// \param x Whether the ir graph optimization is actived.
 ///
 func (config *Config) SwitchIrOptim(x bool) {
-	C.PD_ConfigSwitchIrOptim(config.c, convertGoBoolToPD(x))
+	C.PD_ConfigSwitchIrOptim(config.c, cvtGoBoolToPD(x))
 }
 
 ///
@@ -263,7 +263,7 @@ func (config *Config) SwitchIrOptim(x bool) {
 ///
 // bool ir_optim() const { return enable_ir_optim_; }
 func (config *Config) IrOptim() bool {
-	return convertPDBoolToGo(C.PD_ConfigIrOptim(config.c))
+	return cvtPDBoolToGo(C.PD_ConfigIrOptim(config.c))
 }
 
 ///
@@ -325,7 +325,7 @@ func (config *Config) IrOptim() bool {
 ///
 func (config *Config) EnableTensorRtEngine(workspaceSize int32, maxBatchSize int32, minSubgraphSize int32,
 	precision Precision, useStatic bool, useCalibMode bool) {
-	C.PD_ConfigEnableTensorRtEngine(config.c, C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), precision, convertGoBoolToPD(useStatic), convertGoBoolToPD(useCalibMode))
+	C.PD_ConfigEnableTensorRtEngine(config.c, C.int32_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
 }
 
 ///
@@ -334,34 +334,90 @@ func (config *Config) EnableTensorRtEngine(workspaceSize int32, maxBatchSize int
 /// \return bool Whether the TensorRT engine is used.
 ///
 func (config *Config) TensorRtEngineEnabled() bool {
-	return convertPDBoolToGo(C.PD_ConfigTensorRtEngineEnabled(config.c))
+	return cvtPDBoolToGo(C.PD_ConfigTensorRtEngineEnabled(config.c))
 }
 
 ///
 /// \brief Set min, max, opt shape for TensorRT Dynamic shape mode.
-/// \param min_input_shape The min input shape of the subgraph input.
-/// \param max_input_shape The max input shape of the subgraph input.
-/// \param opt_input_shape The opt input shape of the subgraph input.
-/// \param disable_trt_plugin_fp16 Setting this parameter to true means that
+/// \param minInputShape The min input shape of the subgraph input.
+/// \param maxInputShape The max input shape of the subgraph input.
+/// \param optimInputShape The opt input shape of the subgraph input.
+/// \param disableTrtPluginFp16 Setting this parameter to true means that
 /// TRT plugin will not run fp16.
 ///
-// void SetTRTDynamicShapeInfo(
-// 	std::map<std::string, std::vector<int>> min_input_shape,
-// 	std::map<std::string, std::vector<int>> max_input_shape,
-// 	std::map<std::string, std::vector<int>> optim_input_shape,
-// 	bool disable_trt_plugin_fp16 = false);
 func (config *Config) SetTRTDynamicShapeInfo(minInputShape map[string][]int32, maxInputShape map[string][]int32,
 	optimInputShape map[string][]int32, disableTrtPluginFp16 bool) {
-	C.PD_ConfigSetTrtDynamicShapeInfo(config.c)
+
+	tensorNum := uint(len(minInputShape))
+	names := make([](*C.char), tensorNum)
+	goNames := make([]string, tensorNum)
+	var shapeNum []uint
+
+	idx := 0
+	for n := range minInputShape {
+		char := C.CString(n)
+		defer C.free(unsafe.Pointer(char))
+		names[idx] = (*C.char)(unsafe.Pointer(char))
+		goNames[idx] = n
+		shapeNum = append(shapeNum, uint(len(minInputShape[n])))
+		idx++
+	}
+
+	cMinInputShape := make([]*C.int32_t, len(goNames))
+	cMaxInputShape := make([]*C.int32_t, len(goNames))
+	cOptInputShape := make([]*C.int32_t, len(goNames))
+	for i, n := range goNames {
+		pMin := (*C.int32_t)(C.malloc(C.size_t(C.sizeof_int32_t * len(minInputShape[n]))))
+		cMinInputShape[i] = pMin
+
+		// A []C.int32_t slice backed by C memory.
+		// See: https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
+		// Using [1<<27] instead of [1<<30] so it works on 32-bit architecture
+		pMinData := (*[1 << 27]C.int32_t)(unsafe.Pointer(pMin))
+		for j, v := range minInputShape[n] {
+			(*pMinData)[j] = C.int32_t(v)
+		}
+		defer C.free(unsafe.Pointer(pMin))
+
+		pMax := (*C.int32_t)(C.malloc(C.size_t(C.sizeof_int32_t * len(maxInputShape[n]))))
+		cMaxInputShape[i] = pMax
+		pMaxData := (*[1 << 27]C.int32_t)(unsafe.Pointer(pMax))
+		for j, v := range maxInputShape[n] {
+			(*pMaxData)[j] = C.int32_t(v)
+		}
+		defer C.free(unsafe.Pointer(pMax))
+
+		pOpt := (*C.int32_t)(C.malloc(C.size_t(C.sizeof_int32_t * len(optimInputShape[n]))))
+		cOptInputShape[i] = pOpt
+		pOptData := (*[1 << 27]C.int32_t)(unsafe.Pointer(pOpt))
+		for j, v := range optimInputShape[n] {
+			(*pOptData)[j] = C.int32_t(v)
+		}
+		defer C.free(unsafe.Pointer(pOpt))
+	}
+
+	C.PD_ConfigSetTrtDynamicShapeInfo(config.c, C.size_t(tensorNum), (**C.char)(unsafe.Pointer(&names[0])),
+		(*C.size_t)(unsafe.Pointer(&shapeNum[0])),
+		(**C.int32_t)(unsafe.Pointer(&cMinInputShape[0])),
+		(**C.int32_t)(unsafe.Pointer(&cMaxInputShape[0])),
+		(**C.int32_t)(unsafe.Pointer(&cOptInputShape[0])),
+		cvtGoBoolToPD(disableTrtPluginFp16))
 }
 
 ///
 /// \brief Prevent ops running in Paddle-TRT
 /// NOTE: just experimental, not an official stable API, easy to be broken.
 ///
-// void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 func (config *Config) DisableTensorRtOPs(ops []string) {
+	num := uint(len(ops))
+	var buf = make([]*C.char, num+1)
+	for i, _ := range ops {
+		char := C.CString(ops[i])
+		defer C.free(unsafe.Pointer(char))
+		buf[i] = (*C.char)(unsafe.Pointer(char))
+	}
 
+	C.PD_ConfigDisableTensorRtOPs(config.c, C.size_t(num), (**C.char)(unsafe.Pointer(&buf[0])))
 }
 
 ///
@@ -370,9 +426,8 @@ func (config *Config) DisableTensorRtOPs(ops []string) {
 /// may be more high-performance. Libnvinfer_plugin.so greater than
 /// V7.2.1 is needed.
 ///
-// void EnableTensorRtOSS();
 func (config *Config) EnableTensorRtOSS() {
-
+	C.PD_ConfigEnableTensorRtOSS(config.c)
 }
 
 ///
@@ -380,19 +435,17 @@ func (config *Config) EnableTensorRtOSS() {
 ///
 /// \return bool Whether to use the TensorRT OSS.
 ///
-// bool tensorrt_oss_enabled() { return trt_use_oss_; }
 func (config *Config) TensorrtOssEnabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigTensorRtOssEnabled(config.c))
 }
 
 ///
 /// \brief Enable TensorRT DLA
-/// \param dla_core ID of DLACore, which should be 0, 1,
+/// \param dlaCore ID of DLACore, which should be 0, 1,
 ///        ..., IBuilder.getNbDLACores() - 1
 ///
-// void EnableTensorRtDLA(int dla_core = 0);
-func (config *Config) EnableTensorRtDLA(dla_core int) {
-
+func (config *Config) EnableTensorRtDLA(dlaCore int32) {
+	C.PD_ConfigEnableTensorRtDla(config.c, C.int32_t(dlaCore))
 }
 
 ///
@@ -400,25 +453,36 @@ func (config *Config) EnableTensorRtDLA(dla_core int) {
 ///
 /// \return bool Whether to use the TensorRT DLA.
 ///
-// bool tensorrt_dla_enabled() { return trt_use_dla_; }
 func (config *Config) TensorrtDlaEnabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigTensorRtDlaEnabled(config.c))
 }
 
 ///
 /// \brief Turn on the usage of Lite sub-graph engine.
 ///
-/// \param precision_mode Precion used in Lite sub-graph engine.
-/// \param passes_filter Set the passes used in Lite sub-graph engine.
-/// \param ops_filter Operators not supported by Lite.
+/// \param precision Precion used in Lite sub-graph engine.
+/// \param zeroCopy Set the zero copy mode.
+/// \param passesFilter Set the passes used in Lite sub-graph engine.
+/// \param opsFilter Operators not supported by Lite.
 ///
-// void EnableLiteEngine(
-// 	AnalysisConfig::Precision precision_mode = Precision::kFloat32,
-// 	bool zero_copy = false,
-// 	const std::vector<std::string>& passes_filter = {},
-// 	const std::vector<std::string>& ops_filter = {});
-func (config *Config) EnableLiteEngine(precision Precision, zero_copy bool, passes_filter []string, ops_filter []string) {
+func (config *Config) EnableLiteEngine(precision Precision, zeroCopy bool, passesFilter []string, opsFilter []string) {
+	passesFilterNum := uint(len(passesFilter))
+	var passesFilterBuf = make([]*C.char, passesFilterNum+1)
+	for i, _ := range passesFilter {
+		char := C.CString(passesFilter[i])
+		defer C.free(unsafe.Pointer(char))
+		passesFilterBuf[i] = (*C.char)(unsafe.Pointer(char))
+	}
 
+	opsFilterNum := uint(len(opsFilter))
+	var opsFilterBuf = make([]*C.char, passesFilterNum+1)
+	for i, _ := range opsFilter {
+		char := C.CString(opsFilter[i])
+		defer C.free(unsafe.Pointer(char))
+		opsFilterBuf[i] = (*C.char)(unsafe.Pointer(char))
+	}
+
+	C.PD_ConfigEnableLiteEngine(config.c, C.int32_t(precision), cvtGoBoolToPD(zeroCopy), C.size_t(passesFilterNum), (**C.char)(unsafe.Pointer(&passesFilterBuf[0])), C.size_t(opsFilterNum), (**C.char)(unsafe.Pointer(&opsFilterBuf[0])))
 }
 
 ///
@@ -427,9 +491,8 @@ func (config *Config) EnableLiteEngine(precision Precision, zero_copy bool, pass
 ///
 /// \return bool whether the Lite sub-graph engine is used.
 ///
-// bool lite_engine_enabled() const { return use_lite_; }
 func (config *Config) LiteEngineEnabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigLiteEngineEnabled(config.c))
 }
 
 ///
@@ -439,18 +502,15 @@ func (config *Config) LiteEngineEnabled() bool {
 ///
 /// \param x whether to debug IR graph analysis phase.
 ///
-// void SwitchIrDebug(int x = true);
 func (config *Config) SwitchIrDebug(x bool) {
-
+	C.PD_ConfigSwitchIrDebug(config.c, cvtGoBoolToPD(x))
 }
 
 ///
 /// \brief Turn on MKLDNN.
 ///
-///
-// void EnableMKLDNN();
 func (config *Config) EnableMKLDNN() {
-
+	C.PD_ConfigEnableMKLDNN(config.c)
 }
 
 ///
@@ -461,9 +521,8 @@ func (config *Config) EnableMKLDNN() {
 ///
 /// \param capacity The cache capacity.
 ///
-// void SetMkldnnCacheCapacity(int capacity);
-func (config *Config) SetMkldnnCacheCapacity(capacity int) {
-
+func (config *Config) SetMkldnnCacheCapacity(capacity int32) {
+	C.PD_ConfigSetMkldnnCacheCapacity(config.c, C.int32_t(capacity))
 }
 
 ///
@@ -471,20 +530,18 @@ func (config *Config) SetMkldnnCacheCapacity(capacity int) {
 ///
 /// \return bool Whether to use the MKLDNN.
 ///
-// bool mkldnn_enabled() const { return use_mkldnn_; }
 func (config *Config) MkldnnEnabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigMkldnnEnabled(config.c))
 }
 
 ///
 /// \brief Set the number of cpu math library threads.
 ///
-/// \param cpu_math_library_num_threads The number of cpu math library
+/// \param mathThreadsNum The number of cpu math library
 /// threads.
 ///
-// void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads);
-func (config *Config) SetCpuMathLibraryNumThreads(cpu_math_library_num_threads int) {
-
+func (config *Config) SetCpuMathLibraryNumThreads(mathThreadsNum int) {
+	C.PD_ConfigSetCpuMathLibraryNumThreads(config.c, C.int32_t(mathThreadsNum))
 }
 
 ///
@@ -493,11 +550,8 @@ func (config *Config) SetCpuMathLibraryNumThreads(cpu_math_library_num_threads i
 ///
 /// \return int The number of threads used in the CPU math library.
 ///
-// int cpu_math_library_num_threads() const {
-// return cpu_math_library_num_threads_;
-// }
-func (config *Config) CpuMathLibraryNumThreads() int {
-
+func (config *Config) CpuMathLibraryNumThreads() int32 {
+	return int32(C.PD_ConfigGetCpuMathLibraryNumThreads(config.c))
 }
 
 ///
@@ -510,31 +564,33 @@ func (config *Config) CpuMathLibraryNumThreads() int {
 ///
 /// \brief Specify the operator type list to use MKLDNN acceleration.
 ///
-/// \param op_list The operator type list.
+/// \param opList The operator type list.
 ///
-// void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
-// mkldnn_enabled_op_types_ = op_list;
-// }
-func (config *Config) SetMKLDNNOp(op_list []string) {
+func (config *Config) SetMKLDNNOp(opList []string) {
+	num := uint(len(opList))
+	// Add one in case num is zero.
+	var buf = make([]*C.char, num+1)
+	for i, _ := range opList {
+		char := C.CString(opList[i])
+		defer C.free(unsafe.Pointer(char))
+		buf[i] = (*C.char)(unsafe.Pointer(char))
+	}
 
+	C.PD_ConfigSetMkldnnOp(config.c, C.size_t(num), (**C.char)(unsafe.Pointer(&buf[0])))
 }
 
 ///
 /// \brief Turn on MKLDNN quantization.
 ///
-///
-// void EnableMkldnnQuantizer();
 func (config *Config) EnableMkldnnQuantizer() {
-
+	C.PD_ConfigEnableMkldnnQuantizer(config.c)
 }
 
 ///
 /// \brief Turn on MKLDNN bfloat16.
 ///
-///
-// void EnableMkldnnBfloat16();
 func (config *Config) EnableMkldnnBfloat16() {
-
+	C.PD_ConfigEnableMkldnnBfloat16(config.c)
 }
 
 ///
@@ -542,20 +598,25 @@ func (config *Config) EnableMkldnnBfloat16() {
 ///
 /// \return bool Whether to use the MKLDNN Bfloat16.
 ///
-// bool mkldnn_bfloat16_enabled() const { return use_mkldnn_bfloat16_; }
 func (config *Config) MkldnnBfloat16Enabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigMkldnnBfloat16Enabled(config.c))
 }
 
 /// \brief Specify the operator type list to use Bfloat16 acceleration.
 ///
-/// \param op_list The operator type list.
+/// \param opList The operator type list.
 ///
-// void SetBfloat16Op(std::unordered_set<std::string> op_list) {
-// bfloat16_enabled_op_types_ = op_list;
-// }
-func (config *Config) SetBfloat16Op(op_list []string) {
+func (config *Config) SetBfloat16Op(opList []string) {
+	num := uint(len(opList))
+	// Add one in case num is zero.
+	var buf = make([]*C.char, num+1)
+	for i, _ := range opList {
+		char := C.CString(opList[i])
+		defer C.free(unsafe.Pointer(char))
+		buf[i] = (*C.char)(unsafe.Pointer(char))
+	}
 
+	C.PD_ConfigSetBfloat16Op(config.c, C.size_t(num), (**C.char)(unsafe.Pointer(&buf[0])))
 }
 
 ///
@@ -564,9 +625,8 @@ func (config *Config) SetBfloat16Op(op_list []string) {
 ///
 /// \return bool Whether the thread local CUDA stream is enabled.
 ///
-// bool thread_local_stream_enabled() const { return thread_local_stream_; }
 func (config *Config) ThreadLocalStreamEnabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigThreadLocalStreamEnabled(config.c))
 }
 
 ///
@@ -574,9 +634,8 @@ func (config *Config) ThreadLocalStreamEnabled() bool {
 ///
 /// \return bool Whether the MKLDNN quantization is enabled.
 ///
-// bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 func (config *Config) MkldnnQuantizerEnabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigMkldnnQuantizerEnabled(config.c))
 }
 
 ///
@@ -585,24 +644,26 @@ func (config *Config) MkldnnQuantizerEnabled() bool {
 /// \return MkldnnQuantizerConfig* MKLDNN quantizer config.
 ///
 // MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
-func (config *Config) MkldnnQuantizerConfig() *MkldnnQuantizerConfig {
-
-}
+// func (config *Config) MkldnnQuantizerConfig() *MkldnnQuantizerConfig {
+// 	// TODO(wilber)
+// }
 
 ///
 /// \brief Specify the memory buffer of program and parameter.
 /// Used when model and params are loaded directly from memory.
 ///
-/// \param prog_buffer The memory buffer of program.
-/// \param prog_buffer_size The size of the model data.
-/// \param params_buffer The memory buffer of the combined parameters file.
-/// \param params_buffer_size The size of the combined parameters data.
+/// \param prog The memory buffer of program.
+/// \param params The memory buffer of the combined parameters file.
 ///
-// void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
-// 					const char* params_buffer, size_t params_buffer_size);
-// todo
-func (config *Config) SetModelBuffer(prog_buffer, params_buffer string) {
+func (config *Config) SetModelBuffer(prog, params string) {
+	cProg := C.CString(prog)
+	cParams := C.CString(params)
+	defer func() {
+		C.free(unsafe.Pointer(cProg))
+		C.free(unsafe.Pointer(cParams))
+	}()
 
+	C.PD_ConfigSetModelBuffer(config.c, cProg, C.size_t(len(prog)), cParams, C.size_t(len(params)))
 }
 
 ///
@@ -611,18 +672,16 @@ func (config *Config) SetModelBuffer(prog_buffer, params_buffer string) {
 ///
 /// \return bool Whether model and params are loaded directly from memory.
 ///
-// bool model_from_memory() const { return model_from_memory_; }
 func (config *Config) ModelFromMemory() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigModelFromMemory(config.c))
 }
 
 ///
 /// \brief Turn on memory optimize
 /// NOTE still in development.
 ///
-// void EnableMemoryOptim();
 func (config *Config) EnableMemoryOptim() {
-
+	C.PD_ConfigEnableMemoryOptim(config.c)
 }
 
 ///
@@ -631,18 +690,16 @@ func (config *Config) EnableMemoryOptim() {
 ///
 /// \return bool Whether the memory optimization is activated.
 ///
-// bool enable_memory_optim() const;
 func (config *Config) MemoryOptimEnabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigMemoryOptimEnabled(config.c))
 }
 
 ///
 /// \brief Turn on profiling report.
 /// If not turned on, no profiling report will be generated.
 ///
-// void EnableProfile();
 func (config *Config) EnableProfile() {
-
+	C.PD_ConfigEnableProfile(config.c)
 }
 
 ///
@@ -650,17 +707,15 @@ func (config *Config) EnableProfile() {
 ///
 /// \return bool Whether the profiler is activated.
 ///
-// bool profile_enabled() const { return with_profile_; }
-func (config *Config) ProfileEnabled() {
-
+func (config *Config) ProfileEnabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigProfileEnabled(config.c))
 }
 
 ///
 /// \brief Mute all logs in Paddle inference.
 ///
-// void DisableGlogInfo();
 func (config *Config) DisableGlogInfo() {
-
+	C.PD_ConfigDisableGlogInfo(config.c)
 }
 
 ///
@@ -668,9 +723,8 @@ func (config *Config) DisableGlogInfo() {
 ///
 /// \return bool Whether logs in Paddle inference are muted.
 ///
-// bool glog_info_disabled() const { return !with_glog_info_; }
 func (config *Config) GlogInfoDisabled() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigGlogInfoDisabled(config.c))
 }
 
 ///
@@ -678,43 +732,39 @@ func (config *Config) GlogInfoDisabled() bool {
 /// This is to ensure that an AnalysisConfig can only be used in one
 /// AnalysisPredictor.
 ///
-// void SetInValid() const { is_valid_ = false; }
-func (config *Config) SetInValid() {
-
-}
+// func (config *Config) SetInValid() {
+// 	C.PD_ConfigSetInvalid(config.c)
+// }
 
 ///
 /// \brief A boolean state telling whether the AnalysisConfig is valid.
 ///
 /// \return bool Whether the AnalysisConfig is valid.
 ///
-// bool is_valid() const { return is_valid_; }
 func (config *Config) IsValid() bool {
-
+	return cvtPDBoolToGo(C.PD_ConfigIsValid(config.c))
 }
 
 ///
 /// \brief Get a pass builder for customize the passes in IR analysis phase.
 /// NOTE: Just for developer, not an official API, easy to be broken.
 ///
-///
 // PassStrategy* pass_builder() const;
-func (config *Config) PassBuilder() *PassStrategy {
-
-}
+// func (config *Config) PassBuilder() *PassStrategy {
+// 	// TODO(wilber)
+// }
 
 ///
 /// \brief Enable the GPU multi-computing stream feature.
 /// NOTE: The current behavior of this interface is to bind the computation
 /// stream to the thread, and this behavior may be changed in the future.
 ///
-// void EnableGpuMultiStream();
 func (config *Config) EnableGpuMultiStream() {
-
+	C.PD_ConfigEnableGpuMultiStream(config.c)
 }
 
-// void PartiallyRelease();
-// todo
-func (config *Config) PartiallyRelease() {
-
-}
+// // void PartiallyRelease();
+// // todo
+// func (config *Config) PartiallyRelease() {
+// 	C.PD_ConfigPartiallyRelease(config.c)
+// }

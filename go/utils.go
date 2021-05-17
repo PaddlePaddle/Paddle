@@ -15,9 +15,13 @@
 package paddle
 
 // #include <stdint.h>
+// #include <stdlib.h>
 import "C"
+import (
+	"unsafe"
+)
 
-func convertPDBoolToGo(b C.int8_t) bool {
+func cvtPDBoolToGo(b C.int8_t) bool {
 	var cFalse C.int8_t
 	if b != cFalse {
 		return true
@@ -25,9 +29,33 @@ func convertPDBoolToGo(b C.int8_t) bool {
 	return false
 }
 
-func convertGoBoolToPD(b bool) C.int8_t {
+func cvtGoBoolToPD(b bool) C.int8_t {
 	if b == false {
 		return 0
 	}
 	return 1
+}
+
+func cvtToGoSliceString(length int, str **C.char) []string {
+	if str == nil {
+		return nil
+	}
+	tmpSlice := (*[1 << 27]*C.char)(unsafe.Pointer(str))[:length:length]
+	goStrings := make([]string, length)
+	for i, s := range tmpSlice {
+		goStrings[i] = C.GoString(s)
+	}
+	return goStrings
+}
+
+func cvtToGoSliceInt32(length int, data *C.int32_t) []int32 {
+	if data == nil {
+		return nil
+	}
+	tmpSlice := (*[1 << 27]C.int32_t)(unsafe.Pointer(data))[:length:length]
+	res := make([]int32, length)
+	for i, s := range tmpSlice {
+		res[i] = int32(s)
+	}
+	return res
 }

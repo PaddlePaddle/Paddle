@@ -14,9 +14,16 @@
 
 package paddle
 
-// #include "paddle_c_api.h"
+// #include "pd_common.h"
+// #include "pd_predictor.h"
+// #include "pd_types.h"
+// #include "pd_utils.h"
 import "C"
 
 func Version() string {
-	return C.GoString(C.PD_Version())
+	cVersion := C.PD_GetVersion()
+	size := int(cVersion.size)
+	version := cvtToGoSliceString(size, cVersion.data)
+	C.PD_OneDimArrayCstrDestroy(cVersion)
+	return version[0]
 }
