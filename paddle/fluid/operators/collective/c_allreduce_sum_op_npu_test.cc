@@ -246,7 +246,6 @@ TEST(c_allreduce_sum, NPU) {
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0));
   }
 
-  return;
 
   touch_inf(&scope, ctx);
 
