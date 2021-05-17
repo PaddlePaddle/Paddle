@@ -63,12 +63,14 @@ static framework::Tensor FoldHeadAndLastDims(const MKLDNNDeviceContext &dev_ctx,
   output.Resize({input_dims[1], input_dims[0], input_dims[2]});
   output.mutable_data<T>(dev_ctx.GetPlace());
 
+  auto output_dims = framework::vectorize(output.dims());
+
   mkldnn::memory::data_type input_type =
           framework::ToMKLDNNDataType(input->type());
   std::string key = platform::CreateKey(
           dev_ctx, input_dims, input->format(), input->format(), input_type);
   platform::ReorderMKLDNNHandler reorder_handler(
-          input_dims, input->type(), input_type, dev_ctx, dev_ctx.GetEngine(), key);
+          output_dims, input->type(), input_type, dev_ctx, dev_ctx.GetEngine(), key);
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
           mkldnn::memory::format_tag::abc, platform::to_void_cast(input->data<T>()));

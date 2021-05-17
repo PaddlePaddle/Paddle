@@ -57,6 +57,66 @@ class TestDnnlMatMulOpMixedDims1(TestDnnlMatMulWithGradOp):
         self.y = np.random.random((3, 4)).astype("float32")
         self.out = np.matmul(self.x, self.y)
 
+
+class TestDnnlMatMulOpMixedDimsYWiderTransposeY(TestDnnlMatMulWithGradOp):
+    def generate_data(self):
+        self.x = np.random.random((8, 2, 3)).astype("float32")
+        self.y = np.random.random((4, 3)).astype("float32")
+        self.out = np.matmul(self.x, np.transpose(self.y))
+
+    def set_attributes(self):
+        self.attrs = {
+            'transpose_Y': True
+        }
+
+
+class TestDnnlMatMulOpMixedDimsYWiderTransposeX(TestDnnlMatMulWithGradOp):
+    def generate_data(self):
+        self.x = np.random.random((8, 3, 2)).astype("float32")
+        self.y = np.random.random((3, 4)).astype("float32")
+        self.out = np.matmul(np.transpose(self.x, (0, 2, 1)), self.y)
+
+    def set_attributes(self):
+        self.attrs = {
+            'transpose_X': True
+        }
+        
+
+class TestDnnlMatMulOpMixedDimsXWiderTransposeXY(TestDnnlMatMulWithGradOp):
+    def generate_data(self):
+        self.x = np.random.random((8, 3, 2)).astype("float32")
+        self.y = np.random.random((4, 3)).astype("float32")
+        self.out = np.matmul(np.transpose(self.x, (0, 2, 1)), np.transpose(self.y))
+
+    def set_attributes(self):
+        self.attrs = {
+            'transpose_X': True, 'transpose_Y': True
+        }
+
+
+class TestDnnlMatMulOpMixedDimsYWiderTransposeXY(TestDnnlMatMulWithGradOp):
+    def generate_data(self):
+        self.x = np.random.random((3, 2)).astype("float32")
+        self.y = np.random.random((8, 4, 3)).astype("float32")
+        self.out = np.matmul(np.transpose(self.x), np.transpose(self.y, (0, 2, 1)))
+
+    def set_attributes(self):
+        self.attrs = {
+            'transpose_X': True, 'transpose_Y': True
+        }
+
+
+class TestDnnlMatMulOpMixedDimsXWiderTransposeX(TestDnnlMatMulWithGradOp):
+    def generate_data(self):
+        self.x = np.random.random((5, 4)).astype("float32")
+        self.y = np.random.random((8, 5, 4)).astype("float32")
+        self.out = np.matmul(np.transpose(self.x), self.y)
+
+    def set_attributes(self):
+        self.attrs = {
+            'transpose_X': True
+        }
+
 class TestDnnlMatMulOpVectorMultiply(TestDnnlMatMulWithGradOp):
     def generate_data(self):
         self.x = np.random.random((5)).astype("float32")
@@ -64,7 +124,7 @@ class TestDnnlMatMulOpVectorMultiply(TestDnnlMatMulWithGradOp):
         self.out = np.matmul(self.x, self.y)
     
 
-class TestDnnlMatMulOpVectorMultiply2(TestDnnlMatMulWithGradOp):
+class TestDnnlMatMulOpVectorMultiplyTranspose(TestDnnlMatMulWithGradOp):
     def generate_data(self):
         self.x = np.random.random((5)).astype("float32")
         x_resized = np.copy(self.x)
