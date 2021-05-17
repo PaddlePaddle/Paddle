@@ -162,18 +162,18 @@ static inline std::vector<int> GetStrides_m(const std::vector<int>& dims,
 }
 
 #ifdef __HIPCC__
-constexpr int kMaxBlockDim = 256;
+constexpr int kMaxBlockDim_t = 256;
 #else
-constexpr int kMaxBlockDim = 512;
+constexpr int kMaxBlockDim_t = 512;
 #endif
 
-static inline int GetDesiredBlockDim(int block_dim) {
-  return block_dim >= kMaxBlockDim
-             ? kMaxBlockDim
+static inline int GetDesiredBlockDim_t(int block_dim) {
+  return block_dim >= kMaxBlockDim_t
+             ? kMaxBlockDim_t
              : (1 << static_cast<int>(std::log2(block_dim)));
 }
 
-static inline void CheckReduceRankIsValid(int reduce_rank, int rank) {
+static inline void CheckReduceRankIsValid_t(int reduce_rank, int rank) {
   if (rank % 2 == 0) {
     PADDLE_ENFORCE_EQ(reduce_rank, rank / 2,
                       platform::errors::InvalidArgument(
@@ -263,7 +263,7 @@ static void TensorReduceImpl(
    * The total switch-case numbers reduce from 1+2+3+...+8=36 to (1+2)*4=12,
    * it would speed up compiling and make the binary size lower.
    */
-  CheckReduceRankIsValid(reduce_rank, rank);
+  CheckReduceRankIsValid_t(reduce_rank, rank);
   switch (rank) {
     CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1););
 
@@ -289,7 +289,7 @@ static void TensorReduceImpl(
 }  // namespace detail
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
-void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
+void TensorReduce_t(const framework::Tensor& x, framework::Tensor* y,
                   std::vector<int> origin_reduce_dims, const Ty& init,
                   const ReduceOp& reducer, const TransformOp& transformer,
                   gpuStream_t stream) {
@@ -352,7 +352,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
         left_strides, stream);                                           \
   } break
 
-  switch (detail::GetDesiredBlockDim(reduce_num)) {
+  switch (detail::GetDesiredBlockDim_t(reduce_num)) {
     CUB_BLOCK_DIM_CASE(512);
     CUB_BLOCK_DIM_CASE(256);
     CUB_BLOCK_DIM_CASE(128);
@@ -391,7 +391,7 @@ struct TensorReduceFunctor {
 
   void apply() const {
     const Ty& init_cast = static_cast<Ty>(init);
-    TensorReduce<Tx, Ty, ReduceOp, TransformOp>(
+    TensorReduce_t<Tx, Ty, ReduceOp, TransformOp>(
         x, y, origin_reduce_dims, init_cast, reducer, transformer, stream);
   }
 };
