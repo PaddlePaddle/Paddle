@@ -14,12 +14,6 @@
 
 #pragma once
 
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#define PY_ARRAY_UNIQUE_SYMBOL MY_PyArray_API
-#define INIT_NUMPY_ARRAY_CPP
-#ifndef INIT_NUMPY_ARRAY_CPP
-#define NO_IMPORT_ARRAY  // for usual translation units
-#endif
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
 #include <pybind11/chrono.h>
@@ -39,12 +33,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/pybind/imperative.h"
 #pragma GCC diagnostic ignored "-Wconversion-null"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-int init_numpy() {
-  import_array();
-  return 0;
-}
-const static int numpy_initialized = init_numpy();  // NOLINT
 
 namespace py = pybind11;
 namespace paddle {
