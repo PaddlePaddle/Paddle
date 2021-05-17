@@ -34,7 +34,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    size_t num_samples = inference->dims()[0];
+    int num_samples = inference->dims()[0];
     if (num_samples == 0) {
       return;
     }
@@ -48,7 +48,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     runner_equal.Run(stream);
 
     // cast equal
-    Tensor tmp_equal_cast(framework::proto::VarType::FLOAT32);
+    Tensor tmp_equal_cast(framework::proto::VarType::FP32);
     tmp_equal_cast.Resize(inference->dims());
     tmp_equal_cast.mutable_data<float>(ctx.GetPlace());
     auto runner_cast_equal = NpuOpRunner(
@@ -59,7 +59,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
 
     // [correct]
     // reduce_max
-    Tensor tmp_correct_max(framework::proto::VarType::FLOAT32);
+    Tensor tmp_correct_max(framework::proto::VarType::FP32);
     tmp_correct_max.Resize(framework::make_ddim({num_samples}));
     tmp_correct_max.mutable_data<float>(ctx.GetPlace());
     auto runner_reduce_max =
@@ -68,7 +68,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     runner_reduce_max.Run(stream);
 
     // reduce_sum
-    Tensor tmp_correct(framework::proto::VarType::FLOAT32);
+    Tensor tmp_correct(framework::proto::VarType::FP32);
     tmp_correct.Resize(correct->dims());
     tmp_correct.mutable_data<float>(ctx.GetPlace());
     auto runner_reduce_sum =
@@ -88,7 +88,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     FillNpuTensorWithConstant<int>(total, static_cast<int>(num_samples));
 
     // cast total to float32 for calculating accuracy
-    Tensor tmp_total(framework::proto::VarType::FLOAT32);
+    Tensor tmp_total(framework::proto::VarType::FP32);
     tmp_total.Resize(total->dims());
     tmp_total.mutable_data<float>(ctx.GetPlace());
     auto runner_cast_total = NpuOpRunner(
