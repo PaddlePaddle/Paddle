@@ -55,7 +55,7 @@ class TestNegOpFp16(TestNegOp):
 
 class TestNegOpInt64(TestNegOp):
     def init_dtype(self):
-        self.dtype = np.Int64
+        self.dtype = np.int64
 
     def test_check_output(self):
         self.check_output()
