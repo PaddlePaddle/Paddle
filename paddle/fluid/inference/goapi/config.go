@@ -20,16 +20,15 @@ package paddle
 // #include <string.h>
 import "C"
 import (
-	"runtime"
 	"unsafe"
 )
 
 type Precision C.PD_PrecisionType
 
 const (
-	Precision_Float32 Precision = C.PD_PRECISION_FLOAT32
-	Precision_Int8    Precision = C.PD_PRECISION_INT8
-	Precision_Half    Precision = C.PD_PRECISION_HALF
+	PrecisionFloat32 Precision = C.PD_PRECISION_FLOAT32
+	PrecisionInt8    Precision = C.PD_PRECISION_INT8
+	PrecisionHalf    Precision = C.PD_PRECISION_HALF
 )
 
 type Config struct {
@@ -39,9 +38,6 @@ type Config struct {
 func NewConfig() *Config {
 	cConfig := C.PD_ConfigCreate()
 	config := &Config{c: cConfig}
-	runtime.SetFinalizer(config, func(config *Config) {
-		C.PD_ConfigDestroy(config.c)
-	})
 	return config
 }
 

@@ -37,7 +37,7 @@ func TestNewConfig(t *testing.T) {
 	t.Logf("use_gpu:%+v, gpu_id:%+v", config.UseGpu(), config.GpuDeviceId())
 	t.Logf("MemoryPoolInitSizeMb:%+v, FractionOfGpuMemoryForPool:%+v", config.MemoryPoolInitSizeMb(), config.FractionOfGpuMemoryForPool())
 
-	config.EnableTensorRtEngine(1024, 16, 3, Precision_Float32, false, false)
+	config.EnableTensorRtEngine(1024, 16, 3, PrecisionFloat32, false, false)
 	t.Logf("TensorRtEngineEnabled:%+v", config.TensorRtEngineEnabled())
 
 	minInputShape := map[string][]int32{
