@@ -127,6 +127,9 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
+    bool nan_or_inf=false;
+
     auto place = ctx.GetPlace();
     HcclDataType dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();
@@ -150,13 +153,11 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     }
 
     VLOG(4) << "ready to FoundNanInf";
-    bool nan_or_inf=false;
-    /*
-    auto framework::Tensor float_status;
-    float_status->mutable_data<float16>(place);
-    float_status->Resize({8});
-    nan_or_inf = FoundNanOrInf(ctx, stream, &float_status);
-    */
+
+    Tensor tmp;
+    tmp.mutable_data<float>({8}, ctx.GetPlace());
+
+    nan_or_inf = FoundNanOrInf(ctx, stream, float_status, &tmp);
     if (nan_or_inf){
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);
@@ -330,6 +331,12 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
+#if defined(PADDLE_WITH_ASCEND_CL)
+     AddInput("FloatStatus",
+             "(Tensor) 1-dim tensor of shape [8], allocated by "
+             "alloc_float_status op")
+        .AsDispensable();
+#endif
     AddOutput("Out", "(Tensor) the allreduced result.");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
