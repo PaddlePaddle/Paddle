@@ -250,6 +250,7 @@ TEST(c_allreduce_sum, NPU) {
   o::clear_float_status(ctx, &float_status, &tmp);
   ctx.Wait();
 
+  o::alloc_float_status(ctx, &float_status);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num 2: " << i << " float";
     TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0);
@@ -266,6 +267,7 @@ TEST(nan_or_inf, NPU) {
   tmp.mutable_data<float>({8}, ctx.GetPlace()); 
   float_status.mutable_data<float>({8}, ctx.GetPlace()); 
 
+  // first
   o::alloc_float_status(ctx, &float_status);
   bool nan_or_inf=false;
 
@@ -275,6 +277,9 @@ TEST(nan_or_inf, NPU) {
   ctx.Wait();
 
   o::clear_float_status(ctx, &float_status, &tmp);
+
+  // second
+  o::alloc_float_status(ctx, &float_status);
   nan_or_inf= o::FoundNanOrInf(ctx, ctx.stream(), &float_status, &tmp);
   EXPECT_TRUE(!nan_or_inf);
 }

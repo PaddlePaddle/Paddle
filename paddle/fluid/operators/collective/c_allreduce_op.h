@@ -160,9 +160,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     nan_or_inf = FoundNanOrInf(ctx.template device_context<paddle::platform::NPUDeviceContext>(),
             stream, float_status, &tmp);
     if (nan_or_inf){
-        // FIXME(gongwb): remove these
-        ctx.device_context().Wait();
-
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         VLOG(4) << "fill input data constant inf";
         FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);
@@ -200,9 +197,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         reinterpret_cast<void*>(stream)));
 
     if (nan_or_inf){
-        // FIXME(gongwb): remove these
-        ctx.device_context().Wait();
-
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         VLOG(4) << "fill output data constant inf";
         FillNpuTensorWithConstant<T>(out, inf);
