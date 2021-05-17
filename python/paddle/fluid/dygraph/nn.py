@@ -986,26 +986,18 @@ class Linear(layers.Layer):
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], "Linear")
 
-        op_type="matmul"
-        if self._use_mkldnn:
-            attrs = {
-                "transpose_X": False,
-                "transpose_Y": False,
-                "alpha": 1,
-                "use_mkldnn": self._use_mkldnn,
-            }
-        else:
-            op_type="matmul_v2"
-            attrs = {
-                "transpose_X": False,
-                "transpose_Y": False,
-            }
-        
+         attrs = {
+            "transpose_X": False,
+            "transpose_Y": False,
+            "alpha": 1,
+            "use_mkldnn": self._use_mkldnn,
+        }
+
         inputs = {"X": [input], "Y": [self.weight]}
 
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
-            type=op_type, inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
+            type="matmul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
         if self.bias is not None:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)

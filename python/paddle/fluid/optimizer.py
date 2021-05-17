@@ -4742,7 +4742,7 @@ class PipelineOptimizer(object):
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
-        for i, prog in enumerate(program_list):
+        for prog in program_list:
             for op in prog.block(0).ops:
                 if not op.has_attr('sub_block'):
                     continue

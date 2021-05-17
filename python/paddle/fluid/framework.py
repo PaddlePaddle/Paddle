@@ -2826,11 +2826,9 @@ class Block(object):
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
         for var in list(self.vars.values()):
-            #print("var_name:", var.name)
             block_str += "    {}\n".format(var._to_readable_code())
         block_str += "\n"
         for op in self.ops:
-            #print("op_name:", op.type)
             block_str += "    {}\n".format(
                 op._to_readable_code(skip_op_callstack))
         block_str += "}"
@@ -6071,7 +6069,7 @@ def device_guard(device=None):
             raise ValueError("Should not set device id for cpu.")
     if device not in ['cpu', 'gpu', 'npu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu', 'gpu' or 'npu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' or 'npu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])

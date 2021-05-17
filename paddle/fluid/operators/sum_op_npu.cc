@@ -51,10 +51,6 @@ class SumNPUKernel : public framework::OpKernel<T> {
     for (int i = 2; i < n; i++) {
       runner = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
       runner.Run(stream);
-      if(FLAGS_benchmark){
-          VLOG(7) << "wait sum_add:" << i;
-          ctx.device_context().Wait();
-      }
     }
   }
 };

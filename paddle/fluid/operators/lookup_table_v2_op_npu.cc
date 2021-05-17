@@ -29,10 +29,10 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
     auto *table_t = ctx.Input<framework::LoDTensor>("W");
 
-    // It seems cann 20.1 accepts int64, but cann 20.2+ not.
-    // PADDLE_ENFORCE_EQ(ids_t->type(), framework::proto::VarType::INT32,
-    //                 platform::errors::Unimplemented(
-    //                      "The index of LookupTableV2 should be int32."));
+    It seems cann 20.1 accepts int64, but cann 20.2+ not.
+    PADDLE_ENFORCE_EQ(ids_t->type(), framework::proto::VarType::INT32,
+                     platform::errors::Unimplemented(
+                          "The index of LookupTableV2 should be int32."));
 
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
@@ -41,12 +41,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     output_t->mutable_data<T>(ctx.GetPlace());
     framework::NPUAttributeMap attr_input = {{"validate_indices", false}};
     
-    // Tensor axis(framework::proto::VarType::INT32);
-    // axis.mutable_data<int>({1}, ctx.GetPlace());
-    // FillNpuTensorWithConstant<int>(&axis, 0);
-
     auto runner = NpuOpRunner("Gather", {*table_t, *ids_t}, {*output_t}, attr_input);
-    // auto runner = NpuOpRunner("GatherV2", {*table_t, *ids_t, axis}, {*output_t});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

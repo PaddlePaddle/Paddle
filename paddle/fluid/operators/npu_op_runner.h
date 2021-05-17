@@ -131,8 +131,6 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
   }
 }
 
-
-
 }  // namespace operators
 }  // namespace paddle
 #endif

@@ -759,7 +759,6 @@ class Fleet(object):
                     "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
                     "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
-            print("collective optimizer:", self._user_defined_strategy.amp)
 
         self._context = {}
 
@@ -1312,12 +1311,10 @@ class Fleet(object):
         # strategy.auto = True
         # optimizer = paddle.optimizer.SGD(learning_rate=0.1)
         # optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        print("copy_user_defined_strategy:", copy_user_defined_strategy.amp, copy_user_defined_strategy.auto)
         if copy_user_defined_strategy._is_strict_auto():
             # turn on all the strategy for each optimizer
             for opt in distributed_optimizer_list:
                 opt._enable_strategy(copy_user_defined_strategy, context)
-        print("copy_user_defined_strategy_2:", copy_user_defined_strategy.amp, copy_user_defined_strategy.auto)
 
         valid_optimizer_list = []
         valid_graph_optimizer_list = []
@@ -1342,7 +1339,6 @@ class Fleet(object):
 
         valid_strategy = self.strategy_compiler._get_valid_strategy(
             copy_user_defined_strategy, can_not_apply_optimizer_list)
-        print("valid_strategy:", valid_strategy.amp, valid_strategy.auto)
 
         context["valid_strategy"] = copy.deepcopy(valid_strategy)
 
@@ -1371,7 +1367,6 @@ class Fleet(object):
             return self.user_defined_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
-        print("copy_user_defined_strategy_3:", copy_user_defined_strategy.amp, copy_user_defined_strategy.auto)
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
