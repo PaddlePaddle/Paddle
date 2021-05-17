@@ -226,11 +226,10 @@ wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT_models/${QUANT_MODEL_AR
 mkdir ${QUANT_MODEL_NAME} && tar -xvf ${QUANT_MODEL_ARCHIVE} -C ${QUANT_MODEL_NAME}
 ```
 
-To download other Quant models, set the `QUANT_MODEL_NAME` variable to on of the values:
-- `ResNet50_qat_perf`, with input/output scales in `fake_quantize_moving_average_abs_max` operators, with weight scales in `fake_dequantize_max_abs` operators
+To download other Quant models, set the `QUANT_MODEL_NAME` variable to on of the values: `ResNet50_qat_perf`, `ResNet50_qat_range`, `ResNet50_qat_channelwise`, `MobileNet_qat_perf`, where:
+- `ResNet50_qat_perf`, `MobileNet_qat_perf` with input/output scales in `fake_quantize_moving_average_abs_max` operators, with weight scales in `fake_dequantize_max_abs` operators
 - `ResNet50_qat_range`, with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes, with weight scales in `fake_dequantize_max_abs` operators
 - `ResNet50_qat_channelwise`, with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes, with weight scales in `fake_channel_wise_dequantize_max_abs` operators
-- `MobileNet_qat_perf`.
 
 Download clean FP32 model for accuracy comparison against the INT8 model:
 
