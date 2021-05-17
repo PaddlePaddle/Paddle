@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 

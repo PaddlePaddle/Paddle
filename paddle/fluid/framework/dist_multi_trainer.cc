@@ -62,9 +62,8 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
 
 void DistMultiTrainer::RegisterHeterCallback() {
   auto fleet_ptr = FleetWrapper::GetInstance();
-  fleet_ptr->RegisterHeterCallback([this](int worker, int taskid) {
-    // workers_[worker]->Schedule(taskid);
-  });
+  fleet_ptr->RegisterHeterCallback(
+      [this](int worker, int taskid) { workers_[worker]->Schedule(taskid); });
 }
 
 void DistMultiTrainer::InitDumpEnv() {

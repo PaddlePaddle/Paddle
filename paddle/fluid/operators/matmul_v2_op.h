@@ -45,12 +45,7 @@ template <typename DeviceContext, typename T>
 void ReduceSumForMatmulGrad(const Tensor* input, Tensor* output,
                             const std::vector<int>& reduce_dims,
                             const paddle::framework::ExecutionContext& ctx) {
-#ifdef __HIPCC__
-  auto stream = ctx.cuda_device_context().stream();
-  TensorReduce<T, T, hipcub::Sum, IdentityFunctor<T>>(
-      *input, output, reduce_dims, static_cast<T>(0), hipcub::Sum(),
-      IdentityFunctor<T>(), stream);
-#elif defined(__NVCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
   TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
       *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),

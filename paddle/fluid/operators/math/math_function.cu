@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
@@ -33,8 +34,10 @@ using complex64 = paddle::platform::complex64;
 using complex128 = paddle::platform::complex128;
 
 template struct SetConstant<platform::CUDADeviceContext, platform::float16>;
+template struct SetConstant<platform::CUDADeviceContext, platform::bfloat16>;
 template struct SetConstant<platform::CUDADeviceContext, float>;
 template struct SetConstant<platform::CUDADeviceContext, double>;
+template struct SetConstant<platform::CUDADeviceContext, uint8_t>;
 template struct SetConstant<platform::CUDADeviceContext, int>;
 template struct SetConstant<platform::CUDADeviceContext, int64_t>;
 template struct SetConstant<platform::CUDADeviceContext, bool>;

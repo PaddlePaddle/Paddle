@@ -68,10 +68,10 @@ class CCommInitOp : public framework::OperatorBase {
           nccl_id, nranks, rank_id, device_id, rid);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with GPU."));
+          "PaddlePaddle should be compiled with GPU."));
 #endif
     } else if (is_xpu_place(place)) {
-#if defined(PADDLE_WITH_BKCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
       BKCLUniqueId* bkcl_id = var->GetMutable<BKCLUniqueId>();
 
       int nranks = Attr<int>("nranks");
@@ -81,7 +81,7 @@ class CCommInitOp : public framework::OperatorBase {
           rid, 0,
           platform::errors::OutOfRange(
               "Ring id must equal 0 in multi Kunlun cards training, but got %d",
-              ring_id));
+              rid));
       int device_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
       if (Attr<int>("device_id") >= 0) {
         device_id = Attr<int>("device_id");
@@ -90,7 +90,7 @@ class CCommInitOp : public framework::OperatorBase {
           bkcl_id, nranks, rank_id, device_id, rid);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with XPU."));
+          "PaddlePaddle should be compiled with XPU."));
 #endif
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(

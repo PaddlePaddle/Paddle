@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import math
 import numpy
 import six
 import warnings
@@ -147,7 +148,7 @@ def create_global_var(shape,
     This function creates a new tensor variable with value in the global block(block 0).
 
     Parameters:
-        shape (list of int): Shape of the variable
+        shape (list[int]|tuple[int]): Shape of the variable
         value (float): The value of the variable. The new created
                       variable will be filled with it.
         dtype (str): Data type of the variable
@@ -230,13 +231,13 @@ def cast(x, dtype):
         out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return out
 
-    check_variable_and_dtype(
-        x, 'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
-        'cast')
+    check_variable_and_dtype(x, 'x', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'uint16'
+    ], 'cast')
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64',
-        'uint8'
+        'uint8', 'uint16'
     ], 'cast')
 
     helper = LayerHelper('cast', **locals())
@@ -546,8 +547,10 @@ def assign(input, output=None):
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
-        input (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
-            float16, float32, float64, int32 and int64.
+        input (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
+            or scalar. Its data type supports float16, float32, float64, int32, int64, and bool.
+            Note: the float64 data will be converted to float32 because of current platform protobuf
+            data limitation.
         output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
 
@@ -569,14 +572,19 @@ def assign(input, output=None):
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
-    check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
+    check_type(input, 'input', (Variable, numpy.ndarray, list, tuple, float,
+                                int, bool), 'assign')
     is_inplace = True if output is not None else False
 
+    if numpy.isscalar(input) and not isinstance(input, str):
+        input = numpy.array([input])
+    elif isinstance(input, (list, tuple)):
+        input = numpy.array(input)
+
     if isinstance(input, Variable):
-        check_dtype(
-            input.dtype, 'input',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-            'assign', '(When the type of input in assign is Variable.)')
+        check_dtype(input.dtype, 'input', [
+            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'
+        ], 'assign', '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
@@ -584,6 +592,14 @@ def assign(input, output=None):
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
+        if dtype == VarDesc.VarType.FP64:
+            # Setting FP64 numpy data is not supported in Paddle, so we
+            # use FP32 here
+            warnings.warn(
+                "paddle.assign doesn't support float64 input now due "
+                "to current platform protobuf data limitation, we convert "
+                "it to float32")
+            dtype = VarDesc.VarType.FP32
         if dtype == VarDesc.VarType.BOOL:
             value_name = "bool_values"
             values = [bool(v) for v in input.flat]
@@ -635,7 +651,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
             If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
         dtype(np.dtype|str): Data type of the output Tensor which can
-            be float16, float32, float64, int32, int64.
+            be float16, float32, float64, uint8, int32, int64.
         value(bool|float|int|Tensor): The constant value used to initialize 
             the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
         force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
@@ -673,7 +689,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     attrs = {'force_cpu': force_cpu}
     dtype = convert_dtype(dtype)
     if not isinstance(value, Variable):
-        if dtype in ['int64', 'int32']:
+        if dtype in ['uint8', 'int64', 'int32']:
             attrs['str_value'] = str(int(value))
             attrs['value'] = int(value)
         else:
@@ -686,7 +702,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out = _varbase_creator(dtype=dtype)
 
         if isinstance(value, Variable):
-            if dtype in ['int64', 'int32']:
+            if dtype in ['uint8', 'int64', 'int32']:
                 attrs['str_value'] = str(int(value.numpy().item(0)))
             else:
                 attrs['str_value'] = str(float(value.numpy().item(0)))
@@ -706,9 +722,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         inputs['ValueTensor'] = value
 
     check_shape(shape)
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'fill_constant')
+    check_dtype(
+        dtype, 'dtype',
+        ['bool', 'float16', 'float32', 'float64', 'uint8', 'int32', 'int64'],
+        'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 
     if out is not None:
@@ -1372,21 +1389,26 @@ def range(start, end, step, dtype, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    out_shape = None
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(start, Variable):
         with device_guard("cpu"):
-            start = fill_constant([1], dtype, start)
+            start = fill_constant([1], dtype, start, force_cpu=True)
     elif start.dtype != dtype:
         start = cast(start, dtype)
 
     if not isinstance(end, Variable):
         with device_guard("cpu"):
-            end = fill_constant([1], dtype, end)
+            end = fill_constant([1], dtype, end, force_cpu=True)
     elif end.dtype != dtype:
         end = cast(end, dtype)
 
     if not isinstance(step, Variable):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step)
+            step = fill_constant([1], dtype, step, force_cpu=True)
     elif step.dtype != dtype:
         step = cast(step, dtype)
 
@@ -1396,7 +1418,7 @@ def range(start, end, step, dtype, name=None):
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
     helper = LayerHelper('range', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
+    out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
     helper.append_op(
         type='range',
         inputs={'Start': start,

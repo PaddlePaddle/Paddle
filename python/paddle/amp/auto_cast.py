@@ -28,10 +28,10 @@ def auto_cast(enable=True, custom_white_list=None, custom_black_list=None):
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
-        custom_white_list(set|list, optional): The custom white_list. It's the set of ops that support
+        custom_white_list(set|list|tuple, optional): The custom white_list. It's the set of ops that support
              fp16 calculation and are considered numerically-safe and performance-critical. These ops 
              will be converted to fp16.
-        custom_black_list(set|list, optional): The custom black_list. The set of ops that support fp16
+        custom_black_list(set|list|tuple, optional): The custom black_list. The set of ops that support fp16
              calculation and are considered numerically-dangerous and whose effects may also be 
              observed in downstream ops. These ops will not be converted to fp16.
         

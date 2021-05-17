@@ -20,11 +20,19 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#ifdef PADDLE_WITH_CUDA
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef __NVCC__
 #include <cuda.h>
 #include <cuda_fp16.h>
 #include "cub/cub.cuh"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#endif
+#ifdef __HIPCC__
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
 #endif
 #endif
 
@@ -54,6 +62,13 @@ struct SameDimsElemwiseAdd {
                   framework::Tensor *z);
 };
 
+template <typename DeviceContext, typename T, class Enable = void>
+struct BroadcastElemwiseAdd {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z);
+};
+
 template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
@@ -67,7 +82,8 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
       SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
       same_dims_add(ctx, x, y, z);
     } else {
-      default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+      BroadcastElemwiseAdd<DeviceContext, T> broadcast_add;
+      broadcast_add(ctx, x, y, z);
     }
   }
 };
@@ -179,7 +195,7 @@ __global__ void MatrixColReduce(const T *__restrict__ in, T *__restrict__ out,
   }
 }
 
-#if CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 template <int SIZE>
 __global__ void VecFP16MatrixColReduce(const __half2 *__restrict__ in,
                                        __half2 *__restrict__ out, size_t width,
@@ -287,7 +303,7 @@ bool static RunSpecialDims(const framework::DDim &dx_dims,
   return true;
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<

@@ -17,6 +17,7 @@ limitations under the License. */
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/operators/group_norm_op.h"
@@ -46,18 +47,10 @@ enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
 
 template <typename T>
 __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
-#ifdef PADDLE_WITH_CUDA
   typedef cub::WarpReduce<T> WarpReduce;
-#else
-  typedef hipcub::WarpReduce<T> WarpReduce;
-#endif
   typename WarpReduce::TempStorage temp_storage;
   value = WarpReduce(temp_storage).Sum(value);
-#ifdef PADDLE_WITH_CUDA
   if (cub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
-#else
-  if (hipcub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
-#endif
 }
 
 template <typename T>
@@ -181,7 +174,11 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
                                                    : x_dims[1] * x_dims[2]);
 
+#ifdef __HIPCC__
+    int block_size = std::max(std::min(256, imsize), 64);
+#else
     int block_size = std::min(1024, imsize);
+#endif
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
@@ -355,7 +352,11 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
                                                    : x_dims[1] * x_dims[2]);
 
+#ifdef __HIPCC__
+    int block_size = std::max(std::min(256, imsize), 64);
+#else
     int block_size = std::min(1024, imsize);
+#endif
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     int flags =

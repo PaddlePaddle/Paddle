@@ -50,7 +50,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
         """Setup."""
         #self.dtype = np.float32
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.N = 8
         self.C = 16
         self.H = 32
@@ -92,7 +92,10 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward)
-                bn = fluid.layers.cast(bn, 'float64')
+                if core.is_compiled_with_rocm():
+                    bn = fluid.layers.cast(bn, 'float32')
+                else:
+                    bn = fluid.layers.cast(bn, 'float64')
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
                 if not sync_bn:

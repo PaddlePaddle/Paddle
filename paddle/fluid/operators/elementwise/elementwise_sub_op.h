@@ -86,7 +86,7 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
       ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<

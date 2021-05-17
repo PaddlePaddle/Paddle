@@ -100,8 +100,16 @@ if (WITH_GPU)
 endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
+set(BRPC_DEPS "")
+if(WITH_PSLIB OR WITH_PSCORE)
+    set(BRPC_DEPS brpc)
+    if(WITH_PSLIB_BRPC)
+        set(BRPC_DEPS pslib_brpc)
+    endif()
+endif()
+
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
-cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope)
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
 cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
@@ -191,13 +199,15 @@ if(WITH_PYTHON)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
+  add_custom_target(fleet_proto_init ALL  
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py 
+  )
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -207,8 +217,6 @@ if(WITH_PYTHON)
     string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
           COMMAND copy /Y *.py ${proto_dstpath}
 	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -216,6 +224,12 @@ if(WITH_PYTHON)
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif(NOT WIN32)
 endif()
+
+if (WITH_PSCORE)
+  add_custom_target(index_dataset_proto_init ALL DEPENDS fleet_proto_init index_dataset_py_proto
+    COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto.")
+endif(WITH_PSCORE)
 
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
@@ -237,9 +251,16 @@ if(WITH_DISTRIBUTE)
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
-    heter_service_proto pslib_brpc)
+    heter_service_proto ${BRPC_DEP})
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(DISTRIBUTE_COMPILE_FLAGS
+                "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+    endif()
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(hetercpu_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    set_source_files_properties(heterxpu_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   elseif(WITH_PSCORE)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -274,7 +295,7 @@ elseif(WITH_PSLIB)
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
-  graph_to_program_pass variable_helper timer monitor pslib_brpc )
+  graph_to_program_pass variable_helper timer monitor ${BRPC_DEP})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -295,8 +316,14 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         fast_threaded_ssa_graph_executor variable_helper)
 
 cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
-cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
-    conditional_block_op executor)
+if(WITH_PSCORE)
+    get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
+    cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+        conditional_block_op executor ${RPC_DEPS})
+else()
+    cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+        conditional_block_op executor)
+endif()
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -346,87 +373,20 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying file
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
+
 cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
 cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
 cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
-
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
-# Old custom op extension mechanism related, will be removed in 2.1.0
-cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
-    DEPS ${FLUID_FRAMEWORK_MODULES})
-get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)
-target_link_libraries(paddle_framework_shared ${os_dependency_modules})
-
-if (LINUX)
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.so
-      CACHE INTERNAL "Fluid framework lib")
-endif()
-
-if (WIN32)
-  set(FLUID_FRAMEWORK_IMPORT_LIB
-    ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_framework.lib
-    CACHE INTERNAL "Fluid framework lib")
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_framework.dll
-      CACHE INTERNAL "Fluid framework dll")
-endif()
-
-if(APPLE)
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dylib
-      CACHE INTERNAL "Fluid framework lib")
-endif()
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
-endif()
-
-# New custom op extension mechanism related
-
-# if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
-set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
-
-set(PADDLE_CUSTOM_OP_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_operator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_tensor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_op_meta_info.cc
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc)
-set(PADDLE_CUSTOM_OP_SRCS ${PADDLE_CUSTOM_OP_SRCS} PARENT_SCOPE)
-
-cc_library(paddle_custom_op_shared
-    SHARED SRCS ${PADDLE_CUSTOM_OP_SRCS} DEPS ${PADDLE_CUSTOM_OP_MODULES})
-
-get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
-target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
-
-if (LINUX)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_custom_op.so
-      CACHE INTERNAL "Paddle custom op lib")
-endif()
-
-if (WIN32)
-  set(PADDLE_CUSTOM_OP_IMPORT_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_custom_op.lib
-      CACHE INTERNAL "Paddle custom op import lib")
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_custom_op.dll
-      CACHE INTERNAL "Paddle custom op dll")
-endif()
-
-if(APPLE)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/paddle_custom_op.dylib
-      CACHE INTERNAL "Paddle custom op lib")
 endif()

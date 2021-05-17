@@ -45,11 +45,25 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     const int n = SizeToAxis(axis, logits->dims());
     const int d = SizeFromAxis(axis, logits->dims());
     std::vector<int> logits_dims = framework::vectorize<int>(logits->dims());
+
     // softmax
     auto& dev_ctx =
         context.template device_context<platform::XPUDeviceContext>();
-    int r = xpu::softmax(dev_ctx.x_context(), logits->data<float>(),
-                         softmax->data<float>(), logits_dims, axis);
+    int r = XPU_SUCCESS;
+    Tensor clip_logits;
+    int len = logits->numel();
+    T* clip_logits_data =
+        clip_logits.mutable_data<T>(context.GetPlace(), len * sizeof(T));
+    r = xpu::clip(dev_ctx.x_context(), logits->data<float>(), clip_logits_data,
+                  len, -1e30, 1e30);
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External("XPU kernel error. clip "
+                                   "execution not succeed, error code=%d",
+                                   r));
+
+    r = xpu::softmax(dev_ctx.x_context(), clip_logits_data,
+                     softmax->data<float>(), logits_dims, axis);
 
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,

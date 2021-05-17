@@ -42,6 +42,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     auto out = ctx.Output<framework::LoDTensor>("Out");
     auto out_dims = out->dims();
+    auto numel = out->numel();
     int data_type = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(data_type);
@@ -61,34 +62,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("The value of peer (%d) you set must "
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
-    ncclDataType_t dtype = platform::ToNCCLDataType(type);
-
-    // Recv the number of elements to receive first
-    int numel = 0;
-    int *numel_ptr = nullptr;
-#ifdef PADDLE_WITH_RCCL
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&numel_ptr, sizeof(int)));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&numel_ptr, sizeof(int)));
-#endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::ncclRecv(static_cast<void *>(numel_ptr), 1, ncclInt,
-                                    peer, comm->comm(), stream));
-#ifdef PADDLE_WITH_RCCL
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        hipMemcpy(&numel, numel_ptr, sizeof(int), hipMemcpyDeviceToHost));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpy(&numel, numel_ptr, sizeof(int), cudaMemcpyDeviceToHost));
-#endif
-
-    int rest_numel = 1;
-    for (int i = 1; i < out_dims.size(); ++i) {
-      rest_numel = rest_numel * out_dims[i];
-    }
-    out_dims[0] = numel / rest_numel;
     out->mutable_data<T>(out_dims, place);
-
+    ncclDataType_t dtype = platform::ToNCCLDataType(type);
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " recv "

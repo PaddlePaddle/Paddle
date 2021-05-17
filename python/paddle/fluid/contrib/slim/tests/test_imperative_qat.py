@@ -17,6 +17,8 @@ from __future__ import print_function
 import os
 import numpy as np
 import random
+import shutil
+import time
 import unittest
 import logging
 import paddle
@@ -157,6 +159,20 @@ class TestImperativeQat(unittest.TestCase):
     QAT = quantization-aware training
     """
 
+    @classmethod
+    def setUpClass(cls):
+        timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
+        cls.root_path = os.path.join(os.getcwd(), "imperative_qat_" + timestamp)
+        cls.save_path = os.path.join(cls.root_path, "lenet")
+        cls.dynamic_root_path = os.path.join(os.getcwd(),
+                                             "dynamic_mnist_" + timestamp)
+        cls.dynamic_save_path = os.path.join(cls.dynamic_root_path, "model")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.root_path)
+        shutil.rmtree(cls.dynamic_root_path)
+
     def test_qat_save(self):
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type='abs_max',
@@ -206,6 +222,8 @@ class TestImperativeQat(unittest.TestCase):
                             "Train | At epoch {} step {}: loss = {:}, acc= {:}".
                             format(epoch, batch_id,
                                    avg_loss.numpy(), acc.numpy()))
+                    if batch_id == 500:  # For shortening CI time
+                        break
 
                 lenet.eval()
                 for batch_id, data in enumerate(test_reader()):
@@ -242,11 +260,9 @@ class TestImperativeQat(unittest.TestCase):
             before_save = lenet(test_img)
 
         # save inference quantized model
-        path = "./qat_infer_model/lenet"
-        save_dir = "./qat_infer_model"
         paddle.jit.save(
             layer=lenet,
-            path=path,
+            path=TestImperativeQat.save_path,
             input_spec=[
                 paddle.static.InputSpec(
                     shape=[None, 1, 28, 28], dtype='float32')
@@ -259,7 +275,7 @@ class TestImperativeQat(unittest.TestCase):
         exe = fluid.Executor(place)
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             dirname=save_dir,
+             dirname=TestImperativeQat.root_path,
              executor=exe,
              model_filename="lenet" + INFER_MODEL_SUFFIX,
              params_filename="lenet" + INFER_PARAMS_SUFFIX)
@@ -351,7 +367,7 @@ class TestImperativeQat(unittest.TestCase):
 
         paddle.jit.save(
             layer=lenet,
-            path="./dynamic_mnist/model",
+            path=TestImperativeQat.dynamic_save_path,
             input_spec=[
                 paddle.static.InputSpec(
                     shape=[None, 1, 28, 28], dtype='float32')

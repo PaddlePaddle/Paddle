@@ -42,6 +42,11 @@ struct EngineConfig {
 
   // for xpu
   size_t xpu_l3_workspace_size;
+  bool locked = false;
+  bool autotune = true;
+  std::string autotune_file = "";
+  std::string precision = "int16";
+  bool adaptive_seqlen = false;
 
   // for x86 or arm
   int cpu_math_library_num_threads{1};

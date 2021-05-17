@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
-
 #include <sstream>
 
+#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -25,7 +25,8 @@ class ValueBlock;
 }  // namespace distributed
 }  // namespace paddle
 
-#define PSERVER_SAVE_SUFFIX "_txt"
+#define PSERVER_SAVE_SUFFIX ".shard"
+using boost::lexical_cast;
 
 namespace paddle {
 namespace distributed {
@@ -100,7 +101,7 @@ struct Meta {
 };
 
 void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
-                  std::vector<std::vector<float>>* values) {
+                  const int64_t id, std::vector<std::vector<float>>* values) {
   auto colunmn_size = columns.size();
   auto load_values =
       paddle::string::split_string<std::string>(columns[colunmn_size - 1], ",");
@@ -116,8 +117,18 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
                           "The data format in txt does not meet the field "
                           "requirements defined in meta"));
 
-    std::transform(start, end, std::back_inserter(val),
-                   [](std::string va) { return std::stof(va); });
+    std::transform(start, end, std::back_inserter(val), [id](std::string va) {
+      float v = 0.0;
+
+      try {
+        v = lexical_cast<float>(va);
+      } catch (boost::bad_lexical_cast& e) {
+        VLOG(0) << "id: " << id << " get unexpected value: " << va
+                << " and be reset to: 0.0";
+      }
+      return v;
+    });
+
     values->push_back(val);
     offset += meta.dims[x];
   }
@@ -125,34 +136,41 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
 
 int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
                    const int mode) {
-  int64_t not_save_num = 0;
-  for (auto value : block->values_) {
-    if (mode == SaveMode::delta && !value.second->need_save_) {
-      not_save_num++;
-      continue;
-    }
+  int64_t save_num = 0;
 
-    auto* vs = value.second->data_.data();
-    std::stringstream ss;
-    auto id = value.first;
-    ss << id << "\t" << value.second->count_ << "\t"
-       << value.second->unseen_days_ << "\t" << value.second->is_entry_ << "\t";
+  for (auto& table : block->values_) {
+    for (auto& value : table) {
+      if (mode == SaveMode::delta && !value.second->need_save_) {
+        continue;
+      }
 
-    for (int i = 0; i < block->value_length_; i++) {
-      ss << vs[i];
-      ss << ",";
-    }
+      ++save_num;
 
-    ss << "\n";
+      std::stringstream ss;
+      auto* vs = value.second->data_.data();
 
-    os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
+      auto id = value.first;
 
-    if (mode == SaveMode::base || mode == SaveMode::delta) {
-      value.second->need_save_ = false;
+      ss << id << "\t" << value.second->count_ << "\t"
+         << value.second->unseen_days_ << "\t" << value.second->is_entry_
+         << "\t";
+
+      for (int i = 0; i < block->value_length_ - 1; i++) {
+        ss << std::to_string(vs[i]) << ",";
+      }
+
+      ss << std::to_string(vs[block->value_length_ - 1]);
+      ss << "\n";
+
+      os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
+
+      if (mode == SaveMode::base || mode == SaveMode::delta) {
+        value.second->need_save_ = false;
+      }
     }
   }
 
-  return block->values_.size() - not_save_num;
+  return save_num;
 }
 
 int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
@@ -167,7 +185,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
 
   while (std::getline(file, line)) {
     auto values = paddle::string::split_string<std::string>(line, "\t");
-    auto id = std::stoull(values[0]);
+    auto id = lexical_cast<int64_t>(values[0]);
 
     if (id % pserver_num != pserver_id) {
       VLOG(3) << "will not load " << values[0] << " from " << valuepath
@@ -179,15 +197,17 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
     auto block = blocks->at(shard_id);
 
     std::vector<std::vector<float>> kvalues;
-    ProcessALine(values, meta, &kvalues);
+    ProcessALine(values, meta, id, &kvalues);
 
     block->Init(id, false);
 
-    auto value_instant = block->GetValue(id);
+    VALUE* value_instant = block->GetValue(id);
+
     if (values.size() == 5) {
-      value_instant->count_ = std::stoi(values[1]);
-      value_instant->unseen_days_ = std::stoi(values[2]);
-      value_instant->is_entry_ = static_cast<bool>(std::stoi(values[3]));
+      value_instant->count_ = lexical_cast<int>(values[1]);
+      value_instant->unseen_days_ = lexical_cast<int>(values[2]);
+      value_instant->is_entry_ =
+          static_cast<bool>(lexical_cast<int>(values[3]));
     }
 
     std::vector<float*> block_values = block->Get(id, meta.names, meta.dims);
@@ -254,7 +274,6 @@ int32_t CommonSparseTable::initialize_value() {
   }
 
   auto accessor = _config.accessor();
-
   std::vector<uint64_t> feasigns;
 
   for (size_t x = 0; x < accessor.fea_dim(); ++x) {
@@ -271,9 +290,14 @@ int32_t CommonSparseTable::initialize_value() {
     std::vector<uint64_t> ids(bucket_feasigns);
     std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
               ids.begin());
+
+    std::vector<uint32_t> fres;
+    fres.resize(ids.size(), 1);
+
+    auto pull_value = PullSparseValue(ids, fres, param_dim_);
     std::vector<float> pulls;
     pulls.resize(bucket_feasigns * param_dim_);
-    pull_sparse(pulls.data(), ids.data(), bucket_feasigns);
+    pull_sparse(pulls.data(), pull_value);
   }
 
   return 0;
@@ -369,8 +393,10 @@ std::pair<int64_t, int64_t> CommonSparseTable::print_table_stat() {
   int64_t feasign_size = 0;
   int64_t mf_size = 0;
 
-  for (auto& value : shard_values_) {
-    feasign_size += value->values_.size();
+  for (auto& shard : shard_values_) {
+    for (auto& table : shard->values_) {
+      feasign_size += table.size();
+    }
   }
 
   return {feasign_size, mf_size};
@@ -399,10 +425,51 @@ int32_t CommonSparseTable::pour() {
   return 0;
 }
 
-int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
-                                       size_t num) {
+int32_t CommonSparseTable::pull_sparse(float* pull_values,
+                                       const PullSparseValue& pull_value) {
   rwlock_->RDLock();
 
+  auto shard_num = task_pool_size_;
+  std::vector<std::future<int>> tasks(shard_num);
+
+  for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
+    tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
+        [this, shard_id, shard_num, &pull_value, &pull_values]() -> int {
+          auto& block = shard_values_[shard_id];
+
+          std::vector<int> offsets;
+          pull_value.Fission(shard_id, shard_num, &offsets);
+
+          if (pull_value.is_training_) {
+            for (auto& offset : offsets) {
+              auto feasign = pull_value.feasigns_[offset];
+              auto frequencie = pull_value.frequencies_[offset];
+              auto* value = block->Init(feasign, true, frequencie);
+              std::copy_n(value + param_offset_, param_dim_,
+                          pull_values + param_dim_ * offset);
+            }
+          } else {
+            for (auto& offset : offsets) {
+              auto feasign = pull_value.feasigns_[offset];
+              auto* value = block->Init(feasign, false);
+              std::copy_n(value + param_offset_, param_dim_,
+                          pull_values + param_dim_ * offset);
+            }
+          }
+
+          return 0;
+        });
+  }
+
+  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
+    tasks[shard_id].wait();
+  }
+  rwlock_->UNLock();
+  return 0;
+}
+
+int32_t CommonSparseTable::pull_sparse_ptr(char** pull_values,
+                                           const uint64_t* keys, size_t num) {
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -422,9 +489,10 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
-            auto* value = block->Init(id);
-            std::copy_n(value + param_offset_, param_dim_,
-                        pull_values + param_dim_ * offset);
+            auto* value = block->InitGet(id);
+            // std::copy_n(value + param_offset_, param_dim_,
+            //            pull_values + param_dim_ * offset);
+            pull_values[offset] = reinterpret_cast<char*>(value);
           }
 
           return 0;
@@ -434,7 +502,6 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  rwlock_->UNLock();
   return 0;
 }
 
@@ -491,6 +558,45 @@ int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
     _push_sparse(keys, values, num);
   }
 
+  return 0;
+}
+
+int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
+                                       const float** values, size_t num) {
+  _push_sparse(keys, values, num);
+  return 0;
+}
+
+int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
+                                        const float** values, size_t num) {
+  rwlock_->RDLock();
+  std::vector<std::vector<uint64_t>> offset_bucket;
+  offset_bucket.resize(task_pool_size_);
+
+  for (int x = 0; x < num; ++x) {
+    auto y = keys[x] % task_pool_size_;
+    offset_bucket[y].push_back(x);
+  }
+
+  std::vector<std::future<int>> tasks(task_pool_size_);
+
+  for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
+    tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
+        [this, shard_id, &keys, &values, num, &offset_bucket]() -> int {
+          auto& offsets = offset_bucket[shard_id];
+          for (size_t i = 0; i < offsets.size(); ++i) {
+            std::vector<uint64_t> tmp_off = {0};
+            optimizer_->update(keys + offsets[i], values[offsets[i]], num,
+                               tmp_off, shard_values_[shard_id].get());
+          }
+          return 0;
+        });
+  }
+
+  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
+    tasks[shard_id].wait();
+  }
+  rwlock_->UNLock();
   return 0;
 }
 

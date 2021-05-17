@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include <memory>
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif

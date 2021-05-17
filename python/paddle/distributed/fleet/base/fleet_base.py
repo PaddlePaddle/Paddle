@@ -26,6 +26,14 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
+from . import topology as tp
+from .topology import ParallelMode
+from ..meta_parallel import ModelParallel
+from ..meta_parallel import PipelineParallel
+from ..meta_optimizers import HybridParallelOptimizer
+from ..meta_optimizers import HybridParallelGradScaler
+
+__all__ = []
 
 
 def _inited_runtime_handler_(func):
@@ -218,6 +226,9 @@ class Fleet(object):
 
         if paddle.fluid.framework.in_dygraph_mode():
             if self.worker_num() == 1:
+                # if worker_num is 1, should construct default topology & hcg
+                self._topology = tp.CommunicateTopology()
+                self._hcg = tp.HybridCommunicateGroup(self._topology)
                 return
             if parallel_helper._is_parallel_ctx_initialized():
                 warnings.warn(
@@ -233,6 +244,48 @@ class Fleet(object):
                     os.environ["FLAGS_nccl_nrings"] = str(
                         self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
+
+            # init hybrid parallel environment in dygraph
+            if tp._HYBRID_PARALLEL_GROUP is None:
+                self._init_hybrid_parallel_env()
+            else:
+                warnings.warn(
+                    "The dygraph hybrid parallel environment has been initialized."
+                )
+
+    def _init_hybrid_parallel_env(self):
+        """initialize the hybrid environment
+        """
+        self.hybrid_configs = self._user_defined_strategy.hybrid_configs
+        self.dp_degree = self.hybrid_configs["dp_degree"]
+        self.mp_degree = self.hybrid_configs["mp_degree"]
+        self.pp_degree = self.hybrid_configs["pp_degree"]
+
+        assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
+        assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+
+        self.mp_degree = max(self.mp_degree, 1)
+        self.pp_degree = max(self.pp_degree, 1)
+
+        if self.dp_degree < 0:
+            nranks = paddle.distributed.get_world_size()
+            self.dp_degree = nranks // (self.mp_degree * self.pp_degree)
+
+        self.dp_degree = max(self.dp_degree, 1)
+
+        self._topology = tp.CommunicateTopology(
+            hybrid_group_names=["data", "pipe", "model"],
+            dims=[self.dp_degree, self.pp_degree, self.mp_degree])
+
+        self._hcg = tp.HybridCommunicateGroup(self._topology)
+
+    def get_hybrid_communicate_group(self):
+        assert self._hcg is not None
+        return self._hcg
+
+    def get_hybrid_parallel_topology(self):
+        assert self._topology is not None
+        return self._topology
 
     def is_first_worker(self):
         """
@@ -288,6 +341,18 @@ class Fleet(object):
 
         """
         return self._role_maker._worker_num()
+
+    def node_num(self):
+        return self._role_maker._get_node_num()
+
+    def local_rank(self):
+        return self._role_maker._get_local_rank()
+
+    def local_device_ids(self):
+        return self._role_maker._get_local_device_ids()
+
+    def world_device_ids(self):
+        return self._role_maker._get_world_device_ids()
 
     def is_worker(self):
         """
@@ -515,6 +580,49 @@ class Fleet(object):
         """
         self._runtime_handle._stop_worker()
 
+    def save(self, dirname, feed=[], fetch=[], **configs):
+        inference = True
+
+        if not feed and not fetch:
+            inference = False
+
+        place = paddle.CPUPlace()
+        executor = paddle.static.Executor(place)
+
+        if inference:
+            feeded_var_names = []
+            fetch_var_names = []
+
+            for var in feed:
+                if isinstance(var, str):
+                    feeded_var_names.append(var)
+                elif isinstance(var, paddle.static.Variable):
+                    feeded_var_names.append(var.name)
+                else:
+                    raise ValueError("feed must be [str|Variable]")
+
+            for var in fetch:
+                if isinstance(var, str):
+                    fetch_var_names.append(var)
+                elif isinstance(var, paddle.static.Variable):
+                    fetch_var_names.append(var.name)
+                else:
+                    raise ValueError("feed must be [str|Variable]")
+
+            fetch_vars = [
+                paddle.static.default_main_program().global_block().var(name)
+                for name in fetch_var_names
+            ]
+
+            self._runtime_handle._save_inference_model(
+                executor, dirname, feeded_var_names, fetch_vars, None, True, 0)
+        else:
+            increment_mode = 0
+            if "mode" in configs:
+                increment_mode = int(configs["mode"])
+            self._runtime_handle._save_persistables(
+                executor, dirname, main_program=None, mode=increment_mode)
+
     def save_inference_model(self,
                              executor,
                              dirname,
@@ -542,6 +650,9 @@ class Fleet(object):
                 fleet.init_server()
 
         """
+        # warnings.warn(
+        #     "'save_inference_model' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
+        # )
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
@@ -588,6 +699,9 @@ class Fleet(object):
                 fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
 
         """
+        # warnings.warn(
+        #     "'save_persistables' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
+        # )
 
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
@@ -628,15 +742,23 @@ class Fleet(object):
         self.user_defined_optimizer = optimizer
 
         if strategy is not None:
-            warnings.warn(
-                "It is recommended to use DistributedStrategy "
-                "in fleet.init(). The strategy here is only for compatibility. "
-                "If the strategy in fleet.distributed_optimizer() is "
-                "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
-                "which will take effect in distributed training.")
+            if self._is_collective:
+                warnings.warn(
+                    "It is recommended to use DistributedStrategy "
+                    "in fleet.init(). The strategy here is only for compatibility. "
+                    "If the strategy in fleet.distributed_optimizer() is "
+                    "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
+                    "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
 
         self._context = {}
+
+        if paddle.fluid.framework.in_dygraph_mode():
+            if self.worker_num() > 1:
+                return HybridParallelOptimizer(optimizer, self._hcg,
+                                               self._user_defined_strategy)
+            else:
+                return optimizer
         return self
 
     @dygraph_only
@@ -695,13 +817,25 @@ class Fleet(object):
 
 
         """
-        assert model is not None
-        self.model = paddle.DataParallel(
-            model,
-            comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
-            last_comm_buffer_size=self._user_defined_strategy.
-            last_comm_group_size_MB)
-        return self.model
+        assert model is not None, "model should not be None"
+        if self.worker_num() <= 1:
+            return model
+        if self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+            distributed_model = paddle.DataParallel(
+                model,
+                comm_buffer_size=self._user_defined_strategy.
+                fuse_grad_size_in_MB,
+                last_comm_buffer_size=self._user_defined_strategy.
+                last_comm_group_size_MB,
+                find_unused_parameters=self._user_defined_strategy.
+                find_unused_parameters)
+        elif self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL:
+            distributed_model = ModelParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
+            distributed_model = PipelineParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        return distributed_model
 
     @dygraph_only
     def state_dict(self):
@@ -963,6 +1097,28 @@ class Fleet(object):
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
 
+    def _get_amp_optimizer(self):
+        # imitate target optimizer retrieval
+        amp_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'amp_init'):
+                amp_optimizer = optimizer
+                break
+
+        if amp_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'amp_init'):
+                amp_optimizer = self.user_defined_optimizer
+
+        assert amp_optimizer is not None, \
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        return amp_optimizer
+
+    def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
+        amp_optimizer = self._get_amp_optimizer()
+        return amp_optimizer.get_loss_scaling()
+
     def amp_init(self,
                  place,
                  scope=None,
@@ -1023,21 +1179,7 @@ class Fleet(object):
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                     run_example_code()       
         """
-
-        # imitate target optimizer retrieval
-        amp_optimizer = None
-        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
-            if hasattr(optimizer, 'amp_init'):
-                amp_optimizer = optimizer
-                break
-
-        if amp_optimizer is None:
-            if hasattr(self.user_defined_optimizer, 'amp_init'):
-                amp_optimizer = self.user_defined_optimizer
-
-        assert amp_optimizer is not None, \
-            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
-
+        amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
     def _final_strategy(self):
@@ -1249,3 +1391,7 @@ class Fleet(object):
         fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads
+
+    @dygraph_only
+    def distributed_scaler(self, scaler):
+        return HybridParallelGradScaler(scaler, self._hcg)

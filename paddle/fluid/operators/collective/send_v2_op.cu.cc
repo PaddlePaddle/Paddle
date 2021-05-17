@@ -57,21 +57,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
-    // Send number of elements to the receiver, as the receiver may have
-    // no information of the Tensor size.
-    int* numel_ptr = nullptr;
-#ifdef PADDLE_WITH_RCCL
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&numel_ptr, sizeof(int)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        hipMemcpy(numel_ptr, &numel, sizeof(int), hipMemcpyHostToDevice));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&numel_ptr, sizeof(int)));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpy(numel_ptr, &numel, sizeof(int), cudaMemcpyHostToDevice));
-#endif
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
-        numel_ptr, 1, ncclInt, peer, comm->comm(), stream));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         x->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " send "

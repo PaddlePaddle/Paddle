@@ -34,10 +34,8 @@ SIZE_FLOAT32 = 4
 SIZE_INT64 = 8
 FULL_SIZE_BYTES = 30106000008
 FULL_IMAGES = 50000
-TARGET_HASH = '0be07c2c23296b97dad83c626682c66a'
 FOLDER_NAME = "ILSVRC2012/"
 VALLIST_TAR_NAME = "ILSVRC2012/val_list.txt"
-CHUNK_SIZE = 8192
 
 img_mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1))
 img_std = np.array([0.229, 0.224, 0.225]).reshape((3, 1, 1))
@@ -108,28 +106,6 @@ def print_processbar(done_percentage):
     sys.stdout.flush()
 
 
-def check_integrity(filename, target_hash):
-    print('\nThe binary file exists. Checking file integrity...\n')
-    md = hashlib.md5()
-    count = 0
-    onepart = FULL_SIZE_BYTES // CHUNK_SIZE // 100
-    with open(filename, 'rb') as ifs:
-        while True:
-            buf = ifs.read(CHUNK_SIZE)
-            if count % onepart == 0:
-                done = count // onepart
-                print_processbar(done)
-            count = count + 1
-            if not buf:
-                break
-            md.update(buf)
-    hash1 = md.hexdigest()
-    if hash1 == target_hash:
-        return True
-    else:
-        return False
-
-
 def convert_Imagenet_tar2bin(tar_file, output_file):
     print('Converting 50000 images to binary file ...\n')
     tar = tarfile.open(name=tar_file, mode='r:gz')
@@ -188,8 +164,7 @@ def run_convert():
     try_limit = 3
 
     while not (os.path.exists(output_file) and
-               os.path.getsize(output_file) == FULL_SIZE_BYTES and
-               check_integrity(output_file, TARGET_HASH)):
+               os.path.getsize(output_file) == FULL_SIZE_BYTES):
         if os.path.exists(output_file):
             sys.stderr.write(
                 "\n\nThe existing binary file is broken. Start to generate new one...\n\n".

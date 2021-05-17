@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -32,8 +33,8 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
-using Array1 = Eigen::DSizes<int64_t, 1>;
-using Array2 = Eigen::DSizes<int64_t, 2>;
+using Array1 = Eigen::DSizes<Eigen::DenseIndex, 1>;
+using Array2 = Eigen::DSizes<Eigen::DenseIndex, 2>;
 
 using Tensor = framework::Tensor;
 
@@ -105,7 +106,8 @@ class AddMMKernel : public framework::OpKernel<T> {
     auto eigen_out = EigenTensor<T, 2>::From(*out);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    eigen_out.device(place) = eigen_input.broadcast(bcast_dims);
+    EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
+        place, eigen_out, eigen_input, bcast_dims);
 
     blas.GEMM(false, false, x_dims[0], y_dims[1], x_dims[1], alpha,
               x->data<T>(), x_dims[1], y->data<T>(), y_dims[1], beta,

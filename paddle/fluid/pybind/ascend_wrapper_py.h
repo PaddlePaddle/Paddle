@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_ASCEND
+#ifdef PADDLE_WITH_ASCEND_CL
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -25,6 +25,7 @@ namespace pybind {
 
 void BindAscendGraph(py::module* m);
 void BindAscendWrapper(py::module* m);
+void BindAscendDevice(py::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

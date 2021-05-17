@@ -48,18 +48,37 @@ class TestSetValueBase(unittest.TestCase):
 
 
 class TestSetValueApi(TestSetValueBase):
-    def test_api(self):
+    def _run_static(self):
+        paddle.enable_static()
         with paddle.static.program_guard(self.program):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             self._call_setitem(x)
 
         exe = paddle.static.Executor(paddle.CPUPlace())
         out = exe.run(self.program, fetch_list=[x])
+        paddle.disable_static()
+        return out
+
+    def _run_dynamic(self):
+        paddle.disable_static()
+        x = paddle.ones(shape=self.shape, dtype=self.dtype)
+        self._call_setitem(x)
+        out = x.numpy()
+        paddle.enable_static()
+        return out
+
+    def test_api(self):
+        static_out = self._run_static()
+        dynamic_out = self._run_dynamic()
         self._get_answer()
+
+        error_msg = "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
         self.assertTrue(
-            (self.data == out).all(),
-            msg="\nExpected res = \n{}, \n\nbut received : \n{}".format(
-                self.data, out))
+            (self.data == static_out).all(),
+            msg=error_msg.format("static", self.data, static_out))
+        self.assertTrue(
+            (self.data == dynamic_out).all(),
+            msg=error_msg.format("dynamic", self.data, dynamic_out))
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
@@ -104,6 +123,23 @@ class TestSetValueItemSlice4(TestSetValueApi):
 
     def _get_answer(self):
         self.data[0:, 1:2, :] = self.value
+
+
+class TestSetValueItemSliceInWhile(TestSetValueApi):
+    def _call_setitem(self, x):
+        def cond(i, x):
+            return i < 1
+
+        def body(i, x):
+            x[i] = self.value
+            i = i + 1
+            return i, x
+
+        i = paddle.zeros(shape=(1, ), dtype='int32')
+        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+
+    def _get_answer(self):
+        self.data[0] = self.value
 
 
 # 1.2.2 step > 1
@@ -671,6 +707,20 @@ class TestSetValueValueShape4(TestSetValueApi):
         self.data[0] = self.value
 
 
+class TestSetValueValueShape5(TestSetValueApi):
+    def set_value(self):
+        self.value = np.array([3, 3, 3]).astype(self.dtype)
+
+    def set_shape(self):
+        self.shape = [3, 4]
+
+    def _call_setitem(self, x):
+        x[:, 0] = paddle.assign(self.value)  # x is Paddle.Tensor
+
+    def _get_answer(self):
+        self.data[:, 0] = self.value
+
+
 # 4. Test error
 class TestError(TestSetValueBase):
     def _value_type_error(self):
@@ -717,11 +767,83 @@ class TestError(TestSetValueBase):
             exe.run(program)
 
     def test_error(self):
+        paddle.enable_static()
         with paddle.static.program_guard(self.program):
             self._value_type_error()
             self._dtype_error()
             self._step_error()
         self._broadcast_mismatch()
+
+
+# 5. Test backward
+
+
+class Model(paddle.nn.Layer):
+    def __init__(self):
+        super(Model, self).__init__()
+        self.conv = paddle.nn.Conv2D(12, 12, 3)
+
+    def forward(self, x, y):
+        x = self.conv(x)
+        y = self.conv(y)
+        var = y.flatten()
+
+        x[0, :, 0, 0] = var
+        loss = paddle.mean(x)
+        return loss, var, x
+
+
+class TestBackward(unittest.TestCase):
+    def test_static(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+
+        x_np = np.random.random(size=(4, 4)).astype('float32')
+        y_np = np.random.random(size=(4, 4)).astype('float32')
+        label_np = np.random.randint(2, size=(4, 1)).astype('int64')
+
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
+            y = paddle.static.data(name="y", shape=[4, 4], dtype='float32')
+
+            label = paddle.static.data(
+                name="label", shape=[4, 1], dtype='int64')
+
+            z = paddle.add(x, y)
+            var = y[0, :]
+            z[0, :] = var
+
+            prediction = paddle.static.nn.fc(x=z, size=2, activation='softmax')
+
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction, label=label)
+            loss = paddle.mean(cost)
+            sgd = paddle.optimizer.SGD(learning_rate=0.01)
+            sgd.minimize(loss)
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe.run(startup_program)
+
+        var_grad, z_grad = exe.run(
+            main_program,
+            feed={"x": x_np,
+                  "y": y_np,
+                  "label": label_np},
+            fetch_list=[var.name + "@GRAD", z.name + "@GRAD"])
+
+        self.assertTrue((var_grad == z_grad[0, :]).all())
+
+    def test_dynamic(self):
+        paddle.disable_static()
+        model = Model()
+        x = paddle.ones([1, 12, 3, 3]).astype("float32")
+        y = paddle.ones([1, 12, 3, 3]).astype("float32")
+        loss, var, x = model(x, y)
+        loss.backward()
+
+        self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
+        self.assertTrue((var.grad == x.grad[0, :, 0, 0]).all())
 
 
 if __name__ == '__main__':

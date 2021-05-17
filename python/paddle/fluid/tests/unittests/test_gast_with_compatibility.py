@@ -97,7 +97,6 @@ class GastNodeTransformer(gast.NodeTransformer):
         It will be generally represented by gast.Index or gast.Slice in gast.
         Note: Paddle doesn't support PY3.8 currently.
         """
-        assert isinstance(node.slice, (gast.Index, gast.Slice))
         self.generic_visit(node)
         return node
 

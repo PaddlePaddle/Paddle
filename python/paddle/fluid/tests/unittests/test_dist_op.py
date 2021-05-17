@@ -39,9 +39,10 @@ class TestDistOp(OpTest):
         self.op_type = 'dist'
         self.attrs = {}
         self.init_case()
+        self.init_data_type()
         self.inputs = {
-            "X": np.random.random(self.x_shape).astype("float64"),
-            "Y": np.random.random(self.y_shape).astype("float64")
+            "X": np.random.random(self.x_shape).astype(self.data_type),
+            "Y": np.random.random(self.y_shape).astype(self.data_type)
         }
 
         self.attrs["p"] = self.p
@@ -54,6 +55,10 @@ class TestDistOp(OpTest):
         self.x_shape = (120)
         self.y_shape = (120)
         self.p = 0.
+
+    def init_data_type(self):
+        self.data_type = np.float32 if core.is_compiled_with_rocm(
+        ) else np.float64
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -143,15 +148,20 @@ class TestDistOpCase5(TestDistOp):
 
 
 class TestDistAPI(unittest.TestCase):
+    def init_data_type(self):
+        self.data_type = 'float32' if core.is_compiled_with_rocm(
+        ) else 'float64'
+
     def test_api(self):
+        self.init_data_type()
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.data(name='x', shape=[2, 3, 4, 5], dtype='float64')
-            y = fluid.data(name='y', shape=[3, 1, 5], dtype='float64')
+            x = fluid.data(name='x', shape=[2, 3, 4, 5], dtype=self.data_type)
+            y = fluid.data(name='y', shape=[3, 1, 5], dtype=self.data_type)
             p = 2
-            x_i = np.random.random((2, 3, 4, 5)).astype("float64")
-            y_i = np.random.random((3, 1, 5)).astype("float64")
+            x_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
+            y_i = np.random.random((3, 1, 5)).astype(self.data_type)
             result = paddle.dist(x, y, p)
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()

@@ -33,10 +33,19 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
-from testsuite import create_op, set_input, append_input_output, append_loss_ops
+from paddle.fluid.tests.unittests.testsuite import (
+    create_op,
+    set_input,
+    append_input_output,
+    append_loss_ops, )
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
-from white_list import op_threshold_white_list, no_grad_set_white_list
+from paddle.fluid.tests.unittests.white_list import (
+    op_accuracy_white_list,
+    check_shape_white_list,
+    compile_vs_runtime_white_list,
+    no_check_set_white_list,
+    op_threshold_white_list,
+    no_grad_set_white_list, )
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -235,6 +244,14 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
     return new_output
 
 
+def convert_uint16_to_float(in_list):
+    in_list = np.asarray(in_list)
+    out = np.vectorize(
+        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        otypes=[np.float32])(in_list.flat)
+    return np.reshape(out, in_list.shape)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -249,7 +266,10 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-        cls._use_system_allocator = _set_use_system_allocator(True)
+        if paddle.is_compiled_with_npu():
+            cls._use_system_allocator = _set_use_system_allocator(False)
+        else:
+            cls._use_system_allocator = _set_use_system_allocator(True)
 
     @classmethod
     def tearDownClass(cls):
@@ -281,6 +301,9 @@ class OpTest(unittest.TestCase):
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
 
+        def is_npu_op_test():
+            return hasattr(cls, "use_npu") and cls.use_npu == True
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -302,7 +325,8 @@ class OpTest(unittest.TestCase):
                 and not hasattr(cls, 'exist_fp64_check_grad') \
                 and not is_xpu_op_test() \
                 and not is_mkldnn_op_test() \
-                and not is_rocm_op_test():
+                and not is_rocm_op_test() \
+                and not is_npu_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
@@ -1063,6 +1087,7 @@ class OpTest(unittest.TestCase):
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
+
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -1143,8 +1168,21 @@ class OpTest(unittest.TestCase):
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
+
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
+
+                if actual_t.dtype == np.uint16 and expect_t.dtype in [
+                        np.float32, np.float64
+                ]:
+                    actual_t = convert_uint16_to_float(actual_t)
+                    atol = 0.03
+
+                # NOTE(zhiqiu): np.allclose([], [1.]) returns True
+                # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
+                if expect_t.size == 0:
+                    self.assertTrue(actual_t.size == 0)
+
                 self.assertTrue(
                     np.allclose(
                         actual_t, expect_t, atol=atol, equal_nan=equal_nan),
@@ -1193,7 +1231,8 @@ class OpTest(unittest.TestCase):
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest
         # Currently not support ParallelExecutor on XPUPlace.
-        if not paddle.is_compiled_with_xpu():
+        if not paddle.is_compiled_with_xpu(
+        ) and not paddle.is_compiled_with_npu():
             self.check_inplace_output_with_place(
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
@@ -1418,9 +1457,18 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
+        # FIXME: Replace numeric_place with place to calculate numeric_grads.
+        # NOTE(liym27): There is an unknown error when call op.run() on NPUPlace, which
+        # needs to be fixed.
+        if hasattr(self.__class__,
+                   "use_npu") and self.__class__.use_npu == True:
+            numeric_place = paddle.CPUPlace()
+        else:
+            numeric_place = place
+
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
-                place,
+                numeric_place,
                 self.scope,
                 self.op,
                 self.inputs,
@@ -1433,6 +1481,17 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set,
                                             user_defined_grad_outputs)
+
+        # comparison of bf16 results will happen as fp32
+        # loop over list of grads and convert bf16 to fp32
+        fp32_grads = []
+        for grad in analytic_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = 0.03
+            fp32_grads.append(grad)
+        analytic_grads = fp32_grads
+
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
