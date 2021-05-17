@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace platform {
@@ -38,6 +38,68 @@ using platform::to_void_cast;
 using Tensor = framework::Tensor;
 
 template <typename T>
+class MatMulGradMKLDNNHandler
+    : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
+ public:
+  MatMulGradMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+                         const mkldnn::engine engine, platform::Place cpu_place,
+                         Tensor* x, const bool trans_x,
+                         Tensor* y, const bool trans_y,
+                         Tensor* out, float scale, const std::string& uniq_name)
+      : platform::MKLDNNHandlerT<T, dnnl::matmul>(
+            dev_ctx, engine, cpu_place,
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                uniq_name)) {
+    if (!this->isCached()) {
+      auto mat_dim_x = math::CreateMatrixDescriptor(x->dims(), 0, trans_x);
+      auto mat_dim_y = math::CreateMatrixDescriptor(y->dims(), 0, trans_y);
+
+      //PADDLE_ENFORCE_EQ(
+      //    x->layout(), DataLayout::kMKLDNN,
+      //    platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+      //PADDLE_ENFORCE_NE(
+      //    x->format(), MKLDNNMemoryFormat::undef,
+      //    platform::errors::InvalidArgument("Wrong format set for X tensor."));
+      memory::dim x_bs = mat_dim_x.batch_size_;
+      memory::dim y_bs = mat_dim_y.batch_size_;
+
+      memory::dim out_bs = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
+      const memory::dim M = mat_dim_x.height_;
+      const memory::dim N = mat_dim_y.width_;
+      const memory::dim K = mat_dim_x.width_;
+
+      memory::dims x_dims = {x_bs > 0 ? x_bs : 1, M, K};
+      memory::dims y_dims = {y_bs > 0 ? y_bs : 1, K, N};
+      memory::dims out_dims = {out_bs, M, N};
+
+      memory::dims x_strides = !trans_x ? memory::dims{M * K, K, 1}
+                                                  : memory::dims{M * K, 1, M};
+
+      memory::dims y_strides = !trans_y ? memory::dims{N * K, N, 1}
+                                                  : memory::dims{N * K, 1, K};
+      memory::dims out_strides = memory::dims{M * N, N, 1};
+
+      auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
+      auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
+      auto out_md = memory::desc(out_dims, MKLDNNGetDataType<T>(), out_strides);
+
+      dnnl::primitive_attr attrs;
+      if(scale != 1.0f)
+        attrs.set_output_scales(0, {scale});
+
+      this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
+    }
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
+      const Tensor* input) {
+    const T* input_data = input->data<T>();
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(), to_void_cast<T>(input_data), "@weights_mem_p");
+  }
+};
+
+template <typename T>
 constexpr bool IsInt8() {
   return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
 }
@@ -58,6 +120,92 @@ static framework::DDim RowMatrixDimsFromVector(const framework::DDim& x_dim) {
 static framework::DDim ColumnMatrixDimsFromVector(
     const framework::DDim& y_dim) {
   return y_dim.size() > 1 ? y_dim : framework::make_ddim({y_dim[0], 1});
+}
+
+/**
+ * Reshape a tensor to 3-D or 2-D tensor by matrix descriptor.
+ *
+ * The shape would be [BatchSize, H, W] or [H, W].
+ * If transposed, `H,W` will be swapped.
+ */
+static void ReshapeTensorIntoMatrixSequence(
+    framework::Tensor *x, const math::MatDescriptor &descriptor) {
+  int64_t h, w;
+  h = descriptor.height_;
+  w = descriptor.width_;
+  if (descriptor.trans_) {
+    std::swap(w, h);
+  }
+  if (descriptor.batch_size_) {
+    x->Resize({descriptor.batch_size_, h, w});
+  } else {
+    x->Resize({h, w});
+  }
+}
+
+/**
+ * Reshape the x,y,out tensor to 3-D or 2-D tensor by matrix descriptor
+ * Out = matmul(x, y)
+ *
+ * This method will first calculate X,Y matrix sequence, and then calculate
+ * the out shape.
+ *
+ * Assume X = [BatchSize, H1, W1], Y = [BatchSize, H2, W2]
+ * The out = [BatchSize, H1, W2]
+ *
+ * If there is no batch size in `X` and `Y`, the out will be [H1, W2]
+ * If any of `X` and `Y` has batch size BatchSize, the out will have the
+ * BatchSize.
+ */
+static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
+                                           framework::Tensor *y,
+                                           framework::Tensor *out, bool trans_x,
+                                           bool trans_y) {
+  auto x_dim = RowMatrixDimsFromVector(x->dims());
+  auto y_dim = ColumnMatrixDimsFromVector(y->dims());
+  auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
+    out->Resize({mat_dim_x.height_, mat_dim_y.width_});
+  } else {
+    out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
+                 mat_dim_x.height_, mat_dim_y.width_});
+  }
+
+  ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
+  ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
+}
+
+// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
+// Identity op if the tensor is not of rank 3.
+static framework::Tensor FoldInitDims(const framework::Tensor &input) {
+  auto output = input;
+  auto in_dims = input.dims();
+  if (in_dims.size() == 3) {
+    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
+  }
+  return output;
+}
+
+// Reshape a rank-3 tensor from P x M x N to M x (P * N).
+// (Warning: This requires transposing data and writes into new memory.)
+// Identity op if the tensor is not of rank 3.
+template <typename DeviceContext, typename T>
+static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
+                                             const framework::Tensor &input) {
+  auto in_dims = input.dims();
+  if (in_dims.size() != 3) {
+    return input;
+  }
+  framework::Tensor output;
+  output.Resize({in_dims[1], in_dims[0], in_dims[2]});
+  output.mutable_data<T>(context.GetPlace());
+  std::vector<int> axis = {1, 0, 2};
+  math::Transpose<DeviceContext, T, 3> trans;
+  trans(context, input, &output, axis);
+  output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
+
+  return output;
 }
 
 template <typename XT, typename YT, typename OT>
@@ -372,7 +520,7 @@ static void ExecuteMatMul(const ExecutionContext& ctx) {
 template <typename T>
 class DNNLMatMulKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const ExecutionContext& ctx) const override {
     if (ctx.HasAttr("head_number")) {
       PADDLE_ENFORCE_EQ(
           ctx.Attr<int>("head_number"), 1,
@@ -385,6 +533,111 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
     ExecuteMatMul<T, T>(ctx);
   }
 };
+
+template <typename T>
+class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const ExecutionContext& ctx) const override {
+    if (ctx.HasAttr("head_number")) {
+      PADDLE_ENFORCE_EQ(
+          ctx.Attr<int>("head_number"), 1,
+          platform::errors::Unimplemented(
+              "DNNL matmul doesn't support multiple heads. Expected "
+              "head_number=1. But received `head_number` is %d",
+              ctx.Attr<int>("head_number")));
+    }
+    RunKernel<T>(ctx);
+  }
+
+ private:
+  void ExecuteMatMul(const ExecutionContext& ctx, 
+                     const MKLDNNDeviceContext &dev_ctx, const mkldnn::engine &engine,
+                     Tensor* x, bool trans_x, bool is_fold_init_dims_x,
+                     Tensor* y, bool trans_y, bool is_fold_init_dims_y,
+                     Tensor *out, int execution_number) const{
+
+    MatMulGradMKLDNNHandler<T> handler(
+        dev_ctx, engine, ctx.GetPlace(), x, trans_x,
+        y, trans_y, out, ctx.Attr<float>("alpha"),
+        ctx.InputName(framework::GradVarName("Out")) + std::to_string(execution_number));
+
+    const auto src_memory_p = handler.AcquireSrcMemory(x);
+    const auto weights_memory_p = handler.AcquireWeightsMemory(y);
+    const auto dst_memory_p = handler.AcquireDstMemory(out);
+
+    auto matmul_p = handler.AcquireForwardPrimitive();
+
+    std::unordered_map<int, dnnl::memory> matmul_args = {
+        {DNNL_ARG_SRC, *src_memory_p},
+        {DNNL_ARG_WEIGHTS, *weights_memory_p},
+        {DNNL_ARG_DST, *dst_memory_p}};
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    matmul_p->execute(astream, matmul_args);
+    astream.wait();
+  }
+
+
+  template <typename Tout = T>
+  void RunKernel(const ExecutionContext& ctx) const {
+    const auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& onednn_engine = dev_ctx.GetEngine();
+
+    auto* x = const_cast<Tensor*>(ctx.Input<Tensor>("X"));
+    auto* y = const_cast<Tensor*>(ctx.Input<Tensor>("Y"));
+    auto* dout = const_cast<Tensor*>(ctx.Input<Tensor>(framework::GradVarName("Out")));
+    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+
+    bool transpose_x = ctx.Attr<bool>("transpose_X");
+    bool transpose_y = ctx.Attr<bool>("transpose_Y");
+
+    ReshapeXYOutIntoMatrixSequence(x, y, dout, transpose_x, transpose_y);
+    framework::DDim dx_dims;
+    if (dx) {
+      dx_dims = dx->dims();
+      if (dx_dims != x->dims()) {
+        dx->Resize(x->dims());
+      }
+    }
+
+    framework::DDim dy_dims;
+    if (dy) {
+      dy_dims = dy->dims();
+      if (dy_dims != y->dims()) {
+        dy->Resize(y->dims());
+      }
+    }
+
+    if (transpose_x && transpose_y) {
+      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, y, true, true, dout, true, false, dx, 0);
+      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, dout, true, true, x, true, false, dy, 1);
+    } else if (transpose_x) {
+      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, y, false, false, dout, true, false, dx, 0);
+      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, x, false, false, dout, false, true, dy, 1);
+    } else if (transpose_y) {
+      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, dout, false, false, y, false, true, dx, 0);
+      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, dout, true, true, x, false, true, dy, 1);
+    } else {
+      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, dout, false, false, y, true, false, dx, 0);
+      this->ExecuteMatMul(ctx, dev_ctx, onednn_engine, x, true, true, dout, false, true, dy, 1);
+    }
+
+    if (dx) {
+      if (dx_dims != x->dims()) {
+        dx->Resize(dx_dims);
+      }
+    }
+    if (dy) {
+      if (dy_dims != y->dims()) {
+        dy->Resize(dy_dims);
+      }
+    }
+
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
@@ -394,3 +647,6 @@ REGISTER_OP_KERNEL(matmul, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::DNNLMatMulKernel<paddle::platform::bfloat16>,
                    ops::DNNLMatMulKernel<int8_t>,
                    ops::DNNLMatMulKernel<uint8_t>);
+
+REGISTER_OP_KERNEL(matmul_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::MatMulGradMKLDNNKernel<float>);
