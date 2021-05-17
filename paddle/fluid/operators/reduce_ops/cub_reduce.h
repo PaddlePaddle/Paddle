@@ -138,7 +138,7 @@ __global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
   }
 }
 
-static inline std::vector<int> GetStrides(const std::vector<int>& dims) {
+static inline std::vector<int> GetStrides_m(const std::vector<int>& dims) {
   int n = static_cast<int>(dims.size());
   if (n == 0) return std::vector<int>();
   std::vector<int> strides(n);
@@ -149,7 +149,7 @@ static inline std::vector<int> GetStrides(const std::vector<int>& dims) {
   return strides;
 }
 
-static inline std::vector<int> GetStrides(const std::vector<int>& dims,
+static inline std::vector<int> GetStrides_m(const std::vector<int>& dims,
                                           const std::vector<int>& idx) {
   int n = static_cast<int>(idx.size());
   if (n == 0) return std::vector<int>();
@@ -323,9 +323,9 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
   std::vector<int> reduce_dim(reduce_set.begin(), reduce_set.end());
   std::vector<int> left_dim(left_set.begin(), left_set.end());
 
-  std::vector<int> x_strides = detail::GetStrides(x_dim);
-  std::vector<int> reduce_strides = detail::GetStrides(x_dim, reduce_dim);
-  std::vector<int> left_strides = detail::GetStrides(x_dim, left_dim);
+  std::vector<int> x_strides = detail::GetStrides_m(x_dim);
+  std::vector<int> reduce_strides = detail::GetStrides_m(x_dim, reduce_dim);
+  std::vector<int> left_strides = detail::GetStrides_m(x_dim, left_dim);
   int reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
   int left_num = 1;
   if (left_dim.size()) left_num = left_strides[0] * x_dim[left_dim[0]];
