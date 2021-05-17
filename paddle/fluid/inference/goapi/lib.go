@@ -14,6 +14,6 @@
 
 package paddle
 
-// #cgo CFLAGS: -I${SRCDIR}/../capi_exp
-// #cgo LDFLAGS: -lpaddle_inference_c
+// #cgo CFLAGS: -I${SRCDIR}/paddle_inference_c/paddle/include
+// #cgo LDFLAGS: -L${SRCDIR}/paddle_inference_c/paddle/lib -lpaddle_inference_c
 import "C"
