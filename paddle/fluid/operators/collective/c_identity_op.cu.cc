@@ -17,7 +17,7 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_identity, ops::CIdentityOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(c_identity, ops::CIdentityOpKernel<float>,
                         ops::CIdentityOpKernel<double>,
                         ops::CIdentityOpKernel<int>,
                         ops::CIdentityOpKernel<int64_t>,

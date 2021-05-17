@@ -1096,7 +1096,13 @@ def ctc_loss(log_probs,
     return loss_out
 
 
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.cross_entropy")
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.functional.cross_entropy",
+    level=1,
+    reason=(
+        'Please notice that behavior of "paddle.nn.functional.softmax_with_cross_entropy" '
+        'and "paddle.nn.functional.cross_entropy" is different.'))
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
@@ -1371,8 +1377,6 @@ def cross_entropy(input,
             "should be '-100', but received %s, which is not allowed." %
             ignore_index)
 
-    softmax_switch = use_softmax
-
     input_dims = len(list(input.shape))
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
@@ -1385,7 +1389,7 @@ def cross_entropy(input,
         _, out = core.ops.softmax_with_cross_entropy(
             input, label, 'soft_label', soft_label, 'ignore_index',
             ignore_index, 'numeric_stable_mode', True, 'axis', axis,
-            'softmax_switch', softmax_switch)
+            'use_softmax', use_softmax)
 
         if weight is not None:
 
@@ -1407,6 +1411,13 @@ def cross_entropy(input,
                 out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
             else:
+                label_min = paddle.min(label)
+                label_max = paddle.max(label)
+                if label_min < 0 or label_max >= input.shape[-1]:
+                    raise ValueError(
+                        'Expected 0 <= label_value < class_dimension({}), but got {} <= label_value <= {} '.
+                        format(input.shape[-1],
+                               label_min.numpy(), label_max.numpy()))
                 weight_gather = core.ops.gather_nd(weight, label)
                 input_shape = list(label.shape)
                 weight_gather_reshape = reshape(
@@ -1467,7 +1478,7 @@ def cross_entropy(input,
         'ignore_index': ignore_index,
         'numeric_stable_mode': True,
         'axis': axis,
-        'softmax_switch': softmax_switch
+        'use_softmax': use_softmax
     }
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=input.dtype)

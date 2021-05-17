@@ -408,9 +408,10 @@ def get_first_check_finite_and_unscale_op_idx(block, raise_error=True):
         if op.type == "check_finite_and_unscale":
             return idx
 
-    print("raise_error:", raise_error)
     if raise_error:
-        raise ValueError("check_finite_and_unscale does not exist in block")
+        raise ValueError(
+            "amp is turned on but check_finite_and_unscale op does not exist in main block"
+        )
 
     return -1
 

@@ -491,7 +491,7 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_gpu_place(kern_pair.first.place_);
                        });
   }
-   bool SupportNPU() const override {
+  bool SupportNPU() const override {
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {

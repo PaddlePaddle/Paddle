@@ -28,7 +28,7 @@ _HYBRID_PARALLEL_GROUP = None
 
 class ParallelMode(object):
     DATA_PARALLEL = 0
-    MODEL_PARALLEL = 1
+    TENSOR_PARALLEL = 1
     PIPELINE_PARALLEL = 2
 
 
@@ -147,7 +147,7 @@ class HybridCommunicateGroup(object):
         debug_str = "HybridParallelInfo: rank_id: %d, dp_degree: %d, " \
                     "mp_degree: %d, pp_degree: %d" % (self.global_rank, self._dp_degree,
                     self._mp_degree,self._pp_degree)
-        debug_str += "dp_group: %s, mp_group: %s, pp_group: %s, check/clip group: %s" % (
+        debug_str += ", dp_group: %s, mp_group: %s, pp_group: %s, check/clip group: %s" % (
             self._dp_group, self._mp_group, self._pp_group, self._check_group)
         logger.info(debug_str)
 
@@ -155,12 +155,12 @@ class HybridCommunicateGroup(object):
         _HYBRID_PARALLEL_GROUP = self
 
     def get_parallel_mode(self):
-        # there are three modes : DataParallel / ModelParallel / PipelineParallel
+        # there are three modes : DataParallel / TensorParallel / PipelineParallel
         if self._mp_degree == 1 and self._pp_degree == 1:
             return ParallelMode.DATA_PARALLEL
         elif self._mp_degree > 1 and self._pp_degree == 1:
             # initialize the seed
-            return ParallelMode.MODEL_PARALLEL
+            return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
             return ParallelMode.PIPELINE_PARALLEL
 
