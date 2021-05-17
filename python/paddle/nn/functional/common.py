@@ -1463,6 +1463,7 @@ def linear(x, weight, bias=None, name=None):
         attrs = {
             'transpose_X': False,
             'transpose_Y': False,
+            'alpha': 1,
         }
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(

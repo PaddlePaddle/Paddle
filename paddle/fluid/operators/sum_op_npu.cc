@@ -19,8 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/sum_op.h"
 
-DECLARE_bool(benchmark);
-
 namespace paddle {
 namespace operators {
 

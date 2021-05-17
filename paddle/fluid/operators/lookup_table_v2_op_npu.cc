@@ -41,7 +41,8 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     output_t->mutable_data<T>(ctx.GetPlace());
     framework::NPUAttributeMap attr_input = {{"validate_indices", false}};
     
-    auto runner = NpuOpRunner("Gather", {*table_t, *ids_t}, {*output_t}, attr_input);
+    auto runner =
+        NpuOpRunner("Gather", {*table_t, *ids_t}, {*output_t}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

@@ -1147,7 +1147,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
   }
 
-  if (!transfered_inplace_vars.empty()){
+  if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transferred.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }

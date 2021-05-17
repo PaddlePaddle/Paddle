@@ -986,13 +986,12 @@ class Linear(layers.Layer):
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], "Linear")
 
-         attrs = {
+        attrs = {
             "transpose_X": False,
             "transpose_Y": False,
             "alpha": 1,
             "use_mkldnn": self._use_mkldnn,
         }
-
         inputs = {"X": [input], "Y": [self.weight]}
 
         tmp = self._helper.create_variable_for_type_inference(self._dtype)

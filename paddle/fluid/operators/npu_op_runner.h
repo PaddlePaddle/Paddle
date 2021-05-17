@@ -99,6 +99,7 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
   PADDLE_ENFORCE_EQ(
       platform::is_npu_place(tensor->place()), true,
       platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
+
   int numel = tensor->numel();
   if (numel == 1) {
     Tensor npu_pinned_tensor(tensor->type());

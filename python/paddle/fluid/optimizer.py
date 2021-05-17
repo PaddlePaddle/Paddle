@@ -4417,8 +4417,9 @@ class PipelineOptimizer(object):
                             "{} has not been set.".format(op.type))
             if device == "gpu:all": continue
             dev_type = device.split(':')[0]
-            assert dev_type == "gpu" or dev_type == 'npu', ("Now only gpu and npu devices are supported "
-                                       "for pipeline parallelism.")
+            assert dev_type == "gpu" or dev_type == 'npu', (
+                "Now only gpu and npu devices are supported "
+                "for pipeline parallelism.")
             if not device in device_list:
                 device_list.append(device)
         return device_list
