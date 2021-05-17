@@ -119,3 +119,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                     base_t = base_map[var.name]
 
                     self.assertTrue(np.array_equal(new_t, base_t))
+
+
+if __name__ == '__main__':
+    paddle.enable_static()
+    unittest.main()

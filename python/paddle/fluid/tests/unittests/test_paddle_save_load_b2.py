@@ -210,3 +210,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             fluid.core._load_selected_rows(
                 selected_rows,
                 'test_paddle_save_load_selected_rows_not_exist_file/temp')
+
+
+if __name__ == '__main__':
+    paddle.enable_static()
+    unittest.main()
