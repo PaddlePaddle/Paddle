@@ -75,7 +75,7 @@ class CompareReduceOpKernel
       reduce_dims.resize(tmp.dims().size());
       for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
       auto stream = context.cuda_device_context().stream();
-      TensorReduce<bool, bool, BitwiseAdd, IdentityFunctor<bool>>(
+      TensorReduce_t<bool, bool, BitwiseAdd, IdentityFunctor<bool>>(
           tmp, z, reduce_dims, true, BitwiseAdd(), IdentityFunctor<bool>(),
           stream);
     }

@@ -372,12 +372,12 @@ struct KronGradOpFunctor {
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+      TensorReduce_t<T, T, cub::Sum, IdentityFunctor<T>>(
           dout_x, dx, {1}, static_cast<T>(0), cub::Sum(), IdentityFunctor<T>(),
           stream);
     }
     if (dy) {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+      TensorReduce_t<T, T, cub::Sum, IdentityFunctor<T>>(
           dout_y, dy, {1}, static_cast<T>(0), cub::Sum(), IdentityFunctor<T>(),
           stream);
     }

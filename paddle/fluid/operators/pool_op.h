@@ -215,7 +215,7 @@ class PoolKernel : public framework::OpKernel<T> {
               adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
             auto stream = dev_ctx.stream();
-            TensorReduce<T, T, cub::Sum, DivideFunctor<T>>(
+            TensorReduce_t<T, T, cub::Sum, DivideFunctor<T>>(
                 *in_x, out, reduce_dim, static_cast<T>(0), cub::Sum(),
                 DivideFunctor<T>(reduce_num), stream);
 #else  // for cpu

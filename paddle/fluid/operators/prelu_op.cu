@@ -174,7 +174,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       reduce_dims.push_back(i);
     }
 
-    TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+    TensorReduce_t<T, T, cub::Sum, IdentityFunctor<T>>(
         dalpha_tmp, dalpha, reduce_dims, static_cast<T>(0), cub::Sum(),
         IdentityFunctor<T>(), stream);
   }
