@@ -18,9 +18,14 @@ using DataLayout = framework::DataLayout;
 using NPUAttribute = framework::NPUAttribute;
 using NPUAttributeMap = framework::NPUAttributeMap;
 
-bool FoundNanOrInf(const framework::ExecutionContext& ctx , aclrtStream stream,
-        const paddle::framework::Tensor* float_status, Tensor* tmp);
+void alloc_float_status(const paddle::platform::NPUDeviceContext& ctx,
+        Tensor* float_status);
 
+bool FoundNanOrInf(const paddle::platform::NPUDeviceContext& ctx, aclrtStream stream, 
+        const Tensor* float_status, Tensor* tmp);
+
+void clear_float_status(const paddle::platform::NPUDeviceContext& ctx,
+        Tensor* float_status, Tensor* tmp);
 };
 };
 

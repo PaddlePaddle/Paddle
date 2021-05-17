@@ -157,7 +157,8 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
 
-    nan_or_inf = FoundNanOrInf(ctx, stream, float_status, &tmp);
+    nan_or_inf = FoundNanOrInf(ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+            stream, float_status, &tmp);
     if (nan_or_inf){
         // FIXME(gongwb): remove these
         ctx.device_context().Wait();
@@ -342,8 +343,7 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
 #if defined(PADDLE_WITH_ASCEND_CL)
      AddInput("FloatStatus",
              "(Tensor) 1-dim tensor of shape [8], allocated by "
-             "alloc_float_status op")
-        .AsDispensable();
+             "alloc_float_status op");
 #endif
     AddOutput("Out", "(Tensor) the allreduced result.");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")

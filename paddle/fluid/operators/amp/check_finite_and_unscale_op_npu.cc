@@ -67,7 +67,8 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     // tmp is only placeholder.
     Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
-    found_inf_data = FoundNanOrInf(ctx, stream, float_status, &tmp);
+    found_inf_data = FoundNanOrInf(ctx.template device_context<paddle::platform::NPUDeviceContext>(), 
+            stream, float_status, &tmp);
 
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
