@@ -1555,10 +1555,10 @@ void OperatorWithKernel::ParseInputDataType(
       } else if (var->IsType<SelectedRows>()) {
         t = &(var->Get<SelectedRows>().value());
       } else if (var->IsType<LoDTensorArray>()) {
-        auto t_arr = var->Get<LoDTensorArray>();
-        for (size_t j = 0; j < t_arr.size(); j++) {
-          if (t_arr[j].IsInitialized()) {
-            t = &(t_arr[j]);
+        auto t_arr = &var->Get<LoDTensorArray>();
+        for (size_t j = 0; j < t_arr->size(); j++) {
+          if (t_arr->at(j).IsInitialized()) {
+            t = &(t_arr->at(j));
           }
         }
       }
