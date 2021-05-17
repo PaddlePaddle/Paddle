@@ -41,6 +41,7 @@ class VocabParallelEmbedding(Layer):
         self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
 
         self.origin_num_embeddings = num_embeddings
+        self.is_mp = (self.world_size > 1)
 
         per_part_size = (
             num_embeddings + self.world_size - 1) // self.world_size
@@ -50,16 +51,36 @@ class VocabParallelEmbedding(Layer):
         per_part_size += 1  # make the last row as the padding index
         self.per_part_size = per_part_size
 
-        self.embedding = paddle.nn.Embedding(
-            per_part_size,
-            embedding_dim,
-            padding_idx=per_part_size - 1,
-            sparse=False,
-            weight_attr=weight_attr,
-            name=name)
-        self.embedding.weight.is_distributed = True
+        self._dtype = self._helper.get_default_dtype()
+        self._size = [per_part_size, embedding_dim]
+        self._weight_attr = weight_attr
+        self._name = name
+
+        if self.is_mp:
+            with get_rng_state_tracker().rng_state():
+                self.weight = self.create_parameter(
+                    attr=self._weight_attr,
+                    shape=self._size,
+                    dtype=self._dtype,
+                    is_bias=False)
+            self.weight[per_part_size - 1] = 0.0
+            self.weight.is_distributed = True
+        else:
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=[num_embeddings, embedding_dim],
+                dtype=self._dtype,
+                is_bias=False)
 
     def forward(self, x):
+        if not self.is_mp:
+            return F.embedding(
+                x,
+                weight=self.weight,
+                padding_idx=None,
+                sparse=False,
+                name=self._name)
+
         origin_input_shape = x.shape
         if len(origin_input_shape) == 2:
             x = paddle.unsqueeze(x, axis=-1)
@@ -72,13 +93,18 @@ class VocabParallelEmbedding(Layer):
         if len(origin_input_shape) == 2:
             x_shard = paddle.squeeze(x_shard, axis=-1)
 
-        emb_out = self.embedding(x_shard)
-        if self.world_size > 1:
-            emb_out = paddle.distributed.collective._mp_allreduce(
-                emb_out,
-                group=self.model_parallel_group,
-                use_calc_stream=True,
-                use_model_parallel=True)
+        emb_out = F.embedding(
+            x_shard,
+            weight=self.weight,
+            padding_idx=self.per_part_size - 1,
+            sparse=False,
+            name=self._name)
+
+        emb_out = paddle.distributed.collective._mp_allreduce(
+            emb_out,
+            group=self.model_parallel_group,
+            use_calc_stream=True,
+            use_model_parallel=True)
         return emb_out
 
 
@@ -96,8 +122,9 @@ class ColumnParallelLinear(Layer):
         )
         self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
         )
+        self._name = name
+        self.is_mp = (self.world_size > 1)
 
-        self.name = name
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
             "Number of column of the weight for linear ({}) must be"
@@ -108,10 +135,20 @@ class ColumnParallelLinear(Layer):
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
 
-        self.weight = self.create_parameter(
-            shape=[in_features, self.output_size_per_partition],
-            attr=self._weight_attr,
-            dtype=self._dtype)
+        if self.is_mp:
+            with get_rng_state_tracker().rng_state():
+                self.weight = self.create_parameter(
+                    shape=[in_features, self.output_size_per_partition],
+                    attr=self._weight_attr,
+                    dtype=self._dtype,
+                    is_bias=False)
+        else:
+            self.weight = self.create_parameter(
+                shape=[in_features, self.output_size_per_partition],
+                attr=self._weight_attr,
+                dtype=self._dtype,
+                is_bias=False)
+
         self.weight.is_distributed = True
 
         if has_bias:
@@ -119,18 +156,24 @@ class ColumnParallelLinear(Layer):
             self.bias = self.create_parameter(
                 shape=[self.output_size_per_partition],
                 attr=paddle.nn.initializer.Constant(value=0.0),
-                dtype=self._dtype)
+                dtype=self._dtype,
+                is_bias=True)
             self.bias.is_distributed = True
         else:
             self.bias = None
 
     def forward(self, x):
         # use inner api to process identity
-        input_parallel = paddle.distributed.collective._c_identity(
-            x, group=self.model_parallel_group)
+        if self.is_mp:
+            input_parallel = paddle.distributed.collective._c_identity(
+                x, group=self.model_parallel_group)
+        else:
+            input_parallel = x
+
         output_parallel = F.linear(
-            input_parallel, self.weight, self.bias, name=self.name)
-        if self.gather_output:
+            input_parallel, self.weight, self.bias, name=self._name)
+
+        if self.gather_output and self.is_mp:
             output = paddle.distributed.collective._c_concat(
                 output_parallel,
                 nranks=self.world_size,
@@ -155,7 +198,7 @@ class RowParallelLinear(Layer):
         self.input_is_parallel = input_is_parallel
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
-        self.name = name
+        self._name = name
 
         self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
         )
@@ -163,6 +206,7 @@ class RowParallelLinear(Layer):
         )
         self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
 
+        self.is_mp = (self.world_size > 1)
         assert in_features % self.world_size == 0, (
             "Number of row of the weight for linear ({}) must be"
             " divisible by model parallel size ({})".format(in_features,
@@ -170,22 +214,33 @@ class RowParallelLinear(Layer):
 
         self.input_size_per_partition = in_features // self.world_size
 
-        self.weight = self.create_parameter(
-            shape=[self.input_size_per_partition, self.out_features],
-            attr=self._weight_attr,
-            dtype=self._dtype)
+        if self.is_mp:
+            with get_rng_state_tracker().rng_state():
+                self.weight = self.create_parameter(
+                    shape=[self.input_size_per_partition, self.out_features],
+                    attr=self._weight_attr,
+                    dtype=self._dtype,
+                    is_bias=False)
+        else:
+            self.weight = self.create_parameter(
+                shape=[self.input_size_per_partition, self.out_features],
+                attr=self._weight_attr,
+                dtype=self._dtype,
+                is_bias=False)
+
         self.weight.is_distributed = True
 
         if has_bias:
             self.bias = self.create_parameter(
                 shape=[self.out_features],
                 attr=paddle.nn.initializer.Constant(value=0.0),
-                dtype=self._dtype)
+                dtype=self._dtype,
+                is_bias=True)
         else:
             self.bias = None
 
     def forward(self, x):
-        if self.input_is_parallel:
+        if self.input_is_parallel or (not self.is_mp):
             input_parallel = x
         else:
             # split last dim
@@ -195,12 +250,16 @@ class RowParallelLinear(Layer):
                 nranks=self.world_size,
                 group=self.model_parallel_group)
 
-        output_parallel = F.linear(input_parallel, self.weight, name=self.name)
-        output_ = paddle.distributed.collective._mp_allreduce(
-            output_parallel,
-            group=self.model_parallel_group,
-            use_calc_stream=True,
-            use_model_parallel=True)
+        output_parallel = F.linear(input_parallel, self.weight, name=self._name)
+
+        if self.is_mp:
+            output_ = paddle.distributed.collective._mp_allreduce(
+                output_parallel,
+                group=self.model_parallel_group,
+                use_calc_stream=True,
+                use_model_parallel=True)
+        else:
+            output_ = output_parallel
 
         output = output_ + self.bias if self.bias is not None else output_
         return output
