@@ -13,21 +13,12 @@
 // limitations under the License.
 
 #include <vector>
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cuh"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct DivideFunctor {
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
-
-  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
-
- private:
-  T n_inv;
-};
 
 template <typename T>
 class ReduceMeanKernel : public framework::OpKernel<T> {
@@ -50,15 +41,17 @@ class ReduceMeanKernel : public framework::OpKernel<T> {
       }
     }
 
+
+
     int reduce_num = 1;
     for (int i = 0; i < reduce_dims.size(); ++i) {
       reduce_num *= input->dims()[reduce_dims[i]];
     }
 
     auto stream = context.cuda_device_context().stream();
-    TensorReduce<T, T, cub::Sum, DivideFunctor<T>>(
-        *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
-        DivideFunctor<T>(reduce_num), stream);
+    TensorReduce<T, T, CustomSum<T>, detail::DivideFunctor<T>>(
+        *input, output, reduce_dims, static_cast<T>(0), CustomSum<T>(),
+        detail::DivideFunctor<T>(reduce_num), stream);
   }
 };
 
