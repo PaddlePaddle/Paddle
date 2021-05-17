@@ -257,8 +257,11 @@ TEST(c_allreduce_sum, NPU) {
     VLOG(2) << "iter num 2: " << i << " float16";
     TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0));
   }
+  o::clear_float_status(ctx, &float_status, &tmp);
+  ctx.Wait();
 }
 
+/*
 TEST(nan_or_inf, NPU) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
@@ -283,5 +286,6 @@ TEST(nan_or_inf, NPU) {
   nan_or_inf= o::FoundNanOrInf(ctx, ctx.stream(), &float_status, &tmp);
   EXPECT_TRUE(!nan_or_inf);
 }
+*/
 
 
