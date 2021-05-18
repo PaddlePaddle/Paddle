@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -89,6 +89,82 @@ class TestParameterList(unittest.TestCase):
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph result is {}\nstatic result is {}'.format(dygraph_loss,
                                                                    static_loss))
+
+
+class NetWithRawParamList(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(NetWithRawParamList, self).__init__()
+        weight = self.add_parameter('w',
+                                    self.create_parameter([in_size, out_size]))
+        bias = self.add_parameter(
+            'b', self.create_parameter(
+                [out_size], is_bias=True))
+        self.params = [weight]
+        self.bias_dict = {'b': bias}
+
+    @to_static
+    def forward(self, x):
+        out = paddle.matmul(x, self.params[0])
+        out = paddle.add(out, self.bias_dict['b'])
+        out = paddle.tanh(out)
+        return out
+
+
+class TestRawParameterList(unittest.TestCase):
+    def setUp(self):
+        self.seed = 2021
+        self.iter_num = 5
+        self.prog_trans = ProgramTranslator()
+
+    def init_net(self):
+        self.net = NetWithRawParamList(10, 3)
+
+    def train(self, to_static):
+        paddle.seed(self.seed)
+        np.random.seed(self.seed)
+        self.prog_trans.enable(to_static)
+        self.init_net()
+
+        sgd = paddle.optimizer.SGD(0.1, parameters=self.net.parameters())
+
+        for batch_id in range(self.iter_num):
+            x = paddle.rand([4, 10], dtype='float32')
+            out = self.net(x)
+            loss = paddle.mean(out)
+            loss.backward()
+            sgd.step()
+            sgd.clear_grad()
+
+        return loss
+
+    def test_parameter_list(self):
+        static_loss = self.train(to_static=True)
+        dygraph_loss = self.train(to_static=False)
+        self.assertTrue(
+            np.allclose(dygraph_loss, static_loss),
+            msg='dygraph result is {}\nstatic result is {}'.format(dygraph_loss,
+                                                                   static_loss))
+
+
+class NetWithSubLayerParamList(paddle.nn.Layer):
+    def __init__(self, sub_layer):
+        super(NetWithSubLayerParamList, self).__init__()
+        self.sub_layer = sub_layer
+        self.params = [sub_layer.weight]
+        self.bias_dict = {'b': sub_layer.bias}
+
+    @to_static
+    def forward(self, x):
+        out = paddle.matmul(x, self.params[0])
+        out = paddle.add(out, self.bias_dict['b'])
+        out = paddle.tanh(out)
+        return out
+
+
+class TestSubLayerParameterList(TestRawParameterList):
+    def init_net(self):
+        fc = paddle.nn.Linear(10, 3)
+        self.net = NetWithSubLayerParamList(fc)
 
 
 if __name__ == '__main__':
