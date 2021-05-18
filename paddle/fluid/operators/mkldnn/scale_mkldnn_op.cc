@@ -29,13 +29,14 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
-        
+
     bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
     auto* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
     auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
 
-    float scale = (scale_tensor == nullptr) ? ctx.Attr<float>("scale") : (float)*(scale_tensor->data<T>());
+    float scale = (scale_tensor == nullptr) ? ctx.Attr<float>("scale")
+                                            : (float)*(scale_tensor->data<T>());
     float bias = ctx.Attr<float>("bias");
 
     // if bias_after_scale == true
@@ -43,20 +44,21 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
     // else
     //   out = scale*(X + bias) = scale*X + scale*bias
 
-    if(!bias_after_scale) bias *= scale;
+    if (!bias_after_scale) bias *= scale;
 
     auto x_tz = framework::vectorize<int64_t>(x->dims());
     bool is_inplaced = x->IsSharedBufferWith(*out);
 
     platform::ActivationMKLDNNHandler<T> handler(
-        x_tz, mkldnn::algorithm::eltwise_linear, scale, bias, x->format(), dev_ctx, ctx.GetPlace(),
-        ctx.InputName("X"), is_inplaced);
+        x_tz, mkldnn::algorithm::eltwise_linear, scale, bias, x->format(),
+        dev_ctx, ctx.GetPlace(), ctx.InputName("X"), is_inplaced);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
-    auto dst_memory_p = is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
+    auto dst_memory_p =
+        is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
     auto activation_p = handler.AcquireForwardPrimitive();
 
-    auto &astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
     activation_p->execute(astream, {{MKLDNN_ARG_FROM, *src_memory_p},
                                     {MKLDNN_ARG_TO, *dst_memory_p}});
     astream.wait();

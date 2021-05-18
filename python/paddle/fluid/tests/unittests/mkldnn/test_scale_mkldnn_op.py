@@ -20,6 +20,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 
+
 class TestScaleOp(OpTest):
     def setUp(self):
         self.op_type = "scale"
@@ -36,11 +37,17 @@ class TestScaleOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
+
 class TestScaleOpBiasNotAfterScale(OpTest):
     def setUp(self):
         self.op_type = "scale"
         self.inputs = {'X': np.random.random((10, 10)).astype(np.float32)}
-        self.attrs = {'scale': 1.5, 'use_mkldnn': True, 'bias': 2.3, 'bias_after_scale': False}
+        self.attrs = {
+            'scale': 1.5,
+            'use_mkldnn': True,
+            'bias': 2.3,
+            'bias_after_scale': False
+        }
         self.use_mkldnn = True
         self.outputs = {
             'Out': (self.inputs['X'] + self.attrs['bias']) * self.attrs['scale']
@@ -51,6 +58,7 @@ class TestScaleOpBiasNotAfterScale(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
 
 class TestScaleOpScaleTensor(OpTest):
     def setUp(self):
@@ -69,6 +77,7 @@ class TestScaleOpScaleTensor(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
+
 class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
     def setUp(self):
         self.op_type = "scale"
@@ -79,7 +88,8 @@ class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
         }
         self.attrs = {'bias': -6.8, 'bias_after_scale': False}
         self.outputs = {
-            'Out': (self.inputs['X'] + self.attrs['bias']) * self.inputs['ScaleTensor']
+            'Out':
+            (self.inputs['X'] + self.attrs['bias']) * self.inputs['ScaleTensor']
         }
 
     def test_check_output(self):
@@ -87,6 +97,7 @@ class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
 
 if __name__ == "__main__":
     paddle.enable_static()

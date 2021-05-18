@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+
 class TestScaleOpBF16(OpTest):
     def setUp(self):
         self.op_type = "scale"
@@ -66,7 +67,12 @@ class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.scale = 1.5
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'scale': self.scale, 'use_mkldnn': True, 'bias': 0.0, 'bias_after_scale': False}
+        self.attrs = {
+            'scale': self.scale,
+            'use_mkldnn': True,
+            'bias': 0.0,
+            'bias_after_scale': False
+        }
         self.use_mkldnn = True
         self.outputs = {
             'Out': (self.x_fp32 + self.attrs['bias']) * self.attrs['scale']
@@ -80,7 +86,10 @@ class TestScaleOpBF16ScaleTensor(TestScaleOpBF16):
         self.x_fp32 = np.random.random((10, 10)).astype(np.float32)
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.scale_tensor = np.array([self.scale]).astype(np.float32)
-        self.inputs = {'X': self.x_bf16, 'ScaleTensor': convert_float_to_uint16(self.scale_tensor)}
+        self.inputs = {
+            'X': self.x_bf16,
+            'ScaleTensor': convert_float_to_uint16(self.scale_tensor)
+        }
         self.attrs = {}
         self.outputs = {'Out': self.x_fp32 * self.scale}
 
@@ -92,9 +101,13 @@ class TestScaleOpBF16ScaleTensorNotBiasAfterScale(TestScaleOpBF16):
         self.x_fp32 = np.random.random((9, 13)).astype(np.float32)
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.scale_tensor = np.array([self.scale]).astype(np.float32)
-        self.inputs = {'X': self.x_bf16, 'ScaleTensor': convert_float_to_uint16(self.scale_tensor)}
+        self.inputs = {
+            'X': self.x_bf16,
+            'ScaleTensor': convert_float_to_uint16(self.scale_tensor)
+        }
         self.attrs = {'bias': -1.1, 'bias_after_scale': False}
         self.outputs = {'Out': (self.x_fp32 + self.attrs['bias']) * self.scale}
+
 
 if __name__ == "__main__":
     paddle.enable_static()
