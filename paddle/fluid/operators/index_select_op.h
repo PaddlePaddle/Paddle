@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <immintrin.h>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -129,19 +132,45 @@ class IndexSelectKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+int vec_sum_avx(const size_t n, const T* src, T* dst) {
+  constexpr int block = YMM_FLOAT_BLOCK;
+
+  const int aligend_count = n - n % block;
+  for (auto k = 0; k < aligend_count; k += block) {
+    _mm256_storeu_ps(reinterpret_cast<float*>(dst) + k,
+                     _mm256_add_ps(_mm256_loadu_ps((const float*)dst + k),
+                                   _mm256_loadu_ps((const float*)src + k)));
+  }
+  return aligend_count;
+}
+
+template <>
+int vec_sum_avx(const size_t n, const double* src, double* dst) {
+  constexpr int block = XMM_FLOAT_BLOCK;
+  const int aligend_count = n - n % block;
+
+  for (auto k = 0; k < aligend_count; k += block) {
+    _mm256_storeu_pd(reinterpret_cast<double*>(dst) + k,
+                     _mm256_add_pd(_mm256_loadu_pd((const double*)dst + k),
+                                   _mm256_loadu_pd((const double*)src + k)));
+  }
+  return aligend_count;
+}
+
 template <typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
                           const LoDTensor& out_grad, const LoDTensor& index,
                           LoDTensor* x_grad, int dim) {
-  std::vector<T> input_vec;
-  std::vector<IndexT> index_vec;
-  TensorToVector(out_grad, context.device_context(), &input_vec);
-  TensorToVector(index, context.device_context(), &index_vec);
+  const T* input_data = out_grad.data<T>();
+  const IndexT* index_data = index.data<IndexT>();
+  T* out_data = x_grad->mutable_data<T>(context.GetPlace());
 
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
-  std::vector<T> out_vec(x_grad->numel(), 0);
+
+  std::memset(out_data, 0.0, x_grad->numel() * sizeof(T));
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -167,15 +196,24 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
     auto output_start_offset = i * output_width;
 
     for (auto j = 0; j < index_size; j++) {
-      IndexT index_value = index_vec[j];
-      for (auto k = 0; k < slice_size; k++) {
-        out_vec[output_start_offset + index_value * slice_size + k] +=
-            input_vec[input_start_offset + j * slice_size + k];
+      IndexT index_value = index_data[j];
+      auto src = input_data + input_start_offset + j * slice_size;
+      auto dst = out_data + output_start_offset + index_value * slice_size;
+
+#ifdef __AVX__
+      auto aligend_count = vec_sum_avx(slice_size, src, dst);
+      for (auto k = aligend_count; k < slice_size; k++) {
+        out_data[output_start_offset + index_value * slice_size + k] +=
+            input_data[input_start_offset + j * slice_size + k];
       }
+#else
+      for (auto k = 0; k < slice_size; k++) {
+        out_data[output_start_offset + index_value * slice_size + k] +=
+            input_data[input_start_offset + j * slice_size + k];
+      }
+#endif
     }
   }
-  x_grad->mutable_data<T>(context.GetPlace());
-  framework::TensorFromVector(out_vec, context.device_context(), x_grad);
   x_grad->Resize(output_dim);
 }
 
