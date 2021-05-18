@@ -766,6 +766,13 @@ void BindImperative(py::module *m_ptr) {
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
 
+               PADDLE_ENFORCE_EQ(
+                   self->IsLeaf() && !self->OverridedStopGradient(), false,
+                   platform::errors::InvalidArgument(
+                       "Leaf Tensor (%s) that doesn't stop gradient can't use "
+                       "inplace strategy.",
+                       self->Name()));
+
                auto value_tensor =
                    value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                ins.insert({"ValueTensor", {value_tensor}});
