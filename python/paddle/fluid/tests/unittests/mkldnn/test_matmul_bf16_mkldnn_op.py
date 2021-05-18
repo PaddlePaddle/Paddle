@@ -85,8 +85,10 @@ class TestMatmulBf16MklDNNOp(OpTest):
         x_transpose_axes = [1, 0] if self.x_fp32.ndim == 2 else [0, 2, 1]
         y_transpose_axes = [1, 0] if self.y_fp32.ndim == 2 else [0, 2, 1]
 
-        x = np.transpose(self.x_fp32, x_transpose_axes) if self.attrs['transpose_X'] is True else self.x_fp32
-        y = np.transpose(self.y_fp32, y_transpose_axes) if self.attrs['transpose_Y'] is True else self.y_fp32
+        x = np.transpose(self.x_fp32, x_transpose_axes) if self.attrs[
+            'transpose_X'] is True else self.x_fp32
+        y = np.transpose(self.y_fp32, y_transpose_axes) if self.attrs[
+            'transpose_Y'] is True else self.y_fp32
 
         dout = self.alpha * np.matmul(x, y)
 
@@ -95,13 +97,16 @@ class TestMatmulBf16MklDNNOp(OpTest):
         transpose_grad_x2 = False
         transpose_grad_y2 = False
 
-        if self.attrs['transpose_X'] is True and self.attrs['transpose_Y'] is True:
+        if self.attrs['transpose_X'] is True and self.attrs[
+                'transpose_Y'] is True:
             self.dx = self.matmul_grad(self.y_fp32, True, dout, True)
             self.dy = self.matmul_grad(dout, True, self.x_fp32, True)
-        elif self.attrs['transpose_X'] is True and self.attrs['transpose_Y'] is False:
+        elif self.attrs['transpose_X'] is True and self.attrs[
+                'transpose_Y'] is False:
             self.dx = self.matmul_grad(self.y_fp32, False, dout, True)
             self.dy = self.matmul_grad(self.x_fp32, False, dout, False)
-        elif self.attrs['transpose_X'] is False and self.attrs['transpose_Y'] is True:
+        elif self.attrs['transpose_X'] is False and self.attrs[
+                'transpose_Y'] is True:
             self.dx = self.matmul_grad(dout, False, self.y_fp32, False)
             self.dy = self.matmul_grad(dout, True, self.x_fp32, False)
         else:
@@ -109,6 +114,7 @@ class TestMatmulBf16MklDNNOp(OpTest):
             self.dy = self.matmul_grad(self.x_fp32, True, dout, False)
 
         self.dout = dout
+
 
 class TestDnnlMatMulOpAlpha(TestMatmulBf16MklDNNOp):
     def generate_data(self):
