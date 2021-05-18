@@ -25,11 +25,14 @@ class TestLgammaOp(OpTest):
     def setUp(self):
         self.op_type = 'lgamma'
         self.init_dtype_type()
-        datas = np.random.random((32, 64)).astype(self.dtype)
-        self.inputs = {'X': datas}
-        for data in np.nditer(datas, op_flags=['readwrite']):
-            data = math.lgamma(data)
-        self.outputs = {'Out': datas}
+        shape = (32, 64)
+        data = np.random.random(shape).astype(self.dtype) + 1
+        self.inputs = {'X': data}
+        result = np.ones(shape).astype(self.dtype)
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                result[i][j] = math.lgamma(data[i][j])
+        self.outputs = {'Out': result}
 
     def init_dtype_type(self):
         self.dtype = np.float64
@@ -38,15 +41,12 @@ class TestLgammaOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=1e-5)
 
 
 class TestLgammaOpFp32(TestLgammaOp):
     def init_dtype_type(self):
         self.dtype = np.float32
-
-    def test_check_output(self):
-        self.check_output()
 
 
 if __name__ == "__main__":

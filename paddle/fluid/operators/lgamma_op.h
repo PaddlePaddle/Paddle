@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <unsupported/Eigen/SpecialFunctions>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -26,11 +27,27 @@ struct LgammaFunctor {
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    output_[idx] = std::lgamma(input_[idx]);
+    output_[idx] = Eigen::numext::lgamma(input_[idx]);
   }
 
  private:
   const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct LgammaGradFunctor {
+  LgammaGradFunctor(const T* dout, const T* x, T* output, int64_t numel)
+      : dout_(dout), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = dout_[idx] * Eigen::numext::digamma(x_[idx]);
+  }
+
+ private:
+  const T* dout_;
+  const T* x_;
   T* output_;
   int64_t numel_;
 };
@@ -59,7 +76,24 @@ class LgammaKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class LgammaGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
+  void Compute(const framework::ExecutionContext& ctx) const {
+    const framework::Tensor* d_out =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    const framework::Tensor* x = ctx.Input<framework::Tensor>("X");
+    framework::Tensor* d_x =
+        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
+    auto numel = d_out->numel();
+    auto* dout_data = d_out->data<T>();
+    auto* x_data = x->data<T>();
+    auto* dx_data = d_x->mutable_data<T>(
+        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    LgammaGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
+    for_range(functor);
+  }
 };
 
 }  // namespace operators

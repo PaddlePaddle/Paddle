@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/lgamma_op.h"
-#include <boost/math/special_functions/digamma.hpp>
 
 namespace paddle {
 namespace operators {
@@ -76,46 +75,6 @@ class LgammaGradOp : public framework::OperatorWithKernel {
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
     ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
-  }
-};
-
-template <typename T>
-struct LgammaGradFunctorCPU {
-  LgammaGradFunctorCPU(const T* dout, const T* x, T* output, int64_t numel)
-      : dout_(dout), x_(x), output_(output), numel_(numel) {}
-
-  HOST void operator()(int64_t idx) const {
-    output_[idx] = dout_[idx] / boost::math::digamma(x_[idx]);
-  }
-
- private:
-  const T* dout_;
-  const T* x_;
-  T* output_;
-  int64_t numel_;
-};
-
-template <typename T>
-class LgammaGradKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const {
-    const framework::Tensor* d_out =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    const framework::Tensor* x = ctx.Input<framework::Tensor>("X");
-    framework::Tensor* d_x =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-
-    auto numel = d_out->numel();
-    auto* dout_data = d_out->data<T>();
-    auto* x_data = x->data<T>();
-    auto* dx_data = d_x->mutable_data<T>(
-        ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
-
-    auto& dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
-    platform::ForRange<platform::CPUDeviceContext> for_range(dev_ctx, numel);
-    LgammaGradFunctorCPU<T> functor(dout_data, x_data, dx_data, numel);
-    for_range(functor);
   }
 };
 
