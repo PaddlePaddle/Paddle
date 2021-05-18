@@ -14,6 +14,7 @@
 
 import paddle
 import contextlib
+import numpy as np
 
 __all__ = []
 
@@ -65,14 +66,18 @@ def get_rng_state_tracker():
     return RNG_STATE_TRACKER
 
 
-def model_parallel_random_seed(seed=2048):
+def model_parallel_random_seed(seed=None):
     import paddle.distributed.fleet as fleet
     hcg = fleet.get_hybrid_communicate_group()
     rank = hcg.get_model_parallel_rank()
 
-    local_seed = seed + 1024 + rank
-    global_seed = seed
+    if seed:
+        global_seed = seed
+        local_seed = seed * 1024 + rank * 100
+    else:
+        global_seed = np.random.randint(0, 655350)
+        local_seed = np.random.randint(rank * 10000, (rank + 1) * 10000 - 1)
 
     RNG_STATE_TRACKER.reset()
-    paddle.seed(global_seed)
     RNG_STATE_TRACKER.add(MODEL_PARALLEL_RNG, local_seed)
+    paddle.seed(global_seed)
