@@ -230,6 +230,8 @@ class FleetWrapper {
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
+  void SaveMultiTableOnePath(const std::vector<int>& table_ids,
+                             const std::string& path, const int mode);
   // mode = 0, save all feature
   // mode = 1, save delta feature, which means save diff
   void SaveModelOneTable(const uint64_t table_id, const std::string& path,
