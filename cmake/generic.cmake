@@ -409,10 +409,8 @@ function(cc_test_build TARGET_NAME)
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
     endif()
+    check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
   endif()
-
-  check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
-
 endfunction()
 
 function(cc_test_run TARGET_NAME)
