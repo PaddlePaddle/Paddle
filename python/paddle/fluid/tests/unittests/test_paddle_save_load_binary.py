@@ -164,12 +164,6 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             paddle.save({}, path, use_binary_format=True)
 
         with self.assertRaises(ValueError):
-            path = 'test_save_load_error/temp'
-            with open(path, "w") as f:
-                f.write('\0')
-            paddle.load(path)
-
-        with self.assertRaises(ValueError):
             temp_lod = fluid.core.LoDTensor()
             paddle.save(temp_lod, path, use_binary_format=True)
 
