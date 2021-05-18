@@ -135,6 +135,7 @@ set(COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
+    -Werror=psabi
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=parentheses-equality # Warnings in pybind11
