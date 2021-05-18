@@ -54,5 +54,19 @@ struct CustomMul {
   }
 };
 
+template <typename T>
+struct CustomLogicalOr {
+  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+    return b || a;
+  }
+};
+
+template <typename T>
+struct CustomLogicalAnd {
+  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+    return b && a;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
