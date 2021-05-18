@@ -1788,7 +1788,7 @@ def _legacy_save(param_dict, model_path, protocol=2):
 
 
 @static_only
-def save(program, model_path, protocol=2, **configs):
+def save(program, model_path, protocol=4, **configs):
     """
     :api_attr: Static Graph
 
@@ -1802,7 +1802,7 @@ def save(program, model_path, protocol=2, **configs):
         program(Program) : The program to saved.
         model_path(str): the file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: 2
+                                 Default: 4
         configs(dict, optional) : optional keyword arguments.                        
 
     Returns:

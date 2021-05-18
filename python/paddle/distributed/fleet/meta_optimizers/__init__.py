@@ -28,3 +28,4 @@ from .sharding_optimizer import ShardingOptimizer
 from .dygraph_optimizer import HybridParallelOptimizer
 from .dygraph_optimizer import HybridParallelGradScaler
 from .tensor_parallel_optimizer import TensorParallelOptimizer
+from .raw_program_optimizer import RawProgramOptimizer
