@@ -14,6 +14,11 @@
 
 #pragma once
 
+// disable numpy compile error
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#define PY_ARRAY_UNIQUE_SYMBOL MY_PyArray_API
+#define INIT_NUMPY_ARRAY_CPP
+
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
 #include <pybind11/chrono.h>
@@ -32,7 +37,6 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/pybind/imperative.h"
-#pragma GCC diagnostic ignored "-Wconversion-null"
 
 namespace py = pybind11;
 namespace paddle {
@@ -213,6 +217,7 @@ inline bool PyObject_CheckLong(PyObject* obj) {
 }
 
 inline bool PyObject_CheckFloat(PyObject* obj) {
+  // sometimes users provide PyLong or numpy.int64 but attr is float
   return PyFloat_Check(obj) || PyLong_Check(obj) ||
          (_import_array() >= 0 && PyArray_IsScalar(obj, Floating)) ||
          (_import_array() >= 0 && PyArray_IsScalar(obj, Integer)) ||
@@ -221,23 +226,455 @@ inline bool PyObject_CheckFloat(PyObject* obj) {
 
 inline bool PyObject_CheckString(PyObject* obj) { return PyUnicode_Check(obj); }
 
+static inline void CastPyArg2AttrBoolean(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyObject_CheckBool(obj)) {
+    attrs[key] = (bool)PyLong_AsLong(obj);  // NOLINT
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "bool, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrInt(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyObject_CheckLong(obj)) {
+    attrs[key] = (int)PyLong_AsLong(obj);  // NOLINT
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "int, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrLong(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyObject_CheckLong(obj)) {
+    attrs[key] = (int64_t)PyLong_AsLong(obj);  // NOLINT
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "long, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrFloat(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyObject_CheckFloat(obj)) {
+    attrs[key] = (float)PyFloat_AsDouble(obj);  // NOLINT
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "float, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrString(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyObject_CheckString(obj)) {
+    Py_ssize_t size;
+    const char* data;
+    data = PyUnicode_AsUTF8AndSize(obj, &size);
+    attrs[key] = std::string(data, (size_t)size);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "str, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrBooleans(
+    PyObject* obj, paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<bool> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckBool(item)) {
+        value.emplace_back(PyLong_AsLong(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of bool, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<bool> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_CheckBool(item)) {
+        value.emplace_back(PyLong_AsLong(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of bool, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "list or tuple, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrInts(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<int> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckLong(item)) {
+        value.emplace_back(PyLong_AsLong(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of int, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<int> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_CheckLong(item)) {
+        value.emplace_back(PyLong_AsLong(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of int, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PySequence_Check(obj)) {
+    Py_ssize_t len = PySequence_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<int> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PySequence_GetItem(obj, i);
+      if (PyObject_CheckLong(item)) {
+        value.emplace_back(PyLong_AsLong(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of int, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "list or tuple, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrLongs(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<int64_t> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckLong(item)) {
+        value.emplace_back(PyLong_AsLong(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of long, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<int64_t> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_CheckLong(item)) {
+        value.emplace_back(PyLong_AsLong(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of long, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PySequence_Check(obj)) {
+    Py_ssize_t len = PySequence_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<int64_t> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PySequence_GetItem(obj, i);
+      if (PyObject_CheckLong(item)) {
+        value.emplace_back(PyLong_AsLong(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of long, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "list or tuple, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrFloats(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<float> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckFloat(item)) {
+        value.emplace_back(PyFloat_AsDouble(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of float, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<float> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_CheckFloat(item)) {
+        value.emplace_back(PyFloat_AsDouble(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of float, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PySequence_Check(obj)) {
+    Py_ssize_t len = PySequence_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<float> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PySequence_GetItem(obj, i);
+      if (PyObject_CheckFloat(item)) {
+        value.emplace_back(PyFloat_AsDouble(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of float, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "list or tuple, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrFloat64s(
+    PyObject* obj, paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<double> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckFloat(item)) {
+        value.emplace_back(PyFloat_AsDouble(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of float, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<double> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_CheckFloat(item)) {
+        value.emplace_back(PyFloat_AsDouble(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of float, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PySequence_Check(obj)) {
+    Py_ssize_t len = PySequence_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<double> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PySequence_GetItem(obj, i);
+      if (PyObject_CheckFloat(item)) {
+        value.emplace_back(PyFloat_AsDouble(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of float, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "list or tuple, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static inline void CastPyArg2AttrStrings(
+    PyObject* obj,
+    paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<std::string> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckString(item)) {
+        Py_ssize_t size;
+        const char* data;
+        data = PyUnicode_AsUTF8AndSize(item, &size);
+        value.emplace_back(std::string(data, (size_t)size));  // NOLINT
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of str, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    std::vector<std::string> value;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_CheckString(item)) {
+        Py_ssize_t size;
+        const char* data;
+        data = PyUnicode_AsUTF8AndSize(item, &size);
+        value.emplace_back(std::string(data, (size_t)size));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "list of str, but got %s item",
+            op_type, arg_pos + 1,
+            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+      }
+    }
+    attrs[key] = value;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "list or tuple, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
 static inline void ConstructAttrMapFromPyArgs(
     const std::string& op_type, PyObject* args, ssize_t attr_start,
     ssize_t attr_end, paddle::framework::AttributeMap& attrs) {  // NOLINT
   PADDLE_ENFORCE_EQ(
-      (attr_end - attr_start + 1) % 2, 0,
+      (attr_end - attr_start) % 2, 0,
       platform::errors::InvalidArgument(
-          "The number of arguments for arributes should be even."));
+          "The number of arguments for attributes should be even."));
 
   auto attr_type_map = &(OpAttrTypeMap::Instance().Map()[op_type]);
 
   PyObject* obj = nullptr;
-  for (ssize_t arg_pos = attr_start; arg_pos < attr_end + 1; arg_pos += 2) {
+  for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
     Py_ssize_t key_len;
-    const char* key_prt;
+    const char* key_ptr;
     obj = PyTuple_GET_ITEM(args, arg_pos);
     if (PyObject_CheckString(obj)) {
-      key_prt = PyUnicode_AsUTF8AndSize(obj, &key_len);
+      key_ptr = PyUnicode_AsUTF8AndSize(obj, &key_len);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument (position %d) must be str, but got "
@@ -245,7 +682,7 @@ static inline void ConstructAttrMapFromPyArgs(
           op_type, arg_pos, ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
     }
 
-    std::string key(key_prt, (size_t)key_len);
+    std::string key(key_ptr, (size_t)key_len);
 
     obj = PyTuple_GET_ITEM(args, arg_pos + 1);
 
@@ -257,394 +694,37 @@ static inline void ConstructAttrMapFromPyArgs(
 
     switch (iter->second) {
       case paddle::framework::proto::AttrType::INT:
-        if (PyObject_CheckLong(obj)) {
-          attrs[key] = (int)PyLong_AsLong(obj);  // NOLINT
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "int, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrInt(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::FLOAT:
-        if (PyObject_CheckFloat(obj)) {
-          attrs[key] = (float)PyFloat_AsDouble(obj);  // NOLINT
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "float, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrFloat(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::STRING:
-        if (PyObject_CheckString(obj)) {
-          Py_ssize_t size;
-          const char* data;
-          data = PyUnicode_AsUTF8AndSize(obj, &size);
-          attrs[key] = std::string(data, (size_t)size);
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "str, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::INTS:
-        if (PyList_Check(obj)) {
-          Py_ssize_t len = PyList_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<int> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyList_GetItem(obj, i);
-            if (PyObject_CheckLong(item)) {
-              value.emplace_back(PyLong_AsLong(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of int, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PyTuple_Check(obj)) {
-          Py_ssize_t len = PyTuple_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<int> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyTuple_GetItem(obj, i);
-            if (PyObject_CheckLong(item)) {
-              value.emplace_back(PyLong_AsLong(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of int, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PySequence_Check(obj)) {
-          Py_ssize_t len = PySequence_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<int> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PySequence_GetItem(obj, i);
-            if (PyObject_CheckLong(item)) {
-              value.emplace_back(PyLong_AsLong(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of int, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "list or tuple, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrInts(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::FLOATS:
-        if (PyList_Check(obj)) {
-          Py_ssize_t len = PyList_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<float> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyList_GetItem(obj, i);
-            if (PyObject_CheckFloat(item)) {
-              value.emplace_back(PyFloat_AsDouble(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of float, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PyTuple_Check(obj)) {
-          Py_ssize_t len = PyTuple_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<float> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyTuple_GetItem(obj, i);
-            if (PyObject_CheckFloat(item)) {
-              value.emplace_back(PyFloat_AsDouble(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of float, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PySequence_Check(obj)) {
-          Py_ssize_t len = PySequence_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<float> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PySequence_GetItem(obj, i);
-            if (PyObject_CheckFloat(item)) {
-              value.emplace_back(PyFloat_AsDouble(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of float, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "list or tuple, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrFloats(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::STRINGS:
-        if (PyList_Check(obj)) {
-          Py_ssize_t len = PyList_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<std::string> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyList_GetItem(obj, i);
-            if (PyObject_CheckString(item)) {
-              Py_ssize_t size;
-              const char* data;
-              data = PyUnicode_AsUTF8AndSize(item, &size);
-              value.emplace_back(std::string(data, (size_t)size));  // NOLINT
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of str, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PyTuple_Check(obj)) {
-          Py_ssize_t len = PyTuple_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<std::string> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyTuple_GetItem(obj, i);
-            if (PyObject_CheckString(item)) {
-              Py_ssize_t size;
-              const char* data;
-              data = PyUnicode_AsUTF8AndSize(item, &size);
-              value.emplace_back(std::string(data, (size_t)size));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of str, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "list or tuple, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrStrings(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::BOOLEAN:
-        if (PyObject_CheckBool(obj)) {
-          attrs[key] = (bool)PyLong_AsLong(obj);  // NOLINT
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "bool, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::BOOLEANS:
-        if (PyList_Check(obj)) {
-          Py_ssize_t len = PyList_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<bool> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyList_GetItem(obj, i);
-            if (PyObject_CheckBool(item)) {
-              value.emplace_back(PyLong_AsLong(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of bool, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PyTuple_Check(obj)) {
-          Py_ssize_t len = PyTuple_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<bool> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyTuple_GetItem(obj, i);
-            if (PyObject_CheckBool(item)) {
-              value.emplace_back(PyLong_AsLong(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of bool, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "list or tuple, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrBooleans(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::LONG:
-        if (PyObject_CheckLong(obj)) {
-          attrs[key] = (int64_t)PyLong_AsLong(obj);  // NOLINT
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "long, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrLong(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::LONGS:
-        if (PyList_Check(obj)) {
-          Py_ssize_t len = PyList_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<int64_t> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyList_GetItem(obj, i);
-            if (PyObject_CheckLong(item)) {
-              value.emplace_back(PyLong_AsLong(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of long, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PyTuple_Check(obj)) {
-          Py_ssize_t len = PyTuple_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<int64_t> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyTuple_GetItem(obj, i);
-            if (PyObject_CheckLong(item)) {
-              value.emplace_back(PyLong_AsLong(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of long, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PySequence_Check(obj)) {
-          Py_ssize_t len = PySequence_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<int64_t> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PySequence_GetItem(obj, i);
-            if (PyObject_CheckLong(item)) {
-              value.emplace_back(PyLong_AsLong(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of long, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "list or tuple, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrLongs(obj, attrs, key, op_type, arg_pos);
         break;
       case paddle::framework::proto::AttrType::FLOAT64S:
-        if (PyList_Check(obj)) {
-          Py_ssize_t len = PyList_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<double> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyList_GetItem(obj, i);
-            if (PyObject_CheckFloat(item)) {
-              value.emplace_back(PyFloat_AsDouble(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of float, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PyTuple_Check(obj)) {
-          Py_ssize_t len = PyTuple_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<double> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PyTuple_GetItem(obj, i);
-            if (PyObject_CheckFloat(item)) {
-              value.emplace_back(PyFloat_AsDouble(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of float, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else if (PySequence_Check(obj)) {
-          Py_ssize_t len = PySequence_Size(obj);
-          PyObject* item = nullptr;
-          std::vector<double> value;
-          for (Py_ssize_t i = 0; i < len; i++) {
-            item = PySequence_GetItem(obj, i);
-            if (PyObject_CheckFloat(item)) {
-              value.emplace_back(PyFloat_AsDouble(item));
-            } else {
-              PADDLE_THROW(platform::errors::InvalidArgument(
-                  "%s(): argument (position %d) must be "
-                  "list of float, but got %s item",
-                  op_type, arg_pos + 1,
-                  ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
-            }
-          }
-          attrs[key] = value;
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "%s(): argument (position %d) must be "
-              "list or tuple, but got %s",
-              op_type, arg_pos + 1,
-              ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-        }
+        CastPyArg2AttrFloat64s(obj, attrs, key, op_type, arg_pos);
         break;
       default:
         break;

@@ -256,7 +256,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   {
     %s
     framework::AttributeMap attrs;
-    ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args)-1 , attrs);
+    ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
     tstate = PyEval_SaveThread();
     auto tracer = imperative::GetCurrentTracer();
     %s
