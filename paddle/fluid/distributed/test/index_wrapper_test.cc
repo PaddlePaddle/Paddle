@@ -20,7 +20,7 @@ using paddle::distributed::GraphIndex;
 
 TEST(GRAPH_INDEX, RUN) {
   srand(time(0));
-  GraphIndex graph1, graph2, graph3;
+  GraphIndex graph1, graph2, graph3, graph4;
   int width = 3, height = 5, path_num = 9;
   graph1.set_width(width);
   graph1.set_height(height);
@@ -71,5 +71,35 @@ TEST(GRAPH_INDEX, RUN) {
       ASSERT_EQ(vec[0][i], p.second[i]);
     }
     ASSERT_EQ(vec[0].size(), p.second.size());
+  }
+  graph4.set_height(3);
+  graph4.set_width(5);
+  graph4.set_item_path_nums(7);
+  std::unordered_map<uint64_t, std::vector<uint32_t>> candidate_list;
+  std::unordered_map<uint64_t, std::vector<double>> candidate_score;
+  for (int i = 0; i < 100; i++) {
+    std::vector<uint32_t> v;
+    std::vector<double> s;
+    for (int j = 0; j < 20; j++) {
+      v.push_back(rand() % std::max(j + 1, i + 1));
+      while (find(v.begin(), v.begin() + j, v.back()) != v.begin() + j) {
+        v.pop_back();
+        v.push_back(rand() % std::max(j + 1, i + 1));
+      }
+      s.push_back(1);
+    }
+    candidate_score[i] = s;
+    candidate_list[i] = v;
+  }
+  graph4.update_Jpath_of_item(candidate_list, candidate_score, 10, 0.1, 4);
+  auto x = graph4.get_item_path_dict();
+  for (int i = 0; i < 100; i++) {
+    std::unordered_set<uint32_t> xx(x[i].begin(), x[i].end());
+    ASSERT_EQ(xx.size(), graph4.item_path_nums());
+    for (auto path : xx) {
+      ASSERT_EQ(std::find(candidate_list[i].begin(), candidate_list[i].end(),
+                          path) != candidate_list[i].end(),
+                true);
+    }
   }
 }

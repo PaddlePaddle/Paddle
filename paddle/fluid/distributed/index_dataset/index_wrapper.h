@@ -103,8 +103,9 @@ class GraphIndex : public Index {
   std::vector<uint64_t> gather_unique_items_of_paths(
       std::vector<uint32_t>& paths);
   int update_Jpath_of_item(
-      std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
-      const int J, const double lamd, const int factor);
+      std::unordered_map<uint64_t, std::vector<uint32_t>>& candidate_list,
+      std::unordered_map<uint64_t, std::vector<double>>& candidate_score,
+      const int T, const double lamb, const int polynomial_order);
 
  private:
   GraphMeta meta_;

@@ -270,12 +270,7 @@ void BindGraphIndex(py::module* m) {
            [](GraphIndex& self, std::vector<uint32_t>& paths) {
              return self.get_item_of_path(paths);
            })
-      .def("update_Jpath_of_item",
-           [](GraphIndex& self,
-              std::map<uint64_t, std::vector<std::string>>& item_paths,
-              const int T, const int J, const double lamd, const int factor) {
-             return self.update_Jpath_of_item(item_paths, T, J, lamd, factor);
-           });
+      .def("update_Jpath_of_item", &GraphIndex::update_Jpath_of_item);
 }
 
 void BindTreeIndex(py::module* m) {

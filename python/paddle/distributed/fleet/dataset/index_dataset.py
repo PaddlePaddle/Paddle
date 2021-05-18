@@ -248,16 +248,18 @@ class GraphIndex(Index):
 #     std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const int J, const double lambda, const int factor);
 #  J=self.item_path_nums
 
-    def update_Jpath_of_item(self, item_paths, T=3, J=3, lamd=1e-7, factor=2):
+    def update_Jpath_of_item(self,
+                             item_paths_dict,
+                             item_paths_score_dict,
+                             T=3,
+                             lamd=1e-7,
+                             polynomial_order=3):
 
-        if isinstance(item_paths, dict):
-            assert len(item_paths) > 0
-            assert isinstance(item_paths[0], list)
-            return self._graph.update_Jpath_of_item(item_paths, T, J, lamd,
-                                                    factor)
-        elif isinstance(item_paths, int):  # {int, ["",""]}
-            return self._graph.update_Jpath_of_item({item_paths, []}, T, J,
-                                                    lamd, factor)
+        if isinstance(item_paths_dict, dict) and isinstance(
+                item_paths_score_dict, dict):
+            return self._graph.update_Jpath_of_item(item_paths_dict,
+                                                    item_paths_score_dict, T,
+                                                    lamd, polynomial_order)
         else:
             raise ValueError(
                 "Illegal input type {}, required list or int".format(type(id)))

@@ -195,7 +195,8 @@ std::vector<IndexNode> TreeIndex::GetAllLeafs() {
 }
 
 int GraphIndex::save(std::string filename) {
-  std::function<int(FILE*, KVItem&)> writeToFile = [](FILE* fp, KVItem& item) {
+  std::function<int(FILE*, KVItem&, std::string&)> writeToFile = [](
+      FILE* fp, KVItem& item, std::string& result) {
     std::string output;
     item.SerializeToString(&output);
     int len = output.size();
@@ -207,6 +208,7 @@ int GraphIndex::save(std::string filename) {
       VLOG(0) << "write data failed";
       return -1;
     }
+    result = output;
     return 0;
   };
   VLOG(0) << " in save height = " << height() << " width = " << width();
@@ -215,36 +217,47 @@ int GraphIndex::save(std::string filename) {
     fprintf(stderr, "Can not open file: %s\n", filename.c_str());
     return -1;
   }
-  KVItem item;
+  KVItem item, copy_item;
   item.set_key(".graph_meta");
-  std::string output;
+  std::string output, result;
   meta_.SerializeToString(&output);
   GraphMeta test;
   test.ParseFromString(output);
   VLOG(0) << "test height = " << test.height() << " " << test.width();
   item.set_value(output);
-  if (writeToFile(fp, item) != 0) {
+  if (writeToFile(fp, item, result) != 0) {
     fprintf(stderr, "fail to write file: %s\n", filename.c_str());
     fclose(fp);
     return -1;
   }
   for (auto p : item_path_dict_) {
     item.set_key(std::to_string(p.first));
-    GraphItem graph_item;
+    GraphItem graph_item, copy_graph_item;
     graph_item.set_item_id(p.first);
     for (auto path_id : p.second) graph_item.add_path_id(path_id);
     std::string graph_serialized;
     graph_item.SerializeToString(&graph_serialized);
+
     item.set_value(graph_serialized);
-    if (writeToFile(fp, item) != 0) {
+    if (writeToFile(fp, item, result) != 0) {
       fprintf(stderr, "fail to write file: %s\n", filename.c_str());
       fclose(fp);
       return -1;
+    }
+    copy_item.ParseFromString(result);
+    copy_graph_item.ParseFromString(copy_item.value());
+    for (size_t i = 0; i < p.second.size(); i++) {
+      if (p.second[i] != (uint32_t)copy_graph_item.path_id(i)) {
+        VLOG(0) << "parse error:serialized item can't be deserialized";
+        fclose(fp);
+        return -1;
+      }
     }
   }
   fclose(fp);
   return 0;
 }
+
 int GraphIndex::load(std::string filename) {
   FILE* fp = fopen(filename.c_str(), "rb");
   if (fp == NULL) {
@@ -258,14 +271,11 @@ int GraphIndex::load(std::string filename) {
   size_t ret = fread(&num, sizeof(num), 1, fp);
   while (ret == 1 && num > 0) {
     std::string content(num, '\0');
-    char buffer[num + 1];
-    memset(buffer, '\0', sizeof(buffer));
-    if (fread(buffer, 1, num, fp) != static_cast<size_t>(num)) {
+    if (fread((char*)content.data(), 1, num, fp) != static_cast<size_t>(num)) {
       fprintf(stderr, "Read from file: %s failed, invalid format.\n",
               filename.c_str());
       break;
     }
-    content = buffer;
     KVItem item;
     if (!item.ParseFromString(content)) {
       fprintf(stderr, "Parse from file: %s failed.\n", filename.c_str());
@@ -284,8 +294,8 @@ int GraphIndex::load(std::string filename) {
         std::vector<uint32_t> path_ids;
         for (int i = 0; i < graph_item.path_id_size(); i++) {
           path_ids.push_back(graph_item.path_id(i));
-          VLOG(0) << "Graph insert item: " << item_id
-                  << " path: " << graph_item.path_id(i);
+          // VLOG(0) << "Graph insert item: " << item_id
+          //         << " path: " << graph_item.path_id(i);
         }
         item_path_dict_[item_id] = path_ids;
 
@@ -379,8 +389,60 @@ std::vector<uint64_t> GraphIndex::gather_unique_items_of_paths(
 }
 
 int GraphIndex::update_Jpath_of_item(
-    std::map<uint64_t, std::vector<std::string>>& item_paths, const int T,
-    const int J, const double lamd, const int factor) {
+    std::unordered_map<uint64_t, std::vector<uint32_t>>& candidate_list,
+    std::unordered_map<uint64_t, std::vector<double>>& candidate_score,
+    const int T, double lamb, const int polynomial_order) {
+  int J = item_path_nums();
+  std::function<double(double)> f = [&polynomial_order](double a) {
+    double res = a / polynomial_order;
+    for (int i = 1; i < polynomial_order; i++) res *= a;
+    return res;
+  };
+  std::vector<uint64_t> key_list;
+  for (auto p : candidate_list) {
+    key_list.push_back(p.first);
+  }
+  std::unordered_map<uint32_t, int> path_count;
+  std::unordered_map<uint64_t, std::vector<uint32_t>> path_map[2];
+  for (int t = 0; t < T; t++) {
+    int ind = t % 2;
+    path_map[ind].clear();
+    for (auto item : key_list) {
+      double sum = 0;
+      std::unordered_set<uint32_t> path_set;
+      for (int j = 0; j < J; j++) {
+        if (t > 0) {
+          path_count[path_map[1 - ind][item][j]]--;
+        }
+        std::vector<int> used_index;
+        std::vector<double> new_score;
+        auto list = candidate_list[item];
+        auto score = candidate_score[item];
+        int choosen = -1;
+        for (size_t i = 0; i < list.size(); i++) {
+          if (path_set.find(list[i]) != path_set.end()) continue;
+          if (choosen == -1) choosen = i;
+          auto count = path_count[list[i]];
+          new_score.push_back(log(score[i] + sum) -
+                              lamb * (f(count + 1) - f(count)));
+          used_index.push_back(i);
+          if (new_score.back() > new_score[choosen])
+            choosen = used_index.back();
+        }
+        path_map[ind][item].push_back(list[choosen]);
+        path_set.insert(list[choosen]);
+        sum = sum + score[choosen];
+        path_count[list[choosen]] = path_count[list[choosen]] + 1;
+      }
+    }
+  }
+  item_path_dict_ = path_map[(T - 1) % 2];
+  path_item_set_dict_.clear();
+  for (auto& p : item_path_dict_) {
+    for (auto& path : p.second) {
+      path_item_set_dict_[path].insert(p.first);
+    }
+  }
   return 0;
 }
 
