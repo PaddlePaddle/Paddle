@@ -80,11 +80,21 @@ class TestDownload(unittest.TestCase):
 
 
 class TestGitclone(unittest.TestCase):
+    def _remove_if_exists(self, path):
+        import os
+        import shutil
+        if os.path.exists(path):
+            if os.path.isfile(path):
+                os.remove(path)
+            else:
+                shutil.rmtree(path)
+
     def test_git_clone_from_url(self, ):
         giturl = 'https://github.com/lyuwenyu/paddlehub_demo.git'
         branch = 'main'
         repo_dir = './test/lyuwenyu_paddlehub_demo_main'
-
+        self._remove_if_exists(repo_dir)
+        self._remove_if_exists(repo_dir + 'x')
         git_clone_from_url(giturl, repo_dir, branch=None, check_exist=False)
         git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=True)
         git_clone_from_url(
