@@ -98,8 +98,7 @@ about:
         self.python39 = r"    - python>=3.9, <3.10"
 
         self.python_version = [
-            self.python36, self.python37,
-            self.python38, self.python39
+            self.python36, self.python37, self.python38, self.python39
         ]
 
         self.cuda101 = r"""
@@ -118,22 +117,22 @@ about:
         self.cuda_info = [(self.cuda101, "cuda10.1", ".post101"),
                           (self.cuda102, "cuda10.2", ""),
                           (self.cuda112, "cuda11.2", ".post112")]
-        self.py_str = ["py36", "py37", "py38","py39"]
+        self.py_str = ["py36", "py37", "py38", "py39"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
         self.pip_prefix_windows = r"pip install C:\package\paddlepaddle"
         self.pip_gpu = "_gpu-"
         self.pip_cpu = "-"
         self.mac_pip = [
-            "-cp36-cp36m-macosx_10_6_intel", "-cp37-cp37m-macosx_10_6_intel", 
+            "-cp36-cp36m-macosx_10_6_intel", "-cp37-cp37m-macosx_10_6_intel",
             "-cp38-cp38-macosx_10_14_x86_64", "-cp39-cp39-macosx_10_14_x86_64"
         ]
         self.linux_pip = [
-            "-cp36-cp36m-linux_x86_64", "-cp37-cp37m-linux_x86_64", 
+            "-cp36-cp36m-linux_x86_64", "-cp37-cp37m-linux_x86_64",
             "-cp38-cp38-linux_x86_64", "-cp39-cp39-linux_x86_64"
         ]
         self.windows_pip = [
-            "-cp36-cp36m-win_amd64", "-cp37-cp37m-win_amd64", 
+            "-cp36-cp36m-win_amd64", "-cp37-cp37m-win_amd64",
             "-cp38-cp38-win_amd64", "-cp39-cp39-win_amd64"
         ]
 
@@ -209,7 +208,7 @@ package:
     requirement = var.requirement_build + python_str + var.requirement_run_windows + python_str
     meta_build = var.build + build_name_str
     meta_str = package_str + meta_build + requirement
-    
+
     if not (cuda_str == None):
         meta_str = meta_str + cuda_str
 
