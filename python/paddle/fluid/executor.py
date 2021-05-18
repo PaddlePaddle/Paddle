@@ -1510,7 +1510,7 @@ class Executor(object):
         # in case of calling _set_use_ps_gpu explicitly
         if dataset.use_ps_gpu is False:
             dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
-	dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_instance = self._default_executor.init_for_dataset(
             program.desc, trainer._desc(), scope, dataset.dataset)

@@ -221,7 +221,7 @@ class DatasetBase(object):
         """
         self.use_ps_gpu = use_ps_gpu
 
-     def _finish_to_run(self):
+    def _finish_to_run(self):
         self.dataset.destroy_readers()
 
     def _desc(self):
