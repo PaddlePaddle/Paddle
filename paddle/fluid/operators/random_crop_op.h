@@ -59,33 +59,6 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   size_t offset_i = offsets[i];
 
   if (i == rank - 1) {
-#ifndef PADDLE_WITH_HIP
-    PADDLE_ENFORCE(x_stride == 1,
-                   "When i:%d == rank:%d - 1, x_stride of random_crop_op "
-                   "expected to be 1, but got %ld. Please check input "
-                   "value.",
-                   i, rank, x_stride);
-    PADDLE_ENFORCE(out_stride == 1,
-                   "When i:%d == rank:%d - 1, out_stride of random_crop_op "
-                   "expected to be 1, but got %ld. Please check input "
-                   "value.",
-                   i, rank, out_stride);
-#else
-    if (x_stride != 1) {
-      printf(
-          "When i:%d == rank:%d - 1, x_stride of random_crop_op expected to be "
-          "1, but got %ld. Please check input value.\n",
-          i, rank, x_stride);
-      abort();
-    }
-    if (out_stride != 1) {
-      printf(
-          "When i:%d == rank:%d - 1, out_stride of random_crop_op expected to "
-          "be 1, but got %ld. Please check input value.\n",
-          i, rank, out_stride);
-      abort();
-    }
-#endif
     x += offset_i;
     for (size_t j = 0; j < out_dim_i; ++j) {
       *out++ = *x++;
