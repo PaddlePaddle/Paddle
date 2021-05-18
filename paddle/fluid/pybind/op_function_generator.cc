@@ -607,8 +607,7 @@ int main(int argc, char* argv[]) {
   auto op_funcs = GenerateOpFunctions();
 
   out << "namespace paddle {\n"
-      << "namespace pybind {\n\n"
-      << "extern PyTypeObject * g_VarBase_PyType;\n";
+      << "namespace pybind {\n\n";
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 

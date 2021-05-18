@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-PyTypeObject *g_VarType_PyType = NULL;
+PyTypeObject *g_vartype_pytype = NULL;
 
 namespace pd = paddle::framework;
 
@@ -177,7 +177,7 @@ void BindVarDsec(pybind11::module *m) {
       .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
-  g_VarType_PyType = (PyTypeObject *)vartype.ptr();  // NOLINT
+  g_vartype_pytype = (PyTypeObject *)vartype.ptr();  // NOLINT
   vartype.value("BOOL", pd::proto::VarType::BOOL)
       .value("UINT8", pd::proto::VarType::UINT8)
       .value("INT8", pd::proto::VarType::INT8)

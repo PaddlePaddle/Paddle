@@ -51,7 +51,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-PyTypeObject *g_VarBase_PyType = NULL;
+PyTypeObject *g_varbase_pytype = NULL;
 
 namespace py = ::pybind11;
 
@@ -615,7 +615,7 @@ void BindImperative(py::module *m_ptr) {
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
       m, "VarBase", R"DOC()DOC");
-  g_VarBase_PyType = (PyTypeObject *)varbase.ptr();  // NOLINT
+  g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
   varbase.def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
            [](imperative::VarBase &self) {

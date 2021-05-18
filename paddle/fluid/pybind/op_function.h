@@ -204,16 +204,16 @@ static inline void HandleViewBetweenInputAndOutput(
   }
 }
 
-extern PyTypeObject* g_VarBase_PyType;
-extern PyTypeObject* g_VarType_PyType;
+extern PyTypeObject* g_varbase_pytype;
+extern PyTypeObject* g_vartype_pytype;
 
 inline bool PyObject_CheckBool(PyObject* obj) { return PyBool_Check(obj); }
 
 inline bool PyObject_CheckLong(PyObject* obj) {
   return (PyLong_Check(obj) && !PyBool_Check(obj)) ||
-         PyObject_IsInstance(obj, (PyObject*)g_VarType_PyType) ||  // NOLINT
+         PyObject_IsInstance(obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
          (_import_array() >= 0 && PyArray_IsScalar((obj), Integer)) ||
-         PyObject_IsInstance(obj, (PyObject*)g_VarBase_PyType);  // NOLINT
+         PyObject_IsInstance(obj, (PyObject*)g_varbase_pytype);  // NOLINT
 }
 
 inline bool PyObject_CheckFloat(PyObject* obj) {
@@ -221,7 +221,7 @@ inline bool PyObject_CheckFloat(PyObject* obj) {
   return PyFloat_Check(obj) || PyLong_Check(obj) ||
          (_import_array() >= 0 && PyArray_IsScalar(obj, Floating)) ||
          (_import_array() >= 0 && PyArray_IsScalar(obj, Integer)) ||
-         PyObject_IsInstance(obj, (PyObject*)g_VarBase_PyType);  // NOLINT
+         PyObject_IsInstance(obj, (PyObject*)g_varbase_pytype);  // NOLINT
 }
 
 inline bool PyObject_CheckString(PyObject* obj) { return PyUnicode_Check(obj); }
@@ -752,7 +752,7 @@ static inline std::shared_ptr<imperative::VarBase> GetVarBaseFromArgs(
   }
 
   if (!PyObject_IsInstance((PyObject*)inst,                 // NOLINT
-                           (PyObject*)g_VarBase_PyType)) {  // NOLINT
+                           (PyObject*)g_varbase_pytype)) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be Tensor, but got "
         "%s",
@@ -795,7 +795,7 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = (::pybind11::detail::instance*)PyList_GetItem(list, i);
       if (!PyObject_IsInstance((PyObject*)item,                 // NOLINT
-                               (PyObject*)g_VarBase_PyType)) {  // NOLINT
+                               (PyObject*)g_varbase_pytype)) {  // NOLINT
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument '%s' (position %d) must be list of Tensors, but "
             "got list of "
@@ -821,7 +821,7 @@ GetVarBaseListFromArgs(const std::string& op_type, const std::string& arg_name,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = (::pybind11::detail::instance*)PyTuple_GetItem(list, i);  // NOLINT
       if (!PyObject_IsInstance((PyObject*)item,                        // NOLINT
-                               (PyObject*)g_VarBase_PyType)) {         // NOLINT
+                               (PyObject*)g_varbase_pytype)) {         // NOLINT
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument '%s' (position %d) must be list of Tensors, but "
             "got list of "
