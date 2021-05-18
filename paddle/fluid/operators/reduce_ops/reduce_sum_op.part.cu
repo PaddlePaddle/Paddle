@@ -20,9 +20,9 @@ using CUDAReduceSumGradKernel =
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
                           ops::SumGradFunctor, true>;
 
-REGISTER_OP_CUDA_KERNEL(reduce_sum_grad, CUDAReduceSumGradKernel<bool>,
-                        CUDAReduceSumGradKernel<float>,
+REGISTER_OP_CUDA_KERNEL(reduce_sum_grad, CUDAReduceSumGradKernel<float>,
                         CUDAReduceSumGradKernel<double>,
+                        CUDAReduceSumGradKernel<paddle::platform::float16>,
                         CUDAReduceSumGradKernel<int>,
                         CUDAReduceSumGradKernel<int64_t>,
                         CUDAReduceSumGradKernel<paddle::platform::complex64>,
