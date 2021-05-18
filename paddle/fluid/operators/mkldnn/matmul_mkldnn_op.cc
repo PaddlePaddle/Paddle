@@ -39,7 +39,7 @@ using Tensor = framework::Tensor;
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
-static framework::Tensor FoldInitDims(const Tensor& input) {
+static framework::Tensor FoldOuterDims(const Tensor& input) {
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -52,8 +52,8 @@ static framework::Tensor FoldInitDims(const Tensor& input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename T>
-static framework::Tensor FoldHeadAndLastDims(const MKLDNNDeviceContext& dev_ctx,
-                                             const Tensor* input) {
+static framework::Tensor FoldFirstAndLastDims(
+    const MKLDNNDeviceContext& dev_ctx, const Tensor* input) {
   auto input_dims = framework::vectorize(input->dims());
   if (input_dims.size() != 3) {
     return *input;
@@ -204,9 +204,9 @@ static void ReshapeTensorToMatrixSequence(
  * BatchSize.
  */
 static void ReshapeXYOutToMatrixSequence(framework::Tensor* x,
-                                           framework::Tensor* y,
-                                           framework::Tensor* out, bool trans_x,
-                                           bool trans_y) {
+                                         framework::Tensor* y,
+                                         framework::Tensor* out, bool trans_x,
+                                         bool trans_y) {
   auto x_dim = RowMatrixDimsFromVector(x->dims());
   auto y_dim = ColumnMatrixDimsFromVector(y->dims());
   auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, trans_x);
@@ -579,10 +579,10 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
       x_combined = *x;
       y_combined = *y;
     } else {
-      x_combined = is_fold_init_dims_x ? FoldInitDims(*x)
-                                       : FoldHeadAndLastDims<T>(dev_ctx, x);
-      y_combined = is_fold_init_dims_y ? FoldInitDims(*y)
-                                       : FoldHeadAndLastDims<T>(dev_ctx, y);
+      x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
+                                       : FoldFirstAndLastDims<T>(dev_ctx, x);
+      y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
+                                       : FoldFirstAndLastDims<T>(dev_ctx, y);
     }
 
     MatMulGradMKLDNNHandler<T> handler(
