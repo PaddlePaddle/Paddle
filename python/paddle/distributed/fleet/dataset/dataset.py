@@ -541,7 +541,7 @@ class InMemoryDataset(DatasetBase):
             if self.use_ps_gpu:
                 self.dataset.dynamic_adjust_channel_num(thread_num, True)
             else:
-                self.dataset.dynamic_adjust_channel_num(thread_num, False) 
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     def _dynamic_adjust_after_train(self):

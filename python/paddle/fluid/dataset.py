@@ -403,7 +403,7 @@ class InMemoryDataset(DatasetBase):
             if self.use_ps_gpu:
                 self.dataset.dynamic_adjust_channel_num(thread_num, True)
             else:
-                self.dataset.dynamic_adjust_channel_num(thread_num, False)            
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     @deprecated(
@@ -415,7 +415,7 @@ class InMemoryDataset(DatasetBase):
             if self.use_ps_gpu:
                 self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
             else:
-                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)        
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     @deprecated(
