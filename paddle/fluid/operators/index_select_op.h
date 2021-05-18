@@ -30,7 +30,6 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   auto input_dim = input.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
-  output->Resize(output_dim);
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -49,66 +48,44 @@ void IndexSelectInner(const framework::ExecutionContext& context,
 
   auto index_size = index.dims()[0];
 
-  const T* input_vec = input.data<T>();
-  const IndexT* index_vec = index.data<IndexT>();
-  T* out_vec = output->mutable_data<T>(platform::CPUPlace());
-  // T* out_vec = output->data<T>();
-  // std::vector<T> input_vec;
-  // std::vector<IndexT> index_vec;
-  // TensorToVector(input, context.device_context(), &input_vec);
-  // TensorToVector(index, context.device_context(), &index_vec);
-  // std::vector<T> out_vec(output->numel());
+  const T* input_data = input.data<T>();
+  const IndexT* index_data = index.data<IndexT>();
+  T* out_data = output->mutable_data<T>(platform::CPUPlace());
 
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
-        index_vec[i], 0,
+        index_data[i], 0,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_vec[i]));
+            input_dim[dim], index_data[i]));
     PADDLE_ENFORCE_LT(
-        index_vec[i], input_dim[dim],
+        index_data[i], input_dim[dim],
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_vec[i]));
+            input_dim[dim], index_data[i]));
   }
 
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
           << "; index_size: " << index_size;
-  // if (slice_size == 1) {
-  //   for(auto i = 0; i < outer_nums; i++) {
-  //     auto input_start_offset = i * input_width;
-  //     auto output_start_offset = i * output_width; 
-  //     for(auto j = 0; j < index_size; j++) {
-  //       IndexT index_value = index_vec[j];
-  //       dst[i] = src[i];
-  //     }
-  //   }
-  // }else{
-    for (auto i = 0; i < outer_nums; i++) {
-      auto input_start_offset = i * input_width;
-      auto output_start_offset = i * output_width;
-      // printf("[%s  %s %d]: Run here!\n", __FILE__, __func__, __LINE__);
-      for (auto j = 0; j < index_size; j++) {
-        IndexT index_value = index_vec[j];
-        auto dst = out_vec + output_start_offset + j * slice_size;
-        auto src = input_vec + input_start_offset + index_value * slice_size;
-        memcpy(dst, src, slice_bytes);
-        // for (auto k = 0; k < slice_size; k++) {
-        //   out_vec[output_start_offset + j * slice_size + k] =
-        //       input_vec[input_start_offset + index_value * slice_size + k];
-        // }
-    // }
+
+  for (auto i = 0; i < outer_nums; i++) {
+    auto input_start_offset = i * input_width;
+    auto output_start_offset = i * output_width;
+
+    for (auto j = 0; j < index_size; j++) {
+      IndexT index_value = index_data[j];
+      auto dst = out_data + output_start_offset + j * slice_size;
+      auto src = input_data + input_start_offset + index_value * slice_size;
+      memcpy(dst, src, slice_bytes);
+    }
   }
-  }
-  // output->mutable_data<T>(context.GetPlace());
-  // framework::TensorFromVector(out_vec, context.device_context(), output);
-  // output->Resize(output_dim);
+  output->Resize(output_dim);
 }
 
 template <typename DeviceContext, typename T>
