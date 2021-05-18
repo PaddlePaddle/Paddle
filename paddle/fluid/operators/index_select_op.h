@@ -13,7 +13,19 @@
 // limitations under the License.
 
 #pragma once
+
+#ifdef _WIN32
+#if defined(__AVX2__)
+#include <immintrin.h>  // avx2
+#elif defined(__AVX__)
+#include <intrin.h>  // avx
+#endif               // AVX
+#else                // WIN32
+#ifdef __AVX__
 #include <immintrin.h>
+#endif
+#endif  // WIN32
+
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
@@ -197,10 +209,10 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
 
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
-      auto src = input_data + input_start_offset + j * slice_size;
-      auto dst = out_data + output_start_offset + index_value * slice_size;
 
 #ifdef __AVX__
+      auto src = input_data + input_start_offset + j * slice_size;
+      auto dst = out_data + output_start_offset + index_value * slice_size;
       auto aligend_count = vec_sum_avx(slice_size, src, dst);
       for (auto k = aligend_count; k < slice_size; k++) {
         out_data[output_start_offset + index_value * slice_size + k] +=
