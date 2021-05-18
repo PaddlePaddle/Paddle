@@ -128,5 +128,28 @@ class TestHub(unittest.TestCase):
                 force_reload=False)
 
 
+class TestGithubClone(unittest.TestCase):
+    def get_params(self, ):
+        repo = 'lyuwenyu/paddlehub_demo:main'
+        source = 'github'
+        return repo, source
+
+    def testDownload(self, ):
+
+        repo, source = self.get_params()
+
+        _ = hub.list(repo, source=source, force_reload=True, use_git=True)
+
+        _ = hub.load(
+            repo, 'MM', source=source, force_reload=False, use_git=True)
+
+        _ = hub.help(
+            repo, 'MM', source=source, force_reload=False, use_git=True)
+
+    def testGiturl(self, ):
+        hub._git_archive_link('lyuwenyuL', 'paddlehub_test', 'master', 'gitee')
+        hub._git_archive_link('lyuwenyu', 'paddlehub_demo', 'main', 'github')
+
+
 if __name__ == '__main__':
     unittest.main()
