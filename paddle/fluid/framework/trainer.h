@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
-#include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#include "paddle/fluid/framework/heter_service.h"
+//#include "paddle/fluid/framework/fleet/heter_wrapper.h"
+#include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/reader.h"
@@ -47,6 +47,10 @@ class PullDenseWorker;
 class Scope;
 class VarDesc;
 class DeviceWorker;
+class HeterWrapper;
+class HeterRequest;
+class HeterResponse;
+
 template <class T>
 class ChannelObject;
 
@@ -332,7 +336,8 @@ class PSGPUTrainer : public TrainerBase {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_ASCEND_CL)
 class PipelineTrainer : public TrainerBase {
  public:
   PipelineTrainer() {}

@@ -17,6 +17,7 @@ import copy
 import warnings
 import paddle
 import os
+import numpy as np
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
@@ -28,9 +29,12 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from . import topology as tp
 from .topology import ParallelMode
-from ..meta_parallel import ModelParallel
+from ..meta_parallel import TensorParallel, model_parallel_random_seed
+from ..meta_parallel import PipelineParallel
 from ..meta_optimizers import HybridParallelOptimizer
 from ..meta_optimizers import HybridParallelGradScaler
+
+__all__ = []
 
 
 def _inited_runtime_handler_(func):
@@ -275,6 +279,14 @@ class Fleet(object):
             dims=[self.dp_degree, self.pp_degree, self.mp_degree])
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
+
+        if self.mp_degree > 1:
+            tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
+            tensor_init_seed = tensor_parallel_configs["tensor_init_seed"]
+            if tensor_init_seed == -1:
+                model_parallel_random_seed()
+            else:
+                model_parallel_random_seed(tensor_init_seed)
 
     def get_hybrid_communicate_group(self):
         assert self._hcg is not None
@@ -577,6 +589,49 @@ class Fleet(object):
         """
         self._runtime_handle._stop_worker()
 
+    def save(self, dirname, feed=[], fetch=[], **configs):
+        inference = True
+
+        if not feed and not fetch:
+            inference = False
+
+        place = paddle.CPUPlace()
+        executor = paddle.static.Executor(place)
+
+        if inference:
+            feeded_var_names = []
+            fetch_var_names = []
+
+            for var in feed:
+                if isinstance(var, str):
+                    feeded_var_names.append(var)
+                elif isinstance(var, paddle.static.Variable):
+                    feeded_var_names.append(var.name)
+                else:
+                    raise ValueError("feed must be [str|Variable]")
+
+            for var in fetch:
+                if isinstance(var, str):
+                    fetch_var_names.append(var)
+                elif isinstance(var, paddle.static.Variable):
+                    fetch_var_names.append(var.name)
+                else:
+                    raise ValueError("feed must be [str|Variable]")
+
+            fetch_vars = [
+                paddle.static.default_main_program().global_block().var(name)
+                for name in fetch_var_names
+            ]
+
+            self._runtime_handle._save_inference_model(
+                executor, dirname, feeded_var_names, fetch_vars, None, True, 0)
+        else:
+            increment_mode = 0
+            if "mode" in configs:
+                increment_mode = int(configs["mode"])
+            self._runtime_handle._save_persistables(
+                executor, dirname, main_program=None, mode=increment_mode)
+
     def save_inference_model(self,
                              executor,
                              dirname,
@@ -604,6 +659,9 @@ class Fleet(object):
                 fleet.init_server()
 
         """
+        # warnings.warn(
+        #     "'save_inference_model' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
+        # )
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
@@ -650,6 +708,9 @@ class Fleet(object):
                 fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
 
         """
+        # warnings.warn(
+        #     "'save_persistables' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
+        # )
 
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
@@ -777,8 +838,11 @@ class Fleet(object):
                 last_comm_group_size_MB,
                 find_unused_parameters=self._user_defined_strategy.
                 find_unused_parameters)
-        elif self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL:
-            distributed_model = ModelParallel(
+        elif self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
+            distributed_model = TensorParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
+            distributed_model = PipelineParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
         return distributed_model
 
@@ -1059,6 +1123,8 @@ class Fleet(object):
         return amp_optimizer
 
     def get_loss_scaling(self):
+        """Return the real-time loss scaling factor.
+        """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.get_loss_scaling()
 

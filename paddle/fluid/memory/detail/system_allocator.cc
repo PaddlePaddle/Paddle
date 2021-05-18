@@ -125,6 +125,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     size_t avail, total, actual_avail, actual_total;
     bool is_limited = platform::RecordedCudaMemGetInfo(
         &avail, &total, &actual_avail, &actual_total, gpu_id_);
+    size_t allocated = total - avail;
 
     std::string err_msg;
     if (is_limited) {
@@ -139,7 +140,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU %d. "
-        "Cannot allocate %s memory on GPU %d, "
+        "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
         "available memory is only %s.\n\n"
         "Please check whether there is any other process using GPU %d.\n"
         "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
@@ -150,8 +151,8 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         "      The command is "
         "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
         gpu_id_, string::HumanReadableSize(size), gpu_id_,
-        string::HumanReadableSize(avail), gpu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use, err_msg));
+        string::HumanReadableSize(allocated), string::HumanReadableSize(avail),
+        gpu_id_, FLAGS_fraction_of_gpu_memory_to_use, err_msg));
   }
 }
 
@@ -309,6 +310,60 @@ void NPUAllocator::Free(void* p, size_t size, size_t index) {
 }
 
 bool NPUAllocator::UseGpu() const { return true; }
+
+void* NPUPinnedAllocator::Alloc(size_t* index, size_t size) {
+  if (size <= 0) return nullptr;
+
+  size_t usable =
+      paddle::platform::NPUPinnedMaxAllocSize() - npu_pinnd_alloc_size_;
+
+  if (size > usable) {
+    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
+                 << " MB pinned memory."
+                 << ", available " << usable / 1024.0 / 1024.0 << " MB";
+    return nullptr;
+  }
+
+  void* p;
+  // PINNED memory is visible to all NPU contexts.
+  auto result = aclrtMallocHost(&p, size);
+
+  if (result == ACL_ERROR_NONE) {
+    *index = 1;  // PINNED memory
+    npu_pinnd_alloc_size_ += size;
+    return p;
+  } else {
+    LOG(WARNING) << "aclrtMallocHost failed.";
+    return nullptr;
+  }
+
+  return nullptr;
+}
+
+void NPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
+  aclError err;
+  PADDLE_ENFORCE_EQ(index, 1, platform::errors::InvalidArgument(
+                                  "The index should be 1, but got %d", index));
+
+  PADDLE_ENFORCE_GE(npu_pinnd_alloc_size_, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated npu pinned memory (%d)",
+                        size, npu_pinnd_alloc_size_));
+  npu_pinnd_alloc_size_ -= size;
+  err = aclrtFreeHost(p);
+
+  if (err != ACL_ERROR_NONE) {
+    PADDLE_ENFORCE_EQ(
+        err, 0,
+        platform::errors::Fatal(
+            "aclrtFreeHost failed in NPUPinnedAllocator, error code is %d",
+            err));
+  }
+}
+
+bool NPUPinnedAllocator::UseGpu() const { return false; }
+
 #endif
 
 }  // namespace detail

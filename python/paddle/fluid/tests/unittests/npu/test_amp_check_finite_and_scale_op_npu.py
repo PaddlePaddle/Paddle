@@ -19,106 +19,128 @@ sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.contrib.mixed_precision.amp_nn import check_finite_and_unscale
 
 paddle.enable_static()
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestCheckFiniteAndUnscaleOp(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "check_finite_and_unscale"
-        self.place = paddle.NPUPlace(0)
-        self.init_dtype()
-        x = np.random.random((1024, 1024)).astype(self.dtype)
-        scale = np.random.random((1)).astype(self.dtype)
+class TestCheckFiniteAndUnscale(unittest.TestCase):
+    def get_prog(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        with program_guard(main_program):
+            a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
+            b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+            scale = paddle.static.data(name="scale", shape=[1], dtype='float32')
+            float_status = paddle.static.data(
+                name="status", shape=[8], dtype='float32')
+            main_program.global_block().append_op(
+                type="alloc_float_status",
+                outputs={"FloatStatus": float_status}, )
+            c = paddle.fluid.layers.elementwise_div(a, b)
+            out, found_inf = check_finite_and_unscale(
+                [c], scale, float_status=float_status)
 
-        self.inputs = {'X': [('x0', x)], 'Scale': scale}
-        self.outputs = {
-            'FoundInfinite': np.array([0]),
-            'Out': [('out0', x / scale)],
-        }
+        return main_program, out, found_inf, float_status
 
-    def set_npu(self):
-        self.__class__.use_npu = True
+    def run_prog(self, a, b, scale):
+        main_program, out, found_inf, float_status = self.get_prog()
+        place = fluid.NPUPlace(0)
+        exe = fluid.Executor(place)
+        out_, founf_inf_, float_status_ = exe.run(
+            main_program,
+            feed={"a": a,
+                  "b": b,
+                  "scale": scale},
+            fetch_list=[out, found_inf, float_status])
+        print(float_status_)
+        return out_, founf_inf_
 
-    def init_kernel_type(self):
-        self.use_mkldnn = False
+    def test_contains_nan(self):
+        a = np.zeros((32, 32)).astype('float32')
+        b = np.zeros((32, 32)).astype('float32')
+        scale = np.array([2.0]).astype('float32')
 
-    def init_dtype(self):
-        self.dtype = np.float32
+        out, found_inf = self.run_prog(a, b, scale)
+        print(out, found_inf)
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.assertTrue(found_inf[0])
+
+    def test_contains_inf(self):
+        a = np.ones((32, 32)).astype('float32')
+        b = np.zeros((32, 32)).astype('float32')
+        scale = np.array([2.0]).astype('float32')
+
+        out, found_inf = self.run_prog(a, b, scale)
+        print(out, found_inf)
+
+        self.assertTrue(found_inf[0])
+
+    def test_not_contains_nan_inf(self):
+        a = np.ones((32, 32)).astype('float32')
+        b = np.ones((32, 32)).astype('float32')
+        scale = np.array([2.0]).astype('float32')
+
+        out, found_inf = self.run_prog(a, b, scale)
+        print(out, found_inf)
+
+        self.assertTrue(np.allclose(out, (a / b) / scale[0]))
+        self.assertFalse(found_inf[0])
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "check_finite_and_unscale"
-        self.place = paddle.NPUPlace(0)
-        self.init_dtype()
-        x = np.random.random((1024, 1024)).astype(self.dtype)
-        x[128][128] = np.nan
-        scale = np.random.random((1)).astype(self.dtype)
+class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
+    def get_prog(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        with program_guard(main_program):
+            a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
+            b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+            scale = paddle.static.data(name="scale", shape=[1], dtype='float32')
+            float_status = paddle.static.data(
+                name="status", shape=[8], dtype='float32')
+            main_program.global_block().append_op(
+                type="alloc_float_status",
+                outputs={"FloatStatus": float_status}, )
+            c = paddle.fluid.layers.elementwise_div(a, b)
+            out, found_inf = check_finite_and_unscale(
+                [c], scale, float_status=float_status)
+            main_program.global_block().append_op(
+                type="alloc_float_status",
+                outputs={"FloatStatus": float_status}, )
+            d = paddle.fluid.layers.elementwise_add(a, b)
+            out, found_inf = check_finite_and_unscale(
+                [d], scale, float_status=float_status)
 
-        self.inputs = {'X': [('x0', x)], 'Scale': scale}
-        self.outputs = {
-            'FoundInfinite': np.array([1]),
-            'Out': [('out0', x)],
-        }
+        return main_program, out, found_inf, float_status
 
-    def set_npu(self):
-        self.__class__.use_npu = True
+    def run_prog(self, a, b, scale):
+        main_program, out, found_inf, float_status = self.get_prog()
+        place = fluid.NPUPlace(0)
+        exe = fluid.Executor(place)
+        out_, founf_inf_, float_status_ = exe.run(
+            main_program,
+            feed={"a": a,
+                  "b": b,
+                  "scale": scale},
+            fetch_list=[out, found_inf, float_status])
+        print(float_status_)
+        return out_, founf_inf_
 
-    def init_kernel_type(self):
-        self.use_mkldnn = False
+    def test_not_contains_nan_inf(self):
+        a = np.ones((32, 32)).astype('float32')
+        b = np.zeros((32, 32)).astype('float32')
+        scale = np.array([2.0]).astype('float32')
 
-    def init_dtype(self):
-        self.dtype = np.float32
+        out, found_inf = self.run_prog(a, b, scale)
+        print(out, found_inf)
 
-    def test_check_output(self):
-        # When input contains nan, do not check the output, 
-        # since the output may be nondeterministic and will be discarded.
-        self.check_output_with_place(
-            self.place, check_dygraph=False, no_check_set=['Out'])
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "check_finite_and_unscale"
-        self.place = paddle.NPUPlace(0)
-        self.init_dtype()
-        x = np.random.random((1024, 1024)).astype(self.dtype)
-        x[128][128] = np.inf
-        scale = np.random.random((1)).astype(self.dtype)
-
-        self.inputs = {'X': [('x0', x)], 'Scale': scale}
-        self.outputs = {
-            'FoundInfinite': np.array([1]),
-            'Out': [('out0', x)],
-        }
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-
-    def init_kernel_type(self):
-        self.use_mkldnn = False
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def test_check_output(self):
-        # When input contains inf, do not check the output, 
-        # since the output may be nondeterministic and will be discarded.
-        self.check_output_with_place(
-            self.place, check_dygraph=False, no_check_set=['Out'])
+        self.assertTrue(np.allclose(out, (a + b) / scale[0]))
+        self.assertFalse(found_inf[0])
 
 
 if __name__ == '__main__':

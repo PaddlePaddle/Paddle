@@ -17,6 +17,7 @@ from __future__ import print_function
 import sys
 import math
 from functools import reduce
+import os
 
 import collections
 import six
@@ -101,6 +102,8 @@ class Collective(object):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
+        block = program.global_block()
+
         if rank == 0 and wait_port:
             wait_server_ready(other_endpoints)
 

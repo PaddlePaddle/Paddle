@@ -131,6 +131,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     int64_t numel = in->numel();
 
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
+    out->mutable_data<T>(in->dims(), ctx.GetPlace());
     void* recvbuff = reinterpret_cast<void*>(out->data<T>());
 
     int ring_id = ctx.Attr<int>("ring_id");
@@ -320,6 +321,12 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "use_model_parallel",
+        "(bool default false) use this op with model parallel mode. In model "
+        "parallel mode, the backward is c_identity which returns itself for "
+        "c_allreduce_sum.")
         .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 CAllReduce %s Operator

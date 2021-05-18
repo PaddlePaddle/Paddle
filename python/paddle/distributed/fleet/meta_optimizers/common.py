@@ -13,10 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 
 import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
 from ..base.private_helper_function import wait_server_ready
+
+__all__ = []
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
@@ -77,6 +80,7 @@ class CollectiveHelper(object):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
+
         if rank == 0 and wait_port:
             wait_server_ready(other_endpoints)
 

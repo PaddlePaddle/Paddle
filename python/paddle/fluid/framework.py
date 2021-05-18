@@ -246,11 +246,11 @@ def _static_only_(func):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
-            "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
-            "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
-            "please use other API to replace '%s'" % (func.__name__,
-                                                      func.__name__))
+            "'%s' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
+            "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
+            "  2. If you are using `@paddle.jit.to_static`, you can turn off ProgramTranslator by calling `paddle.jit.ProgramTranslator().enable(False)`. "
+            "If you have to translate dynamic graph to static graph, please use other API to replace '%s'."
+            % (func.__name__, func.__name__))
 
     return __impl__
 
@@ -418,7 +418,7 @@ def cuda_places(device_ids=None):
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
 
     Parameters:
-        device_ids (list or tuple of int, optional): list of GPU device ids.
+        device_ids (list|tuple, optional): A list/tuple of int of GPU device ids.
 
     Returns:
         list of paddle.CUDAPlace: Created GPU place list.
@@ -429,6 +429,8 @@ def cuda_places(device_ids=None):
             import paddle
             import paddle.static as static
 
+            # required: gpu
+            
             paddle.enable_static()
 
             cuda_places = static.cuda_places()
@@ -790,29 +792,16 @@ def _getitem_impl_(var, item):
     if not isinstance(item, tuple):
         item = [item]
 
-    decrease_axis = []
-    slice_axis = []
-    slice_start = []
-    slice_end = []
-    slice_step = []
+    decrease_axes = []
+    axes = []
+    starts = []
+    ends = []
+    steps = []
+
     use_strided_slice = False
     reverse_axis = []
-    target_block = default_main_program().current_block()
 
-    def fill_constant(shape, value, force_cpu=False, out=None):
-        var.block.append_op(
-            type='fill_constant',
-            inputs={},
-            outputs={'Out': [out]},
-            attrs={
-                'shape': shape,
-                'dtype': out.dtype,
-                'value': float(value),
-                'force_cpu': force_cpu
-            })
-        out.stop_gradient = True
-        return out
-
+    max_integer = 2**31 - 1
     for dim, slice_item in enumerate(item):
         if isinstance(slice_item, slice):
             start = slice_item.start
@@ -822,8 +811,7 @@ def _getitem_impl_(var, item):
             if start is None and end is None and step is None:
                 continue
 
-            if step is None:
-                step = 1
+            step = 1 if step is None else step
 
             if start is None and end is None:
                 assert (step == -1)
@@ -834,106 +822,56 @@ def _getitem_impl_(var, item):
                 start = 0
 
             if end is None:
-                end = 10000000
+                end = max_integer
 
-            if step != 1:
-                use_strided_slice = True
-
-            slice_axis.append(dim)
-            slice_start.append(start)
-            slice_end.append(end)
-            slice_step.append(step)
         else:
-            decrease_axis.append(dim)
-            slice_axis.append(dim)
-            slice_start.append(slice_item)
-            slice_step.append(1)
-            if isinstance(slice_item, Variable):
-                temp_1 = var.block.create_var(dtype=slice_item.dtype)
-                fill_constant([1], 1, force_cpu=True, out=temp_1)
-                temp_end = target_block.create_var(dtype=slice_item.dtype)
-                target_block.append_op(
-                    type='elementwise_add',
-                    inputs={'X': slice_item,
-                            'Y': temp_1},
-                    outputs={'Out': temp_end},
-                    attrs={'axis': -1})
-                slice_end.append(temp_end)
-            else:
-                slice_end.append(slice_item + 1
-                                 if slice_item != -1 else 10000000)
+            decrease_axes.append(dim)
+            start = slice_item
+            step = 1
+            end = slice_item + 1 if slice_item != -1 else max_integer
 
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
-    def get_new_list_tensor(old_list):
-        new_list_tensor = []
-        for dim in old_list:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_list_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = var.block.create_var(dtype='int64')
-                fill_constant([1], dim, force_cpu=True, out=temp_out)
-                new_list_tensor.append(temp_out)
-        return new_list_tensor
+        axes.append(dim)
+        starts.append(start)
+        ends.append(end)
+        steps.append(step)
+        use_strided_slice = True if step != 1 else use_strided_slice
 
     inputs = {'Input': [var]}
     attrs = {
-        'axes': slice_axis,
+        'axes': axes,
         'starts': [],
         'ends': [],
-        'decrease_axis': decrease_axis
+        'decrease_axis': decrease_axes
     }
-    if (use_strided_slice == True):
-        attrs['strides'] = []
-    infer_flags = list(1 for i in range(len(slice_axis)))
-
-    # starts
-    if contain_var(slice_start):
-        inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
-        for i, dim in enumerate(slice_start):
-            if isinstance(dim, Variable):
-                attrs['starts'].append(-1)
-                infer_flags[i] = -1
-            else:
-                attrs['starts'].append(dim)
-    else:
-        attrs['starts'] = slice_start
-
-    # ends
-    if contain_var(slice_end):
-        inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
-        for i, dim in enumerate(slice_end):
-            if isinstance(dim, Variable):
-                attrs['ends'].append(-1)
-                infer_flags[i] = -1
-            else:
-                attrs['ends'].append(dim)
-    else:
-        attrs['ends'] = slice_end
-
-    # strides
     if use_strided_slice == True:
-        if contain_var(slice_step):
-            inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
-            for i, dim in enumerate(slice_step):
+        attrs['strides'] = []
+
+    infer_flags = list(1 for i in range(len(axes)))
+    from .layers import utils
+
+    def deal_attrs(attr, attr_name, tensor_attr_name, inputs, infer_flags):
+        if utils._contain_var(attr):
+            inputs[tensor_attr_name] = utils._convert_to_tensor_list(
+                attr, dtype="int64")
+            for i, dim in enumerate(attr):
                 if isinstance(dim, Variable):
-                    attrs['strides'].append(-1)
+                    attrs[attr_name].append(-1)
                     infer_flags[i] = -1
                 else:
-                    attrs['strides'].append(dim)
+                    attrs[attr_name].append(dim)
         else:
-            attrs['strides'] = slice_step
+            attrs[attr_name] = attr
+
+    deal_attrs(starts, "starts", "StartsTensorList", inputs, infer_flags)
+    deal_attrs(ends, "ends", "EndsTensorList", inputs, infer_flags)
+    deal_attrs(steps, "strides", "StridesTensorList", inputs, infer_flags)
+
     # infer_flags
     attrs['infer_flags'] = infer_flags
 
     out = var
-    if use_strided_slice == False and len(slice_axis) > 0:
+    target_block = default_main_program().current_block()
+    if use_strided_slice == False and len(axes) > 0:
         # append slice_op here
         slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
@@ -946,7 +884,7 @@ def _getitem_impl_(var, item):
             attrs=attrs)
 
         out = slice_out_var
-    elif use_strided_slice == True and len(slice_axis) > 0:
+    elif use_strided_slice == True and len(axes) > 0:
         strided_slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name +
                                                          "_strided_slice"),
@@ -1302,6 +1240,10 @@ class Variable(object):
                     print("After clear {}".format(loss2.gradient()))
 
         """
+        pass
+
+    @fake_interface_only
+    def register_hook(self, hook):
         pass
 
     def __str__(self):
@@ -2254,7 +2196,8 @@ class Operator(object):
         'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
         'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
-        'c_wait_comm', 'c_wait_compute', 'c_gen_hccl_id', 'c_comm_init_hccl'
+        'c_wait_comm', 'c_wait_compute', 'c_gen_hccl_id', 'c_comm_init_hccl',
+        'copy_cross_scope'
     }
 
     def __init__(self,
@@ -3215,14 +3158,22 @@ class Block(object):
                                        if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
+            from paddle.fluid.dygraph.base import param_guard
+
             op_desc = self.desc.append_op()
-            op = Operator(
-                block=self,
-                desc=op_desc,
-                type=kwargs.get("type", None),
-                inputs=kwargs.get("inputs", None),
-                outputs=kwargs.get("outputs", None),
-                attrs=kwargs.get("attrs", None))
+            # NOTE(Aurelius84): In case of @to_static, all VarBase(s) should
+            # be converted into Variable(s) with same name and block location.
+            # This is ONE and ONLY logic of type transformation of dy2static.
+            inputs = kwargs.get("inputs", None)
+            outputs = kwargs.get("outputs", None)
+            with param_guard(inputs), param_guard(outputs):
+                op = Operator(
+                    block=self,
+                    desc=op_desc,
+                    type=kwargs.get("type", None),
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=kwargs.get("attrs", None))
 
             self.ops.append(op)
 
@@ -5020,6 +4971,9 @@ class Program(object):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op._set_attr('is_test', True)
+                if op.type() == "batch_norm":
+                    # Remove the output ReserveSpace of batch_norm if exists.
+                    op.remove_output("ReserveSpace")
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
@@ -5845,6 +5799,13 @@ class ParamBase(core.VarBase):
         new_param.copy_(self, True)
         return new_param
 
+    def _copy_to(self, device, blocking):
+        print("in ParamBase copy_to func")
+        state = copy.deepcopy(self.__dict__)
+        new_param = ParamBase(self.shape, self.dtype, **state)
+        core.varbase_copy(self, new_param, device, blocking)
+        return new_param
+
     __repr__ = __str__
 
 
@@ -6073,7 +6034,8 @@ def device_guard(device=None):
     A context manager that specifies the device on which the OP will be placed.
 
     Args:
-        device(str|None): Specify the device to use in the context. It should be 'cpu' or 'gpu',
+        device(str|None): Specify the device to use in the context. It should be ``cpu``,
+            ``gpu`` or ``gpu:x``, where ``x`` is the index of the GPUs. 
             When it is set to 'cpu' or 'gpu', all OPs created in the context will be
             placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
             single-card, the device index will be the same as the device on which the
@@ -6113,9 +6075,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', '', None]:
+    if device not in ['cpu', 'gpu', 'npu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     if index:
         device = ":".join([device, index])

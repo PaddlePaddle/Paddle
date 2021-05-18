@@ -20,14 +20,18 @@ import tempfile
 import shutil
 import sys
 import importlib
+import re
+import sampcd_processor
 from sampcd_processor import find_all
-from sampcd_processor import check_indent
-from sampcd_processor import sampcd_extract_and_run
-from sampcd_processor import single_defcom_extract
-from sampcd_processor import srccoms_extract
 from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
-from sampcd_processor import get_wlist
+from sampcd_processor import sampcd_extract_to_file
+from sampcd_processor import extract_code_blocks_from_docstr
+from sampcd_processor import execute_samplecode
+from sampcd_processor import find_last_future_line_end
+from sampcd_processor import insert_codes_into_codeblock
+from sampcd_processor import get_test_capacity
+from sampcd_processor import is_required_match
 
 
 class Test_find_all(unittest.TestCase):
@@ -42,118 +46,384 @@ class Test_find_all(unittest.TestCase):
                              find_all(' hello, world; hello paddle!', 'hello'))
 
 
-class Test_check_indent(unittest.TestCase):
-    def test_no_indent(self):
-        self.assertEqual(0, check_indent('hello paddle'))
+class Test_find_last_future_line_end(unittest.TestCase):
+    def test_no_instant(self):
+        samplecodes = """
+                print(10//3)
+        """
+        self.assertIsNone(find_last_future_line_end(samplecodes))
 
-    def test_indent_4_spaces(self):
-        self.assertEqual(4, check_indent('    hello paddle'))
+    def test_1_instant(self):
+        samplecodes = """
+                from __future__ import print_function
 
-    def test_indent_1_tab(self):
-        self.assertEqual(4, check_indent("\thello paddle"))
+                print(10//3)
+        """
+        mo = re.search("print_function\n", samplecodes)
+        self.assertIsNotNone(mo)
+        self.assertGreaterEqual(
+            find_last_future_line_end(samplecodes), mo.end())
+
+    def test_2_instant(self):
+        samplecodes = """
+                from __future__ import print_function
+                from __future__ import division
+
+                print(10//3)
+        """
+        mo = re.search("division\n", samplecodes)
+        self.assertIsNotNone(mo)
+        self.assertGreaterEqual(
+            find_last_future_line_end(samplecodes), mo.end())
 
 
-class Test_sampcd_extract_and_run(unittest.TestCase):
+class Test_extract_code_blocks_from_docstr(unittest.TestCase):
+    def test_no_samplecode(self):
+        docstr = """
+        placeholder
+        """
+        codeblocks = extract_code_blocks_from_docstr(docstr)
+        self.assertListEqual([], codeblocks)
+
+    def test_codeblock_before_examples_is_ignored(self):
+        docstr = """
+            .. code-block:: python
+
+                print(1+1)
+        Examples:
+        """
+        codeblocks = extract_code_blocks_from_docstr(docstr)
+        self.assertListEqual(codeblocks, [])
+
+    def test_1_samplecode(self):
+        docstr = """
+        Examples:
+            .. code-block:: python
+
+                print(1+1)
+        """
+        codeblocks = extract_code_blocks_from_docstr(docstr)
+        self.assertListEqual(codeblocks, [{
+            'codes': """print(1+1)""",
+            'name': None,
+            'id': 1,
+            'required': None,
+        }])
+
+    def test_2_samplecodes(self):
+        docstr = """
+        placeholder
+        Examples:
+            .. code-block:: python
+
+                print(1/0)
+
+            .. code-block:: python
+               :name: one_plus_one
+               :linenos:
+
+                # required: gpu
+                print(1+1)
+        """
+        codeblocks = extract_code_blocks_from_docstr(docstr)
+        self.assertListEqual(codeblocks, [{
+            'codes': """print(1/0)""",
+            'name': None,
+            'id': 1,
+            'required': None,
+        }, {
+            'codes': """# required: gpu
+print(1+1)""",
+            'name': 'one_plus_one',
+            'id': 2,
+            'required': 'gpu',
+        }])
+
+
+class Test_insert_codes_into_codeblock(unittest.TestCase):
+    def test_required_None(self):
+        codeblock = {
+            'codes': """print(1/0)""",
+            'name': None,
+            'id': 1,
+            'required': None,
+        }
+        self.assertEqual("""
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+print(1/0)
+print("not-specified's sample code (name:None, id:1) is executed successfully!")""",
+                         insert_codes_into_codeblock(codeblock))
+
+    def test_required_gpu(self):
+        codeblock = {
+            'codes': """# required: gpu
+print(1+1)""",
+            'name': None,
+            'id': 1,
+            'required': 'gpu',
+        }
+        self.assertEqual("""
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# required: gpu
+print(1+1)
+print("not-specified's sample code (name:None, id:1) is executed successfully!")""",
+                         insert_codes_into_codeblock(codeblock))
+
+    def test_from_future(self):
+        codeblock = {
+            'codes': """
+from __future__ import print_function
+from __future__ import division
+print(10//3)""",
+            'name': 'future',
+            'id': 1,
+            'required': None,
+        }
+        self.assertEqual("""
+from __future__ import print_function
+from __future__ import division
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+print(10//3)
+print("not-specified's sample code (name:future, id:1) is executed successfully!")""",
+                         insert_codes_into_codeblock(codeblock))
+
+
+def clear_capacity():
+    sampcd_processor.SAMPLE_CODE_TEST_CAPACITY = set()
+    sampcd_processor.RUN_ON_DEVICE = 'cpu'
+    if sampcd_processor.ENV_KEY_TEST_CAPACITY in os.environ:
+        del os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY]
+
+
+class Test_get_test_capacity(unittest.TestCase):
     def setUp(self):
-        if not os.path.exists('samplecode_temp/'):
-            os.mkdir('samplecode_temp/')
+        clear_capacity()
+        get_test_capacity()
 
-    def test_run_a_defs_samplecode(self):
+    def tearDown(self):
+        clear_capacity()
+        get_test_capacity()
+
+    def test_NoEnvVar(self):
+        clear_capacity()
+        get_test_capacity()
+        self.assertCountEqual(['cpu', ],
+                              sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+
+    def test_NoEnvVar_RUN_ON_DEVICE_gpu(self):
+        clear_capacity()
+        sampcd_processor.RUN_ON_DEVICE = 'gpu'
+        get_test_capacity()
+        self.assertCountEqual(['cpu', 'gpu'],
+                              sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+
+    def test_EnvVar_gpu(self):
+        clear_capacity()
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu'
+        get_test_capacity()
+        self.assertCountEqual(['cpu', 'gpu'],
+                              sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+
+    def test_EnvVar_gpu_and_distributed(self):
+        clear_capacity()
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu,distributed'
+        get_test_capacity()
+        self.assertCountEqual(['cpu', 'gpu', 'distributed'],
+                              sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+
+
+class Test_is_required_match(unittest.TestCase):
+    def setUp(self):
+        clear_capacity()
+
+    def tearDown(self):
+        clear_capacity()
+        get_test_capacity()
+
+    def test_alldefault(self):
+        clear_capacity()
+        get_test_capacity()
+        self.assertTrue(is_required_match(''))
+        self.assertTrue(is_required_match(None))
+        self.assertTrue(is_required_match('cpu'))
+        self.assertFalse(is_required_match('gpu'))
+        self.assertIsNone(is_required_match('skiptest'))
+        self.assertIsNone(is_required_match('skip'))
+        self.assertIsNone(is_required_match('cpu,skiptest'))
+
+    def test_gpu_equipped(self):
+        clear_capacity()
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu'
+        get_test_capacity()
+        self.assertTrue(is_required_match('cpu'))
+        self.assertTrue(is_required_match('gpu'))
+        self.assertTrue(is_required_match('gpu,cpu'))
+        self.assertIsNone(is_required_match('skiptest'))
+        self.assertFalse(is_required_match('distributed'))
+
+    def test_gpu_distributed_equipped(self):
+        clear_capacity()
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu,distributed'
+        get_test_capacity()
+        self.assertTrue(is_required_match('cpu'))
+        self.assertTrue(is_required_match('gpu'))
+        self.assertTrue(is_required_match('distributed'))
+        self.assertFalse(is_required_match('xpu'))
+        self.assertIsNone(is_required_match('skiptest'))
+
+
+class Test_execute_samplecode(unittest.TestCase):
+    def setUp(self):
+        if not os.path.exists(sampcd_processor.SAMPLECODE_TEMPDIR):
+            os.mkdir(sampcd_processor.SAMPLECODE_TEMPDIR)
+        self.successSampleCodeFile = os.path.join(
+            sampcd_processor.SAMPLECODE_TEMPDIR, 'samplecode_success.py')
+        with open(self.successSampleCodeFile, 'w') as f:
+            f.write('print(1+1)')
+        self.failedSampleCodeFile = os.path.join(
+            sampcd_processor.SAMPLECODE_TEMPDIR, 'samplecode_failed.py')
+        with open(self.failedSampleCodeFile, 'w') as f:
+            f.write('print(1/0)')
+
+    def tearDown(self):
+        os.remove(self.successSampleCodeFile)
+        os.remove(self.failedSampleCodeFile)
+
+    def test_run_success(self):
+        result, tfname, msg, exec_time = execute_samplecode(
+            self.successSampleCodeFile)
+        self.assertTrue(result)
+        self.assertEqual(self.successSampleCodeFile, tfname)
+        self.assertIsNotNone(msg)
+        self.assertLess(msg.find('skipped'), 0)
+        self.assertLess(exec_time, 10)
+
+    def test_run_failed(self):
+        result, tfname, msg, exec_time = execute_samplecode(
+            self.failedSampleCodeFile)
+        self.assertFalse(result)
+        self.assertEqual(self.failedSampleCodeFile, tfname)
+        self.assertIsNotNone(msg)
+        self.assertLess(msg.find('skipped'), 0)
+        self.assertLess(exec_time, 10)
+
+
+def clear_summary_info():
+    for k in sampcd_processor.SUMMARY_INFO.keys():
+        sampcd_processor.SUMMARY_INFO[k].clear()
+
+
+class Test_sampcd_extract_to_file(unittest.TestCase):
+    def setUp(self):
+        if not os.path.exists(sampcd_processor.SAMPLECODE_TEMPDIR):
+            os.mkdir(sampcd_processor.SAMPLECODE_TEMPDIR)
+        clear_capacity()
+        os.environ[sampcd_processor.ENV_KEY_TEST_CAPACITY] = 'gpu,distributed'
+        get_test_capacity()
+
+    def tearDown(self):
+        shutil.rmtree(sampcd_processor.SAMPLECODE_TEMPDIR)
+        clear_capacity()
+        get_test_capacity()
+
+    def test_1_samplecode(self):
         comments = """
         Examples:
             .. code-block:: python
+
                 print(1+1)
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertTrue(res)
-        self.assertEqual(funcname, name)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([
+            os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                         funcname + '_example.py')
+        ], sample_code_filenames)
 
-    def test_run_a_def_no_code(self):
+    def test_no_samplecode(self):
         comments = """
         placeholder
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertFalse(res)
-        self.assertEqual(funcname, name)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([], sample_code_filenames)
 
-    def test_run_a_def_raise_expection(self):
+    def test_2_samplecodes(self):
         comments = """
         placeholder
         Examples:
             .. code-block:: python
+
                 print(1/0)
+
+            .. code-block:: python
+
+                print(1+1)
         """
         funcname = 'one_plus_one'
-        res, name, msg = sampcd_extract_and_run(comments, funcname)
-        self.assertFalse(res)
-        self.assertEqual(funcname, name)
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([
+            os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                         funcname + '_example_1.py'),
+            os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                         funcname + '_example_2.py')
+        ], sample_code_filenames)
 
+    def test_2_samplecodes_has_skipped(self):
+        comments = """
+        placeholder
+        Examples:
+            .. code-block:: python
 
-class Test_single_defcom_extract(unittest.TestCase):
-    def test_extract_from_func(self):
-        defstr = '''
-import os
-def foo():
-            """
-            foo is a function.
-            """
-            pass
-def bar():
-            pass
-'''
-        comm = single_defcom_extract(
-            2, defstr.splitlines(True), is_class_begin=False)
-        self.assertEqual("            foo is a function.\n", comm)
-        pass
+                # required: skiptest
+                print(1/0)
 
-    def test_extract_from_func_with_no_docstring(self):
-        defstr = '''
-import os
-def bar():
-            pass
-'''
-        comm = single_defcom_extract(
-            2, defstr.splitlines(True), is_class_begin=False)
-        self.assertEqual('', comm)
-        pass
+            .. code-block:: python
 
-    def test_extract_from_class(self):
-        defstr = r'''
-import os
-class Foo():
-            """
-            Foo is a class.
-            second line.
-            """
-            pass
-            def bar():
-                pass
-def foo():
-            pass
-'''
-        comm = single_defcom_extract(
-            2, defstr.splitlines(True), is_class_begin=True)
-        rcomm = """            Foo is a class.
-            second line.
-"""
-        self.assertEqual(rcomm, comm)
-        pass
+                print(1+1)
 
-    def test_extract_from_class_with_no_docstring(self):
-        defstr = '''
-import os
-class Foo():
-            pass
-            def bar():
-                pass
-def foo():
-            pass
-'''
-        comm = single_defcom_extract(
-            0, defstr.splitlines(True), is_class_begin=True)
-        self.assertEqual('', comm)
+            .. code-block:: python
+
+                # required: gpu
+                print(1//1)
+
+            .. code-block:: python
+
+                # required: xpu
+                print(1//1)
+
+            .. code-block:: python
+
+                # required: distributed
+                print(1//1)
+
+            .. code-block:: python
+
+                # required: gpu
+                print(1//1)
+        """
+        funcname = 'one_plus_one'
+        clear_summary_info()
+        clear_capacity()
+        get_test_capacity()
+
+        sample_code_filenames = sampcd_extract_to_file(comments, funcname)
+        self.assertCountEqual([
+            os.path.join(sampcd_processor.SAMPLECODE_TEMPDIR,
+                         funcname + '_example_2.py')
+        ], sample_code_filenames)
+        self.assertCountEqual(sampcd_processor.SUMMARY_INFO['skiptest'],
+                              [funcname + '-1'])
+        self.assertCountEqual(sampcd_processor.SUMMARY_INFO['gpu'],
+                              [funcname + '-3', funcname + '-6'])
+        self.assertCountEqual(sampcd_processor.SUMMARY_INFO['xpu'],
+                              [funcname + '-4'])
+        self.assertCountEqual(sampcd_processor.SUMMARY_INFO['distributed'],
+                              [funcname + '-5'])
 
 
 class Test_get_api_md5(unittest.TestCase):
@@ -217,223 +487,6 @@ class Test_get_incrementapi(unittest.TestCase):
                 "paddle.two_plus_two\n", "paddle.three_plus_three\n",
                 "paddle.four_plus_four\n"
             ], lines)
-
-
-class Test_get_wlist(unittest.TestCase):
-    def setUp(self):
-        self.tmpDir = tempfile.mkdtemp()
-        self.wlist_filename = os.path.join(self.tmpDir, 'wlist.json')
-        with open(self.wlist_filename, 'w') as f:
-            f.write(r'''
-{
-    "wlist_dir":[
-        {
-            "name":"../python/paddle/fluid/contrib",
-            "annotation":""
-        },
-        {
-            "name":"../python/paddle/verison.py",
-            "annotation":""
-        }
-    ],
-    "wlist_api":[
-        {
-            "name":"xxxxx",
-            "annotation":"not a real api, just for example"
-        }
-    ],
-    "wlist_temp_api":[
-        "to_tensor",
-        "save_persistables@dygraph/checkpoint.py"
-    ],
-    "gpu_not_white":[
-        "deformable_conv"
-    ]
-}
-''')
-
-    def tearDown(self):
-        os.remove(self.wlist_filename)
-        shutil.rmtree(self.tmpDir)
-
-    def test_get_wlist(self):
-        wlist, wlist_file, gpu_not_white = get_wlist(self.wlist_filename)
-        self.assertCountEqual(
-            ["xxxxx", "to_tensor",
-             "save_persistables@dygraph/checkpoint.py"], wlist)
-        self.assertCountEqual([
-            "../python/paddle/fluid/contrib",
-            "../python/paddle/verison.py",
-        ], wlist_file)
-        self.assertCountEqual(["deformable_conv"], gpu_not_white)
-
-
-class Test_srccoms_extract(unittest.TestCase):
-    def setUp(self):
-        self.tmpDir = tempfile.mkdtemp()
-        sys.path.append(self.tmpDir)
-        self.api_pr_spec_filename = os.path.abspath(
-            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec'))
-        with open(self.api_pr_spec_filename, 'w') as f:
-            f.write("\n".join([
-                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "one_plus_one"))""",
-                """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "two_plus_two"))""",
-                """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "three_plus_three"))""",
-                """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "four_plus_four"))""",
-            ]))
-
-    def tearDown(self):
-        sys.path.remove(self.tmpDir)
-        shutil.rmtree(self.tmpDir)
-        os.remove(self.api_pr_spec_filename)
-
-    def test_from_ops_py(self):
-        filecont = '''
-def add_sample_code(obj, docstr):
-    pass
-
-__unary_func__ = [
-    'exp',
-]
-
-__all__ = []
-__all__ += __unary_func__
-__all__ += ['one_plus_one']
-
-def exp():
-    pass
-add_sample_code(globals()["exp"], r"""
-Examples:
-    .. code-block:: python
-        import paddle
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.exp(x)
-        print(out)
-        # [0.67032005 0.81873075 1.10517092 1.34985881]
-""")
-
-def one_plus_one():
-            return 1+1
-
-one_plus_one.__doc__ = """
-            placeholder
-
-            Examples:
-            .. code-block:: python
-                print(1+1)
-"""
-
-__all__ += ['two_plus_two']
-def two_plus_two():
-            return 2+2
-add_sample_code(globals()["two_plus_two"], """
-            Examples:
-            .. code-block:: python
-                print(2+2)
-""")
-'''
-        pyfilename = os.path.join(self.tmpDir, 'ops.py')
-        with open(pyfilename, 'w') as pyfile:
-            pyfile.write(filecont)
-        self.assertTrue(os.path.exists(pyfilename))
-        utsp = importlib.import_module('ops')
-        print('testing srccoms_extract from ops.py')
-        methods = ['one_plus_one', 'two_plus_two', 'exp']
-        # os.remove("samplecode_temp/" "one_plus_one_example.py")
-        self.assertFalse(
-            os.path.exists("samplecode_temp/"
-                           "one_plus_one_example.py"))
-        with open(pyfilename, 'r') as pyfile:
-            res, error_methods = srccoms_extract(pyfile, [], methods)
-            self.assertTrue(res)
-        self.assertTrue(
-            os.path.exists("samplecode_temp/"
-                           "one_plus_one_example.py"))
-        os.remove("samplecode_temp/" "one_plus_one_example.py")
-        self.assertTrue(
-            os.path.exists("samplecode_temp/"
-                           "two_plus_two_example.py"))
-        os.remove("samplecode_temp/" "two_plus_two_example.py")
-        self.assertTrue(os.path.exists("samplecode_temp/" "exp_example.py"))
-        os.remove("samplecode_temp/" "exp_example.py")
-
-    def test_from_not_ops_py(self):
-        filecont = '''
-__all__ = [
-        'one_plus_one'
-]
-
-def one_plus_one():
-            """
-            placeholder
-
-            Examples:
-            .. code-block:: python
-                print(1+1)
-            """
-            return 1+1
-
-'''
-        pyfilename = os.path.join(self.tmpDir, 'opo.py')
-        with open(pyfilename, 'w') as pyfile:
-            pyfile.write(filecont)
-        utsp = importlib.import_module('opo')
-        methods = ['one_plus_one']
-        with open(pyfilename, 'r') as pyfile:
-            res, error_methods = srccoms_extract(pyfile, [], methods)
-            self.assertTrue(res)
-        self.assertTrue(
-            os.path.exists("samplecode_temp/"
-                           "one_plus_one_example.py"))
-        os.remove("samplecode_temp/" "one_plus_one_example.py")
-
-    def test_with_empty_wlist(self):
-        """
-        see test_from_ops_py
-        """
-        pass
-
-    def test_with_wlist(self):
-        filecont = '''
-__all__ = [
-        'four_plus_four',
-        'three_plus_three'
-        ]
-
-def four_plus_four():
-            """
-            placeholder
-
-            Examples:
-            .. code-block:: python
-                print(4+4)
-            """
-            return 4+4
-def three_plus_three():
-            """
-            placeholder
-
-            Examples:
-            .. code-block:: python
-                print(3+3)
-            """
-            return 3+3
-
-'''
-        pyfilename = os.path.join(self.tmpDir, 'three_and_four.py')
-        with open(pyfilename, 'w') as pyfile:
-            pyfile.write(filecont)
-        utsp = importlib.import_module('three_and_four')
-        methods = ['four_plus_four', 'three_plus_three']
-        with open(pyfilename, 'r') as pyfile:
-            res, error_methods = srccoms_extract(pyfile, ['three_plus_three'],
-                                                 methods)
-            self.assertTrue(res)
-        self.assertTrue(
-            os.path.exists("samplecode_temp/four_plus_four_example.py"))
-        os.remove("samplecode_temp/" "four_plus_four_example.py")
-        self.assertFalse(
-            os.path.exists("samplecode_temp/three_plus_three_example.py"))
 
 
 # https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/layers/ops.py

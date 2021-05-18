@@ -139,6 +139,11 @@ message PipelineConfig {
   optional string schedule_mode = 3 [ default = '1F1B' ];
 }
 
+message TensorParallelConfig {
+  optional int32 tensor_parallel_degree = 1 [ default = 1 ];
+  optional int32 tensor_init_seed = 2 [ default = -1 ];
+}
+
 message DistributedStrategy {
   // bool options
   optional Mode mode = 1 [ default = COLLECTIVE ];
@@ -168,7 +173,9 @@ message DistributedStrategy {
   optional bool fp16_allreduce = 25 [ default = false ];
   optional bool sharding = 26 [ default = false ];
   optional float last_comm_group_size_MB = 27 [ default = 1 ];
-  optional bool find_unused_parameters = 28 [ default = true ];
+  optional bool find_unused_parameters = 28 [ default = false ];
+  optional bool tensor_parallel = 29 [ default = false ];
+  optional bool without_graph_optimization = 30 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -182,6 +189,7 @@ message DistributedStrategy {
   optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
   optional ShardingConfig sharding_configs = 111;
   optional HybridConfig hybrid_configs = 112;
+  optional TensorParallelConfig tensor_parallel_configs = 113;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }

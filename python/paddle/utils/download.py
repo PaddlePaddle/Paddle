@@ -117,7 +117,11 @@ def _get_unique_endpoints(trainer_endpoints):
     return unique_endpoints
 
 
-def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
+def get_path_from_url(url,
+                      root_dir,
+                      md5sum=None,
+                      check_exist=True,
+                      decompress=True):
     """ Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
@@ -152,7 +156,8 @@ def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
                 time.sleep(1)
 
     if ParallelEnv().current_endpoint in unique_endpoints:
-        if tarfile.is_tarfile(fullpath) or zipfile.is_zipfile(fullpath):
+        if decompress and (tarfile.is_tarfile(fullpath) or
+                           zipfile.is_zipfile(fullpath)):
             fullpath = _decompress(fullpath)
 
     return fullpath
@@ -181,7 +186,15 @@ def _download(url, path, md5sum=None):
 
         logger.info("Downloading {} from {}".format(fname, url))
 
-        req = requests.get(url, stream=True)
+        try:
+            req = requests.get(url, stream=True)
+        except Exception as e:  # requests.exceptions.ConnectionError
+            logger.info(
+                "Downloading {} from {} failed {} times with exception {}".
+                format(fname, url, retry_cnt + 1, str(e)))
+            time.sleep(1)
+            continue
+
         if req.status_code != 200:
             raise RuntimeError("Downloading from {} failed with code "
                                "{}!".format(url, req.status_code))

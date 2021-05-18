@@ -50,7 +50,7 @@ class CacheTester {
     platform::CPUPlace place;
     onednn_dev_ctx_ =
         dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
-    onednn_dev_ctx_->ResetBlobMap();
+    onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
   bool Analyze(unsigned short int num_entries) {

@@ -32,9 +32,12 @@ from ...fluid import core
 from ...fluid.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
 
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger("utils.cpp_extension")
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 OS_NAME = sys.platform
 IS_WINDOWS = OS_NAME.startswith('win')
@@ -52,7 +55,7 @@ CLANG_LINK_FLAGS = [
     '-dynamiclib', '-undefined', 'dynamic_lookup', '-arch', 'x86_64'
 ]
 
-MSVC_LINK_FLAGS = ['/MACHINE:X64', 'paddle_custom_op.lib']
+MSVC_LINK_FLAGS = ['/MACHINE:X64']
 
 COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
 
@@ -368,10 +371,11 @@ def _get_core_name():
     Return pybind DSO module name.
     """
     import paddle
-    if paddle.fluid.core.load_noavx:
-        return 'core_noavx.so'
+    ext_name = '.pyd' if IS_WINDOWS else '.so'
+    if not paddle.fluid.core.load_noavx:
+        return 'core_avx' + ext_name
     else:
-        return 'core_avx.so'
+        return 'core_noavx' + ext_name
 
 
 def _get_lib_core_path():
@@ -381,6 +385,15 @@ def _get_lib_core_path():
     raw_core_name = _get_core_name()
     lib_core_name = "lib{}.dylib".format(raw_core_name[:-3])
     return os.path.join(_get_fluid_path(), lib_core_name)
+
+
+def _get_dll_core_path():
+    """
+    Return real path of libcore_(no)avx.dylib on Windows.
+    """
+    raw_core_name = _get_core_name()
+    dll_core_name = "paddle_pybind.dll"
+    return os.path.join(_get_fluid_path(), dll_core_name)
 
 
 def _reset_so_rpath(so_path):
@@ -432,9 +445,12 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
+        lib_core_name = create_sym_link_if_not_exist()
+        extra_link_args.append('{}'.format(lib_core_name))
         if use_cuda:
             extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
+
     else:
         ########################### Linux Platform ###########################
         extra_link_args = kwargs.get('extra_link_args', [])
@@ -453,10 +469,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         ###########################   -- END --    ###########################
 
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
-        # Note(Aurelius84): This marco will impact memory layout of `Tensor`.
-        # We align it automatically with pre-installed Paddle.
-        if core.is_compiled_with_mkldnn():
-            add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_MKLDNN'])
 
         if use_cuda:
             extra_link_args.append('-lcudart')
@@ -478,24 +490,41 @@ def create_sym_link_if_not_exist():
     """
     Create soft symbol link of `core_avx.so` or `core_noavx.so`
     """
-    assert OS_NAME.startswith('darwin')
+    assert OS_NAME.startswith('darwin') or IS_WINDOWS
 
     raw_core_name = _get_core_name()
     core_path = os.path.join(_get_fluid_path(), raw_core_name)
-    new_lib_core_path = _get_lib_core_path()
+    if IS_WINDOWS:
+        new_dll_core_path = _get_dll_core_path()
+        # create symbol link on windows
+        if not os.path.exists(new_dll_core_path):
+            try:
+                os.symlink(core_path, new_dll_core_path)
+            except Exception:
+                warnings.warn(
+                    "Failed to create soft symbol link for {}.\n You can run prompt as administrator and execute the "
+                    "following command manually: `mklink {} {}`. Now it will create hard link for {} trickly.".
+                    format(raw_core_name, new_dll_core_path, core_path,
+                           raw_core_name))
+                run_cmd('mklink /H {} {}'.format(new_dll_core_path, core_path))
+        # core_avx or core_noavx with lib suffix
+        assert os.path.exists(new_dll_core_path)
+        return raw_core_name[:-4] + ".lib"
 
-    # create symbol link
-    if not os.path.exists(new_lib_core_path):
-        try:
-            os.symlink(core_path, new_lib_core_path)
-            assert os.path.exists(new_lib_core_path)
-        except Exception:
-            raise RuntimeError(
-                "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`".
-                format(raw_core_name, core_path, new_lib_core_path))
+    else:
+        new_lib_core_path = _get_lib_core_path()
+        # create symbol link on mac
+        if not os.path.exists(new_lib_core_path):
+            try:
+                os.symlink(core_path, new_lib_core_path)
+                assert os.path.exists(new_lib_core_path)
+            except Exception:
+                raise RuntimeError(
+                    "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`".
+                    format(raw_core_name, core_path, new_lib_core_path))
 
-    # core_avx or core_noavx without suffix
-    return raw_core_name[:-3]
+        # core_avx or core_noavx without suffix
+        return raw_core_name[:-3]
 
 
 def find_cuda_home():
@@ -1051,20 +1080,20 @@ def check_abi_compatibility(compiler, verbose=False):
     if os.environ.get('PADDLE_SKIP_CHECK_ABI') in ['True', 'true', '1']:
         return True
 
-    which = 'where' if IS_WINDOWS else 'which'
-    cmd_out = subprocess.check_output(
-        [which, compiler], stderr=subprocess.STDOUT)
-    compiler_path = os.path.realpath(cmd_out.decode()
-                                     if six.PY3 else cmd_out).strip()
-    # step 1. if not found any suitable compiler, raise error
-    if not any(name in compiler_path
-               for name in _expected_compiler_current_platform()):
-        warnings.warn(
-            WRONG_COMPILER_WARNING.format(
-                user_compiler=compiler,
-                paddle_compiler=_expected_compiler_current_platform()[0],
-                platform=OS_NAME))
-        return False
+    if not IS_WINDOWS:
+        cmd_out = subprocess.check_output(
+            ['which', compiler], stderr=subprocess.STDOUT)
+        compiler_path = os.path.realpath(cmd_out.decode()
+                                         if six.PY3 else cmd_out).strip()
+        # if not found any suitable compiler, raise warning
+        if not any(name in compiler_path
+                   for name in _expected_compiler_current_platform()):
+            warnings.warn(
+                WRONG_COMPILER_WARNING.format(
+                    user_compiler=compiler,
+                    paddle_compiler=_expected_compiler_current_platform()[0],
+                    platform=OS_NAME))
+            return False
 
     version = (0, 0, 0)
     # clang++ have no ABI compatibility problem
@@ -1125,4 +1154,4 @@ def log_v(info, verbose=True):
     Print log information on stdout.
     """
     if verbose:
-        logging.info(info)
+        logger.info(info)

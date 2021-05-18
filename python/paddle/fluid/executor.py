@@ -1451,8 +1451,12 @@ class Executor(object):
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            dataset = paddle.fluid.DatasetFactory().create_dataset(
-                'FileInstantDataset')
+            if core.is_compiled_with_npu():
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'InMemoryDataset')
+            else:
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'FileInstantDataset')
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -1503,6 +1507,9 @@ class Executor(object):
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)
+        # in case of calling _set_use_ps_gpu explicitly
+        if dataset.use_ps_gpu is False:
+            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_instance = self._default_executor.init_for_dataset(

@@ -19,6 +19,8 @@ from paddle.fluid import program_guard, layers, default_main_program
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, CollectiveHelper, is_update_op
 
+__all__ = []
+
 
 class LocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

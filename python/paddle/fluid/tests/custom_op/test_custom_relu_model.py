@@ -247,7 +247,8 @@ class TestStaticModel(unittest.TestCase):
         paddle.set_device(device)
 
         with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(paddle.static.Program()):
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
                 x = paddle.static.data(
                     shape=[None, self.in_dim], name='x', dtype='float32')
                 y = paddle.static.data(

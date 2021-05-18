@@ -28,7 +28,7 @@ _HYBRID_PARALLEL_GROUP = None
 
 class ParallelMode(object):
     DATA_PARALLEL = 0
-    MODEL_PARALLEL = 1
+    TENSOR_PARALLEL = 1
     PIPELINE_PARALLEL = 2
 
 
@@ -120,6 +120,7 @@ class HybridCommunicateGroup(object):
 
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
+        self.stage_id = self._get_pipe_parallel_id()
 
         assert self._check_vaild_topo(
         ), "Here is an unreasonable topogy setting. world_size: {}, but" \
@@ -132,27 +133,34 @@ class HybridCommunicateGroup(object):
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
 
+        # create comm group for pipe parallel
+        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
+
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
             "data")
 
+        # create p2p group
+        self.is_first_stage = (self.stage_id == 0)
+        self.is_last_stage = (self.stage_id == (self._pp_degree - 1))
+
         debug_str = "HybridParallelInfo: rank_id: %d, dp_degree: %d, " \
-                    "mp_degree: %d, pp_degree: %d\n" % (self.global_rank, self._dp_degree,
+                    "mp_degree: %d, pp_degree: %d" % (self.global_rank, self._dp_degree,
                     self._mp_degree,self._pp_degree)
-        debug_str += "dp_group: %s, mp_group: %s, check/clip group: %s" % (
-            self._dp_group, self._mp_group, self._check_group)
+        debug_str += ", dp_group: %s, mp_group: %s, pp_group: %s, check/clip group: %s" % (
+            self._dp_group, self._mp_group, self._pp_group, self._check_group)
         logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
     def get_parallel_mode(self):
-        # there are three modes : DataParallel / ModelParallel / PipelineParallel
+        # there are three modes : DataParallel / TensorParallel / PipelineParallel
         if self._mp_degree == 1 and self._pp_degree == 1:
             return ParallelMode.DATA_PARALLEL
         elif self._mp_degree > 1 and self._pp_degree == 1:
             # initialize the seed
-            return ParallelMode.MODEL_PARALLEL
+            return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
             return ParallelMode.PIPELINE_PARALLEL
 
@@ -228,6 +236,19 @@ class HybridCommunicateGroup(object):
 
     def get_model_parallel_group_src_rank(self):
         return self._mp_comm_group.ranks[0]
+
+    # pipeline parallel message
+    def _get_pipe_parallel_id(self):
+        return self._topo.get_coord(self.global_rank).pipe
+
+    def get_stage_id(self):
+        return self.stage_id
+
+    def get_pipe_parallel_world_size(self):
+        return self._pp_degree
+
+    def get_pipe_parallel_group(self):
+        return self._pp_comm_group
 
     # check parallel group
     def get_check_parallel_group(self):

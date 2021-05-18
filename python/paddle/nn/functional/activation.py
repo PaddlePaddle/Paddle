@@ -12,51 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define activation functions of neural network
-from ...fluid.layers import brelu  #DEFINE_ALIAS
-# from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import maxout  #DEFINE_ALIAS
-# from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import swish  #DEFINE_ALIAS
-from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...tensor.math import tanh  #DEFINE_ALIAS
-from ...tensor.math import tanh_  #DEFINE_ALIAS
+from ...fluid.layers import sigmoid  # noqa: F401
+from ...tensor.math import tanh  # noqa: F401
+from ...tensor.math import tanh_  # noqa: F401
 
-from ...tensor.manipulation import _print_warning_in_static_mode
+from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...tensor.manipulation import chunk
 from ...tensor.math import multiply
-
-__all__ = [
-    'brelu',
-    'elu',
-    'elu_',
-    'gelu',
-    'hardshrink',
-    'hardtanh',
-    'hardsigmoid',
-    'hardswish',
-    'leaky_relu',
-    'log_sigmoid',
-    'maxout',
-    'prelu',
-    'relu',
-    'relu_',
-    'relu6',
-    'selu',
-    'softmax',
-    'softmax_',
-    'softplus',
-    'softshrink',
-    'softsign',
-    'sigmoid',
-    'swish',
-    'tanh',
-    'tanh_',
-    'tanhshrink',
-    'thresholded_relu',
-    'log_softmax',
-    'glu',
-]
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
@@ -64,6 +26,8 @@ from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
+
+__all__ = []
 
 
 def elu(x, alpha=1.0, name=None):
@@ -109,17 +73,13 @@ def elu(x, alpha=1.0, name=None):
     return out
 
 
+@inplace_apis_in_dygraph_only
 def elu_(x, alpha=1.0, name=None):
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
     """
-
-    if in_dygraph_mode():
-        return core.ops.elu_(x, 'alpha', alpha)
-
-    _print_warning_in_static_mode("elu")
-    return elu(x, alpha, name)
+    return core.ops.elu_(x, 'alpha', alpha)
 
 
 def gelu(x, approximate=False, name=None):
@@ -537,17 +497,13 @@ def relu(x, name=None):
     return out
 
 
+@inplace_apis_in_dygraph_only
 def relu_(x, name=None):
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_relu`.
     """
-
-    if in_dygraph_mode():
-        return core.ops.relu_(x)
-
-    _print_warning_in_static_mode("relu")
-    return relu(x, name)
+    return core.ops.relu_(x)
 
 
 def log_sigmoid(x, name=None):
@@ -761,6 +717,39 @@ def selu(x,
     return out
 
 
+def silu(x, name=None):
+    """
+    silu activation.
+    .. math:
+        silu(x) = \frac{x}{1 + e^{-x}}
+    
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+    
+    Examples:
+        .. code-block:: python
+        import paddle
+        import paddle.nn.functional as F
+        
+        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+        out = F.silu(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.silu(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'silu')
+    helper = LayerHelper("silu", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='silu', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
 def softmax(x, axis=-1, dtype=None, name=None):
     r"""
     This operator implements the softmax layer. The calculation process is as follows:
@@ -915,21 +904,16 @@ def softmax(x, axis=-1, dtype=None, name=None):
     return outs_softmax
 
 
+@inplace_apis_in_dygraph_only
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_softmax`.
     """
-
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     use_cudnn = True
-
-    if in_dygraph_mode():
-        return core.ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
-
-    _print_warning_in_static_mode("softmax")
-    return softmax(x, axis, dtype, name)
+    return core.ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
 
 
 def softplus(x, beta=1, threshold=20, name=None):
