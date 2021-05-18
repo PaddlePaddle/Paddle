@@ -63,7 +63,6 @@ TEST(GRAPH_INDEX, RUN) {
   }
   for (auto p : path_item_map) {
     sort(p.second.begin(), p.second.end());
-    std::cout << std::endl;
     std::vector<uint32_t> t = {p.first};
     auto vec = graph3.get_item_of_path(t);
     sort(vec[0].begin(), vec[0].end());
