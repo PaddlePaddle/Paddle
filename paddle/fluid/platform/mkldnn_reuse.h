@@ -35,7 +35,8 @@ using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = mkldnn::memory;
 
 template <typename T, typename TForward,
-          typename TBackward = mkldnn_dummy_primitive>
+          typename TBackward = mkldnn_dummy_primitive,
+          typename TBackward_params = mkldnn_dummy_primitive>
 class MKLDNNHandlerT {
  public:
   MKLDNNHandlerT(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
@@ -67,6 +68,17 @@ class MKLDNNHandlerT {
         std::static_pointer_cast<TBackward>(dev_ctx_.GetBlob(key_p));
     if (backward_p == nullptr) {
       backward_p = std::make_shared<TBackward>(*bwd_pd_);
+      dev_ctx_.SetBlob(key_p, backward_p);
+    }
+    return backward_p;
+  }
+
+  std::shared_ptr<TBackward_params> AcquireBackwardWeightsPrimitive() {
+    const std::string key_p = key_ + "@bwd_w_p";
+    auto backward_p =
+        std::static_pointer_cast<TBackward_params>(dev_ctx_.GetBlob(key_p));
+    if (backward_p == nullptr) {
+      backward_p = std::make_shared<TBackward_params>(*bwd_w_pd_);
       dev_ctx_.SetBlob(key_p, backward_p);
     }
     return backward_p;
@@ -114,6 +126,20 @@ class MKLDNNHandlerT {
         diffsrc->mutable_data<T>(place_, bwd_pd_->diff_src_desc().get_size());
     return this->AcquireMemoryFromPrimitive(bwd_pd_->diff_src_desc(), ptr,
                                             "@diff_src_mem_p");
+  }
+
+  // Buffer of given Tensor is used for oneDNN computation
+  std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemory(
+      framework::Tensor* diff_weights) {
+    T* ptr =
+        diff_weights->mutable_data<T>(place_, bwd_w_pd_->diff_weights_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(), ptr,
+                                            "@diff_wei_mem_p");
+  }
+
+  // Buffer is allocated by oneDNN to store computation results
+  std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemory(void) {
+    return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(),"@diff_wei_mem_p");
   }
 
  protected:
@@ -240,6 +266,25 @@ class MKLDNNHandlerT {
       bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
           bwd_desc, engine_, *fwd_pd_);
       dev_ctx_.SetBlob(key_pd, bwd_pd_);
+    }
+  }
+
+  template <typename... Args>
+  void AcquireBackwardWeightsPrimitiveDescriptorNonBlocking(Args&&... args) {
+    // fwd_pd_ is set during grad by calling
+    // AcquireForwardPrimitiveDescriptorNonBlocking
+    PADDLE_ENFORCE_NOT_NULL(
+        fwd_pd_,
+        platform::errors::Unavailable("Get MKLDNN Forward primitive %s failed.",
+                                      key_ + "@fwd_pd"));
+    const std::string key_pd = key_ + "@bwd_w_pd";
+    bwd_w_pd_ = std::static_pointer_cast<typename TBackward_params::primitive_desc>(
+        dev_ctx_.GetBlob(key_pd));
+    if (bwd_w_pd_ == nullptr) {
+      auto bwd_desc = typename TBackward_params::desc(std::forward<Args>(args)...);
+      bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
+          bwd_desc, engine_, *fwd_pd_);
+      dev_ctx_.SetBlob(key_pd, bwd_w_pd_);
     }
   }
 
@@ -370,6 +415,7 @@ class MKLDNNHandlerT {
   std::string key_;
   std::shared_ptr<typename TForward::primitive_desc> fwd_pd_;
   std::shared_ptr<typename TBackward::primitive_desc> bwd_pd_;
+  std::shared_ptr<typename TBackward_params::primitive_desc> bwd_w_pd_;
 };
 
 // TODO(grygielski) this class will be deleted later.
