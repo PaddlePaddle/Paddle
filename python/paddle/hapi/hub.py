@@ -127,8 +127,7 @@ def _get_cache_or_reload(repo,
         get_path_from_url(
             url,
             hub_dir,
-            decompress=False,
-            use_wget=(True if source == 'gitee' else False))
+            decompress=False, )
 
         with zipfile.ZipFile(cached_file) as cached_zipfile:
             extraced_repo_name = cached_zipfile.infolist()[0].filename

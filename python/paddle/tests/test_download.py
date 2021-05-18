@@ -79,21 +79,6 @@ class TestDownload(unittest.TestCase):
                 './test', )
 
 
-class TestWget(unittest.TestCase):
-    def setUp(self, ):
-        self.giturl = 'https://github.com/lyuwenyu/paddlehub_demo/archive/main.zip'
-
-    def test_wget(self, ):
-        import sys
-        if sys.platform == 'linux':
-            get_path_from_url(
-                self.giturl,
-                './test',
-                check_exist=False,
-                decompress=False,
-                use_wget=True, )
-
-
 class TestGitclone(unittest.TestCase):
     def test_git_clone_from_url(self, ):
         giturl = 'https://github.com/lyuwenyu/paddlehub_demo.git'
