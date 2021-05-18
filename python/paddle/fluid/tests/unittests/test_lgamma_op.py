@@ -25,7 +25,7 @@ class TestLgammaOp(OpTest):
     def setUp(self):
         self.op_type = 'lgamma'
         self.init_dtype_type()
-        shape = (32, 64)
+        shape = (16, 64)
         data = np.random.random(shape).astype(self.dtype) + 1
         self.inputs = {'X': data}
         result = np.ones(shape).astype(self.dtype)
