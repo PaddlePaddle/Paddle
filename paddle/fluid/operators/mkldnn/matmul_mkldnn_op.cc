@@ -174,7 +174,7 @@ static framework::DDim ColumnMatrixDimsFromVector(
  * The shape would be [BatchSize, H, W] or [H, W].
  * If transposed, `H,W` will be swapped.
  */
-static void ReshapeTensorIntoMatrixSequence(
+static void ReshapeTensorToMatrixSequence(
     framework::Tensor* x, const math::MatDescriptor& descriptor) {
   int64_t h, w;
   h = descriptor.height_;
@@ -203,7 +203,7 @@ static void ReshapeTensorIntoMatrixSequence(
  * If any of `X` and `Y` has batch size BatchSize, the out will have the
  * BatchSize.
  */
-static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
+static void ReshapeXYOutToMatrixSequence(framework::Tensor* x,
                                            framework::Tensor* y,
                                            framework::Tensor* out, bool trans_x,
                                            bool trans_y) {
@@ -218,8 +218,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
                  mat_dim_x.height_, mat_dim_y.width_});
   }
 
-  ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
-  ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
+  ReshapeTensorToMatrixSequence(x, mat_dim_x);
+  ReshapeTensorToMatrixSequence(y, mat_dim_y);
 }
 
 template <typename XT, typename YT, typename OT>
@@ -627,7 +627,7 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
     bool transpose_x = ctx.Attr<bool>("transpose_X");
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
 
-    ReshapeXYOutIntoMatrixSequence(x, y, dout, transpose_x, transpose_y);
+    ReshapeXYOutToMatrixSequence(x, y, dout, transpose_x, transpose_y);
     framework::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();

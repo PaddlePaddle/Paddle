@@ -28,11 +28,9 @@ class TestMatmulBf16MklDNNOp(OpTest):
     def generate_data(self):
         self.x_fp32 = np.random.random((25, 2, 2)).astype(np.float32)
         self.y_fp32 = np.random.random((25, 2, 2)).astype(np.float32)
-        self.alpha = 1.0
         self.out = self.alpha * np.matmul(self.x_fp32, self.y_fp32)
 
     def set_attributes(self):
-        self.alpha = self.alpha if hasattr(self, 'alpha') else 1.0
         self.attrs = {
             'alpha': self.alpha,
             "use_mkldnn": self.use_mkldnn,
@@ -91,11 +89,6 @@ class TestMatmulBf16MklDNNOp(OpTest):
             'transpose_Y'] is True else self.y_fp32
 
         dout = self.alpha * np.matmul(x, y)
-
-        transpose_grad_x1 = False
-        transpose_grad_y1 = False
-        transpose_grad_x2 = False
-        transpose_grad_y2 = False
 
         if self.attrs['transpose_X'] is True and self.attrs[
                 'transpose_Y'] is True:
