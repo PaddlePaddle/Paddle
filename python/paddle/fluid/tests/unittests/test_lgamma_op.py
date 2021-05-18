@@ -25,7 +25,7 @@ class TestLgammaOp(OpTest):
     def setUp(self):
         self.op_type = 'lgamma'
         self.init_dtype_type()
-        shape = (16, 64)
+        shape = (5, 20)
         data = np.random.random(shape).astype(self.dtype) + 1
         self.inputs = {'X': data}
         result = np.ones(shape).astype(self.dtype)
@@ -41,12 +41,15 @@ class TestLgammaOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=1e-5)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-7)
 
 
 class TestLgammaOpFp32(TestLgammaOp):
     def init_dtype_type(self):
         self.dtype = np.float32
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.005)
 
 
 if __name__ == "__main__":
