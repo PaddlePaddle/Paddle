@@ -12,14 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cuh"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
-REGISTER_OP_CUDA_KERNEL(reduce_min,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::MinFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          double, ops::MinFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int, ops::MinFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t, ops::MinFunctor>);
+namespace paddle {
+namespace operators {
+
+template <typename T>
+class ReduceMinKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    auto* input = context.Input<Tensor>("X");
+    auto* output = context.Output<Tensor>("Out");
+
+    auto dims = context.Attr<std::vector<int>>("dim");
+    bool keep_dim = context.Attr<bool>("keep_dim");
+
+    std::vector<int> reduce_dims;
+    if (reduce_all) {
+      reduce_dims.resize(input->dims().size());
+      for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
+    } else {
+      for (auto e : dims) {
+        reduce_dims.push_back(e >= 0 ? e : e + input->dims().size());
+      }
+    }
+
+    auto stream = context.cuda_device_context().stream();
+    TensorReduce<T, T, CustomMin<T>, detail::IdentityFunctor<T>>(
+        *input, output, reduce_dims, static_cast<T>(FLT_MAX), CustomMin<T>(),
+        detail::IdentityFunctor<T>(), stream);
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+REGISTER_OP_CUDA_KERNEL(reduce_min, ops::ReduceMinKernel<float>,
+                        ops::ReduceMinKernel<double>, ops::ReduceMinKernel<int>,
+                        ops::ReduceMinKernel<int64_t>);
