@@ -65,7 +65,7 @@ static framework::Tensor FoldHeadAndLastDims(const MKLDNNDeviceContext &dev_ctx,
 
   auto output_dims = framework::vectorize(output.dims());
 
-  mkldnn::memory::data_type input_type =
+  memory::data_type input_type =
           framework::ToMKLDNNDataType(input->type());
   std::string key = platform::CreateKey(
           dev_ctx, input_dims, input->format(), input->format(), input_type);
@@ -73,9 +73,9 @@ static framework::Tensor FoldHeadAndLastDims(const MKLDNNDeviceContext &dev_ctx,
           output_dims, input->type(), input_type, dev_ctx, dev_ctx.GetEngine(), key);
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-          mkldnn::memory::format_tag::abc, platform::to_void_cast(input->data<T>()));
+          memory::format_tag::abc, platform::to_void_cast(input->data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          &output, mkldnn::memory::format_tag::bac, dev_ctx.GetPlace());
+          &output, memory::format_tag::bac, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                   reorder_dst_memory_p);
 
@@ -107,12 +107,6 @@ class MatMulGradMKLDNNHandler
       auto mat_dim_x = math::CreateMatrixDescriptor(x->dims(), 0, trans_x);
       auto mat_dim_y = math::CreateMatrixDescriptor(y->dims(), 0, trans_y);
 
-      //PADDLE_ENFORCE_EQ(
-      //    x->layout(), DataLayout::kMKLDNN,
-      //    platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-      //PADDLE_ENFORCE_NE(
-      //    x->format(), MKLDNNMemoryFormat::undef,
-      //    platform::errors::InvalidArgument("Wrong format set for X tensor."));
       memory::dim x_bs = mat_dim_x.batch_size_;
       memory::dim y_bs = mat_dim_y.batch_size_;
 
@@ -144,7 +138,7 @@ class MatMulGradMKLDNNHandler
     }
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
+  std::shared_ptr<memory> AcquireWeightsMemory(
       const Tensor* input) {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(
@@ -159,7 +153,7 @@ constexpr bool IsInt8() {
 
 template <typename T>
 constexpr bool IsBfloat16() {
-  return std::is_same<T, paddle::platform::bfloat16>::value;
+  return std::is_same<T, platform::bfloat16>::value;
 }
 
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
@@ -609,6 +603,11 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     matmul_p->execute(astream, matmul_args);
     astream.wait();
+
+    out->set_layout(framework::DataLayout::kMKLDNN);
+    out->set_format(
+          platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
+              framework::vectorize<int64_t>(out->dims()))));
   }
 
 
@@ -683,4 +682,5 @@ REGISTER_OP_KERNEL(matmul, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::DNNLMatMulKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::MatMulGradMKLDNNKernel<float>);
+                   ops::MatMulGradMKLDNNKernel<float>,
+                   ops::MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);
