@@ -86,7 +86,7 @@ def monkey_patch_varbase():
 
         """
 
-        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph. 
+        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery in dygraph only, should not let it getattr(self, attr, None).
         attr_not_need_keys = ['grad']
         if isinstance(self, ParamBase):
@@ -108,6 +108,8 @@ def monkey_patch_varbase():
 
         if to_parameter or isinstance(self, ParamBase):
             del attr_kwargs['persistable']
+            # NOTE(Aurelius84): All parameters should be placed into global block.
+            attr_kwargs['block'] = attr_kwargs['block'].program.global_block()
             static_var = Parameter(**attr_kwargs)
         else:
             static_var = Variable(**attr_kwargs)

@@ -66,6 +66,25 @@ class ElementwiseWeightOpConverter : public OpConverter {
                                            0};
       TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
                                            0};
+
+      nvinfer1::IShuffleLayer* expand_layer = nullptr;
+      nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
+      int dynamic_shape_offset = engine_->with_dynamic_shape() ? 1 : 0;
+      auto input_dim = X->getDimensions();
+      if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+        nvinfer1::Dims expand_shape;
+        expand_shape.nbDims = 3 + dynamic_shape_offset;
+        for (int i = 0; i < expand_shape.nbDims; i++) {
+          if (i < input_dim.nbDims) {
+            expand_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
+          } else {
+            expand_shape.d[i] = 1;
+          }
+        }
+        expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+        expand_layer->setReshapeDimensions(expand_shape);
+        X = expand_layer->getOutput(0);
+      }
       if (op_type_ == "add") {
         nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
             engine_, Scale, *X, scale_mode, shift_weights.get(),
@@ -77,7 +96,17 @@ class ElementwiseWeightOpConverter : public OpConverter {
             shift_weights.get(), power_weights.get());
         layer = scale_layer;
       }
-
+      if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+        nvinfer1::Dims squeeze_shape;
+        squeeze_shape.nbDims = input_dim.nbDims;
+        for (int i = 0; i < squeeze_shape.nbDims; i++) {
+          squeeze_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
+        }
+        squeeze_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
+        squeeze_layer->setReshapeDimensions(squeeze_shape);
+        layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
+      }
       auto output_name = op_desc.Output("Out")[0];
       RreplenishLayerAndOutput(layer, "elementwise_" + op_type_, {output_name},
                                test_mode);
