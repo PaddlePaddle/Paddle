@@ -102,6 +102,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dropout",
       "prelu",
       "conv2d_transpose",
+      "depthwise_conv2d_transpose",
       "leaky_relu",
       "fc",
       "shuffle_channel",
@@ -172,7 +173,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
-        op_type == "conv2d_fusion") {
+        op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
+        op_type == "depthwise_conv2d_transpose") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
@@ -202,7 +204,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
 
-      if (op_type == "conv2d_transpose") {
+      if (op_type == "conv2d_transpose" ||
+          op_type == "depthwise_conv2d_transpose") {
         if (!desc.HasAttr("dilations")) {
           return false;
         } else {
@@ -626,6 +629,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "multihead_matmul") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the multihead_matmul does not support static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "fc") {
+      int x_num_col_dims =
+          desc.HasAttr("x_num_col_dims")
+              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              : (desc.HasAttr("in_num_col_dims")
+                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     : 1);
+      if (x_num_col_dims < 1) {
+        VLOG(3) << "converter expects x_num_col_dims >= 1, "
+                   "but x_num_col_dims = %d.";
         return false;
       }
     }

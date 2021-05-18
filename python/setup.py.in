@@ -188,6 +188,7 @@ packages=['paddle',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
+          'paddle.fluid.incubate.data_generator',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.checkpoint',
           'paddle.fluid.incubate.fleet.base',
@@ -254,10 +255,14 @@ paddle_bins = ''
 
 if not '${WIN32}':
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
-package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + ('.so' if os.name != 'nt' else '.pyd')]}
+
+if os.name != 'nt':
+    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.so']}
+else:
+    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
+
 if '${HAS_NOAVX_CORE}' == 'ON':
     package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
-
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -351,14 +356,6 @@ if '${WITH_XPU}' == 'OFF' and '${XPU_SDK_ROOT}' != '':
         shutil.copy(xpu_rt_lib, libs_path)
         package_data['paddle.libs']+=['libxpurt.so']
 
-
-### New custom op extension mechanism related ###
-
-# copy paddle_custom_op.lib/paddle_custom_op.dll to libs on Windows
-if os.name == 'nt':
-    shutil.copy('${PADDLE_CUSTOM_OP_IMPORT_LIB}', libs_path)
-    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
-    package_data['paddle.libs'] += ['paddle_custom_op.lib', 'paddle_custom_op.dll']
 
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):

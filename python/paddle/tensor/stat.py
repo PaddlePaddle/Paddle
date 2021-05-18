@@ -14,8 +14,6 @@
 
 # TODO: define statistical functions of a tensor  
 
-__all__ = ['mean', 'std', 'var', 'numel', 'median']
-
 import numpy as np
 from ..fluid.framework import Variable
 from ..fluid.layer_helper import LayerHelper
@@ -24,6 +22,8 @@ from ..fluid import layers
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
+
+__all__ = []
 
 
 def mean(x, axis=None, keepdim=False, name=None):

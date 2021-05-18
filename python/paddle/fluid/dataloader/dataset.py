@@ -233,7 +233,7 @@ class TensorDataset(Dataset):
     each sample by indexing tensors in the 1st dimension.
 
     Args:
-        tensors(list of Tensor): tensors with same shape in the 1st dimension.
+        tensors(list|tuple): A list/tuple of tensors with same shape in the 1st dimension.
 
     Returns:
         Dataset: a Dataset instance wrapping tensors.

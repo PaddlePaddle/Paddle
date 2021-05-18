@@ -20,11 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef __NVCC__
 #include <cuda.h>
 #include <cuda_fp16.h>
 #include "cub/cub.cuh"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #endif
 #ifdef __HIPCC__
 #include <hip/hip_fp16.h>
@@ -60,6 +62,13 @@ struct SameDimsElemwiseAdd {
                   framework::Tensor *z);
 };
 
+template <typename DeviceContext, typename T, class Enable = void>
+struct BroadcastElemwiseAdd {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z);
+};
+
 template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
@@ -73,7 +82,8 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
       SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
       same_dims_add(ctx, x, y, z);
     } else {
-      default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+      BroadcastElemwiseAdd<DeviceContext, T> broadcast_add;
+      broadcast_add(ctx, x, y, z);
     }
   }
 };
