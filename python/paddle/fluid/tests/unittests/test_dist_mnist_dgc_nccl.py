@@ -28,7 +28,7 @@ def count_of_sparse_all_reduce_calls(file_name):
     # NOTE(Aurelius84): The log file contains some binary contents that causes error
     # while `grep`. So we add `-a` to fix it.
     # -a, --text equivalent to --binary-files=text, make binaries equivalent to text.
-    cmd = 'grep sparse_all_reduce_op_handle ' + file_name + ' | grep in_numel | wc -l'
+    cmd = 'grep -a sparse_all_reduce_op_handle ' + file_name + ' | grep in_numel | wc -l'
     child = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
     result = child.communicate()[0]
     print('test_info: result = ' + str(result))
