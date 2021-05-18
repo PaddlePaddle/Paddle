@@ -21,6 +21,7 @@ import sys
 import os.path as osp
 import shutil
 import requests
+import subprocess
 import hashlib
 import tarfile
 import zipfile
@@ -212,9 +213,13 @@ def _git_clone(url, repo_dir, branch):
     else:
         command = 'git clone -b {} {} {}'.format(branch, url, repo_dir)
 
-    r = os.system(command)
+    # r = os.system(command)
+    subprc = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    _, error = subprc.communicate()
 
-    if r != 0:
+    # if r != 0:
+    if subprc.returncode != 0:
         _remove_if_exists(repo_dir)
         raise RuntimeError('{} failed.'.format(command))
 

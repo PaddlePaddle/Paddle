@@ -151,5 +151,12 @@ class TestGithubClone(unittest.TestCase):
         hub._git_archive_link('lyuwenyu', 'paddlehub_demo', 'main', 'github')
 
 
+class TestGitee(TestGithubClone):
+    def get_params(self, ):
+        repo = 'lyuwenyuL/paddlehub_test:master'
+        source = 'gitee'
+        return repo, source
+
+
 if __name__ == '__main__':
     unittest.main()
