@@ -1481,6 +1481,21 @@ REGISTER_OP_CUDA_KERNEL(
 #endif
 /* ========================================================================== */
 
+/* ===========================    sigmoid register  ============================
+ */
+REGISTER_ACTIVATION_CUDA_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
+                                CudaSigmoidGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    sigmoid_grad_grad,
+    ops::SigmoidDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                 ops::SigmoidGradGradFunctor<float>>,
+    ops::SigmoidDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                 ops::SigmoidGradGradFunctor<double>>,
+    ops::SigmoidDoubleGradKernel<plat::CUDADeviceContext,
+                                 ops::SigmoidGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
 /* ===========================    tanh register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(tanh, Tanh, CudaTanhFunctor,
                                 CudaTanhGradFunctor);
@@ -1595,7 +1610,6 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 #define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \
-  __macro(sigmoid, Sigmoid, CudaSigmoidFunctor, CudaSigmoidGradFunctor);      \
   __macro(silu, Silu, CudaSiluFunctor, CudaSiluGradFunctor);                  \
   __macro(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,                      \
           CudaLogSigmoidGradFunctor);                                         \
