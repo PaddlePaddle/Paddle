@@ -24,7 +24,7 @@ template <typename T>
 class LRNMKLDNNHandler : public platform::MKLDNNHandlerT<T, mkldnn::lrn_forward,
                                                          mkldnn::lrn_backward> {
  public:
-  LRNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
+  LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
                    const MKLDNNDeviceContext& dev_ctx,
                    const mkldnn::engine mkldnn_engine,
                    platform::Place cpu_place, const Tensor* input,
@@ -47,7 +47,7 @@ class LRNMKLDNNHandler : public platform::MKLDNNHandlerT<T, mkldnn::lrn_forward,
       const float k = ctx.Attr<float>("k");
       bool is_test = ctx.Attr<bool>("is_test");
 
-      auto dims = paddle::framework::vectorize(input->dims());
+      auto dims = framework::vectorize(input->dims());
 
       auto src_md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
                                          input->format());
@@ -59,8 +59,8 @@ class LRNMKLDNNHandler : public platform::MKLDNNHandlerT<T, mkldnn::lrn_forward,
     }
   }
 
-  LRNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                   const platform::MKLDNNDeviceContext& dev_ctx,
+  LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
+                   const MKLDNNDeviceContext& dev_ctx,
                    platform::Place cpu_place, const Tensor* in_x,
                    const Tensor* out_grad, Tensor* in_x_grad,
                    const std::string& unique_name)
@@ -79,7 +79,7 @@ class LRNMKLDNNHandler : public platform::MKLDNNHandlerT<T, mkldnn::lrn_forward,
       const float beta = ctx.Attr<float>("beta");
       const float k = ctx.Attr<float>("k");
 
-      auto dims = paddle::framework::vectorize<int64_t>(in_x->dims());
+      auto dims = framework::vectorize<int64_t>(in_x->dims());
 
       auto src_md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
                                          in_x->format());
@@ -96,8 +96,7 @@ class LRNMKLDNNHandler : public platform::MKLDNNHandlerT<T, mkldnn::lrn_forward,
     }
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(
-      framework::Tensor* workspace) {
+  std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(Tensor* workspace) {
     T* ptr = workspace->mutable_data<T>(
         this->place_, this->fwd_pd_->workspace_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->workspace_desc(),
@@ -105,7 +104,7 @@ class LRNMKLDNNHandler : public platform::MKLDNNHandlerT<T, mkldnn::lrn_forward,
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBackwardWorkspaceMemory(
-      const framework::Tensor* workspace) {
+      const Tensor* workspace) {
     const T* workspace_data = workspace->data<T>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->workspace_desc(),
