@@ -40,10 +40,8 @@ taskkill /f /im python.exe  2>NUL
 taskkill /f /im nvcc.exe 2>NUL
 taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
@@ -400,15 +398,17 @@ taskkill /f /im csc.exe 2>NUL
 taskkill /f /im nvcc.exe 2>NUL
 taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
+
+if "%WITH_TESTING%"=="ON" (
+    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%#
+)
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
@@ -776,15 +776,16 @@ taskkill /f /im python.exe  2>NUL
 taskkill /f /im nvcc.exe 2>NUL
 taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
 wmic process where name="cl.exe" call terminate 2>NUL
 wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
+if "%WITH_TESTING%"=="ON" (
+    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%#
+)
 echo Windows CI run successfully!
 exit /b 0
 
