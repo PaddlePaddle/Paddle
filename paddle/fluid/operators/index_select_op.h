@@ -131,10 +131,9 @@ void index_sum(const size_t n, const T* src, T* dst) {
   i = end = 0;
   end = n & ~(block - 1);
   for (i = 0; i < end; i += block) {
-    _mm256_storeu_ps(
-        static_cast<float*>(dst) + i,
-        _mm256_add_ps(_mm256_loadu_ps(static_cast<float*>(dst) + i),
-                      _mm256_loadu_ps(static_cast<float*>(src) + i)));
+    _mm256_storeu_ps(reinterpret_cast<float*>(dst) + i,
+                     _mm256_add_ps(_mm256_loadu_ps((const float*)dst + i),
+                                   _mm256_loadu_ps((const float*)src + i)));
   }
   for (; i < n; i++) {
     dst[i] += src[i];
@@ -143,19 +142,18 @@ void index_sum(const size_t n, const T* src, T* dst) {
   index_sum(n, src, dst);
 #endif
 }
+
 template <>
 void index_sum(const size_t n, const double* src, double* dst) {
 #ifdef __AVX__
   constexpr int block = XMM_FLOAT_BLOCK;
-  // const int aligend_count = n - n % block;
   unsigned int i, end;
   i = end = 0;
   end = n & ~(block - 1);
   for (i = 0; i < end; i += block) {
-    _mm256_storeu_pd(
-        static_cast<double*>(dst) + i,
-        _mm256_add_pd(_mm256_loadu_pd(static_cast<double*>(dst) + i),
-                      _mm256_loadu_pd(static_cast<double*>(src) + i)));
+    _mm256_storeu_pd(reinterpret_cast<double*>(dst) + i,
+                     _mm256_add_pd(_mm256_loadu_pd((const double*)dst + i),
+                                   _mm256_loadu_pd((const double*)src + i)));
   }
   for (; i < n; i++) {
     dst[i] += src[i];
