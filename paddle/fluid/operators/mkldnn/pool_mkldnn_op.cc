@@ -43,7 +43,7 @@ class PoolingMKLDNNHandler
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 framework::ToMKLDNNDataType(input->type()),
                                 unique_name)) {
-    if (!this->isCached()) {
+    if (!this->isCachedNonBlocking()) {
       PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
                         platform::errors::InvalidArgument(
                             "Wrong layout set for Input tensor."));
@@ -100,11 +100,10 @@ class PoolingMKLDNNHandler
       const auto is_test = ctx.Attr<bool>("is_test");
 
       const auto dt = framework::ToMKLDNNDataType(input->type());
-      const auto fmt = input->format();
 
       const auto exclude_padding = ctx.Attr<bool>("exclusive");
 
-      const auto src_md = mkldnn::memory::desc(src_tz, dt, fmt);
+      const auto src_md = mkldnn::memory::desc(src_tz, dt, input->format());
       /* create memory descriptor for pooling without specified format
        * ('any') which lets a primitive (pooling in this case) choose
        * the memory format preferred for best performance
@@ -124,7 +123,7 @@ class PoolingMKLDNNHandler
 
       ComputeAdaptivePoolParameters(ctx, src_tz, &ksize, &strides);
 
-      this->AcquireForwardPrimitiveDescriptor(
+      this->AcquireForwardPrimitiveDescriptorNonBlocking(
           is_test ? mkldnn::prop_kind::forward_inference
                   : mkldnn::prop_kind::forward_training,
           pooling_type == "max"
@@ -200,6 +199,10 @@ class PoolingMKLDNNHandler
       auto diff_dst_tz =
           paddle::framework::vectorize<int64_t>(out_grad->dims());
 
+      const auto dt = framework::ToMKLDNNDataType(in_x->type());
+      auto src_md = mkldnn::memory::desc(src_tz, dt, in_x->format());
+      auto dst_md =
+          mkldnn::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
       auto diff_dst_md = mkldnn::memory::desc(
           diff_dst_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
       auto diff_src_md =
@@ -216,7 +219,18 @@ class PoolingMKLDNNHandler
       ComputeAdaptivePoolParameters(ctx, diff_src_tz, &ksize, &strides);
 
       const auto exclude_padding = ctx.Attr<bool>("exclusive");
-      this->AcquireBackwardPrimitiveDescriptor(
+
+      this->AcquireForwardPrimitiveDescriptorNonBlocking(
+          mkldnn::prop_kind::forward_training,
+          pooling_type == "max"
+              ? mkldnn::algorithm::pooling_max
+              : (exclude_padding
+                     ? mkldnn::algorithm::pooling_avg_exclude_padding
+                     : mkldnn::algorithm::pooling_avg_include_padding),
+          src_md, dst_md, strides, ksize, mkldnn_paddings[0],
+          mkldnn_paddings[1]);
+
+      this->AcquireBackwardPrimitiveDescriptorNonBlocking(
           pooling_type == "max"
               ? mkldnn::algorithm::pooling_max
               : (exclude_padding
