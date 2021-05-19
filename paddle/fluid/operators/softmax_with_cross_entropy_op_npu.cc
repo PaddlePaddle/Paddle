@@ -31,6 +31,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     auto* logits = ctx.Input<Tensor>("Logits");
     auto* labels = ctx.Input<Tensor>("Label");
     auto* softmax = ctx.Output<Tensor>("Softmax");
+    auto* backprob = ctx.Output<Tensor>("Backprob");
     auto* loss = ctx.Output<Tensor>("Loss");
 
     int cls_num = logits->dims()[1];
@@ -93,10 +94,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     runner_cast_onehot.Run(stream);
 
     // SoftmaxCrossEntropyWithLogits
-    Tensor backprop(logits->type());
-    backprop.Resize(logits->dims());
-    backprop.mutable_data<T>(ctx.GetPlace());
-
+    backprop->mutable_data<T>(ctx.GetPlace());
     loss->mutable_data<T>(ctx.GetPlace());
 
     // SoftmaxCrossEntropyWithLogits requires loss to be of shape [batch_size]
@@ -115,6 +113,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* labels = ctx.Input<Tensor>("Label");
     auto* softmax = ctx.Input<Tensor>("Softmax");
+    auto* backprob = ctx.Input<Tensor>("Backprob");
     auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
     auto* logits_grad = ctx.Output<Tensor>(framework::GradVarName("Logits"));
 
@@ -135,6 +134,14 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_label.Run(stream);
       labels = &tmp_labels;
+    }
+
+    if (backprob != nullptr && backprob->IsInitialized()) {
+      logits_grad->mutable_data<T>(ctx.GetPlace());
+      auto runner_mul =
+          NpuOpRunner("Mul", {*loss_grad, *backprob}, {*logits_grad}, {});
+      runner_mul.Run(stream);
+      return;
     }
 
     // on and off
