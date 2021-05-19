@@ -159,6 +159,14 @@ void set_constant_with_place<platform::NPUPlace>(
 }
 
 template <>
+void set_constant_with_place<platform::NPUPinnedPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(
+      platform::errors::Unimplemented("NPUPinnedPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
