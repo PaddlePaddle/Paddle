@@ -21,8 +21,8 @@ namespace operators {
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
 
-  template <typename T>
-  HOSTDEVICE inline T operator()(const T& x) const {
+  template <typename T2>
+  HOSTDEVICE inline T2 operator()(const T2& x) const {
     return x;
   }
 };
