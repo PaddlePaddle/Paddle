@@ -21,7 +21,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestScaleOpBF16(OpTest):
     def setUp(self):
         self.op_type = "scale"
