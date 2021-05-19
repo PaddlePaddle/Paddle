@@ -19,6 +19,7 @@ import numpy as np
 import os
 import sys
 import six
+from io import BytesIO
 
 import paddle
 import paddle.nn as nn
@@ -759,6 +760,21 @@ class TestSaveLoadAny(unittest.TestCase):
             fluid.core._cuda_synchronize(paddle.CUDAPlace(0))
         self.assertTrue(np.array_equal(origin_array, load_array))
         self.assertTrue(np.array_equal(origin_array, load_tensor_array))
+
+
+class TestSaveLoadToMemory(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_save_state_dict_to_memory(self):
+        linear = LinearNet()
+        state_dict = linear.state_dict()
+        byio = BytesIO()
+        paddle.save(state_dict, byio)
+        byio.seek(0)
+        dict_load = paddle.load(byio, return_numpy=True)
+        for k, v in state_dict.items():
+            self.assertTrue(np.array_equal(v.numpy(), dict_load[k]))
 
 
 class TestSaveLoad(unittest.TestCase):

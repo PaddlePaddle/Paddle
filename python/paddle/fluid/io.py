@@ -23,6 +23,7 @@ import pickle
 import contextlib
 from functools import reduce
 import sys
+from io import BytesIO
 
 import numpy as np
 import math
@@ -69,6 +70,49 @@ __all__ = [
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+
+class _open_buffer(object):
+    def __init__(self, buffer):
+        self.buffer = buffer
+
+    def __enter__(self):
+        return self.buffer
+
+    def __exit__(self, *args):
+        pass
+
+
+class _buffer_reader(_open_buffer):
+    def __init__(self, buffer):
+        super(_buffer_reader, self).__init__(buffer)
+
+
+class _buffer_writer(_open_buffer):
+    def __exit__(self, *args):
+        self.buffer.flush()
+
+
+def _is_file_path(path):
+    return isinstance(path, str)
+
+
+def _open_file_buffer(path_or_buffer, mode):
+
+    if _is_file_path(path_or_buffer):
+        return open(path_or_buffer, mode)
+    else:
+        if 'w' in mode:
+            return _buffer_writer(path_or_buffer)
+        elif 'r' in mode:
+            return _buffer_reader(path_or_buffer)
+        else:
+            raise ValueError("Expected 'r' or 'w' in mode but got {}".format(
+                mode))
+
+
+def _is_memory_buffer(buffer):
+    return isinstance(buffer, BytesIO)
 
 
 def is_parameter(var):
@@ -1778,12 +1822,12 @@ def _legacy_save(param_dict, model_path, protocol=2):
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
     if sys.platform == 'darwin' and sys.version_info.major == 3:
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
-        with open(model_path, 'wb') as f:
+        with _open_file_buffer(model_path, 'wb') as f:
             max_bytes = 2**30
             for i in range(0, len(pickle_bytes), max_bytes):
                 f.write(pickle_bytes[i:i + max_bytes])
     else:
-        with open(model_path, 'wb') as f:
+        with _open_file_buffer(model_path, 'wb') as f:
             pickle.dump(param_dict, f, protocol=protocol)
 
 
