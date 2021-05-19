@@ -143,6 +143,18 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
       if (paddings.size() > 2) return false;
+// strides > 1 is only supported by trt7.0 above
+#if !IS_TRT_VERSION_GE(7000)
+      if (desc.HasAttr("strides")) {
+        const std::vector<int> strides =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+        if (strides.size() > 1) {
+          for (size_t i = 0; i < strides.size(); i++) {
+            if (strides[i] > 1) return false;
+          }
+        }
+      }
+#endif
     }
 
     if (op_type == "pool2d") {
@@ -228,14 +240,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
 // strides > 1 is only supported by trt7.0 above
 #if !IS_TRT_VERSION_GE(7000)
-      if (desc.HasAttr("padding_algorithm") && desc.HasAttr("strides")) {
-        std::string padding_algorithm =
-            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+      if (desc.HasAttr("strides")) {
         const std::vector<int> strides =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
-        if (padding_algorithm == "SAME" && strides[0] > 1 &&
-            strides.size() > 1) {
-          return false;
+        if (strides.size() > 1) {
+          for (size_t i = 0; i < strides.size(); i++) {
+            if (strides[i] > 1) return false;
+          }
         }
       }
 #endif
