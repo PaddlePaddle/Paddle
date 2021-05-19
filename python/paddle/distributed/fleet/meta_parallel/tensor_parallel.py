@@ -14,19 +14,23 @@
 
 from paddle.fluid.dygraph.layers import Layer
 from .meta_parallel_base import MetaParallelBase
-from ..utils.hybrid_parallel_util import *
+from ..utils.hybrid_parallel_util import broadcast_dp_parameters
+from ..utils.hybrid_parallel_util import broadcast_input_data
+from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.log_util import logger
 
+__all__ = []
 
-class ModelParallel(MetaParallelBase):
+
+class TensorParallel(MetaParallelBase):
     def __init__(self, layers, hcg, **kwargs):
-        super(ModelParallel, self).__init__(layers, hcg, **kwargs)
+        super(TensorParallel, self).__init__(layers, hcg, **kwargs)
 
     def _prepare_for_model(self):
         logger.info("start broadcast mp parameters")
         broadcast_mp_parameters(self._layers, self._hcg)
 
-        logger.info("start broadcast mp parameters")
+        logger.info("start broadcast dp parameters")
         broadcast_dp_parameters(self._layers, self._hcg)
 
         logger.info("mp's parameters is ready")

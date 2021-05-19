@@ -63,15 +63,16 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
-py::object PyLayerApply(const platform::Place& place, const py::object& cls,
+py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
                         const py::args args, const py::kwargs kwargs) {
+  py::gil_scoped_acquire guard;
   auto bk_function = cls.attr("_backward_function");
   auto context = bk_function();
   auto forward = cls.attr("forward");
 
   auto result_forward = forward(context, *args, **kwargs);
   std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
-      std::make_shared<operators::PyLayerContext>(context.release().ptr());
+      std::make_shared<operators::PyLayerContext>(context.ptr());
   // make inputs to varbase
   std::vector<std::shared_ptr<imperative::VarBase>> input_vars;
   // process args,`input_vars` only collect `imperative::VarBase`
@@ -115,12 +116,12 @@ py::object PyLayerApply(const platform::Place& place, const py::object& cls,
               tuple_result[i].cast<std::shared_ptr<imperative::VarBase>>();
           output_vars.push_back(temp_out);
         } catch (py::cast_error&) {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "The output of `PyLayer.forward` should be `Tensor`."));
+          // Only collect Tensor type in 'kwargs' and pass them to backward.
+          // Ignore other types of input temporarily.
         }
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "The output of `PyLayer.forward` can not be `None`."));
+        // Only collect Tensor type in 'kwargs' and pass them to backward.
+        // Ignore other types of input temporarily.
       }
     }
   } else {
@@ -130,13 +131,17 @@ py::object PyLayerApply(const platform::Place& place, const py::object& cls,
             result_forward.cast<std::shared_ptr<imperative::VarBase>>();
         output_vars.push_back(temp_out);
       } catch (py::cast_error&) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "The output of `PyLayer.forward` should be `Tensor`."));
+        // Only collect Tensor type in 'kwargs' and pass them to backward.
+        // Ignore other types of input temporarily.
       }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "The output of `PyLayer.forward` can not be `None`."));
+      // Only collect Tensor type in 'kwargs' and pass them to backward.
+      // Ignore other types of input temporarily.
     }
+  }
+  if (output_vars.size() == 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "At least one output of `PyLayer.forward` is a `Tensor`."));
   }
 
   NameVarBaseMap outs = {{"Out", output_vars}};
