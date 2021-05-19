@@ -64,6 +64,62 @@ DEFINE_SIMPLE_BINARY_FUNCTOR(Mul, *)
 DEFINE_SIMPLE_BINARY_FUNCTOR(Div, /)
 #undef DEFINE_SIMPLE_BINARY_FUNCTOR
 
+/*
+   input: an array;
+   return: the result of the math functor
+   1. For Unary Op, the length of input array is 1,
+      e.g. Relu: return args[0] > 0 ? args[0] : 0;
+   2. For Binary Op, the length of input array is 2,
+      e.g. Add: return args[0] + args[1];
+*/
+template <typename T>
+struct CudaDivFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    PADDLE_ENFORCE(args[1] != (T)0, DIV_ERROR_INFO);
+    return args[0] / args[1];
+  }
+};
+
+template <typename T>
+struct CudaPowFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    if (std::is_integral<T>::value) {
+      return std::llrint(std::pow(args[0], args[1]));
+    }
+#endif
+    return std::pow(args[0], args[1]);
+  }
+};
+
+#define DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(Func, op) \
+  template <typename T, class Enable = void>                     \
+  struct Func##Functor {                                         \
+    inline HOSTDEVICE T operator()(const T* args) const {        \
+      return args[0] op args[1];                                 \
+    }                                                            \
+  };
+
+DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaAdd, +)
+DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaSub, -)
+DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaMul, *)
+#undef DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT
+
+#define CUDA_MAX_OP(a, b) (a > b ? a : b)
+#define CUDA_MIN_OP(a, b) (a > b ? b : a)
+
+#define DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(Func, op) \
+  template <typename T, class Enable = void>                    \
+  struct Func##Functor {                                        \
+    inline HOSTDEVICE T operator()(const T* args) const {       \
+      return op(args[0], args[1]);                              \
+    }                                                           \
+  };
+
+DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaMax, CUDA_MAX_OP)
+DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaMin, CUDA_MIN_OP)
+#undef DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT
+
 // special div functor for int32/int64. check divison has a zero
 template <typename T>
 struct DivFunctor<T,
