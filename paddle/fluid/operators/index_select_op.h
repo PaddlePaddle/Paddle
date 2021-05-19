@@ -201,7 +201,9 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
 #ifdef __AVX__
       auto src = input_data + input_start_offset + j * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
+#if ((!defined __NVCC__) || (!defined __HIPCC__))
       index_sum(slice_size, src, dst);
+#endif
 #else
       for (auto k = 0; k < slice_size; k++) {
         out_data[output_start_offset + index_value * slice_size + k] +=
