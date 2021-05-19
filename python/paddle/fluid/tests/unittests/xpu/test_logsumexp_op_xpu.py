@@ -20,6 +20,8 @@ import numpy as np
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
 
+paddle.enable_static()
+
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     if isinstance(axis, int):
@@ -92,5 +94,4 @@ class TestLogsumexp_reduce_all(XPUTestLogsumexp):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
