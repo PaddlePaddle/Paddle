@@ -71,7 +71,7 @@ struct DimensionsTransform {
   }
 
   template <typename MergeFunctor>
-  __inline__ void DimensionsReorganise(MergeFunctor merge_func, int N) {
+  __inline__ void MergeDimensions(MergeFunctor merge_func, int N) {
     auto VectorReorganise = [](DimVector *vec, int l_idx, int m_idx) {
       (*vec)[m_idx - 1] =
           std::accumulate(vec->begin() + l_idx, vec->begin() + m_idx, 1,
@@ -140,7 +140,7 @@ struct DimensionsTransform {
     // To Merge the dimensions of input_tensors while the consequtive
     // equal-dimensions appears.
     MergeFunctor merge_ptr = merge_sequential_dims;
-    DimensionsReorganise<MergeFunctor>(merge_ptr, N);
+    MergeDimensions<MergeFunctor>(merge_ptr, N);
 
     int min_idx = 0;
     int min_val = std::accumulate(in_dims[0].begin(), in_dims[0].end(), 1,
@@ -156,12 +156,12 @@ struct DimensionsTransform {
     // To Merge the dimension of input_tensors while the consequtive
     // 1-value-dimensions appears.
     merge_ptr = merge_sequential_one_dims;
-    DimensionsReorganise<MergeFunctor>(merge_ptr, N);
+    MergeDimensions<MergeFunctor>(merge_ptr, N);
     std::swap(in_dims[min_idx], in_dims[0]);
   }
 };
 
-struct CalculateInputStrides {
+struct StridesCalculation {
   std::vector<std::vector<uint32_t>> strides;
   std::vector<FastDivMod> divmoders;
 
@@ -182,9 +182,9 @@ struct CalculateInputStrides {
   }
 
  public:
-  explicit CalculateInputStrides(
-      const int64_t &dim_size, const std::vector<std::vector<int64_t>> &in_dims,
-      const std::vector<int64_t> &out_dims) {
+  explicit StridesCalculation(const int64_t &dim_size,
+                              const std::vector<std::vector<int64_t>> &in_dims,
+                              const std::vector<int64_t> &out_dims) {
     const auto N = in_dims.size();
     divmoders.resize(dim_size);
     strides.resize(N, std::vector<uint32_t>(dim_size, 1));
@@ -371,7 +371,7 @@ void LaunchBroadcastKernelForDifferentDimSize(
   auto stream = ctx.stream();
 
   const auto merge_dims = DimensionsTransform(ins, out->dims(), axis);
-  const auto offset_calculator = CalculateInputStrides(
+  const auto offset_calculator = StridesCalculation(
       merge_dims.dim_size, merge_dims.in_dims, merge_dims.out_dims);
 
   switch (merge_dims.dim_size) {
@@ -453,6 +453,7 @@ void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+  static_assert(ET == (ElementwiseType)2, "Only Support binary calculation.");
   int in_vec_size = 4;
   framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {
