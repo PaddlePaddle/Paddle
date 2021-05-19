@@ -244,5 +244,42 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
                         isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
 
 
+class TestConvertSyncBatchNormCast1(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        class SyBNNet(paddle.nn.Layer):
+            def __init__(self, in_ch=3, out_ch=3, dirate=1):
+                super(SyBNNet, self).__init__()
+                self.bn_s1 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                    paddle.nn.BatchNorm3D(out_ch))
+
+            def forward(self, x):
+                out = paddle.sum(paddle.abs(self.bn_s1(x)))
+                return out
+
+        class BNNet(paddle.nn.Layer):
+            def __init__(self, in_ch=3, out_ch=3, dirate=1):
+                super(BNNet, self).__init__()
+                self.bn_s1 = paddle.nn.BatchNorm3D(out_ch)
+
+            def forward(self, x):
+                out = paddle.sum(paddle.abs(self.bn_s1(x)))
+                return out
+
+        bn_model = BNNet()
+        sybn_model = SyBNNet()
+        np.random.seed(10)
+        data = np.random.random([3, 3, 3, 3, 3]).astype('float32')
+        x = paddle.to_tensor(data)
+        bn_out = bn_model(x)
+        sybn_out = sybn_model(x)
+        self.assertTrue(
+            np.allclose(bn_out.numpy(),
+                        sybn_out.numpy()), "Output has diff. \n" + "\nBN     " +
+            str(bn_out.numpy()) + "\n" + "Sync BN " + str(sybn_out.numpy()))
+
+
 if __name__ == '__main__':
     unittest.main()

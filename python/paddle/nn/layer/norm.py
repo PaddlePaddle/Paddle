@@ -1017,7 +1017,18 @@ class SyncBatchNorm(_BatchNormBase):
               self).__init__(num_features, momentum, epsilon, weight_attr,
                              bias_attr, data_format, name)
 
+    def _check_data_format(self, input):
+        if input == 'NCHW' or input == 'NCDHW' or input == 'NC' or input == 'NCL':
+            self._data_format = 'NCHW'
+        elif input == "NHWC" or input == "NDHWC" or input == 'NLC':
+            self._data_format = 'NHWC'
+        else:
+            raise ValueError(
+                'expected NCDHW, NDHWC, NCL, NLC, NC, NCHW, NHWC or None for data_format input'
+            )
+
     def forward(self, x):
+        self._check_data_format(self._data_format)
         # create output
         # mean and mean_out share the same memory
         mean_out = self._mean
