@@ -90,6 +90,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   framework::TensorFromVector(out_vec, context.device_context(), output);
   output->Resize(output_dim);
 }
+
 template <typename DeviceContext, typename T>
 class IndexSelectKernel : public framework::OpKernel<T> {
  public:
@@ -123,6 +124,8 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     }
   }
 };
+
+#if ((!defined __NVCC__) || (!defined __HIPCC__))
 template <typename T>
 void index_sum(const size_t n, const T* src, T* dst) {
 #ifdef __AVX__
@@ -162,6 +165,8 @@ void index_sum(const size_t n, const double* src, double* dst) {
   index_sum(n, src, dst);
 #endif
 }
+#endif
+
 template <typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
                           const LoDTensor& out_grad, const LoDTensor& index,
@@ -207,6 +212,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   }
   x_grad->Resize(output_dim);
 }
+
 template <typename DeviceContext, typename T>
 class IndexSelectGradKernel : public framework::OpKernel<T> {
  public:
