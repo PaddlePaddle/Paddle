@@ -240,7 +240,7 @@ def _git_clone(url, repo_dir, branch):
     # r = os.system(command)
     subprc = subprocess.Popen(
         command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    _, error = subprc.communicate()
+    _ = subprc.communicate()
 
     # if r != 0:
     if subprc.returncode != 0:
