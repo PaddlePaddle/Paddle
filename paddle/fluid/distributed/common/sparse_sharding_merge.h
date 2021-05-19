@@ -12,25 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <sys/time.h>
+
 #include <iostream>
 #include <ostream>
 #include <string>
+#include <thread>  // NOLINT
 #include <vector>
 
 #include <ThreadPool.h>
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/utils.h"
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/dim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/string/split.h"
 
-constexpr int FG = 2560 * 1024 * 1024;
-const int BUCKET = 10;
+constexpr int FG = 256 * 1024 * 1024;
+constexpr int Q_SIZE = 10000;
+constexpr int BUCKET = 5;
+constexpr char XEOF[] = "EOF";
 
 using boost::lexical_cast;
+
+inline double GetCurrentUS() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return time.tv_sec + time.tv_usec;
+}
 
 namespace paddle {
 namespace distributed {
@@ -43,22 +55,22 @@ class ShardingMerge {
   void Merge(const std::vector<std::string> &inputs,
              const std::vector<int64_t> &feasigns, const std::string &output,
              const int embedding_dim) {
-    pool_ = ::ThreadPool(inputs.size());
+    pool_.reset(new ::ThreadPool(inputs.size()));
 
     std::vector<std::future<int>> tasks(inputs.size());
     std::vector<std::vector<int64_t>> rows;
     rows.resize(inputs.size());
 
+    auto begin = GetCurrentUS();
     for (int x = 0; x < inputs.size(); ++x) {
-      tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-          [x, &rows, &inputs, &feasigns]() -> int {
-            DeserializeRowsFromFile(inputs[x], feasigns[x], &rows[x]);
-            return 0;
-          });
+      tasks[x] = pool_->enqueue([this, x, &rows, &inputs, &feasigns]() -> int {
+        DeserializeRowsFromFile(inputs[x], feasigns[x], &rows[x]);
+        return 0;
+      });
     }
 
-    for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-      tasks[shard_id].wait();
+    for (size_t x = 0; x < tasks.size(); ++x) {
+      tasks[x].wait();
     }
 
     int64_t total_rows = 0;
@@ -66,7 +78,10 @@ class ShardingMerge {
       total_rows += rows[x].size();
     }
 
-    VLOG(0) << "got " << total_rows << " feasigin ids from sparse embedding";
+    auto end = GetCurrentUS();
+
+    VLOG(0) << "got " << total_rows
+            << " feasigin ids from sparse embedding using " << end - begin;
 
     std::vector<int64_t> total_dims = {total_rows,
                                        static_cast<int64_t>(embedding_dim)};
@@ -80,10 +95,20 @@ class ShardingMerge {
 
     std::ofstream out(output, std::ios::binary);
 
-    SerializeRowsToStream(out, rows);
-    SerializePreTensorToStream(out, total_dims);
+    begin = GetCurrentUS();
+    SerializeRowsToStream(out, rows, batch_buckets, total_rows);
+    end = GetCurrentUS();
+    VLOG(0) << "write rows to oostrream using " << end - begin;
 
-    SerializeValueToStream(out, inputs, embedding_dim);
+    begin = GetCurrentUS();
+    SerializePreTensorToStream(out, total_dims);
+    end = GetCurrentUS();
+    VLOG(0) << "write pretensor to oostrream using " << end - begin;
+
+    begin = GetCurrentUS();
+    SerializeValueToStream(out, inputs, batch_buckets, embedding_dim);
+    end = GetCurrentUS();
+    VLOG(0) << "write values to oostrream using " << end - begin;
   }
 
  private:
@@ -107,9 +132,8 @@ class ShardingMerge {
 
           if (end - begin == 0) continue;
 
-          os.write(
-              reinterpret_cast<const char *>(batch_buckets[x].data() + begin),
-              sizeof(int64_t) * (end - begin));
+          os.write(reinterpret_cast<const char *>(rows[x].data() + begin),
+                   sizeof(int64_t) * (end - begin));
         }
       }
 
@@ -144,39 +168,60 @@ class ShardingMerge {
     std::string line;
     std::vector<std::string> columns;
     std::vector<std::string> values_str;
+    auto queue = framework::BlockingQueue<std::string>(Q_SIZE);
 
-    int count = 0;
-    while (std::getline(in.get(), line)) {
-      columns = string::Split(line, '\t');
-      if (columns.size() != 5) {
-        VLOG(0) << "unexpected line: " << line << ", skip it";
-        continue;
-      }
+    auto read = [&in, &queue]() -> {
+      int count = 0;
+      while (std::getline(in, line)) {
+        ++count;
 
-      values_str = string::Split(columns[4], ',');
-
-      for (int x = 0; x < embedding_dim; ++x) {
-        float x = 0.0;
-        try {
-          x = lexical_cast<float>(values_str[x]);
-        } catch (boost::bad_lexical_cast &e) {
-          VLOG(0) << " get unexpected line: " << line;
+        if (columns.size() != 5) {
+          VLOG(0) << "unexpected line: " << line << ", skip it";
+        } else {
+          queue.Push(line[4]);
         }
-        out.push_back(x);
-      }
 
-      ++count;
-
-      if (count >= batch) {
-        break;
+        if (count >= batch) {
+          queue.Push(XEOF);
+          break;
+        }
       }
-    }
+    };
+
+    auto write = [&out, &queue]() -> {
+      while (true) {
+        std::string values_str;
+        std::string line;
+        queue.Pop(&line);
+
+        if (line == XEOF) {
+          break;
+        }
+
+        values_str = string::Split(line, ',');
+
+        for (int x = 0; x < embedding_dim; ++x) {
+          float v = 0.0;
+          try {
+            v = lexical_cast<float>(values_str[x]);
+          } catch (boost::bad_lexical_cast &e) {
+            VLOG(0) << " get unexpected line: " << line;
+          }
+          out.push_back(v);
+        }
+      }
+    };
+
+    std::thread p_read(read);
+    std::thread p_write(write);
+    p_read.join();
+    p_write.join();
   }
 
-  void SerializeVecToStream(std::ostream &out, const std::vector<float> &value,
-                            const int count) {
+  void SerializeVecToStream(std::ostream &out,
+                            const std::vector<float> &value) {
     out.write(reinterpret_cast<const char *>(value.data()),
-              static_cast<std::streamsize>(sizeof(float) * count));
+              static_cast<std::streamsize>(sizeof(float) * value.size()));
   }
 
   void SerializeValueToStream(
@@ -193,20 +238,24 @@ class ShardingMerge {
 
     for (int b = 0; b < BUCKET; ++b) {
       std::vector<std::vector<float>> values;
+      values.resize(tasks.size());
+
+      auto begin = GetCurrentUS();
 
       for (int x = 0; x < tasks.size(); ++x) {
-        tasks[shard_id] =
-            pool_[shard_id]->enqueue([x, &out, &in_streams, &batch_buckets,
-                                      &values, batch, embedding_dim]() -> int {
-              auto batch = batch_buckets[x + 1] - batch_buckets[x];
+        auto batch = batch_buckets[x][b + 1] - batch_buckets[x][b];
+        values[x].clear();
+        values[x].reserve(batch * embedding_dim);
+      }
 
+      for (int x = 0; x < tasks.size(); ++x) {
+        tasks[x] =
+            pool_->enqueue([this, b, x, &out, &in_streams, &batch_buckets,
+                            &values, embedding_dim]() -> int {
+              auto batch = batch_buckets[x][b + 1] - batch_buckets[x][b];
               if (batch == 0) return 0;
-
-              values.clear();
-              values.reserve(batch);
-
               SerializeValueToVec(*(in_streams[x].get()), batch, embedding_dim,
-                                  values[x]);
+                                  &values[x]);
               return 0;
             });
       }
@@ -215,9 +264,16 @@ class ShardingMerge {
         tasks[x].wait();
       }
 
+      auto end = GetCurrentUS();
+
+      auto begin1 = GetCurrentUS();
       for (size_t x = 0; x < tasks.size(); ++x) {
         SerializeVecToStream(out, values[x]);
       }
+      auto end1 = GetCurrentUS();
+
+      VLOG(0) << "serialize buckets " << b << " read using " << end - begin
+              << ", to oostream using " << end1 - begin1;
     }
   }
 
@@ -244,7 +300,7 @@ class ShardingMerge {
   }
 
  private:
-  ::ThreadPool pool_;
+  std::unique_ptr<::ThreadPool> pool_;
 };
 }  // namespace distributed
 }  // namespace paddle
