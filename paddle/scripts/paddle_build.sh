@@ -2075,6 +2075,15 @@ function summary_check_problems() {
     set -x
 }
 
+function build_so_cache(){
+    pwd
+    tar --use-compress-program=pigz -cpf proto_so.tar.gz `find . -name "*.so" -o -name "proto" -o -name "*.so.*"`
+}
+
+function reuse_so_cache() {
+        
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2203,6 +2212,7 @@ function main() {
       cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
+        build_so_cache
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -2218,6 +2228,9 @@ function main() {
         parallel_test
         check_coverage
         ;;
+      reuse_so_cicheck_py35)
+        reuse_so_cache
+        parallel_test
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
