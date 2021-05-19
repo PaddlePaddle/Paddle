@@ -11,9 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
-
 #ifdef _WIN32
 #if defined(__AVX2__)
 #include <immintrin.h>  // avx2
@@ -25,19 +23,15 @@
 #include <immintrin.h>
 #endif
 #endif  // WIN32
-
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/cpu_info.h"
-
 namespace paddle {
 namespace operators {
-
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
-
 template <typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
                       const LoDTensor& input, const LoDTensor& index,
@@ -45,28 +39,22 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   auto input_dim = input.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
-
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
-
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
-
   auto outer_nums = 1;
   for (auto i = 0; i < dim; i++) {
     outer_nums *= input_dim[i];
   }
-
   auto index_size = index.dims()[0];
-
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
   TensorToVector(input, context.device_context(), &input_vec);
   TensorToVector(index, context.device_context(), &index_vec);
   std::vector<T> out_vec(output->numel());
-
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_vec[i], 0,
@@ -83,16 +71,13 @@ void IndexSelectInner(const framework::ExecutionContext& context,
             "value.",
             input_dim[dim], index_vec[i]));
   }
-
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
           << "; index_size: " << index_size;
-
   for (auto i = 0; i < outer_nums; i++) {
     auto input_start_offset = i * input_width;
     auto output_start_offset = i * output_width;
-
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_vec[j];
       for (auto k = 0; k < slice_size; k++) {
@@ -105,7 +90,6 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   framework::TensorFromVector(out_vec, context.device_context(), output);
   output->Resize(output_dim);
 }
-
 template <typename DeviceContext, typename T>
 class IndexSelectKernel : public framework::OpKernel<T> {
  public:
@@ -113,16 +97,13 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     auto* inputs_var = context.InputVar("X");
     auto* index_var = context.InputVar("Index");
     auto* output_var = context.OutputVar("Out");
-
     auto& inputs = inputs_var->Get<LoDTensor>();
     auto& index = index_var->Get<LoDTensor>();
     auto* output = output_var->GetMutable<framework::LoDTensor>();
-
     int dim = context.Attr<int>("dim");
     if (dim < 0) {
       dim += inputs.dims().size();
     }
-
     const auto& index_type = index.type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
@@ -135,7 +116,6 @@ class IndexSelectKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT32),
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
-
     if (index_type == framework::proto::VarType::INT32) {
       IndexSelectInner<T, int>(context, inputs, index, output, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
@@ -143,33 +123,47 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     }
   }
 };
-
 template <typename T>
-int vec_sum_avx(const size_t n, const T* src, T* dst) {
+void index_sum(const size_t n, const T* src, T* dst) {
+#ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
-
-  const int aligend_count = n - n % block;
-  for (auto k = 0; k < aligend_count; k += block) {
-    _mm256_storeu_ps(reinterpret_cast<float*>(dst) + k,
-                     _mm256_add_ps(_mm256_loadu_ps((const float*)dst + k),
-                                   _mm256_loadu_ps((const float*)src + k)));
+  unsigned int i, end;
+  i = end = 0;
+  end = n & ~(block - 1);
+  for (i = 0; i < end; i += block) {
+    _mm256_storeu_ps(
+        static_cast<float*>(dst) + i,
+        _mm256_add_ps(_mm256_loadu_ps(static_cast<float*>(dst) + i),
+                      _mm256_loadu_ps(static_cast<float*>(src) + i)));
   }
-  return aligend_count;
+  for (; i < n; i++) {
+    dst[i] += src[i];
+  }
+#else
+  index_sum(n, src, dst);
+#endif
 }
-
 template <>
-int vec_sum_avx(const size_t n, const double* src, double* dst) {
+void index_sum(const size_t n, const double* src, double* dst) {
+#ifdef __AVX__
   constexpr int block = XMM_FLOAT_BLOCK;
-  const int aligend_count = n - n % block;
-
-  for (auto k = 0; k < aligend_count; k += block) {
-    _mm256_storeu_pd(reinterpret_cast<double*>(dst) + k,
-                     _mm256_add_pd(_mm256_loadu_pd((const double*)dst + k),
-                                   _mm256_loadu_pd((const double*)src + k)));
+  // const int aligend_count = n - n % block;
+  unsigned int i, end;
+  i = end = 0;
+  end = n & ~(block - 1);
+  for (i = 0; i < end; i += block) {
+    _mm256_storeu_pd(
+        static_cast<double*>(dst) + i,
+        _mm256_add_pd(_mm256_loadu_pd(static_cast<double*>(dst) + i),
+                      _mm256_loadu_pd(static_cast<double*>(src) + i)));
   }
-  return aligend_count;
+  for (; i < n; i++) {
+    dst[i] += src[i];
+  }
+#else
+  index_sum(n, src, dst);
+#endif
 }
-
 template <typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
                           const LoDTensor& out_grad, const LoDTensor& index,
@@ -177,47 +171,34 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
   T* out_data = x_grad->mutable_data<T>(context.GetPlace());
-
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
-
   std::memset(out_data, 0.0, x_grad->numel() * sizeof(T));
-
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
-
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
-
   auto outer_nums = 1;
   for (auto i = 0; i < dim; i++) {
     outer_nums *= input_dim[i];
   }
-
   auto index_size = index.dims()[0];
   VLOG(3) << "Index_Select_Grad_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
           << "; index_size: " << index_size;
-
   for (auto i = 0; i < outer_nums; i++) {
     auto input_start_offset = i * input_width;
     auto output_start_offset = i * output_width;
-
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
-
 #ifdef __AVX__
       auto src = input_data + input_start_offset + j * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
-      auto aligend_count = vec_sum_avx(slice_size, src, dst);
-      for (auto k = aligend_count; k < slice_size; k++) {
-        out_data[output_start_offset + index_value * slice_size + k] +=
-            input_data[input_start_offset + j * slice_size + k];
-      }
+      index_sum(slice_size, src, dst);
 #else
       for (auto k = 0; k < slice_size; k++) {
         out_data[output_start_offset + index_value * slice_size + k] +=
@@ -228,7 +209,6 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   }
   x_grad->Resize(output_dim);
 }
-
 template <typename DeviceContext, typename T>
 class IndexSelectGradKernel : public framework::OpKernel<T> {
  public:
@@ -236,7 +216,6 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     auto* index_var = context.InputVar("Index");
     auto* x_grad_var = context.OutputVar(framework::GradVarName("X"));
     auto* out_grad_var = context.InputVar(framework::GradVarName("Out"));
-
     auto& index = index_var->Get<LoDTensor>();
     auto& out_grad = out_grad_var->Get<LoDTensor>();
     auto* x_grad = x_grad_var->GetMutable<framework::LoDTensor>();
@@ -244,7 +223,6 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     if (dim < 0) {
       dim += out_grad.dims().size();
     }
-
     const auto& index_type = index.type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
@@ -257,7 +235,6 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT32),
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
-
     if (index_type == framework::proto::VarType::INT32) {
       IndexSelectGradInner<T, int>(context, out_grad, index, x_grad, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
@@ -265,6 +242,5 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     }
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
