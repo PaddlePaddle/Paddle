@@ -22,6 +22,7 @@ import os.path as osp
 import shutil
 import requests
 import subprocess
+import functools
 import hashlib
 import tarfile
 import zipfile
