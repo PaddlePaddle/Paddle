@@ -35,8 +35,12 @@ import itertools
 import functools
 from .common import download
 import tarfile
-import scipy.io as scio
-from paddle.dataset.image import *
+
+from paddle.dataset.image import load_image_bytes
+from paddle.dataset.image import load_image
+from paddle.dataset.image import simple_transform
+from paddle.dataset.image import batch_images_from_tar
+
 from paddle.reader import map_readers, xmap_readers
 from paddle import compat as cpt
 import paddle.utils.deprecated as deprecated
@@ -45,7 +49,9 @@ import numpy as np
 from multiprocessing import cpu_count
 import six
 from six.moves import cPickle as pickle
-__all__ = ['train', 'test', 'valid']
+from paddle.utils import try_import
+
+__all__ = []
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'
 LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
@@ -108,8 +114,11 @@ def reader_creator(data_file,
     :return: data reader
     :rtype: callable
     '''
+    scio = try_import('scipy.io')
+
     labels = scio.loadmat(label_file)['labels'][0]
     indexes = scio.loadmat(setid_file)[dataset_name][0]
+
     img2label = {}
     for i in indexes:
         img = "jpg/image_%05d.jpg" % i
@@ -147,6 +156,7 @@ def reader_creator(data_file,
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
@@ -180,6 +190,7 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
@@ -213,6 +224,7 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     '''

@@ -15,11 +15,19 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_CUDA
-
 #include <cuda_runtime.h>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// Note: this header for simplify HIP and CUDA type string
 #include <stddef.h>
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/type_defs.h"
 
 namespace paddle {
 namespace platform {
@@ -86,28 +94,36 @@ size_t GpuMaxChunkSize();
 
 //! Copy memory from address src to dst asynchronously.
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
+#ifdef PADDLE_WITH_HIP
+                    enum hipMemcpyKind kind, hipStream_t stream);
+#else
                     enum cudaMemcpyKind kind, cudaStream_t stream);
+#endif
 
 //! Copy memory from address src to dst synchronously.
 void GpuMemcpySync(void *dst, const void *src, size_t count,
+#ifdef PADDLE_WITH_HIP
+                   enum hipMemcpyKind kind);
+#else
                    enum cudaMemcpyKind kind);
+#endif
 
 //! Copy memory from one device to another device asynchronously.
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
-                        int src_device, size_t count, cudaStream_t stream);
+                        int src_device, size_t count, gpuStream_t stream);
 
 //! Copy memory from one device to another device synchronously.
 void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
                        int src_device, size_t count);
 
 //! Set memory dst with value count size asynchronously
-void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream);
+void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream);
 
 //! Blocks until stream has completed all operations.
-void GpuStreamSync(cudaStream_t stream);
+void GpuStreamSync(gpuStream_t stream);
 
 //! CudaMalloc with recorded info
-cudaError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id);
+gpuError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id);
 
 //! CudaFree with recorded info
 void RecordedCudaFree(void *p, size_t size, int dev_id);

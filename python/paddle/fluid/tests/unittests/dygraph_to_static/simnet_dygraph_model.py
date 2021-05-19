@@ -230,7 +230,7 @@ class SoftsignLayer(object):
 
 
 class FC(Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``FC`` class.
     For more details, refer to code examples.
     It creates a fully connected layer in the network. It can take

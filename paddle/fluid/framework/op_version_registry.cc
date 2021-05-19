@@ -18,29 +18,6 @@ namespace paddle {
 namespace framework {
 namespace compatible {
 
-namespace {
-template <OpUpdateType type__, typename InfoType>
-OpUpdate<InfoType, type__>* new_update(InfoType&& info) {
-  return new OpUpdate<InfoType, type__>(info);
-}
-}
-
-OpVersionDesc&& OpVersionDesc::ModifyAttr(const std::string& name,
-                                          const std::string& remark,
-                                          const OpAttrVariantT& default_value) {
-  infos_.emplace_back(new_update<OpUpdateType::kModifyAttr>(
-      OpAttrInfo(name, remark, default_value)));
-  return std::move(*this);
-}
-
-OpVersionDesc&& OpVersionDesc::NewAttr(const std::string& name,
-                                       const std::string& remark,
-                                       const OpAttrVariantT& default_value) {
-  infos_.emplace_back(new_update<OpUpdateType::kNewAttr>(
-      OpAttrInfo(name, remark, default_value)));
-  return std::move(*this);
-}
-
 OpVersionDesc&& OpVersionDesc::NewInput(const std::string& name,
                                         const std::string& remark) {
   infos_.emplace_back(
@@ -59,6 +36,37 @@ OpVersionDesc&& OpVersionDesc::BugfixWithBehaviorChanged(
     const std::string& remark) {
   infos_.emplace_back(new_update<OpUpdateType::kBugfixWithBehaviorChanged>(
       OpBugfixInfo(remark)));
+  return std::move(*this);
+}
+
+OpVersionDesc&& OpVersionDesc::DeleteAttr(const std::string& name,
+                                          const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kDeleteAttr>(OpAttrInfo(name, remark)));
+  return std::move(*this);
+}
+OpVersionDesc&& OpVersionDesc::ModifyInput(const std::string& name,
+                                           const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kModifyInput>(OpInputOutputInfo(name, remark)));
+  return std::move(*this);
+}
+OpVersionDesc&& OpVersionDesc::ModifyOutput(const std::string& name,
+                                            const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kModifyOutput>(OpInputOutputInfo(name, remark)));
+  return std::move(*this);
+}
+OpVersionDesc&& OpVersionDesc::DeleteInput(const std::string& name,
+                                           const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kDeleteInput>(OpInputOutputInfo(name, remark)));
+  return std::move(*this);
+}
+OpVersionDesc&& OpVersionDesc::DeleteOutput(const std::string& name,
+                                            const std::string& remark) {
+  infos_.emplace_back(
+      new_update<OpUpdateType::kDeleteOutput>(OpInputOutputInfo(name, remark)));
   return std::move(*this);
 }
 

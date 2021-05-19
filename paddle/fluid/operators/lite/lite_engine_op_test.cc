@@ -25,6 +25,7 @@
 USE_NO_KERNEL_OP(lite_engine)
 
 using paddle::inference::lite::AddTensorToBlockDesc;
+using paddle::inference::lite::AddFetchListToBlockDesc;
 using paddle::inference::lite::CreateTensor;
 using paddle::inference::lite::serialize_params;
 namespace paddle {
@@ -60,13 +61,13 @@ TEST(LiteEngineOp, engine_op) {
   AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}), true);
   AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({2, 4}), true);
   AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 4}), false);
-  AddTensorToBlockDesc(block_, "out", std::vector<int64_t>({2, 4}), false);
+  AddFetchListToBlockDesc(block_, "out");
   *block_->add_ops() = *feed1->Proto();
   *block_->add_ops() = *feed0->Proto();
   *block_->add_ops() = *elt_add->Proto();
   *block_->add_ops() = *fetch->Proto();
   framework::Scope scope;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
 #else
@@ -83,11 +84,11 @@ TEST(LiteEngineOp, engine_op) {
   std::vector<std::string> repetitive_params{"x", "y"};
   inference::lite::EngineConfig config;
   config.valid_places = {
-#ifdef PADDLE_WITH_CUDA
-      paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
 #endif
-      paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
-      paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
+    paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+    paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
   serialize_params(&(config.param), &scope, repetitive_params);
   config.model = program.Proto()->SerializeAsString();

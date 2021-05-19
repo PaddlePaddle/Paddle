@@ -14,8 +14,8 @@
 
 package paddle
 
-// #cgo CFLAGS: -Ipaddle_c/paddle/include
-// #cgo LDFLAGS: -Lpaddle_c/paddle/lib -lpaddle_fluid_c
+// #cgo CFLAGS: -I${SRCDIR}/../paddle_c/paddle/include
+// #cgo LDFLAGS: -L${SRCDIR}/../paddle_c/paddle/lib -lpaddle_inference_c
 // #include <stdbool.h>
 // #include "paddle_c_api.h"
 import "C"
@@ -88,7 +88,7 @@ func (predictor *Predictor) GetInputNames() []string {
 }
 
 func (predictor *Predictor) GetOutputNames() []string {
-	names := make([]string, predictor.GetInputNum())
+	names := make([]string, predictor.GetOutputNum())
 	for i := 0; i < len(names); i++ {
 		names[i] = predictor.GetOutputName(i)
 	}

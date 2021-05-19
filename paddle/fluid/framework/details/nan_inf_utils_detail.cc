@@ -14,15 +14,7 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
-
-#include <algorithm>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/selected_rows.h"
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -152,14 +144,12 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
              static_cast<uint64_t>(i), static_cast<float>(value[i]));
     }
   }
-  bool has_nan_inf = true;
   printf("In cpu, there has %lu,%lu,%lu nan,inf,num\n",
          static_cast<uint64_t>(nan_count), static_cast<uint64_t>(inf_count),
          static_cast<uint64_t>(num_count));
-  PADDLE_ENFORCE_EQ(has_nan_inf, false,
-                    platform::errors::PreconditionNotMet(
-                        "===ERROR: in [op=%s] [tensor=%s] find nan or inf===",
-                        op_type, var_name));
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+      op_type));
 }
 
 // openmp 4.0, reduction with fp16
@@ -168,6 +158,10 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
 // https://www.openmp.org/wp-content/uploads/OpenMP4.0.0.pdf
 #pragma omp declare reduction(+ : paddle::platform::float16 : omp_out += omp_in)
 #pragma omp declare reduction(+ : paddle::platform::bfloat16 : omp_out += \
+                              omp_in)
+#pragma omp declare reduction(+ : paddle::platform::complex64 : omp_out += \
+                              omp_in)
+#pragma omp declare reduction(+ : paddle::platform::complex128 : omp_out += \
                               omp_in)
 #endif
 
@@ -222,6 +216,58 @@ void CheckNanInf<paddle::platform::bfloat16>(
     PrintNanInf(value, numel, print_num, op_type, var_name);
   }
 }
+
+template <>
+void CheckNanInf<paddle::platform::complex64>(
+    const paddle::platform::complex64* value, const size_t numel, int print_num,
+    const std::string& op_type, const std::string& var_name) {
+  float real_sum = 0.0f;
+#pragma omp parallel for reduction(+ : real_sum)
+  for (size_t i = 0; i < numel; ++i) {
+    real_sum += (value[i].real - value[i].real);
+  }
+
+  float imag_sum = 0.0f;
+#pragma omp parallel for reduction(+ : imag_sum)
+  for (size_t i = 0; i < numel; ++i) {
+    imag_sum += (value[i].imag - value[i].imag);
+  }
+
+  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
+      std::isinf(imag_sum)) {
+    // hot fix for compile failed in gcc4.8
+    // here also need print detail info of nan or inf later
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+        op_type));
+  }
+}
+
+template <>
+void CheckNanInf<paddle::platform::complex128>(
+    const paddle::platform::complex128* value, const size_t numel,
+    int print_num, const std::string& op_type, const std::string& var_name) {
+  double real_sum = 0.0;
+#pragma omp parallel for reduction(+ : real_sum)
+  for (size_t i = 0; i < numel; ++i) {
+    real_sum += (value[i].real - value[i].real);
+  }
+
+  double imag_sum = 0.0;
+#pragma omp parallel for reduction(+ : imag_sum)
+  for (size_t i = 0; i < numel; ++i) {
+    imag_sum += (value[i].imag - value[i].imag);
+  }
+
+  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
+      std::isinf(imag_sum)) {
+    // hot fix for compile failed in gcc4.8
+    // here also need print detail info of nan or inf later
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+        op_type));
+  }
+}
 #endif
 
 template <>
@@ -272,7 +318,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
   if (platform::is_gpu_place(tensor->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     tensor_check<platform::CUDADeviceContext>(op_type, var_name, *tensor,
                                               place);
 #else
@@ -281,8 +327,63 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         var_name));
 #endif
     return;
-  }
+  } else if (platform::is_xpu_place(tensor->place())) {
+#ifdef PADDLE_WITH_XPU
+    if (tensor->type() != proto::VarType::FP32) {
+      return;
+    }
 
+    float* cpu_data = new float[tensor->numel()];
+    xpu_memcpy(cpu_data, tensor->data<float>(), tensor->numel() * sizeof(float),
+               XPU_DEVICE_TO_HOST);
+    bool flag = false;
+    for (int i = 0; i < tensor->numel(); i++) {
+      if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {
+        flag = true;
+        break;
+      }
+    }
+    delete[] cpu_data;
+    PADDLE_ENFORCE_NE(
+        flag, true,
+        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
+                                op_type, var_name));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Tensor[%s] use xpu place. PaddlePaddle must compile with XPU.",
+        var_name));
+#endif
+    return;
+  } else if (platform::is_npu_place(tensor->place())) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (tensor->type() != proto::VarType::FP32) {
+      return;
+    }
+
+    framework::LoDTensor cpu_tensor;
+    cpu_tensor.Resize(tensor->dims());
+    float* cpu_data = static_cast<float*>(
+        cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type()));
+
+    framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    bool flag = false;
+    for (int i = 0; i < cpu_tensor.numel(); i++) {
+      if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {
+        flag = true;
+        break;
+      }
+    }
+    PADDLE_ENFORCE_NE(
+        flag, true,
+        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
+                                op_type, var_name));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Tensor[%s] use npu place. PaddlePaddle must compile with NPU.",
+        var_name));
+#endif
+    return;
+  }
   tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
 }
 

@@ -16,6 +16,9 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.dygraph as dg
+import paddle.fluid.core as core
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.data_feeder import convert_dtype
 
 
 class TestComplexVariable(unittest.TestCase):
@@ -27,14 +30,11 @@ class TestComplexVariable(unittest.TestCase):
         with dg.guard():
             x = dg.to_variable(a, "x")
             y = dg.to_variable(b)
-            out = paddle.complex.elementwise_add(x, y)
+            out = paddle.fluid.layers.elementwise_add(x, y)
             self.assertIsNotNone("{}".format(out))
 
         self.assertTrue(np.allclose(out.numpy(), a + b))
-        self.assertEqual(x.name, {'real': 'x.real', 'imag': 'x.imag'})
-        x.name = "new_x"
-        self.assertEqual(x.name, {'real': 'new_x.real', 'imag': 'new_x.imag'})
-        self.assertEqual(out.dtype, self._dtype)
+        self.assertEqual(out.dtype, convert_np_dtype_to_dtype_(self._dtype))
         self.assertEqual(out.shape, x.shape)
 
     def test_attrs(self):
@@ -42,6 +42,20 @@ class TestComplexVariable(unittest.TestCase):
         self.compare()
         self._dtype = "complex128"
         self.compare()
+
+    def test_convert_np_dtype_to_dtype(self):
+        self.assertEqual(
+            convert_np_dtype_to_dtype_(np.complex64),
+            core.VarDesc.VarType.COMPLEX64)
+        self.assertEqual(
+            convert_np_dtype_to_dtype_(np.complex64),
+            core.VarDesc.VarType.COMPLEX64)
+
+    def test_convert_dtype(self):
+        self.assertEqual(
+            convert_dtype(core.VarDesc.VarType.COMPLEX64), "complex64")
+        self.assertEqual(
+            convert_dtype(core.VarDesc.VarType.COMPLEX128), "complex128")
 
 
 if __name__ == '__main__':

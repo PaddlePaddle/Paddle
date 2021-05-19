@@ -85,7 +85,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
         self.supported_embedding_types = [
-            "lookup_table", "pull_sparse", "pull_sparse_v2"
+            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse"
         ]
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"
@@ -489,6 +489,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 # user do not have to set it in config_fleet
                 if accessor == "DownpourFeatureValueAccessor" \
                         or accessor == "DownpourCtrAccessor" \
+                        or accessor == "DownpourDoubleUnitAccessor" \
                         or accessor == "DownpourUnitAccessor":
                     if st.get("sparse_embedx_dim") is not None \
                             and st["sparse_embedx_dim"] != emb_to_size[key] - 3:
@@ -760,6 +761,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_converter"] = ""
         opt_info["dump_fields"] = strategy.get("dump_fields", [])
         opt_info["dump_file_num"] = strategy.get("dump_file_num", 16)
+        opt_info["user_define_dump_filename"] = strategy.get(
+            "user_define_dump_filename", "")
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
         opt_info["worker_places"] = strategy.get("worker_places", [])
@@ -767,7 +770,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
                     "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",
-                    "DownpourUnitAccessor"
+                    "DownpourUnitAccessor", "DownpourDoubleUnitAccessor"
                 ]:
             opt_info["dump_slot"] = True
         elif server._server.downpour_server_param.downpour_table_param[

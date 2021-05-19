@@ -262,6 +262,15 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a + b
             self.assertTrue(np.array_equal(res.numpy(), a_np + b_np))
 
+    def test_floordiv_different_dtype(self):
+        a_np = np.full(self.shape, 10, np.int64)
+        b_np = np.full(self.shape, 2, np.int32)
+        with fluid.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a // b
+            self.assertTrue(np.array_equal(res.numpy(), a_np // b_np))
+
     def test_astype(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -345,8 +354,11 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
                               [1.30058, 1.0688717, 1.4928783],
                               [1.0958099, 1.3724753, 1.8926544]])
         d = d.matmul(d.t())
-        self.assertTrue(
-            np.array_equal(d.cholesky().numpy(), paddle.cholesky(d).numpy()))
+        # ROCM not support cholesky
+        if not fluid.core.is_compiled_with_rocm():
+            self.assertTrue(
+                np.array_equal(d.cholesky().numpy(), paddle.cholesky(d).numpy(
+                )))
 
         self.assertTrue(
             np.array_equal(x.is_empty().numpy(), paddle.is_empty(x).numpy()))

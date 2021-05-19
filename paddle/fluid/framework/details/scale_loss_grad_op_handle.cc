@@ -58,15 +58,29 @@ struct ScaleLossGradFunctor {
     auto *out_data = out_->mutable_data<OutT>(place_);
     if (platform::is_cpu_place(place_)) {
       *out_data = static_cast<OutT>(coeff_);
+    } else if (platform::is_xpu_place(place_)) {
+#if defined(PADDLE_WITH_XPU)
+      OutT cast_coeff = static_cast<OutT>(coeff_);
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place_), out_data,
+                   platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_));
+      VLOG(10) << place_ << "RUN Scale loss grad op";
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use XPU device since it's not compiled with XPU,"
+          "Please recompile or reinstall Paddle with XPU support."));
+#endif
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       OutT cast_coeff = static_cast<OutT>(coeff_);
       auto stream = static_cast<platform::CUDADeviceContext *>(ctx_)->stream();
       memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), out_data,
                    platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_),
                    stream);
       VLOG(10) << place_ << "RUN Scale loss grad op";
-
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CUDA device since it's not compiled with CUDA,"
+          "Please recompile or reinstall Paddle with GPU support."));
 #endif
     }
   }
@@ -81,7 +95,7 @@ void ScaleLossGradOpHandle::RunImpl() {
       local_exec_scopes_[0]->FindVar(var_name)->GetMutable<LoDTensor>();
   tensor->Resize(make_ddim({1}));
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_,
                             this->dev_ctxes_.at(place_));
   this->RunAndRecordEvent([&] { framework::VisitDataType(out_dtype_, func); });

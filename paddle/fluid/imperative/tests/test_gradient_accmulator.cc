@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -52,7 +53,7 @@ int TensorddTest(Place place, T t1, T t2) {
                          sizeof(T) * src_data.size());
     paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
                          sizeof(T) * dst_data.size());
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else {
     paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
                          sizeof(T) * src_data.size(), 0);
@@ -73,7 +74,7 @@ int TensorddTest(Place place, T t1, T t2) {
 }
 
 TEST(test_add_functor, add_functor) {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace gpu_place(0);
 #endif
   platform::CPUPlace cpu_place;
@@ -87,7 +88,7 @@ TEST(test_add_functor, add_functor) {
   cpu_res = TensorddTest(cpu_place, static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int gpu_res = 1;
   gpu_res = TensorddTest(gpu_place, 1.0, 0.0);
   EXPECT_EQ(gpu_res, 0);
@@ -106,7 +107,7 @@ TEST(test_add_functor, execption) {
   platform::CPUPlace cpu_place;
 
   ASSERT_ANY_THROW(TensorddTest(cpu_place, 1, 0));
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place, 1.0, 0.0));
   ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place,
                                 static_cast<platform::float16>(1.0),
@@ -263,6 +264,9 @@ static void TestGradientAccumulatorTestUnchangeInput(
 
   for (auto use_tensor1 : use_tensors) {
     for (auto use_tensor2 : use_tensors) {
+      /** g_accum1 && g_accum2: has not been initialized
+       *    test accumulate on this graph
+      */
       auto g_var1 = std::make_shared<VariableWrapper>("g_var1");
       g_var1->SetOverridedStopGradient(false);
       auto g_accum1 = CreateAccumulator(g_var1, sort_gradient);
@@ -278,8 +282,14 @@ static void TestGradientAccumulatorTestUnchangeInput(
       auto var1 = create_var(use_tensor1);
       auto var_wrapper1_1 = std::make_shared<VariableWrapper>("tmp1_1");
       auto var_wrapper2_1 = std::make_shared<VariableWrapper>("tmp2_1");
+
+      ASSERT_EQ(var_wrapper1_1->IsEmpty(), true);
       CopyVar(var1, var_wrapper1_1->MutableVar());
+      ASSERT_EQ(var_wrapper1_1->IsEmpty(), false);
+
+      ASSERT_EQ(var_wrapper2_1->IsEmpty(), true);
       CopyVar(var1, var_wrapper2_1->MutableVar());
+      ASSERT_EQ(var_wrapper2_1->IsEmpty(), false);
 
       auto var2 = create_var(use_tensor2);
       auto var_wrapper1_2 = std::make_shared<VariableWrapper>("tmp1_2");
@@ -287,15 +297,59 @@ static void TestGradientAccumulatorTestUnchangeInput(
       CopyVar(var2, var_wrapper1_2->MutableVar());
       CopyVar(var2, var_wrapper2_2->MutableVar());
 
-      g_accum1->Add(var_wrapper1_1, 0, false);
-      g_accum1->Add(var_wrapper1_2, 1, false);
+      // g_accum1: inner_var_ = var1 + var2
+      g_accum1->SumGrad(var_wrapper1_1, 0, false);
+      g_accum1->SumGrad(var_wrapper1_2, 1, false);
+      ASSERT_EQ(g_accum1->CurCnt(), g_accum1->RefCnt());
+      ASSERT_TRUE(g_accum1->SumGradCompleted());
+      // g_accum1: inner_var_ -> var_
+      g_accum1->AccumulateGrad();
 
-      g_accum2->Add(var_wrapper2_1, 0, true);
-      g_accum2->Add(var_wrapper2_2, 1, true);
+      // g_accum2: inner_var_ = var1 + var2
+      g_accum2->SumGrad(var_wrapper2_1, 0, true);
+      g_accum2->SumGrad(var_wrapper2_2, 1, true);
+      ASSERT_EQ(g_accum2->CurCnt(), g_accum2->RefCnt());
+      ASSERT_TRUE(g_accum2->SumGradCompleted());
+      // g_accum2: inner_var_ -> var_
+      g_accum2->AccumulateGrad();
 
       ASSERT_TRUE(IsEqualVar(var_wrapper2_1->Var(), var1));
       ASSERT_TRUE(IsEqualVar(var_wrapper2_2->Var(), var2));
       ASSERT_TRUE(IsEqualVar(g_var1->Var(), g_var2->Var()));
+
+      /** g_accum3 && g_accum4: has been initialized
+       *    test accumulate on previous graph
+      */
+      auto var3 = create_var(use_tensor1);
+      auto var_wrapper3_3 = std::make_shared<VariableWrapper>("tmp1_3");
+      auto var_wrapper4_3 = std::make_shared<VariableWrapper>("tmp2_3");
+      var_wrapper3_3->SetOverridedStopGradient(false);
+      var_wrapper4_3->SetOverridedStopGradient(false);
+      CopyVar(var3, var_wrapper3_3->MutableVar());
+      CopyVar(var3, var_wrapper4_3->MutableVar());
+
+      auto g_accum3 = CreateAccumulator(var_wrapper3_3, sort_gradient);
+      g_accum3->IncreaseRefCnt();
+      auto g_accum4 = CreateAccumulator(var_wrapper4_3, sort_gradient);
+      g_accum4->IncreaseRefCnt();
+
+      auto var4 = create_var(use_tensor2);
+      auto var_wrapper3_4 = std::make_shared<VariableWrapper>("tmp1_4");
+      auto var_wrapper4_4 = std::make_shared<VariableWrapper>("tmp2_4");
+      CopyVar(var4, var_wrapper3_4->MutableVar());
+      CopyVar(var4, var_wrapper4_4->MutableVar());
+
+      g_accum3->SumGrad(var_wrapper3_4, 0, false);
+      ASSERT_TRUE(g_accum3->SumGradCompleted());
+      // g_accum4: var_(var_wrapper3_3) + inner_var_ -> var_
+      g_accum3->AccumulateGrad();
+
+      g_accum4->SumGrad(var_wrapper4_4, 0, false);
+      ASSERT_TRUE(g_accum4->SumGradCompleted());
+      // g_accum4: var_(var_wrapper4_3) + inner_var_ -> var_
+      g_accum4->AccumulateGrad();
+
+      ASSERT_TRUE(IsEqualVar(var_wrapper3_3->Var(), var_wrapper4_3->Var()));
     }
   }
 }
@@ -304,7 +358,7 @@ TEST(test_gradient_accumulator, test_unchange_input) {
   for (auto sort_gradient : {false, true}) {
     TestGradientAccumulatorTestUnchangeInput(platform::CPUPlace(),
                                              sort_gradient);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     TestGradientAccumulatorTestUnchangeInput(platform::CUDAPlace(0),
                                              sort_gradient);
 #endif

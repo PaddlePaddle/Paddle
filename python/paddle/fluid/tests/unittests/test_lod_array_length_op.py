@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 import unittest
+
+import paddle
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
@@ -42,6 +44,21 @@ class TestLoDArrayLengthOpError(unittest.TestCase):
             x1 = numpy.random.randn(2, 4).astype('int32')
 
             self.assertRaises(TypeError, fluid.layers.array_length, array=x1)
+
+
+class TestArrayLengthApi(unittest.TestCase):
+    def test_api(self):
+        paddle.disable_static()
+
+        arr = paddle.tensor.create_array(dtype='float32')
+        x = paddle.full(shape=[3, 3], fill_value=5, dtype="float32")
+        i = paddle.zeros(shape=[1], dtype="int32")
+
+        arr = paddle.tensor.array_write(x, i, array=arr)
+
+        arr_len = paddle.tensor.array_length(arr)
+        self.assertEqual(arr_len, 1)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

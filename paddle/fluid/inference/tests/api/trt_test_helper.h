@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include <dirent.h>
 #include <string>
 #include <vector>
 
@@ -132,6 +133,22 @@ void compare_continuous_input(std::string model_dir, bool use_tensorrt) {
     CompareNativeAndAnalysis(native_pred.get(), analysis_pred.get(),
                              inputs_all);
   }
+}
+
+void delete_cache_files(std::string path) {
+  DIR* dir = opendir(path.c_str());
+  if (dir == NULL) return;
+  struct dirent* ptr;
+  while ((ptr = readdir(dir)) != NULL) {
+    if (std::strcmp(ptr->d_name, ".") == 0 ||
+        std::strcmp(ptr->d_name, "..") == 0) {
+      continue;
+    } else if (ptr->d_type == 8) {
+      std::string file_rm = path + "/" + ptr->d_name;
+      remove(file_rm.c_str());
+    }
+  }
+  remove(path.c_str());
 }
 
 }  // namespace inference

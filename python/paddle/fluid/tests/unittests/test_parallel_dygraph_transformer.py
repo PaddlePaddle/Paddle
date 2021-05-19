@@ -48,5 +48,22 @@ class TestParallelDygraphTransformerSpawn(TestDistSpawnRunner):
                 test_class=TestTransformer, delta=1e-5)
 
 
+class TestParallelDygraphTransformerAccGrad(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
+        self._accumulate_gradient = True
+        self._find_unused_parameters = False
+
+    def test_transformer(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_transformer.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
 if __name__ == "__main__":
     unittest.main()

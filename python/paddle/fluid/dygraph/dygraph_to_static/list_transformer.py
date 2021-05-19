@@ -17,74 +17,12 @@ from __future__ import print_function
 import astor
 import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
+
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
-from paddle.fluid.framework import core, Variable
-from paddle.fluid.layers import array_length, array_read, array_write, create_array
-from paddle.fluid.layers import assign, fill_constant, slice
-from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
-
-
-# TODO(liym27): A better way to slice tensor array.
-#  Maybe support start == end for slice op.
-def slice_tensor_array(array, start, end):
-    def true_fn():
-        null_array = create_array("float32")
-        return null_array
-
-    def false_fn(array, start, end):
-        new_array = slice(array, starts=[start], ends=[end], axes=[0])
-        return new_array
-
-    new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))
-    return new_array
-
-
-def tensor_array_pop(array, idx):
-    assert isinstance(idx, int)
-
-    def cond(i, new_array):
-        return less_than(i, arr_len)
-
-    def body(i, new_array):
-        item = array_read(array=array, i=i)
-        array_write(item, array_length(new_array), new_array)
-        i = increment(i)
-        return i, new_array
-
-    arr_len = array_length(array)
-    if idx < 0:
-        idx = idx + arr_len
-    else:
-        idx = fill_constant(shape=[1], dtype="int64", value=idx)
-
-    pop_item = array_read(array, idx)
-
-    new_array = slice_tensor_array(array, 0, idx)
-    i = idx + 1
-    _, new_array = while_loop(cond, body, [i, new_array])
-    assign(input=new_array, output=array)
-
-    return pop_item
-
-
-def convert_list_pop(target, idx=None):
-    """
-    Convert list pop.
-    """
-
-    if idx is None:
-        idx = -1
-
-    is_variable = isinstance(target, Variable)
-    if is_variable:
-        is_tensor_array = target.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-    if is_variable and is_tensor_array:
-        result = tensor_array_pop(target, idx)
-    else:
-        result = target.pop(idx)
-    return result
 
 
 class ListTransformer(gast.NodeTransformer):
@@ -117,7 +55,7 @@ class ListTransformer(gast.NodeTransformer):
         if isinstance(node.func, gast.Attribute):
             func_name = node.func.attr
             if func_name == "pop":
-                node = self._replace_list_pop(node)
+                node = self._replace_pop(node)
         return node
 
     def visit_Assign(self, node):
@@ -181,17 +119,18 @@ class ListTransformer(gast.NodeTransformer):
     def _transform_slice_to_tensor_write(self, node):
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
+
         target_name = target_node.value.id
         slice_node = target_node.slice
 
         if isinstance(slice_node, gast.Slice):
             pass
-        elif isinstance(slice_node, gast.Index):
+        elif slice_is_num(target_node):
             value_code = ast_to_source_code(node.value)
             i = "paddle.cast(" \
                 "x=paddle.jit.dy2static.to_static_variable({})," \
                 "dtype='int64')".format(ast_to_source_code(slice_node))
-            assign_code = "{} = fluid.layers.array_write(x={}, i={}, array={})" \
+            assign_code = "{} = paddle.tensor.array_write(x={}, i={}, array={})" \
                 .format(target_name, value_code, i, target_name)
             assign_node = gast.parse(assign_code).body[0]
         return assign_node
@@ -233,7 +172,7 @@ class ListTransformer(gast.NodeTransformer):
         #         return False
         #     if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
         #         return False
-        # # TODO: Consider that `arg` may be a gast.Call about Paddle Api. eg: list_a.append(fluid.layers.reshape(x))
+        # # TODO: Consider that `arg` may be a gast.Call about Paddle Api. eg: list_a.append(paddle.reshape(x))
         # # else:
         # # return True
         self.list_name_to_updated[value_name.strip()] = True
@@ -252,7 +191,7 @@ class ListTransformer(gast.NodeTransformer):
 
     def _create_tensor_array(self):
         # Although `dtype='float32'`, other types such as `int32` can also be supported
-        func_code = "fluid.layers.create_array(dtype='float32')"
+        func_code = "paddle.tensor.create_array(dtype='float32')"
         func_node = gast.parse(func_code).body[0].value
         return func_node
 
@@ -260,8 +199,8 @@ class ListTransformer(gast.NodeTransformer):
         assert isinstance(node, gast.Call)
         array = astor.to_source(gast.gast_to_ast(node.func.value))
         x = astor.to_source(gast.gast_to_ast(node.args[0]))
-        i = "fluid.layers.array_length({})".format(array)
-        func_code = "fluid.layers.array_write(x={}, i={}, array={})".format(
+        i = "paddle.tensor.array_length({})".format(array)
+        func_code = "paddle.tensor.array_write(x={}, i={}, array={})".format(
             x, i, array)
         return gast.parse(func_code).body[0].value
 
@@ -283,20 +222,36 @@ class ListTransformer(gast.NodeTransformer):
             del self.list_name_to_updated[target_id]
         return False
 
-    def _replace_list_pop(self, node):
+    def _replace_pop(self, node):
+        """
+        Replace a pop statement for a list or dict.
+        For example:
+
+            list_a = [0,1,2,3,4]
+            x = list_a.pop()  # --> convert_pop(list_a)
+            y = list_a.pop(1) # --> convert_pop(list_a, 1)
+
+            dict_a = {"red":0, "blue":1, "yellow":2}
+            m = dict_a.pop("red")           # --> convert_pop(dict_a, "red")
+            n = dict_a.pop("black", 3)      # --> convert_pop(dict_a, "black", 3)
+
+        """
         assert isinstance(node, gast.Call)
         assert isinstance(node.func, gast.Attribute)
 
         target_node = node.func.value
         target_str = ast_to_source_code(target_node).strip()
 
-        if node.args:
-            idx_node = node.args[0]
-            idx_str = ast_to_source_code(idx_node).strip()
-        else:
-            idx_str = "None"
+        args_str = [ast_to_source_code(arg).strip() for arg in node.args]
 
-        new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_list_pop({}, {})".format(
-            target_str, idx_str)
-        new_call_node = gast.parse(new_call_str).body[0].value
-        return new_call_node
+        # NOTE(liym27):
+        # 1. pop stmt for a list if len(args_str) == 0
+        # 2. pop stmt for a list or dict if len(args_str) == 1
+        # 3. pop stmt for a dict if len(args_str) == 2
+        if len(args_str) <= 2:
+            new_pop_str = "paddle.jit.dy2static.convert_pop({}, {})"\
+                .format(target_str, ",".join(args_str))
+            new_pop_node = gast.parse(new_pop_str).body[0].value
+            return new_pop_node
+        else:
+            return node

@@ -17,11 +17,11 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
-__all__ = ["RMSProp"]
+__all__ = []
 
 
 class RMSProp(Optimizer):
-    """
+    r"""
     Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
     rate method. The original slides proposed RMSProp: Slide 29 of
     http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .
@@ -80,16 +80,16 @@ class RMSProp(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. \
-	    The default value is None in static mode, at this time all parameters will be updated.
-	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-	    It canbe a float value as coeff of L2 regularization or \
-	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
-	    the regularization setting here in optimizer will be ignored for this parameter. \
-	    Otherwise, the regularization setting here in optimizer will take effect. \
-	    Default None, meaning there is no regularization.
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+            It canbe a float value as coeff of L2 regularization or \
+            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            the regularization setting here in optimizer will be ignored for this parameter. \
+            Otherwise, the regularization setting here in optimizer will take effect. \
+            Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,

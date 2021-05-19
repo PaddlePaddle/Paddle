@@ -25,10 +25,18 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/errors.h"
 
 #define MAX_RANK_SUPPORTED 6
-
+// 1. BOOST_PP_REPEAT macro represents a fast horizontal repetition construct.
+//    Usage: BOOST_PP_REPEAT(count, macro, data).
+//    This macro expands to the sequence:
+//    macro(z, 0, data) macro(z, 1, data) ... macro(z, count - 1, data).
+// 2. As for our case, count = MAX_RANK_SUPPORTED(which is 6).
+//    So the range of n is 0-5(which is count-1).
+//    We want to generate case 1-6 instead of case 0-5.
+//    So we need to change n to n + 1.
 #define MESHGRID_TEMPLATE(z, n, data) \
   case n + 1: {                       \
     MeshgridForward<n + 1>(context);  \
@@ -37,10 +45,10 @@
 #define REP_MESHGRID_TEMPLATE(n) BOOST_PP_REPEAT(n, MESHGRID_TEMPLATE, ~)
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
 
-#define MESHGRID_GRAD_CASE(n)     \
-  case n: {                       \
-    MeshgridBackward<n>(context); \
-    break;                        \
+#define MESHGRID_GRAD_CASE(n)         \
+  case n + 1: {                       \
+    MeshgridBackward<n + 1>(context); \
+    break;                            \
   }
 #define MESHGRID_GRAD_TEMPLATE(z, n, data) \
   BOOST_PP_IF(COND(n), MESHGRID_GRAD_CASE(n), )
@@ -49,16 +57,6 @@
 
 namespace paddle {
 namespace operators {
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class MeshgridKernel : public framework::OpKernel<T> {
@@ -70,7 +68,8 @@ class MeshgridKernel : public framework::OpKernel<T> {
       REP_MESHGRID_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Only support tensor nums between 1 and 6."));
+            "Excepted Tensor numbers between 1 and 6, but only received d% .",
+            rank));
     }
   }
 
@@ -81,7 +80,9 @@ class MeshgridKernel : public framework::OpKernel<T> {
     auto outs = context.MultiOutput<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(
         ins.size() > 1, true,
-        platform::errors::InvalidArgument("expect at least 2 input tensors"));
+        platform::errors::InvalidArgument(
+            "Expected at least 2 input tensors, but only received d%.",
+            ins.size()));
 
     int64_t size = ins.size();
     std::vector<int64_t> shape(size);
@@ -113,19 +114,21 @@ class MeshgridKernel : public framework::OpKernel<T> {
       reshape_ins_tensor.Resize(out_dims_reshape);
       framework::DDim out_dims = framework::make_ddim(shape);
 
-      Eigen::DSizes<int, Rank> bcast_dims;
+      Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
       for (int64_t j = 0; j < size; j++) {
         bcast_dims[j] = shape[j];
       }
       bcast_dims[i] = 1;
 
       outs[i]->Resize(out_dims);
-      auto x = EigenTensor<T, Rank>::From(reshape_ins_tensor);
+      auto x = framework::EigenTensor<T, Rank>::From(
+          static_cast<const framework::Tensor>(reshape_ins_tensor));
       outs[i]->mutable_data<T>(context.GetPlace());
-      auto y = EigenTensor<T, Rank>::From(*outs[i]);
+      auto y = framework::EigenTensor<T, Rank>::From(*outs[i]);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      y.device(place) = x.broadcast(bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                   bcast_dims);
     }
   }
 };
@@ -141,7 +144,8 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
       REP_MESHGRID_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "only support tensor nums being between 1 and 6."));
+            "Excepted Tensor numbers between 1 and 6, but only received d% .",
+            n));
     }
   }
 
@@ -159,8 +163,8 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < n; i++) {
       outs[i]->mutable_data<T>(context.GetPlace());
-      auto out_grad_tmp = EigenVector<T>::Flatten(*out_grad[i]);
-      auto in_grad = EigenVector<T>::Flatten(*outs[i]);
+      auto out_grad_tmp = framework::EigenVector<T>::Flatten(*out_grad[i]);
+      auto in_grad = framework::EigenVector<T>::Flatten(*outs[i]);
 
       std::vector<int> reduce_dims_vec;
       std::vector<int> reshape_dims_vec;
@@ -175,21 +179,20 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
         }
       }
 
-      Eigen::DSizes<int, Rank> reduce_dims;
+      Eigen::DSizes<Eigen::DenseIndex, Rank> reduce_dims;
       for (int k = 0; k < n; k++) {
         reduce_dims[k] = reduce_dims_vec[k];
       }
 
-      Eigen::DSizes<int, Rank * 2> reshape_dims;
+      Eigen::DSizes<Eigen::DenseIndex, Rank * 2> reshape_dims;
       for (int k = 0; k < n * 2; k++) {
         reshape_dims[k] = reshape_dims_vec[k];
       }
 
-      auto tensor_reduce_tmp =
-          out_grad_tmp.reshape(reshape_dims).sum(reduce_dims);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      in_grad.device(place) = tensor_reduce_tmp.reshape(in_grad.dimensions());
+      EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Rank>::Eval(
+          place, in_grad, out_grad_tmp, reduce_dims, reshape_dims);
     }
   }
 };

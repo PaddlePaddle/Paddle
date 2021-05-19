@@ -29,6 +29,8 @@ def stable_softmax(x):
     return exps / np.sum(exps)
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
     def get_x_shape(self):
         return [10, 10]

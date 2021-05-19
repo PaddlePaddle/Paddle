@@ -31,6 +31,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
 
 namespace paddle {
 namespace platform {
@@ -42,6 +45,8 @@ std::mutex profiler_mu;
 static TracerOption g_tracer_option = TracerOption::kDefault;
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
+// To hook RecordEvent's events, use it to nvtx timeline
+static bool g_enable_nvprof_hook = false;
 // The thread local event list only can be accessed by the specific thread
 // The thread index of each thread
 static thread_local int32_t g_thread_id;
@@ -118,6 +123,13 @@ void SynchronizeAllDevice() {
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+  }
+#endif
+#ifdef PADDLE_WITH_HIP
+  int count = GetCUDADeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetDeviceId(i);
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
   }
 #endif
 }
@@ -298,7 +310,7 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
     if (rit != pushed_events->rend()) {
       double event_time = 0;
       double gpu_time = 0.0f;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gpu_time = rit->CudaElapsedMs(analyze_event);
 #endif
       double cpu_time = rit->CpuElapsedMs(analyze_event);
@@ -649,8 +661,14 @@ void PrintProfiler(
       }
       std::cout << std::setw(data_width) << event_item.min_time
                 << std::setw(data_width) << event_item.max_time
-                << std::setw(data_width) << event_item.ave_time
-                << std::setw(data_width) << event_item.ratio << std::endl;
+                << std::setw(data_width) << event_item.ave_time;
+      if (event_item.name.find("ext_reorder") != std::string::npos ||
+          event_item.name.find("int_reorder") != std::string::npos) {
+        std::cout << event_item.ratio << '*';
+      } else {
+        std::cout << std::setw(data_width) << event_item.ratio;
+      }
+      std::cout << std::endl;
 
       PrintProfiler(child_table, child_map, sorted_func, sorted_by, overhead,
                     sorted_domain, name_width, data_width, merge_thread,
@@ -715,12 +733,32 @@ void AnalyzeEvent(
       if (child_index[j] == 0) {
         main_event_items.push_back(event_items[j]);
         total += event_items[j].total_time;
+      } else if ((child_index[j] == 1 &&
+                  (event_items[j].name.find("ext_reorder") !=
+                       std::string::npos ||
+                   event_items[j].name.find("int_reorder") !=
+                       std::string::npos)) &&
+                 platform::GetTracerOption() != TracerOption::kAllOpDetail) {
+        size_t first_slash_pos = event_items[j].name.find('/');
+        if (first_slash_pos != std::string::npos) {
+          std::string fname = event_items[j].name.substr(0, first_slash_pos);
+          child_map->insert(
+              std::pair<std::string, EventItem>(fname, event_items[j]));
+        }
       }
     }
     // average time
     for (auto &item : main_event_items) {
       item.ave_time = item.total_time / item.calls;
       item.ratio = item.total_time / total;
+      if (platform::GetTracerOption() != TracerOption::kAllOpDetail) {
+        for (auto it = child_map->begin(); it != child_map->end(); ++it) {
+          if ((*it).first == item.name) {
+            (*it).second.ratio = (*it).second.total_time / item.total_time;
+            break;  // to find only first item
+          }
+        }
+      }
     }
     for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
       it->second.ratio = it->second.total_time / total;

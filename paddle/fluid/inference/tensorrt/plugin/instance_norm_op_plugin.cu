@@ -47,13 +47,7 @@ InstanceNormPlugin *CreateInstanceNormPluginDeserialize(const void *buffer,
 REGISTER_TRT_PLUGIN("instance_norm_plugin",
                     CreateInstanceNormPluginDeserialize);
 
-int InstanceNormPlugin::initialize() {
-  platform::dynload::cudnnCreate(&handle_);
-  platform::dynload::cudnnCreateTensorDescriptor(&x_desc_);
-  platform::dynload::cudnnCreateTensorDescriptor(&y_desc_);
-  platform::dynload::cudnnCreateTensorDescriptor(&b_desc_);
-  return 0;
-}
+int InstanceNormPlugin::initialize() { return 0; }
 
 nvinfer1::Dims InstanceNormPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) {

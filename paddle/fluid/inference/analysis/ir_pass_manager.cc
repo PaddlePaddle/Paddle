@@ -106,21 +106,33 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
-      bool int8_valid =
-          !(model_from_memory && optim_cache_dir.empty() && enable_int8);
+      bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
+                          enable_int8 && use_calib_mode);
       PADDLE_ENFORCE_EQ(
           int8_valid, true,
           platform::errors::PreconditionNotMet(
               "When you are in TRT INT8 mode, and load model from "
               "memory, you should set optim_cache_dir using "
               "config.SetOptimCacheDir()"));
-      PADDLE_ENFORCE_EQ(
-          !(model_from_memory && use_static_engine), true,
-          platform::errors::PreconditionNotMet(
-              "When you are using Paddle-TRT, and also using load model "
-              "from memory, you should set the use_static to false."));
+      if (model_from_memory && use_static_engine) {
+        PADDLE_ENFORCE_EQ(
+            optim_cache_dir.empty(), false,
+            platform::errors::PreconditionNotMet(
+                "When you are using Paddle-TRT, and using load model "
+                "from memory, and also set the use_static to true. "
+                "you must set optim_cache_dir using "
+                "config.SetOptimCacheDir()."));
+      }
 
       if (!optim_cache_dir.empty()) {
+        if (!PathExists(optim_cache_dir)) {
+          PADDLE_ENFORCE_NE(
+              MKDIR(optim_cache_dir.c_str()), -1,
+              platform::errors::PreconditionNotMet(
+                  "Can not create optimize cache directory: %s, Make sure you "
+                  "have permission to write",
+                  optim_cache_dir));
+        }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
       } else if (use_static_engine || enable_int8) {
         std::string model_opt_cache_dir =
@@ -141,11 +153,24 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("optim_input_shape",
                 new std::map<std::string, std::vector<int>>(
                     argument->optim_input_shape()));
+      bool with_dynamic_shape = argument->max_input_shape().size() > 0 &&
+                                argument->min_input_shape().size() > 0 &&
+                                argument->optim_input_shape().size() > 0;
+      pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
+      pass->Set("trt_disabled_ops", new std::vector<std::string>(
+                                        argument->tensorrt_disabled_ops()));
+      pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
+      pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not
       // run fp16.
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
+    } else if (pass_name == "dlnne_subgraph_pass") {
+      pass->Set("min_subgraph_size",
+                new int(argument->dlnne_min_subgraph_size()));
+      pass->Set("program",
+                new framework::ProgramDesc *(&argument->main_program()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool enable_int8 =
@@ -163,6 +188,12 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->xpu_l3_workspace_size()));
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
+      pass->Set("locked", new bool(argument->xpu_locked()));
+      pass->Set("autotune", new bool(argument->xpu_autotune()));
+      pass->Set("autotune_file",
+                new std::string(argument->xpu_autotune_file()));
+      pass->Set("precision", new std::string(argument->xpu_precision()));
+      pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {

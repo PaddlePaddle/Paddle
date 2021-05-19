@@ -19,33 +19,113 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
-  __global__ void op_type(const half* in1, const half* in2, half* out) { \
+  __global__ void op_type(const half *in1, const half *in2, half *out) { \
     out[0] = in1[0] sign in2[0];                                         \
   }
 
 #define COMPOUND_KERNEL(op_type, sign) \
-  __global__ void op_type(half* in1, const half* in2) { in1[0] sign in2[0]; }
+  __global__ void op_type(half *in1, const half *in2) { in1[0] sign in2[0]; }
 
 #define COMPARISON_KERNEL(op_type, sign)                                 \
-  __global__ void op_type(const half* in1, const half* in2, bool* out) { \
+  __global__ void op_type(const half *in1, const half *in2, bool *out) { \
     out[0] = in1[0] sign in2[0];                                         \
   }
 
+#ifdef PADDLE_WITH_HIP
+#define ARITHMETIC_KERNEL_LAUNCH(op_type)                                     \
+  void Test##op_type(float v_in1, float v_in2, float v_out) {                 \
+    LOG(INFO) << "Test " << #op_type << " on GPU!";                           \
+    half *in1, *in2, *out;                                                    \
+    half *d_in1, *d_in2, *d_out;                                              \
+    int size = sizeof(half);                                                  \
+    hipMalloc(reinterpret_cast<void **>(&d_in1), size);                       \
+    hipMalloc(reinterpret_cast<void **>(&d_in2), size);                       \
+    hipMalloc(reinterpret_cast<void **>(&d_out), size);                       \
+    in1 = reinterpret_cast<half *>(malloc(size));                             \
+    in2 = reinterpret_cast<half *>(malloc(size));                             \
+    out = reinterpret_cast<half *>(malloc(size));                             \
+    in1[0] = half(float16(v_in1));                                            \
+    in2[0] = half(float16(v_in2));                                            \
+    hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);                       \
+    hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);                       \
+    hipLaunchKernelGGL(op_type, dim3(1), dim3(1), 0, 0, d_in1, d_in2, d_out); \
+    hipMemcpy(out, d_out, size, hipMemcpyDeviceToHost);                       \
+    EXPECT_EQ(static_cast<float>(float16(out[0])), v_out);                    \
+    free(in1);                                                                \
+    free(in2);                                                                \
+    free(out);                                                                \
+    hipFree(d_in1);                                                           \
+    hipFree(d_in2);                                                           \
+    hipFree(d_out);                                                           \
+  }
+
+#define COMPOUND_KERNEL_LAUNCH(op_type)                                \
+  void Test##op_type(float v_in1, float v_in2, float v_out) {          \
+    LOG(INFO) << "Test " << #op_type << " on GPU!";                    \
+    half *in1, *in2;                                                   \
+    half *d_in1, *d_in2;                                               \
+    int size = sizeof(half);                                           \
+    hipMalloc(reinterpret_cast<void **>(&d_in1), size);                \
+    hipMalloc(reinterpret_cast<void **>(&d_in2), size);                \
+    in1 = reinterpret_cast<half *>(malloc(size));                      \
+    in2 = reinterpret_cast<half *>(malloc(size));                      \
+    in1[0] = half(float16(v_in1));                                     \
+    in2[0] = half(float16(v_in2));                                     \
+    hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);                \
+    hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);                \
+    hipLaunchKernelGGL(op_type, dim3(1), dim3(1), 0, 0, d_in1, d_in2); \
+    hipMemcpy(in1, d_in1, size, hipMemcpyDeviceToHost);                \
+    EXPECT_EQ(static_cast<float>(float16(in1[0])), v_out);             \
+    free(in1);                                                         \
+    free(in2);                                                         \
+    hipFree(d_in1);                                                    \
+    hipFree(d_in2);                                                    \
+  }
+
+#define COMPARISON_KERNEL_LAUNCH(op_type)                                     \
+  void Test##op_type(float v_in1, float v_in2, bool v_out) {                  \
+    LOG(INFO) << "Test " << #op_type << " on GPU!";                           \
+    half *in1, *in2;                                                          \
+    half *d_in1, *d_in2;                                                      \
+    bool *out, *d_out;                                                        \
+    int size = sizeof(half);                                                  \
+    hipMalloc(reinterpret_cast<void **>(&d_in1), size);                       \
+    hipMalloc(reinterpret_cast<void **>(&d_in2), size);                       \
+    hipMalloc(reinterpret_cast<void **>(&d_out), 1);                          \
+    in1 = reinterpret_cast<half *>(malloc(size));                             \
+    in2 = reinterpret_cast<half *>(malloc(size));                             \
+    out = reinterpret_cast<bool *>(malloc(1));                                \
+    in1[0] = half(float16(v_in1));                                            \
+    in2[0] = half(float16(v_in2));                                            \
+    hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);                       \
+    hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);                       \
+    hipLaunchKernelGGL(op_type, dim3(1), dim3(1), 0, 0, d_in1, d_in2, d_out); \
+    hipMemcpy(out, d_out, 1, hipMemcpyDeviceToHost);                          \
+    EXPECT_EQ(out[0], v_out);                                                 \
+    free(in1);                                                                \
+    free(in2);                                                                \
+    free(out);                                                                \
+    hipFree(d_in1);                                                           \
+    hipFree(d_in2);                                                           \
+    hipFree(d_out);                                                           \
+  }
+#else
 #define ARITHMETIC_KERNEL_LAUNCH(op_type)                     \
   void Test##op_type(float v_in1, float v_in2, float v_out) { \
     LOG(INFO) << "Test " << #op_type << " on GPU!";           \
     half *in1, *in2, *out;                                    \
     half *d_in1, *d_in2, *d_out;                              \
     int size = sizeof(half);                                  \
-    cudaMalloc(reinterpret_cast<void**>(&d_in1), size);       \
-    cudaMalloc(reinterpret_cast<void**>(&d_in2), size);       \
-    cudaMalloc(reinterpret_cast<void**>(&d_out), size);       \
-    in1 = reinterpret_cast<half*>(malloc(size));              \
-    in2 = reinterpret_cast<half*>(malloc(size));              \
-    out = reinterpret_cast<half*>(malloc(size));              \
+    cudaMalloc(reinterpret_cast<void **>(&d_in1), size);      \
+    cudaMalloc(reinterpret_cast<void **>(&d_in2), size);      \
+    cudaMalloc(reinterpret_cast<void **>(&d_out), size);      \
+    in1 = reinterpret_cast<half *>(malloc(size));             \
+    in2 = reinterpret_cast<half *>(malloc(size));             \
+    out = reinterpret_cast<half *>(malloc(size));             \
     in1[0] = half(float16(v_in1));                            \
     in2[0] = half(float16(v_in2));                            \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
@@ -67,10 +147,10 @@ limitations under the License. */
     half *in1, *in2;                                          \
     half *d_in1, *d_in2;                                      \
     int size = sizeof(half);                                  \
-    cudaMalloc(reinterpret_cast<void**>(&d_in1), size);       \
-    cudaMalloc(reinterpret_cast<void**>(&d_in2), size);       \
-    in1 = reinterpret_cast<half*>(malloc(size));              \
-    in2 = reinterpret_cast<half*>(malloc(size));              \
+    cudaMalloc(reinterpret_cast<void **>(&d_in1), size);      \
+    cudaMalloc(reinterpret_cast<void **>(&d_in2), size);      \
+    in1 = reinterpret_cast<half *>(malloc(size));             \
+    in2 = reinterpret_cast<half *>(malloc(size));             \
     in1[0] = half(float16(v_in1));                            \
     in2[0] = half(float16(v_in2));                            \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
@@ -91,12 +171,12 @@ limitations under the License. */
     half *d_in1, *d_in2;                                     \
     bool *out, *d_out;                                       \
     int size = sizeof(half);                                 \
-    cudaMalloc(reinterpret_cast<void**>(&d_in1), size);      \
-    cudaMalloc(reinterpret_cast<void**>(&d_in2), size);      \
-    cudaMalloc(reinterpret_cast<void**>(&d_out), 1);         \
-    in1 = reinterpret_cast<half*>(malloc(size));             \
-    in2 = reinterpret_cast<half*>(malloc(size));             \
-    out = reinterpret_cast<bool*>(malloc(1));                \
+    cudaMalloc(reinterpret_cast<void **>(&d_in1), size);     \
+    cudaMalloc(reinterpret_cast<void **>(&d_in2), size);     \
+    cudaMalloc(reinterpret_cast<void **>(&d_out), 1);        \
+    in1 = reinterpret_cast<half *>(malloc(size));            \
+    in2 = reinterpret_cast<half *>(malloc(size));            \
+    out = reinterpret_cast<bool *>(malloc(1));               \
     in1[0] = half(float16(v_in1));                           \
     in2[0] = half(float16(v_in2));                           \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);    \
@@ -111,12 +191,13 @@ limitations under the License. */
     cudaFree(d_in2);                                         \
     cudaFree(d_out);                                         \
   }
+#endif
 
 #ifdef PADDLE_CUDA_FP16
 namespace paddle {
 namespace platform {
 
-#if CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_HIP)
 ARITHMETIC_KERNEL(Add, +)
 ARITHMETIC_KERNEL(Sub, -)
 ARITHMETIC_KERNEL(Mul, *)
@@ -128,21 +209,37 @@ ARITHMETIC_KERNEL_LAUNCH(Mul)
 ARITHMETIC_KERNEL_LAUNCH(Div)
 
 // Negative sign kernel
-__global__ void Neg(half* in) { in[0] = -in[0]; }
+__global__ void Neg(half *in) { in[0] = -in[0]; }
 
 void TestNeg(float v_in, float v_out) {
   LOG(INFO) << "Test Neg on GPU!";
   half *in, *d_in;
   int size = sizeof(half);
-  cudaMalloc(reinterpret_cast<void**>(&d_in), size);
-  in = reinterpret_cast<half*>(malloc(size));
+#ifdef PADDLE_WITH_HIP
+  hipMalloc(reinterpret_cast<void **>(&d_in), size);
+#else
+  cudaMalloc(reinterpret_cast<void **>(&d_in), size);
+#endif
+  in = reinterpret_cast<half *>(malloc(size));
   in[0] = half(float16(v_in));
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(d_in, in, size, hipMemcpyHostToDevice);
+#else
   cudaMemcpy(d_in, in, size, cudaMemcpyHostToDevice);
+#endif
   Neg<<<1, 1>>>(d_in);
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(in, d_in, size, hipMemcpyDeviceToHost);
+#else
   cudaMemcpy(in, d_in, size, cudaMemcpyDeviceToHost);
+#endif
   EXPECT_EQ(static_cast<float>(float16(in[0])), v_out);
   free(in);
+#ifdef PADDLE_WITH_HIP
+  hipFree(d_in);
+#else
   cudaFree(d_in);
+#endif
 }
 
 COMPOUND_KERNEL(AddAssign, +=)
@@ -221,7 +318,7 @@ TEST(float16, lod_tensor_on_gpu) {
   framework::LoDTensor gpu_tensor;
   framework::LoDTensor dst_tensor;
 
-  float16* src_ptr = src_tensor.mutable_data<float16>(
+  float16 *src_ptr = src_tensor.mutable_data<float16>(
       framework::make_ddim({2, 2}), CPUPlace());
 
   float16 arr[4] = {float16(1.0f), float16(0.5f), float16(0.33333f),
@@ -238,7 +335,7 @@ TEST(float16, lod_tensor_on_gpu) {
 
   // Sync before comparing LoDTensors
   gpu_ctx.Wait();
-  const float16* dst_ptr = dst_tensor.data<float16>();
+  const float16 *dst_ptr = dst_tensor.data<float16>();
   ASSERT_NE(src_ptr, dst_ptr);
   for (size_t i = 0; i < 4; ++i) {
     EXPECT_EQ(src_ptr[i].x, dst_ptr[i].x);
@@ -247,7 +344,7 @@ TEST(float16, lod_tensor_on_gpu) {
 
 template <typename T>
 struct Functor {
-  bool operator()(const T& val) {
+  bool operator()(const T &val) {
     return std::type_index(typeid(T)) ==
            std::type_index(typeid(platform::float16));
   }
@@ -304,13 +401,13 @@ TEST(float16, cast) {
   auto b = a;
   {
     // change semantic, keep the same value
-    float16 c = reinterpret_cast<float16&>(reinterpret_cast<unsigned&>(b));
+    float16 c = reinterpret_cast<float16 &>(reinterpret_cast<unsigned &>(b));
     EXPECT_EQ(b, c);
   }
 
   {
     // use uint32 low 16 bit store float16
-    uint32_t c = reinterpret_cast<uint32_t&>(b);
+    uint32_t c = reinterpret_cast<uint32_t &>(b);
     float16 d;
     d.x = c;
     EXPECT_EQ(b, d);

@@ -23,10 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/math/blas.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/parameter_prefetch.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -106,7 +102,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
             auto id_index = table_t.GetIndexFromId(ids[i]);
 
             if (id_index != -1) {
-              if (input_data_type == framework::proto::VarType::INT8) {
+              if (input_data_type == framework::proto::VarType::INT8 ||
+                  input_data_type == framework::proto::VarType::BF16) {
                 memcpy(output + i * row_width, table + id_index * row_width,
                        row_width * sizeof(T));
               } else {
@@ -132,7 +129,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
                     "the input key should be exists. But received %d.",
                     id_index));
 
-            if (input_data_type == framework::proto::VarType::INT8) {
+            if (input_data_type == framework::proto::VarType::INT8 ||
+                input_data_type == framework::proto::VarType::BF16) {
               memcpy(output + i * row_width, table + id_index * row_width,
                      row_width * sizeof(T));
             } else {

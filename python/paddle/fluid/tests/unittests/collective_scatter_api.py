@@ -47,10 +47,10 @@ class TestCollectiveScatterAPI(TestCollectiveAPIRunnerBase):
             tindata = layers.data(
                 name="tindata",
                 shape=[10, 1000],
-                dtype='float64',
+                dtype='float32',
                 append_batch_size=False)
             toutdata = layers.fill_constant(
-                shape=[5, 1000], dtype='float64', value=1.0)
+                shape=[5, 1000], dtype='float32', value=1.0)
             tensor_list = None
             if rank == 1:
                 tensor_list = paddle.split(tindata, 2, axis=0)

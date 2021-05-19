@@ -15,6 +15,7 @@
 from __future__ import print_function
 import time
 
+import ast
 import unittest
 import os
 import sys
@@ -185,8 +186,8 @@ class TestDistRunnerBase(object):
             fleet.save_inference_model(exe, infer_save_dir_fleet,
                                        feeded_var_names, [avg_cost])
 
-    def run_gpu_fleet_api_trainer(self, args):
-        assert args.update_method == "nccl2"
+    def run_use_fleet_api_trainer(self, args):
+        assert args.update_method == "nccl2" or "bkcl"
 
         self.lr = args.lr
 
@@ -206,7 +207,7 @@ class TestDistRunnerBase(object):
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        print_to_err("gpu_fleet", "fleet.node_num:")
+        print_to_err("use_fleet", "fleet.node_num:")
         # "fleet.node_id:", fleet.node_id(),
         # "fleet.trainer_num:", fleet.worker_num())
 
@@ -216,8 +217,16 @@ class TestDistRunnerBase(object):
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
 
-        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = fluid.CUDAPlace(device_id)
+        if fluid.core.is_compiled_with_cuda():
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(device_id)
+        elif fluid.core.is_compiled_with_xpu():
+            device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+            place = fluid.XPUPlace(device_id)
+        else:
+            raise ValueError(
+                "fleet dygraph api must in paddlepaddle-xpu or paddlepaddle-gpu."
+            )
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
@@ -373,6 +382,10 @@ class TestDistRunnerBase(object):
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
 
+        if args.fuse_all_reduce is not None:
+            sys.stderr.write('fuse_all_reduce={}'.format(args.fuse_all_reduce))
+            build_stra.fuse_all_reduce_ops = args.fuse_all_reduce
+
         if args.hogwild:
             build_stra.async_mode = True
 
@@ -459,8 +472,14 @@ class TestParallelDyGraphRunnerBase(object):
     def run_trainer(self, args):
 
         seed = 90
-        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = fluid.CUDAPlace(device_id)
+        if fluid.core.is_compiled_with_cuda():
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(device_id)
+        elif fluid.core.is_compiled_with_xpu():
+            device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+            place = fluid.XPUPlace(device_id)
+        else:
+            assert ("Only support CUDAPlace or XPUPlace for now.")
 
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = seed
@@ -471,7 +490,8 @@ class TestParallelDyGraphRunnerBase(object):
             model, train_reader, opt = self.get_model()
             nranks = len(args.endpoints.split(",")) if args.endpoints else 1
 
-            if args.update_method == "nccl2":
+            #if args.update_method == "nccl2":
+            if args.update_method == "nccl2" or args.update_method == "bkcl":
                 strategy = dygraph.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
@@ -481,7 +501,12 @@ class TestParallelDyGraphRunnerBase(object):
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
                 dygraph.parallel.prepare_context(strategy)
-                model = dygraph.parallel.DataParallel(model, strategy)
+                if not args.find_unused_parameters:
+                    model = dygraph.parallel.DataParallel(
+                        model, strategy, find_unused_parameters=False)
+                else:
+                    model = dygraph.parallel.DataParallel(
+                        model, strategy, find_unused_parameters=True)
                 print_to_err(type(self).__name__, "model built in dygraph")
             out_losses = []
             print_to_err(type(self).__name__, "begin to run dygraph training")
@@ -499,7 +524,8 @@ class TestParallelDyGraphRunnerBase(object):
                 loss.backward()
 
                 opt.minimize(loss)
-                model.clear_gradients()
+                if not args.accumulate_gradient:
+                    model.clear_gradients()
         print_to_out(out_losses)
 
     def run_trainer_with_spawn(self, args):
@@ -522,7 +548,10 @@ class TestParallelDyGraphRunnerBase(object):
         # 4. train model
         model, train_reader, opt = self.get_model()
         if args.update_method == "nccl2":
-            model = paddle.DataParallel(model)
+            if args.find_unused_parameters:
+                model = paddle.DataParallel(model, find_unused_parameters=True)
+            else:
+                model = paddle.DataParallel(model, find_unused_parameters=False)
 
         out_losses = []
         for step_id, data in enumerate(train_reader()):
@@ -538,7 +567,7 @@ class TestParallelDyGraphRunnerBase(object):
             model.clear_gradients()
         return out_losses
 
-    def run_gpu_fleet_api_trainer(self, args):
+    def run_use_fleet_api_trainer(self, args):
         import paddle.distributed.fleet as fleet
         import paddle.distributed.fleet.base.role_maker as role_maker
         # 1. enable dygraph
@@ -553,13 +582,18 @@ class TestParallelDyGraphRunnerBase(object):
         # get trainer id
         args.trainer_id = paddle.distributed.get_rank()
 
+        # set strategy
+        strategy = fleet.DistributedStrategy()
+        if args.find_unused_parameters:
+            strategy.find_unused_parameters = True
+
         # 3. init parallel env
-        if args.update_method == "nccl2":
-            fleet.init(is_collective=True)
+        if args.update_method == "nccl2" or "bkcl":
+            fleet.init(is_collective=True, strategy=strategy)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2":
+        if args.update_method == "nccl2" or "bkcl":
             opt = fleet.distributed_optimizer(opt)
             model = fleet.distributed_model(model)
 
@@ -574,7 +608,8 @@ class TestParallelDyGraphRunnerBase(object):
             loss.backward()
 
             opt.step()
-            opt.clear_grad()
+            if not args.accumulate_gradient:
+                opt.clear_grad()
         print_to_out(out_losses)
 
 
@@ -587,14 +622,14 @@ def runtime_main(test_class):
         '--update_method',
         type=str,
         default="local",
-        choices=["pserver", "nccl2", "local", "nccl2_reduce_layer"])
+        choices=["pserver", "nccl2", "bkcl", "local", "nccl2_reduce_layer"])
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
     parser.add_argument('--enable_backward_deps', action='store_true')
     parser.add_argument('--use_hallreduce', action='store_true')
     parser.add_argument('--use_pipeline', action='store_true')
-    parser.add_argument('--gpu_fleet_api', action='store_true')
+    parser.add_argument('--use_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
@@ -603,7 +638,10 @@ def runtime_main(test_class):
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
+    parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
+    parser.add_argument('--accumulate_gradient', action='store_true')
+    parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument('--hogwild', action='store_true')
@@ -620,14 +658,19 @@ def runtime_main(test_class):
         type=bool,
         default=False)
     parser.add_argument('--sync_batch_norm', action='store_true')
+    parser.add_argument(
+        '--fuse_all_reduce',
+        required=False,
+        type=ast.literal_eval,
+        default=None)
 
     args = parser.parse_args()
 
     model = test_class()
     if args.role == "pserver" and args.update_method == "pserver":
         model.run_pserver(args)
-    elif args.gpu_fleet_api:
-        model.run_gpu_fleet_api_trainer(args)
+    elif args.use_fleet_api:
+        model.run_use_fleet_api_trainer(args)
     elif args.use_pipeline:
         model.run_pipeline_trainer(args)
     else:
@@ -646,9 +689,15 @@ class TestDistBase(unittest.TestCase):
     def _after_setup_config(self):
         if self._enforce_place == "CPU":
             self.__use_cuda = False
+            self.__use_xpu = False
             self._use_dgc = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
+            self.__use_xpu = False
+        elif self._enforce_place == "XPU":
+            self.__use_cuda = False
+            self.__use_xpu = True
+            self._use_dgc = False
         else:
             if fluid.core.is_compiled_with_cuda():
                 self.__use_cuda = True
@@ -671,6 +720,7 @@ class TestDistBase(unittest.TestCase):
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
         self._nccl2_mode = False
+        self._bkcl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
         # FIXME(typhoonzero): I added this stupid argument to enable
@@ -683,11 +733,14 @@ class TestDistBase(unittest.TestCase):
         self._dygraph = False
         self._nccl_comm_num = 1
         self._enable_backward_deps = False
-        self._gpu_fleet_api = False
+        self._use_fleet_api = False
         self._use_local_sgd = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._save_model = False
+        self._fuse_all_reduce = None
+        self._accumulate_gradient = False
+        self._find_unused_parameters = False
         self._setup_config()
 
         global DIST_UT_PORT
@@ -772,7 +825,7 @@ class TestDistBase(unittest.TestCase):
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1,
                    log_name="",
-                   gpus="0"):
+                   devices="0"):
 
         cmd = self._python_interp
 
@@ -793,7 +846,14 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             cmd += " --use_cuda"
             env_local = {
-                "CUDA_VISIBLE_DEVICES": gpus,
+                "CUDA_VISIBLE_DEVICES": devices,
+                "PADDLE_TRAINERS_NUM": "1",
+                "PADDLE_TRAINER_ID": "0"
+            }
+        elif self.__use_xpu:
+            cmd += " --use_xpu"
+            env_local = {
+                "FLAGS_selected_xpus": devices,
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0"
             }
@@ -801,8 +861,14 @@ class TestDistBase(unittest.TestCase):
             env_local = {'CPU_NUM': '1'}
 
         # not use dgc in single card
-        if len(gpus) > 1 and self._use_dgc:
+        if len(devices) > 1 and self._use_dgc:
             cmd += " --use_dgc"
+
+        if self._accumulate_gradient:
+            cmd += " --accumulate_gradient"
+
+        if self._find_unused_parameters:
+            cmd += " --find_unused_parameters"
 
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
@@ -945,11 +1011,24 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_cuda"
             env.update({
                 "FLAGS_selected_gpus": "{}".format(0),
-                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id % 2),
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
+            })
+        # TODO(liuyuhui):XPU_VISIBLE_DEVICES is not working right now,
+        # will update it after Badiu Kunlun partners' support.
+        elif self.__use_xpu:
+            tr_cmd += " --use_xpu"
+            env.update({
+                "FLAGS_selected_xpus": "{}".format(trainer_id),
+                #"XPU_VISIBLE_DEVICES": "{}".format(trainer_id + 1),
+                "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
+                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
+                "PADDLE_CURRENT_ENDPOINT": ep,
+                "GLOG_v": "2",
             })
         else:
             env.update({'CPU_NUM': '1'})
@@ -957,10 +1036,16 @@ class TestDistBase(unittest.TestCase):
         if self._use_dgc:
             tr_cmd += " --use_dgc"
 
+        if self._accumulate_gradient:
+            tr_cmd += " --accumulate_gradient"
+
+        if self._find_unused_parameters:
+            tr_cmd += " --find_unused_parameters"
+
         if self._pipeline_mode:
             tr_cmd += " --use_pipeline"
         if self._mp_mode:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id % 2)}
+            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
@@ -971,8 +1056,11 @@ class TestDistBase(unittest.TestCase):
         if self._enable_backward_deps:
             tr_cmd += " --enable_backward_deps"
 
-        if self._gpu_fleet_api:
-            tr_cmd += " --gpu_fleet_api"
+        if self._fuse_all_reduce is not None:
+            tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
+
+        if self._use_fleet_api:
+            tr_cmd += " --use_fleet_api"
             if self._use_local_sgd:
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:
@@ -985,13 +1073,14 @@ class TestDistBase(unittest.TestCase):
 
         return tr_cmd, env
 
-    def _run_cluster_nccl2(self, model, envs, nccl2_reduce_layer,
-                           check_error_log, log_name):
+    def _run_cluster_nccl2(self, model, envs, update_method, check_error_log,
+                           log_name):
         if self._use_hallreduce:
             self._ps_endpoints = ""
 
             global DIST_UT_PORT
             if DIST_UT_PORT == 0:
+                # NOTE(wangxi). hallreduce test must use 4cards after nccl>=2.7
                 for i in range(0, 4):
                     self._ps_endpoints += "127.0.0.1:%s," % (
                         self._find_free_port())
@@ -1003,10 +1092,6 @@ class TestDistBase(unittest.TestCase):
 
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
         worker_endpoints = self._ps_endpoints.split(",")
-        if nccl2_reduce_layer:
-            update_method = "nccl2_reduce_layer"
-        else:
-            update_method = "nccl2"
 
         trainer_num = len(worker_endpoints)
 
@@ -1043,6 +1128,7 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             print("outs[0]:", outs[0])
             print("outs[1]:", outs[1])
+
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def _run_pipeline(self, model, envs, check_error_log, log_name):
@@ -1110,7 +1196,8 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_vmodule"] = \
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
-                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10,request_handler_impl=10"
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10," \
+                "grpc_server=10,request_handler_impl=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)
@@ -1134,16 +1221,24 @@ class TestDistBase(unittest.TestCase):
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(
                     model_file,
                     required_envs,
-                    True,
-                    check_error_log,
+                    update_method="nccl2_reduce_layer",
+                    check_error_log=check_error_log,
                     log_name=log_name)
             else:
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(
                     model_file,
                     required_envs,
-                    False,
-                    check_error_log,
+                    update_method='nccl2',
+                    check_error_log=check_error_log,
                     log_name=log_name)
+        elif self._bkcl_mode:
+            tr0_losses, tr1_losses = self._run_cluster_nccl2(
+                model_file,
+                required_envs,
+                update_method='bkcl',
+                check_error_log=check_error_log,
+                log_name=log_name)
+
         elif self._pipeline_mode:
             tr0_losses, tr1_losses = self._run_pipeline(
                 model_file, required_envs, check_error_log, log_name=log_name)
@@ -1180,7 +1275,7 @@ class TestDistBase(unittest.TestCase):
                 required_envs,
                 check_error_log,
                 log_name=log_name + "_dgc_2cards",
-                gpus="0,1")
+                devices="0,1")
 
             self._use_dgc = False
             base_losses = self._run_local(
@@ -1188,7 +1283,7 @@ class TestDistBase(unittest.TestCase):
                 required_envs,
                 check_error_log,
                 log_name=log_name + "_base_2cards",
-                gpus="0,1")
+                devices="0,1")
 
             self._use_dgc = True
 

@@ -36,11 +36,13 @@ include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
+include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/include")
 
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
+link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
 if (WIN32)
@@ -83,14 +85,24 @@ if (USE_TENSORRT AND WITH_GPU)
   endif()
   set(TENSORRT_INCLUDE_DIR ${TENSORRT_ROOT}/include)
   set(TENSORRT_LIB_DIR ${TENSORRT_ROOT}/lib)
-endif()
-
-if (NOT WIN32)
-  if (USE_TENSORRT AND WITH_GPU)
-      include_directories("${TENSORRT_INCLUDE_DIR}")
-      link_directories("${TENSORRT_LIB_DIR}")
+  file(READ ${TENSORRT_INCLUDE_DIR}/NvInfer.h TENSORRT_VERSION_FILE_CONTENTS)
+  string(REGEX MATCH "define NV_TENSORRT_MAJOR +([0-9]+)" TENSORRT_MAJOR_VERSION
+    "${TENSORRT_VERSION_FILE_CONTENTS}")
+  if("${TENSORRT_MAJOR_VERSION}" STREQUAL "")
+    file(READ ${TENSORRT_INCLUDE_DIR}/NvInferVersion.h TENSORRT_VERSION_FILE_CONTENTS)
+    string(REGEX MATCH "define NV_TENSORRT_MAJOR +([0-9]+)" TENSORRT_MAJOR_VERSION
+      "${TENSORRT_VERSION_FILE_CONTENTS}")
   endif()
-endif(NOT WIN32)
+  if("${TENSORRT_MAJOR_VERSION}" STREQUAL "")
+    message(SEND_ERROR "Failed to detect TensorRT version.")
+  endif()
+  string(REGEX REPLACE "define NV_TENSORRT_MAJOR +([0-9]+)" "\\1"
+    TENSORRT_MAJOR_VERSION "${TENSORRT_MAJOR_VERSION}")
+  message(STATUS "Current TensorRT header is ${TENSORRT_INCLUDE_DIR}/NvInfer.h. "
+    "Current TensorRT version is v${TENSORRT_MAJOR_VERSION}. ")
+  include_directories("${TENSORRT_INCLUDE_DIR}")
+  link_directories("${TENSORRT_LIB_DIR}")
+endif()
 
 if(WITH_MKL)
   set(MATH_LIB_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}mklml")
@@ -122,12 +134,12 @@ else()
 endif()
 
 if(WITH_STATIC_LIB)
-  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_inference${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
   if(WIN32)
-    set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+    set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_inference${CMAKE_STATIC_LIBRARY_SUFFIX})
   else()
-    set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_inference${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
 endif()
 
@@ -135,26 +147,29 @@ if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags protobuf  xxhash
+      glog gflags protobuf xxhash cryptopp
       ${EXTERNAL_LIB})
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf  xxhash ${EXTERNAL_LIB})
+      glog gflags_static libprotobuf xxhash cryptopp-static ${EXTERNAL_LIB})
   set(DEPS ${DEPS} shlwapi.lib)
 endif(NOT WIN32)
 
 if(WITH_GPU)
   if(NOT WIN32)
     if (USE_TENSORRT)
-      set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/libnvinfer${CMAKE_STATIC_LIBRARY_SUFFIX})
-      set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/libnvinfer_plugin${CMAKE_STATIC_LIBRARY_SUFFIX})
+      set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/libnvinfer${CMAKE_SHARED_LIBRARY_SUFFIX})
+      set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/libnvinfer_plugin${CMAKE_SHARED_LIBRARY_SUFFIX})
     endif()
     set(DEPS ${DEPS} ${CUDA_LIB}/libcudart${CMAKE_SHARED_LIBRARY_SUFFIX})
   else()
     if(USE_TENSORRT)
       set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_STATIC_LIBRARY_SUFFIX})
       set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_STATIC_LIBRARY_SUFFIX})
+      if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+        set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_STATIC_LIBRARY_SUFFIX})
+      endif()
     endif()
     set(DEPS ${DEPS} ${CUDA_LIB}/cudart${CMAKE_STATIC_LIBRARY_SUFFIX} )
     set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
@@ -172,6 +187,11 @@ if(WIN32)
             COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
               ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
     )
+    if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+      add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
+              COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_SHARED_LIBRARY_SUFFIX}
+                ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+    endif()
   endif()
   if(WITH_MKL)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
@@ -186,7 +206,7 @@ if(WIN32)
   endif()
   if(NOT WITH_STATIC_LIB)
       add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
-        COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_inference.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
       )
   endif()
 endif()

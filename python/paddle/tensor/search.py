@@ -16,32 +16,20 @@ import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import core, layers
+from paddle.common_ops_import import in_dygraph_mode
+from paddle.common_ops_import import convert_np_dtype_to_dtype_
+from paddle.common_ops_import import Variable
+from paddle.common_ops_import import VarDesc
 
 # TODO: define searching & indexing functions of a tensor  
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
 # from ..fluid.layers import has_nan  #DEFINE_ALIAS
 
-__all__ = [
-    'argmax',
-    'argmin',
-    'argsort',
-    'masked_select',
-    'topk',
-    'where',
-    'index_select',
-    'nonzero',
-    'sort',
-    'index_sample',
-]
-
-from paddle.common_ops_import import *
+__all__ = []
 
 
 def argsort(x, axis=-1, descending=False, name=None):
     """
-	:alias_main: paddle.argsort
-	:alias: paddle.argsort,paddle.tensor.argsort,paddle.tensor.search.argsort
-
     This OP sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
@@ -67,7 +55,6 @@ def argsort(x, axis=-1, descending=False, name=None):
 
             import paddle
             
-            paddle.disable_static()
             x = paddle.to_tensor([[[5,8,9,5],
                                    [0,0,1,7],
                                    [6,9,2,4]],
@@ -78,21 +65,21 @@ def argsort(x, axis=-1, descending=False, name=None):
             out1 = paddle.argsort(x=x, axis=-1)
             out2 = paddle.argsort(x=x, axis=0)
             out3 = paddle.argsort(x=x, axis=1)
-            print(out1.numpy())
+            print(out1)
             #[[[0 3 1 2]
             #  [0 1 2 3]
             #  [2 3 0 1]]
             # [[1 3 2 0]
             #  [0 1 2 3]
             #  [2 0 3 1]]]
-            print(out2.numpy())
+            print(out2)
             #[[[0 1 1 1]
             #  [0 0 0 0]
             #  [1 1 1 0]]
             # [[1 0 0 0]
             #  [1 1 1 1]
             #  [0 0 0 1]]]
-            print(out3.numpy())
+            print(out3)
             #[[[1 1 1 2]
             #  [0 0 2 0]
             #  [2 2 0 1]]
@@ -149,17 +136,16 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
 
             import paddle
 
-            paddle.disable_static()
             x =  paddle.to_tensor([[5,8,9,5],
                                      [0,0,1,7],
                                      [6,9,2,4]])
             out1 = paddle.argmax(x)
-            print(out1.numpy()) # 2
+            print(out1) # 2
             out2 = paddle.argmax(x, axis=1)
-            print(out2.numpy()) 
+            print(out2) 
             # [2 3 1]
             out3 = paddle.argmax(x, axis=-1)
-            print(out3.numpy()) 
+            print(out3) 
             # [2 3 1]
     """
     if axis is not None and not isinstance(axis, int):
@@ -227,17 +213,16 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
 
             import paddle
 
-            paddle.disable_static()
             x =  paddle.to_tensor([[5,8,9,5],
                                      [0,0,1,7],
                                      [6,9,2,4]])
             out1 = paddle.argmin(x)
-            print(out1.numpy()) # 4
+            print(out1) # 4
             out2 = paddle.argmin(x, axis=1)
-            print(out2.numpy()) 
+            print(out2) 
             # [0 0 2]
             out3 = paddle.argmin(x, axis=-1)
-            print(out3.numpy()) 
+            print(out3) 
             # [0 0 2]
     """
     if axis is not None and not isinstance(axis, int):
@@ -354,25 +339,23 @@ def nonzero(x, as_tuple=False):
         Tensor. The data type is int64.
 
     Examples:
-    
-        .. code-block:: python
 
+        .. code-block:: python
 
             import paddle
 
             x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
-                          [0.0, 2.0, 0.0],
-                          [0.0, 0.0, 3.0]])
+                                   [0.0, 2.0, 0.0],
+                                   [0.0, 0.0, 3.0]])
             x2 = paddle.to_tensor([0.0, 1.0, 0.0, 3.0])
-            x3 = paddle.to_tensor([0.0, 0.0, 0.0])
             out_z1 = paddle.nonzero(x1)
-            print(out_z1.numpy())
+            print(out_z1)
             #[[0 0]
             # [1 1]
             # [2 2]]
             out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
             for out in out_z1_tuple:
-                print(out.numpy())
+                print(out)
             #[[0]
             # [1]
             # [2]]
@@ -380,21 +363,15 @@ def nonzero(x, as_tuple=False):
             # [1]
             # [2]]
             out_z2 = paddle.nonzero(x2)
-            print(out_z2.numpy())
+            print(out_z2)
             #[[1]
             # [3]]
             out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
             for out in out_z2_tuple:
-                print(out.numpy())
+                print(out)
             #[[1]
             # [3]]
-            out_z3 = paddle.nonzero(x3)
-            print(out_z3.numpy())
-            #[]
-            out_z3_tuple = paddle.nonzero(x3, as_tuple=True)
-            for out in out_z3_tuple:
-                print(out.numpy())
-            #[]                    
+
     """
     list_out = []
     shape = x.shape
@@ -413,14 +390,12 @@ def nonzero(x, as_tuple=False):
         for i in range(rank):
             list_out.append(
                 layers.slice(
-                    outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
+                    outs, axes=[1], starts=[i], ends=[i + 1]))
         return tuple(list_out)
 
 
 def sort(x, axis=-1, descending=False, name=None):
     """
-	:alias_main: paddle.sort
-	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
 
     This OP sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
@@ -439,10 +414,11 @@ def sort(x, axis=-1, descending=False, name=None):
     Returns:
         Tensor: sorted tensor(with the same shape and data type as ``x``).
     Examples:
+
         .. code-block:: python
+
             import paddle
-            
-            paddle.disable_static()
+
             x = paddle.to_tensor([[[5,8,9,5],
                                    [0,0,1,7],
                                    [6,9,2,4]],
@@ -453,21 +429,21 @@ def sort(x, axis=-1, descending=False, name=None):
             out1 = paddle.sort(x=x, axis=-1)
             out2 = paddle.sort(x=x, axis=0)
             out3 = paddle.sort(x=x, axis=1)
-            print(out1.numpy())
+            print(out1)
             #[[[5. 5. 8. 9.]
             #  [0. 0. 1. 7.]
             #  [2. 4. 6. 9.]]
             # [[2. 2. 4. 5.]
             #  [4. 7. 7. 9.]
             #  [0. 1. 6. 7.]]]
-            print(out2.numpy())
+            print(out2)
             #[[[5. 2. 4. 2.]
             #  [0. 0. 1. 7.]
             #  [1. 7. 0. 4.]]
             # [[5. 8. 9. 5.]
             #  [4. 7. 7. 9.]
             #  [6. 9. 2. 6.]]]
-            print(out3.numpy())
+            print(out3)
             #[[[0. 0. 1. 4.]
             #  [5. 8. 2. 5.]
             #  [6. 9. 9. 7.]]
@@ -494,7 +470,7 @@ def sort(x, axis=-1, descending=False, name=None):
 
 
 def where(condition, x, y, name=None):
-    """
+    r"""
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::
@@ -610,7 +586,7 @@ def index_sample(x, index):
                                        [500, 600, 700, 800],
                                        [900, 1000, 1100, 1200]], dtype='int32')
             out_z1 = paddle.index_sample(x, index)
-            print(out_z1.numpy())
+            print(out_z1)
             #[[1. 2. 3.]
             # [6. 7. 8.]
             # [9. 9. 9.]]
@@ -619,17 +595,17 @@ def index_sample(x, index):
             # get the value of the element of the corresponding index in other tensors
             top_value, top_index = paddle.topk(x, k=2)
             out_z2 = paddle.index_sample(target, top_index)
-            print(top_value.numpy())
+            print(top_value)
             #[[ 4.  3.]
             # [ 8.  7.]
             # [12. 11.]]
 
-            print(top_index.numpy())
+            print(top_index)
             #[[3 2]
             # [3 2]
             # [3 2]]
 
-            print(out_z2.numpy())
+            print(out_z2)
             #[[ 400  300]
             # [ 800  700]
             # [1200 1100]]
@@ -672,7 +648,6 @@ def masked_select(x, mask, name=None):
         .. code-block:: python
 
             import paddle
-
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                   [5.0, 6.0, 7.0, 8.0],
@@ -726,33 +701,31 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
            import paddle
 
-           paddle.disable_static()
-
            tensor_1 = paddle.to_tensor([1, 4, 5, 7])
            value_1, indices_1 = paddle.topk(tensor_1, k=1)
-           print(value_1.numpy())
+           print(value_1)
            # [7]
-           print(indices_1.numpy())
+           print(indices_1)
            # [3] 
            tensor_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
            value_2, indices_2 = paddle.topk(tensor_2, k=1)
-           print(value_2.numpy())
+           print(value_2)
            # [[7]
            #  [6]]
-           print(indices_2.numpy())
+           print(indices_2)
            # [[3]
            #  [1]]
            value_3, indices_3 = paddle.topk(tensor_2, k=1, axis=-1)
-           print(value_3.numpy())
+           print(value_3)
            # [[7]
            #  [6]]
-           print(indices_3.numpy())
+           print(indices_3)
            # [[3]
            #  [1]]
            value_4, indices_4 = paddle.topk(tensor_2, k=1, axis=0)
-           print(value_4.numpy())
+           print(value_4)
            # [[2 6 5 7]]
-           print(indices_4.numpy())
+           print(indices_4)
            # [[1 1 0 0]]
 
     """

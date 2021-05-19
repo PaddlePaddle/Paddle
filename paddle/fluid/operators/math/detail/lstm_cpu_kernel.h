@@ -35,7 +35,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group LSTM CPU
 
 template <class T, class Op>
 void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
@@ -467,7 +467,7 @@ void cpu_lstm_backward(const platform::CPUDeviceContext &context, Op op,
   }
 }
 
-#endif
+#endif  // @{ End Group LSTM CPU
 
 }  // namespace detail
 }  // namespace math

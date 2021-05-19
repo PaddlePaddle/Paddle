@@ -136,7 +136,7 @@ TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {
   MainTest({"conv2d", "pool2d"}, 3);
 }
 
-TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(7); }
+TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(10); }
 
 }  // namespace ir
 }  // namespace framework

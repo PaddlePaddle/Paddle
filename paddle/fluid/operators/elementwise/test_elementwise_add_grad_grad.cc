@@ -60,7 +60,7 @@ TEST(test_elementwise_add_grad_grad_without_ddx, cpu_place) {
   TestElementwiseAddGradGradWithoutDDX<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_elementwise_add_grad_grad_without_ddx, gpu_place) {
   framework::DDim dims({32, 64});
   platform::CUDAPlace p(0);

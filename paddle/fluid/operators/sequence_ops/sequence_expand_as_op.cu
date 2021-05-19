@@ -62,7 +62,7 @@ static __global__ void sequence_expand_as_grad_kernel(
 }
 
 template <typename T>
-struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
+struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
   void operator()(
       const platform::CUDADeviceContext &context, const LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/

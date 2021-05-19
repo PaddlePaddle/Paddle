@@ -198,7 +198,6 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       memory::Copy(place, rpn_roi_probs_data + num_proposals, place,
                    scores.data<T>(), sizeof(T) * scores.numel(),
                    dev_ctx.stream());
-      dev_ctx.Wait();
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
       tmp_num.push_back(proposals.dims()[0]);

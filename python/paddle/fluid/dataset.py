@@ -74,6 +74,7 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
 
     def set_pipe_command(self, pipe_command):
         """
@@ -251,9 +252,11 @@ class DatasetBase(object):
                 slot_var.type = "float"
             elif var.dtype == core.VarDesc.VarType.INT64:
                 slot_var.type = "uint64"
+            elif var.dtype == core.VarDesc.VarType.INT32:
+                slot_var.type = "uint32"
             else:
                 raise ValueError(
-                    "Currently, fluid.dataset only supports dtype=float32 and dtype=int64"
+                    "Currently, fluid.dataset only supports dtype=float32, dtype=int32 and dtype=int64"
                 )
 
     def set_hdfs_config(self, fs_name, fs_ugi):
@@ -299,6 +302,15 @@ class DatasetBase(object):
         self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_readers()
+
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = use_ps_gpu
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
@@ -351,6 +363,7 @@ class InMemoryDataset(DatasetBase):
         self.enable_pv_merge = False
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
+        self.trainer_num = -1
 
     @deprecated(
         since="2.0.0",
@@ -390,7 +403,10 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     @deprecated(
@@ -399,7 +415,10 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     @deprecated(
@@ -479,6 +498,23 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.parse_logkey = parse_logkey
+
+    def _set_trainer_num(self, trainer_num):
+        """
+        Set trainer num
+
+        Args:
+            trainer_num(int): trainer num
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_trainer_num(1)
+
+        """
+        self.trainer_num = trainer_num
 
     @deprecated(
         since="2.0.0",
@@ -766,16 +802,16 @@ class InMemoryDataset(DatasetBase):
             thread_num(int): shuffle thread num. Default is 12.
 
         """
-        trainer_num = 1
         if fleet is not None:
             fleet._role_maker.barrier_worker()
-            trainer_num = fleet.worker_num()
+            if self.trainer_num == -1:
+                self.trainer_num = fleet.worker_num()
         if self.fleet_send_batch_size is None:
             self.fleet_send_batch_size = 1024
         if self.fleet_send_sleep_seconds is None:
             self.fleet_send_sleep_seconds = 0
         self.dataset.register_client2client_msg_handler()
-        self.dataset.set_trainer_num(trainer_num)
+        self.dataset.set_trainer_num(self.trainer_num)
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         self.dataset.set_fleet_send_sleep_seconds(self.fleet_send_sleep_seconds)
         if fleet is not None:

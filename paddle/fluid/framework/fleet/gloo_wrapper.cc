@@ -14,7 +14,16 @@ limitations under the License. */
 #include "paddle/fluid/string/string_helper.h"
 
 namespace gloo {
+namespace transport {
+class Device;
+}  // namespace transport
+}  // namespace gloo
+
+namespace gloo {
 namespace rendezvous {
+
+class HTTPStore;
+class Store;
 
 constexpr int kNodeSize = 136;
 
@@ -229,18 +238,18 @@ void ParallelConnectContext::connectFullMesh(
             store.wait({key}, getTimeout());
 
             std::vector<char> allAddrs;
-            auto max_retry_times = 5;
+            auto max_retry_times = 10;
             // Connect to other side of this pair
 
             while (max_retry_times > 0) {
               allAddrs = store.get(key);
-
               VLOG(3) << "store get all address size: " << allAddrs.size()
                       << " except: " << total_add_size;
               if (allAddrs.size() == static_cast<size_t>(total_add_size)) {
                 break;
               }
 
+              sleep(5);
               --max_retry_times;
             }
 
@@ -272,12 +281,13 @@ void GlooWrapper::Init() {
   attr.iface = iface_;
   std::shared_ptr<gloo::rendezvous::HdfsStore> file_store = nullptr;
   std::shared_ptr<gloo::rendezvous::HTTPStore> http_store = nullptr;
-  auto context =
-      std::make_shared<gloo::rendezvous::ParallelConnectContext>(rank_, size_);
-  context->setTimeout(run_timeout_);
   auto dev = gloo::transport::tcp::CreateDevice(attr);
+
   switch (store_type_) {
     case GlooStoreType::HDFS: {
+      auto context = std::make_shared<gloo::rendezvous::ParallelConnectContext>(
+          rank_, size_);
+      context->setTimeout(run_timeout_);
       std::string cmd = std::string("${HADOOP_HOME}/bin/hadoop fs");
       cmd += " -D fs.default.name=" + hdfs_name_;
       cmd += " -D hadoop.job.ugi=" + hdfs_ugi_;
@@ -287,23 +297,28 @@ void GlooWrapper::Init() {
       auto prefix_store =
           std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, *file_store);
       context->connectFullMesh(*prefix_store, dev);
+      context_ = std::move(context);
       break;
     }
     case GlooStoreType::HTTP: {
+      auto context = std::make_shared<gloo::rendezvous::Context>(rank_, size_);
+      context->setTimeout(run_timeout_);
       http_store = std::make_shared<gloo::rendezvous::HTTPStore>(
           http_ip_, http_port_, prefix_ + "_" + http_scope_, rank_);
       http_store->SetTimeoutSeconds(init_timeout_.count());
       context->connectFullMesh(*http_store, dev);
       http_store->Finalize();
+      VLOG(3) << "after calling http_store->Finalize.";
+      context_ = std::move(context);
       break;
     }
     default:
       LOG(ERROR) << "unknown store type " << store_type_;
       exit(-1);
   }
-  context_ = std::move(context);
 #endif
   is_initialized_ = true;
+  VLOG(3) << "gloo initialized done.";
 }
 
 template std::vector<int64_t> GlooWrapper::AllReduce<int64_t>(

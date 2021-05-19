@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <fstream>
 #include <string>
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 

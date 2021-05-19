@@ -16,6 +16,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -75,7 +76,8 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -88,7 +90,8 @@ class MatMulKernel : public framework::OpKernel<T> {
         mat_dim_a.batch_size_ = 0;
       }
     }
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
     if (head_number > 1) {
@@ -227,7 +230,8 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -361,7 +365,8 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -561,7 +566,8 @@ class MatMulOp : public framework::OperatorWithKernel {
                     DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     int head_number = context->Attrs().Get<int>("head_number");
     bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
     if (context->IsRuntime()) {
@@ -581,7 +587,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
                       platform::errors::InvalidArgument(
                           "Input X's width should be equal to the Y's height, "
-                          "but received X's shape: [%s],"
+                          "but received X's shape: [%s], "
                           "Y's shape: [%s].",
                           dim_x, dim_y));
 #endif
@@ -655,17 +661,31 @@ class MatMulOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
     using mkldnn::memory;
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -735,7 +755,8 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "used in MKL-DNN INT8")
         .SetDefault(false);
 
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
 #endif
@@ -901,7 +922,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,
@@ -918,3 +939,14 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
+
+REGISTER_OP_VERSION(matmul)
+    .AddCheckpoint(
+        R"ROC(Register matmul for adding the attribute of
+       fused_reshape_Y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "fused_reshape_Y",
+            "In order to support the function of fused the input Y "
+            " and input X into the input X when "
+            "using the operator of matmul, and get raw shape of input Y.",
+            std::vector<int>{}));

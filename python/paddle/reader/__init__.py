@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 At training and testing time, PaddlePaddle programs need to read data. To ease
 the users' work to write data reading code, we define that
 
@@ -63,7 +63,15 @@ An example implementation for multiple item data reader creator:
 
 """
 
-import paddle.reader.decorator
-from paddle.reader.decorator import *
+from paddle.reader.decorator import map_readers  # noqa: F401
+from paddle.reader.decorator import shuffle  # noqa: F401
+from paddle.reader.decorator import xmap_readers  # noqa: F401
+from paddle.reader.decorator import firstn  # noqa: F401
+from paddle.reader.decorator import buffered  # noqa: F401
+from paddle.reader.decorator import compose  # noqa: F401
+from paddle.reader.decorator import cache  # noqa: F401
+from paddle.reader.decorator import ComposeNotAligned  # noqa: F401
+from paddle.reader.decorator import chain  # noqa: F401
+from paddle.reader.decorator import multiprocess_reader  # noqa: F401
 
 __all__ = []

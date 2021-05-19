@@ -122,6 +122,6 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add2_act_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("relu", 0)
             .EQ("identity", 0));

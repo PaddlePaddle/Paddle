@@ -13,7 +13,7 @@
 // limitations under the License.
 package main
 
-import "../paddle"
+import "github.com/paddlepaddle/paddle"
 import "strings"
 import "io/ioutil"
 import "strconv"

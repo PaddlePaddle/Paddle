@@ -22,7 +22,6 @@ from collections import defaultdict
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from ..fluid import framework
 from ..fluid import layers
@@ -43,11 +42,11 @@ from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 from .lr import LRScheduler
 
-__all__ = ['Optimizer']
+__all__ = []
 
 
 class Optimizer(object):
-    """Optimizer Base class.
+    r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
     User should not use this class directly,
@@ -56,7 +55,7 @@ class Optimizer(object):
     Args:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
             It can be a float value or any subclass of ``LRScheduler`` .
-        parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
@@ -101,8 +100,19 @@ class Optimizer(object):
                  weight_decay=None,
                  grad_clip=None,
                  name=None):
-        self._parameter_list = list(
-            parameters) if parameters is not None else None
+        if parameters is not None:
+            # paddle.Tensor is also iterable, so here we don't check whether
+            # the input is iterable, if the input is paddle.Tensor, the
+            # list(paddle.Tensor) will be a error value
+            if isinstance(parameters, paddle.Tensor):
+                raise TypeError(
+                    "`parameters` argument given to the optimizer should be "
+                    "an iterable of paddle Tensors, but got argument type is `{}`.".
+                    format(type(parameters)))
+            self._parameter_list = list(parameters)
+        else:
+            self._parameter_list = None
+
         self._name = name
         if framework.in_dygraph_mode():
             if self._parameter_list is None:
@@ -111,7 +121,8 @@ class Optimizer(object):
                 )
             if weight_decay is not None:
                 for param in self._parameter_list:
-                    if param.regularizer is not None:
+                    if hasattr(param,
+                               'regularizer') and param.regularizer is not None:
                         logging.info(
                             "If regularizer of a Parameter has been set by 'paddle.ParamAttr' or 'static.WeightNormParamAttr' already. "
                             "The weight_decay[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
@@ -133,8 +144,12 @@ class Optimizer(object):
             self.regularization = weight_decay
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+
         self._dtype = None
+        # Infer the dtype form parameter
+        if self._parameter_list:
+            self._dtype = self._parameter_list[0].dtype
+
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
         self._learning_rate_map = dict()
@@ -430,17 +445,20 @@ class Optimizer(object):
     def _create_param_lr(self, param_and_grad):
         # create learning rate tensor for every parameter
         param = param_and_grad[0]
-        param_lr = param.optimize_attr['learning_rate']
-        if type(param_lr) == Variable:
-            return param_lr
-        else:
-            if param_lr == 1.0:
-                return self._global_learning_rate()
+        if hasattr(param, 'optimize_attr'):
+            param_lr = param.optimize_attr['learning_rate']
+            if type(param_lr) == Variable:
+                return param_lr
             else:
-                with default_main_program()._lr_schedule_guard(
-                        is_with_opt=True), framework.name_scope(
-                            'scale_with_param_lr'):
-                    return self._global_learning_rate() * param_lr
+                if param_lr == 1.0:
+                    return self._global_learning_rate()
+                else:
+                    with default_main_program()._lr_schedule_guard(
+                            is_with_opt=True), framework.name_scope(
+                                'scale_with_param_lr'):
+                        return self._global_learning_rate() * param_lr
+        else:
+            return self._global_learning_rate()
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -539,7 +557,7 @@ class Optimizer(object):
 
     def _update_param_device_map(self, parameters_and_grads, target_block):
         for param_and_grad in parameters_and_grads:
-            if param_and_grad[0].trainable is True:
+            if param_and_grad[0].stop_gradient is False:
                 param_name = param_and_grad[0].name
                 ops = target_block.ops
                 device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
@@ -595,14 +613,14 @@ class Optimizer(object):
         self._update_param_device_map(parameters_and_grads, target_block)
         self._create_accumulators(
             target_block,
-            [p[0] for p in parameters_and_grads if p[0].trainable])
+            [p[0] for p in parameters_and_grads if not p[0].stop_gradient])
         self._create_global_learning_rate()
 
         if framework.in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
-                if param_and_grad[0].trainable is True:
+                if param_and_grad[0].stop_gradient is False:
                     self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
@@ -610,7 +628,7 @@ class Optimizer(object):
                     continue
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
-                    if param_and_grad[0].trainable is True:
+                    if param_and_grad[0].stop_gradient is False:
                         device = self._get_device_for_param(param_and_grad[0]
                                                             .name)
                         with device_guard(device):
@@ -676,17 +694,17 @@ class Optimizer(object):
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
-        self._dtype = loss.dtype
+        # Infer dtype by loss if None
+        if self._dtype is None:
+            self._dtype = loss.dtype
+
         if framework.in_dygraph_mode():
             parameter_list = parameters if parameters \
                 else self._parameter_list
 
-            if paddle.distributed.get_world_size() > 1:
-                apply_collective_grads(parameter_list)
-
             params_grads = []
             for param in parameter_list:
-                if not param.trainable:
+                if param.stop_gradient:
                     continue
                 if param._grad_ivar() is not None:
                     # create gradient tensor
@@ -786,8 +804,9 @@ class Optimizer(object):
     def _get_no_grad_set(self, loss, no_grad_set=None):
         no_grad_set = _get_no_grad_set_name(no_grad_set)
         parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = set(
-            [param.name for param in parameters if param.trainable is False])
+        param_no_trainable = set([
+            param.name for param in parameters if param.stop_gradient is True
+        ])
         # If the parameter is no trainable, it should not have a gradient.
         no_grad_set.update(param_no_trainable)
 
@@ -797,6 +816,8 @@ class Optimizer(object):
     def clear_grad(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
@@ -820,7 +841,7 @@ class Optimizer(object):
 
         """
         for p in self._parameter_list:
-            if p.trainable:
+            if not p.stop_gradient:
                 p.clear_gradient()
 
     @imperative_base.no_grad
@@ -887,6 +908,7 @@ class Optimizer(object):
 
         return optimize_ops, params_grads
 
+    @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
         """
@@ -912,13 +934,9 @@ class Optimizer(object):
                 adam.step()
                 adam.clear_grad()
         """
-        if paddle.distributed.get_world_size() > 1:
-            apply_collective_grads(self._parameter_list)
-
-        self._dtype = None
         params_grads = []
         for param in self._parameter_list:
-            if not param.trainable:
+            if param.stop_gradient:
                 continue
             if param._grad_ivar() is not None:
                 grad_var = param._grad_ivar()

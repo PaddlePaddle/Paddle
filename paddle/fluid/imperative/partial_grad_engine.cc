@@ -367,7 +367,11 @@ class GradientAccumulationInfo {
                           "Reference count overflows, this may be a bug"));
 
     *is_finished = (cur_ref_cnt_ == total_ref_cnt_);
-    accumulator_->Add(grad_var_partial, trace_id, unchange_input);
+    accumulator_->SumGrad(grad_var_partial, trace_id, unchange_input);
+
+    if (*is_finished && accumulator_->HasInnerVar()) {
+      accumulator_->AccumulateGrad();
+    }
 
     if (create_graph_) {
       VLOG(10) << "Store partial grad grad for double grad "
@@ -857,6 +861,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
 
           auto new_grad_var = std::make_shared<VarBase>(true, grad_var->Name());
           new_grad_var->SetOverridedStopGradient(false);
+          new_grad_var->SetForwardDataType(grad_var->ForwardDataType());
           if (new_grad_var_iter->second->TotalRefCnt() > 1) {
             grads_to_accumulate_.emplace_back(new_grad_var_iter->second.get(),
                                               new_grad_var->SharedVar());
@@ -883,7 +888,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
 
   if (create_graph_) {
     auto double_grad_node = CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs,
-                                             op->Attrs(), op->place());
+                                             op->Attrs(), op->place(), {});
     PADDLE_ENFORCE_NOT_NULL(
         double_grad_node,
         platform::errors::NotFound("The Op %s doesn't have any grad op. If you "

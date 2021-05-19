@@ -16,13 +16,14 @@
 
 #include <mutex>  // NOLINT
 
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/rocblas.h"
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
-
-#if CUDA_VERSION < 9000
-enum cublasMath_t { CUBLAS_DEFAULT_MATH = 0 };
-#endif
 
 namespace paddle {
 namespace platform {
@@ -70,30 +71,62 @@ namespace platform {
  *    }
  *
 */
-#define CUDA_KERNEL_LOOP(i, num)                             \
+
+#ifdef __HIPCC__
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                     \
+  int64_t __index__ = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; \
+  for (index_type i = __index__; __index__ < (num);                   \
+       __index__ += hipBlockDim_x * hipGridDim_x, i = __index__)
+#else
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
-  for (int i = __index__; __index__ < (num);                 \
+  for (index_type i = __index__; __index__ < (num);          \
        __index__ += blockDim.x * gridDim.x, i = __index__)
+#endif
+
+#define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
 
 class CublasHandleHolder {
  public:
+#ifdef PADDLE_WITH_HIP
+  explicit CublasHandleHolder(hipStream_t stream) {
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_create_handle(&handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_set_stream(handle_, stream));
+  }
+#else
   CublasHandleHolder(cudaStream_t stream, cublasMath_t math_type) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasCreate(&handle_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasSetStream(handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasCreate(&handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasSetStream(handle_, stream));
 #if CUDA_VERSION >= 9000
     if (math_type == CUBLAS_TENSOR_OP_MATH) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_RETRY_CUDA_SUCCESS(
           dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
+#if CUDA_VERSION >= 11000
+    } else if (math_type == CUBLAS_TF32_TENSOR_OP_MATH) {
+      PADDLE_RETRY_CUDA_SUCCESS(
+          dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
+#endif  // CUDA_VERSION >= 9000
+  }
+#endif
+
+#ifdef PADDLE_WITH_HIP
+  const rocblas_handle& GetCublasHandle() const { return handle_; }
+#else
+  const cublasHandle_t& GetCublasHandle() const { return handle_; }
+#endif
+
+  ~CublasHandleHolder() PADDLE_MAY_THROW {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_destroy_handle(handle_));
+#else
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
 #endif
   }
 
-  ~CublasHandleHolder() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
-  }
-
   template <typename Callback>
-  inline void Call(Callback &&callback) const {
+  inline void Call(Callback&& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }
@@ -101,7 +134,11 @@ class CublasHandleHolder {
  private:
   DISABLE_COPY_AND_ASSIGN(CublasHandleHolder);
 
+#ifdef PADDLE_WITH_HIP
+  rocblas_handle handle_;
+#else
   cublasHandle_t handle_;
+#endif
   mutable std::mutex mtx_;
 };
 

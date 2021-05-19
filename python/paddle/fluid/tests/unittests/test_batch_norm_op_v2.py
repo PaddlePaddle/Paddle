@@ -171,7 +171,11 @@ class TestBatchNorm(unittest.TestCase):
 class TestBatchNormChannelLast(unittest.TestCase):
     def setUp(self):
         self.original_dtyep = paddle.get_default_dtype()
-        paddle.set_default_dtype("float64")
+        # MIOPEN not support data type of double
+        if core.is_compiled_with_rocm():
+            paddle.set_default_dtype("float32")
+        else:
+            paddle.set_default_dtype("float64")
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
             self.places.append(fluid.CUDAPlace(0))
@@ -191,7 +195,13 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 2, 1])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 1])
-                self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                if core.is_compiled_with_rocm():
+                    # HIP will fail if no atol
+                    self.assertEqual(
+                        np.allclose(
+                            y1.numpy(), y2.numpy(), atol=1e-07), True)
+                else:
+                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
 
     def test_2d(self):
         for p in self.places:
@@ -205,7 +215,13 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 3, 1, 2])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 1])
-                self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                if core.is_compiled_with_rocm():
+                    # HIP will fail if no atol
+                    self.assertEqual(
+                        np.allclose(
+                            y1.numpy(), y2.numpy(), atol=1e-07), True)
+                else:
+                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
 
     def test_3d(self):
         for p in self.places:
@@ -219,7 +235,68 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 4, 1, 2, 3])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 4, 1])
+                if core.is_compiled_with_rocm():
+                    # HIP will fail if no atol
+                    self.assertEqual(
+                        np.allclose(
+                            y1.numpy(), y2.numpy(), atol=1e-07), True)
+                else:
+                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+
+
+class TestBatchNormUseGlobalStats(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+            self.places.append(fluid.CUDAPlace(0))
+        self.init_test()
+
+    ### train mode
+    def init_test(self):
+        self.use_global_stats = True
+        self.trainable_statistics = False
+
+    def test_global_stats(self):
+        for p in self.places:
+            with fluid.dygraph.guard(p):
+                x = paddle.randn([2, 6, 6, 4])
+                net1 = paddle.fluid.dygraph.BatchNorm(
+                    6,
+                    param_attr=fluid.ParamAttr(
+                        initializer=fluid.initializer.Constant(1.0)),
+                    use_global_stats=self.use_global_stats,
+                    trainable_statistics=self.trainable_statistics)
+                net2 = paddle.nn.BatchNorm2D(
+                    6, use_global_stats=self.use_global_stats)
+                net2.weight = net1.weight
+                net2.bias = net1.bias
+                if self.trainable_statistics == True:
+                    net1.training = False
+                    net2.training = False
+                y1 = net1(x)
+                y2 = net2(x)
                 self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+
+
+class TestBatchNormUseGlobalStatsCase1(TestBatchNormUseGlobalStats):
+    ### test mode
+    def init_test(self):
+        self.use_global_stats = False
+        self.trainable_statistics = True
+
+
+class TestBatchNormUseGlobalStatsCase2(TestBatchNormUseGlobalStats):
+    ### train mode
+    def init_test(self):
+        self.use_global_stats = False
+        self.trainable_statistics = False
+
+
+class TestBatchNormUseGlobalStatsCase3(TestBatchNormUseGlobalStats):
+    ### test mode
+    def init_test(self):
+        self.use_global_stats = True
+        self.trainable_statistics = True
 
 
 if __name__ == '__main__':

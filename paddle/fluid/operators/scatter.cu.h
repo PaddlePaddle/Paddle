@@ -28,8 +28,7 @@ using Tensor = framework::Tensor;
 
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
-                                      size_t index_size, size_t slice_size,
-                                      bool overwrite) {
+                                      size_t index_size, size_t slice_size) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -129,13 +128,44 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
     ScatterInitCUDAKernel<T, IndexT><<<
         grid, block, 0,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-        p_index, p_output, index_size, slice_size, overwrite);
+        p_index, p_output, index_size, slice_size);
   }
 
   ScatterCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
       p_src, p_index, p_output, index_size, slice_size, overwrite);
+}
+
+// The function is only for scatter grad x,
+// however update grad use gather
+template <typename T, typename IndexT = int>
+void GPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
+                        Tensor* output) {
+  IndexT index_size = index.dims()[0];
+  auto dst_dims = output->dims();
+  // slice size
+  IndexT slice_size = 1;
+  for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
+  const IndexT* p_index = index.data<IndexT>();
+  T* p_output = output->data<T>();
+  const size_t& slice_bytes = slice_size * sizeof(T);
+
+  // set block and grid num
+  int64_t block = 512;
+  int64_t n = slice_size * index_size;
+  int64_t height = (n + block - 1) / block;
+
+  int64_t max_grid_dimx =
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+          .GetCUDAMaxGridDimSize()
+          .x;
+  int64_t grid = height < max_grid_dimx ? height : max_grid_dimx;
+
+  ScatterInitCUDAKernel<T, IndexT><<<
+      grid, block, 0,
+      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+      p_index, p_output, index_size, slice_size);
 }
 
 template <typename DeviceContext, typename T, typename IndexT = int>

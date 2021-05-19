@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
+
 #include <stdint.h>
-#include <algorithm>
+
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
@@ -267,6 +268,21 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
   TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx);
 }
 
+void SerializeToStream(std::ostream &os, const LoDTensor &tensor) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext *dev_ctx;
+  auto place = tensor.place();
+  dev_ctx = pool.Get(place);
+  SerializeToStream(os, tensor, *dev_ctx);
+}
+
+void DeserializeFromStream(std::ifstream &os, LoDTensor *tensor) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext *dev_ctx;
+  dev_ctx = pool.Get(platform::CPUPlace());
+  DeserializeFromStream(os, tensor, *dev_ctx);
+}
+
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
                            const platform::DeviceContext &dev_ctx,
                            const size_t &seek,
@@ -281,7 +297,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     PADDLE_ENFORCE_EQ(
         version, 0U,
         platform::errors::InvalidArgument(
-            "Tensor version %u is not supported, only version 0 is supported.",
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
             version));
   }
   {
@@ -307,7 +324,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     PADDLE_ENFORCE_EQ(
         version, 0U,
         platform::errors::InvalidArgument(
-            "Tensor version %u is not supported, only version 0 is supported.",
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
             version));
   }
   {

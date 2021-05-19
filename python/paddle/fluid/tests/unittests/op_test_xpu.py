@@ -296,7 +296,7 @@ class XPUOpTest(OpTest):
             no_grad_set=no_grad_set)
         self._assert_is_close(a1, a2, inputs_to_check, 0.00000001,
                               "Gradient Check On two xpu")
-        self._assert_is_close(a1, a3, inputs_to_check, 0.001,
+        self._assert_is_close(a1, a3, inputs_to_check, max_relative_error,
                               "Gradient Check On cpu & xpu")
 
     def get_grad_with_place(self,
@@ -362,17 +362,6 @@ class XPUOpTest(OpTest):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        numeric_grads = user_defined_grads or [
-            get_numeric_gradient(
-                place,
-                self.scope,
-                self.op,
-                self.inputs,
-                input_to_check,
-                output_names,
-                delta=numeric_grad_delta,
-                in_place=in_place) for input_to_check in inputs_to_check
-        ]
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
         return analytic_grads

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/math/blas.h"
-#include <utility>
 
 namespace paddle {
 namespace operators {

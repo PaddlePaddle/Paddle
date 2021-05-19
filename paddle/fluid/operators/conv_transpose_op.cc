@@ -182,7 +182,8 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
@@ -193,15 +194,13 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
@@ -291,6 +290,15 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force BF16 kernel output FP32, only "
+                "used in MKL-DNN BF16")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "bfloat16"});
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>("fuse_activation",
@@ -473,7 +481,7 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
@@ -513,6 +521,85 @@ class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+/*
+ * Inputs:  I, W, dO, ddI, ddW
+ * Outputs: ddO, dW, dI
+ */
+template <typename T>
+class ConvTransposeDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType(this->ForwardOpType() + "_grad");
+    // I, W, dO, ddI, ddW
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput("DOutput", this->Input(framework::GradVarName("Output")));
+    op->SetInput("DDInput", this->OutputGrad(framework::GradVarName("Input")));
+    op->SetInput("DDFilter",
+                 this->OutputGrad(framework::GradVarName("Filter")));
+
+    // ddO, dI, dW
+    // Unlike grad op, double grad op does not use name@GRAD@GRAD
+    // as key of ops' inputs and outputs.
+    auto ddx = this->OutputGrad(framework::GradVarName("Input"));
+    auto ddw = this->OutputGrad(framework::GradVarName("Filter"));
+
+    op->SetOutput("DDOutput",
+                  ddx.empty()
+                      ? this->EmptyInputGrad()
+                      : this->InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
+
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+void ConvTransposeOpDoubleGrad::InferShape(
+    framework::InferShapeContext* ctx) const {
+  auto x_dims = ctx->GetInputDim("Input");
+  auto w_dims = ctx->GetInputDim("Filter");
+  auto do_dims = ctx->GetInputDim("DOutput");
+
+  if (ctx->HasOutput("DDOutput") &&
+      (ctx->HasInput("DDInput") || (ctx->HasInput("DDFilter")))) {
+    ctx->SetOutputDim("DDOutput", do_dims);
+  }
+  if (ctx->HasOutput("DFilter") && ctx->HasInput("DDInput")) {
+    ctx->SetOutputDim("DFilter", w_dims);
+  }
+  if (ctx->HasOutput("DInput") && ctx->HasInput("DDFilter")) {
+    ctx->SetOutputDim("DInput", x_dims);
+  }
+}
+
+framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  }
+#endif
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
+}
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -523,7 +610,11 @@ REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
                   ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(conv2d_transpose_grad, ops::ConvTransposeOpGrad);
+REGISTER_OPERATOR(
+    conv2d_transpose_grad, ops::ConvTransposeOpGrad,
+    ops::ConvTransposeDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ConvTransposeDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(conv2d_transpose_grad_grad, ops::ConvTransposeOpDoubleGrad);
 
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose,
@@ -578,4 +669,47 @@ REGISTER_OP_VERSION(conv_transpose)
             "output_padding",
             "In order to add additional size to one side of each dimension "
             "in the output",
-            {}));
+            std::vector<int>{}));
+
+REGISTER_OP_VERSION(conv2d_transpose)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv2d transpose to add a new attribute [output_padding].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "output_padding",
+            "In order to add additional size to one side of each dimension "
+            "in the output",
+            std::vector<int>{}))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv2d transpose to add a new attributes [force_fp32_output, mkldnn_data_type].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("force_fp32_output",
+                     "Force BF16 kernel output FP32, only used in MKL-DNN BF16",
+                     false)
+            .NewAttr("mkldnn_data_type", "Data type of mkldnn kernel",
+                     "float32"));
+
+REGISTER_OP_VERSION(conv3d_transpose)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv3d transpose to add a new attribute [output_padding].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "output_padding",
+            "In order to add additional size to one side of each dimension "
+            "in the output",
+            std::vector<int>{}));
+
+REGISTER_OP_VERSION(depthwise_conv2d_transpose)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade depthwise conv2d transpose to add a new attribute [output_padding].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "output_padding",
+            "In order to add additional size to one side of each dimension "
+            "in the output",
+            std::vector<int>{}));

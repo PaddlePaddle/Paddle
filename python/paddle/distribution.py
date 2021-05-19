@@ -105,7 +105,7 @@ class Distribution(object):
         for arg in args:
             if isinstance(arg, float):
                 arg = [arg]
-            if not isinstance(arg, (list, np.ndarray, tensor.Variable)):
+            if not isinstance(arg, (list, tuple, np.ndarray, tensor.Variable)):
                 raise TypeError(
                     "Type of input args must be float, list, numpy.ndarray or Tensor, but received type {}".
                     format(type(arg)))
@@ -166,7 +166,7 @@ class Distribution(object):
 
 
 class Uniform(Distribution):
-    """Uniform distribution with `low` and `high` parameters.
+    r"""Uniform distribution with `low` and `high` parameters.
 
     Mathematical Details
 
@@ -190,18 +190,16 @@ class Uniform(Distribution):
     [broadcasting](https://www.paddlepaddle.org.cn/documentation/docs/en/develop/beginners_guide/basic_concept/broadcasting_en.html) (e.g., `high - low` is a valid operation).
 
     Args:
-        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
-        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
+        low(int|float|list|tuple|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
+        high(int|float|list|tuple|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
           from paddle.distribution import Uniform
 
-          paddle.disable_static()
           # Without broadcasting, a single uniform distribution [3, 4]:
           u1 = Uniform(low=3.0, high=4.0)
           # 2 distributions [1, 3], [2, 4]
@@ -214,8 +212,7 @@ class Uniform(Distribution):
           u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
           # Complete example
-          value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = paddle.to_tensor(value_npdata)
+          value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
           uniform = Uniform([0.], [2.])
 
@@ -232,10 +229,10 @@ class Uniform(Distribution):
     def __init__(self, low, high, name=None):
         if not in_dygraph_mode():
             check_type(low, 'low',
-                       (int, float, np.ndarray, tensor.Variable, list),
+                       (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Uniform')
             check_type(high, 'high',
-                       (int, float, np.ndarray, tensor.Variable, list),
+                       (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Uniform')
 
         self.all_arg_is_float = False
@@ -374,7 +371,7 @@ class Uniform(Distribution):
         return elementwise_div((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
-        """Shannon entropy in nats.
+        r"""Shannon entropy in nats.
 
         The entropy is
 
@@ -391,7 +388,7 @@ class Uniform(Distribution):
 
 
 class Normal(Distribution):
-    """The Normal distribution with location `loc` and `scale` parameters.
+    r"""The Normal distribution with location `loc` and `scale` parameters.
 
     Mathematical details
 
@@ -412,18 +409,16 @@ class Normal(Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(int|float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
-        scale(int|float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
+        loc(int|float|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
+        scale(int|float|list|tuple|numpy.ndarray|Tensor): The std of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
           
-          import numpy as np
           import paddle
           from paddle.distribution import Normal
 
-          paddle.disable_static()
           # Define a single scalar Normal distribution.
           dist = Normal(loc=0., scale=3.)
           # Define a batch of two scalar valued Normals.
@@ -437,8 +432,7 @@ class Normal(Distribution):
           dist = Normal(loc=1., scale=[11., 22.])
 
           # Complete example
-          value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = paddle.to_tensor(value_npdata)
+          value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
           normal_a = Normal([0.], [1.])
           normal_b = Normal([0.5], [2.])
@@ -457,10 +451,10 @@ class Normal(Distribution):
     def __init__(self, loc, scale, name=None):
         if not in_dygraph_mode():
             check_type(loc, 'loc',
-                       (int, float, np.ndarray, tensor.Variable, list),
+                       (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Normal')
             check_type(scale, 'scale',
-                       (int, float, np.ndarray, tensor.Variable, list),
+                       (int, float, np.ndarray, tensor.Variable, list, tuple),
                        'Normal')
 
         self.batch_size_unknown = False
@@ -534,7 +528,7 @@ class Normal(Distribution):
                 return output
 
     def entropy(self):
-        """Shannon entropy in nats.
+        r"""Shannon entropy in nats.
 
         The entropy is
 
@@ -599,7 +593,7 @@ class Normal(Distribution):
             name=name)
 
     def kl_divergence(self, other):
-        """The KL-divergence between two normal distributions.
+        r"""The KL-divergence between two normal distributions.
 
         The probability density function (pdf) is
 
@@ -644,7 +638,7 @@ class Normal(Distribution):
 
 
 class Categorical(Distribution):
-    """
+    r"""
     Categorical distribution is a discrete probability distribution that 
     describes the possible results of a random variable that can take on 
     one of K possible categories, with the probability of each category 
@@ -661,7 +655,7 @@ class Categorical(Distribution):
     * :math:`[x=i]` : it evaluates to 1 if :math:`x==i` , 0 otherwise.
 
     Args:
-        logits(list|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
+        logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -672,13 +666,13 @@ class Categorical(Distribution):
 
             paddle.seed(100) # on CPU device
             x = paddle.rand([6])
-            print(x.numpy())
+            print(x)
             # [0.5535528  0.20714243 0.01162981
             #  0.51577556 0.36369765 0.2609165 ]
 
             paddle.seed(200) # on CPU device
             y = paddle.rand([6])
-            print(y.numpy())
+            print(y)
             # [0.77663314 0.90824795 0.15685187
             #  0.04279523 0.34468332 0.7955718 ]
 
@@ -708,11 +702,12 @@ class Categorical(Distribution):
     def __init__(self, logits, name=None):
         """
         Args:
-            logits(list|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
+            logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
             name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         """
         if not in_dygraph_mode():
-            check_type(logits, 'logits', (np.ndarray, tensor.Variable, list),
+            check_type(logits, 'logits',
+                       (np.ndarray, tensor.Variable, list, tuple),
                        'Categorical')
 
         self.name = name if name is not None else 'Categorical'
@@ -746,7 +741,7 @@ class Categorical(Distribution):
 
                 paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 
@@ -793,13 +788,13 @@ class Categorical(Distribution):
 
                 paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 
                 paddle.seed(200) # on CPU device
                 y = paddle.rand([6])
-                print(y.numpy())
+                print(y)
                 # [0.77663314 0.90824795 0.15685187
                 #  0.04279523 0.34468332 0.7955718 ]
 
@@ -844,7 +839,7 @@ class Categorical(Distribution):
 
                 paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 
@@ -889,7 +884,7 @@ class Categorical(Distribution):
 
                 paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 
@@ -955,7 +950,7 @@ class Categorical(Distribution):
 
                 paddle.seed(100) # on CPU device
                 x = paddle.rand([6])
-                print(x.numpy())
+                print(x)
                 # [0.5535528  0.20714243 0.01162981
                 #  0.51577556 0.36369765 0.2609165 ]
 

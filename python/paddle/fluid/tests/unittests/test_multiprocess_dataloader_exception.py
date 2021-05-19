@@ -80,14 +80,6 @@ class TestDataLoaderAssert(unittest.TestCase):
             except AssertionError:
                 pass
 
-            # batch_sampler is not instance of BatchSampler
-            try:
-                loader = DataLoader(
-                    dataset=dataset, places=place, batch_sampler=dataset)
-                self.assertTrue(False)
-            except AssertionError:
-                pass
-
             # set batch_sampler and shuffle/batch_size/drop_last
             try:
                 loader = DataLoader(

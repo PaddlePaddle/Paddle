@@ -49,6 +49,8 @@ output_data := value.Interface().([][]float32)
 下载[数据](https://paddle-inference-dist.cdn.bcebos.com/mobilenet-test-model-data.tar.gz)并解压到当前目录
 
 运行
-``` go
+```bash
+go mod init github.com/paddlepaddle
+export LD_LIBRARY_PATH=`pwd`/paddle_c/paddle/lib:$LD_LIBRARY_PATH
 go run ./demo/mobilenet.go
 ```

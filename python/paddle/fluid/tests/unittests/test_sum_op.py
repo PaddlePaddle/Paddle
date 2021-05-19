@@ -18,9 +18,12 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
+from paddle import enable_static
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest, convert_float_to_uint16, convert_uint16_to_float)
 
 
 class TestSumOp(OpTest):
@@ -139,6 +142,73 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         for place in places:
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
+
+
+class TestSelectedRowsSumOpInt(TestSelectedRowsSumOp):
+    def init_kernel_type(self):
+        self.dtype = np.int32
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 'place does not support BF16 evaluation')
+class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
+    def setUp(self):
+        self.height = 10
+        self.row_numel = 12
+        self.rows = [0, 1, 2, 3, 4, 5, 6]
+        self.dtype = np.uint16
+        self.init_kernel_type()
+        np.random.seed(12345)
+        self.data = np.random.random((len(self.rows),
+                                      self.row_numel)).astype(np.float32)
+
+    def _get_array(self, rows, row_numel):
+        if len(rows) > 0:
+            return convert_float_to_uint16(self.data)
+        else:
+            return np.ndarray((0, row_numel), dtype=self.dtype)
+
+    def check_input_and_optput(self,
+                               scope,
+                               place,
+                               inplace,
+                               w1_has_data=False,
+                               w2_has_data=False,
+                               w3_has_data=False):
+
+        self.create_selected_rows(scope, place, "W1", w1_has_data)
+        self.create_selected_rows(scope, place, "W2", w2_has_data)
+        self.create_selected_rows(scope, place, "W3", w3_has_data)
+
+        # create Out Variable
+        if inplace:
+            out_var_name = "W1"
+        else:
+            out_var_name = "Out"
+        out = scope.var(out_var_name).get_selected_rows()
+
+        # create and run sum operator
+        sum_op = Operator("sum", X=["W1", "W2", "W3"], Out=out_var_name)
+        sum_op.run(scope, place)
+
+        has_data_w_num = 0
+        for has_data in [w1_has_data, w2_has_data, w3_has_data]:
+            if has_data:
+                has_data_w_num += 1
+
+        if has_data_w_num > 0:
+            self.assertEqual(len(out.rows()), 7)
+            out_bf16 = np.array(out.get_tensor())
+            out_fp32 = convert_uint16_to_float(out_bf16)
+            ref_fp32 = convert_uint16_to_float(
+                self._get_array(self.rows, self.row_numel)) * has_data_w_num
+            np.testing.assert_allclose(out_fp32, ref_fp32, atol=0, rtol=0.95e-2)
+        else:
+            self.assertEqual(len(out.rows()), 0)
+
+    def test_w_is_selected_rows(self):
+        for inplace in [True, False]:
+            self.check_with_place(core.CPUPlace(), inplace)
 
 
 class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
@@ -324,4 +394,5 @@ create_test_sum_fp16_class(TestSelectedRowsSumOp)
 create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
 
 if __name__ == "__main__":
+    enable_static()
     unittest.main()

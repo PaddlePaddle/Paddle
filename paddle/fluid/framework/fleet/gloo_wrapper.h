@@ -39,6 +39,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 
 namespace gloo {
+class Context;
+namespace transport {
+class Device;
+}  // namespace transport
+}  // namespace gloo
+
+namespace gloo {
 namespace rendezvous {
 
 #ifdef PADDLE_WITH_GLOO

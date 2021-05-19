@@ -85,9 +85,22 @@ class MatMulV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -137,6 +150,27 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
       context->SetOutputDim(y_grad_name, y_dims);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto out_grad_name = framework::GradVarName("Out");
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, out_grad_name),
+        ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
+  }
 };
 
 template <typename T>
@@ -168,9 +202,17 @@ REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, double>);
+    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex64>,
+    ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     matmul_v2_grad,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex64>,
+    ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex128>);

@@ -33,6 +33,8 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
+import paddle.vision.models as models
+import paddle.fluid.dygraph.jit as jit
 from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
 from paddle.fluid.dygraph.jit import declarative
@@ -170,6 +172,12 @@ class TestModel(unittest.TestCase):
     def test_fit_static(self):
         self.fit(False)
 
+    def test_fit_dynamic_with_tuple_input(self):
+        self.fit_with_tuple_input(True)
+
+    def test_fit_static_with_tuple_input(self):
+        self.fit_with_tuple_input(False)
+
     def test_fit_dynamic_with_rank(self):
         self.fit(True, 2, 0)
 
@@ -201,6 +209,53 @@ class TestModel(unittest.TestCase):
         optim_new = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=net.parameters())
         model = Model(net, inputs=self.inputs, labels=self.labels)
+        model.prepare(
+            optim_new,
+            loss=CrossEntropyLoss(reduction="sum"),
+            metrics=Accuracy())
+        model.fit(self.train_dataset, batch_size=64, shuffle=False)
+
+        result = model.evaluate(self.val_dataset, batch_size=64)
+        np.testing.assert_allclose(result['acc'], self.acc1)
+
+        train_sampler = DistributedBatchSampler(
+            self.train_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
+        val_sampler = DistributedBatchSampler(
+            self.val_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
+
+        train_loader = fluid.io.DataLoader(
+            self.train_dataset,
+            batch_sampler=train_sampler,
+            places=self.device,
+            return_list=True)
+
+        val_loader = fluid.io.DataLoader(
+            self.val_dataset,
+            batch_sampler=val_sampler,
+            places=self.device,
+            return_list=True)
+
+        model.fit(train_loader, val_loader)
+        fluid.disable_dygraph() if dynamic else None
+
+    def fit_with_tuple_input(self, dynamic, num_replicas=None, rank=None):
+        fluid.enable_dygraph(self.device) if dynamic else None
+        seed = 333
+        paddle.seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
+
+        net = LeNet()
+        optim_new = fluid.optimizer.Adam(
+            learning_rate=0.001, parameter_list=net.parameters())
+        model = Model(net, inputs=tuple(self.inputs), labels=tuple(self.labels))
         model.prepare(
             optim_new,
             loss=CrossEntropyLoss(reduction="sum"),
@@ -564,6 +619,24 @@ class TestModelFunction(unittest.TestCase):
         nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
         paddle.summary(nlp_net, (1, 1, 2))
 
+    def test_static_flops(self):
+        paddle.disable_static()
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+        inputs = paddle.randn([1, 3, 224, 224])
+        static_program = jit._trace(net, inputs=[inputs])[1]
+        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
+
+    def test_dynamic_flops(self):
+        net = models.__dict__['mobilenet_v2'](pretrained=False)
+
+        def customize_dropout(m, x, y):
+            m.total_ops += 0
+
+        paddle.flops(
+            net, [1, 3, 224, 224],
+            custom_ops={paddle.nn.Dropout: customize_dropout},
+            print_detail=True)
+
     def test_export_deploy_model(self):
         self.set_seed()
         np.random.seed(201)
@@ -602,6 +675,8 @@ class TestModelFunction(unittest.TestCase):
             paddle.enable_static()
 
     def test_dygraph_export_deploy_model_about_inputs(self):
+        self.set_seed()
+        np.random.seed(201)
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
         # without inputs

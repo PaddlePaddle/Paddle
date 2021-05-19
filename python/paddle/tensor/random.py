@@ -21,17 +21,7 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.layers import utils
 import paddle
 
-__all__ = [
-    'bernoulli',
-    'multinomial',
-    'standard_normal',
-    'normal',
-    'uniform',
-    'randn',
-    'rand',
-    'randint',
-    'randperm',
-]
+__all__ = []
 
 
 def bernoulli(x, name=None):
@@ -113,13 +103,13 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
             paddle.seed(100) # on CPU device
             x = paddle.rand([2,4])
-            print(x.numpy())
+            print(x)
             # [[0.5535528  0.20714243 0.01162981 0.51577556]
             # [0.36369765 0.2609165  0.18905126 0.5621971 ]]
 
             paddle.seed(200) # on CPU device
             out1 = paddle.multinomial(x, num_samples=5, replacement=True)
-            print(out1.numpy())
+            print(out1)
             # [[3 3 0 0 0]
             # [3 3 3 1 0]]
 
@@ -129,11 +119,14 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
             paddle.seed(300) # on CPU device
             out3 = paddle.multinomial(x, num_samples=3)
-            print(out3.numpy())
+            print(out3)
             # [[3 0 1]
             # [3 1 0]]
 
     """
+
+    assert core.is_compiled_with_rocm() == False, (
+        "multinomial op is not supported on ROCM yet.")
 
     if in_dygraph_mode():
         return core.ops.multinomial(x, 'num_samples', num_samples,

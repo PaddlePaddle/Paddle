@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
-#include <set>
 
 namespace paddle {
 namespace framework {

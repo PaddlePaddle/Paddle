@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <limits>
 #include <mutex>  // NOLINT
 #include <random>
 #include <string>
@@ -21,6 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/dynload/nvtx.h"
+#endif
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
 
@@ -51,6 +53,14 @@ double Event::CudaElapsedMs(const Event &e) const {
 }
 
 RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
+#ifndef _WIN32
+#ifdef PADDLE_WITH_CUDA
+  if (g_enable_nvprof_hook) {
+    dynload::nvtxRangePushA(name.c_str());
+    is_pushed_ = true;
+  }
+#endif
+#endif
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
 
   // do some initialization
@@ -65,6 +75,13 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
 }
 
 RecordEvent::~RecordEvent() {
+#ifndef _WIN32
+#ifdef PADDLE_WITH_CUDA
+  if (g_enable_nvprof_hook && is_pushed_) {
+    dynload::nvtxRangePop();
+  }
+#endif
+#endif
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed, the code below is thread-safe
   DeviceTracer *tracer = GetDeviceTracer();
@@ -189,7 +206,7 @@ void EnableProfiler(ProfilerState state) {
   g_state = state;
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll ||
       g_state == ProfilerState::kCPU) {
     // Generate some dummy events first to reduce the startup overhead.
@@ -298,6 +315,13 @@ void SetProfileListener() {
 }
 
 int64_t ListenerId() { return profiler_lister_id; }
+
+void NvprofEnableRecordEvent() {
+  SynchronizeAllDevice();
+  g_enable_nvprof_hook = true;
+}
+
+void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
 
 }  // namespace platform
 }  // namespace paddle

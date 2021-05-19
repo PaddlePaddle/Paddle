@@ -3701,6 +3701,53 @@ class TestLayerParameterTrainableSet(unittest.TestCase):
             self.assertFalse(net.weight.trainable)
 
 
+class TestLayerTrainingAttribute(unittest.TestCase):
+    def test_set_train_eval_in_dynamic_mode(self):
+        with fluid.dygraph.guard():
+            net = paddle.nn.Dropout()
+            net.train()
+            self.assertTrue(net.training)
+            net.eval()
+            self.assertFalse(net.training)
+
+    def test_set_train_eval_in_static_mode(self):
+        net = paddle.nn.Dropout()
+        net.train()
+        self.assertTrue(net.training)
+        net.eval()
+        self.assertFalse(net.training)
+
+
+class MyLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(MyLayer, self).__init__()
+        self._linear = paddle.nn.Linear(1, 1)
+        self._dropout = paddle.nn.Dropout(p=0.5)
+
+    def forward(self, input):
+        temp = self._linear(input)
+        temp = self._dropout(temp)
+        return temp
+
+
+class MySuperLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(MySuperLayer, self).__init__()
+        self._mylayer = MyLayer()
+
+    def forward(self, input):
+        temp = self._mylayer(input)
+        return temp
+
+
+class TestSubLayerCount(unittest.TestCase):
+    def test_sublayer(self):
+        with fluid.dygraph.guard():
+            mySuperlayer = MySuperLayer()
+            self.assertTrue(len(mySuperlayer.sublayers()) == 3)
+            self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

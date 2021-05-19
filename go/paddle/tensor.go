@@ -14,8 +14,8 @@
 
 package paddle
 
-// #cgo CFLAGS: -Ipaddle_c/paddle/include
-// #cgo LDFLAGS: -Lpaddle_c/paddle/lib -lpaddle_fluid_c
+// #cgo CFLAGS: -I${SRCDIR}/../paddle_c/paddle/include
+// #cgo LDFLAGS: -L${SRCDIR}/../paddle_c/paddle/lib -lpaddle_inference_c
 // #include <stdbool.h>
 // #include <stdlib.h>
 // #include <string.h>
@@ -209,7 +209,7 @@ func DecodeTensor(r *bytes.Reader, shape []int32, t reflect.Type, ptr reflect.Va
 		value := reflect.Indirect(ptr)
 		value.Set(reflect.MakeSlice(t, int(shape[0]), int(shape[0])))
 		if len(shape) == 1 && value.Len() > 0 {
-			switch value.Index(1).Kind() {
+			switch value.Index(0).Kind() {
 			case reflect.Uint8, reflect.Int32, reflect.Int64, reflect.Float32:
 				binary.Read(r, Endian(), value.Interface())
 				return

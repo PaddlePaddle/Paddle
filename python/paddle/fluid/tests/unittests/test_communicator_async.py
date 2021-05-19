@@ -14,20 +14,18 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import time
 import threading
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.communicator import Communicator
-
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
-
 paddle.enable_static()
+
+import paddle.fluid as fluid
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
 
 
 class TestCommunicator(unittest.TestCase):
@@ -50,10 +48,15 @@ class TestCommunicator(unittest.TestCase):
         avg_cost = self.net()
 
         optimizer = fluid.optimizer.SGD(0.01)
-        strategy = StrategyFactory.create_async_strategy()
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"launch_barrier": False}
+
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
+        os.environ["TEST_MODE"] = "1"
         fleet.init_worker()
         time.sleep(10)
         fleet.stop_worker()

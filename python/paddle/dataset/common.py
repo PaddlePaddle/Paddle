@@ -26,15 +26,10 @@ import paddle.dataset
 import six.moves.cPickle as pickle
 import glob
 
-__all__ = [
-    'DATA_HOME',
-    'download',
-    'md5file',
-    'split',
-    'cluster_files_reader',
-]
+__all__ = []
 
-DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
+HOME = os.path.expanduser('~')
+DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
 
 
 # When running unit tests, there could be multiple processes that

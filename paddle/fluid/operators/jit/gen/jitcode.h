@@ -98,7 +98,7 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
     ret();
   }
   void L(const char* label) { Xbyak::CodeGenerator::L(label); }
-  void L(const Xbyak::Label& label) { Xbyak::CodeGenerator::L(label); }
+  void L(Xbyak::Label& label) { Xbyak::CodeGenerator::L(label); }  // NOLINT
   // Enhanced vector extension
   Xbyak::Address EVEX_compress_addr(Xbyak::Reg64 base, int offt,
                                     bool bcast = false) {

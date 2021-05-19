@@ -11,41 +11,53 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <curand_kernel.h>
+#include "paddle/fluid/platform/dynload/curand.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#include <hiprand_kernel.h>
+#include "paddle/fluid/platform/dynload/hiprand.h"
+#endif
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#include <algorithm>
 #include <string>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T, typename MaskType>
-__global__ void RandomGenerator(const size_t n, const int seed,
+__global__ void RandomGenerator(const size_t n, uint64_t seed,
                                 const float dropout_prob, const T* src,
                                 MaskType* mask_data, T* dst,
-                                bool is_upscale_in_train) {
-  curandStatePhilox4_32_10_t state;
+                                bool is_upscale_in_train, uint64_t increment) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  int step_size = 0;
+#ifdef PADDLE_WITH_HIP
+  hiprandStatePhilox4_32_10_t state;
+  hiprand_init(seed, idx, increment, &state);
+#else
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, idx, increment, &state);
+#endif
 
   MaskType mask;
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
-    if (step_size == 0) {
-      curand_init(seed, idx, idx, &state);
-      step_size = blockDim.x * gridDim.x;
-    } else {
-      curand_init(seed, idx, step_size, &state);
-    }
+#ifdef PADDLE_WITH_HIP
+    if (hiprand_uniform(&state) < dropout_prob) {
+#else
     if (curand_uniform(&state) < dropout_prob) {
+#endif
       mask = 0;
       dest = 0;
     } else {
@@ -61,74 +73,59 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   }
 }
 
-template <typename T, typename MaskType>
-__global__ void RandomGeneratorWithSeed(const size_t n, const int* seed,
-                                        const float dropout_prob, const T* src,
-                                        MaskType* mask_data, T* dst,
-                                        bool is_upscale_in_train) {
+template <typename T, typename MaskType, int VecSize>
+__global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
+                                          const float dropout_prob,
+                                          const T* src, MaskType* mask_data,
+                                          T* dst, bool is_upscale_in_train,
+                                          uint64_t increment) {
+#ifdef PADDLE_WITH_HIP
+  int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  hiprandStatePhilox4_32_10_t state;
+  hiprand_init(seed, idx, increment, &state);
+#else
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   curandStatePhilox4_32_10_t state;
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  int step_size = 0;
+  curand_init(seed, idx, increment, &state);
+#endif
 
   MaskType mask;
   T dest;
-  for (; idx < n; idx += blockDim.x * gridDim.x) {
-    T s = src[idx];
-    if (step_size == 0) {
-      curand_init(seed[0], idx, idx, &state);
-      step_size = blockDim.x * gridDim.x;
-    } else {
-      curand_init(seed[0], idx, step_size, &state);
-    }
-    if (curand_uniform(&state) < dropout_prob) {
-      mask = 0;
-      dest = 0;
-    } else {
-      mask = 1;
-      if (is_upscale_in_train) {
-        dest = s / static_cast<T>(1.0f - dropout_prob);
+  using LoadT = AlignedVector<T, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
+  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
+  for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
+    T src_vec[VecSize];
+    LoadT* value = reinterpret_cast<LoadT*>(&src_vec);
+    *value = *reinterpret_cast<const LoadT*>(&src[i]);
+#ifdef PADDLE_WITH_HIP
+    float4 rand = hiprand_uniform4(&state);
+#else
+    float4 rand = curand_uniform4(&state);
+#endif
+
+    T dest_vec[VecSize];
+    MaskType mask_vec[VecSize];
+
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      if ((&rand.x)[ii] < dropout_prob) {
+        dest_vec[ii] = 0;
+        mask_vec[ii] = 0;
       } else {
-        dest = s;
+        if (is_upscale_in_train) {
+          dest_vec[ii] = src_vec[ii] * factor;
+        } else {
+          dest_vec[ii] = src_vec[ii];
+        }
+        mask_vec[ii] = 1;
       }
     }
-    mask_data[idx] = mask;
-    dst[idx] = dest;
-  }
-}
 
-template <typename T, typename MaskType>
-__global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
-                                             const float dropout_prob,
-                                             const T* src, MaskType* mask_data,
-                                             T* dst, bool is_upscale_in_train,
-                                             uint64_t increment) {
-  curandStatePhilox4_32_10_t state;
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  int step_size = 0;
-
-  MaskType mask;
-  T dest;
-  for (; idx < n; idx += blockDim.x * gridDim.x) {
-    T s = src[idx];
-    if (step_size == 0) {
-      curand_init(seed, idx, increment, &state);
-      step_size = blockDim.x * gridDim.x;
-    } else {
-      curand_init(seed, idx, increment, &state);
-    }
-    if (curand_uniform(&state) < dropout_prob) {
-      mask = 0;
-      dest = 0;
-    } else {
-      mask = 1;
-      if (is_upscale_in_train) {
-        dest = s / static_cast<T>(1.0f - dropout_prob);
-      } else {
-        dest = s;
-      }
-    }
-    mask_data[idx] = mask;
-    dst[idx] = dest;
+    *(reinterpret_cast<LoadT*>(&dst[i])) =
+        *reinterpret_cast<LoadT*>(&dest_vec[0]);
+    *(reinterpret_cast<MaskLoadT*>(&mask_data[i])) =
+        *reinterpret_cast<MaskLoadT*>(&mask_vec[0]);
   }
 }
 
@@ -161,45 +158,89 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto* x_data = x->data<T>();
       auto* y_data = y->mutable_data<T>(context.GetPlace());
       if (dropout_prob == 1.0f) {
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            hipMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            hipMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
+#else
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
         PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemsetAsync(
             mask_data, 0, x_numel * sizeof(*mask_data), stream));
+#endif
         return;
       }
 
-      int threads = 512;
-      int grid = (x_numel + threads - 1) / threads;
-      if (seed && platform::is_gpu_place(seed->place())) {
-        auto seed_gpu_data = seed->data<int>();
-        RandomGeneratorWithSeed<T, uint8_t><<<grid, threads, 0, stream>>>(
-            size, seed_gpu_data, dropout_prob, x_data, mask_data, y_data,
-            upscale_in_train);
-        return;
-      }
-      int seed_data;
-      std::random_device rnd;
-      if (seed) {
-        seed_data = *(seed->data<int>());
-      } else {
-        seed_data =
-            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
-      }
+      const auto& dev_ctx = context.cuda_device_context();
+      platform::GpuLaunchConfig config =
+          platform::GetGpuLaunchConfig1D(dev_ctx, size);
 
+      // increment is used to set the args(offset) of curand_init, which defines
+      // offset in subsequence.
+      // The detail:
+      // https://docs.nvidia.com/cuda/curand/device-api-overview.html
+      // Increment should be at least the number of curand() random numbers used
+      // in each thread to avoid the random number generated this time being the
+      // same as the previous calls.
+      uint64_t seed_data;
+      uint64_t increment;
+      int vec_size = VectorizedSize<T>(x_data);
+      auto offset = ((x_numel - 1) / (config.block_per_grid.x *
+                                      config.thread_per_block.x * vec_size) +
+                     1) *
+                    vec_size;
       int device_id = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace())
                           .GetDeviceId();
       auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-      if (gen_cuda->GetIsInitPy() && (!context.Attr<bool>("fix_seed"))) {
-        auto seed_offset = gen_cuda->IncrementOffset(1);
-        RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-            size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
-            upscale_in_train, seed_offset.second);
-        return;
+
+      if (seed && platform::is_gpu_place(seed->place())) {
+        framework::Tensor seed_cpu_tensor;
+        TensorCopySync(*seed, platform::CPUPlace(), &seed_cpu_tensor);
+        seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
+        increment = offset;
+      } else if (gen_cuda->GetIsInitPy() && (!context.Attr<bool>("fix_seed"))) {
+        auto seed_offset = gen_cuda->IncrementOffset(offset);
+        seed_data = seed_offset.first;
+        increment = seed_offset.second;
+      } else {
+        if (seed) {
+          seed_data = *(seed->data<int>());
+        } else {
+          std::random_device rnd;
+          seed_data = context.Attr<bool>("fix_seed") ? context.Attr<int>("seed")
+                                                     : rnd();
+        }
+        increment = offset;
       }
 
-      RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-          size, seed_data, dropout_prob, x_data, mask_data, y_data,
-          upscale_in_train);
+#ifdef __HIPCC__
+      if (vec_size == 4 && size % 4 == 0) {
+        hipLaunchKernelGGL(
+            HIP_KERNEL_NAME(VectorizedRandomGenerator<T, uint8_t, 4>),
+            config.block_per_grid, config.thread_per_block, 0, stream, size,
+            seed_data, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train, increment);
+      } else {
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(RandomGenerator<T, uint8_t>),
+                           config.block_per_grid, config.thread_per_block, 0,
+                           stream, size, seed_data, dropout_prob, x_data,
+                           mask_data, y_data, upscale_in_train, increment);
+      }
+#else
+      if (vec_size == 4 && size % 4 == 0) {
+        VectorizedRandomGenerator<
+            T, uint8_t,
+            4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+            size, seed_data, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train, increment);
+      } else {
+        RandomGenerator<T, uint8_t><<<config.block_per_grid,
+                                      config.thread_per_block, 0, stream>>>(
+            size, seed_data, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train, increment);
+      }
+#endif
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);

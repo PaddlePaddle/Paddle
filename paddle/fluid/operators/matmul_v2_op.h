@@ -22,9 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dot_op.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 #endif
 
@@ -44,8 +45,7 @@ template <typename DeviceContext, typename T>
 void ReduceSumForMatmulGrad(const Tensor* input, Tensor* output,
                             const std::vector<int>& reduce_dims,
                             const paddle::framework::ExecutionContext& ctx) {
-  if (reduce_dims.empty()) return;
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
   TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
       *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
@@ -71,8 +71,14 @@ static void GetBroadcastFromDims(const int x_ndim, const std::int64_t* x_dims,
   for (int i = 0; i < ndim; ++i) {
     PADDLE_ENFORCE_EQ(
         x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] <= 1 || y_bd_dims[i] <= 1,
-        true, platform::errors::InvalidArgument(
-                  "Input(X) and Input(Y) has error dim."));
+        true,
+        platform::errors::InvalidArgument(
+            "Input(X) and Input(Y) has error dim."
+            "X_broadcast's shape[%s] must be equal to Y_broadcast's shape[%s],"
+            "or X_broadcast's shape[%s] <= 1, or Y_broadcast's shape[%s] <= 1,"
+            "But received X_broadcast's shape[%s] = [%s]"
+            "received Y_broadcast's shape[%s] = [%s]",
+            i, i, i, i, i, x_bd_dims[i], i, y_bd_dims[i]));
     if (x_bd_dims[i] == 0 || y_bd_dims[i] == 0) {
       out_bd_dims[i] = 0;
     } else {
@@ -118,10 +124,13 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
   const T* y_data = Y->data<T>();
 
   if (x_ndim == 1 && y_ndim == 1) {
-    PADDLE_ENFORCE_EQ(X->numel(), Y->numel(),
-                      platform::errors::InvalidArgument(
-                          "X's numbers is not equal to Y's numbers,"
-                          "when X/Y's dims =1"));
+    PADDLE_ENFORCE_EQ(
+        X->numel(), Y->numel(),
+        platform::errors::InvalidArgument(
+            "X's numbers must be equal to Y's numbers,"
+            "when X/Y's dims =1. But received X has [%d] elements,"
+            "received Y has [%d] elements",
+            X->numel(), Y->numel()));
     VLOG(3) << "MatMul's case 1";
     Out->Resize({1});
     Out->mutable_data<T>(ctx.GetPlace());
@@ -140,13 +149,19 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
   if (x_ndim == 1) {
     const int N = X->numel();
     if (trans_y) {
-      PADDLE_ENFORCE_EQ(
-          y_dims[y_ndim - 1], N,
-          platform::errors::InvalidArgument("Input(Y) has error dim."));
+      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 1], N,
+                        platform::errors::InvalidArgument(
+                            "Input(Y) has error dim."
+                            "Y'dims[%d] must be equal to %d"
+                            "But received Y'dims[%d] is %d",
+                            y_ndim - 1, N, y_ndim - 1, y_dims[y_ndim - 1]));
     } else {
-      PADDLE_ENFORCE_EQ(
-          y_dims[y_ndim - 2], N,
-          platform::errors::InvalidArgument("Input(Y) has error dim."));
+      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 2], N,
+                        platform::errors::InvalidArgument(
+                            "Input(Y) has error dim."
+                            "Y'dims[%d] must be equal to %d"
+                            "But received Y'dims[%d] is %d",
+                            y_ndim - 2, N, y_ndim - 2, y_dims[y_ndim - 2]));
     }
     std::vector<std::int64_t> out_dims(y_ndim - 1);
     if (trans_y) {
@@ -182,13 +197,19 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
   if (y_ndim == 1) {
     const int N = Y->numel();
     if (trans_x) {
-      PADDLE_ENFORCE_EQ(
-          x_dims[x_ndim - 2], N,
-          platform::errors::InvalidArgument("Input(X) has error dim."));
+      PADDLE_ENFORCE_EQ(x_dims[x_ndim - 2], N,
+                        platform::errors::InvalidArgument(
+                            "Input(X) has error dim."
+                            "X'dims[%d] must be equal to %d"
+                            "But received X'dims[%d] is %d",
+                            x_ndim - 2, N, x_ndim - 2, x_dims[x_ndim - 2]));
     } else {
-      PADDLE_ENFORCE_EQ(
-          x_dims[x_ndim - 1], N,
-          platform::errors::InvalidArgument("Input(X) has error dim."));
+      PADDLE_ENFORCE_EQ(x_dims[x_ndim - 1], N,
+                        platform::errors::InvalidArgument(
+                            "Input(X) has error dim."
+                            "X'dims[%d] must be equal to %d"
+                            "But received X'dims[%d] is %d",
+                            x_ndim - 1, N, x_ndim - 1, x_dims[x_ndim - 1]));
     }
     std::vector<std::int64_t> out_dims(x_ndim - 1);
     if (trans_x) {
@@ -225,11 +246,19 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
   const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
   const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
   if (trans_y) {
-    PADDLE_ENFORCE_EQ(y_dims[y_ndim - 1], K, platform::errors::InvalidArgument(
-                                                 "Input(X) has error dim."));
+    PADDLE_ENFORCE_EQ(y_dims[y_ndim - 1], K,
+                      platform::errors::InvalidArgument(
+                          "Input(Y) has error dim."
+                          "Y'dims[%d] must be equal to %d"
+                          "But received Y'dims[%d] is %d",
+                          y_ndim - 1, K, y_ndim - 1, y_dims[y_ndim - 1]));
   } else {
-    PADDLE_ENFORCE_EQ(y_dims[y_ndim - 2], K, platform::errors::InvalidArgument(
-                                                 "Input(X) has error dim."));
+    PADDLE_ENFORCE_EQ(y_dims[y_ndim - 2], K,
+                      platform::errors::InvalidArgument(
+                          "Input(Y) has error dim."
+                          "Y'dims[%d] must be equal to %d"
+                          "But received Y'dims[%d] is %d",
+                          y_ndim - 2, K, y_ndim - 2, y_dims[y_ndim - 2]));
   }
   const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
   const int ndim = (std::max)(x_ndim, y_ndim);
@@ -441,6 +470,61 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
 }
 
 template <typename DeviceContext, typename T>
+struct ConjHelper {
+  explicit ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+  HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
+    dst.Resize(src.dims());
+    dst.set_layout(src.layout());
+    dst.ShareDataWith(src);
+    return;
+  }
+
+  const framework::ExecutionContext& ctx_;
+};
+
+template <typename DeviceContext>
+struct ConjHelper<DeviceContext, paddle::platform::complex64> {
+  explicit ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+
+  HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
+    dst.Resize(src.dims());
+    auto* src_data = src.data<paddle::platform::complex64>();
+    auto* dst_data = dst.mutable_data<paddle::platform::complex64>(
+        ctx_.GetPlace(),
+        size_t(src.numel() * sizeof(paddle::platform::complex64)));
+
+    platform::ForRange<DeviceContext> for_range(
+        ctx_.template device_context<DeviceContext>(), src.numel());
+    math::ConjFunctor<paddle::platform::complex64> functor(
+        src_data, src.numel(), dst_data);
+    for_range(functor);
+    return;
+  }
+  const framework::ExecutionContext& ctx_;
+};
+
+template <typename DeviceContext>
+struct ConjHelper<DeviceContext, paddle::platform::complex128> {
+  explicit ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
+
+  HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
+    dst.Resize(src.dims());
+    auto* src_data = src.data<paddle::platform::complex128>();
+    auto* dst_data = dst.mutable_data<paddle::platform::complex128>(
+        ctx_.GetPlace(),
+        size_t(src.numel() * sizeof(paddle::platform::complex128)));
+
+    platform::ForRange<DeviceContext> for_range(
+        ctx_.template device_context<DeviceContext>(), src.numel());
+    math::ConjFunctor<paddle::platform::complex128> functor(
+        src_data, src.numel(), dst_data);
+    for_range(functor);
+    return;
+  }
+  const framework::ExecutionContext& ctx_;
+};
+
+template <typename DeviceContext, typename T>
 class MatMulV2GradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext& context,
@@ -491,6 +575,8 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     auto x = *ctx.Input<framework::Tensor>("X");
     auto y = *ctx.Input<framework::Tensor>("Y");
     auto dout = *ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    framework::Tensor y_conj(y.type());
+    framework::Tensor x_conj(y.type());
 
     // get dims
     std::vector<std::int64_t> x_dims = vectorize(x.dims());
@@ -509,7 +595,7 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       if (dx) dx->mutable_data<T>(ctx.GetPlace());
       if (dy) dy->mutable_data<T>(ctx.GetPlace());
       if (dout.numel() == 1) {
-        DotGradFunction<DeviceContext, T>(&x, &y, &dout, dx, dy, ctx);
+        DotGradFunction<DeviceContext, T>()(&x, &y, &dout, dx, dy, ctx);
         return;
       }
     }
@@ -534,6 +620,10 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
         if (dx_dims != x.dims()) {
           dx->Resize(x.dims());
         }
+
+        // for complex
+        ConjHelper<DeviceContext, T> conj_helper(ctx);
+        conj_helper(y, y_conj);
       }
 
       framework::DDim dy_dims;
@@ -542,19 +632,23 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
         if (dy_dims != y.dims()) {
           dy->Resize(y.dims());
         }
+
+        // for complex
+        ConjHelper<DeviceContext, T> conj_helper(ctx);
+        conj_helper(x, x_conj);
       }
       if (transpose_x && transpose_y) {
-        CalcInputGrad(ctx, y, true, true, dout, true, false, dx);
-        CalcInputGrad(ctx, dout, true, true, x, true, false, dy);
+        CalcInputGrad(ctx, y_conj, true, true, dout, true, false, dx);
+        CalcInputGrad(ctx, dout, true, true, x_conj, true, false, dy);
       } else if (transpose_x) {
-        CalcInputGrad(ctx, y, false, false, dout, true, false, dx);
-        CalcInputGrad(ctx, x, false, false, dout, false, true, dy);
+        CalcInputGrad(ctx, y_conj, false, false, dout, true, false, dx);
+        CalcInputGrad(ctx, x_conj, false, false, dout, false, true, dy);
       } else if (transpose_y) {
-        CalcInputGrad(ctx, dout, false, false, y, false, true, dx);
-        CalcInputGrad(ctx, dout, true, true, x, false, true, dy);
+        CalcInputGrad(ctx, dout, false, false, y_conj, false, true, dx);
+        CalcInputGrad(ctx, dout, true, true, x_conj, false, true, dy);
       } else {
-        CalcInputGrad(ctx, dout, false, false, y, true, false, dx);
-        CalcInputGrad(ctx, x, true, true, dout, false, true, dy);
+        CalcInputGrad(ctx, dout, false, false, y_conj, true, false, dx);
+        CalcInputGrad(ctx, x_conj, true, true, dout, false, true, dy);
       }
 
       if (dx) {
@@ -573,47 +667,52 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       // So we should avoid the case in reality.
       VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                  "wastes the memory. So we should avoid the case in reality";
+      Tensor dx_help, dy_help;
+
+      ConjHelper<DeviceContext, T> conj_helper(ctx);
+      conj_helper(x, x_conj);
+      conj_helper(y, y_conj);
       if (transpose_x) {
         if (transpose_y) {
           // X'Y': dA = Y'G', dB = G'X'
           if (dx)
-            MatMulFunction<DeviceContext, T>(&y, &dout, y_dims, dout_dims, dx,
-                                             true, true, ctx);
+            MatMulFunction<DeviceContext, T>(&y_conj, &dout, y_dims, dout_dims,
+                                             &dx_help, true, true, ctx);
           if (dy)
-            MatMulFunction<DeviceContext, T>(&dout, &x, dout_dims, x_dims, dy,
-                                             true, true, ctx);
+            MatMulFunction<DeviceContext, T>(&dout, &x_conj, dout_dims, x_dims,
+                                             &dy_help, true, true, ctx);
         } else {
           // X'Y: dX = YG', dY = XG
           if (dx)
-            MatMulFunction<DeviceContext, T>(&y, &dout, y_dims, dout_dims, dx,
-                                             false, true, ctx);
+            MatMulFunction<DeviceContext, T>(&y_conj, &dout, y_dims, dout_dims,
+                                             &dx_help, false, true, ctx);
           if (dy)
-            MatMulFunction<DeviceContext, T>(&x, &dout, x_dims, dout_dims, dy,
-                                             false, false, ctx);
+            MatMulFunction<DeviceContext, T>(&x_conj, &dout, x_dims, dout_dims,
+                                             &dy_help, false, false, ctx);
         }
       } else {
         if (transpose_y) {
           // XY': dX = GY, dY = G'X
           if (dx)
-            MatMulFunction<DeviceContext, T>(&dout, &y, dout_dims, y_dims, dx,
-                                             false, false, ctx);
+            MatMulFunction<DeviceContext, T>(&dout, &y_conj, dout_dims, y_dims,
+                                             &dx_help, false, false, ctx);
           if (dy)
-            MatMulFunction<DeviceContext, T>(&dout, &x, dout_dims, x_dims, dy,
-                                             true, false, ctx);
+            MatMulFunction<DeviceContext, T>(&dout, &x_conj, dout_dims, x_dims,
+                                             &dy_help, true, false, ctx);
         } else {
           // XY: dX = GY', dY = X'G
           if (dx)
-            MatMulFunction<DeviceContext, T>(&dout, &y, dout_dims, y_dims, dx,
-                                             false, true, ctx);
+            MatMulFunction<DeviceContext, T>(&dout, &y_conj, dout_dims, y_dims,
+                                             &dx_help, false, true, ctx);
           if (dy)
-            MatMulFunction<DeviceContext, T>(&x, &dout, x_dims, dout_dims, dy,
-                                             true, false, ctx);
+            MatMulFunction<DeviceContext, T>(&x_conj, &dout, x_dims, dout_dims,
+                                             &dy_help, true, false, ctx);
         }
       }
 
       // get help dims
-      const std::vector<std::int64_t> dx_help_dims = vectorize(dx->dims());
-      const std::vector<std::int64_t> dy_help_dims = vectorize(dy->dims());
+      const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
+      const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
 
       std::vector<std::int64_t> dx_broadcast_dims(ndim);
       std::vector<std::int64_t> dy_broadcast_dims(ndim);
@@ -639,11 +738,21 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
       }
       // reduce sum to get grad by ReduceSum
       if (dx) {
-        ReduceSumForMatmulGrad<DeviceContext, T>(dx, dx, dx_reduce_dims, ctx);
+        if (dx_reduce_dims.empty()) {
+          *dx = std::move(dx_help);
+        } else {
+          ReduceSumForMatmulGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
+                                                   ctx);
+        }
         dx->Resize(x.dims());
       }
       if (dy) {
-        ReduceSumForMatmulGrad<DeviceContext, T>(dy, dy, dy_reduce_dims, ctx);
+        if (dy_reduce_dims.empty()) {
+          *dy = std::move(dy_help);
+        } else {
+          ReduceSumForMatmulGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
+                                                   ctx);
+        }
         dy->Resize(y.dims());
       }
     }

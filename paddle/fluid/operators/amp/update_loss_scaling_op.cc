@@ -54,8 +54,7 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "PrevLossScaling"),
-        ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -107,6 +106,9 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "the received is %f",
                                 decr_ratio));
         });
+    AddAttr<bool>("stop_update",
+                  "Stop updating loss scaling, and just zero inputs.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Update loss scaling according to overall gradients. If all gradients is 
 finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
@@ -135,18 +137,18 @@ class UpdateLossScalingFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-class LazyZeroInputs<platform::CPUDeviceContext, T> {
+class LazyZeros<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
-    if (*found_inf_data) {
-      VLOG(1) << "-- UpdateLossScaling: Infinite values are found in grads. --";
-      for (size_t i = 0; i < xs.size(); ++i) {
-        auto* out = outs[i];
-        T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-        int num = out->numel();
+    for (size_t i = 0; i < xs.size(); ++i) {
+      auto* out = outs[i];
+      T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+      int num = out->numel();
+      if (*found_inf_data) {
+        VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
         std::memset(out_data, 0, num * sizeof(T));
       }
     }

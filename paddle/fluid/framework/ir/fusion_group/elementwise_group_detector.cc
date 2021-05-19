@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
 #include <string>
-#include <unordered_set>
-#include <vector>
+
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 

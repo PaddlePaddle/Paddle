@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
 
-#include <functional>
-#include <map>
-
 namespace paddle {
 namespace framework {
 namespace details {

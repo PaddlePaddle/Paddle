@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = []
-__all__ += ["reader"]
+from . import optimizer
+from . import checkpoint
+from ..fluid.layer_helper import LayerHelper
 
-from ..fluid.contrib import reader
+__all__ = []
+__all__ += optimizer.__all__
+__all__ += checkpoint.__all__

@@ -18,11 +18,11 @@ import os
 import io
 import tarfile
 import numpy as np
-import scipy.io as scio
 from PIL import Image
 
 import paddle
 from paddle.io import Dataset
+from paddle.utils import try_import
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["Flowers"]
@@ -47,15 +47,14 @@ class Flowers(Dataset):
 
     Args:
         data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/flowers/
         label_file(str): path to label file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/flowers/
         setid_file(str): path to subset index file, can be set
             None if :attr:`download` is True. Default None
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for on transform.
-        download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+        transform(callable): transform to perform on image, None for no transform.
+        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
         backend(str, optional): Specifies which type of image to be returned: 
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
@@ -126,6 +125,15 @@ class Flowers(Dataset):
         self.data_tar = tarfile.open(self.data_file)
         for ele in self.data_tar.getmembers():
             self.name2mem[ele.name] = ele
+
+        scio = try_import('scipy.io')
+
+        # double check data download
+        self.label_file = _check_exists_and_download(self.label_file, LABEL_URL,
+                                                     LABEL_MD5, 'flowers', True)
+
+        self.setid_file = _check_exists_and_download(self.setid_file, SETID_URL,
+                                                     SETID_MD5, 'flowers', True)
 
         self.labels = scio.loadmat(self.label_file)['labels'][0]
         self.indexes = scio.loadmat(self.setid_file)[self.flag][0]

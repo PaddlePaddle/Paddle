@@ -26,7 +26,7 @@ from paddle.io import Dataset
 import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Movielens']
+__all__ = []
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
@@ -116,7 +116,6 @@ class Movielens(Dataset):
                 def forward(self, category, title, rating):
                     return paddle.sum(category), paddle.sum(title), paddle.sum(rating)
 
-            paddle.disable_static()
 
             movielens = Movielens(mode='train')
 
