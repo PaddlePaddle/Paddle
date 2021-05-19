@@ -125,7 +125,7 @@ class IndexSelectKernel : public framework::OpKernel<T> {
   }
 };
 
-#if ((!defined __NVCC__) || (!defined __HIPCC__))
+#if ((!defined __NVCC__) && (!defined __HIPCC__))
 template <typename T>
 void index_sum(const size_t n, const T* src, T* dst) {
 #ifdef __AVX__
@@ -201,7 +201,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
 #ifdef __AVX__
       auto src = input_data + input_start_offset + j * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
-#if ((!defined __NVCC__) || (!defined __HIPCC__))
+#if ((!defined __NVCC__) && (!defined __HIPCC__))
       index_sum(slice_size, src, dst);
 #endif
 #else
