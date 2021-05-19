@@ -115,7 +115,7 @@ def _get_cache_or_reload(repo,
         if verbose:
             sys.stderr.write('Using cache found in {}\n'.format(repo_dir))
     elif use_git:
-        _remove_if_exists(repo_name)
+        _remove_if_exists(repo_dir)
         git_url = _git_clone_link(repo_owner, repo_name, source=source)
         git_clone_from_url(git_url, repo_dir, branch, check_exist=True)
     else:

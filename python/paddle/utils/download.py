@@ -201,11 +201,35 @@ def git_clone_from_url(
     return fullpath
 
 
+def retry(times, delay=1, exceptions=Exception):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            _e = None
+            for i in range(times):
+                if i > 0:
+                    _e = None
+                    time.sleep(delay)
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    _e = e
+
+            if _e is not None:
+                raise RuntimeError('Retry failed with exception {}!'.format(
+                    str(_e)))
+
+        return wrapper
+
+    return decorator
+
+
 def _remove_if_exists(path):
     if os.path.exists(path):
         shutil.rmtree(path, ignore_errors=True)
 
 
+@retry(times=3, delay=0.5)
 def _git_clone(url, repo_dir, branch):
 
     if branch is None:
