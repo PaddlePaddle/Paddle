@@ -214,7 +214,7 @@ struct BroadcastArgsWarpper {
   HOSTDEVICE BroadcastArgsWarpper(
       const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
       int scalar_cal_offset, Functor func,
-      const CalculateInputStrides &offset_calculator)
+      const StridesCalculation &offset_calculator)
       : scalar_cal_offset(scalar_cal_offset), func(func) {
     for (int j = 0; j < ET; ++j) {
       in_data[j] = ins[j]->data<T>();
