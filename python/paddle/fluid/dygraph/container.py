@@ -15,6 +15,7 @@
 from collections import OrderedDict
 from ..framework import Parameter
 from .layers import Layer
+from .base import param_guard
 
 __all__ = [
     'Sequential',
@@ -29,7 +30,7 @@ class Sequential(Layer):
     The argument passed to the constructor can be iterable Layers or iterable name Layer pairs.
 
     Parameters:
-        *layers(tuple): Layers or iterable name Layer pairs.
+        layers(Layer|list|tuple): Layer or list/tuple of iterable name Layer pair.
 
     Examples:
         .. code-block:: python
@@ -59,7 +60,7 @@ class Sequential(Layer):
 
     def __init__(self, *layers):
         super(Sequential, self).__init__()
-        if len(layers) > 0 and isinstance(layers[0], tuple):
+        if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
         else:
@@ -69,6 +70,8 @@ class Sequential(Layer):
     def __getitem__(self, name):
         if isinstance(name, slice):
             return self.__class__(*(list(self._sub_layers.values())[name]))
+        elif isinstance(name, str):
+            return self._sub_layers[name]
         else:
             if name >= len(self._sub_layers):
                 raise IndexError('index {} is out of range'.format(name))
@@ -157,7 +160,8 @@ class ParameterList(Layer):
                 self.add_parameter(str(idx), param)
 
     def __getitem__(self, idx):
-        return self._parameters[str(idx)]
+        with param_guard(self._parameters):
+            return self._parameters[str(idx)]
 
     def __setitem__(self, idx, param):
         assert isinstance(param, Parameter)
@@ -167,7 +171,8 @@ class ParameterList(Layer):
         return len(self._parameters)
 
     def __iter__(self):
-        return iter(self._parameters.values())
+        with param_guard(self._parameters):
+            return iter(self._parameters.values())
 
     def append(self, parameter):
         """Appends a given parameter at the end of the list.

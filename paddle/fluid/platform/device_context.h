@@ -233,6 +233,27 @@ template <>
 struct DefaultDeviceContextType<platform::NPUPlace> {
   using TYPE = NPUDeviceContext;
 };
+
+// Currently, NPUPinnedDeviceContext is only used to data copying.
+class NPUPinnedDeviceContext : public DeviceContext {
+ public:
+  NPUPinnedDeviceContext();
+  explicit NPUPinnedDeviceContext(NPUPinnedPlace place);
+
+  Place GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+ private:
+  NPUPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+
+template <>
+struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
+  using TYPE = NPUPinnedDeviceContext;
+};
+
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -673,6 +694,7 @@ class MKLDNNDeviceContextThreadLocals {
     mkldnn::stream cur_stream;
     std::string key_suffix;  // Key identifying current Executor
     bool key_attach_thread_id = true;
+    void* exec_ptr_ = nullptr;
 
     Body();
     ~Body();
@@ -689,6 +711,8 @@ class MKLDNNDeviceContextThreadLocals {
     const std::string& get_key_suffix(void) const { return key_suffix; }
     void disable_tid_in_key(void) { key_attach_thread_id = false; }
     bool is_tid_used_in_key(void) const { return key_attach_thread_id; }
+    void set_curr_exec(void* exec_ptr) { exec_ptr_ = exec_ptr; }
+    void* get_curr_exec(void) const { return exec_ptr_; }
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
@@ -724,13 +748,19 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   using ShapeBlob = umap_key_string_t<KeyBlob>;
   using BlobMap = umap_value_smart_t<int, ShapeBlob>;
 
+  using ExecMap = std::unordered_map<
+      void*, std::vector<std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>>>;
+
   explicit MKLDNNDeviceContext(CPUPlace place);
 
   /* \brief  Get the active engine */
   const mkldnn::engine& GetEngine() const { return tls().get_engine(); }
 
+  // Register object to currently used executor's map
+  void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;
+
   // Remove all entries from the blob map
-  void ResetBlobMap();
+  void ResetBlobMap(void* ptr);
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
@@ -753,6 +783,9 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
  private:
   std::shared_ptr<BlobMap> p_blobmap_;
+  // Map key is pointer of executor and value is a data(iterator in map) needed
+  // to erase
+  std::shared_ptr<ExecMap> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
 };

@@ -381,7 +381,10 @@ class LayerHelperBase(object):
             return self.main_program.global_block().create_parameter(
                 dtype=dtype, shape=shape, type=type, **attr._to_kwargs())
 
-    def create_variable_for_type_inference(self, dtype, stop_gradient=False):
+    def create_variable_for_type_inference(self,
+                                           dtype,
+                                           stop_gradient=False,
+                                           shape=None):
         """Create a temporary variable that should be type inferred layer.
 
         Note:
@@ -397,6 +400,7 @@ class LayerHelperBase(object):
             name=unique_name.generate_with_ignorable_key(".".join(
                 [self.name, 'tmp'])),
             dtype=dtype,
+            shape=shape,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=stop_gradient)

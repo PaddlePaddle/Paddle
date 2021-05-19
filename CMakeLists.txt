@@ -105,9 +105,7 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
-    # NOTE(zhouwei25): temporarily change MP to 1 for reducing CPU & memory utilization
-    set(PROCESS_MAX 1)
-    #math(EXPR PROCESS_MAX "${CPU_CORES} * 1 / 2")
+    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
 
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
@@ -116,7 +114,10 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
+        # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling
+        if(NOT WITH_GPU)
+            set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
+        endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -352,6 +353,11 @@ if (WITH_MIPS)
     add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if (WITH_HETERPS)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
+    endif()
+endif()
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")

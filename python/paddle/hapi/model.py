@@ -54,7 +54,7 @@ from paddle.distributed.fleet.base import role_maker
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
 
-__all__ = ['Model', ]
+__all__ = []
 
 _parallel_context_initialized = False
 
@@ -236,7 +236,7 @@ def _update_input_info(inputs):
     if isinstance(inputs, Input):
         shapes = [list(inputs.shape)]
         dtypes = [inputs.dtype]
-    elif isinstance(inputs, list):
+    elif isinstance(inputs, (list, tuple)):
         shapes = [list(input.shape) for input in inputs]
         dtypes = [input.dtype for input in inputs]
     elif isinstance(inputs, dict):
@@ -887,20 +887,20 @@ class Model(object):
     AdamW and Momentum optimizer. Before using pure float16 training,
     `multi_precision` could be set to True when creating optimizer, which can
     avoid poor accuracy or slow convergence in a way, and inputs of dtype float
-    should be cast to float16 by users. Users should also use
-    `paddle.static.amp.fp16_guard` API to limit the range of pure float16
-    training, otherwise, 'use_fp16_guard' should be set to False by users.
-    However, limiting the range of is not supported during training using AMP.
+    should be cast to float16 by users. `paddle.static.amp.fp16_guard` API
+    should be also used to limit the range of pure float16 training, otherwise,
+    'use_fp16_guard' should be set to False by users. However, limiting the
+    range of is not supported during training using AMP.
 
     Args:
         network (paddle.nn.Layer): The network is an instance of
             paddle.nn.Layer.
-        inputs (InputSpec|list|dict|None): `inputs`, entry points of network,
-            could be a InputSpec instance, or lits of InputSpec instances,
+        inputs (InputSpec|list|tuple|dict|None): `inputs`, entry points of network,
+            could be a InputSpec instance, or list/tuple of InputSpec instances,
             or dict ({name: InputSpec}), and it couldn't be None in static
             graph.
-        labels (InputSpec|list|None): `labels`, entry points of network,
-            could be a InputSpec instnace or lits of InputSpec instances,
+        labels (InputSpec|list|tuple|None): `labels`, entry points of network,
+            could be a InputSpec instnace or list/tuple of InputSpec instances,
             or None. For static graph, if labels is required in loss,
             labels must be set. Otherwise, it could be None.
 
@@ -974,7 +974,7 @@ class Model(object):
             data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
             model.fit(data, epochs=2, batch_size=32, verbose=1)
 
-          # mixed precision training is only support on GPU now.
+          # mixed precision training is only supported on GPU now.
           if paddle.is_compiled_with_cuda():
             run_example_code()
 
@@ -994,9 +994,10 @@ class Model(object):
         self.stop_training = False
 
         if not in_dygraph_mode():
-            if not isinstance(inputs, (list, dict, Input)):
+            if not isinstance(inputs, (list, tuple, dict, Input)):
                 raise TypeError(
-                    "'inputs' must be list or dict, and couldn't be None.")
+                    "'inputs' must be list or tuple or dict, and couldn't be None."
+                )
         elif inputs:
             self._input_info = _update_input_info(inputs)
 
@@ -1462,19 +1463,18 @@ class Model(object):
                 float16 training is used, the key 'level' of 'amp_configs'
                 should be set to 'O1' or 'O2' respectively. Otherwise, the
                 value of 'level' defaults to 'O0', which means float32
-                training. In addition to 'level', users could pass in more
-                parameters consistent with mixed precision API. The supported
+                training. In addition to 'level', parameters consistent with
+                mixed precision API could also be passed in. The supported
                 keys are: 'init_loss_scaling', 'incr_ratio', 'decr_ratio',
                 'incr_every_n_steps', 'decr_every_n_nan_or_inf',
                 'use_dynamic_loss_scaling', 'custom_white_list',
                 'custom_black_list', and 'custom_black_varnames'or
-                'use_fp16_guard' is only supported in static mode. Users could
-                refer to mixed precision API documentations
-                 :ref:`api_paddle_amp_auto_cast` and
-                 :ref:`api_paddle_amp_GradScaler` for details. For convenience,
-                'amp_configs' could be set to 'O1' or 'O2' if no more
-                parameters are needed. 'amp_configs' could be None in float32
-                training. Default: None.
+                'use_fp16_guard' is only supported in static mode. Mixed
+                precision API documentations  :ref:`api_paddle_amp_auto_cast`
+                and  :ref:`api_paddle_amp_GradScaler` could be referenced
+                for details. For convenience, 'amp_configs' could be set to
+                'O1' or 'O2' if no more parameters are needed. 'amp_configs'
+                could be None in float32 training. Default: None.
         Returns:
             None
         """

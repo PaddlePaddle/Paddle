@@ -191,22 +191,8 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
-    scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
-      delete scope;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
-           ++dev_id) {
-        memory::Release(platform::CUDAPlace(dev_id));
-      }
-#endif
-#ifdef PADDLE_WITH_XPU
-      for (int dev_id = 0; dev_id < paddle::platform::GetXPUDeviceCount();
-           ++dev_id) {
-        memory::Release(platform::XPUPlace(dev_id));
-      }
-#endif
-      memory::Release(platform::CPUPlace());
-    });
+    // TODO(wilber): we need to release memory occupied by weights.
+    scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();
@@ -628,7 +614,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   // This function can only be executed once per process.
   static std::once_flag custom_operators_registered;
   std::call_once(custom_operators_registered,
-                 []() { paddle::RegisterAllCustomOperator(); });
+                 []() { inference::RegisterAllCustomOperator(); });
 
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;
@@ -664,19 +650,21 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--cudnn_deterministic=True");
       }
 
-      if (config.thread_local_stream_enabled()) {
-        gflags.push_back("--allocator_strategy=thread_local");
-        process_level_allocator_enabled = false;
-      } else {
-        process_level_allocator_enabled = true;
-      }
-
 // TODO(wilber): jetson tx2 may fail to run the model due to insufficient memory
 // under the native_best_fit strategy. Modify the default allocation strategy to
 // auto_growth. todo, find a more appropriate way to solve the problem.
 #ifdef WITH_NV_JETSON
       gflags.push_back("--allocator_strategy=auto_growth");
 #endif
+
+      // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
+      // allocator when multi-stream is enabled.
+      if (config.thread_local_stream_enabled()) {
+        gflags.push_back("--allocator_strategy=thread_local");
+        process_level_allocator_enabled = false;
+      } else {
+        process_level_allocator_enabled = true;
+      }
 
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "

@@ -23,6 +23,8 @@ from paddle.fluid.dygraph.parallel import _split_tensors, sync_params_buffers, b
 from collections import OrderedDict
 from .log_util import logger
 
+__all__ = []
+
 
 def _apply_collective_grads(parameters, comm_group):
     grad_var_set = set()
@@ -42,35 +44,56 @@ def _apply_collective_grads(parameters, comm_group):
 
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
-        coalesced_grad = coalesced_grad / comm_group.nranks
+        div_factor = paddle.to_tensor(
+            comm_group.nranks, dtype=coalesced_grad.dtype)
+        paddle.fluid.framework._dygraph_tracer().trace_op(
+            type="elementwise_div",
+            inputs={'X': coalesced_grad,
+                    'Y': div_factor},
+            outputs={'Out': coalesced_grad},
+            attrs={'axis': -1})
+
         paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
 
     _split_tensors(coalesced_grads_and_vars)
 
 
-def broadcast_input_data(hcg, *inputs, **kwargs):
+def _broadcast_data_help(data, shape, dtype, hcg):
     model_parallel_group = hcg.get_model_parallel_group()
     src_rank = hcg.get_model_parallel_group_src_rank()
+    mp_rank = hcg.get_model_parallel_rank()
 
-    for input_ in inputs:
-        if isinstance(input_, core.VarBase):
+    shape_gpu = paddle.to_tensor(shape, dtype="int32")
+    paddle.distributed.broadcast(
+        shape_gpu,
+        src=src_rank,
+        group=model_parallel_group,
+        use_calc_stream=True)
+
+    if mp_rank != 0:
+        input_data = paddle.zeros(shape_gpu, dtype=dtype)
+    else:
+        input_data = data
+
+    paddle.distributed.broadcast(
+        input_data,
+        src=src_rank,
+        group=model_parallel_group,
+        use_calc_stream=True)
+
+
+def broadcast_input_data(hcg, *inputs, **kwargs):
+    for v in inputs:
+        if isinstance(v, core.VarBase):
             with framework.no_grad():
-                paddle.distributed.broadcast(
-                    input_,
-                    src=src_rank,
-                    group=model_parallel_group,
-                    use_calc_stream=True)
+                _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
-            logger.error("it doesn't support data type {}".format(type(input_)))
+            logger.error("it doesn't support data type {}".format(type(v)))
 
     for k, v in kwargs.items():
         if isinstance(v, core.VarBase):
             with framework.no_grad():
-                paddle.distributed.broadcast(
-                    v,
-                    src=src_rank,
-                    group=model_parallel_group,
-                    use_calc_stream=True)
+                _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
             logger.error("it doesn't support data type {}".format(type(v)))
