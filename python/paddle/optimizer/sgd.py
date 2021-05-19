@@ -17,6 +17,10 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 from ..fluid.dygraph import no_grad
+from ..fluid import layers
+from ..fluid import unique_name
+from ..fluid.layer_helper import LayerHelper
+import warnings
 
 __all__ = []
 
@@ -89,6 +93,8 @@ class SGD(Optimizer):
             grad_clip=grad_clip,
             name=name)
         self.type = "sgd"
+        self._rescale_grad = rescale_grad
+        self._master_weights = {}
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
@@ -97,6 +103,11 @@ class SGD(Optimizer):
             core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
                          param_and_grad[0])
             return None
+
+        find_master = self._multi_precision and param_and_grad[
+            0].dtype == core.VarDesc.VarType.FP16
+        master_weight = (self._master_weights[param_and_grad[0].name]
+                         if find_master else None)
 
         assert isinstance(block, framework.Block)
         # create the optimize op
@@ -108,6 +119,10 @@ class SGD(Optimizer):
                 "LearningRate": lr
             },
             outputs={"ParamOut": param_and_grad[0]},
+            attrs={
+                "multi_precision": find_master,
+                "rescale_grad": self._rescale_grad
+            },
             stop_gradient=True)
 
         return sgd_op
@@ -134,23 +149,3 @@ class SGD(Optimizer):
             })
         self._master_weights[param.name] = var
         return var
-
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        target_param = self._master_weights[
-            param.name] if find_master else param
-        target_name = target_param.name
-        if (name not in self._accumulators or
-                target_name not in self._accumulators[name]):
-            raise Exception("Accumulator {} does not exist for parameter {}".
-                            format(name, target_name))
-        return self._accumulators[name][target_name]

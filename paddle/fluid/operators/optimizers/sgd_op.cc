@@ -103,6 +103,7 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
     AddOutput("ParamOut",
               "(Tensor or SelectedRows, same with Param) "
               "Output parameter, should share the same memory with Param");
@@ -114,6 +115,11 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")
         .SetDefault(false);
+    AddAttr<float>(
+        "rescale_grad",
+        "(float, default 1.0) Multiply the gradient with `rescale_grad`"
+        "before updating. Often choose to be `1.0/batch_size`.")
+        .SetDefault(1.0f);
     AddComment(R"DOC(
 
 SGD operator
