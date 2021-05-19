@@ -233,7 +233,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext,
                       paddle::platform::float16>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>);
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>);
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -242,4 +243,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
                           paddle::platform::float16>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>);
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>);

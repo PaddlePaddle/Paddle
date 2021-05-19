@@ -287,6 +287,15 @@ if(WITH_DISTRIBUTE)
             graph_to_program_pass variable_helper timer monitor)
   endif()
 elseif(WITH_PSLIB)
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS
+              "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(hetercpu_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(heterxpu_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
