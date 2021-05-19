@@ -138,8 +138,8 @@ class TestHub(unittest.TestCase):
         _ = hub.help(
             repo, 'MM', source=source, force_reload=False, use_git=True)
 
-        hub._git_archive_link('lyuwenyuL', 'paddlehub_test', 'master', 'gitee')
-        hub._git_archive_link('lyuwenyu', 'paddlehub_demo', 'main', 'github')
+        # hub._git_archive_link('lyuwenyuL', 'paddlehub_test', 'master', 'gitee')
+        # hub._git_archive_link('lyuwenyu', 'paddlehub_demo', 'main', 'github')
 
     def testGiteeclone(self, ):
         repo = 'lyuwenyu/paddlehub_test:master'
