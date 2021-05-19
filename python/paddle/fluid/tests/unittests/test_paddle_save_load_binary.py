@@ -163,7 +163,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             path = 'test_save_load_error/temp'
             paddle.save({}, path, use_binary_format=True)
-
+        # On the Windows platform, when parsing a string that can't be parsed as a `Program`, `desc_.ParseFromString` has a timeout risk.
         if 'Windows' != platform.system():
             with self.assertRaises(ValueError):
                 path = 'test_save_load_error/temp'
