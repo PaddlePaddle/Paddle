@@ -95,7 +95,7 @@ struct CastOpFunctor<platform::CUDADeviceContext, InT> {
 
 namespace ops = paddle::operators;
 
-#if CUDA_VERSION >= 11000 && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_HIP)
 #define CAST_REGISTER_BF16                               \
   ops::CastOpKernel<paddle::platform::CUDADeviceContext, \
                     paddle::platform::bfloat16>,
