@@ -17,7 +17,9 @@ from __future__ import print_function
 import op_test
 import unittest
 import numpy as np
+import struct
 
+from op_test import convert_uint16_to_float, convert_float_to_uint16
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -70,6 +72,49 @@ class TestCastOp3(op_test.OpTest):
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCastOp4(op_test.OpTest):
+    def setUp(self):
+        ipt = np.array(
+            [np.random.randint(1, 5) for i in range(10)]).astype('uint16')
+        self.inputs = {'X': ipt.astype('uint16')}
+        self.outputs = {'Out': convert_uint16_to_float(ipt)}
+        self.force_fp32_output = True
+        self.attrs = {
+            'in_dtype': int(core.VarDesc.VarType.BF16),
+            'out_dtype': int(core.VarDesc.VarType.FP32),
+            'force_fp32_output': self.force_fp32_output
+        }
+        self.op_type = 'cast'
+
+    def test_check_output(self):
+        # only test on CUDAPlace
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-6)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCastOp5(op_test.OpTest):
+    def setUp(self):
+        ipt = np.random.random(size=[2, 10]).astype('float32')
+        self.inputs = {'X': ipt.astype('float32')}
+        self.outputs = {'Out': convert_float_to_uint16(ipt)}
+        self.force_fp32_output = False
+        self.attrs = {
+            'in_dtype': int(core.VarDesc.VarType.FP32),
+            'out_dtype': int(core.VarDesc.VarType.BF16),
+            'force_fp32_output': self.force_fp32_output
+        }
+        self.op_type = 'cast'
+
+    def test_check_output(self):
+        # only test on CUDAPlace
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=2)
 
 
 class TestCastOpError(unittest.TestCase):
