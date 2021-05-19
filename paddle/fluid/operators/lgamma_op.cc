@@ -25,7 +25,7 @@ class LgammaOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Lgamma Operator.
 
-This operator is used to perform elementwise lgamma for input $X$.
+This operator performs elementwise lgamma for input $X$.
 $$out = log\Gamma(x)$$
 
 )DOC");
