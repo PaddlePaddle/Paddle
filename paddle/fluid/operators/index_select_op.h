@@ -142,7 +142,9 @@ void index_sum(const size_t n, const T* src, T* dst) {
     dst[i] += src[i];
   }
 #else
-  index_sum(n, src, dst);
+  for (auto k = 0; k < n; k++) {
+    dst[k] += src[k];
+  }
 #endif
 }
 
@@ -162,7 +164,9 @@ void index_sum(const size_t n, const double* src, double* dst) {
     dst[i] += src[i];
   }
 #else
-  index_sum(n, src, dst);
+  for (auto k = 0; k < n; k++) {
+    dst[k] += src[k];
+  }
 #endif
 }
 #endif
