@@ -504,6 +504,11 @@ class AnyVisitor : public boost::static_visitor<bool> {
   }
 
   bool GetResult(const framework::Tensor& out,
+                 const platform::NPUPinnedPlace& cpu) const {
+    return *out.data<bool>();
+  }
+
+  bool GetResult(const framework::Tensor& out,
                  const platform::CPUPlace& cpu) const {
     return *out.data<bool>();
   }
@@ -722,6 +727,18 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 
   void VisitorImpl(
       const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
+    int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
+    for (int i = 0; i < num; ++i) {
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
+    }
+  }
+
+  void VisitorImpl(
+      const platform::NPUPinnedPlace& cpu /* equals to cpu*/) const {
     int num = in_.numel();
     const bool* in_ptr = in_.data<bool>();
     bool* out_ptr = out_->data<bool>();

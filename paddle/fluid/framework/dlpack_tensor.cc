@@ -87,6 +87,11 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
         platform::errors::Unimplemented("platform::NPUPlace is not supported"));
   }
 
+  inline ::DLContext operator()(const platform::NPUPinnedPlace &place) const {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "platform::NPUPinnedPlace is not supported"));
+  }
+
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;

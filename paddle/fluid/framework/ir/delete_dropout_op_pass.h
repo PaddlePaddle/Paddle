@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/table/graph_edge.h"
-#include <cstring>
+#pragma once
+#include <vector>
+
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+
 namespace paddle {
-namespace distributed {
+namespace framework {
+namespace ir {
 
-void GraphEdgeBlob::add_edge(uint64_t id, float weight = 1) {
-  id_arr.push_back(id);
-}
+class Graph;
 
-void WeightedGraphEdgeBlob::add_edge(uint64_t id, float weight = 1) {
-  id_arr.push_back(id);
-  weight_arr.push_back(weight);
-}
-}
-}
+class DeleteDropoutOpPass : public FusePassBase {
+ public:
+  virtual ~DeleteDropoutOpPass() {}
+
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

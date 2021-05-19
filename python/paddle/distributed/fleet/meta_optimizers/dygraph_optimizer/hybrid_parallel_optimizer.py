@@ -23,6 +23,8 @@ from paddle.fluid import framework
 from paddle.fluid.framework import Variable
 from ...utils.log_util import logger
 
+__all__ = []
+
 
 class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
@@ -88,12 +90,12 @@ class HybridParallelOptimizer:
         self._strategy = strategy
         self._hcg = hcg
         self._is_mp = (
-            self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL)
+            self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL)
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
 
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and self._is_mp:
-            logger.warning("using ClipGradByGlobalNorm in ModelParallel, the origin " \
+            logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
                   "optmizer'grad clip will be changed.")
             self._inner_opt._grad_clip = HybridParallelClipGrad(
                 self._inner_opt._grad_clip, hcg)

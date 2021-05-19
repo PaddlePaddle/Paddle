@@ -368,5 +368,8 @@ class StaticAnalysisVisitor(object):
 
             if isinstance(node.func, gast.Name):
                 return self.var_env.get_var_type(node.func.id)
+        if isinstance(node, gast.Subscript):
+            if self.is_tensor_node(node.value):
+                return {NodeVarType.TENSOR}
 
         return {NodeVarType.STATEMENT}
