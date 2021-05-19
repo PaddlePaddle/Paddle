@@ -37,7 +37,7 @@ class ElementwiseMinKernel<platform::CUDADeviceContext, T>
         ctx.template device_context<platform::CUDADeviceContext>();
 
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaPowFunctor<T>());
+        cuda_ctx, ins, &outs, axis, CudaMinFunctor<T>());
   }
 };
 
