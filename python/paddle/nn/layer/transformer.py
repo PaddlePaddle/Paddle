@@ -13,14 +13,6 @@
 # limitations under the License.
 
 # TODO: define the classes of Transformer neural network
-__all__ = [
-    'MultiHeadAttention',
-    'TransformerEncoderLayer',
-    'TransformerEncoder',
-    'TransformerDecoderLayer',
-    'TransformerDecoder',
-    'Transformer',
-]
 
 import copy
 import collections
@@ -35,6 +27,8 @@ from ...fluid import layers
 from ...fluid.dygraph import Layer, LayerList
 from ...fluid.param_attr import ParamAttr
 from ...fluid.data_feeder import convert_dtype
+
+__all__ = []
 
 
 def _convert_param_attr_to_list(param_attr, n):

@@ -19,6 +19,8 @@ import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()

@@ -95,6 +95,7 @@ struct CastOpFunctor<platform::CUDADeviceContext, InT> {
 
 namespace ops = paddle::operators;
 
+#ifdef PADDLE_WITH_HIP
 REGISTER_OP_CUDA_KERNEL(
     cast, ops::CastOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CastOpKernel<paddle::platform::CUDADeviceContext, double>,
@@ -108,3 +109,20 @@ REGISTER_OP_CUDA_KERNEL(
                       paddle::platform::complex64>,
     ops::CastOpKernel<paddle::platform::CUDADeviceContext,
                       paddle::platform::complex128>);
+#else
+REGISTER_OP_CUDA_KERNEL(
+    cast, ops::CastOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                      paddle::platform::float16>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                      paddle::platform::bfloat16>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                      paddle::platform::complex64>,
+    ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                      paddle::platform::complex128>);
+#endif

@@ -297,7 +297,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits),
-      find_unused_vars_(find_unused_vars) {
+      find_unused_vars_each_step_(find_unused_vars) {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   nranks_ = parallel_ctx->GetNRanks();
@@ -443,10 +443,6 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
     auto *cur_node = q.front();
     q.pop();
 
-    for (auto &cur_op : *cur_node) {
-      cur_op.EnforceHasInOut();
-    }
-
     const auto &grad_pending_nodes = cur_node->GradPendingNodes();
     for (auto &grad_pending_node : grad_pending_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -461,42 +457,8 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
   }
 }
 
-// After each batch is calculated, the counter of each group(group.pending_)
-// and allreudce sequence counter(next_group_) will be cleaned up again.
-void Reducer::PrepareForBackward(
+void Reducer::TraverseBackwardGraph(
     const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
-  VLOG(3) << "after forward, then reset count for backward.";
-  next_group_ = 0;
-  std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
-    group.pending_ = group.variable_indices_.size();
-    group.sparse_contents_ = nullptr;
-  });
-
-  // reinitialize vars_marked_ready_ for next iteration
-  vars_marked_ready_.clear();
-  vars_marked_ready_.resize(vars_.size(), false);
-
-  PADDLE_ENFORCE_EQ(
-      groups_need_finalize_, false,
-      platform::errors::PreconditionNotMet(
-          "A serious error has occurred here. There may be several reasons: "
-          "1) Please note that all forward outputs derived from the module "
-          "parameters must participate in the calculation of losses and "
-          "subsequent gradient calculations. If not, the wrapper will hang, "
-          "waiting for autograd to generate gradients for these parameters. "
-          "you can use detach or stop_gradient to make the unused parameters "
-          "detached from the autograd graph. "
-          "2) Used multiple forwards and one backward. You may be able to wrap "
-          "multiple forwards in a model."));
-
-  // The first var to trigger the unused parameter
-  has_marked_unused_vars_ = false;
-  unused_vars_.clear();
-
-  if (!find_unused_vars_) {
-    return;
-  }
-
   node_deps_.clear();
   std::queue<std::shared_ptr<GradOpNode>> q;
   std::unordered_set<VariableWrapper *> var_visited;
@@ -523,7 +485,6 @@ void Reducer::PrepareForBackward(
     q.pop();
 
     for (const auto &cur_op : *cur_node) {
-      cur_op.EnforceHasInOut();
       auto &bwd_outs = cur_op.GetOutsMap();
       for (const auto &pair : bwd_outs) {
         if (!pair.second.IsGrad()) {
@@ -559,8 +520,50 @@ void Reducer::PrepareForBackward(
               << "] is not used";
     }
   }
+}
 
-  if (unused_vars_.empty()) {
+// After each batch is calculated, the counter of each group(group.pending_)
+// and allreudce sequence counter(next_group_) will be cleaned up again.
+void Reducer::PrepareForBackward(
+    const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
+  VLOG(3) << "after forward, then reset count for backward.";
+  next_group_ = 0;
+  std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
+    group.pending_ = group.variable_indices_.size();
+    group.sparse_contents_ = nullptr;
+  });
+
+  // reinitialize vars_marked_ready_ for next iteration
+  vars_marked_ready_.clear();
+  vars_marked_ready_.resize(vars_.size(), false);
+
+  PADDLE_ENFORCE_EQ(
+      groups_need_finalize_, false,
+      platform::errors::PreconditionNotMet(
+          "A serious error has occurred here. Please "
+          "set find_unused_parameters=True to traverse backward graph "
+          "in each step to prepare reduce in advance. If you have "
+          "set, There may be several reasons for this error: "
+          "1) Please note that all forward outputs derived from the module "
+          "parameters must participate in the calculation of losses and "
+          "subsequent gradient calculations. If not, the wrapper will hang, "
+          "waiting for autograd to generate gradients for these parameters. "
+          "you can use detach or stop_gradient to make the unused parameters "
+          "detached from the autograd graph. "
+          "2) Used multiple forwards and one backward. You may be able to wrap "
+          "multiple forwards in a model."));
+
+  // The first var to trigger the unused parameter
+  has_marked_unused_vars_ = false;
+
+  if (find_unused_vars_once_ || find_unused_vars_each_step_) {
+    unused_vars_.clear();
+    TraverseBackwardGraph(outputs);
+    // only check once in first step
+    find_unused_vars_once_ = false;
+  }
+
+  if (find_unused_vars_each_step_ && unused_vars_.empty()) {
     LOG_FIRST_N(WARNING, 1)
         << "All parameters are involved in the backward pass. "
            "It is recommended to set find_unused_parameters to False "
@@ -569,7 +572,9 @@ void Reducer::PrepareForBackward(
            "will occur. Please make it clear that in the subsequent "
            "training, there will be no parameters that are not used "
            "in the backward pass, and then set find_unused_parameters";
-  } else if (unused_vars_.size() == vars_.size()) {
+  }
+
+  if (unused_vars_.size() == vars_.size()) {
     LOG_FIRST_N(WARNING, 1)
         << "There is no parameter in the device involved "
            "in the backward calculation. If there are "
@@ -600,13 +605,13 @@ void Reducer::AddDistHook(size_t var_index) {
 
   local_used_vars_[var_index] = 1;
 
-  // rebuild group when find_unused_vars_ is false
+  // rebuild group when find_unused_vars_each_step_ is false
   if (NeedRebuildGroup()) {
     rebuild_vars_.push_back(vars_[var_index]);
     rebuild_var_indices_.push_back(var_index);
   }
 
-  if (!has_marked_unused_vars_ && find_unused_vars_) {
+  if (!has_marked_unused_vars_) {
     has_marked_unused_vars_ = true;
     for (const auto &unused_index : unused_vars_) {
       MarkVarReady(unused_index, false);
@@ -627,7 +632,9 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   if (vars_marked_ready_[var_index]) {
     auto error_info = string::Sprintf(
         "Error happened, when parameter[%d][%s] has been ready before. "
-        "There may be several reasons for this error: "
+        "Please set find_unused_parameters=True to traverse backward graph "
+        "in each step to prepare reduce in advance. If you have set, "
+        "there may be several reasons for this error: "
         "1) In multiple reentrant backward phase, some parameters are reused."
         "2) Using model parameters outside of forward function. Please "
         "make sure that model parameters are not shared in concurrent "
@@ -695,10 +702,16 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     }
   } else {
     // process sparse group
-    PADDLE_ENFORCE_EQ(HasGrad(var_index), true,
-                      platform::errors::PreconditionNotMet(
-                          "The sparse parameter[%d][%s] must have a gradient",
-                          var_index, vars_[var_index]->Name()));
+    PADDLE_ENFORCE_EQ(
+        HasGrad(var_index), true,
+        platform::errors::PreconditionNotMet(
+            "The sparse parameter[%d][%s] should have gradient. "
+            "Currently, DataParallel does not support sparse "
+            "parameters without generating gradients during training. "
+            "For example, if is_sparese=True is used in Embedding, "
+            "the current step of this parameter cannot generate gradient "
+            "because of stop_gradient/detatch, where error will occur.",
+            var_index, vars_[var_index]->Name()));
     auto var_base = vars_[var_index]->GradVarBase();
     // need to check tensor type
     PADDLE_ENFORCE_EQ(
@@ -762,10 +775,11 @@ void Reducer::MarkGroupReady(size_t group_index) {
     // TODO(liuyuhui): Add try catch to deal with exception later,
     // otherwise the main thread will continue to run when an exception is
     // thrown in comm_pool_.
-    comm_pool_->enqueue([&] {
+    auto next_group = next_group_;
+    comm_pool_->enqueue([this, run_order, next_group, &group] {
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
       platform::SetXPUDeviceId(dev_id);
-      FusedAllReduceSchedule(run_order, group, next_group_);
+      FusedAllReduceSchedule(run_order, group, next_group);
       {
         std::lock_guard<std::mutex> lock(mutex_);
         comm_op_count_ -= 1;  // lock
@@ -947,7 +961,7 @@ void Reducer::FinalizeBackward() {
     InitializeGroups(group_indices_);
   }
 
-  if (find_unused_vars_) {
+  if (find_unused_vars_each_step_) {
 // TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ProcessUnusedDenseVars();

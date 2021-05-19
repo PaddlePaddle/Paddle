@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
@@ -45,9 +46,23 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
                   framework::Tensor* z) {
     std::vector<const framework::Tensor*> ins = {x, y};
     std::vector<framework::Tensor*> outs = {z};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T>(
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         ctx.template device_context<platform::CUDADeviceContext>(), ins, &outs,
         CudaAddFunctor<T>());
+  }
+};
+
+template <typename T>
+struct BroadcastElemwiseAdd<platform::CUDADeviceContext, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* out) {
+    std::vector<const framework::Tensor*> ins = {x, y};
+    int axis = ctx.Attr<int>("axis");
+    axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
+    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, T>(
+        ctx.template device_context<platform::CUDADeviceContext>(), ins, out,
+        CudaAddFunctor<T>(), axis);
   }
 };
 

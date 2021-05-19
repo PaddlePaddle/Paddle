@@ -19,18 +19,13 @@ from .deprecated import deprecated  # noqa: F401
 from .lazy_import import try_import  # noqa: F401
 from .op_version import OpLastCheckpointChecker  # noqa: F401
 from .install_check import run_check  # noqa: F401
-from ..fluid.framework import unique_name  # noqa: F401
+from . import unique_name  # noqa: F401
 from ..fluid.framework import require_version  # noqa: F401
 
 from . import download  # noqa: F401
 from . import image_util  # noqa: F401
 from . import cpp_extension  # noqa: F401
 
-__all__ = [     #noqa
-           'deprecated',
-           'download',
-           'run_check',
-           'unique_name',
-           'require_version',
-           'try_import'
+__all__ = [  #noqa
+    'deprecated', 'run_check', 'require_version', 'try_import'
 ]

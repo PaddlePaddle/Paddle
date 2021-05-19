@@ -16,6 +16,8 @@ from paddle.distributed.fleet.meta_optimizers.common import is_optimizer_op
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
 
+__all__ = []
+
 
 class Shard(object):
     def __init__(self, ):

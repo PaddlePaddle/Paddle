@@ -100,6 +100,9 @@ static constexpr char* win_cublas_lib =
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll;curand64_10.dll";
+static constexpr char* win_nvjpeg_lib =
+    "nvjpeg64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;nvjpeg64_" CUDA_VERSION_MAJOR ".dll;nvjpeg64_10.dll";
 static constexpr char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll;cusolver64_10.dll";
@@ -107,6 +110,9 @@ static constexpr char* win_cusolver_lib =
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll";
+static constexpr char* win_nvjpeg_lib =
+    "nvjpeg64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;nvjpeg64_" CUDA_VERSION_MAJOR ".dll";
 static constexpr char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll";
@@ -327,6 +333,17 @@ void* GetCurandDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
+#endif
+}
+
+void* GetNvjpegDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.dylib");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_nvjpeg_lib, true,
+                                    {cuda_lib_path});
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.so");
 #endif
 }
 
