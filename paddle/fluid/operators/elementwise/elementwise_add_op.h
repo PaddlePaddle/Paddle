@@ -26,7 +26,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <cuda_fp16.h>
 #include "cub/cub.cuh"
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+
 #endif
 #ifdef __HIPCC__
 #include <hip/hip_fp16.h>
