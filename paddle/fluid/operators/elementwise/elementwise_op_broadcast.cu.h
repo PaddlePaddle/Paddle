@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast_impl.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -28,7 +28,8 @@ struct DimensionsTransform {
   std::vector<DimVector> in_dims;
 
  private:
-  // 1. To compensate the lackage of input_tensors` dimension;
+  // To compensate the lackage of input_tensors` dimension with input variable
+  // 'axis'
   void InputDimensionsExtend(int N, int axis) {
     for (auto &in_dim : in_dims) {
       int64_t in_idx = 0;
@@ -198,12 +199,12 @@ struct CalculateInputStrides {
 template <typename T, typename Functor, ElementwiseType ET, int VecSize,
           int kDims>
 struct BroadcastArgsWarpper {
-  using DimsVec = CudaAlignedVector<T, VecSize>;
+  using VecType = CudaAlignedVector<T, VecSize>;
 
   T *out_data;
-  DimsVec *vec_out_data;
+  VecType *vec_out_data;
   const T *__restrict__ in_data[ET];
-  const DimsVec *__restrict__ vec_in_data[ET];
+  const VecType *__restrict__ vec_in_data[ET];
   bool no_broadcast[ET];
   FastDivMod divmoders[kDims];
   uint32_t strides[ET][framework::DDim::kMaxRank];
@@ -217,18 +218,18 @@ struct BroadcastArgsWarpper {
       : scalar_cal_offset(scalar_cal_offset), func(func) {
     for (int j = 0; j < ET; ++j) {
       in_data[j] = ins[j]->data<T>();
-      vec_in_data[j] = reinterpret_cast<const DimsVec *>(in_data[j]);
+      vec_in_data[j] = reinterpret_cast<const VecType *>(in_data[j]);
       no_broadcast[j] = ins[j]->dims() == out->dims() ? true : false;
       memcpy(strides[j], offset_calculator.strides[j].data(),
              kDims * sizeof(uint32_t));
     }
     out_data = out->data<T>();
-    vec_out_data = reinterpret_cast<DimsVec *>(out_data);
+    vec_out_data = reinterpret_cast<VecType *>(out_data);
     memcpy(divmoders, offset_calculator.divmoders.data(),
            kDims * sizeof(FastDivMod));
   }
 
-  __device__ __forceinline__ uint32_t GetDivmodOffset(int idx, int in_idx) {
+  __device__ __forceinline__ uint32_t GetOffsetByDivmod(int idx, int in_idx) {
     uint32_t offset = 0;
 
 #pragma unroll(kDims)
@@ -240,64 +241,63 @@ struct BroadcastArgsWarpper {
     return offset;
   }
 
-  __device__ __forceinline__ void VectorizedCommonLoadData(DimsVec *vector_args,
+  __device__ __forceinline__ void LoadVectorizedDataCommon(VecType *vector_args,
                                                            int tid, int idx) {
     *vector_args = vec_in_data[idx][tid];
   }
 
-  __device__ __forceinline__ void VectorizedDivmodLoadData(T *scalar_args,
-                                                           int tid, int idx) {
+  __device__ __forceinline__ void LoadVectorizedDataByDivmod(T *scalar_args,
+                                                             int tid, int idx) {
     int index = tid * VecSize;
-
 #pragma unroll(VecSize)
     for (int i = 0; i < VecSize; ++i) {
-      uint32_t offset = GetDivmodOffset(index + i, idx);
+      uint32_t offset = GetOffsetByDivmod(index + i, idx);
       scalar_args[i] = in_data[idx][offset];
     }
   }
 
-  __device__ __forceinline__ void ScalarizedCommonLoadData(T args[], int tid,
+  __device__ __forceinline__ void LoadScalarizedDataCommon(T args[], int tid,
                                                            int idx) {
     args[idx] = in_data[idx][tid + scalar_cal_offset];
   }
 
-  __device__ __forceinline__ void ScalarizedDivmodLoadData(T args[], int tid,
-                                                           int idx) {
-    auto offset = GetDivmodOffset(tid + scalar_cal_offset, idx);
+  __device__ __forceinline__ void LoadScalarizedDataByDivmod(T args[], int tid,
+                                                             int idx) {
+    auto offset = GetOffsetByDivmod(tid + scalar_cal_offset, idx);
     args[idx] = in_data[idx][offset];
   }
 
-  __device__ __forceinline__ void VectorizedLoadData(T (*args)[VecSize],
+  __device__ __forceinline__ void LoadVectorizedData(T (*args)[VecSize],
                                                      int tid) {
 #pragma unroll(ET)
     for (int j = 0; j < ET; ++j) {
       if (no_broadcast[j]) {
-        DimsVec *vector_args = reinterpret_cast<DimsVec *>(args[j]);
-        VectorizedCommonLoadData(vector_args, tid, j);
+        VecType *vector_args = reinterpret_cast<VecType *>(args[j]);
+        LoadVectorizedDataCommon(vector_args, tid, j);
       } else {
-        VectorizedDivmodLoadData(args[j], tid, j);
+        LoadVectorizedDataByDivmod(args[j], tid, j);
       }
     }
   }
 
-  __device__ __forceinline__ void ScalarizedLoadData(T args[], int tid) {
+  __device__ __forceinline__ void LoadScalarizedData(T args[], int tid) {
 #pragma unroll(ET)
     for (int j = 0; j < ET; ++j) {
       if (no_broadcast[j]) {
-        ScalarizedCommonLoadData(args, tid, j);
+        LoadScalarizedDataCommon(args, tid, j);
       } else {
-        ScalarizedDivmodLoadData(args, tid, j);
+        LoadScalarizedDataByDivmod(args, tid, j);
       }
     }
   }
 
-  __device__ __forceinline__ void VectorizedStoreData(T (*args)[VecSize],
+  __device__ __forceinline__ void StoreVectorizedData(T (*args)[VecSize],
                                                       int tid) {
-    DimsVec *args_out = reinterpret_cast<DimsVec *>(args[0]);
+    VecType *args_out = reinterpret_cast<VecType *>(args[0]);
     vec_out_data[tid] = *args_out;
   }
 
-  __device__ __forceinline__ void ScalarizedStoreData(T args[], int tid) {
+  __device__ __forceinline__ void StoreScalarizedData(T args[], int tid) {
     out_data[scalar_cal_offset + tid] = args[0];
   }
 };
@@ -306,30 +306,33 @@ template <typename T, typename BroadcastArgsWarpper, ElementwiseType ET>
 __device__ inline void ScalarizedBroadcastKernelImpl(
     BroadcastArgsWarpper broadcast_warpper, int tid) {
   T args[ET];
-  broadcast_warpper.ScalarizedLoadData(args, tid);
+  broadcast_warpper.LoadScalarizedData(args, tid);
 
 #pragma unroll(ET)
   for (int j = 1; j < ET; ++j) {
-    args[0] = broadcast_warpper.func(args[0], args[j]);
+    args[0] = broadcast_warpper.func(args);
   }
-  broadcast_warpper.ScalarizedStoreData(args, tid);
+  broadcast_warpper.StoreScalarizedData(args, tid);
 }
 
 template <typename T, typename BroadcastArgsWarpper, ElementwiseType ET,
           int VecSize>
 __device__ inline void VectorizedBroadcastKernelImpl(
     BroadcastArgsWarpper broadcast_warpper, int tid) {
+  T ins[ET];
   T args[ET][VecSize];
-  broadcast_warpper.VectorizedLoadData(args, tid);
+  broadcast_warpper.LoadVectorizedData(args, tid);
 
-#pragma unroll(ET)
-  for (int j = 1; j < ET; ++j) {
 #pragma unroll(VecSize)
-    for (int i = 0; i < VecSize; ++i) {
-      args[0][i] = broadcast_warpper.func(args[0][i], args[j][i]);
+  for (int i = 0; i < VecSize; ++i) {
+    ins[0] = args[0][i];
+#pragma unroll
+    for (int j = 1; j < ET; ++j) {
+      ins[j] = args[j][i];
     }
+    args[0][i] = broadcast_warpper.func(ins);
   }
-  broadcast_warpper.VectorizedStoreData(args, tid);
+  broadcast_warpper.StoreVectorizedData(args, tid);
 }
 
 template <typename T, typename BroadcastArgsWarpper, ElementwiseType ET,
@@ -340,14 +343,14 @@ __global__ void ElementwiseBroadcastKernel(
 
   // Vectorized calculation of major data whose length is the max multipler of
   // VecSize,
-  // eg: Calcualtion the front 1024-length data in total 1027 data once VecSize
+  // eg: Calcualting the front 1024-length data in total 1027 data once VecSize
   // is 4.
   if (tid < main_tid) {
     VectorizedBroadcastKernelImpl<T, BroadcastArgsWarpper, ET, VecSize>(
         broadcast_warpper, tid);
   }
   // Scalarzed calculation of rest data whose lenght cannot fulfill VecSize.
-  // eg: Calcualtion the rest 3-length data in total 1027 data once VecSize is
+  // eg: Calcualting the rest 3-length data in total 1027 data once VecSize is
   // 4.
   if (tid < tail_tid) {
     ScalarizedBroadcastKernelImpl<T, BroadcastArgsWarpper, ET>(
@@ -449,9 +452,10 @@ void LaunchBroadcastKernelForDifferentDimSize(
 template <ElementwiseType ET, typename T, typename Functor>
 void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
-    const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
-    Functor func, int axis) {
+    const std::vector<const framework::Tensor *> &ins,
+    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
   int in_vec_size = 4;
+  framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {
     auto temp_size = GetVectorizedSizeImpl<T>(in->data<T>());
     in_vec_size = in->dims() == out->dims() ? std::min(temp_size, in_vec_size)
@@ -481,6 +485,25 @@ void LaunchBroadcastElementwiseCudaKernel(
           "Unsupported vectorized size: %d !", vec_size));
       break;
     }
+  }
+}
+
+template <ElementwiseType ET, typename InT, typename OutType, typename Functor>
+void LaunchElementwiseCudaKernel(
+    const platform::CUDADeviceContext &cuda_ctx,
+    const std::vector<const framework::Tensor *> &ins,
+    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+  bool no_broadcast_flag = true;
+  for (auto *in : ins) {
+    no_broadcast_flag = ins[0]->dims() == in->dims();
+  }
+
+  if (no_broadcast_flag) {
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutType>(
+        cuda_ctx, ins, outs, func);
+  } else {
+    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, InT>(
+        cuda_ctx, ins, outs, axis, func);
   }
 }
 
