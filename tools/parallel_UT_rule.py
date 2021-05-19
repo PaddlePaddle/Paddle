@@ -649,7 +649,6 @@ TETRAD_PARALLEL_JOB = [
     'test_collective_wait',
     'test_collective_split_row_linear',
     'test_collective_split_embedding',
-    'test_custom_attrs_jit',
     'float16_gpu_test',
     'test_leaky_relu_grad_grad_functor',
     'test_complex_simplenet',
