@@ -325,9 +325,8 @@ __device__ inline void VectorizedBroadcastKernelImpl(
 
 #pragma unroll(VecSize)
   for (int i = 0; i < VecSize; ++i) {
-    ins[0] = args[0][i];
-#pragma unroll
-    for (int j = 1; j < ET; ++j) {
+#pragma unroll(ET)
+    for (int j = 0; j < ET; ++j) {
       ins[j] = args[j][i];
     }
     args[0][i] = broadcast_warpper.func(ins);
