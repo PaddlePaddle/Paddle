@@ -17,12 +17,14 @@
 #include <iostream>
 #include <ostream>
 #include <string>
+#include <thread>  // NOLINT
 #include <vector>
 
 #include <ThreadPool.h>
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/utils.h"
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/dim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -30,7 +32,9 @@
 #include "paddle/fluid/string/split.h"
 
 constexpr int FG = 256 * 1024 * 1024;
-const int BUCKET = 5;
+constexpr int Q_SIZE = 10000;
+constexpr int BUCKET = 5;
+constexpr char XEOF[] = "EOF";
 
 using boost::lexical_cast;
 
@@ -161,36 +165,57 @@ class ShardingMerge {
 
   void SerializeValueToVec(std::ifstream &in, const int batch,
                            const int embedding_dim, std::vector<float> *out) {
-    std::string line;
-    std::vector<std::string> columns;
-    std::vector<std::string> values_str;
+    auto queue = std::make_shared<framework::BlockingQueue<std::string>>();
 
-    int count = 0;
-    while (std::getline(in, line)) {
-      columns = string::Split(line, '\t');
-      if (columns.size() != 5) {
-        VLOG(0) << "unexpected line: " << line << ", skip it";
-        continue;
-      }
+    auto read = [batch, &in, &queue]() {
+      std::string line;
+      std::vector<std::string> columns;
+      int count = 0;
 
-      values_str = string::Split(columns[4], ',');
+      while (std::getline(in, line)) {
+        ++count;
 
-      for (int x = 0; x < embedding_dim; ++x) {
-        float v = 0.0;
-        try {
-          v = lexical_cast<float>(values_str[x]);
-        } catch (boost::bad_lexical_cast &e) {
-          VLOG(0) << " get unexpected line: " << line;
+        if (columns.size() != 5) {
+          VLOG(0) << "unexpected line: " << line << ", skip it";
+        } else {
+          queue->Push(columns[4]);
         }
-        out->push_back(v);
-      }
 
-      ++count;
-
-      if (count >= batch) {
-        break;
+        if (count >= batch) {
+          queue->Push(XEOF);
+          break;
+        }
       }
-    }
+    };
+
+    auto write = [embedding_dim, &out, &queue]() {
+      while (true) {
+        std::vector<std::string> values_str;
+        std::string line;
+        queue->Pop(&line);
+
+        if (line == XEOF) {
+          break;
+        }
+
+        values_str = string::Split(line, ',');
+
+        for (int x = 0; x < embedding_dim; ++x) {
+          float v = 0.0;
+          try {
+            v = lexical_cast<float>(values_str[x]);
+          } catch (boost::bad_lexical_cast &e) {
+            VLOG(0) << " get unexpected line: " << line;
+          }
+          out->push_back(v);
+        }
+      }
+    };
+
+    std::thread p_read(read);
+    std::thread p_write(write);
+    p_read.join();
+    p_write.join();
   }
 
   void SerializeVecToStream(std::ostream &out,
