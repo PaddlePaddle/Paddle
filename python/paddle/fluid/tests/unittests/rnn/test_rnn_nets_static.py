@@ -266,11 +266,7 @@ class TestGRU(unittest.TestCase):
                     dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data, init_h)
 
-        prev_h2 = prev_h
-        if self.place == 'gpu' and is_compiled_with_rocm():
-            for i in range(0, len(prev_h2), 4):
-                prev_h2[i + 1], prev_h2[i + 2] = prev_h2[i + 2], prev_h2[i + 1]
-        feed_dict = {x_data.name: x, init_h.name: prev_h2}
+        feed_dict = {x_data.name: x, init_h.name: prev_h}
         with paddle.static.scope_guard(scope):
             y2, h2 = exe.run(mp, feed=feed_dict, fetch_list=[y, h])
 
