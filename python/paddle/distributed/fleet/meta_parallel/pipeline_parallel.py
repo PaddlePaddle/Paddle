@@ -303,8 +303,7 @@ class PipelineParallel(MetaParallelBase):
             paddle.distributed.recv(
                 shape, peer, use_calc_stream=True, group=self.pp_group)
             shape = shape.numpy().tolist()
-            return self._allocate_buffer(
-                shape, dtype="float32", num_caches=1)[0]
+            return self._allocate_cache(shape, dtype="float32", num_caches=1)[0]
         elif tensor_type == 1:
             num = paddle.to_tensor([0])
             paddle.distributed.recv(
@@ -322,7 +321,7 @@ class PipelineParallel(MetaParallelBase):
                 shapes.append(shape.numpy().tolist())
 
             dtypes = ["float32"] * len(shapes)
-            caches = self._allocate_buffers(shapes, dtypes, num_caches=1)[0]
+            caches = self._allocate_caches(shapes, dtypes, num_caches=1)[0]
             caches = tuple(caches)
             return caches
 
@@ -372,8 +371,6 @@ class PipelineParallel(MetaParallelBase):
 
     def _recv_activations(self, cache_id):
         inputs = None
-
-        # Allocate the buffer if necessary
         if self.recv_cache is None:
             self.recv_cache = self._recv_meta(self.prev_stage_id)
 
@@ -411,7 +408,7 @@ class PipelineParallel(MetaParallelBase):
             if isinstance(outputs, paddle.Tensor):
                 s = list(outputs.shape)
                 dtype = get_tensor_dtype(outputs.dtype)
-                self.grad_tensors = self._allocate_buffer(
+                self.grad_tensors = self._allocate_cache(
                     s, dtype, num_caches=1)[0]
             else:
                 sizes = [list(d.shape) for d in outputs if is_float_tensor(d)]
@@ -419,7 +416,7 @@ class PipelineParallel(MetaParallelBase):
                     get_tensor_dtype(d.dtype) for d in outputs
                     if is_float_tensor(d)
                 ]
-                self.grad_tensors = self._allocate_buffers(
+                self.grad_tensors = self._allocate_caches(
                     sizes, dtypes, num_caches=1)[0]
 
         if isinstance(self.grad_tensors, paddle.Tensor):
@@ -455,7 +452,7 @@ class PipelineParallel(MetaParallelBase):
     def _allocate_zeros(self, shape, dtype):
         return paddle.zeros(shape, dtype)
 
-    def _allocate_buffer(self, shape, dtype, num_caches=-1):
+    def _allocate_cache(self, shape, dtype, num_caches=-1):
         caches = []
         if num_caches == -1:
             num_caches = self.num_caches
@@ -463,7 +460,7 @@ class PipelineParallel(MetaParallelBase):
             caches.append(self._allocate_zeros(shape, dtype))
         return caches
 
-    def _allocate_buffers(self, shapes, dtypes, num_caches=-1):
+    def _allocate_caches(self, shapes, dtypes, num_caches=-1):
         caches = []
         if num_caches == -1:
             num_caches = self.num_caches
