@@ -197,7 +197,7 @@ def git_clone_from_url(
             fullpath = _git_clone(git_url, fullpath, branch)
         else:
             while not os.path.exists(fullpath):
-                time.sleep(1)
+                time.sleep(0.5)
 
     return fullpath
 
@@ -227,7 +227,10 @@ def retry(times, delay=1, exceptions=Exception):
 
 def _remove_if_exists(path):
     if os.path.exists(path):
-        shutil.rmtree(path, ignore_errors=True)
+        if os.path.isfile(path):
+            os.remove(path)
+        else:
+            shutil.rmtree(path)
 
 
 @retry(times=3, delay=0.5)
