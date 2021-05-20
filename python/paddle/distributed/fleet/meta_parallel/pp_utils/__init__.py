@@ -12,4 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .utils import *
+from .utils import get_tensor_bytes
+
+__all__ = []

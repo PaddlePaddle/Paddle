@@ -131,6 +131,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     int64_t numel = in->numel();
 
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
+    out->mutable_data<T>(in->dims(), ctx.GetPlace());
     void* recvbuff = reinterpret_cast<void*>(out->data<T>());
 
     int ring_id = ctx.Attr<int>("ring_id");

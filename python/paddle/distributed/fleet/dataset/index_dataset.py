@@ -13,6 +13,8 @@
 # limitations under the License.
 from paddle.fluid import core
 
+__all__ = []
+
 
 class Index(object):
     def __init__(self, name):

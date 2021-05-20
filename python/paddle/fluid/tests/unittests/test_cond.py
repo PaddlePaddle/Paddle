@@ -96,7 +96,7 @@ class TestCondInputOutput(unittest.TestCase):
         self.assertTrue(
             np.allclose(np.asarray(ret[0]), np.full((1, 2), 1, np.int32)))
         self.assertTrue(
-            np.allclose(np.asarray(ret[1]), np.full((2, 3), True, np.bool)))
+            np.allclose(np.asarray(ret[1]), np.full((2, 3), True, bool)))
 
     def test_pass_and_modify_var(self):
         """

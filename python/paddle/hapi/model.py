@@ -54,7 +54,7 @@ from paddle.distributed.fleet.base import role_maker
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
 
-__all__ = ['Model', ]
+__all__ = []
 
 _parallel_context_initialized = False
 

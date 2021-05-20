@@ -73,6 +73,14 @@ if (WITH_CRYPTO)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif (WITH_CRYPTO)
 
+if (WITH_PSLIB)
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS
+              "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+endif(WITH_PSLIB)
 if (WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
   set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -120,14 +128,20 @@ if(WITH_PYTHON)
     else()
       set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
     endif()
+    file(TO_NATIVE_PATH ${op_function_generator_path} op_function_generator_path)
+    file(TO_NATIVE_PATH ${impl_file} impl_file)
+    file(TO_NATIVE_PATH ${tmp_impl_file} tmp_impl_file)
+
     file(WRITE ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat ""
     "set build_times=1\n"
     ":retry\n"
     "ECHO op_function_generator run %build_times% time\n"
-    "${op_function_generator_path}/op_function_generator ${impl_file}\n"
+    "if exist ${tmp_impl_file} del ${tmp_impl_file}\n"
+    "taskkill /f /im op_function_generator.exe 2>NUL\n"
+    "${op_function_generator_path}\\op_function_generator.exe ${tmp_impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
-    "    if %build_times% GTR 5 (\n"
+    "    if %build_times% GEQ 3 (\n"
     "        exit /b 1\n"
     "    ) else (\n"
     "        goto :retry\n"
@@ -137,6 +151,8 @@ if(WITH_PYTHON)
 
     add_custom_command(TARGET op_function_generator POST_BUILD
           COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
+          COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
     )
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
@@ -168,7 +184,7 @@ if(WITH_PYTHON)
               "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
               "${tmp_impl_file}"
           COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
-          COMMENT "copy_if_different ${impl_file}"
+          COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
           VERBATIM
     )
     if(WITH_MKL)

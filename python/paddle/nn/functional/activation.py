@@ -16,7 +16,7 @@ from ...fluid.layers import sigmoid  # noqa: F401
 from ...tensor.math import tanh  # noqa: F401
 from ...tensor.math import tanh_  # noqa: F401
 
-from ...tensor.manipulation import _print_warning_in_static_mode
+from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...tensor.manipulation import chunk
 from ...tensor.math import multiply
 
@@ -26,6 +26,8 @@ from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
+
+__all__ = []
 
 
 def elu(x, alpha=1.0, name=None):
@@ -71,17 +73,13 @@ def elu(x, alpha=1.0, name=None):
     return out
 
 
+@inplace_apis_in_dygraph_only
 def elu_(x, alpha=1.0, name=None):
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
     """
-
-    if in_dygraph_mode():
-        return core.ops.elu_(x, 'alpha', alpha)
-
-    _print_warning_in_static_mode("elu")
-    return elu(x, alpha, name)
+    return core.ops.elu_(x, 'alpha', alpha)
 
 
 def gelu(x, approximate=False, name=None):
@@ -499,17 +497,13 @@ def relu(x, name=None):
     return out
 
 
+@inplace_apis_in_dygraph_only
 def relu_(x, name=None):
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_relu`.
     """
-
-    if in_dygraph_mode():
-        return core.ops.relu_(x)
-
-    _print_warning_in_static_mode("relu")
-    return relu(x, name)
+    return core.ops.relu_(x)
 
 
 def log_sigmoid(x, name=None):
@@ -910,21 +904,16 @@ def softmax(x, axis=-1, dtype=None, name=None):
     return outs_softmax
 
 
+@inplace_apis_in_dygraph_only
 def softmax_(x, axis=-1, dtype=None, name=None):
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_softmax`.
     """
-
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     use_cudnn = True
-
-    if in_dygraph_mode():
-        return core.ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
-
-    _print_warning_in_static_mode("softmax")
-    return softmax(x, axis, dtype, name)
+    return core.ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
 
 
 def softplus(x, beta=1, threshold=20, name=None):
