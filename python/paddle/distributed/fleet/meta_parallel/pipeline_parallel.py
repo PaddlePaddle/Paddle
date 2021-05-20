@@ -87,11 +87,9 @@ class PipelineParallel(MetaParallelBase):
             self.caches[key].extend([None] * self.num_caches)
 
     def _reduce_final_loss(self):
+        assert self.total_loss is not None, "train_batch() should obtain vaild loss"
         if self.is_last_stage:
-            if self.total_loss and self.accumulate_steps > 1:
-                loss = self.total_loss.clone() / self.accumulate_steps
-            else:
-                loss = self.total_loss.clone()
+            loss = self.total_loss.clone() / self.accumulate_steps
             paddle.distributed.broadcast(
                 loss,
                 src=self.global_rank,
