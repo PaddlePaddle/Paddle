@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 #define INT_BITS 32
@@ -33,9 +34,12 @@ struct FastDivMod {
   using DivModT = CudaAlignedVector<uint32_t, 2>;
 
   FastDivMod() {}
-  HOSTDEVICE FastDivMod(uint32_t d) : divisor(d) {
-    static_assert(sizeof(unsigned int) == 4,
-                  "Only Support 32-bit unsigned int.");
+  explicit FastDivMod(uint32_t d) : divisor(d) {
+    PADDLE_ENFORCE_EQ(sizeof(unsigned int), 4,
+                      platform::errors::InvalidArgument(
+                          "Fast-divmod only support 32-bit unsigned int, but "
+                          "received %d -bit unsigned int",
+                          sizeof(unsigned int)));
 
     for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
       auto shift_limit = 1 << shift_val;

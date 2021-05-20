@@ -453,7 +453,11 @@ void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
-  static_assert(ET == (ElementwiseType)2, "Only Support binary calculation.");
+  PADDLE_ENFORCE_EQ(ET, ElementwiseType::kBinary,
+                    platform::errors::InvalidArgument(
+                        "Currently, elementwise broadcast only support binary"
+                        "calculation, but received %d input tensors",
+                        ET));
   int in_vec_size = 4;
   framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {
