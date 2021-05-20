@@ -17,14 +17,12 @@
 #include <iostream>
 #include <ostream>
 #include <string>
-#include <thread>  // NOLINT
 #include <vector>
 
 #include <ThreadPool.h>
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/utils.h"
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/dim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -32,9 +30,7 @@
 #include "paddle/fluid/string/split.h"
 
 constexpr int FG = 256 * 1024 * 1024;
-constexpr int Q_SIZE = 10000;
-constexpr int BUCKET = 5;
-constexpr char XEOF[] = "EOF";
+const int BUCKET = 5;
 
 using boost::lexical_cast;
 
@@ -168,54 +164,33 @@ class ShardingMerge {
     std::string line;
     std::vector<std::string> columns;
     std::vector<std::string> values_str;
-    auto queue = framework::BlockingQueue<std::string>(Q_SIZE);
 
-    auto read = [&in, &queue]() -> {
-      int count = 0;
-      while (std::getline(in, line)) {
-        ++count;
-
-        if (columns.size() != 5) {
-          VLOG(0) << "unexpected line: " << line << ", skip it";
-        } else {
-          queue.Push(line[4]);
-        }
-
-        if (count >= batch) {
-          queue.Push(XEOF);
-          break;
-        }
+    int count = 0;
+    while (std::getline(in, line)) {
+      columns = string::Split(line, '\t');
+      if (columns.size() != 5) {
+        VLOG(0) << "unexpected line: " << line << ", skip it";
+        continue;
       }
-    };
 
-    auto write = [&out, &queue]() -> {
-      while (true) {
-        std::string values_str;
-        std::string line;
-        queue.Pop(&line);
+      values_str = string::Split(columns[4], ',');
 
-        if (line == XEOF) {
-          break;
+      for (int x = 0; x < embedding_dim; ++x) {
+        float v = 0.0;
+        try {
+          v = lexical_cast<float>(values_str[x]);
+        } catch (boost::bad_lexical_cast &e) {
+          VLOG(0) << " get unexpected line: " << line;
         }
-
-        values_str = string::Split(line, ',');
-
-        for (int x = 0; x < embedding_dim; ++x) {
-          float v = 0.0;
-          try {
-            v = lexical_cast<float>(values_str[x]);
-          } catch (boost::bad_lexical_cast &e) {
-            VLOG(0) << " get unexpected line: " << line;
-          }
-          out.push_back(v);
-        }
+        out->push_back(v);
       }
-    };
 
-    std::thread p_read(read);
-    std::thread p_write(write);
-    p_read.join();
-    p_write.join();
+      ++count;
+
+      if (count >= batch) {
+        break;
+      }
+    }
   }
 
   void SerializeVecToStream(std::ostream &out,
