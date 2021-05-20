@@ -2231,6 +2231,7 @@ function main() {
       reuse_so_cicheck_py35)
         reuse_so_cache
         parallel_test
+        ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
