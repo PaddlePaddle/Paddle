@@ -873,6 +873,10 @@ class Layer(core.Layer):
         pass
 
     def __call__(self, *inputs, **kwargs):
+        # NOTE(Aurelius84): Why we still need param_guard here?
+        # In case of ControlFlow, true_fn and false_fn will contain
+        # parameters that may not trigger logic of `Operator` to create
+        # them. we add this to make sure all parameters is available.
         with param_guard(self._parameters), param_guard(self._buffers):
             for forward_pre_hook in self._forward_pre_hooks.values():
                 hook_result = forward_pre_hook(self, inputs)
