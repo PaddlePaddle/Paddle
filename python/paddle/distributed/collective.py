@@ -999,6 +999,10 @@ def _parallel_linear(x,
     main_block = paddle.static.default_main_program().global_block()
     startup_block.vars[linear.weight.name].is_distributed = True
     main_block.vars[linear.weight.name].is_distributed = True
+    # set is_distributed for splited bias
+    if axis == 1 and linear._bias_attr != False:
+        startup_block.vars[linear.bias.name].is_distributed = True
+        main_block.vars[linear.bias.name].is_distributed = True
 
     if not gather_out: return linear_out
 
