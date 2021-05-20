@@ -35,6 +35,20 @@ def conv_indent(indent):
 PSERVER_SAVE_SUFFIX = ".shard"
 
 
+def parse_table_class(varname, o_main_program):
+    from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
+    from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
+
+    for op in o_main_program.global_block().ops:
+        if not is_distributed_sparse_op(op) and not is_sparse_op(op):
+            continue
+
+        param_name = op.input("W")[0]
+
+        if param_name == varname and op.type == "lookup_table":
+            return op.attr('table_class')
+
+
 class Accessor:
     def __init__(self):
         self.accessor_class = ""
@@ -723,13 +737,15 @@ class TheOnePSRuntime(RuntimeBase):
                     table.type = "PS_SPARSE_TABLE"
                     table.shard_num = 256
 
+                    common.table_name = self.compiled_strategy.grad_name_to_param_name[
+                        ctx.origin_varnames()[0]]
+
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
-                        table.table_class = "CommonSparseTable"
+                        table.table_class = parse_table_class(
+                            common.table_name, self.origin_main_program)
 
-                    common.table_name = self.compiled_strategy.grad_name_to_param_name[
-                        ctx.origin_varnames()[0]]
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -1048,6 +1064,9 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
+
+    def load_model(self, path, mode):
+        self._worker.load_model(path, mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet

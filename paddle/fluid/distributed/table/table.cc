@@ -21,6 +21,7 @@
 #include "paddle/fluid/distributed/table/common_graph_table.h"
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
 #include "paddle/fluid/distributed/table/sparse_geo_table.h"
+#include "paddle/fluid/distributed/table/ssd_sparse_table.h"
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
 #include "paddle/fluid/distributed/table/tensor_table.h"
 
@@ -29,6 +30,7 @@ namespace distributed {
 REGISTER_PSCORE_CLASS(Table, GraphTable);
 REGISTER_PSCORE_CLASS(Table, CommonDenseTable);
 REGISTER_PSCORE_CLASS(Table, CommonSparseTable);
+REGISTER_PSCORE_CLASS(Table, SSDSparseTable);
 REGISTER_PSCORE_CLASS(Table, SparseGeoTable);
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
 REGISTER_PSCORE_CLASS(Table, TensorTable);
