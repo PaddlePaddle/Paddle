@@ -453,6 +453,7 @@ void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+
   PADDLE_ENFORCE_EQ(ET, ElementwiseType::kBinary,
                     platform::errors::InvalidArgument(
                         "Currently, elementwise broadcast only support binary"

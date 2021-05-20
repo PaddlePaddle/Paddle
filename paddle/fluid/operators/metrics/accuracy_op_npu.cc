@@ -23,91 +23,82 @@ template <typename DeviceContext, typename T>
 class AccuracyNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* pred = ctx.Input<Tensor>("Out");
+    auto* inference = ctx.Input<Tensor>("Out");
     auto* label = ctx.Input<Tensor>("Label");
-    // auto* logits = ctx.Input<Tensor>("Indices");
+    auto* indices = ctx.Input<Tensor>("Indices");
 
-    auto* acc = ctx.Output<Tensor>("Accuracy");
+    auto* accuracy = ctx.Output<Tensor>("Accuracy");
     auto* correct = ctx.Output<Tensor>("Correct");
     auto* total = ctx.Output<Tensor>("Total");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    // cast pred
-    Tensor tmp_pred(pred->type());
-    tmp_pred.Resize(pred->dims());
-    tmp_pred.mutable_data<int>(ctx.GetPlace());
-    auto runner_cast_pred =
-        NpuOpRunner("Cast", {*pred}, {tmp_pred},
-                    {{"dst_type", static_cast<int>(ACL_INT32)}});
-    runner_cast_pred.Run(stream);
-
-    // cast label
-    Tensor tmp_label(label->type());
-    tmp_label.Resize(label->dims());
-    tmp_label.mutable_data<int>(ctx.GetPlace());
-    auto runner_cast_label =
-        NpuOpRunner("Cast", {*label}, {tmp_label},
-                    {{"dst_type", static_cast<int>(ACL_INT32)}});
-    runner_cast_label.Run(stream);
+    int num_samples = inference->dims()[0];
+    if (num_samples == 0) {
+      return;
+    }
 
     // equal
-    Tensor tmp_equal(label->type());
-    tmp_equal.Resize(label->dims());
+    Tensor tmp_equal(framework::proto::VarType::BOOL);
+    tmp_equal.Resize(inference->dims());
     tmp_equal.mutable_data<bool>(ctx.GetPlace());
     auto runner_equal =
-        NpuOpRunner("Equal", {tmp_pred, tmp_label}, {tmp_equal}, {});
+        NpuOpRunner("Equal", {*indices, *label}, {tmp_equal}, {});
     runner_equal.Run(stream);
 
     // cast equal
-    Tensor tmp_equal_cast(label->type());
-    tmp_equal_cast.Resize(label->dims());
+    Tensor tmp_equal_cast(framework::proto::VarType::FP32);
+    tmp_equal_cast.Resize(inference->dims());
     tmp_equal_cast.mutable_data<float>(ctx.GetPlace());
-    auto runner_cast_equal =
-        NpuOpRunner("Cast", {tmp_equal}, {tmp_equal_cast},
-                    {{"dst_type", static_cast<float>(ACL_FLOAT)}});
+    auto runner_cast_equal = NpuOpRunner(
+        "Cast", {tmp_equal}, {tmp_equal_cast},
+        {{"dst_type",
+          static_cast<int>(ConvertToNpuDtype(tmp_equal_cast.type()))}});
     runner_cast_equal.Run(stream);
 
-    // acc
-    acc->mutable_data<float>(ctx.GetPlace());
-    std::vector<int> axes_vec_1;
-    auto runner_acc = NpuOpRunner("ReduceMeanD", {tmp_equal_cast}, {*acc},
-                                  {{"keep_dims", false}, {"axes", axes_vec_1}});
-    runner_acc.Run(stream);
+    // [correct]
+    // reduce_max
+    Tensor tmp_correct_max(framework::proto::VarType::FP32);
+    tmp_correct_max.Resize(framework::make_ddim({num_samples}));
+    tmp_correct_max.mutable_data<float>(ctx.GetPlace());
+    auto runner_reduce_max =
+        NpuOpRunner("ReduceMaxD", {tmp_equal_cast}, {tmp_correct_max},
+                    {{"axes", std::vector<int>{1}}, {"keep_dims", false}});
+    runner_reduce_max.Run(stream);
 
-    // correct
-    correct->mutable_data<float>(ctx.GetPlace());
-    std::vector<int> axes_vec_2;
-    auto runner_correct =
-        NpuOpRunner("ReduceSumD", {tmp_equal_cast}, {*correct},
-                    {{"keep_dims", false}, {"axes", axes_vec_2}});
-    runner_correct.Run(stream);
+    // reduce_sum
+    Tensor tmp_correct(framework::proto::VarType::FP32);
+    tmp_correct.Resize(correct->dims());
+    tmp_correct.mutable_data<float>(ctx.GetPlace());
+    auto runner_reduce_sum =
+        NpuOpRunner("ReduceSumD", {tmp_correct_max}, {tmp_correct},
+                    {{"axes", std::vector<int>{0}}, {"keep_dims", false}});
+    runner_reduce_sum.Run(stream);
 
-    // ones_tensor
-    Tensor ones_tensor(label->type());
-    ones_tensor.Resize(label->dims());
-    ones_tensor.mutable_data<int>(ctx.GetPlace());
-    auto runner_oneslike =
-        NpuOpRunner("OnesLike", {tmp_label}, {ones_tensor}, {});
-    runner_oneslike.Run(stream);
+    // cast to int
+    correct->mutable_data<int>(ctx.GetPlace());
+    auto runner_cast_correct = NpuOpRunner(
+        "Cast", {tmp_correct}, {*correct},
+        {{"dst_type", static_cast<int>(ConvertToNpuDtype(correct->type()))}});
+    runner_cast_correct.Run(stream);
 
-    // ones_tensor_cast
-    Tensor ones_tensor_cast(label->type());
-    ones_tensor_cast.Resize(label->dims());
-    ones_tensor_cast.mutable_data<float>(ctx.GetPlace());
-    auto runner_ones_cast =
-        NpuOpRunner("Cast", {ones_tensor}, {ones_tensor_cast},
-                    {{"dst_type", static_cast<float>(ACL_FLOAT)}});
-    runner_ones_cast.Run(stream);
+    // [total]
+    total->mutable_data<int>(ctx.GetPlace());
+    FillNpuTensorWithConstant<int>(total, static_cast<int>(num_samples));
 
-    // total
-    total->mutable_data<float>(ctx.GetPlace());
-    std::vector<int> axes_vec_3;
-    auto runner_total =
-        NpuOpRunner("ReduceSumD", {ones_tensor_cast}, {*total},
-                    {{"keep_dims", false}, {"axes", axes_vec_3}});
-    runner_total.Run(stream);
+    // use `total` of type `float32` for calculating accuracy
+    Tensor tmp_total(framework::proto::VarType::FP32);
+    tmp_total.Resize(total->dims());
+    tmp_total.mutable_data<float>(ctx.GetPlace());
+    FillNpuTensorWithConstant<float>(&tmp_total,
+                                     static_cast<float>(num_samples));
+
+    // [accuracy]
+    accuracy->mutable_data<float>(ctx.GetPlace());
+    auto runner_accuracy =
+        NpuOpRunner("Div", {tmp_correct, tmp_total}, {*accuracy}, {});
+    runner_accuracy.Run(stream);
   }
 };
 
