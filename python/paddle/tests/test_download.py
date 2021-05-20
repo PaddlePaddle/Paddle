@@ -80,28 +80,5 @@ class TestDownload(unittest.TestCase):
                 './test', )
 
 
-class TestGitclone(unittest.TestCase):
-    def _remove_if_exists(self, path):
-        import os
-        import shutil
-        if os.path.exists(path):
-            if os.path.isfile(path):
-                os.remove(path)
-            else:
-                shutil.rmtree(path, ignore_errors=True)
-
-    def test_git_clone_from_url(self, ):
-        giturl = 'https://github.com/lyuwenyu/paddlehub_demo.git'
-        branch = 'main'
-        repo_dir = './test/lyuwenyu_paddlehub_demo_maint'
-        self._remove_if_exists(repo_dir)
-        git_clone_from_url(giturl, repo_dir, branch=None, check_exist=False)
-        git_clone_from_url(giturl, repo_dir, branch=branch, check_exist=True)
-
-    def test_errors(self, ):
-        with self.assertRaises(RuntimeError):
-            git_clone_from_url('xx', 'xx', branch=None, check_exist=False)
-
-
 if __name__ == '__main__':
     unittest.main()
