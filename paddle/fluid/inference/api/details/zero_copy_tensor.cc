@@ -164,7 +164,7 @@ void Tensor::CopyToCpu(T *data) {
 
   paddle::framework::Tensor out;
   auto mem_allocation = std::make_shared<paddle::memory::Allocation>(
-      paddle::platform::to_void_cast(data), ele_num * sizeof(T),
+      static_cast<void *>(data), ele_num * sizeof(T),
       paddle::platform::CPUPlace());
   out.ResetHolder(mem_allocation);
 
