@@ -130,7 +130,9 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetAttr("scale", this->GetAttr("scale"));
     grad_op->SetAttr("bias", 0.0f);
     grad_op->SetAttr("bias_after_scale", true);
+#ifdef PADDLE_WITH_MKLDNN
     grad_op->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
+#endif
   }
 };
 
