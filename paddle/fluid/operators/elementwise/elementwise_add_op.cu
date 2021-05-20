@@ -135,7 +135,11 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
 
 }  // namespace operators
 }  // namespace paddle
-#if !defined(PADDLE_WITH_HIP)
+
+// this op calls cuda built-in functions __shfl_xor_sync & __shfl_down_sync
+// with nv_bfloat16 datatype, which were supported when cuda version >= 11.
+// If no cuda version restriction here, code will not pass compilation.
+#if !defined(PADDLE_WITH_HIP) && CUDA_VERSION >= 11000
 #define ELEMENTWISE_ADD_REGISTER_BF16 \
   ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::bfloat16>,
 #define ELEMENTWISE_ADD_GRAD_REGISTER_BF16 \

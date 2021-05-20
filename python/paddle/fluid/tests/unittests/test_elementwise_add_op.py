@@ -606,8 +606,21 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "run test when gpu is availble.")
+# Get cuda version from command line
+def get_cuda_runtime_version():
+    command = os.popen("nvcc --version").read()
+    command = re.split(' ', command)
+    tag = 0
+    for _ in command:
+        tag += 1
+        if _ == 'release':
+            break
+    return int(float(command[tag].replace(',', '')) * 1000)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_runtime_version() < 11000,
+    "run test when gpu is availble and the minimum cuda version is 11.")
 class TestElementwiseAddBfloat16Dtype2(TestElementwiseAddOp):
     def init_dtype(self):
         self.dtype = np.uint16
