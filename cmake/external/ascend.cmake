@@ -65,7 +65,7 @@ endif()
 if(WITH_ASCEND_CL)
   set(ASCEND_CL_DIR ${ASCEND_DIR}/ascend-toolkit/latest/fwkacllib/lib64)
 
-  set(inf_eccl_lib /home/liuwei88/01_eccl/ECCL/build/lib/libeccl.so)
+  set(inf_eccl_lib ${ASCEND_CL_DIR}/libeccl.so)
   set(ascend_hccl_lib ${ASCEND_CL_DIR}/libhccl.so)
   set(ascendcl_lib ${ASCEND_CL_DIR}/libascendcl.so)
   set(acl_op_compiler_lib ${ASCEND_CL_DIR}/libacl_op_compiler.so)

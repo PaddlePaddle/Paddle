@@ -42,9 +42,6 @@ class CCommInitOpAscend : public framework::OperatorBase {
                       platform::errors::PreconditionNotMet(
                           "CCommInitOpAscend can run on npu place only."));
 
-    // auto var = scope.FindVar(Input("X"));
-    // PADDLE_ENFORCE_NOT_NULL(
-    //     var, platform::errors::InvalidArgument("Input con not be empty."));
 #if defined(PADDLE_WITH_ASCEND_CL)
     int rank_ids = Attr<int>("rank_ids");
     int rank_id = Attr<int>("rank");
@@ -67,7 +64,6 @@ class CCommInitOpAscend : public framework::OperatorBase {
 class CCommInitOpAscendMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    // AddInput("X", "Raw variable contains a NCCL UniqueId instaces.");
     AddComment(R"DOC(
 CCommInit operator
 
