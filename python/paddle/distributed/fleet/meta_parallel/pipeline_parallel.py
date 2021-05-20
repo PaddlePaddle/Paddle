@@ -79,7 +79,7 @@ class PipelineParallel(MetaParallelBase):
             logger.info("start broadcast mp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
 
-    def _allocate_caches(self, num_caches):
+    def _init_caches(self, num_caches):
         if self.num_caches >= num_caches:
             return
         self.num_caches = num_caches - self.num_caches
@@ -125,21 +125,25 @@ class PipelineParallel(MetaParallelBase):
 
         # store total loss of entire batch
         self.total_loss = None
-        minibatch_cmds = utils.TrainGenerator(self.accumulate_steps,
-                                              self.num_stages, self.stage_id)
+        self._init_caches(self.accumulate_steps)
+        startup_steps = self.num_stages - self.stage_id - 1
+        forward_steps = 0
+        backward_steps = 0
 
-        self._train(minibatch_cmds)
+        # forward
+        while (forward_steps < self.accumulate_steps):
+            self._forward(cache_id=forward_steps)
+            forward_steps += 1
+
+        # backward
+        while (backward_steps < self.accumulate_steps):
+            self._backward(cache_id=backward_steps)
+            backward_steps += 1
+
+        # optimizer
+        self._step()
         self.train_loss = self._reduce_final_loss()
         return self.train_loss
-
-    def _train(self, minibatch_cmds):
-        self._allocate_caches(self.accumulate_steps)
-        for micro_cmds in minibatch_cmds:
-            for cmd in micro_cmds:
-                assert type(cmd) in self._COMMAND_MAP, "unknow cmd: {}".format(
-                    type(cmd))
-                self._apply_cmd = MethodType(self._COMMAND_MAP[type(cmd)], self)
-                self._apply_cmd(**cmd.kwargs)
 
     def _forward(self, cache_id):
         # load data
@@ -478,12 +482,6 @@ class PipelineParallel(MetaParallelBase):
     def load_state_dict(self, model_path):
         state_dict = paddle.load(self.model_path)
         self._layers.set_state_dict(state_dict)
-
-    _COMMAND_MAP = {
-        utils.Optimize: _step,
-        utils.Forward: _forward,
-        utils.Backward: _backward,
-    }
 
     def forward(self, *inputs, **kwargs):
         raise RuntimeError("Call train_batch for pipeline instead of forward.")
