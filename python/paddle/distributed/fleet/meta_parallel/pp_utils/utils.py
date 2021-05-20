@@ -18,12 +18,6 @@ from ...utils import log_util as hp_util
 
 __all__ = []
 
-# FLOAT_TYPES = [
-#     paddle.float16,
-#     paddle.float32,
-#     paddle.float64,
-# ]
-
 FLOAT_TYPE_DICT = {
     paddle.float16: "float16",
     paddle.float32: "float32",
@@ -91,18 +85,7 @@ class TrainGenerator(Generator):
         cmds = []
         forward_steps = 0
         backward_steps = 0
-        #while (forward_steps < startup_steps):
-        #    cmds.append(Forward(cache_id=forward_steps))
-        #    forward_steps += 1
-        #while (forward_steps < self.micro_batches):
-        #    cmds.append(Forward(cache_id=forward_steps))
-        #    forward_steps += 1
-        #    cmds.append(Backward(cache_id=backward_steps))
-        #    backward_steps += 1
-        #while (backward_steps < self.micro_batches):
-        #    cmds.append(Backward(cache_id=backward_steps))
-        #    backward_steps += 1
-        #cmds.append(Optimize())
+
         while (forward_steps < self.micro_batches):
             cmds.append(Forward(cache_id=forward_steps))
             forward_steps += 1

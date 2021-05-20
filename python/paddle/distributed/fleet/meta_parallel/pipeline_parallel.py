@@ -11,18 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import time
-import copy
-import os
-
 from types import MethodType
-
-from numpy import prod
 
 import paddle
 import paddle.fluid as fluid
 from .meta_parallel_base import MetaParallelBase
-from .pp_utils.utils import get_tensor_bytes, is_float_tensor, get_tensor_dtype
+from .pp_utils.utils import is_float_tensor, get_tensor_dtype
 from .pp_utils import utils
 from .parallel_layers.pp_layers import PipelineLayer
 
@@ -36,8 +30,10 @@ __all__ = []
 
 class PipelineParallel(MetaParallelBase):
     def __init__(self, layers, hcg, strategy):
+        if not issubclass(layers, PipelineLayer):
+            raise TypeError(
+                "The Layer should be a derived class of PipelineLayer.")
         super(PipelineParallel, self).__init__(layers, hcg, strategy)
-
         self.use_pipe_parallel = self._hcg.get_pipe_parallel_world_size() > 1
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
@@ -86,12 +82,11 @@ class PipelineParallel(MetaParallelBase):
     def _allocate_caches(self, num_caches):
         if self.num_caches >= num_caches:
             return
-        num = num_caches - self.num_caches
-        self.num_caches = num_caches
+        self.num_caches = num_caches - self.num_caches
         for key in self.caches:
-            self.caches[key].extend([None] * num)
+            self.caches[key].extend([None] * self.num_caches)
 
-    def _reduce_total_loss(self):
+    def _reduce_final_loss(self):
         if self.is_last_stage:
             if self.total_loss and self.accumulate_steps > 1:
                 loss = self.total_loss.clone() / self.accumulate_steps
@@ -113,7 +108,7 @@ class PipelineParallel(MetaParallelBase):
 
     def train_batch(self, data, optimizer, lr_scheduler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
-            'Please sure the optimizer is HybridParallelOptimizer.')
+            'optimizer should be HybridParallelOptimizer subclass.')
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         assert fluid.framework._dygraph_tracer()._has_grad, (
@@ -134,8 +129,7 @@ class PipelineParallel(MetaParallelBase):
                                               self.num_stages, self.stage_id)
 
         self._train(minibatch_cmds)
-
-        self.train_loss = self._reduce_total_loss()
+        self.train_loss = self._reduce_final_loss()
         return self.train_loss
 
     def _train(self, minibatch_cmds):
@@ -159,8 +153,6 @@ class PipelineParallel(MetaParallelBase):
             inputs = self.caches['inputs'][cache_id]
 
         outputs = self._layers.forward(inputs)
-
-        # need to clear grad
         self._clear_grads(inputs)
 
         self.caches['outputs'][cache_id] = outputs
@@ -218,38 +210,29 @@ class PipelineParallel(MetaParallelBase):
         if self.stage_id != 0: self._send_gradients(cache_id)
         self.caches['outputs'][cache_id] = None
 
-    def _get_data(self):
-        data = self.data
-        # if self.use_model_parallel:
-        # if self.use_model_parallel and (self.is_first_stage or self.is_last_stage):
-        #     assert isinstance(data, (list)), "input data should be list type"
-        #     assert len(data) == 2, "input data lenght should be 2"
-        #     if 
-
-        # if isinstance(data, paddle.Tensor):
-        #     paddle.distributed.broadcast(
-        #         data,
-        #         src=self._hcg.get_model_parallel_group_src_rank(),
-        #         group=self._hcg.get_model_parallel_group())
-        # else:
-        #     data = []
-        #     for d in self.data:
-        #         assert isinstance(d, paddle.Tensor)
-        #         paddle.distributed.broadcast(
-        #             d,
-        #             src=self._hcg.get_model_parallel_group_src_rank(),
-        #             group=self._hcg.get_model_parallel_group())
-        #         data.append(d)
-        #     data = tuple(data)
+    def _broadcast_data(self, data):
+        if isinstance(data, paddle.Tensor):
+            paddle.distributed.broadcast(
+                data,
+                src=self._hcg.get_model_parallel_group_src_rank(),
+                group=self._hcg.get_model_parallel_group())
+        else:
+            for d in data:
+                assert isinstance(d, paddle.Tensor)
+                paddle.distributed.broadcast(
+                    d,
+                    src=self._hcg.get_model_parallel_group_src_rank(),
+                    group=self._hcg.get_model_parallel_group())
         return data
 
     def _load_micro_batch(self, cache_id):
-        inputs = self._get_data()
+        inputs = self.data
         begin = cache_id * self.micro_batch_size
         end = begin + self.micro_batch_size
 
         if self.is_first_stage:
             assert len(inputs) == 2
+            inputs[0] = self._broadcast_data(inputs[0])
             if isinstance(inputs[0], tuple):
                 batch_size = inputs[0][0].shape[0]
                 assert self.micro_batch_size * self.accumulate_steps == batch_size
@@ -264,6 +247,7 @@ class PipelineParallel(MetaParallelBase):
                 ).detach()
         elif self.is_last_stage:
             assert len(inputs) == 2
+            inputs[1] = self._broadcast_data(inputs[1])
             if isinstance(inputs[1], tuple):
                 batch_size = inputs[1][0].shape[0]
                 assert self.micro_batch_size * self.accumulate_steps == batch_size
