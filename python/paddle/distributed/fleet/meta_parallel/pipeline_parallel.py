@@ -33,12 +33,6 @@ from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 
 __all__ = []
 
-FLOAT_TYPES = [
-    paddle.float16,
-    paddle.float32,
-    paddle.float64,
-]
-
 
 class PipelineParallel(MetaParallelBase):
     def __init__(self, layers, hcg, strategy):
@@ -226,24 +220,27 @@ class PipelineParallel(MetaParallelBase):
 
     def _get_data(self):
         data = self.data
+        # if self.use_model_parallel:
         # if self.use_model_parallel and (self.is_first_stage or self.is_last_stage):
         #     assert isinstance(data, (list)), "input data should be list type"
         #     assert len(data) == 2, "input data lenght should be 2"
-        #     if isinstance(data, paddle.Tensor):
+        #     if 
+
+        # if isinstance(data, paddle.Tensor):
+        #     paddle.distributed.broadcast(
+        #         data,
+        #         src=self._hcg.get_model_parallel_group_src_rank(),
+        #         group=self._hcg.get_model_parallel_group())
+        # else:
+        #     data = []
+        #     for d in self.data:
+        #         assert isinstance(d, paddle.Tensor)
         #         paddle.distributed.broadcast(
-        #             data,
+        #             d,
         #             src=self._hcg.get_model_parallel_group_src_rank(),
         #             group=self._hcg.get_model_parallel_group())
-        #     else:
-        #         data = []
-        #         for d in self.data:
-        #             assert isinstance(d, paddle.Tensor)
-        #             paddle.distributed.broadcast(
-        #                 d,
-        #                 src=self._hcg.get_model_parallel_group_src_rank(),
-        #                 group=self._hcg.get_model_parallel_group())
-        #             data.append(d)
-        #         data = tuple(data)
+        #         data.append(d)
+        #     data = tuple(data)
         return data
 
     def _load_micro_batch(self, cache_id):
@@ -368,7 +365,6 @@ class PipelineParallel(MetaParallelBase):
 
     def _send_gradients(self, cache_id):
         inputs = self.caches['inputs'][cache_id]
-
         if isinstance(inputs, paddle.Tensor):
             assert inputs.grad is not None
             paddle.distributed.send(
