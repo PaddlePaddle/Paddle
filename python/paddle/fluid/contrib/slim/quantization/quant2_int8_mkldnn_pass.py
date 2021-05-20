@@ -68,7 +68,7 @@ class Quant2Int8MkldnnPass(object):
         self._pool_ops = ['pool2d']
         self._mul_ops = ['mul']
         self._fc_ops = ['fc']
-        self._relu_ops = ['relu', 'relu6']
+        self._activation_ops = ['relu', 'relu6', 'swish', 'hard_swish']
         self._matmul_ops = ['matmul']
         self._gru_ops = ['fusion_gru', 'multi_gru']
         self._weight_thresholds = {}
@@ -370,6 +370,10 @@ class Quant2Int8MkldnnPass(object):
                     if op.op().has_attr("fuse_brelu_threshold"):
                         alpha = op.op().attr("fuse_brelu_threshold")
                     op.set_attr("fuse_alpha", alpha)
+                elif op.op().has_attr("fuse_swish"):
+                    activation = "swish"
+                elif op.op().has_attr("fuse_hardswish"):
+                    activation = "hard_swish"
                 op.set_attr("fuse_activation", activation)
         return graph
 
@@ -565,14 +569,14 @@ class Quant2Int8MkldnnPass(object):
                         self._var_quant_scales[out_name] = (True, tensor)
             return graph
 
-        conv_predicate = lambda op: op.attr("fuse_activation") in self._relu_ops
+        conv_predicate = lambda op: op.attr("fuse_activation") in self._activation_ops
         graph = _set_unsigned_scale(graph, self._conv_ops, "Output",
                                     conv_predicate)
 
-        fc_predicate = lambda op: op.attr("activation_type") in self._relu_ops
+        fc_predicate = lambda op: op.attr("activation_type") in self._activation_ops
         graph = _set_unsigned_scale(graph, self._fc_ops, "Out", fc_predicate)
 
-        graph = _set_unsigned_scale(graph, self._relu_ops, 'Out',
+        graph = _set_unsigned_scale(graph, self._activation_ops, 'Out',
                                     lambda op: True)
 
         return graph

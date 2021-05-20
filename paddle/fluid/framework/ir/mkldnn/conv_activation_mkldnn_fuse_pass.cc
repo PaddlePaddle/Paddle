@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -28,7 +29,7 @@ class OpDesc;
 namespace paddle {
 namespace framework {
 namespace ir {
-
+using string::PrettyLogDetail;
 class Graph;
 
 void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -95,6 +96,8 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_activation_count);
+  PrettyLogDetail("---    fused %d pairs of conv with %s",
+                  found_conv_activation_count, activation_type());
 }
 
 }  // namespace ir
