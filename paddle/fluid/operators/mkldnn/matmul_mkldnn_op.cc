@@ -61,7 +61,6 @@ static framework::Tensor FoldFirstAndLastDims(
 
   framework::Tensor output;
   output.Resize({input_dims[1], input_dims[0], input_dims[2]});
-  output.mutable_data<T>(dev_ctx.GetPlace());
 
   auto output_dims = framework::vectorize(output.dims());
 
@@ -91,14 +90,12 @@ static framework::Tensor FoldFirstAndLastDims(
 }
 
 template <typename T>
-class MatMulGradMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
+class MatMulMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
  public:
-  MatMulGradMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
-                          const mkldnn::engine engine,
-                          platform::Place cpu_place, Tensor* x, bool trans_x,
-                          Tensor* y, bool trans_y, Tensor* out, float scale,
-                          const std::string& uniq_name)
+  MatMulMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+                      const mkldnn::engine engine, platform::Place cpu_place,
+                      Tensor* x, bool trans_x, Tensor* y, bool trans_y,
+                      Tensor* out, float scale, const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::matmul>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
@@ -585,7 +582,7 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
                                        : FoldFirstAndLastDims<T>(dev_ctx, y);
     }
 
-    MatMulGradMKLDNNHandler<T> handler(
+    MatMulMKLDNNHandler<T> handler(
         dev_ctx, engine, ctx.GetPlace(), &x_combined, trans_x, &y_combined,
         trans_y, out, ctx.Attr<float>("alpha"),
         ctx.InputName(framework::GradVarName("Out")) +
@@ -617,62 +614,61 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* x = const_cast<Tensor*>(ctx.Input<Tensor>("X"));
-    auto* y = const_cast<Tensor*>(ctx.Input<Tensor>("Y"));
-    auto* dout =
-        const_cast<Tensor*>(ctx.Input<Tensor>(framework::GradVarName("Out")));
+    auto x = *ctx.Input<Tensor>("X");
+    auto y = *ctx.Input<Tensor>("Y");
+    auto dout = *ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
     bool transpose_x = ctx.Attr<bool>("transpose_X");
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
 
-    ReshapeXYOutToMatrixSequence(x, y, dout, transpose_x, transpose_y);
+    ReshapeXYOutToMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
     framework::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
-      if (dx_dims != x->dims()) {
-        dx->Resize(x->dims());
+      if (dx_dims != x.dims()) {
+        dx->Resize(x.dims());
       }
     }
 
     framework::DDim dy_dims;
     if (dy) {
       dy_dims = dy->dims();
-      if (dy_dims != y->dims()) {
-        dy->Resize(y->dims());
+      if (dy_dims != y.dims()) {
+        dy->Resize(y.dims());
       }
     }
 
     if (transpose_x && transpose_y) {
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, y, true, true, dout,
-                              true, false, dx, 0);
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, dout, true, true, x,
-                              true, false, dy, 1);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &y, true, true,
+                              &dout, true, false, dx, 0);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, true, true,
+                              &x, true, false, dy, 1);
     } else if (transpose_x) {
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, y, false, false,
-                              dout, true, false, dx, 0);
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, x, false, false,
-                              dout, false, true, dy, 1);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &y, false, false,
+                              &dout, true, false, dx, 0);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &x, false, false,
+                              &dout, false, true, dy, 1);
     } else if (transpose_y) {
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, dout, false, false,
-                              y, false, true, dx, 0);
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, dout, true, true, x,
-                              false, true, dy, 1);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, false, false,
+                              &y, false, true, dx, 0);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, true, true,
+                              &x, false, true, dy, 1);
     } else {
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, dout, false, false,
-                              y, true, false, dx, 0);
-      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, x, true, true, dout,
-                              false, true, dy, 1);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, false, false,
+                              &y, true, false, dx, 0);
+      this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &x, true, true,
+                              &dout, false, true, dy, 1);
     }
 
     if (dx) {
-      if (dx_dims != x->dims()) {
+      if (dx_dims != x.dims()) {
         dx->Resize(dx_dims);
       }
     }
     if (dy) {
-      if (dy_dims != y->dims()) {
+      if (dy_dims != y.dims()) {
         dy->Resize(dy_dims);
       }
     }
