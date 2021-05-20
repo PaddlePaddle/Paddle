@@ -20,7 +20,8 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from paddle.fluid.tests.unittests.testsuite import create_op
 from paddle.fluid import Program, program_guard
 
 
@@ -167,14 +168,23 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
     globals()[cls_name] = TestConv2DCUDNNFp16
 
 
-def create_test_cudnn_bf16_class(parent):
+def create_test_cudnn_bf16_class(parent, check_grad=False):
     @unittest.skipIf(
         not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
         "core is not compiled with CUDA and cudnn version need larger than 8.1.0"
     )
     class TestConv2DCUDNNBF16(parent):
+        def get_numeric_grad(self, place, check_name):
+            scope = core.Scope()
+            self._check_grad_helper()
+            op = create_op(scope, self.op_type, self.inputs, self.outputs,
+                           self.attrs)
+            return get_numeric_gradient(place, scope, op, self.inputs_fp32,
+                                        check_name, ['Output'])
+
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.no_need_check_grad = True
             self.dtype = np.uint16
 
         def test_check_output(self):
@@ -183,13 +193,21 @@ def create_test_cudnn_bf16_class(parent):
 
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'Input')
             self.check_grad_with_place(
-                place, ['Input'], 'Output', no_grad_set=set(['Filter']))
+                place, ['Input'],
+                'Output',
+                no_grad_set=set(['Filter']),
+                user_defined_grads=[numeric_grads])
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'Filter')
             self.check_grad_with_place(
-                place, ['Filter'], 'Output', no_grad_set=set(['Input']))
+                place, ['Filter'],
+                'Output',
+                no_grad_set=set(['Input']),
+                user_defined_grads=[numeric_grads])
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNBF16")
     TestConv2DCUDNNBF16.__name__ = cls_name
@@ -348,7 +366,15 @@ class TestConv2DOp(OpTest):
             'dilation': self.dilations
         }
 
-        input = np.random.random(self.input_size).astype(self.dtype)
+        if self.is_bfloat16_op():
+            input = np.random.random(self.input_size).astype(np.float32)
+            filter = np.random.uniform(-1, 1,
+                                       self.filter_size).astype(np.float32)
+        else:
+            input = np.random.random(self.input_size).astype(self.dtype)
+            filter = np.random.uniform(-1, 1,
+                                       self.filter_size).astype(self.dtype)
+
         if not self.has_cuda():
             self.fuse_relu_before_depthwise_conv = False
         if self.fuse_relu_before_depthwise_conv:
@@ -358,16 +384,27 @@ class TestConv2DOp(OpTest):
             input2 = np.maximum(input, 0.0)
         else:
             input2 = input
-        filter = np.random.uniform(-1, 1, self.filter_size).astype(self.dtype)
 
         output, _, _, _, _ = conv2d_forward_naive(input2, filter, self.groups,
                                                   conv2d_param)
-        output = output.astype(self.dtype)
 
-        self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
-        }
+        if self.is_bfloat16_op():
+            output = output.astype(np.float32)
+            self.inputs = {
+                'Input': convert_float_to_uint16(input),
+                'Filter': convert_float_to_uint16(filter)
+            }
+            self.inputs_fp32 = {
+                'Input': OpTest.np_dtype_to_fluid_dtype(input),
+                'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+            }
+        else:
+            output = output.astype(self.dtype)
+            self.inputs = {
+                'Input': OpTest.np_dtype_to_fluid_dtype(input),
+                'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+            }
+
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
