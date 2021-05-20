@@ -46,14 +46,9 @@ class RocksDBHandler {
     bbto.filter_policy.reset(rocksdb::NewBloomFilterPolicy(20, false));
     bbto.whole_key_filtering = true;
     options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
-    VLOG(3) << "wxx aaa ";
 
-    // options.IncreaseParallelism();
-    // options.OptimizeLevelStyleCompaction();
     options.keep_log_file_num = 100;
-    // options.db_log_dir = "./log/rocksdb";
     options.max_log_file_size = 50 * 1024 * 1024;  // 50MB
-    // options.threads = 8;
     options.create_if_missing = true;
     options.use_direct_reads = true;
     options.use_direct_writes = true;
@@ -66,42 +61,30 @@ class RocksDBHandler {
         options.max_write_buffer_number * options.write_buffer_size;
     options.min_write_buffer_number_to_merge = 1;
     options.target_file_size_base = 1024 * 1024 * 1024;  // 1024MB
-    // options.verify_checksums_in_compaction = false;
-    // options.disable_auto_compactions = true;
     options.memtable_prefix_bloom_size_ratio = 0.02;
     options.num_levels = 4;
     options.max_open_files = -1;
-    VLOG(3) << "wxx bbb ";
 
     options.compression = rocksdb::kNoCompression;
-    // options.compaction_options_fifo = rocksdb::CompactionOptionsFIFO();
-    // options.compaction_style =
-    // rocksdb::CompactionStyle::kCompactionStyleFIFO;
     options.level0_file_num_compaction_trigger = 8;
     options.level0_slowdown_writes_trigger =
         1.8 * options.level0_file_num_compaction_trigger;
     options.level0_stop_writes_trigger =
         3.6 * options.level0_file_num_compaction_trigger;
 
-    VLOG(3) << "wxx ccc ";
     if (!db_path.empty()) {
       std::string rm_cmd = "rm -rf " + db_path;
       system(rm_cmd.c_str());
     }
-    VLOG(3) << "wxx ddd ";
 
     rocksdb::Status s = rocksdb::DB::Open(options, db_path, &_db);
-    VLOG(3) << "wxx eee ";
     assert(s.ok());
     _handles.resize(colnum);
-    VLOG(3) << "wxx ahaha ";
     for (int i = 0; i < colnum; i++) {
       s = _db->CreateColumnFamily(options, "shard_" + std::to_string(i),
                                   &_handles[i]);
-      VLOG(3) << "wxx hihihi ";
       assert(s.ok());
     }
-    VLOG(3) << "wxx fff ";
     LOG(INFO) << "DB initialize success, colnum:" << colnum;
     return 0;
   }
