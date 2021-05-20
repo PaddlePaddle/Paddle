@@ -61,7 +61,6 @@ class ScaleOp : public framework::OperatorWithKernel {
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
@@ -131,6 +130,7 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetAttr("scale", this->GetAttr("scale"));
     grad_op->SetAttr("bias", 0.0f);
     grad_op->SetAttr("bias_after_scale", true);
+    grad_op->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
   }
 };
 
