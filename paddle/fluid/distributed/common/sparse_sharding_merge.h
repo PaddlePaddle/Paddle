@@ -33,7 +33,7 @@
 
 constexpr int FG = 256 * 1024 * 1024;
 constexpr int Q_SIZE = 10000;
-constexpr int BUCKET = 5;
+constexpr int BUCKET = 10;
 constexpr char XEOF[] = "EOF";
 
 using boost::lexical_cast;
@@ -41,7 +41,7 @@ using boost::lexical_cast;
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, NULL);
-  return time.tv_sec + time.tv_usec;
+  return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
 namespace paddle {
@@ -174,6 +174,7 @@ class ShardingMerge {
 
       while (std::getline(in, line)) {
         ++count;
+        columns = string::Split(line, '\t');
 
         if (columns.size() != 5) {
           VLOG(0) << "unexpected line: " << line << ", skip it";
@@ -182,16 +183,17 @@ class ShardingMerge {
         }
 
         if (count >= batch) {
-          queue->Push(XEOF);
           break;
         }
       }
+      queue->Push(XEOF);
     };
 
     auto write = [embedding_dim, &out, &queue]() {
+      std::vector<std::string> values_str;
+      std::string line;
+
       while (true) {
-        std::vector<std::string> values_str;
-        std::string line;
         queue->Pop(&line);
 
         if (line == XEOF) {
