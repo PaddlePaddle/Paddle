@@ -863,7 +863,9 @@ def load(path, **configs):
         try:
             with _open_file_buffer(path, 'rb') as f:
                 # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-                if sys.platform == 'darwin' and sys.version_info.major == 3:
+                if _is_file_path(
+                        path
+                ) and sys.platform == 'darwin' and sys.version_info.major == 3:
                     load_result = _pickle_loads_mac(path, f)
                 else:
                     load_result = pickle.load(f) if six.PY2 else pickle.load(

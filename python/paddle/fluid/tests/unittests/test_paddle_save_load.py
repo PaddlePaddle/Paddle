@@ -763,18 +763,53 @@ class TestSaveLoadAny(unittest.TestCase):
 
 
 class TestSaveLoadToMemory(unittest.TestCase):
-    def setUp(self):
+    def test_dygraph_save_to_memory(self):
         paddle.disable_static()
-
-    def test_save_state_dict_to_memory(self):
         linear = LinearNet()
         state_dict = linear.state_dict()
         byio = BytesIO()
         paddle.save(state_dict, byio)
+        tensor = paddle.randn([2, 3], dtype='float32')
+        paddle.save(tensor, byio)
         byio.seek(0)
+        # load state_dict
         dict_load = paddle.load(byio, return_numpy=True)
         for k, v in state_dict.items():
             self.assertTrue(np.array_equal(v.numpy(), dict_load[k]))
+        # load tensor
+        tensor_load = paddle.load(byio, return_numpy=True)
+        self.assertTrue(np.array_equal(tensor_load, tensor.numpy()))
+
+    def test_static_save_to_memory(self):
+        paddle.enable_static()
+        with new_program_scope():
+            # create network
+            x = paddle.static.data(
+                name="x", shape=[None, IMAGE_SIZE], dtype='float32')
+            z = paddle.static.nn.fc(x, 10, bias_attr=False)
+            z = paddle.static.nn.fc(z, 128, bias_attr=False)
+            loss = fluid.layers.reduce_mean(z)
+            place = fluid.CPUPlace(
+            ) if not paddle.fluid.core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            prog = paddle.static.default_main_program()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+
+            state_dict = prog.state_dict()
+            keys = list(state_dict.keys())
+            tensor = state_dict[keys[0]]
+
+            byio = BytesIO()
+            paddle.save(tensor, byio)
+            paddle.save(state_dict, byio)
+            byio.seek(0)
+            tensor_load = paddle.load(byio, return_numpy=True)
+            self.assertTrue(np.array_equal(tensor_load, np.array(tensor)))
+
+            state_dict_load = paddle.load(byio, return_numpy=True)
+            for k, v in state_dict.items():
+                self.assertTrue(np.array_equal(np.array(v), state_dict_load[k]))
 
 
 class TestSaveLoad(unittest.TestCase):
