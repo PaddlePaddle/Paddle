@@ -64,6 +64,9 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
       } else {
         cast_label.ShareDataWith(*label);
       }
+    } else {
+      cast_indices.ShareDataWith(*indices);
+      cast_label.ShareDataWith(*label);
     }
 
     // equal
