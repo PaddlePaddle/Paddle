@@ -14,20 +14,31 @@
 
 import abc
 import paddle
-from ...utils import hybrid_parallel_util as hp_util
+from ...utils import log_util as hp_util
 
 __all__ = []
 
-FLOAT_TYPES = [
-    paddle.float16,
-    paddle.float32,
-    paddle.float64,
-]
+# FLOAT_TYPES = [
+#     paddle.float16,
+#     paddle.float32,
+#     paddle.float64,
+# ]
+
+FLOAT_TYPE_DICT = {
+    paddle.float16: "float16",
+    paddle.float32: "float32",
+    paddle.float64: "float64",
+}
 
 
 def is_float_tensor(tensor):
     """Is a float tensor"""
-    return tensor.dtype in FLOAT_TYPES
+    return tensor.dtype in FLOAT_TYPE_DICT.keys()
+
+
+def get_tensor_dtype(dtype):
+    assert dtype in FLOAT_TYPE_DICT.keys()
+    return FLOAT_TYPE_DICT[dtype]
 
 
 def get_tensor_bytes(tensor):
@@ -110,7 +121,7 @@ class Command:
             setattr(self, key, val)
 
     def __repr__(self):
-        return hp_util.call_to_str(self.name, **self.kwargs)
+        return hp_util.layer_to_str(self.name, **self.kwargs)
 
 
 class Optimize(Command):
