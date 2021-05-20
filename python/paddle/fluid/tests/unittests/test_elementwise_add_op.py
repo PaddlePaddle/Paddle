@@ -608,36 +608,47 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "run test when gpu is availble.")
-class TestElementwiseAddBfloat16Dtype(unittest.TestCase):
-    # Get cuda runtime version from source file
-    def get_cuda_runtime_version(self):
-        command = os.popen("nvcc --version").read()
-        command = re.split(' ', command)
-        tag = 0
-        for _ in command:
-            tag += 1
-            if _ == 'release':
-                break
-        return int(float(command[tag].replace(',', '')) * 1000)
+class TestElementwiseAddBfloat16Dtype2(TestElementwiseAddOp):
+    def init_dtype(self):
+        self.dtype = np.uint16
 
-    def test_bfloat16_datatype(self):
-        if self.get_cuda_runtime_version() >= 11000:
-            paddle.disable_static()
-            # Result using float32
-            x_fp32 = paddle.to_tensor([2, 3, 4], 'float32')
-            y_fp32 = paddle.to_tensor([1, 5, 2], 'float32')
-            res_fp32 = paddle.add(x_fp32, y_fp32)
-            exp = paddle.cast(res_fp32, core.VarDesc.VarType.BF16)
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
 
-            # Result using bfloat16
-            x_bf16 = paddle.cast(x_fp32, core.VarDesc.VarType.BF16)
-            y_bf16 = paddle.cast(y_fp32, core.VarDesc.VarType.BF16)
-            res = paddle.add(x_bf16, y_bf16)
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+        }
+        self.attrs = {
+            'axis': self.axis,
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
-            self.assertTrue(np.array_equal(res.numpy(), exp.numpy()))
-            paddle.enable_static()
-        else:
-            pass
+    def init_input_output(self):
+        ipt_x = np.random.random(size=[5, 20]).astype('float32')
+        ipt_y = np.random.random(size=[5, 20]).astype('float32')
+
+        self.x = convert_float_to_uint16(ipt_x)
+        self.y = convert_float_to_uint16(ipt_y)
+        self.out = np.add(ipt_x, ipt_y)  # fp32
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=2)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
 
 
 if __name__ == '__main__':
