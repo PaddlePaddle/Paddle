@@ -151,7 +151,7 @@ struct ReduceConfig {
 
   // when should_reduce_again is true, we need malloc temp space for temp data
   void SetOutputData(Ty* y_data, const platform::Place& place,
-                     const framework::Tensor& tmp) {
+                     framework::Tensor& tmp) {
     if (should_reduce_again) {
       output_data = tmp.mutable_data<Ty>(
           framework::make_ddim(
