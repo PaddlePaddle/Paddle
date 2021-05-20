@@ -2211,7 +2211,7 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        parallel_test
+        #parallel_test
         build_so_cache
         ;;
       check_xpu)
