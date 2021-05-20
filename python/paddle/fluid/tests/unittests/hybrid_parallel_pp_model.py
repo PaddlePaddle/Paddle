@@ -15,20 +15,13 @@
 from __future__ import division
 from __future__ import print_function
 
+import unittest
 import paddle
 import numpy as np
 import random
 import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-from paddle.io import DataLoader, Dataset
-import unittest
-from hybrid_parallel_pp_layer import AlexNetPipeDesc, AlexNetPipe, ReshapeHelp
-from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
-import paddle.nn as nn
-from paddle.fluid.dygraph.layers import Layer
-from paddle.fluid.dygraph.container import Sequential
-import paddle.nn.functional as F
+from hybrid_parallel_pp_layer import AlexNetPipeDesc, AlexNet
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -36,91 +29,6 @@ def set_random_seed(seed, dp_id, rank_id):
     random.seed(seed)
     np.random.seed(seed + dp_id)
     paddle.seed(seed + dp_id)
-
-
-class ReshapeHelp(Layer):
-    def __init__(self, shape):
-        super(ReshapeHelp, self).__init__()
-        self.shape = shape
-
-    def forward(self, x):
-        return x.reshape(shape=self.shape)
-
-
-class AlexNetPipeDesc(PipelineLayer):
-    def __init__(self, num_classes=10, **kwargs):
-        self.num_classes = num_classes
-        decs = [
-            LayerDesc(
-                nn.Conv2D, 1, 64, kernel_size=11, stride=4, padding=5),
-            LayerDesc(nn.ReLU),
-            LayerDesc(
-                nn.MaxPool2D, kernel_size=2, stride=2),
-            LayerDesc(
-                nn.Conv2D, 64, 192, kernel_size=5, padding=2),
-            F.relu,
-            LayerDesc(
-                nn.MaxPool2D, kernel_size=2, stride=2),
-            LayerDesc(
-                nn.Conv2D, 192, 384, kernel_size=3, padding=1),
-            F.relu,
-            LayerDesc(
-                nn.Conv2D, 384, 256, kernel_size=3, padding=1),
-            F.relu,
-            LayerDesc(
-                nn.Conv2D, 256, 256, kernel_size=3, padding=1),
-            F.relu,
-            LayerDesc(
-                nn.MaxPool2D, kernel_size=2, stride=2),
-            LayerDesc(
-                ReshapeHelp, shape=[-1, 256]),
-            LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
-        ]
-        super(AlexNetPipeDesc, self).__init__(
-            layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
-
-
-class AlexNet(Layer):
-    def __init__(self, num_classes=10):
-        super(AlexNet, self).__init__()
-        self.features_1 = Sequential(
-            nn.Conv2D(
-                1, 64, kernel_size=11, stride=4, padding=5),
-            nn.ReLU(),
-            nn.MaxPool2D(
-                kernel_size=2, stride=2),
-            nn.Conv2D(
-                64, 192, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool2D(
-                kernel_size=2, stride=2),
-            nn.Conv2D(
-                192, 384, kernel_size=3, padding=1))
-
-        self.features_2 = Sequential(
-            nn.ReLU(),
-            nn.Conv2D(
-                384, 256, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.Conv2D(
-                256, 256, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2D(
-                kernel_size=2, stride=2), )
-
-        self.reshape_layer = ReshapeHelp(shape=[-1, 256])
-        self.classifier = nn.Linear(256, num_classes)
-        self.loss_fn = nn.loss.CrossEntropyLoss()
-
-    def forward(self, x, y):
-        x = self.features_1(x)
-        # print(x.shape)
-        # print("x", x.numpy())
-        x = self.features_2(x)
-        x = self.reshape_layer(x)
-        x = self.classifier(x)
-        print(x.numpy())
-        return self.loss_fn(x, y)
 
 
 batch_size = 4
@@ -188,27 +96,17 @@ class TestDistPPTraning(unittest.TestCase):
             img.stop_gradient = True
             label.stop_gradient = True
 
-            if step_id >= 1:
-                return
-
-            # print("shape", img.shape, label.shape)
-            # tmp = img[:2, :]
-            # print("tmp shape", tmp.shape)
-            # loss_a = model_a(img[:2, :], label[:2, :])
+            if step_id >= 5:
+                return True
 
             loss_a = model_a(img, label)
-            # loss_a_2 = model_a(img[2:4, :], label[2:4, :])
-            # loss_a_2 = model_a(img[2:4, :], label[2:4, :])
-            # loss_a_2 = model_a(img[2:4, :], label[2:4, :])
+            loss_a.backward()
+            optimizer_a.step()
+            optimizer_a.clear_grad()
 
-            # loss_a.backward()
-            # optimizer_a.step()
-            # optimizer_a.clear_grad()
-            # print("loss_a", loss_a)
-
-            # loss_b = model_b.train_batch([img, label], optimizer_b)
-            # print("loss_a loss_b", loss_a.numpy(), loss_b.numpy())
-        return True
+            loss_b = model_b.train_batch([img, label], optimizer_b)
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
 
 
 if __name__ == "__main__":
