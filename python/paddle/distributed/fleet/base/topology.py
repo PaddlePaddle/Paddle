@@ -254,7 +254,7 @@ class HybridCommunicateGroup(object):
     def get_check_parallel_group(self):
         return self._check_comm_group
 
-    def get_rank_from_stage(self, stage_id, **kwargs):
-        me = self._topo.get_coord(self.global_rank)
-        transform = me._replace(pipe=stage_id, **kwargs)._asdict()
-        return self._topo.get_rank(**transform)
+    def get_rank_from_stage(self, stage_id):
+        coord = self._topo.get_coord(self.global_rank)
+        tf = coord._replace(pipe=stage_id)._asdict()
+        return self._topo.get_rank(**tf)

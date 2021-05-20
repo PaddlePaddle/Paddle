@@ -30,7 +30,7 @@ __all__ = []
 
 class PipelineParallel(MetaParallelBase):
     def __init__(self, layers, hcg, strategy):
-        if not issubclass(layers, PipelineLayer):
+        if not isinstance(layers, PipelineLayer):
             raise TypeError(
                 "The Layer should be a derived class of PipelineLayer.")
         super(PipelineParallel, self).__init__(layers, hcg, strategy)
