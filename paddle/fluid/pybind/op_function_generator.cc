@@ -277,7 +277,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   }
 })";
 
-const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS},)";
+const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
 
 // clang-format on
 static inline bool FindInsMap(const std::string& op_type,
@@ -553,8 +553,8 @@ GenerateOpFunctions() {
     std::string op_function_str = GenerateOpFunctionsBody(op_proto, func_name);
 
     // generate pybind item
-    auto bind_function_str =
-        paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, op_type, func_name);
+    auto bind_function_str = paddle::string::Sprintf(
+        PYBIND_ITEM_TEMPLATE, op_type, func_name, op_type);
 
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
@@ -568,8 +568,9 @@ GenerateOpFunctions() {
           op_proto, inplace_func_name, true, inplace_map);
 
       // generate pybind item
-      auto inplace_bind_function_str = paddle::string::Sprintf(
-          PYBIND_ITEM_TEMPLATE, inplace_op_type, inplace_func_name);
+      auto inplace_bind_function_str =
+          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, inplace_op_type,
+                                  inplace_func_name, inplace_op_type);
 
       op_function_list.emplace_back(std::move(inplace_op_function_str));
       bind_function_list.emplace_back(std::move(inplace_bind_function_str));
@@ -601,8 +602,7 @@ int main(int argc, char* argv[]) {
     out << "#include  " + header + "\n";
   }
 
-  out << "#  pragma GCC diagnostic ignored "
-         "\"-Wmissing-field-initializers\"\n\n";
+  out << "\n\n";
 
   auto op_funcs = GenerateOpFunctions();
 
@@ -613,7 +613,7 @@ int main(int argc, char* argv[]) {
 
   out << "static PyMethodDef ExtestMethods[] = {\n"
       << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
-      << "  {NULL,NULL}"
+      << "\n  {NULL,NULL,0,NULL}"
       << "};\n\n";
 
   out << "inline void BindOpFunctions(pybind11::module *module) {\n"
