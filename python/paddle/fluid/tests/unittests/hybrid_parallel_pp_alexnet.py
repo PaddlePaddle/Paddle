@@ -19,6 +19,7 @@ import unittest
 import paddle
 import numpy as np
 import random
+import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 from hybrid_parallel_pp_layer import AlexNetPipeDesc, AlexNet
@@ -63,7 +64,9 @@ class TestDistPPTraning(unittest.TestCase):
 
         #construct model a
         model_a = AlexNet(10)
-        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
+        scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True)
+        optimizer_a = paddle.optimizer.SGD(learning_rate=scheduler_a,
                                            parameters=model_a.parameters())
 
         param_len = len(model_a.parameters())
@@ -74,7 +77,9 @@ class TestDistPPTraning(unittest.TestCase):
 
         # construct model b
         model_b = AlexNetPipeDesc(num_stages=self.pipeline_parallel_size)
-        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
+        scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True)
+        optimizer_b = paddle.optimizer.SGD(learning_rate=scheduler_b,
                                            parameters=model_b.parameters())
         model_b = fleet.distributed_model(model_b)
         optimizer_b = fleet.distributed_optimizer(optimizer_b)
@@ -103,8 +108,16 @@ class TestDistPPTraning(unittest.TestCase):
             loss_a.backward()
             optimizer_a.step()
             optimizer_a.clear_grad()
+            scheduler_a.step()
 
-            loss_b = model_b.train_batch([img, label], optimizer_b)
+            if step_id % 2 == 0:
+                loss_b = model_b.train_batch([img, label], optimizer_b,
+                                             scheduler_b)
+            else:
+                # just for test tuple inputs
+                loss_b = model_b.train_batch([img, (label, )], optimizer_b,
+                                             scheduler_b)
+
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
 
