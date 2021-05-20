@@ -32,7 +32,7 @@ def _remove_if_exists(path):
         if os.path.isfile(path):
             os.remove(path)
         else:
-            shutil.rmtree(path)
+            shutil.rmtree(path, ignore_errors=True)
 
 
 def _import_module(name, repo_dir):
