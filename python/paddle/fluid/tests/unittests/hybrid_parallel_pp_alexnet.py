@@ -64,7 +64,7 @@ class TestDistPPTraning(unittest.TestCase):
         #construct model a
         model_a = AlexNet(10)
         scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True)
+            boundaries=[2], values=[0.001, 0.002], verbose=True)
         optimizer_a = paddle.optimizer.SGD(learning_rate=scheduler_a,
                                            parameters=model_a.parameters())
 
@@ -77,7 +77,7 @@ class TestDistPPTraning(unittest.TestCase):
         # construct model b
         model_b = AlexNetPipeDesc(num_stages=self.pipeline_parallel_size)
         scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True)
+            boundaries=[2], values=[0.001, 0.002], verbose=True)
         optimizer_b = paddle.optimizer.SGD(learning_rate=scheduler_b,
                                            parameters=model_b.parameters())
         model_b = fleet.distributed_model(model_b)
@@ -111,7 +111,7 @@ class TestDistPPTraning(unittest.TestCase):
 
             loss_b = model_b.train_batch([img, label], optimizer_b, scheduler_b)
 
-            print("loss", loss_a.numpy(), loss_b.numpy())
+            print("loss: ", loss_a.numpy(), loss_b.numpy())
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
 
