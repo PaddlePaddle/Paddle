@@ -294,7 +294,7 @@ struct CudaModFunctor {
 
     // Accoding to #PR26732: in dividen % divsor
     // remainder shall have the same sign as divsor.
-    if ((res != 0) && ((args[1] * res) < 0)) res += args[1];
+    if ((res != 0) && ((args[1] ^ res) < 0)) res += args[1];
     return res;
   }
 };
@@ -307,8 +307,7 @@ struct CudaModFunctor<
 
     // Accoding to #PR26732: in dividen % divsor
     // remainder shall have the same sign as divsor.
-
-    if ((res != 0) && ((args[1] * res) < 0)) res += args[1];
+    if ((res != 0) && ((res < 0) != (args[1] < 0))) res += args[1];
     return res;
   }
 };

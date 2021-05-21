@@ -31,7 +31,7 @@ class HybridParallelGradScaler:
         self._scaler = scaler
         self._hcg = hcg
         self._is_mp = (
-            self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL)
+            self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL)
 
     def scale(self, var):
         return self._scaler.scale(var)

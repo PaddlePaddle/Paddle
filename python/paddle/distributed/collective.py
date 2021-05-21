@@ -99,6 +99,13 @@ class Group():
         else:
             return -1
 
+    def __repr__(self):
+        debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
+            self.rank, self.nranks, self.id)
+        debug_str += ", ".join(map(str, self.ranks))
+        debug_str += ". "
+        return debug_str
+
 
 _global_env = None
 
@@ -927,7 +934,8 @@ def _linear(x, weight, bias=None, name=None):
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
-        assert x.ndim < 4, "X latitude is not supported greater than 3 now."
+        assert len(
+            x.shape) < 4, "X latitude is not supported greater than 3 now."
 
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'linear')
