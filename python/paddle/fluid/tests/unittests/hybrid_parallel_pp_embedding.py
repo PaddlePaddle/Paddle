@@ -23,7 +23,7 @@ import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 from paddle.fluid.dygraph.container import Sequential
-from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+from paddle.distributed.fleet.meta_parallel import PipelineLayer
 from hybrid_parallel_pp_alexnet import TestDistPPTraning
 from paddle.fluid.dygraph.layers import Layer
 import paddle.nn as nn
@@ -37,8 +37,8 @@ def set_random_seed(seed, dp_id, rank_id):
     paddle.seed(seed + dp_id)
 
 
-batch_size = 4
-micro_batch_size = 2
+batch_size = 16
+micro_batch_size = 4
 vocab_size = 128
 hidden_size = 8
 
@@ -71,7 +71,6 @@ class EmbeddingNet(Layer):
     def forward(self, args):
         x1, x2 = args
         x_emb = self.word_embeddings(x1)
-
         return x_emb, x2
 
 
