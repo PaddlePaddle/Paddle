@@ -246,12 +246,10 @@ DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Div, /, half2_div)
 DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaAdd, +)
 DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaSub, -)
 DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaMul, *)
-DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaDiv, /)
 #undef DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT
 
 #define CUDA_MAX_OP(a, b) (a > b ? a : b)
 #define CUDA_MIN_OP(a, b) (a > b ? b : a)
-#define CUDA_FLOORDIV_OP(a, b) static_cast<T>(std::trunc(a / b))
 
 #define DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(Func, op) \
   template <typename T, class Enable = void>                    \
@@ -263,54 +261,7 @@ DEFINE_SIMPLE_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaDiv, /)
 
 DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaMax, CUDA_MAX_OP)
 DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaMin, CUDA_MIN_OP)
-DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaFloorDiv, CUDA_FLOORDIV_OP)
 #undef DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT
-
-template <typename T>
-struct CudaDivFunctor<
-    T, typename std::enable_if<std::is_integral<T>::value>::type> {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    static_assert(args[1] != 0, DIV_ERROR_INFO);
-    return args[0] / args[1];
-  }
-};
-
-template <typename T>
-struct CudaPowFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    if (std::is_integral<T>::value) {
-      return std::llrint(std::pow(args[0], args[1]));
-    }
-#endif
-    return std::pow(args[0], args[1]);
-  }
-};
-
-template <typename T, typename Enable = void>
-struct CudaModFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    T res = args[0] % args[1];
-
-    // Accoding to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
-    if ((res != 0) && ((args[1] ^ res) < 0)) res += args[1];
-    return res;
-  }
-};
-
-template <typename T>
-struct CudaModFunctor<
-    T, typename std::enable_if_t<std::is_floating_point<T>::value>> {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    T res = fmod(args[0], args[1]);
-
-    // Accoding to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
-    if ((res != 0) && ((res < 0) != (args[1] < 0))) res += args[1];
-    return res;
-  }
-};
 
 }  // namespace operators
 }  // namespace paddle
