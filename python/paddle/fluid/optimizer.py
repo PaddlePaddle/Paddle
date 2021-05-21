@@ -33,7 +33,6 @@ from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
-from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
 from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
@@ -884,6 +883,93 @@ class Optimizer(object):
                                                act_no_grad_set, callbacks)
         return params_grads
 
+    def _create_regularization_of_grad(self, param, grad, regularization=None):
+        """ Create and add backward regularization Operators
+    
+        Function helper of append_regularization_ops.
+        """
+        # If no gradient or no regularization is specified,  then we don't need to do anything
+        if grad is None or ((not hasattr(param, 'regularizer') or
+                             (hasattr(param, 'regularizer') and
+                              param.regularizer is None)) and
+                            regularization is None):
+            return grad
+        regularization_term = None
+        if hasattr(param, 'regularizer') and param.regularizer is not None:
+            # Add variable for regularization term in grad block
+            regularization_term = param.regularizer(param, grad, grad.block)
+        elif regularization is not None:
+            regularization_term = regularization(param, grad, grad.block)
+
+        assert regularization_term is not None
+
+        new_grad = grad
+        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+            # the grad's type and name will be changed. But the gradient's name
+            # is used in ParallelExecutor Reduce mode, so I add a flag for
+            # the new_grad here.
+            new_grad = grad.block.create_var(
+                name=grad.name + core.kNewGradSuffix(),
+                dtype=param.dtype,
+                shape=param.shape,
+                lod_level=param.lod_level,
+                type=core.VarDesc.VarType.LOD_TENSOR)
+
+        inputs = {"X": [grad, regularization_term]}
+        outputs = {"Out": [new_grad]}
+        if framework.in_dygraph_mode():
+            new_grad = core.ops.sum([grad, regularization_term])
+        else:
+            grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
+
+        return new_grad
+
+    def append_regularization_ops(self,
+                                  parameters_and_grads,
+                                  regularization=None):
+        r"""Create and add backward regularization Operators
+    
+        Creates and adds backward regularization operators in the BlockDesc.
+        This will add gradients of the regularizer function to the gradients
+        of the parameters and return these modified gradients. This is the
+        same as implementing weight decay in optimizers for regularization.
+    
+        Args:
+            parameters_and_grads: A list of (parameters, gradients) pairs
+                                  that need to be regularized.
+            regularization: A global regularizer. If the parameter is not
+                            set. It will be applied with regularizer.
+    
+        Returns:
+            list[(Variable, Variable)]: list of (parameters, gradients) \
+            pair with the regularized gradient
+    
+        Raises:
+            Exception: Unknown regularization type
+        """
+        params_and_grads = []
+        if framework.in_dygraph_mode():
+            for param, grad in parameters_and_grads:
+                new_grad = self._create_regularization_of_grad(param, grad,
+                                                               regularization)
+                params_and_grads.append((param, new_grad))
+        else:
+            repeate_regularizer = False
+            with framework.name_scope('regularization'):
+                for param, grad in parameters_and_grads:
+                    if not repeate_regularizer and param.regularizer is not None and regularization is not None:
+                        repeate_regularizer = True
+                        logging.info(
+                            "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                            "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
+                            % regularization.__str__())
+                    with param.block.program._optimized_guard([param, grad]):
+                        new_grad = self._create_regularization_of_grad(
+                            param, grad, regularization)
+                        params_and_grads.append((param, new_grad))
+        return params_and_grads
+
     def apply_gradients(self, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
@@ -916,8 +1002,8 @@ class Optimizer(object):
             params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
-        params_grads = append_regularization_ops(params_grads,
-                                                 self.regularization)
+        params_grads = self.append_regularization_ops(params_grads,
+                                                      self.regularization)
 
         optimize_ops = self._create_optimization_pass(params_grads)
         return optimize_ops
@@ -939,8 +1025,8 @@ class Optimizer(object):
                                framework.default_startup_program()):
                 if self._grad_clip is not None:
                     params_grads = self._grad_clip(params_grads)
-                params_grads = append_regularization_ops(params_grads,
-                                                         self.regularization)
+                params_grads = self.append_regularization_ops(
+                    params_grads, self.regularization)
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
             program = loss.block.program
@@ -1674,8 +1760,8 @@ class DGCMomentumOptimizer(Optimizer):
             not_dgc_params_grads = append_gradient_clip_ops(
                 not_dgc_params_grads)
 
-        not_dgc_params_grads = append_regularization_ops(not_dgc_params_grads,
-                                                         self.regularization)
+        not_dgc_params_grads = self.append_regularization_ops(
+            not_dgc_params_grads, self.regularization)
 
         params_grads = not_dgc_params_grads + dgc_params_grads
         params_grads = sorted(params_grads, key=lambda x: x[0].name)

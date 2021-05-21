@@ -614,41 +614,65 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
 
 
 class TestFusedMomentumWithDecayAPI(unittest.TestCase):
-    def get_loss_and_optimizer(self, input):
+    def get_program(self, weight_attr):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(
+                main_program=main_program, startup_program=startup_program):
+            x = paddle.static.data(name='x', shape=[10, 10])
+            linear = paddle.nn.Linear(
+                10, 10, weight_attr=weight_attr, bias_attr=False)
+            out = linear(x)
+            loss = paddle.mean(out)
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.01,
+                momentum=0.9,
+                weight_decay=paddle.regularizer.L2Decay(0.5))
+            optimizer.minimize(loss)
+        return main_program
+
+    def test_param_has_l2decay(self):
+        paddle.enable_static()
         weight_attr = paddle.ParamAttr(
             name="weight",
             initializer=paddle.nn.initializer.Constant(value=0.5),
             regularizer=paddle.regularizer.L2Decay(0.1))
-        linear = paddle.nn.Linear(10, 10, weight_attr=weight_attr)
-        out = linear(input)
-        loss = paddle.mean(out)
+        program = self.get_program(weight_attr)
+        ops = program.global_block().ops
 
-        momentum = paddle.optimizer.Momentum(
-            learning_rate=0.01,
-            momentum=0.9,
-            parameters=linear.parameters(),
-            weight_decay=paddle.regularizer.L1Decay(0.5),
-            grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0))
-        return loss, momentum
+        self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
+        self.assertEqual(ops[-1].attr('regularization_coeff'), np.float32(0.1))
+        for i in range(len(ops)):
+            self.assertTrue('sum' not in ops[i].type)
+            self.assertTrue('scale' not in ops[i].type)
 
-    def test_dygraph(self):
-        paddle.disable_static()
-        inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-        x = paddle.to_tensor(inp)
-        loss, optimizer = self.get_loss_and_optimizer(x)
-        loss.backward()
-        optimizer.step()
-        optimizer.clear_grad()
-
-    def test_static(self):
+    def test_param_has_l1decay(self):
         paddle.enable_static()
-        inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-        x = paddle.static.data(name='x', shape=[10, 10])
-        loss, optimizer = self.get_loss_and_optimizer(x)
-        optimizer.minimize(loss)
-        exe = paddle.static.Executor()
-        exe.run(paddle.static.default_startup_program())
-        exe.run(feed={"x": inp})
+        weight_attr = paddle.ParamAttr(
+            name="weight",
+            initializer=paddle.nn.initializer.Constant(value=0.5),
+            regularizer=paddle.regularizer.L1Decay(0.1))
+        program = self.get_program(weight_attr)
+        ops = program.global_block().ops
+        self.assertEqual(ops[-1].attr('regularization_method'), '')
+        self.assertEqual(ops[-1].attr('regularization_coeff'), 0)
+        self.assertEqual(ops[-2].type, 'sum')
+        self.assertEqual(ops[-3].type, 'scale')
+        self.assertEqual(ops[-4].type, 'sign')
+
+    def test_param_regularizer_is_none(self):
+        paddle.enable_static()
+        weight_attr = paddle.ParamAttr(
+            name="weight",
+            initializer=paddle.nn.initializer.Constant(value=0.5),
+            regularizer=None)
+        program = self.get_program(weight_attr)
+        ops = program.global_block().ops
+        self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
+        self.assertEqual(ops[-1].attr('regularization_coeff'), np.float32(0.5))
+        for i in range(len(ops)):
+            self.assertTrue('sum' not in ops[i].type)
+            self.assertTrue('scale' not in ops[i].type)
 
 
 class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
