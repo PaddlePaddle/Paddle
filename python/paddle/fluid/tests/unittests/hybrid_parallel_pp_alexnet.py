@@ -110,14 +110,7 @@ class TestDistPPTraning(unittest.TestCase):
             optimizer_a.clear_grad()
             scheduler_a.step()
 
-            if step_id % 2 == 0:
-                loss_b = model_b.train_batch([img, label], optimizer_b,
-                                             scheduler_b)
-            else:
-                # just for test tuple inputs
-                loss_b = model_b.train_batch([img, (label, )], optimizer_b,
-                                             scheduler_b)
-
+            loss_b = model_b.train_batch([img, label], optimizer_b, scheduler_b)
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
 

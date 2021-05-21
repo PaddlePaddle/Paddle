@@ -87,8 +87,8 @@ class PipelineParallel(MetaParallelBase):
             self.caches[key].extend([None] * self.num_caches)
 
     def _reduce_final_loss(self):
-        assert self.total_loss is not None, "train_batch() should obtain vaild loss"
         if self.is_last_stage:
+            assert self.total_loss is not None, "train_batch() in last stage should obtain vaild loss"
             loss = self.total_loss.clone() / self.accumulate_steps
             paddle.distributed.broadcast(
                 loss,
@@ -162,10 +162,7 @@ class PipelineParallel(MetaParallelBase):
         if self.is_last_stage:
             if self._layers._loss_fn is not None:
                 labels = self.caches['labels'][cache_id]
-                if isinstance(labels, tuple):
-                    outputs = self._layers._loss_fn(outputs, *labels)
-                else:
-                    outputs = self._layers._loss_fn(outputs, labels)
+                outputs = self._layers._loss_fn(outputs, labels)
 
         if self.is_last_stage:
             self.current_loss = outputs
@@ -233,7 +230,7 @@ class PipelineParallel(MetaParallelBase):
         end = begin + self.micro_batch_size
 
         if self.is_first_stage:
-            assert len(inputs) == 2
+            assert len(inputs) == 2, "length of input should be 2"
             inputs[0] = self._broadcast_data(inputs[0])
             if isinstance(inputs[0], tuple):
                 batch_size = inputs[0][0].shape[0]
