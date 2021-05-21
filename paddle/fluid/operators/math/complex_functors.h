@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <type_traits>
 
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -66,7 +67,10 @@ using select_t = typename select<Head, Tail...>::type;
 template <typename T>
 using Real =
     select_t<cond<std::is_same<T, platform::complex64>::value, float>,
-             cond<std::is_same<T, platform::complex128>::value, double>, T>;
+             cond<std::is_same<T, platform::complex128>::value, double>,
+             cond<std::is_same<T, platform::complex<float>>::value, float>,
+             cond<std::is_same<T, platform::complex<double>>::value, double>,
+             T>;
 
 template <typename T, typename RealT>
 using Complex = typename std::enable_if<!std::is_same<T, RealT>::value>::type;
@@ -76,14 +80,18 @@ template <typename T, typename RealT>
 using NoComplex = typename std::enable_if<std::is_same<T, RealT>::value>::type;
 
 template <typename T>
-using EnableComplex =
-    typename std::enable_if<std::is_same<T, platform::complex64>::value ||
-                            std::is_same<T, platform::complex128>::value>::type;
+using EnableComplex = typename std::enable_if<
+    std::is_same<T, platform::complex64>::value ||
+    std::is_same<T, platform::complex128>::value ||
+    std::is_same<T, platform::complex<float>>::value ||
+    std::is_same<T, platform::complex<double>>::value>::type;
 
 template <typename T>
 using DisableComplex = typename std::enable_if<
     !std::is_same<T, platform::complex64>::value &&
-    !std::is_same<T, platform::complex128>::value>::type;
+    !std::is_same<T, platform::complex128>::value &&
+    !std::is_same<T, platform::complex<float>>::value &&
+    !std::is_same<T, platform::complex<double>>::value>::type;
 
 template <typename T, typename Enable = void>
 struct RealFunctor;
