@@ -475,7 +475,7 @@ class ConvMKLDNNHandlerT
   std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
       const framework::Tensor* in_mem, const char* key_mem_user,
       const char* key_mem_target, const char* key_mem,
-      mkldnn::memory::desc& mem_md) {
+      const mkldnn::memory::desc& mem_md) {
     const T* in_mem_data = in_mem->data<T>();
     const std::string user_key_suffix{key_mem_user};
     auto user_mem_p = this->AcquireMemory(user_key_suffix);
