@@ -2091,7 +2091,7 @@ function reuse_so_cache() {
         cd python
         touch stub.cc
         alias cp=cp
-        cp -r ../python/paddle python
+        cp -r ../../python/paddle .
         python setup.py bdist_wheel
     else
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
