@@ -87,5 +87,53 @@ class TestAccuracy2(TestAccuracy):
         }
 
 
+class TestAccuracyType(TestAccuracy):
+    def setUp(self):
+        self.op_type = "accuracy"
+        self.set_npu()
+        self.init_dtype()
+        np.random.seed(SEED)
+        n = 8192
+        infer = np.random.random((n, 100)).astype(self.dtype)
+        indices = np.random.randint(0, 1000, (n, 100)).astype('int64')
+        label = np.random.randint(0, 1000, (n, 1)).astype('int32')
+        self.inputs = {'Out': infer, 'Indices': indices, "Label": label}
+        num_correct = 0
+        for rowid in range(n):
+            for ele in indices[rowid]:
+                if ele == label[rowid]:
+                    num_correct += 1
+                    break
+        self.outputs = {
+            'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
+            'Correct': np.array([num_correct]).astype("int32"),
+            'Total': np.array([n]).astype("int32")
+        }
+
+
+class TestAccuracyType2(TestAccuracy):
+    def setUp(self):
+        self.op_type = "accuracy"
+        self.set_npu()
+        self.init_dtype()
+        np.random.seed(SEED)
+        n = 8192
+        infer = np.random.random((n, 100)).astype(self.dtype)
+        indices = np.random.randint(0, 1000, (n, 100)).astype('int32')
+        label = np.random.randint(0, 1000, (n, 1)).astype('int64')
+        self.inputs = {'Out': infer, 'Indices': indices, "Label": label}
+        num_correct = 0
+        for rowid in range(n):
+            for ele in indices[rowid]:
+                if ele == label[rowid]:
+                    num_correct += 1
+                    break
+        self.outputs = {
+            'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
+            'Correct': np.array([num_correct]).astype("int32"),
+            'Total': np.array([n]).astype("int32")
+        }
+
+
 if __name__ == '__main__':
     unittest.main()

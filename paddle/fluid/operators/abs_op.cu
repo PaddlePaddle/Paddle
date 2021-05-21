@@ -52,8 +52,9 @@ class AbsKernel<platform::CUDADeviceContext, T>
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaAbsFunctor<T>();
-    LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, math::Real<T>>(
-        dev_ctx, ins, &outs, functor);
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T,
+                                        math::Real<T>>(dev_ctx, ins, &outs,
+                                                       functor);
   }
 };
 
