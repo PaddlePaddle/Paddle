@@ -2083,6 +2083,7 @@ function build_so_cache(){
 function reuse_so_cache() {
     wget -q https://xly-devops.bj.bcebos.com/PR/Paddle/32993/4bbd4e30f560fb6aadf0cf3010ca55599fe11841/workspace/Paddle/build/proto_so.tar.gz
     if [ "$?" -eq 0 ];then
+        export CI_SKIP_CPP_TEST=ON
         echo "good"
         ls
         cd build && mv ../proto_so.tar.gz .
