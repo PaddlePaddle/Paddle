@@ -233,6 +233,8 @@ register_unity_group(cc
     sampling_id_op.cc
     save_combine_op.cc
     save_op.cc
+    scale_op.cc
+    mkldnn/scale_op.cc
     scatter_nd_add_op.cc
     scatter_op.cc
     seed_op.cc
