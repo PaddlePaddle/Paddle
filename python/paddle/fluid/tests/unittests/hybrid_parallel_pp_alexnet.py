@@ -51,7 +51,6 @@ class TestDistPPTraning(unittest.TestCase):
             "accumulate_steps": batch_size // micro_batch_size,
             "micro_batch_size": micro_batch_size
         }
-        paddle.distributed.init_parallel_env()
         fleet.init(is_collective=True, strategy=strategy)
 
     def test_pp_model(self):
