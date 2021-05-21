@@ -24,7 +24,6 @@ import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 from paddle.fluid.dygraph.container import Sequential
 from paddle.distributed.fleet.meta_parallel import PipelineLayer
-from hybrid_parallel_pp_alexnet import TestDistPPTraning
 from paddle.fluid.dygraph.layers import Layer
 import paddle.nn as nn
 import paddle.fluid as fluid
@@ -120,7 +119,23 @@ class SimpleNetPipe(Layer):
         return feat
 
 
-class TestDistEmbeddingTraning(TestDistPPTraning):
+class TestDistEmbeddingTraning(unittest.TestCase):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 1
+        self.data_parallel_size = 1
+        self.pipeline_parallel_size = 2
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": self.pipeline_parallel_size,
+        }
+        strategy.pipeline_configs = {
+            "accumulate_steps": batch_size // micro_batch_size,
+            "micro_batch_size": micro_batch_size
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
     def test_pp_model(self):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()

@@ -235,7 +235,11 @@ class PipelineParallel(MetaParallelBase):
                 inputs[0] = self._broadcast_data(inputs[0])
             if isinstance(inputs[0], tuple):
                 batch_size = inputs[0][0].shape[0]
-                assert self.micro_batch_size * self.accumulate_steps == batch_size
+                assert self.micro_batch_size * self.accumulate_steps == batch_size, (
+                    "batch_size needs to be divisible by micro_batch_size. Currently, "
+                    "batch_size = %d, micro_batch_size = %d, accumulate_steps = %d."
+                    %
+                    (batch_size, self.micro_batch_size, self.accumulate_steps))
                 data = [
                     input[begin:end, :].clone().detach() for input in inputs[0]
                 ]

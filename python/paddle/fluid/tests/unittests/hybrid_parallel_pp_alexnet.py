@@ -110,6 +110,8 @@ class TestDistPPTraning(unittest.TestCase):
             scheduler_a.step()
 
             loss_b = model_b.train_batch([img, label], optimizer_b, scheduler_b)
+
+            print("loss", loss_a.numpy(), loss_b.numpy())
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
 
