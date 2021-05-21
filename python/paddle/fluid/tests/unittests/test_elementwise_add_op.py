@@ -631,6 +631,7 @@ class TestElementwiseAddBfloat16Dtype2(TestElementwiseAddOp):
         self.init_kernel_type()
         self.init_axis()
 
+        # self.inputs is the input of this op to get the actual results
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
@@ -639,6 +640,8 @@ class TestElementwiseAddBfloat16Dtype2(TestElementwiseAddOp):
             'axis': self.axis,
             'use_mkldnn': self.use_mkldnn,
         }
+
+        # convert to bf16 to get the expected results,
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def init_input_output(self):
@@ -653,6 +656,12 @@ class TestElementwiseAddBfloat16Dtype2(TestElementwiseAddOp):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, atol=2)
 
+    # The same reason as when self.dtype = np.float16. no grad check here
+    # as this op is not in NO_FP64_CHECK_GRAD_OP_LIST, and this op's grad
+    # is not computed with fp64.
+    # But we can still get grad compute results from local executions. And
+    # the results proves the correctness of the bf16 elementwise_add backward executions.
+    # For more information see PR Description.
     def test_check_grad_normal(self):
         pass
 
