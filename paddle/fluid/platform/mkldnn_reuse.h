@@ -131,15 +131,16 @@ class MKLDNNHandlerT {
   // Buffer of given Tensor is used for oneDNN computation
   std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemory(
       framework::Tensor* diff_weights) {
-    T* ptr =
-        diff_weights->mutable_data<T>(place_, bwd_w_pd_->diff_weights_desc().get_size());
+    T* ptr = diff_weights->mutable_data<T>(
+        place_, bwd_w_pd_->diff_weights_desc().get_size());
     return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(), ptr,
                                             "@diff_wei_mem_p");
   }
 
   // Buffer is allocated by oneDNN to store computation results
   std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemory(void) {
-    return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(),"@diff_wei_mem_p");
+    return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(),
+                                            "@diff_wei_mem_p");
   }
 
  protected:
@@ -278,10 +279,12 @@ class MKLDNNHandlerT {
         platform::errors::Unavailable("Get MKLDNN Forward primitive %s failed.",
                                       key_ + "@fwd_pd"));
     const std::string key_pd = key_ + "@bwd_w_pd";
-    bwd_w_pd_ = std::static_pointer_cast<typename TBackward_params::primitive_desc>(
-        dev_ctx_.GetBlob(key_pd));
+    bwd_w_pd_ =
+        std::static_pointer_cast<typename TBackward_params::primitive_desc>(
+            dev_ctx_.GetBlob(key_pd));
     if (bwd_w_pd_ == nullptr) {
-      auto bwd_desc = typename TBackward_params::desc(std::forward<Args>(args)...);
+      auto bwd_desc =
+          typename TBackward_params::desc(std::forward<Args>(args)...);
       bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
           bwd_desc, engine_, *fwd_pd_);
       dev_ctx_.SetBlob(key_pd, bwd_w_pd_);

@@ -75,7 +75,8 @@ static mkldnn::memory::data_type GetDstType(bool is_int8, bool is_bfloat16,
 template <typename T, typename K, typename T_out>
 class ConvMKLDNNHandlerT
     : public platform::MKLDNNHandlerT<T, mkldnn::convolution_forward,
-        mkldnn::convolution_backward_data, mkldnn::convolution_backward_weights> {
+                                      mkldnn::convolution_backward_data,
+                                      mkldnn::convolution_backward_weights> {
  public:
   ConvMKLDNNHandlerT(const paddle::framework::ExecutionContext& ctx,
                      const platform::MKLDNNDeviceContext& dev_ctx,
@@ -83,7 +84,9 @@ class ConvMKLDNNHandlerT
                      platform::Place cpu_place, const Tensor* input,
                      const Tensor* filter, const Tensor* bias, Tensor* output,
                      const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, mkldnn::convolution_forward, mkldnn::convolution_backward_data, mkldnn::convolution_backward_weights>(
+      : platform::MKLDNNHandlerT<T, mkldnn::convolution_forward,
+                                 mkldnn::convolution_backward_data,
+                                 mkldnn::convolution_backward_weights>(
             dev_ctx, mkldnn_engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
@@ -239,21 +242,26 @@ class ConvMKLDNNHandlerT
   }
 
   ConvMKLDNNHandlerT(const framework::ExecutionContext& ctx,
-                       const paddle::platform::MKLDNNDeviceContext& dev_ctx,
-                       platform::Place cpu_place, const Tensor* in,
-                       const Tensor* filter, const Tensor* bias, const Tensor* out_grad,
-                       Tensor* filter_grad, Tensor* in_x_grad,
-                       const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, mkldnn::convolution_forward, mkldnn::convolution_backward_data, mkldnn::convolution_backward_weights>(dev_ctx, dev_ctx.GetEngine(), cpu_place, platform::CreateKey(dev_ctx, framework::vectorize(in->dims()), unique_name)) {
-
+                     const paddle::platform::MKLDNNDeviceContext& dev_ctx,
+                     platform::Place cpu_place, const Tensor* in,
+                     const Tensor* filter, const Tensor* bias,
+                     const Tensor* out_grad, Tensor* filter_grad,
+                     Tensor* in_x_grad, const std::string& unique_name)
+      : platform::MKLDNNHandlerT<T, mkldnn::convolution_forward,
+                                 mkldnn::convolution_backward_data,
+                                 mkldnn::convolution_backward_weights>(
+            dev_ctx, dev_ctx.GetEngine(), cpu_place,
+            platform::CreateKey(dev_ctx, framework::vectorize(in->dims()),
+                                unique_name)) {
     if (!this->isBwdCached()) {
-      PADDLE_ENFORCE_EQ(in->layout(), DataLayout::kMKLDNN,
-                        platform::errors::InvalidArgument(
-                            "The input tensor's layout should be %d, but got %d.",
-                            DataLayout::kMKLDNN, in->layout()));
+      PADDLE_ENFORCE_EQ(
+          in->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "The input tensor's layout should be %d, but got %d.",
+              DataLayout::kMKLDNN, in->layout()));
       PADDLE_ENFORCE_NE(in->format(), MKLDNNMemoryFormat::undef,
                         platform::errors::InvalidArgument(
-                          "Got wrong format for Input tensor."));
+                            "Got wrong format for Input tensor."));
 
       PADDLE_ENFORCE_EQ(
           filter->layout(), DataLayout::kMKLDNN,
@@ -285,9 +293,11 @@ class ConvMKLDNNHandlerT
       std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
       std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
-      std::vector<int64_t> dilations(begin(dilations_temp), end(dilations_temp));
+      std::vector<int64_t> dilations(begin(dilations_temp),
+                                     end(dilations_temp));
 
-      std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
+      std::string padding_algorithm =
+          ctx.Attr<std::string>("padding_algorithm");
 
       int groups = ctx.Attr<int>("groups");
 
@@ -344,23 +354,31 @@ class ConvMKLDNNHandlerT
       mkldnn::primitive_attr conv_attr;
       if (bias) {
         auto bias_tz = framework::vectorize(bias->dims());
-        auto bias_md =
-            platform::MKLDNNMemDesc(bias_tz, mkldnn::memory::data_type::f32, MKLDNNMemoryFormat::x);
+        auto bias_md = platform::MKLDNNMemDesc(
+            bias_tz, mkldnn::memory::data_type::f32, MKLDNNMemoryFormat::x);
 
         this->AcquireForwardPrimitiveDescriptorNonBlocking(
-            conv_attr, mkldnn::prop_kind::forward_training, dnnl::algorithm::convolution_direct,
-            src_md, weights_md, bias_md, dst_md, stride_dims, dilations_dims,
-            mkldnn_paddings[0], mkldnn_paddings[1]);
+            conv_attr, mkldnn::prop_kind::forward_training,
+            dnnl::algorithm::convolution_direct, src_md, weights_md, bias_md,
+            dst_md, stride_dims, dilations_dims, mkldnn_paddings[0],
+            mkldnn_paddings[1]);
       } else {
         this->AcquireForwardPrimitiveDescriptorNonBlocking(
-            conv_attr, mkldnn::prop_kind::forward_training, dnnl::algorithm::convolution_direct,
-            src_md, weights_md, dst_md, stride_dims, dilations_dims,
-            mkldnn_paddings[0], mkldnn_paddings[1]);
+            conv_attr, mkldnn::prop_kind::forward_training,
+            dnnl::algorithm::convolution_direct, src_md, weights_md, dst_md,
+            stride_dims, dilations_dims, mkldnn_paddings[0],
+            mkldnn_paddings[1]);
       }
 
-      this->AcquireBackwardPrimitiveDescriptorNonBlocking(mkldnn::algorithm::convolution_direct, diff_src_md, weights_md, diff_dst_md, strides, dilations_dims, mkldnn_paddings[0], mkldnn_paddings[1]);
+      this->AcquireBackwardPrimitiveDescriptorNonBlocking(
+          mkldnn::algorithm::convolution_direct, diff_src_md, weights_md,
+          diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+          mkldnn_paddings[1]);
 
-      this->AcquireBackwardWeightsPrimitiveDescriptorNonBlocking(mkldnn::algorithm::convolution_direct, src_md, diff_weights_md, diff_dst_md, strides, dilations_dims, mkldnn_paddings[0], mkldnn_paddings[1]);
+      this->AcquireBackwardWeightsPrimitiveDescriptorNonBlocking(
+          mkldnn::algorithm::convolution_direct, src_md, diff_weights_md,
+          diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+          mkldnn_paddings[1]);
     }
   }
 
@@ -407,33 +425,9 @@ class ConvMKLDNNHandlerT
     return conv_attr;
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemoryWithReorder(
-      const framework::Tensor* input) {
-    const T* input_data = input->data<T>();
-    const std::string user_key_suffix{"@src_mem_p_user"};
-    auto user_src_mem_p = this->AcquireMemory(user_key_suffix);
-
-    if (!user_src_mem_p) {
-      auto user_src_md = platform::MKLDNNMemDesc(
-          framework::vectorize(input->dims()), platform::MKLDNNGetDataType<T>(),
-          input->format());
-      return this->AcquireMemoryWithReorder(
-          user_src_md, this->fwd_pd_->src_desc(), to_void_cast<T>(input_data),
-          "@src_mem_p");
-    } else {
-      const std::string target_key_suffix{"@src_mem_p_target"};
-      const auto target_src_mem_p = this->AcquireMemory(target_key_suffix);
-      user_src_mem_p->set_data_handle(to_void_cast<T>(input_data));
-      if (user_src_mem_p != target_src_mem_p) {
-        this->AcquireReorder(user_src_mem_p, target_src_mem_p, "@src_mem_p");
-      }
-      return target_src_mem_p;
-    }
-  }
-
-  //TODO(jczaja): Merge
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryWithReorderFromDataPrimitive(const framework::Tensor* filter, const int groups, const bool is_conv3d) {
-
+  std::shared_ptr<mkldnn::memory>
+  AcquireWeightsMemoryWithReorderFromDataPrimitive(
+      const framework::Tensor* filter, const int groups, const bool is_conv3d) {
     const K* filter_data = filter->data<K>();
     auto weights_tz = framework::vectorize(filter->dims());
     platform::GetGroupConvWeightsTz(weights_tz, groups);
@@ -447,81 +441,59 @@ class ConvMKLDNNHandlerT
         to_void_cast<K>(filter_data), "@weights_mem_d_p", false);
   }
 
-  // TODO(jczaja): Merge it with upper one
-  // PD and keys are diffrent
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemoryWithReorderFromWeightsPrimitive(
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemoryWithReorder(
       const framework::Tensor* input) {
-    const T* input_data = input->data<T>();
-    const std::string user_key_suffix{"@src_mem_w_p_user"};
-    auto user_src_mem_p = this->AcquireMemory(user_key_suffix);
-
-    if (!user_src_mem_p) {
-      auto user_src_md = platform::MKLDNNMemDesc(
-          framework::vectorize(input->dims()), platform::MKLDNNGetDataType<T>(),
-          input->format());
-      return this->AcquireMemoryWithReorder(
-          user_src_md, this->bwd_w_pd_->src_desc(), to_void_cast<T>(input_data),
-          "@src_mem_w_p");
-    } else {
-      const std::string target_key_suffix{"@src_mem_w_p_target"};
-      const auto target_src_mem_p = this->AcquireMemory(target_key_suffix);
-      user_src_mem_p->set_data_handle(to_void_cast<T>(input_data));
-      if (user_src_mem_p != target_src_mem_p) {
-        this->AcquireReorder(user_src_mem_p, target_src_mem_p, "@src_mem_w_p");
-      }
-      return target_src_mem_p;
-    }
+    return this->AcquireMemoryWithReorder(input, "@src_mem_p_user",
+                                          "@src_mem_p_target", "@src_mem_p",
+                                          this->fwd_pd_->src_desc());
   }
 
-  // TODO(jczja): Merge it with previous two
-  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
-      const framework::Tensor* out_grad) {
-
-    const T* out_grad_data = out_grad->data<T>();
-    const std::string user_key_suffix{"@diff_dst_mem_w_p_user"};
-    auto user_diff_dst_mem_p = this->AcquireMemory(user_key_suffix);
-
-    if (!user_diff_dst_mem_p) {
-      auto user_diff_dst_md = platform::MKLDNNMemDesc(
-          framework::vectorize(out_grad->dims()), platform::MKLDNNGetDataType<T>(),
-          out_grad->format());
-      return this->AcquireMemoryWithReorder(
-          user_diff_dst_md, this->bwd_w_pd_->diff_dst_desc(), to_void_cast<T>(out_grad_data),
-          "@diff_dst_mem_w_p");
-    } else {
-      const std::string target_key_suffix{"@diff_dst_mem_w_p_target"};
-      const auto target_diff_dst_mem_p = this->AcquireMemory(target_key_suffix);
-      user_diff_dst_mem_p->set_data_handle(to_void_cast<T>(out_grad_data));
-      if (user_diff_dst_mem_p != target_diff_dst_mem_p) {
-        this->AcquireReorder(user_diff_dst_mem_p, target_diff_dst_mem_p, "@diff_dst_mem_w_p");
-      }
-      return target_diff_dst_mem_p;
-    }
+  std::shared_ptr<mkldnn::memory>
+  AcquireSrcMemoryWithReorderFromWeightsPrimitive(
+      const framework::Tensor* input) {
+    return this->AcquireMemoryWithReorder(input, "@src_mem_w_p_user",
+                                          "@src_mem_w_p_target", "@src_mem_w_p",
+                                          this->bwd_w_pd_->src_desc());
   }
 
-  // TODO(jczaja): Merge it with previous three
-  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(
+  std::shared_ptr<mkldnn::memory>
+  AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
       const framework::Tensor* out_grad) {
+    return this->AcquireMemoryWithReorder(
+        out_grad, "@diff_dst_mem_w_p_user", "@diff_dst_mem_w_p_target",
+        "@diff_dst_mem_w_p", this->bwd_w_pd_->diff_dst_desc());
+  }
 
-    const T* out_grad_data = out_grad->data<T>();
-    const std::string user_key_suffix{"@diff_dst_mem_p_user"};
-    auto user_diff_dst_mem_p = this->AcquireMemory(user_key_suffix);
+  std::shared_ptr<mkldnn::memory>
+  AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(
+      const framework::Tensor* out_grad) {
+    return this->AcquireMemoryWithReorder(
+        out_grad, "@diff_dst_mem_p_user", "@diff_dst_mem_p_target",
+        "@diff_dst_mem_p", this->bwd_pd_->diff_dst_desc());
+  }
 
-    if (!user_diff_dst_mem_p) {
-      auto user_diff_dst_md = platform::MKLDNNMemDesc(
-          framework::vectorize(out_grad->dims()), platform::MKLDNNGetDataType<T>(),
-          out_grad->format());
+  std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
+      const framework::Tensor* in_mem, const char* key_mem_user,
+      const char* key_mem_target, const char* key_mem,
+      mkldnn::memory::desc& mem_md) {
+    const T* in_mem_data = in_mem->data<T>();
+    const std::string user_key_suffix{key_mem_user};
+    auto user_mem_p = this->AcquireMemory(user_key_suffix);
+
+    if (!user_mem_p) {
+      auto user_mem_md = platform::MKLDNNMemDesc(
+          framework::vectorize(in_mem->dims()),
+          platform::MKLDNNGetDataType<T>(), in_mem->format());
       return this->AcquireMemoryWithReorder(
-          user_diff_dst_md, this->bwd_pd_->diff_dst_desc(), to_void_cast<T>(out_grad_data),
-          "@diff_dst_mem_p");
+          user_mem_md, mem_md, to_void_cast<T>(in_mem_data), key_mem);
     } else {
-      const std::string target_key_suffix{"@diff_dst_mem_p_target"};
-      const auto target_diff_dst_mem_p = this->AcquireMemory(target_key_suffix);
-      user_diff_dst_mem_p->set_data_handle(to_void_cast<T>(out_grad_data));
-      if (user_diff_dst_mem_p != target_diff_dst_mem_p) {
-        this->AcquireReorder(user_diff_dst_mem_p, target_diff_dst_mem_p, "@diff_dst_mem_p");
+      const std::string target_key_suffix{key_mem_target};
+      const auto target_mem_p = this->AcquireMemory(target_key_suffix);
+      user_mem_p->set_data_handle(to_void_cast<T>(in_mem_data));
+      if (user_mem_p != target_mem_p) {
+        this->AcquireReorder(user_mem_p, target_mem_p, key_mem);
       }
-      return target_diff_dst_mem_p;
+      return target_mem_p;
     }
   }
 
@@ -547,7 +519,7 @@ class ConvMKLDNNHandlerT
           to_void_cast<K>(filter_data), "@weights_mem_p", is_test);
     }
   }
-  
+
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
       const framework::Tensor* bias, const bool is_test) {
     auto bias_mem_p = this->AcquireMemory("@bias_mem_p_target");
@@ -1100,7 +1072,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     const Tensor* input = ctx.Input<Tensor>("Input");
     const Tensor* filter = ctx.Input<Tensor>("Filter");
-    const Tensor* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
+    const Tensor* bias =
+        ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     const Tensor* output_grad =
         ctx.Input<Tensor>(framework::GradVarName("Output"));
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
@@ -1108,24 +1081,28 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     if (!input_grad && !filter_grad) return;
 
-    //TODO(jczaja): Are all tensors really needed?
+    // TODO(jczaja): Are all tensors really needed?
     ConvMKLDNNHandlerT<T, K, T> handler(
         ctx, dev_ctx, ctx.GetPlace(), input, filter, bias, output_grad,
-        filter_grad, input_grad, ctx.InputName("Input") + ctx.InputName("Filter"));
+        filter_grad, input_grad,
+        ctx.InputName("Input") + ctx.InputName("Filter"));
 
     // create mkldnn memory from input tensors (data/weights)
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     if (filter_grad) {
-
-      auto src_memory_p = handler.AcquireSrcMemoryWithReorderFromWeightsPrimitive(input);
-      auto diff_dst_memory_p = handler.AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(output_grad);
+      auto src_memory_p =
+          handler.AcquireSrcMemoryWithReorderFromWeightsPrimitive(input);
+      auto diff_dst_memory_p =
+          handler.AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
+              output_grad);
 
       // For convoluition with groups write filter grad into
       // oneDNN buffer and then we reorder it into filter_grad tensor
       int g = std::max(ctx.Attr<int>("groups"), 1);
       auto diff_weights_memory_p =
-          g > 1 ? handler.AcquireDiffWeightsMemory() : handler.AcquireDiffWeightsMemory(filter_grad);
+          g > 1 ? handler.AcquireDiffWeightsMemory()
+                : handler.AcquireDiffWeightsMemory(filter_grad);
 
       auto conv_bwd_weights_p = handler.AcquireBackwardWeightsPrimitive();
 
@@ -1144,12 +1121,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // For convolution with groups convert from blocked to NCHW
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
-        memory::data_type in_type =
-            framework::ToMKLDNNDataType(filter->type());
+        memory::data_type in_type = framework::ToMKLDNNDataType(filter->type());
         // for 3d conv with groups (six dimensional data reorder to goidhw)
         // for 2d conv with groups (five dimensional data reorder to goihw)
-        //auto weights_tz = paddle::framework::vectorize(filter->dims());
-        
+        // auto weights_tz = paddle::framework::vectorize(filter->dims());
+
         auto weights_tz = diff_weights_memory_p->get_desc().dims();
         mkldnn::memory::format_tag out_format =
             weights_tz.size() == 6 ? mkldnn::memory::format_tag::goidhw
@@ -1158,9 +1134,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                               out_format, in_type);
         key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
-        platform::ReorderMKLDNNHandler handler(weights_tz, filter->type(),
-                                               in_type, dev_ctx, mkldnn_engine,
-                                               key);
+        platform::ReorderMKLDNNHandler handler(
+            weights_tz, filter->type(), in_type, dev_ctx, mkldnn_engine, key);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
 
@@ -1187,10 +1162,14 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       }
     }
     if (input_grad) {
+      auto weights_memory_p =
+          handler.AcquireWeightsMemoryWithReorderFromDataPrimitive(
+              filter, ctx.Attr<int>("groups"),
+              ctx.Attr<std::vector<int>>("strides").size() == 3U);
 
-      auto weights_memory_p = handler.AcquireWeightsMemoryWithReorderFromDataPrimitive(filter, ctx.Attr<int>("groups"), ctx.Attr<std::vector<int>>("strides").size() == 3U);
-
-      auto diff_dst_memory_p = handler.AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(output_grad);
+      auto diff_dst_memory_p =
+          handler.AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(
+              output_grad);
       auto diff_src_memory_p = handler.AcquireDiffSrcMemory(input_grad);
 
       auto conv_bwd_data_p = handler.AcquireBackwardPrimitive();
