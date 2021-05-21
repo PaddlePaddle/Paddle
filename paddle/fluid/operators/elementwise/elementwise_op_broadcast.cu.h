@@ -457,7 +457,7 @@ void LaunchBroadcastElementwiseCudaKernel(
                     platform::errors::InvalidArgument(
                         "Currently, elementwise broadcast only support binary"
                         "calculation, but received %d input tensors",
-                        ET));
+                        static_cast<int>(ET)));
   int in_vec_size = 4;
   framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {

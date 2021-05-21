@@ -276,26 +276,6 @@ struct CudaDivFunctor<
 };
 
 template <typename T>
-struct CudaFloorDivFunctor<
-    T, typename std::enable_if<std::is_integral<T>::value>::type> {
-  inline HOSTDEVICE T operator()(T* args) const {
-#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
-    if (args[1] == 0) {
-      printf("Error: Divide by zero encounter in floor_divide\n");
-#ifdef __HIPCC__
-      abort();
-#else
-      asm("trap;");
-#endif  // __HIPCC__
-    }
-#else
-    PADDLE_ENFORCE(args[1] != static_cast<T>(0), DIV_ERROR_INFO);
-#endif  // defined(__HIPCC__) || defined(__CUDA_ARCH__)
-    return static_cast<T>(std::trunc(args[0] / args[1]));
-  }
-};
-
-template <typename T>
 struct CudaPowFunctor {
   inline HOSTDEVICE T operator()(const T* args) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
@@ -304,6 +284,32 @@ struct CudaPowFunctor {
     }
 #endif
     return std::pow(args[0], args[1]);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct CudaModFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    T res = args[0] % args[1];
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((args[1] * res) < 0)) res += args[1];
+    return res;
+  }
+};
+
+template <typename T>
+struct CudaModFunctor<
+    T, typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    T res = fmod(args[0], args[1]);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+
+    if ((res != 0) && ((args[1] * res) < 0)) res += args[1];
+    return res;
   }
 };
 

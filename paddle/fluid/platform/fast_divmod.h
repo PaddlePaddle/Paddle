@@ -37,8 +37,8 @@ struct FastDivMod {
   explicit FastDivMod(uint32_t d) : divisor(d) {
     PADDLE_ENFORCE_EQ(sizeof(unsigned int), 4,
                       platform::errors::InvalidArgument(
-                          "Fast-divmod only support 32-bit unsigned int, but "
-                          "received %d -bit unsigned int",
+                          "Fast-divmod only support 32-bit unsigned int, "
+                          "but received %d -bit unsigned int",
                           sizeof(unsigned int)));
 
     for (shift_val = 0; shift_val < INT_BITS; ++shift_val) {
