@@ -436,7 +436,7 @@ class ConvMKLDNNHandlerT
         weights_tz, platform::MKLDNNGetDataType<K>(),
         GetWeightsFormat(filter->format(), groups, is_conv3d));
 
-    return this->AcquireMemoryWithReorder2(
+    return this->AcquireMemoryWithReorder(
         user_src_md, this->bwd_pd_->weights_desc(),
         to_void_cast<K>(filter_data), "@weights_mem_d_p", false);
   }
