@@ -21,6 +21,11 @@
 #include <limits>
 #include <vector>
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn/axpy_handler.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
@@ -41,6 +46,40 @@ static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
     x = x + incx;
   }
 }
+
+#ifdef PADDLE_WITH_MKLDNN
+
+static void onednn_handler_axpy(int n, platform::bfloat16 alpha,
+                                const platform::bfloat16 *x, int incx,
+                                platform::bfloat16 *y, int incy) {
+  // TODO(jczaja): support other increments values diffrent from 1
+  PADDLE_ENFORCE_EQ(incx, 1, platform::errors::Unimplemented(
+                                 "Blas AXPY support incx == 1 only"));
+  PADDLE_ENFORCE_EQ(incy, 1, platform::errors::Unimplemented(
+                                 "Blas AXPY support incy == 1 only"));
+
+  auto &pool = platform::DeviceContextPool::Instance();
+  auto cpu_place = platform::CPUPlace();
+  auto *dev_ctx =
+      dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(cpu_place));
+  auto &cpu_engine = dev_ctx->GetEngine();
+
+  platform::AXPYMKLDNNHandler<platform::bfloat16> handler(
+      *dev_ctx, cpu_engine, cpu_place, n, static_cast<float>(alpha));
+
+  auto reorder_src_memory_p = handler.AcquireSrcMemory(x);
+  auto reorder_dst_memory_p = handler.AcquireDstMemory(y);
+  auto reorder_p =
+      handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+
+  auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  platform::RecordEvent record_reorder("axpy_int_reorder",
+                                       platform::EventRole::kUniqueOp);
+  reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+  astream.wait();
+}
+#endif
+
 }  // namespace detail
 
 template <typename T>
@@ -57,11 +96,14 @@ struct CBlas<int8_t> {
 
 template <>
 struct CBlas<platform::bfloat16> {
+#ifdef PADDLE_WITH_MKLDNN
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-    detail::axpy(args...);
+    detail::onednn_handler_axpy(args...);
+#else
+  detail::axpy(args...);
+#endif
   }
-
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     PADDLE_THROW(platform::errors::Unimplemented(
