@@ -2085,8 +2085,7 @@ function reuse_so_cache() {
     if [ "$?" -eq 0 ];then
         echo "good"
         ls
-        cd build
-        #mkdir build && cd build
+        cd build && mv ../proto_so.tar.gz .
         tar --use-compress-program=pigz -xpf proto_so.tar.gz
         cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
         cd python
