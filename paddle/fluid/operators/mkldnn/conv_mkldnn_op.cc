@@ -443,7 +443,7 @@ class ConvMKLDNNHandlerT
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemoryWithReorder(
       const framework::Tensor* input) {
-    return this->AcquireMemoryWithReorder2(input, "@src_mem_p_user",
+    return this->AcquireMemoryWithReorderPrimitive(input, "@src_mem_p_user",
                                           "@src_mem_p_target", "@src_mem_p",
                                           this->fwd_pd_->src_desc());
   }
@@ -451,7 +451,7 @@ class ConvMKLDNNHandlerT
   std::shared_ptr<mkldnn::memory>
   AcquireSrcMemoryWithReorderFromWeightsPrimitive(
       const framework::Tensor* input) {
-    return this->AcquireMemoryWithReorder2(input, "@src_mem_w_p_user",
+    return this->AcquireMemoryWithReorderPrimitive(input, "@src_mem_w_p_user",
                                           "@src_mem_w_p_target", "@src_mem_w_p",
                                           this->bwd_w_pd_->src_desc());
   }
@@ -459,7 +459,7 @@ class ConvMKLDNNHandlerT
   std::shared_ptr<mkldnn::memory>
   AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
       const framework::Tensor* out_grad) {
-    return this->AcquireMemoryWithReorder2(
+    return this->AcquireMemoryWithReorderPrimitive(
         out_grad, "@diff_dst_mem_w_p_user", "@diff_dst_mem_w_p_target",
         "@diff_dst_mem_w_p", this->bwd_w_pd_->diff_dst_desc());
   }
@@ -467,12 +467,12 @@ class ConvMKLDNNHandlerT
   std::shared_ptr<mkldnn::memory>
   AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(
       const framework::Tensor* out_grad) {
-    return this->AcquireMemoryWithReorder2(
+    return this->AcquireMemoryWithReorderPrimitive(
         out_grad, "@diff_dst_mem_p_user", "@diff_dst_mem_p_target",
         "@diff_dst_mem_p", this->bwd_pd_->diff_dst_desc());
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder2(
+  std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorderPrimitive(
       const framework::Tensor* in_mem, const char* key_mem_user,
       const char* key_mem_target, const char* key_mem,
       const mkldnn::memory::desc& mem_md) {
