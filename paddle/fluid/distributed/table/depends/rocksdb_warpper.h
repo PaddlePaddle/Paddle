@@ -51,7 +51,6 @@ class RocksDBHandler {
     options.max_log_file_size = 50 * 1024 * 1024;  // 50MB
     options.create_if_missing = true;
     options.use_direct_reads = true;
-    options.use_direct_writes = true;
     options.max_background_flushes = 5;
     options.max_background_compactions = 5;
     options.base_background_compactions = 10;

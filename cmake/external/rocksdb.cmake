@@ -18,6 +18,7 @@ SET(ROCKSDB_SOURCES_DIR ${THIRD_PARTY_PATH}/rocksdb)
 SET(ROCKSDB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/rocksdb)
 SET(ROCKSDB_INCLUDE_DIR "${ROCKSDB_INSTALL_DIR}/include" CACHE PATH "rocksdb include directory." FORCE)
 SET(ROCKSDB_LIBRARIES "${ROCKSDB_INSTALL_DIR}/lib/librocksdb.a" CACHE FILEPATH "rocksdb library." FORCE)
+SET(ROCKSDB_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 INCLUDE_DIRECTORIES(${ROCKSDB_INCLUDE_DIR})
 
 ExternalProject_Add(
@@ -25,10 +26,15 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX ${ROCKSDB_SOURCES_DIR}
     GIT_REPOSITORY "https://github.com/facebook/rocksdb"
-    GIT_TAG v5.1.4
+    GIT_TAG v6.10.1
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND CXXFLAGS=-fPIC make static_lib
+    CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+               -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+               -DWITH_BZ2=OFF
+               -DWITH_GFLAGS=OFF
+               -DCMAKE_CXX_FLAGS=${ROCKSDB_CMAKE_CXX_FLAGS}
+               -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+#    BUILD_BYPRODUCTS ${ROCKSDB_SOURCES_DIR}/src/extern_rocksdb/librocksdb.a
     INSTALL_COMMAND mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ 
         && cp ${ROCKSDB_SOURCES_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
         && cp -r ${ROCKSDB_SOURCES_DIR}/src/extern_rocksdb/include ${ROCKSDB_INSTALL_DIR}/
