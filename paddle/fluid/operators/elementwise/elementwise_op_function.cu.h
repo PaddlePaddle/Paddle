@@ -227,5 +227,20 @@ DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Div, /, half2_div)
 
 #endif  // PADDLE_CUDA_FP16
 
+#define CUDA_MAX_OP(a, b) (a > b ? a : b)
+#define CUDA_MIN_OP(a, b) (a > b ? b : a)
+
+#define DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(Func, op) \
+  template <typename T, class Enable = void>                    \
+  struct Func##Functor {                                        \
+    inline HOSTDEVICE T operator()(const T* args) const {       \
+      return op(args[0], args[1]);                              \
+    }                                                           \
+  };
+
+DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaMax, CUDA_MAX_OP)
+DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaMin, CUDA_MIN_OP)
+#undef DEFINE_OTHER_BINARY_FUNCTOR_WITH_PONTER_INPUT
+
 }  // namespace operators
 }  // namespace paddle
