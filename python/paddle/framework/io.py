@@ -462,15 +462,11 @@ def _save_lod_tensor(tensor, file_name):
 
 
 def _load_lod_tensor(file_name):
-    if _is_file_path(file_name):
-        temp_t = paddle.fluid.core.LoDTensor()
-        # '_seek' is the end position of this tensor in the file.
-        _seek = paddle.fluid.core._load_lod_tensor(temp_t, file_name)
-        return temp_t, _seek
-    else:
-        raise NotImplementedError(
-            'Only supports saving objects to file. `file_name` should be string, but received {}'.
-            format(file_name))
+
+    temp_t = paddle.fluid.core.LoDTensor()
+    # '_seek' is the end position of this tensor in the file.
+    _seek = paddle.fluid.core._load_lod_tensor(temp_t, file_name)
+    return temp_t, _seek
 
 
 def _save_selected_rows(selected_rows, file_name):
@@ -487,15 +483,10 @@ def _save_selected_rows(selected_rows, file_name):
 
 
 def _load_selected_rows(file_name):
-    if _is_file_path(file_name):
-        temp_sr = core.SelectedRows()
-        # '_seek' is the end position of this SelectedRows in the file.
-        _seek = core._load_selected_rows(temp_sr, file_name)
-        return temp_sr, _seek
-    else:
-        raise NotImplementedError(
-            'Only supports saving objects to file. `file_name` should be string, but received {}'.
-            format(file_name))
+    temp_sr = core.SelectedRows()
+    # '_seek' is the end position of this SelectedRows in the file.
+    _seek = core._load_selected_rows(temp_sr, file_name)
+    return temp_sr, _seek
 
 
 def _save_binary_var(obj, path):
@@ -633,7 +624,7 @@ def save(obj, path, protocol=4, **configs):
     else:
         raise ValueError(
             "only supports saving objects to file and `BytesIO`, but got {}".
-            format(path))
+            format(type(path)))
 
     config = _parse_save_config(configs)
 
