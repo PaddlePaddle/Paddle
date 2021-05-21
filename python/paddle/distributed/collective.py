@@ -977,6 +977,11 @@ def _parallel_linear(x,
                      group=None):
     """
     Parallel Linear
+
+    axis the dimension of the parameter of linear layer. 
+    axis = 0: the row dimension
+    axid = 1: the col dimension
+    
     """
     if group is not None and not group.is_member():
         return
@@ -1009,6 +1014,8 @@ def _parallel_linear(x,
     startup_block.vars[linear.weight.name].is_distributed = True
     main_block.vars[linear.weight.name].is_distributed = True
     # set is_distributed for splited bias
+    # if a linear layer is splited by row, each rank would hold a complete bias 
+    # if a linear layer is splited by col, the bias would also be split into each rank as its weight
     if axis == 1 and linear._bias_attr != False:
         startup_block.vars[linear.bias.name].is_distributed = True
         main_block.vars[linear.bias.name].is_distributed = True
