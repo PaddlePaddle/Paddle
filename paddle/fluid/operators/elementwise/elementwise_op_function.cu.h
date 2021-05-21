@@ -227,5 +227,22 @@ DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Div, /, half2_div)
 
 #endif  // PADDLE_CUDA_FP16
 
+template <typename T, typename Enable = void>
+struct CudaDivFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    static_assert(args[1] != 0, DIV_ERROR_INFO);
+    return args[0] / args[1];
+  }
+};
+
+template <typename T>
+struct CudaDivFunctor<
+    T, typename std::enable_if<std::is_integral<T>::value>::type> {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    static_assert(args[1] != 0, DIV_ERROR_INFO);
+    return args[0] / args[1];
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
