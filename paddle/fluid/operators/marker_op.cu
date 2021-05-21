@@ -35,12 +35,10 @@ class MarkerOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
-    auto x = ctx.Input<framework::Tensor>("X");
     auto marker_role = ctx.Attr<std::string>("marker_role");
     auto marker_pos = ctx.Attr<std::string>("marker_pos");
     VLOG(3) << "marker role: " << marker_role
             << " marker position: " << marker_pos;
-    auto* x_data = x->data<T>();
 
     framework::Tensor A;
     framework::Tensor B;

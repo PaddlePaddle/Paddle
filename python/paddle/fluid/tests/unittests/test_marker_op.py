@@ -20,8 +20,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 class TestMarkerOp(OpTest):
     def setUp(self):
         self.op_type = "marker"
-        self.dtype = np.float32
-        self.inputs = {'X': np.random.random((1, )).astype(self.dtype)}
+        self.inputs = {}
         self.attrs = {
             'marker_role': 'forward',
             'marker_pos': 'B',

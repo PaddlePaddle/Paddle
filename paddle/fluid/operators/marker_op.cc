@@ -22,31 +22,24 @@ class MarkerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) should not be null"));
-    auto in_dims = ctx->GetInputDim("X");
-
     std::string marker_role = ctx->Attrs().Get<std::string>("marker_role");
     std::string marker_pos = ctx->Attrs().Get<std::string>("marker_pos");
 
     VLOG(3) << "The role is:" << marker_role << ";"
             << "The position is:" << marker_pos << ".";
+  }
 
-    PADDLE_ENFORCE_NE(framework::product(in_dims), 0,
-                      platform::errors::PreconditionNotMet(
-                          "The Input variable X(%s) has not "
-                          "been initialized. You may need to confirm "
-                          "if you put exe.run(startup_program) "
-                          "after optimizer.minimize function.",
-                          ctx->Inputs("X").front()));
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
 class MarkerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(float) Input data (only used in CUDAKernel).");
     AddAttr<std::string>("marker_role",
                          "(string, default forward)forward or backward,"
                          " mark different stages of porcess.")
