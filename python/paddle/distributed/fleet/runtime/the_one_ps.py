@@ -45,8 +45,11 @@ def parse_table_class(varname, o_main_program):
 
         param_name = op.input("W")[0]
 
-        if param_name == varname and op.type == "lookup_table":
-            return op.attr('table_class')
+        if param_name == varname and op.type == "lookup_table" or op.type == "lookup_table_v2":
+            if op.has_attr('table_class'):
+                return op.attr('table_class')
+            else:
+                return "CommonSparseTable"
 
 
 class Accessor:
