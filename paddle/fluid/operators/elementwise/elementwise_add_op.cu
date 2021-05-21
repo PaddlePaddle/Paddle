@@ -23,21 +23,6 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-/*
-   input: an array;
-   return: the result of the math functor
-   1. For Unary Op, the length of input array is 1,
-      e.g. Relu: return args[0] > 0 ? args[0] : 0;
-   2. For Binary Op, the length of input array is 2,
-      e.g. Add: return args[0] + args[1];
-*/
-template <typename T>
-struct CudaAddFunctor {
-  __device__ __forceinline__ T operator()(const T* args) const {
-    return args[0] + args[1];
-  }
-};
-
 template <typename T>
 class ElementwiseAddKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
