@@ -2084,12 +2084,14 @@ function reuse_so_cache() {
     wget -q https://xly-devops.bj.bcebos.com/PR/Paddle/32993/4bbd4e30f560fb6aadf0cf3010ca55599fe11841/workspace/Paddle/build/proto_so.tar.gz
     if [ "$?" -eq 0 ];then
         echo "good"
-        pwd
-        tar xf --use-compress-program=pigz proto_so.tar.gz
+        mkdir build && cd build
+        tar xf --use-compress-program=pigz -xpf proto_so.tar.gz
+        cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
+        cd python
         touch stub.cc
         alias cp=cp
         cp -r ../python/paddle python
-        cd python && python setup.py bdist_wheel
+        python setup.py bdist_wheel
     else
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
     fi
