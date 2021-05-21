@@ -103,6 +103,7 @@ from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
+from .math import expm1  # noqa: F401
 from .math import floor  # noqa: F401
 from .math import floor_  # noqa: F401
 from .math import increment  # noqa: F401

@@ -37,6 +37,7 @@ __activations_noattr__ = [
 
 __unary_func__ = [
     'exp',
+    'expm1',
     'atan',
     'sqrt',
     'rsqrt',
@@ -158,6 +159,19 @@ Examples:
         out = paddle.exp(x)
         print(out)
         # [0.67032005 0.81873075 1.10517092 1.34985881]
+
+""")
+
+add_sample_code(globals()["expm1"], r"""
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.expm1(x)
+        print(out)
+        # [-0.32967997, -0.18126924,  0.10517092,  0.34985882]
 
 """)
 

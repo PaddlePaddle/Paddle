@@ -45,6 +45,7 @@ from ..fluid.layers import sinh    # noqa: F401
 from ..fluid.layers import cosh    # noqa: F401
 from ..fluid.layers import exp    # noqa: F401
 from ..fluid.layers import exp_    # noqa: F401
+from ..fluid.layers import expm1    # noqa: F401
 from ..fluid.layers import floor    # noqa: F401
 from ..fluid.layers import floor_    # noqa: F401
 from ..fluid.layers import log    # noqa: F401
