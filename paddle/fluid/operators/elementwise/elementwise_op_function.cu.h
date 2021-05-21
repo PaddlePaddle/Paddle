@@ -270,7 +270,8 @@ template <typename T>
 struct CudaDivFunctor<
     T, typename std::enable_if<std::is_integral<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T* args) const {
-    PADDLE_ENFORCE(args[1] != 0, DIV_ERROR_INFO);
+    // PADDLE_ENFORCE(args[1] != 0, DIV_ERROR_INFO);
+    static_assert(args[1] != 0, DIV_ERROR_INFO);
     return args[0] / args[1];
   }
 };
