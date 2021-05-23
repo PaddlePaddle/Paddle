@@ -261,7 +261,7 @@ struct CudaFloorDivFunctor {
                    "InvalidArgumentError: Divide by zero"
                    "encounterd in floor_divide.\n Please check!");
 #endif
-    return static_cast<T>(std::trunc(args[0] / args[1]]));
+    return static_cast<T>(std::trunc(args[0] / args[1]));
   }
 };
 
