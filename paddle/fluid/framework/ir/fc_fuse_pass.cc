@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
-
 #include <string>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -22,6 +22,121 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+
+FCFusePass::FCFusePass() {
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .End()
+      .AddAttr("scale_x")
+      .IsOptional()
+      .End()
+      .AddAttr("scale_y")
+      .IsOptional()
+      .End()
+      .AddAttr("scale_out")
+      .IsOptional()
+      .End()
+      .AddAttr("force_fp32_output")
+      .End()
+      .AddAttr("enable_int8")
+      .IsOptional()
+      .End()
+      .AddAttr("X_scale")
+      .IsOptional()
+      .End()
+      .AddAttr("weight_scale")
+      .IsOptional()
+      .End()
+      .AddAttr("out_scale")
+      .IsOptional()
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .End()
+      .AddAttr("mkldnn_data_type")
+      .IsOptional()
+      .IsStringIn({"float32", "int8", "bfloat16"})
+      .End()
+      .AddAttr("Scale_x")
+      .IsOptional()
+      .End()
+      .AddAttr("Scale_y")
+      .IsOptional()
+      .End()
+      .AddAttr("Scale_out")
+      .IsOptional()
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("fc"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("W")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("in_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("activation_type")
+      .IsStringIn({"relu", ""})
+      .End()
+      .AddAttr("use_fc_padding")
+      .End()
+      .AddAttr("padding_weights")
+      .IsOptional()
+      .End()
+      .AddAttr("enable_int8")
+      .IsOptional()
+      .End()
+      .AddAttr("Input_scale")
+      .IsOptional()
+      .End()
+      .AddAttr("weight_scale")
+      .IsOptional()
+      .End()
+      .AddAttr("out_scale")
+      .IsOptional()
+      .End()
+      .AddAttr("out_threshold")
+      .IsOptional()
+      .End();
+}
 
 void FCFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -50,6 +165,10 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
                      Graph* g) {
     if (subgraph.count(x) <= 0) {
       LOG(WARNING) << "The subgraph is empty.";
+      return;
+    }
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
       return;
     }
 
@@ -158,6 +277,11 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       desc.SetAttr("out_threshold", out_threshold_attr);
     }
     desc.Flush();
+
+    if (!IsCompat(desc)) {
+      LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+      return;
+    }
 
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     if (with_relu) {
