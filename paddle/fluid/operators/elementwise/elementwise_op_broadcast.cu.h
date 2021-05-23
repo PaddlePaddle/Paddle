@@ -292,9 +292,9 @@ struct BroadcastArgsWarpper {
     }
   }
 
-  __device__ __forceinline__ void StoreVectorizedData(OutT *args_out, int tid) {
-    OutVecType *vec_args_out = reinterpret_cast<OutVecType *>(args_out);
-    vec_out_data[tid] = *vec_args_out;
+  __device__ __forceinline__ void StoreVectorizedData(OutVecType vec_args_out,
+                                                      int tid) {
+    vec_out_data[tid] = vec_args_out;
   }
 
   __device__ __forceinline__ void StoreScalarizedData(OutT args_out, int tid) {
@@ -321,9 +321,10 @@ template <typename InT, typename OutT, typename BroadcastArgsWarpper,
           ElementwiseType ET, int VecSize>
 __device__ inline void VectorizedBroadcastKernelImpl(
     BroadcastArgsWarpper broadcast_warpper, int tid) {
+  using OutVecType = CudaAlignedVector<OutT, VecSize>;
+  OutVecType args_out;
   InT ins[ET];
   InT args[ET][VecSize];
-  OutT args_out;
   broadcast_warpper.LoadVectorizedData(args, tid);
 
 #pragma unroll(VecSize)
@@ -332,9 +333,9 @@ __device__ inline void VectorizedBroadcastKernelImpl(
     for (int j = 0; j < ET; ++j) {
       ins[j] = args[j][i];
     }
-    args_out = broadcast_warpper.func(ins);
+    args_out.val[i] = broadcast_warpper.func(ins);
   }
-  broadcast_warpper.StoreVectorizedData(&args_out, tid);
+  broadcast_warpper.StoreVectorizedData(args_out, tid);
 }
 
 template <typename InT, typename OutT, typename BroadcastArgsWarpper,
