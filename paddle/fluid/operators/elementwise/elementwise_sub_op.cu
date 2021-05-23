@@ -25,43 +25,6 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-// template <typename T>
-// struct SameDimsElemwiseSub<platform::CUDADeviceContext, T> {
-//   void operator()(const framework::ExecutionContext& ctx,
-//                   const framework::Tensor* x, const framework::Tensor* y,
-//                   framework::Tensor* z) {
-//     SubRangeFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
-//     auto& dev_ctx = ctx.template
-//     device_context<platform::CUDADeviceContext>();
-//     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-//                                                               x->numel());
-//     for_range(functor);
-//   }
-// };
-
-// template <>
-// struct SameDimsElemwiseSub<platform::CUDADeviceContext, platform::float16> {
-//   void operator()(const framework::ExecutionContext& ctx,
-//                   const framework::Tensor* x, const framework::Tensor* y,
-//                   framework::Tensor* z) {
-//     auto size = x->numel();
-//     dim3 grid_size = dim3(((size + 7) / 8 + PADDLE_CUDA_THREAD_SIZE - 1) /
-//                               PADDLE_CUDA_THREAD_SIZE,
-//                           1);
-//     dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
-//     const half* x2 =
-//         reinterpret_cast<const half*>(x->data<platform::float16>());
-//     const half* y2 =
-//         reinterpret_cast<const half*>(y->data<platform::float16>());
-//     half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
-//     SameDimsElemwiseSubCUDAKernel<<<
-//         grid_size, block_size, 0,
-//         ctx.template
-//         device_context<platform::CUDADeviceContext>().stream()>>>(
-//         x2, y2, z2, size);
-//   }
-// };
-
 template <typename T>
 class ElementwiseSubKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
