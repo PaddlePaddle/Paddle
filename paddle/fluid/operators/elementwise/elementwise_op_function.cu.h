@@ -227,5 +227,40 @@ DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Div, /, half2_div)
 
 #endif  // PADDLE_CUDA_FP16
 
+#define DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(Func, op) \
+  template <typename T, typename Enable = void>               \
+  struct Func##Functor {                                      \
+    using ELEMENT_TYPE = T;                                   \
+    inline HOSTDEVICE T operator()(const T* args) const {     \
+      return args[0] op args[1];                              \
+    }                                                         \
+  };
+
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaLessThan, <)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaLessEqual, <=)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaGreaterThan, >)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaGreaterEqual, >=)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaEqual, ==)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaNotEqual, !=)
+#undef DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT
+
+template <typename T>
+struct CudaEqualFunctor<
+    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  using ELEMENT_TYPE = T;
+  HOSTDEVICE bool operator()(const T* args) const {
+    return fabs(static_cast<double>(args[0] - args[1])) < 1e-8;
+  }
+};
+
+template <typename T>
+struct CudaNotEqualFunctor<
+    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  using ELEMENT_TYPE = T;
+  HOSTDEVICE bool operator()(const T* args) const {
+    return fabs(static_cast<double>(args[0] - args[1])) > 1e-8;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
