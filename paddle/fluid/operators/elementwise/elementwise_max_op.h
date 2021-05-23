@@ -35,8 +35,8 @@ class ElementwiseMaxKernel : public framework::OpKernel<T> {
 
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<MaxFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          MaxFunctor<T>(), z);
+    ElementwiseComputeEx<MaxFunctor<T>, platform::CPUDeviceContext, T>(
+        ctx, x, y, axis, MaxFunctor<T>(), z);
   }
 };
 

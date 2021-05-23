@@ -119,10 +119,10 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
     z->mutable_data<T>(ctx.GetPlace());
     auto dims_equal = x.dims() == y->dims();
     if (dims_equal) {
-      SameDimsElemwiseMul<DeviceContext, T> same_dims_mul;
+      SameDimsElemwiseMul<platform::CPUDeviceContext, T> same_dims_mul;
       same_dims_mul(ctx, &x, y, z);
     } else {
-      default_elementwise_mul<DeviceContext, T>(ctx, &x, y, z);
+      default_elementwise_mul<platform::CPUDeviceContext, T>(ctx, &x, y, z);
     }
   }
 };
