@@ -243,5 +243,24 @@ struct CudaDivFunctor<T,
   }
 };
 
+template <typename T, typename Enable = void>
+struct CudaFloorDivFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
+    if (args[1] == 0) {
+      printf("Error: Divide by zero encounter in floor_divide\n");
+#ifdef __HIPCC__
+      abort();
+#else
+      asm("trap;");
+#endif
+    }
+#else
+    PADDLE_ENFORCE(args[1] != 0, "Divide by zero encounters in floor_divide");
+#endif
+    return static_cast<T>(std::trunc(args[0] / args));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

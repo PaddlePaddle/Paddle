@@ -91,7 +91,7 @@ class ElementwiseFloorDivKernel : public framework::OpKernel<T> {
     z->mutable_data<T>(ctx.GetPlace());
 
     // dtype of x and y is int64 or int32
-    elementwise_floor_div<DeviceContext, T>(ctx, x, y, z);
+    elementwise_floor_div<platform::CPUDeviceContext, T>(ctx, x, y, z);
   }
 };
 
