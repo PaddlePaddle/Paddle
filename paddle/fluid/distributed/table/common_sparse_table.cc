@@ -356,7 +356,7 @@ int32_t CommonSparseTable::load(const std::string& path,
 
   auto varname = _config.common().table_name();
   VLOG(0) << "load " << varname << " with value: " << path
-          << " and meta: " << param
+          << " , meta: " << param
           << " using: " << std::to_string((end - begin) / 1e+6) << " seconds";
 
   return 0;
