@@ -134,10 +134,23 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
   }
 }
 
-int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
-                   const int mode) {
-  int64_t save_num = 0;
+void SaveMetaToText(std::ostream* os, const CommonAccessorParameter& common,
+                    const size_t shard_idx, const int64_t total) {
+  // save meta
+  std::stringstream stream;
+  stream << "param=" << common.table_name() << "\n";
+  stream << "shard_id=" << shard_idx << "\n";
+  stream << "row_names=" << paddle::string::join_strings(common.params(), ',')
+         << "\n";
+  stream << "row_dims=" << paddle::string::join_strings(common.dims(), ',')
+         << "\n";
+  stream << "count=" << total << "\n";
+  os->write(stream.str().c_str(), sizeof(char) * stream.str().size());
+}
 
+int64_t SaveValueToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
+                        std::shared_ptr<::ThreadPool> pool, const int mode) {
+  int64_t save_num = 0;
   for (auto& table : block->values_) {
     for (auto& value : table) {
       if (mode == SaveMode::delta && !value.second->need_save_) {
@@ -345,6 +358,7 @@ int32_t CommonSparseTable::load(const std::string& path,
 int32_t CommonSparseTable::save(const std::string& dirname,
                                 const std::string& param) {
   rwlock_->WRLock();
+  auto begin = GetCurrentUS();
   int mode = std::stoi(param);
   VLOG(3) << "sparse table save: " << dirname << " mode: " << mode;
 
@@ -356,35 +370,32 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   VLOG(3) << "save " << varname << " in dir: " << var_store << " begin";
   std::vector<std::string> params(_config.common().params().begin(),
                                   _config.common().params().end());
+
   std::string shard_var_pre =
       string::Sprintf("%s.block%d", varname, _shard_idx);
 
   std::string value_ = string::Sprintf("%s/%s.txt", var_store, shard_var_pre);
 
-  std::unique_ptr<std::ofstream> value_out(new std::ofstream(value_));
+  std::unique_ptr<std::ofstream> vs(new std::ofstream(value_));
 
   int64_t total_ins = 0;
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     // save values
-    total_ins += SaveToText(value_out.get(), shard_values_[shard_id], mode);
+    auto shard_save_num = SaveValueToText(vs.get(), shard_values_[shard_id],
+                                          _shards_task_pool[shard_id], mode);
+    total_ins += shard_save_num;
   }
-  value_out->close();
+  vs->close();
 
-  // save meta
-  std::stringstream stream;
-  stream << "param=" << _config.common().table_name() << "\n";
-  stream << "shard_id=" << _shard_idx << "\n";
-  stream << "row_names="
-         << paddle::string::join_strings(_config.common().params(), ',')
-         << "\n";
-  stream << "row_dims="
-         << paddle::string::join_strings(_config.common().dims(), ',') << "\n";
-  stream << "count=" << total_ins << "\n";
   std::string meta_ = string::Sprintf("%s/%s.meta", var_store, shard_var_pre);
-  std::unique_ptr<std::ofstream> meta_out(new std::ofstream(meta_));
-  meta_out->write(stream.str().c_str(), sizeof(char) * stream.str().size());
-  meta_out->close();
-  VLOG(3) << "save " << varname << " in dir: " << var_store << " done";
+  std::unique_ptr<std::ofstream> ms(new std::ofstream(meta_));
+  SaveMetaToText(ms.get(), _config.common(), _shard_idx, total_ins);
+  ms->close();
+
+  auto end = GetCurrentUS();
+
+  VLOG(0) << "save " << varname << " in dir: " << var_store
+          << "using: " << end - begin;
   rwlock_->UNLock();
   return 0;
 }
@@ -403,8 +414,6 @@ std::pair<int64_t, int64_t> CommonSparseTable::print_table_stat() {
 }
 
 int32_t CommonSparseTable::pour() {
-  rwlock_->RDLock();
-
   std::vector<float> values;
   std::vector<uint64_t> keys;
 
@@ -421,14 +430,11 @@ int32_t CommonSparseTable::pour() {
   _push_sparse(keys.data(), values.data(), pull_reservoir_.size());
 
   pull_reservoir_.clear();
-  rwlock_->UNLock();
   return 0;
 }
 
 int32_t CommonSparseTable::pull_sparse(float* pull_values,
                                        const PullSparseValue& pull_value) {
-  rwlock_->RDLock();
-
   auto shard_num = task_pool_size_;
   std::vector<std::future<int>> tasks(shard_num);
 
@@ -464,7 +470,6 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  rwlock_->UNLock();
   return 0;
 }
 
@@ -507,7 +512,6 @@ int32_t CommonSparseTable::pull_sparse_ptr(char** pull_values,
 
 int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
                                         const float* values, size_t num) {
-  rwlock_->RDLock();
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -531,7 +535,6 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  rwlock_->UNLock();
   return 0;
 }
 
@@ -569,7 +572,6 @@ int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
 
 int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
                                         const float** values, size_t num) {
-  rwlock_->RDLock();
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -596,14 +598,11 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  rwlock_->UNLock();
   return 0;
 }
 
 int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
                                              const float* values, size_t num) {
-  rwlock_->RDLock();
-
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
@@ -635,14 +634,12 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
-  rwlock_->UNLock();
   return 0;
 }
 
 int32_t CommonSparseTable::flush() { return 0; }
 
 int32_t CommonSparseTable::shrink(const std::string& param) {
-  rwlock_->WRLock();
   int threshold = std::stoi(param);
   VLOG(3) << "sparse table shrink: " << threshold;
 
@@ -651,7 +648,6 @@ int32_t CommonSparseTable::shrink(const std::string& param) {
     VLOG(4) << shard_id << " " << task_pool_size_ << " begin shrink";
     shard_values_[shard_id]->Shrink(threshold);
   }
-  rwlock_->UNLock();
   return 0;
 }
 
