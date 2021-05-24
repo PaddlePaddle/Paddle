@@ -53,8 +53,8 @@ class ReduceProdKernel : public framework::OpKernel<T> {
   do {                                                                         \
     if (static_cast<framework::proto::VarType::Type>(out_dtype) ==             \
         proto_type) {                                                          \
-      TensorReduce<T, cpp_type, CustomMul<cpp_type>,                           \
-                   detail::IdentityFunctor<cpp_type>>(                         \
+      TensorReduceFunc<T, cpp_type, CustomMul<cpp_type>,                       \
+                       detail::IdentityFunctor<cpp_type>>(                     \
           *input, output, reduce_dims, static_cast<cpp_type>(1.0f),            \
           CustomMul<cpp_type>(), detail::IdentityFunctor<cpp_type>(), stream); \
     }                                                                          \
@@ -62,7 +62,7 @@ class ReduceProdKernel : public framework::OpKernel<T> {
       _ForEachDataTypeSmall_(VisitDataTypeSmall_t);
 #undef VisitDataTypeSmall_t
     } else {
-      TensorReduce<T, T, CustomMul<T>, detail::IdentityFunctor<T>>(
+      TensorReduceFunc<T, T, CustomMul<T>, detail::IdentityFunctor<T>>(
           *input, output, reduce_dims, static_cast<T>(1.0f), CustomMul<T>(),
           detail::IdentityFunctor<T>(), stream);
     }

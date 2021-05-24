@@ -42,7 +42,7 @@ class BoolReduceAnyKernel : public framework::OpKernel<T> {
     }
 
     auto stream = context.cuda_device_context().stream();
-    TensorReduce<T, T, CustomLogicalOr<T>, detail::IdentityFunctor<T>>(
+    TensorReduceFunc<T, T, CustomLogicalOr<T>, detail::IdentityFunctor<T>>(
         *input, output, reduce_dims, static_cast<T>(false),
         CustomLogicalOr<T>(), detail::IdentityFunctor<T>(), stream);
   }
