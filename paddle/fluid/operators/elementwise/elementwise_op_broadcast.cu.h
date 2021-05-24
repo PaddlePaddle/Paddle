@@ -268,8 +268,6 @@ struct BroadcastArgsWarpper {
     args[idx] = in_data[idx][offset];
   }
 
-  // To judge if the input tensor data could be directly vectorized load without
-  // divmod
   __device__ __forceinline__ void LoadVectorizedData(InT (*args)[VecSize],
                                                      int tid) {
 #pragma unroll(ET)
@@ -283,8 +281,6 @@ struct BroadcastArgsWarpper {
     }
   }
 
-  // To judge if the input tensor data could be directly scalarized load without
-  // divmod
   __device__ __forceinline__ void LoadScalarizedData(InT args[], int tid) {
 #pragma unroll(ET)
     for (int j = 0; j < ET; ++j) {
