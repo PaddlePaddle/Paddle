@@ -42,7 +42,7 @@ class CompareOpCudaKernel
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, bool>(
         cuda_ctx, ins, &outs, axis, functor);
   }
 };
