@@ -60,14 +60,13 @@ template <typename DeviceContext, typename Functor>
 class CompareOpCudaKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
-  using InT = typename Functor::ELEMENT_TYPE;
-  using OutT = bool;
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* z = ctx.Output<framework::Tensor>("Out");
-    z->mutable_data<OutT>(ctx.GetPlace());
-
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
+    z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
     axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
     auto functor = Functor();
@@ -77,7 +76,7 @@ class CompareOpCudaKernel
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, bool>(
         cuda_ctx, ins, &outs, axis, functor);
   }
 };
