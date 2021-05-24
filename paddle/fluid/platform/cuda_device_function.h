@@ -16,8 +16,7 @@ limitations under the License. */
 
 // NOTE(): support float16 to half in header file.
 #define PADDLE_CUDA_FP16
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -115,25 +114,26 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
 }
 
 template <>
-__forceinline__ __device__ paddle::platform::complex64 CudaShuffleDownSync(
-    unsigned mask, paddle::platform::complex64 val, int delta, int width) {
+__forceinline__ __device__ paddle::platform::complex<float> CudaShuffleDownSync(
+    unsigned mask, paddle::platform::complex<float> val, int delta, int width) {
   float real = static_cast<float>(__shfl_down_sync(
       mask, static_cast<float>(val.real), static_cast<unsigned>(delta), width));
   float imag = static_cast<float>(__shfl_down_sync(
       mask, static_cast<float>(val.imag), static_cast<unsigned>(delta), width));
-  return paddle::platform::complex64(real, imag);
+  return paddle::platform::complex<float>(real, imag);
 }
 
 template <>
-__forceinline__ __device__ paddle::platform::complex128 CudaShuffleDownSync(
-    unsigned mask, paddle::platform::complex128 val, int delta, int width) {
+__forceinline__ __device__ paddle::platform::complex<double>
+CudaShuffleDownSync(unsigned mask, paddle::platform::complex<double> val,
+                    int delta, int width) {
   double real = static_cast<double>(
       __shfl_down_sync(mask, static_cast<double>(val.real),
                        static_cast<unsigned>(delta), width));
   double imag = static_cast<double>(
       __shfl_down_sync(mask, static_cast<double>(val.imag),
                        static_cast<unsigned>(delta), width));
-  return paddle::platform::complex128(real, imag);
+  return paddle::platform::complex<double>(real, imag);
 }
 
 template <>
@@ -143,23 +143,23 @@ __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
 }
 
 template <>
-__forceinline__ __device__ paddle::platform::complex64 CudaShuffleXorSync(
-    unsigned mask, paddle::platform::complex64 val, int width) {
+__forceinline__ __device__ paddle::platform::complex<float> CudaShuffleXorSync(
+    unsigned mask, paddle::platform::complex<float> val, int width) {
   float real = static_cast<float>(
       __shfl_xor_sync(mask, static_cast<float>(val.real), width));
   float imag = static_cast<float>(
       __shfl_xor_sync(mask, static_cast<float>(val.imag), width));
-  return paddle::platform::complex64(real, imag);
+  return paddle::platform::complex<float>(real, imag);
 }
 
 template <>
-__forceinline__ __device__ paddle::platform::complex128 CudaShuffleXorSync(
-    unsigned mask, paddle::platform::complex128 val, int width) {
+__forceinline__ __device__ paddle::platform::complex<double> CudaShuffleXorSync(
+    unsigned mask, paddle::platform::complex<double> val, int width) {
   double real = static_cast<double>(
       __shfl_xor_sync(mask, static_cast<double>(val.real), width));
   double imag = static_cast<double>(
       __shfl_xor_sync(mask, static_cast<double>(val.imag), width));
-  return paddle::platform::complex128(real, imag);
+  return paddle::platform::complex<double>(real, imag);
 }
 #endif
 
