@@ -68,6 +68,7 @@ func (t *Tensor) Reshape(shape []int32) {
 func (t *Tensor) Shape() []int32 {
 	cData := C.PD_TensorGetShape(t.c)
 	length := int(cData.size)
+	defer C.PD_OneDimArrayInt32Destroy(cData)
 	return cvtToGoSliceInt32(length, cData.data)
 }
 

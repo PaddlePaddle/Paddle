@@ -115,7 +115,6 @@ func (p *Predictor) GetInputHandle(name string) *Tensor {
 	cHandle := C.PD_PredictorGetInputHandle(p.c, cName)
 	C.free(unsafe.Pointer(cName))
 	handle := &Tensor{c: cHandle}
-	// TODO(wilber): should we delete handle?
 	runtime.SetFinalizer(handle, func(handle *Tensor) {
 		C.PD_TensorDestroy(handle.c)
 	})
@@ -133,7 +132,6 @@ func (p *Predictor) GetOutputHandle(name string) *Tensor {
 	cHandle := C.PD_PredictorGetOutputHandle(p.c, cName)
 	C.free(unsafe.Pointer(cName))
 	handle := &Tensor{c: cHandle}
-	// TODO(wilber): should we delete handle?
 	runtime.SetFinalizer(handle, func(handle *Tensor) {
 		C.PD_TensorDestroy(handle.c)
 	})
