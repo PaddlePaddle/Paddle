@@ -28,9 +28,9 @@ message AttrDef {
 }
 
 message Desc {
-  repeated VarDef inputs = 2;
-  repeated VarDef outputs = 3;
-  repeated AttrDef attrs = 4;
+  repeated VarDef inputs = 1;
+  repeated VarDef outputs = 2;
+  repeated AttrDef attrs = 3;
 }
 
   required string type = 1;
