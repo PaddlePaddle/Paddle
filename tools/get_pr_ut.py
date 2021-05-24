@@ -46,6 +46,7 @@ class PRChecker(object):
         self.pr = None
         self.suffix = ''
         self.full_case = False
+        print(os.getenv('GITHUB_API_TOKEN'))
 
     def init(self):
         """ Get pull request. """
@@ -184,6 +185,7 @@ class PRChecker(object):
     def get_pr_diff_lines(self):
         file_to_diff_lines = {}
         r = requests.get(self.pr.diff_url)
+        print(r)
         data = r.text
         data = data.split('\n')
         ix = 0
