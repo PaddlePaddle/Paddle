@@ -15,7 +15,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/framework/ir/op_compat_sensible_pass.h"
-
+#include "paddle/fluid/framework/op_info.h"
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -51,11 +51,33 @@ AttrCompat& AttrCompat::IsIntIn(const std::set<int>& candidates) {
 }
 
 //! Todo: append the definition.
-AttrCompat& AttrCompat::IsLeftDefault() { return *this; }
+AttrCompat& AttrCompat::IsLeftDefault() {
+  const std::string& op_name = op_compat_->Name();
+  if (!OpInfoMap::Instance().Has(op_name)) {
+    VLOG(3) << "Op (" << op_name << ") is not registered!";
+    conditions_.emplace_back([](const Attribute& attr) { return false; });
+    return *this;
+  }
+  const OpInfo& op_info = OpInfoMap::Instance().Get(op_name);
+  const AttributeMap attrs = op_info.Checker()->GetAttrsDefaultValuesMap();
+  if (attrs.find(attr_name_) == attrs.end()) {
+    VLOG(3) << "Op (" << op_name << ") has no default attr:" << attr_name_;
+    conditions_.emplace_back([](const Attribute& attr) { return false; });
+  } else {
+    Attribute default_attr = attrs.at(attr_name_);
+    conditions_.emplace_back([default_attr](const Attribute& attr) -> bool {
+      return attr == default_attr;
+    });
+  }
+  return *this;
+}
 
 bool AttrCompat::operator()(const OpDesc& op_desc) {
+  if (conditions_.empty()) {
+    return true;
+  }
   if (!op_desc.HasAttr(attr_name_)) {
-    return false;
+    return optional_;
   }
   const Attribute attr = op_desc.GetAttr(attr_name_);
   for (auto& func : conditions_) {
@@ -64,6 +86,10 @@ bool AttrCompat::operator()(const OpDesc& op_desc) {
     }
   }
   return true;
+}
+AttrCompat& AttrCompat::IsOptional() {
+  optional_ = true;
+  return *this;
 }
 
 AttrCompat& AttrCompat::IsBoolEQ(bool v) {
@@ -98,8 +124,12 @@ bool InputOrOutputCompat::operator()(
 }
 
 AttrCompat& OpCompat::AddAttr(const std::string& attr_name) {
-  attr_compats_.emplace_back(attr_name, this);
-  return attr_compats_.back();
+  PADDLE_ENFORCE_EQ(
+      attr_compats_.find(attr_name), attr_compats_.end(),
+      platform::errors::InvalidArgument(
+          "The attrubute compat with the same name has been added"));
+  attr_compats_.emplace(attr_name, AttrCompat(attr_name, this));
+  return attr_compats_.at(attr_name);
 }
 
 InputOrOutputCompat& OpCompat::AddInput(const std::string& name) {
@@ -119,8 +149,19 @@ InputOrOutputCompat& OpCompat::AddOutput(const std::string& name) {
 }
 
 bool OpCompat::Judge(const OpDesc& op_desc) {
+  for (auto& attr_map : op_desc.GetAttrMap()) {
+    if (attr_compats_.find(attr_map.first) == attr_compats_.end()) {
+      if (!AttrCompat(attr_map.first, this).IsLeftDefault()(op_desc)) {
+        VLOG(3) << "The Attr(" << attr_map.first << ") of Op (" << op_name_
+                << ") not reigistered in OpCompat, not equal to default value!";
+        return false;
+      }
+    }
+  }
   for (auto& attr_compat : attr_compats_) {
-    if (!attr_compat(op_desc)) {
+    if (!attr_compat.second(op_desc)) {
+      VLOG(3) << " Check the Attr(" << attr_compat.first << ") of Op("
+              << op_name_ << ") failed!";
       return false;
     }
   }
@@ -129,6 +170,8 @@ bool OpCompat::Judge(const OpDesc& op_desc) {
   for (auto& input_desc : inputs_map) {
     if (input_compats_.find(input_desc.first) == input_compats_.end()) {
       if (!input_desc.second.empty()) {
+        VLOG(3) << "The Input (" << input_desc.first << ") of Operator ("
+                << op_name_ << ") not reigistered in OpCompat!";
         return false;
       }
     }
@@ -136,10 +179,14 @@ bool OpCompat::Judge(const OpDesc& op_desc) {
   for (auto& input_val : input_compats_) {
     if (inputs_map.find(input_val.first) == inputs_map.end()) {
       if (!input_val.second.Optional()) {
+        VLOG(3) << "The No optional Input (" << input_val.first
+                << ") of Operator (" << op_name_ << ") not find in op_desc!";
         return false;
       }
     } else {
       if (!input_val.second(inputs_map.at(input_val.first))) {
+        VLOG(3) << "The Input (" << input_val.first << ") of Operator ("
+                << op_name_ << ") compat check failed!";
         return false;
       }
     }
@@ -149,6 +196,8 @@ bool OpCompat::Judge(const OpDesc& op_desc) {
   for (auto& output_desc : outputs_map) {
     if (output_compats_.find(output_desc.first) == output_compats_.end()) {
       if (!output_desc.second.empty()) {
+        VLOG(3) << "The Output (" << output_desc.first << ") of Operator ("
+                << op_name_ << ") not reigistered in OpCompat!";
         return false;
       }
     }
@@ -156,10 +205,14 @@ bool OpCompat::Judge(const OpDesc& op_desc) {
   for (auto& output_val : output_compats_) {
     if (outputs_map.find(output_val.first) == outputs_map.end()) {
       if (!output_val.second.Optional()) {
+        VLOG(3) << "The No optional Output (" << output_val.first
+                << ") of Operator (" << op_name_ << ") not find in op_desc!";
         return false;
       }
     } else {
       if (!output_val.second(outputs_map.at(output_val.first))) {
+        VLOG(3) << "The Output (" << output_val.first << ") of Operator ("
+                << op_name_ << ") compat check failed!";
         return false;
       }
     }
