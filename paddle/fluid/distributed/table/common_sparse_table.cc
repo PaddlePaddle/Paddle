@@ -347,18 +347,25 @@ int32_t CommonSparseTable::set_global_lr(float* lr) {
 
 int32_t CommonSparseTable::load(const std::string& path,
                                 const std::string& param) {
+  auto begin = GetCurrentUS();
   rwlock_->WRLock();
-  VLOG(3) << "sparse table load with " << path << " with meta " << param;
   LoadFromText(path, param, _shard_idx, _shard_num, task_pool_size_,
                &shard_values_);
   rwlock_->UNLock();
+  auto end = GetCurrentUS();
+
+  auto varname = _config.common().table_name();
+  VLOG(0) << "load " << varname << " with value: " << path
+          << " and meta: " << param
+          << " using: " << std::to_string((end - begin) / 1e+6) << " seconds";
+
   return 0;
 }
 
 int32_t CommonSparseTable::save(const std::string& dirname,
                                 const std::string& param) {
-  rwlock_->WRLock();
   auto begin = GetCurrentUS();
+  rwlock_->WRLock();
   int mode = std::stoi(param);
   VLOG(3) << "sparse table save: " << dirname << " mode: " << mode;
 
@@ -393,11 +400,10 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   ms->close();
 
   auto end = GetCurrentUS();
-
+  rwlock_->UNLock();
   VLOG(0) << "save " << varname << " with path: " << value_
           << " using: " << std::to_string((end - begin) / 1e+6) << " seconds";
 
-  rwlock_->UNLock();
   return 0;
 }
 
