@@ -165,11 +165,14 @@ class ShardingMerge {
 
   void SerializeValueToVec(std::ifstream &in, const int batch,
                            const int embedding_dim, std::vector<float> *out) {
-    auto queue = std::make_shared<framework::BlockingQueue<std::string>>();
+    auto queue =
+        std::make_shared<framework::BlockingQueue<std::vector<std::string>>>();
 
     auto read = [batch, &in, &queue]() {
       std::string line;
       std::vector<std::string> columns;
+      std::vector<std::string> values_str;
+
       int count = 0;
 
       while (std::getline(in, line)) {
@@ -178,15 +181,17 @@ class ShardingMerge {
 
         if (columns.size() != 5) {
           VLOG(0) << "unexpected line: " << line << ", skip it";
-        } else {
-          queue->Push(columns[4]);
+          continue;
         }
+
+        values_str = string::Split(columns[4], ',');
+        queue->Push(values_str);
 
         if (count >= batch) {
           break;
         }
       }
-      queue->Push(XEOF);
+      queue->Push({});
     };
 
     auto write = [embedding_dim, &out, &queue]() {
@@ -194,13 +199,11 @@ class ShardingMerge {
       std::string line;
 
       while (true) {
-        queue->Pop(&line);
+        queue->Pop(&values_str);
 
-        if (line == XEOF) {
+        if (values_str.size() == 0) {
           break;
         }
-
-        values_str = string::Split(line, ',');
 
         for (int x = 0; x < embedding_dim; ++x) {
           float v = 0.0;
