@@ -242,7 +242,7 @@ class ConvMKLDNNHandlerT
   }
 
   ConvMKLDNNHandlerT(const framework::ExecutionContext& ctx,
-                     const paddle::platform::MKLDNNDeviceContext& dev_ctx,
+                     const platform::MKLDNNDeviceContext& dev_ctx,
                      platform::Place cpu_place, const Tensor* in,
                      const Tensor* filter, const Tensor* bias,
                      const Tensor* out_grad, Tensor* filter_grad,
@@ -314,22 +314,19 @@ class ConvMKLDNNHandlerT
       UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                                data_dims, strides, ksize);
 
-      auto src_tz = paddle::framework::vectorize(in->dims());
-      auto weights_tz = paddle::framework::vectorize(filter->dims());
+      auto src_tz = framework::vectorize(in->dims());
+      auto weights_tz = framework::vectorize(filter->dims());
 
       int g = std::max(groups, 1);
       platform::GetGroupConvWeightsTz(weights_tz, g);
       auto dst_tz = paddle::framework::vectorize(out_grad->dims());
 
-      MKLDNNMemoryFormat weights_format =
-          GetWeightsFormat(filter->format(), g, is_conv3d);
-
       /* create memory descriptor for conv backward without specified format
        * ('any') which lets a primitive (conv backward in this case) choose
        * the memory format preferred for best performance
        */
-      auto chosen_memory_format = MKLDNNMemoryFormat::any;
-      weights_format = MKLDNNMemoryFormat::any;
+      const auto chosen_memory_format = MKLDNNMemoryFormat::any;
+      const auto weights_format = MKLDNNMemoryFormat::any;
 
       auto src_md = platform::MKLDNNMemDesc(
           src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
