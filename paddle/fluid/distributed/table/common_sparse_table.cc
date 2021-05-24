@@ -394,8 +394,9 @@ int32_t CommonSparseTable::save(const std::string& dirname,
 
   auto end = GetCurrentUS();
 
-  VLOG(0) << "save " << varname << " in dir: " << var_store
-          << "using: " << end - begin;
+  VLOG(0) << "save " << varname << " with path: " << value_
+          << " using: " << std::to_string((end - begin) / 1e+6) << " seconds";
+
   rwlock_->UNLock();
   return 0;
 }
