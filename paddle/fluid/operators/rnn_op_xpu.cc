@@ -94,13 +94,13 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     int batch_size = input->dims()[1];
     int input_dim = input->dims()[2];
 
-    PADDLE_ENFORCE_EQ(
-        init_h->dims()[0], num_layers * direction_num,
-        platform::errors::InvalidArgument("The num_layers of in RNN layer must"
-                                          " be the same as first dim of init "
-                                          "hidden, but received num_layers:%d,"
-                                          " dim:%d",
-                                          num_layers, init_h->dims()[0]));
+    PADDLE_ENFORCE_EQ(init_h->dims()[0], num_layers * direction_num,
+                      platform::errors::InvalidArgument(
+                          "The num_layers of in RNN layer must"
+                          " be the same as first dim of init "
+                          "hidden, but received num_layers:%d,"
+                          " dim:%d",
+                          num_layers * direction_num, init_h->dims()[0]));
 
     PADDLE_ENFORCE_EQ(
         init_c->dims()[0], num_layers * direction_num,
@@ -108,7 +108,7 @@ class RnnXPUKernel : public framework::OpKernel<T> {
             "The num_layers of in RNN layer must"
             " be the same as first dim of cell state hidden, but received"
             " num_layers:%d, dim:%d",
-            num_layers, init_c->dims()[0]));
+            num_layers * direction_num, init_c->dims()[0]));
 
     std::vector<std::vector<const T*>> parameter_lists;
     parameter_lists.resize(num_layers);
@@ -119,7 +119,8 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(ctx.GetPlace());
     last_h->mutable_data<T>(ctx.GetPlace());
     last_c->mutable_data<T>(ctx.GetPlace());
-    reserve_data->Resize({seq_len * batch_size * hidden_size * 5});
+    reserve_data->Resize(
+        {seq_len * batch_size * hidden_size * 5 * direction_num});
     reserve_data->mutable_data<T>(ctx.GetPlace());
 
     // get ptr from tensor
@@ -138,7 +139,7 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     T* last_h_ptr = last_h->data<T>();
     T* last_c_ptr = last_c->data<T>();
     T* i_f_g_o = reserve_data->data<T>();
-    T* c = i_f_g_o + seq_len * batch_size * hidden_size * 4;
+    T* c = i_f_g_o + seq_len * batch_size * hidden_size * 4 * direction_num;
 
     std::vector<int> seq_len_tensor(batch_size, seq_len);
     if (has_seq_length) {
@@ -228,13 +229,13 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     int batch_size = input->dims()[1];
     int input_dim = input->dims()[2];
 
-    PADDLE_ENFORCE_EQ(
-        init_h->dims()[0], num_layers * direction_num,
-        platform::errors::InvalidArgument("The num_layers of in RNN layer must"
-                                          " be the same as first dim of init "
-                                          "hidden, but received num_layers:%d,"
-                                          " dim:%d",
-                                          num_layers, init_h->dims()[0]));
+    PADDLE_ENFORCE_EQ(init_h->dims()[0], num_layers * direction_num,
+                      platform::errors::InvalidArgument(
+                          "The num_layers of in RNN layer must"
+                          " be the same as first dim of init "
+                          "hidden, but received num_layers:%d,"
+                          " dim:%d",
+                          num_layers * direction_num, init_h->dims()[0]));
 
     PADDLE_ENFORCE_EQ(
         init_c->dims()[0], num_layers * direction_num,
@@ -242,7 +243,7 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
             "The num_layers of in RNN layer must"
             " be the same as first dim of cell state hidden, but received"
             " num_layers:%d, dim:%d",
-            num_layers, init_c->dims()[0]));
+            num_layers * direction_num, init_c->dims()[0]));
 
     std::vector<std::vector<const T*>> parameter_lists;
     parameter_lists.resize(num_layers);
@@ -290,7 +291,8 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     T* backward_b_x_grad = is_bidirec ? parameter_lists_grad[0][6] : nullptr;
     T* backward_b_h_grad = is_bidirec ? parameter_lists_grad[0][7] : nullptr;
     const T* i_f_g_o = reserve_data->data<T>();
-    const T* c = i_f_g_o + seq_len * batch_size * hidden_size * 4;
+    const T* c =
+        i_f_g_o + seq_len * batch_size * hidden_size * 4 * direction_num;
 
     std::vector<int> seq_len_tensor(batch_size, seq_len);
     if (has_seq_length) {
