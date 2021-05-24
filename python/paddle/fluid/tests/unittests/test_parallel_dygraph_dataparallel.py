@@ -17,8 +17,11 @@ from __future__ import print_function
 import unittest
 import time
 import paddle.fluid as fluid
+import copy
+import os
+import subprocess
 
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, start_local_trainers
+from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
 
 def get_cluster_from_args(selected_gpus):
@@ -44,6 +47,55 @@ def get_cluster_from_args(selected_gpus):
 def get_gpus(selected_gpus):
     selected_gpus = [x.strip() for x in selected_gpus.split(',')]
     return selected_gpus
+
+
+def start_local_trainers(cluster,
+                         pod,
+                         training_script,
+                         training_script_args,
+                         log_dir=None):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
+    procs = []
+    for t in pod.trainers:
+        proc_env = {
+            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % t.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
+
+        current_env.update(proc_env)
+
+        print("trainer proc env:{}".format(current_env))
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            cmd = "python -m coverage run --branch -p " + training_script
+        else:
+            cmd = "python -u " + training_script
+
+        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+
+        fn = None
+
+        proc = subprocess.Popen(cmd.split(" "), env=current_env)
+
+        tp = TrainerProc()
+        tp.proc = proc
+        tp.rank = t.rank
+        tp.log_fn = fn
+        tp.cmd = cmd
+
+        procs.append(tp)
+
+    return procs
 
 
 class TestMultipleGpus(unittest.TestCase):
