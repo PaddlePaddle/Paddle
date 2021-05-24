@@ -28,8 +28,8 @@ function check_whl {
 
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
+    bash -x paddle/scripts/paddle_build.sh build
     cd build
-    make -j `nproc`
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
     unzip -q python/dist/*.whl -d /tmp/develop
 
