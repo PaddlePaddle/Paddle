@@ -32,9 +32,9 @@ template <typename T>
 struct DivideFunctor {
   HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
 
-  template <typename T2>
-  HOSTDEVICE inline T2 operator()(const T2& x) const {
-    return x * static_cast<T2>(n_inv);
+  template <typename U>
+  HOSTDEVICE inline U operator()(const U& x) const {
+    return x * static_cast<U>(n_inv);
   }
 
  private:

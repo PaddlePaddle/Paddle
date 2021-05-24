@@ -24,8 +24,8 @@ template <typename T>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
 
-  template <typename T2>
-  HOSTDEVICE inline T2 operator()(const T2& x) const {
+  template <typename U>
+  HOSTDEVICE inline U operator()(const U& x) const {
     return x;
   }
 };

@@ -22,8 +22,8 @@ template <typename T>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
 
-  template <typename T2>
-  HOSTDEVICE inline T2 operator()(const T2& x) const {
+  template <typename U>
+  HOSTDEVICE inline U operator()(const U& x) const {
     return x;
   }
 };
@@ -73,7 +73,8 @@ class ReduceSumKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(reduce_sum, ops::ReduceSumKernel<float>,
+REGISTER_OP_CUDA_KERNEL(reduce_sum, ops::ReduceSumKernel<bool>,
+                        ops::ReduceSumKernel<float>,
                         ops::ReduceSumKernel<double>,
                         ops::ReduceSumKernel<paddle::platform::float16>,
                         ops::ReduceSumKernel<int>,
