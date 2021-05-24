@@ -26,6 +26,13 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+struct CudaMulFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return args[0] * args[1];
+  }
+};
+
+template <typename T>
 class ElementwiseMulKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:

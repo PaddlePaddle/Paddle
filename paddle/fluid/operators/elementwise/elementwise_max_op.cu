@@ -21,6 +21,13 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+struct CudaMaxFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return (args[0] > args[1] ? args[0] : args[1]);
+  }
+};
+
+template <typename T>
 class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
