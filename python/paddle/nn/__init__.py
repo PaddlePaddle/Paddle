@@ -206,7 +206,7 @@ __all__ = [     #noqa
            'Dropout3D',
            'Bilinear',
            'AlphaDropout',
-           'Unfold'
+           'Unfold',
            'RNNCellBase',
            'SimpleRNNCell',
            'LSTMCell',
