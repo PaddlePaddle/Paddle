@@ -496,8 +496,7 @@ class TestPool3DError_API(unittest.TestCase):
                     kernel_size=2,
                     stride=0,
                     padding=0,
-                    data_format='NDHWC',
-                    return_mask=True)
+                    data_format='NDHWC')
 
         self.assertRaises(ValueError, run12)
 
