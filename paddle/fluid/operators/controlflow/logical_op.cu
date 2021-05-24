@@ -76,7 +76,7 @@ class LogicalOpCudaKernel
 }  // namespace paddle
 
 #define REGISTER_LOGICAL_CUDA_KERNEL(op_name, func)                         \
-  REGISTER_OP_CUDA_KERNEL(op_type,                                          \
+  REGISTER_OP_CUDA_KERNEL(op_name,                                          \
                           ops::LogicalOpCudaKernel<plat::CUDADeviceContext, \
                                                    ops::func##Functor<bool>>);
 
