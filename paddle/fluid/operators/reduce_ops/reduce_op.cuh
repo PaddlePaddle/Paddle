@@ -302,7 +302,6 @@ struct ReduceConfig {
       // init
       int num_block = (max_threads / left_num);
 
-
       if (num_block > 1 && reduce_num >= 512) {
         blocking_size = detail::GetLastPow2(reduce_num / num_block);
 
@@ -377,10 +376,10 @@ __device__ __forceinline__ void ReduceLastDim(const Tx* x, Ty* y,
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
 __device__ __forceinline__ void ReduceHigherDim(const Tx* x, Ty* y,
-                                               ReduceOp reducer,
-                                               TransformOp transformer, Ty init,
-                                               int reduce_num, int left_num,
-                                               int block_size) {
+                                                ReduceOp reducer,
+                                                TransformOp transformer,
+                                                Ty init, int reduce_num,
+                                                int left_num, int block_size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int idy = blockIdx.y * block_size;
 
@@ -394,7 +393,8 @@ __device__ __forceinline__ void ReduceHigherDim(const Tx* x, Ty* y,
       int id = (idy + iy) * left_num + idx + blockIdx.z * reduce_num * left_num;
       reduce_var = reducer(reduce_var, static_cast<Ty>(x[id]));
     }
-    y[idx + blockIdx.y * left_num + blockIdx.z * gridDim.y * left_num] = static_cast<Ty>(transformer(reduce_var));
+    y[idx + blockIdx.y * left_num + blockIdx.z * gridDim.y * left_num] =
+        static_cast<Ty>(transformer(reduce_var));
   }
 }
 
@@ -518,11 +518,11 @@ static void launchKernel(const Tx* x_data, Ty* y_data,
 
   if (config.should_reduce_again) {
     dim3 block(config.block.x, 1, 1);
-    dim3 grid(config.grid.x, 1,  config.grid.z);
+    dim3 grid(config.grid.x, 1, config.grid.z);
 
-    ReduceKernelFunction<Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, 128,
-                         kRank, kReduceRank, ReduceType::kReduceHigherDim><<<
-        grid, block, 0, stream>>>(
+    ReduceKernelFunction<
+        Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, 128, kRank, kReduceRank,
+        ReduceType::kReduceHigherDim><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer, detail::IdentityFunctor<Ty>(),
         init, config.grid.y, config.left_num, config.grid.y,
         detail::from<int, kRank>(config.x_strides),
@@ -531,7 +531,6 @@ static void launchKernel(const Tx* x_data, Ty* y_data,
         detail::from<int, kRank - kReduceRank>(config.left_dim),
         detail::from<int, kRank - kReduceRank>(config.left_strides));
   }
-
 }
 
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
@@ -592,7 +591,6 @@ static void launchReduceKernel(const Tx* x_data, Ty* y_data,
 
     CUB_RANK_CASE(9, CUB_REDUCE_RANK_CASE(4); CUB_REDUCE_RANK_CASE(5););
   }
-
 
 #undef CUB_REDUCE_RANK_CASE
 #undef CUB_RANK_CASE
