@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {
@@ -34,16 +34,16 @@ class GPUResource {
 
   int dev_id() const { return dev_id_; }
   int index() const { return index_; }
-  cudaStream_t local_stream(int num) { return local_streams_[num]; }
-  cudaStream_t remote_stream() { return remote_stream_; }
-  cudaStream_t comm_stream(int num) { return comm_streams_[num]; }
+  gpuStream_t local_stream(int num) { return local_streams_[num]; }
+  gpuStream_t remote_stream() { return remote_stream_; }
+  gpuStream_t comm_stream(int num) { return comm_streams_[num]; }
 
   int dev_id_;
   int index_;
   std::vector<int> dev_ids_;
-  cudaStream_t remote_stream_;
-  std::vector<cudaStream_t> local_streams_;
-  std::vector<cudaStream_t> comm_streams_;
+  gpuStream_t remote_stream_;
+  std::vector<gpuStream_t> local_streams_;
+  std::vector<gpuStream_t> comm_streams_;
 };
 
 class HeterPsResource {
@@ -56,9 +56,9 @@ class HeterPsResource {
   int total_gpu();
   int get_index_by_devid(int devid);
   int dev_id(int num);
-  cudaStream_t local_stream(int gpu_num, int stream_num);
-  cudaStream_t remote_stream(int gpu_num);
-  cudaStream_t comm_stream(int gpu_num, int stream_num);
+  gpuStream_t local_stream(int gpu_num, int stream_num);
+  gpuStream_t remote_stream(int gpu_num);
+  gpuStream_t comm_stream(int gpu_num, int stream_num);
 
   std::vector<std::shared_ptr<GPUResource>> resources_;
   std::vector<int> dev_ids_;

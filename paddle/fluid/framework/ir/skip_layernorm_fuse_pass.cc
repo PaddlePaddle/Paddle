@@ -141,14 +141,6 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
                               fused_pattern);
 
-    // check if is in ernie or not
-    if (!graph->Has(kEmbEltwiseLayernormPass) ||
-        !graph->Has(kMultiheadMatmulPass)) {
-      LOG(INFO) << "The skip_layernorm_fuse_pass is only supported in "
-                << "Ernie/Bert model. Just skip this pass.";
-      return;
-    }
-
     std::unordered_set<const Node *> del_node_set;
 
     // Create an SkipLayerNorm op node
@@ -160,6 +152,10 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
+
+    if (elementwise->Op()->HasAttr("out_threshold")) {
+      new_desc.SetAttr("enable_int8", true);
+    }
 
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});

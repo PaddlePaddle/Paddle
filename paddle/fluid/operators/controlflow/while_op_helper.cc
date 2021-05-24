@@ -223,7 +223,7 @@ bool GetCondData(const framework::LoDTensor &cond) {
   }
   // when platform::is_gpu_place(cond.place()) is true
   std::unique_ptr<framework::LoDTensor> cpu_cond{new framework::LoDTensor()};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(

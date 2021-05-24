@@ -65,7 +65,7 @@ class TestPSPassWithBow(unittest.TestCase):
             return avg_cost
 
         is_distributed = False
-        is_sparse = True
+        is_sparse = False
 
         # query
         q = fluid.layers.data(
@@ -162,7 +162,7 @@ class TestPSPassWithBow(unittest.TestCase):
 
         role = fleet.UserDefinedRoleMaker(
             current_id=0,
-            role=role_maker.Role.SERVER,
+            role=role_maker.Role.WORKER,
             worker_num=2,
             server_endpoints=endpoints)
 
@@ -172,10 +172,12 @@ class TestPSPassWithBow(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        strategy.a_sync_configs = {"k_steps": 100}
+        strategy.a_sync_configs = {"launch_barrier": False}
 
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
+
+        fleet.shrink(10)
 
 
 if __name__ == '__main__':

@@ -22,16 +22,9 @@ from ...framework import create_parameter
 from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
 from ...fluid import core, dygraph_utils
+import numbers
 
-__all__ = [
-    'batch_norm',
-    #       'data_norm',
-    'instance_norm',
-    'layer_norm',
-    'local_response_norm',
-    'normalize',
-    #       'spectral_norm'
-]
+__all__ = []
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
@@ -188,10 +181,10 @@ def batch_norm(x,
 
     if in_dygraph_mode():
         # for dygraph need tuple
-        attrs = ("momentum", momentum, "epsilon", epsilon, "data_layout",
-                 data_format, "use_mkldnn", False, "fuse_with_relu", False,
-                 "use_global_stats", use_global_stats, "trainable_statistics",
-                 trainable_statistics)
+        attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
+                 not training, "data_layout", data_format, "use_mkldnn", False,
+                 "fuse_with_relu", False, "use_global_stats", use_global_stats,
+                 "trainable_statistics", trainable_statistics)
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
@@ -205,6 +198,7 @@ def batch_norm(x,
     attrs = {
         "momentum": momentum,
         "epsilon": epsilon,
+        "is_test": not training,
         "data_layout": data_format,
         "use_mkldnn": False,
         "fuse_with_relu": False,
@@ -222,23 +216,26 @@ def batch_norm(x,
 
     helper = LayerHelper('batch_norm', **locals())
 
-    dtype = x.dtype if x.dtype is not 'float16' else 'float32'
+    param_dtype = x.dtype if x.dtype is not 'float16' else 'float32'
     saved_mean = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
+        dtype=param_dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    batch_norm_out = helper.create_variable_for_type_inference(dtype)
-    reserve_space = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+        dtype=param_dtype, stop_gradient=True)
+    batch_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
     outputs = {
         "Y": [batch_norm_out],
         "MeanOut": [running_mean],
         "VarianceOut": [running_var],
         "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance],
-        "ReserveSpace": [reserve_space]
+        "SavedVariance": [saved_variance]
     }
+
+    if training or trainable_statistics:
+        # reserve_space is only used for training.
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True)
+        outputs["ReserveSpace"] = [reserve_space]
 
     helper.append_op(
         type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
@@ -285,6 +282,14 @@ def layer_norm(x,
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
+    if isinstance(normalized_shape, numbers.Integral):
+        normalized_shape = [normalized_shape]
+    elif isinstance(normalized_shape, tuple):
+        normalized_shape = list(normalized_shape)
+    elif not isinstance(normalized_shape, list):
+        raise ValueError(
+            "`normalized_shape` should be int, list of ints or tuple of ints.")
+
     normalized_ndim = len(normalized_shape)
     begin_norm_axis = input_ndim - normalized_ndim
     if input_ndim < normalized_ndim or input_shape[
@@ -484,17 +489,26 @@ def local_response_norm(x,
 
     channel_last = True if data_format[-1] == "C" else False
 
+    from functools import reduce
+    sum_sizes = reduce(lambda x, y: x * y, sizes[1:])
+
     div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
     if not channel_last:
         pad4d_shape = [0, 0, size // 2, (size - 1) // 2]
         pool2d_shape = (size, 1)
-        reshape_shape = [sizes[0], 1, sizes[1], sizes[2], -1]
+        reshape_shape = [
+            sizes[0], 1, sizes[1], sizes[2],
+            int(sum_sizes / (sizes[1] * sizes[2]))
+        ]
         pad5d_shape = [0, 0, 0, 0, size // 2, (size - 1) // 2]
         pool3d_shape = (size, 1, 1)
     else:
         pad4d_shape = [size // 2, (size - 1) // 2, 0, 0]
         pool2d_shape = (1, size)
-        reshape_shape = [sizes[0], 1, sizes[1], -1, sizes[-1]]
+        reshape_shape = [
+            sizes[0], 1, sizes[1], int(sum_sizes / (sizes[1] * sizes[-1])),
+            sizes[-1]
+        ]
         pad5d_shape = [size // 2, (size - 1) // 2, 0, 0, 0, 0]
         pool3d_shape = (1, 1, size)
 

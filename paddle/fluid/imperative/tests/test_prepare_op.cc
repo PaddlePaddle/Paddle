@@ -106,7 +106,7 @@ TEST(test_prepare_op, test_get_tensor_from_var) {
   ASSERT_TRUE(ts != nullptr);
 }
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_prepare_op, test_prepare_data) {
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));

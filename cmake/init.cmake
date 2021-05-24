@@ -18,6 +18,20 @@ if(NOT WIN32)
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG")
     set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -DNDEBUG")
 else()
+    set(CMAKE_C_FLAGS_DEBUG "/Zi /DEBUG")
+    set(CMAKE_C_FLAGS_RELEASE "/O2 /DNDEBUG")
+    set(CMAKE_C_FLAGS_RELWITHDEBINFO "/O2 /DNDEBUG")
+    set(CMAKE_C_FLAGS_MINSIZEREL "/Os /DNDEBUG")
+
+    set(CMAKE_CXX_FLAGS_DEBUG "/Zi /DEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/O2 /DNDEBUG")
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "/Os /DNDEBUG")
+
+    # It can specify CUDA compile flag manualy,
+    # its use is to remvoe /Zi to reduce GPU static library size. But it's dangerous
+    # because CUDA will update by nvidia, then error will occur.
+    # Now, it's only used in VS2015 + CUDA:[10.0, 10.2]
     set(WIN_PROPS ${CMAKE_SOURCE_DIR}/cmake/paddle_win.props)
 endif()
 

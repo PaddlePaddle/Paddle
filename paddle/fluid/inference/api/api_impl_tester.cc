@@ -297,7 +297,7 @@ TEST(inference_api_native, image_classification_xpu) {
 }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(inference_api_native, word2vec_gpu) {
   MainWord2Vec(paddle::PaddlePlace::kGPU);
 }

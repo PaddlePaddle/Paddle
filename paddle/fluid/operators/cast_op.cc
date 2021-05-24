@@ -90,12 +90,11 @@ REGISTER_OPERATOR(cast, ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastOpProtoMaker);
-REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
-                       ops::CastOpKernel<CPU, double>,
-                       ops::CastOpKernel<CPU, int>,
-                       ops::CastOpKernel<CPU, int64_t>,
-                       ops::CastOpKernel<CPU, bool>,
-                       ops::CastOpKernel<CPU, uint8_t>,
-                       ops::CastOpKernel<CPU, paddle::platform::float16>,
-                       ops::CastOpKernel<CPU, paddle::platform::complex64>,
-                       ops::CastOpKernel<CPU, paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL(
+    cast, ops::CastOpKernel<CPU, float>, ops::CastOpKernel<CPU, double>,
+    ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int64_t>,
+    ops::CastOpKernel<CPU, bool>, ops::CastOpKernel<CPU, uint8_t>,
+    ops::CastOpKernel<CPU, paddle::platform::float16>,
+    ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
+    ops::CastOpKernel<CPU, paddle::platform::complex<float>>,
+    ops::CastOpKernel<CPU, paddle::platform::complex<double>>);

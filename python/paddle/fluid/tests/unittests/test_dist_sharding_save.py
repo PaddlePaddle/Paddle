@@ -28,7 +28,7 @@ class TestDistMnistFleetSave(TestDistBase):
         self._use_reduce = False
         self._use_reader_alloc = False
         self._nccl2_mode = True
-        self._gpu_fleet_api = True
+        self._use_fleet_api = True
         self._sharding_save = True
         self._enforce_place = "GPU"
 

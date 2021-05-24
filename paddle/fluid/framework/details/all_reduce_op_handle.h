@@ -31,7 +31,7 @@ namespace platform {
 class NCCLCommunicator;
 }  // namespace platform
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
@@ -43,7 +43,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class AllReduceOpHandle : public NCCLOpHandleBase {
  public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
@@ -74,13 +74,14 @@ class AllReduceOpHandle : public OpHandleBase {
 
   std::vector<Scope *> local_scopes_;
 
-#if !(PADDLE_WITH_NCCL || PADDLE_WITH_XPU_BKCL)
+#if !defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL) && \
+    !defined(PADDLE_WITH_XPU_BKCL)
   // NCCLOpHandleBase and BKCLOpHandleBase already have these attributes.
   // Will polish it by class inheritance framework.
   std::vector<platform::Place> places_;
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   void NCCLAllReduceFunc(
       const std::vector<std::function<void()>> &all_reduce_calls);
 

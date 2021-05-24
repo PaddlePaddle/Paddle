@@ -65,6 +65,10 @@ class OpKernelType {
 
   size_t hash_key() const { return Hash()(*this); }
 
+  bool operator<(const OpKernelType& o) const {
+    return hash_key() < o.hash_key();
+  }
+
   bool operator==(const OpKernelType& o) const;
 
   bool operator!=(const OpKernelType& o) const { return !(*this == o); }

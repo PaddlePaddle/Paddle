@@ -35,7 +35,8 @@ class TestROIAlignOp(OpTest):
             'spatial_scale': self.spatial_scale,
             'pooled_height': self.pooled_height,
             'pooled_width': self.pooled_width,
-            'sampling_ratio': self.sampling_ratio
+            'sampling_ratio': self.sampling_ratio,
+            'aligned': self.aligned,
         }
 
         self.outputs = {'Out': self.out_data}
@@ -53,6 +54,7 @@ class TestROIAlignOp(OpTest):
         self.pooled_height = 2
         self.pooled_width = 2
         self.sampling_ratio = -1
+        self.aligned = False
 
         self.x = np.random.random(self.x_dim).astype('float64')
 
@@ -115,16 +117,21 @@ class TestROIAlignOp(OpTest):
             (self.rois_num, self.channels, self.pooled_height,
              self.pooled_width)).astype('float64')
 
+        offset = 0.5 if self.aligned else 0.
         for i in range(self.rois_num):
             roi = self.rois[i]
             roi_batch_id = int(roi[0])
             x_i = self.x[roi_batch_id]
-            roi_xmin = roi[1] * self.spatial_scale
-            roi_ymin = roi[2] * self.spatial_scale
-            roi_xmax = roi[3] * self.spatial_scale
-            roi_ymax = roi[4] * self.spatial_scale
-            roi_width = max(roi_xmax - roi_xmin, 1)
-            roi_height = max(roi_ymax - roi_ymin, 1)
+            roi_xmin = roi[1] * self.spatial_scale - offset
+            roi_ymin = roi[2] * self.spatial_scale - offset
+            roi_xmax = roi[3] * self.spatial_scale - offset
+            roi_ymax = roi[4] * self.spatial_scale - offset
+
+            roi_width = roi_xmax - roi_xmin
+            roi_height = roi_ymax - roi_ymin
+            roi_width = max(roi_width, 1)
+            roi_height = max(roi_height, 1)
+
             bin_size_h = float(roi_height) / float(self.pooled_height)
             bin_size_w = float(roi_width) / float(self.pooled_width)
             roi_bin_grid_h = self.sampling_ratio if self.sampling_ratio > 0 else \
@@ -192,10 +199,30 @@ class TestROIAlignInLodOp(TestROIAlignOp):
             'spatial_scale': self.spatial_scale,
             'pooled_height': self.pooled_height,
             'pooled_width': self.pooled_width,
-            'sampling_ratio': self.sampling_ratio
+            'sampling_ratio': self.sampling_ratio,
+            'aligned': self.aligned
         }
 
         self.outputs = {'Out': self.out_data}
+
+
+class TestROIAlignOpWithAligned(TestROIAlignOp):
+    def init_test_case(self):
+        self.batch_size = 3
+        self.channels = 3
+        self.height = 8
+        self.width = 6
+
+        # n, c, h, w
+        self.x_dim = (self.batch_size, self.channels, self.height, self.width)
+
+        self.spatial_scale = 1.0 / 2.0
+        self.pooled_height = 2
+        self.pooled_width = 2
+        self.sampling_ratio = -1
+        self.aligned = True
+
+        self.x = np.random.random(self.x_dim).astype('float64')
 
 
 if __name__ == '__main__':

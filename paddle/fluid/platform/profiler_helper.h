@@ -31,6 +31,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
 
 namespace paddle {
 namespace platform {
@@ -120,6 +123,13 @@ void SynchronizeAllDevice() {
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
+  }
+#endif
+#ifdef PADDLE_WITH_HIP
+  int count = GetCUDADeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetDeviceId(i);
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceSynchronize());
   }
 #endif
 }
@@ -300,7 +310,7 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
     if (rit != pushed_events->rend()) {
       double event_time = 0;
       double gpu_time = 0.0f;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gpu_time = rit->CudaElapsedMs(analyze_event);
 #endif
       double cpu_time = rit->CpuElapsedMs(analyze_event);

@@ -46,7 +46,7 @@ class ParamAttr(object):
         initializer (Initializer, optional): The method to initial this parameter. Default
                 None, meaning that the weight parameter is initialized by Xavier initializer,
                 and the bias parameter is initialized by 0.
-        learning_rate (float): The parameter's learning rate. The learning rate when
+        learning_rate (float, optional): The parameter's learning rate. The learning rate when
                 optimize is the global learning rates times the parameter's learning rate times
                 the factor of learning rate scheduler. Default 1.0.
         regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
@@ -54,10 +54,13 @@ class ParamAttr(object):
                 regularizer is also set in ``optimizer`` (such as :ref:`api_paddle_optimizer_SGD` ), 
                 that regularizer setting in optimizer will be ignored. Default None, meaning there is 
                 no regularization.
-        trainable (bool): Whether this parameter is trainable. Default True.
-        do_model_average (bool): Whether this parameter should do model average
+        trainable (bool, optional): Whether this parameter is trainable. Default True.
+        do_model_average (bool, optional): Whether this parameter should do model average
                 when model average is enabled. Only used in ExponentialMovingAverage. Default True.
-        need_clip (bool): Whether the parameter gradient need to be cliped in optimizer. Default is True.
+        need_clip (bool, optional): Whether the parameter gradient need to be cliped in optimizer. Default is True.
+
+    Returns:
+       ParamAttr Object.
 
     Examples:
         .. code-block:: python

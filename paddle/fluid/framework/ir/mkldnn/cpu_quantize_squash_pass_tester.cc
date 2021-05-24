@@ -24,7 +24,8 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn,
-           const std::vector<float> scale = {}, float bias = 0.0) {
+           const std::vector<float> scale = {}, float bias = 0.0,
+           const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -36,6 +37,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     if (inputs.size() > 1) op->SetInput("Filter", {inputs[1]});
     if (inputs.size() > 2) op->SetInput("Bias", {inputs[2]});
     op->SetOutput("Output", {outputs[0]});
+    op->SetAttr("force_fp32_output", false);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   } else if (type == "quantize") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
@@ -52,6 +55,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   } else if (type == "concat") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   } else if (type == "fc") {
     op->SetInput("Input", {inputs[0]});
     PADDLE_ENFORCE_EQ(inputs.size(), 2UL,
@@ -63,6 +67,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetOutput("Out", outputs);
     if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
+    op->SetAttr("force_fp32_output", false);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   } else if (type == "scale") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -74,6 +80,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetOutput("Out", {outputs[0]});
     if (scale.size() > 0) op->SetAttr("Scale_x", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
+    op->SetAttr("force_fp32_output", false);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   }
 }
 
@@ -299,6 +307,20 @@ ProgramDesc BuildDequantScaleProgramDesc(bool use_mkldnn, float dequant_scale,
   return prog;
 }
 
+// a->Scale->b
+// b->Quant->c
+ProgramDesc BuildScaleQuantProgramDesc(bool use_mkldnn, float scale_scale,
+                                       float quant_scale, float bias) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "scale", "Scale", {"a"}, {"b"}, use_mkldnn, {scale_scale}, bias);
+  SetOp(&prog, "quantize", "Quant", {"b"}, {"c"}, use_mkldnn, {quant_scale});
+
+  return prog;
+}
+
 // {x,y}->Matmul->b
 // b->Dequant->c
 ProgramDesc BuildMatmulDequantProgramDesc(bool use_mkldnn,
@@ -337,6 +359,22 @@ ProgramDesc BuildRequantOpProgramDesc(bool use_mkldnn, float requant_scale_in,
   SetOp(&prog, "conv2d", "Conv", {"g"}, {"h"}, use_mkldnn,
         {op_scale_in, op_scale_out});
   SetOp(&prog, "concat", "Concat", {"b", "e", "h"}, {"i"}, {use_mkldnn});
+
+  return prog;
+}
+
+// a->Quant->b
+// b->Conv2d->c
+ProgramDesc BuildQuantConv2dProgramDesc(const bool& use_mkldnn,
+                                        const float& quant_scale,
+                                        const std::string& mkldnn_data_type) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "quantize", "Quant", {"a"}, {"b"}, use_mkldnn, {quant_scale});
+  SetOp(&prog, "conv2d", "Conv2d", {"b"}, {"c"}, use_mkldnn, {}, 0.0f,
+        mkldnn_data_type);
 
   return prog;
 }
@@ -664,6 +702,22 @@ TEST(CpuQuantizeSquashPass, dequantize_scale_with_bias) {
                  "Dequant", "Scale", dequant_scale);
 }
 
+// if scale has no bias
+TEST(CpuQuantizeSquashPass, scale_with_no_bias_quantize) {
+  constexpr auto scale_scale = 1.5432f;
+  constexpr auto quant_scale = 1.2345f;
+  constexpr auto bias = 0.0f;
+  auto use_mkldnn = true;
+  // remove: dequant out, scale op
+  auto remove_nodes = 2;
+  CountNodeTest(
+      BuildScaleQuantProgramDesc(use_mkldnn, scale_scale, quant_scale, bias),
+      remove_nodes);
+  EqualScaleTest(
+      BuildScaleQuantProgramDesc(use_mkldnn, scale_scale, quant_scale, bias),
+      "Scale", "Quant", quant_scale * scale_scale);
+}
+
 TEST(CpuQuantizeSquashPass, matmul_with_dequant) {
   auto dequant_scale = 1.2345f;
   auto use_mkldnn = true;
@@ -686,6 +740,17 @@ TEST(CpuQuantizeSquashPass, requantize_with_matmul_fc_conv) {
   EqualScaleTest(program_desc, "Matmul", "Scale_x", requant_scale_in);
   EqualScaleTest(program_desc, "Fc", "Scale_in", requant_scale_in);
   EqualScaleTest(program_desc, "Conv", "Scale_in", requant_scale_in);
+}
+
+TEST(CpuQuantizeSquashPass, quant_bf16_conv2d) {
+  auto quant_scale = 1.0f;
+  auto use_mkldnn = true;
+  auto mkldnn_data_type = "bfloat16";
+  // remove: quant_op, conv_in
+  auto remove_nodes = 2;
+  CountNodeTest(
+      BuildQuantConv2dProgramDesc(use_mkldnn, quant_scale, mkldnn_data_type),
+      remove_nodes);
 }
 
 }  // namespace ir

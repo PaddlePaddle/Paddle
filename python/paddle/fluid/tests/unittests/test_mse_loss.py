@@ -191,8 +191,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(name='input', shape=dim, dtype='float32')
-                target = paddle.fluid.data(name='target', shape=dim, dtype='float32')
+                input = paddle.fluid.data(
+                    name='input', shape=dim, dtype='float32')
+                target = paddle.fluid.data(
+                    name='target', shape=dim, dtype='float32')
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'mean')
 
             exe = paddle.static.Executor(place)
@@ -225,8 +227,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(name='input', shape=dim, dtype='float32')
-                target = paddle.fluid.data(name='target', shape=dim, dtype='float32')
+                input = paddle.fluid.data(
+                    name='input', shape=dim, dtype='float32')
+                target = paddle.fluid.data(
+                    name='target', shape=dim, dtype='float32')
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'sum')
 
                 exe = paddle.static.Executor(place)
@@ -259,8 +263,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(name='input', shape=dim, dtype='float32')
-                target = paddle.fluid.data(name='target', shape=dim, dtype='float32')
+                input = paddle.fluid.data(
+                    name='input', shape=dim, dtype='float32')
+                target = paddle.fluid.data(
+                    name='target', shape=dim, dtype='float32')
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'none')
 
                 exe = paddle.static.Executor(place)

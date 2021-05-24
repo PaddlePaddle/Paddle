@@ -25,10 +25,7 @@ from paddle.utils import try_import
 
 from .progressbar import ProgressBar
 
-__all__ = [
-    'Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL', 'LRScheduler',
-    'EarlyStopping', 'ReduceLROnPlateau'
-]
+__all__ = []
 
 
 def config_callbacks(callbacks=None,
@@ -298,13 +295,15 @@ class Callback(object):
 
 class ProgBarLogger(Callback):
     """
-    Logger callback function.
+    Logger callback function to print loss and metrics to stdout. It supports
+    silent mode (not print), progress bar or one line per each printing,
+    see arguments for more detailed.
 
     Args:
         log_freq (int): The frequency, in number of steps,
             the logs such as loss, metrics are printed. Default: 1.
         verbose (int): The verbosity mode, should be 0, 1, or 2.
-            0 = silent, 1 = progress bar, 2 = one line per epoch, 3 = 2 + 
+            0 = silent, 1 = progress bar, 2 = one line each printing, 3 = 2 +
             time counter, such as average reader cost, samples per second. 
             Default: 2.
 
@@ -362,7 +361,7 @@ class ProgBarLogger(Callback):
         }
         if self._is_print():
             print(
-                "The loss value printed in the log is the current step, and the metric is the average value of previous step."
+                "The loss value printed in the log is the current step, and the metric is the average value of previous steps."
             )
 
     def on_epoch_begin(self, epoch=None, logs=None):
@@ -528,7 +527,9 @@ class ProgBarLogger(Callback):
 
 class ModelCheckpoint(Callback):
     """
-    Model checkpoint callback function.
+    Model checkpoint callback function to save model weights and optimizer
+    state during training in conjunction with model.fit(). Currently,
+    ModelCheckpoint only supports saving after a fixed number of epochs.
 
     Args:
         save_freq(int): The frequency, in number of epochs, the model checkpoint

@@ -18,6 +18,7 @@
 #include "paddle/fluid/distributed/common/registerer.h"
 
 #include "paddle/fluid/distributed/table/common_dense_table.h"
+#include "paddle/fluid/distributed/table/common_graph_table.h"
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
 #include "paddle/fluid/distributed/table/sparse_geo_table.h"
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
@@ -25,7 +26,7 @@
 
 namespace paddle {
 namespace distributed {
-
+REGISTER_PSCORE_CLASS(Table, GraphTable);
 REGISTER_PSCORE_CLASS(Table, CommonDenseTable);
 REGISTER_PSCORE_CLASS(Table, CommonSparseTable);
 REGISTER_PSCORE_CLASS(Table, SparseGeoTable);
@@ -75,5 +76,6 @@ int32_t Table::initialize_accessor() {
   _value_accesor.reset(accessor);
   return 0;
 }
+
 }  // namespace distributed
 }  // namespace paddle

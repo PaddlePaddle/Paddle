@@ -29,19 +29,13 @@
 #include <vector>
 #include "crypto/cipher.h"
 #include "paddle_infer_declare.h"  // NOLINT
+#include "paddle_tensor.h"         // NOLINT
                                    /*! \namespace paddle
                                     */
 namespace paddle {
 
-/// \brief Paddle data type.
-enum PaddleDType {
-  FLOAT32,
-  INT64,
-  INT32,
-  UINT8,
-  INT8,
-  // TODO(Superjomn) support more data types if needed.
-};
+using PaddleDType = paddle_infer::DataType;
+using PaddlePlace = paddle_infer::PlaceType;
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -162,8 +156,6 @@ struct PD_INFER_DECL PaddleTensor {
   std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals LoDTensor
 };
 
-enum class PaddlePlace { kUNK = -1, kCPU, kGPU, kXPU };
-
 /// \brief Represents an n-dimensional array of values.
 /// The ZeroCopyTensor is used to store the input or output of the network.
 /// Zero copy means that the tensor supports direct copy of host or device data
@@ -172,79 +164,27 @@ enum class PaddlePlace { kUNK = -1, kCPU, kGPU, kXPU };
 /// AnalysisPredictor.
 /// It is obtained through PaddlePredictor::GetinputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
-class PD_INFER_DECL ZeroCopyTensor {
+
+class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
  public:
-  /// \brief Reset the shape of the tensor.
-  /// Generally it's only used for the input tensor.
-  /// Reshape must be called before calling mutable_data() or copy_from_cpu()
-  /// \param shape The shape to set.
-  void Reshape(const std::vector<int>& shape);
-
-  /// \brief Get the memory pointer in CPU or GPU with specific data type.
-  /// Please Reshape the tensor first before call this.
-  /// It's usually used to get input data pointer.
-  /// \param place The place of the tensor.
-  template <typename T>
-  T* mutable_data(PaddlePlace place);
-
-  /// \brief Get the memory pointer directly.
-  /// It's usually used to get the output data pointer.
-  /// \param[out] place To get the device type of the tensor.
-  /// \param[out] size To get the data size of the tensor.
-  /// \return The tensor data buffer pointer.
-  template <typename T>
-  T* data(PaddlePlace* place, int* size) const;
-
   /// \brief Copy the host memory to tensor data.
   /// It's usually used to set the input tensor data.
   /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
-  void copy_from_cpu(const T* data);
-
+  void copy_from_cpu(const T* data) {
+    return CopyFromCpu(data);
+  }
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
   /// \param[out] data The tensor will copy the data to the address.
   template <typename T>
-  void copy_to_cpu(T* data);
-
-  /// \brief Return the shape of the Tensor.
-  std::vector<int> shape() const;
-
-  /// \brief Set lod info of the tensor.
-  /// More about LOD can be seen here:
-  ///  https://www.paddlepaddle.org.cn/documentation/docs/zh/beginners_guide/basic_concept/lod_tensor.html#lodtensor
-  /// \param x the lod info.
-  void SetLoD(const std::vector<std::vector<size_t>>& x);
-  /// \brief Return the lod info of the tensor.
-  std::vector<std::vector<size_t>> lod() const;
-  /// \brief Return the name of the tensor.
-  const std::string& name() const { return name_; }
-  void SetPlace(PaddlePlace place, int device = -1) {
-    place_ = place;
-    device_ = device;
+  void copy_to_cpu(T* data) {
+    return CopyToCpu(data);
   }
 
-  /// \brief Return the data type of the tensor.
-  /// It's usually used to get the output tensor data type.
-  /// \return The data type of the tensor.
-  PaddleDType type() const;
-
- protected:
-  explicit ZeroCopyTensor(void* scope) : scope_{scope} {}
-  void SetName(const std::string& name) { name_ = name; }
-  void* FindTensor() const;
-
  private:
-  std::string name_;
-  bool input_or_output_;
   friend class AnalysisPredictor;
-  void* scope_{nullptr};
-  // The corresponding tensor pointer inside Paddle workspace is cached for
-  // performance.
-  mutable void* tensor_{nullptr};
-  PaddlePlace place_;
-  PaddleDType dtype_;
-  int device_;
+  explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
 };
 
 /// \brief A Predictor for executing inference on a model.

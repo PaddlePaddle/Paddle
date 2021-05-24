@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {
@@ -87,7 +87,7 @@ void HashTable<KeyType, ValType>::show() {
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
-                                      size_t len, cudaStream_t stream) {
+                                      size_t len, gpuStream_t stream) {
   if (len == 0) {
     return;
   }
@@ -99,7 +99,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
-                                         cudaStream_t stream) {
+                                         gpuStream_t stream) {
   if (len == 0) {
     return;
   }
@@ -119,6 +119,7 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
       continue;
     }
     ValType& gpu_val = kv[i].second;
+#ifdef PADDLE_WITH_PSLIB
     auto* downpour_value =
         (paddle::ps::DownpourFixedFeatureValue*)(gpu_val.cpu_ptr);
     int downpour_value_size = downpour_value->size();
@@ -138,6 +139,14 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
         cpu_val[x + 7] = gpu_val.mf[x];
       }
     }
+#endif
+#ifdef PADDLE_WITH_PSCORE
+    auto* downpour_value = (paddle::distributed::VALUE*)(gpu_val.cpu_ptr);
+    downpour_value->count_ = gpu_val.show;
+    for (int x = 0; x < gpu_val.mf_size; x++) {
+      downpour_value->data_[x] = gpu_val.mf[x];
+    }
+#endif
   }
 
   container_->prefetch(devid, stream);
@@ -147,7 +156,7 @@ template <typename KeyType, typename ValType>
 template <typename GradType, typename Sgd>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                          const GradType* d_grads, size_t len,
-                                         Sgd sgd, cudaStream_t stream) {
+                                         Sgd sgd, gpuStream_t stream) {
   if (len == 0) {
     return;
   }

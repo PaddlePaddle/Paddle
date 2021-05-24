@@ -43,7 +43,7 @@ struct SameDimsElemwiseDiv<platform::CUDADeviceContext, platform::float16> {
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
     auto size = x->numel();
-    dim3 grid_size = dim3(((size + 1) / 2 + PADDLE_CUDA_THREAD_SIZE - 1) /
+    dim3 grid_size = dim3(((size + 7) / 8 + PADDLE_CUDA_THREAD_SIZE - 1) /
                               PADDLE_CUDA_THREAD_SIZE,
                           1);
     dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);

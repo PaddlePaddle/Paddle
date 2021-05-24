@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 DECLARE_bool(sync_nccl_allreduce);
 #endif
 
@@ -25,7 +25,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
@@ -182,7 +182,7 @@ void AllReduceOpHandle::AllReduceFunc(
     const std::vector<platform::Place> &places,
     const std::vector<std::string> &out_var_names) {
   if (is_gpu_place(places[0])) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_,
                             platform::errors::InvalidArgument(
                                 "The nccl context should not be NULL."));
@@ -198,7 +198,7 @@ void AllReduceOpHandle::AllReduceFunc(
     NCCLAllReduceFunc(all_reduce_calls);
 #else
     PADDLE_THROW(
-        platform::errors::PreconditionNotMet("Not compiled with CUDA."));
+        platform::errors::PreconditionNotMet("Not compiled with GPU."));
 #endif
   } else if (is_xpu_place(places[0])) {
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -265,7 +265,7 @@ void AllReduceOpHandle::BKCLAllReduceFunc(
 }
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 void AllReduceOpHandle::NCCLAllReduceFunc(
     const std::vector<std::function<void()>> &all_reduce_calls) {
   this->RunAndRecordEvent([&] {
@@ -291,8 +291,13 @@ void AllReduceOpHandle::SyncNCCLAllReduce() {
           nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
       auto &nccl_ctx = nccl_ctxs->at(dev_id);
       auto stream = nccl_ctx.stream();
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+#endif
     }
   }
 }

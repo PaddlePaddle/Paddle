@@ -15,8 +15,16 @@
 #pragma once
 
 #include <ThreadPool.h>
+
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -29,9 +37,10 @@ namespace platform {
 
 // NOTE(zjl): clean StreamCallbackManager to make compilation faster
 // Make StreamCallbackManager thread-safe
+template <typename Stream>
 class StreamCallbackManager {
  public:
-  explicit StreamCallbackManager(const cudaStream_t stream);
+  explicit StreamCallbackManager(const Stream stream);
 
   ~StreamCallbackManager() = default;
 
@@ -40,7 +49,7 @@ class StreamCallbackManager {
   void Wait() const;
 
  private:
-  const cudaStream_t stream_;
+  const Stream stream_;
   mutable ::ThreadPool thread_pool_;
   mutable std::mutex mtx_;
   mutable std::future<void> last_future_;

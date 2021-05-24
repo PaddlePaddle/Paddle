@@ -225,10 +225,13 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
                quantized_op_type == "depthwise_conv2d") {
       PADDLE_ENFORCE_EQ(
           dequant_type, "fake_channel_wise_dequantize_max_abs",
-          platform::errors::InvalidArgument("conv2d op must be dequantized by "
-                                            "[fake_channel_wise_dequantize_max_"
-                                            "abs], but got %s",
-                                            dequant_type));
+          platform::errors::InvalidArgument(
+              "conv2d op must be dequantized by "
+              "[fake_channel_wise_dequantize_max_abs], but got %s. "
+              "If you uses PaddleSlim to generate the quantized "
+              "model, please set the 'weight_quantize_type' params as "
+              "'channel_wise_abs_max' and generate the quantized model again.",
+              dequant_type));
       PADDLE_ENFORCE_EQ(
           weight_scale.size(), static_cast<size_t>(w_dims[0]),
           platform::errors::InvalidArgument(
@@ -329,7 +332,7 @@ REGISTER_PASS_CAPABILITY(quant_conv2d_dequant_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
             .EQ("fc", 0)
-            .LE("conv2d_transpose", 1)
+            .LE("conv2d_transpose", 2)
             .EQ("fake_quantize_abs_max", 0)
             .EQ("fake_quantize_range_abs_max", 0)
             .EQ("fake_quantize_moving_average_abs_max", 0)

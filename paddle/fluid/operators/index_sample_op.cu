@@ -55,7 +55,7 @@ __global__ void IndexSampleGrad(const IndexT* index, T* in_grad,
       platform::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
                               out_grad[sample_idx]);
     } else {
-      in_grad[in_idx - index_i + sample_idx] = out_grad[sample_idx];
+      in_grad[in_idx - index_i + sample_idx] = out_grad[index_idx];
     }
   }
 }

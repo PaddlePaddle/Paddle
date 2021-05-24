@@ -26,7 +26,24 @@ class VarBase;
 
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),
-      block_ops_(new std::unordered_set<std::string>()) {}
+      block_ops_(new std::unordered_set<std::string>()),
+      unsupported_fp16_ops_(new std::unordered_set<std::string>()) {
+  auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
+  auto fp16_dtype = framework::proto::VarType::FP16;
+  for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
+    bool supported = false;
+    for (auto& kernel_type : it->second) {
+      if (platform::is_gpu_place(kernel_type.first.place_) &&
+          kernel_type.first.data_type_ == fp16_dtype) {
+        supported = true;
+      }
+    }
+    if (!supported) {
+      unsupported_fp16_ops_->insert(it->first);
+    }
+  }
+}
+
 AmpOperators::~AmpOperators() {}
 
 AmpOperators& AmpOperators::Instance() {
@@ -44,15 +61,25 @@ AmpOperators::GetMutableBlockOps() {
   return block_ops_;
 }
 
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableUnsupportedFp16Ops() {
+  return unsupported_fp16_ops_;
+}
+
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   os << "allow ops: ";
   auto allow_ops = ops.GetMutableAllowOps();
   std::copy((*allow_ops).begin(), (*allow_ops).end(),
             std::ostream_iterator<std::string>(os, " "));
-  os << "; ";
+  os << "\n";
   os << "block ops: ";
   auto block_ops = ops.GetMutableBlockOps();
   std::copy((*block_ops).begin(), (*block_ops).end(),
+            std::ostream_iterator<std::string>(os, " "));
+  os << "\n";
+  os << "unsupported fp16 ops: ";
+  auto unsupported_fp16_ops = ops.GetMutableUnsupportedFp16Ops();
+  std::copy((*unsupported_fp16_ops).begin(), (*unsupported_fp16_ops).end(),
             std::ostream_iterator<std::string>(os, " "));
   return os;
 }
@@ -133,7 +160,8 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
   if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
-      if ((op_type == "batch_norm" || op_type == "layer_norm") &&
+      if ((op_type == "batch_norm" || op_type == "layer_norm" ||
+           op_type == "sync_batch_norm") &&
           pair.first != "X") {
         continue;
       }
@@ -156,9 +184,16 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     return new_ins;
   } else {
     auto dst_type = GetPromoteType(ins);
+    // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
+    if (dst_type == framework::proto::VarType::FP16 &&
+        AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
+            op_type)) {
+      dst_type = framework::proto::VarType::FP32;
+    }
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
-      if ((op_type == "batch_norm" || op_type == "layer_norm") &&
+      if ((op_type == "batch_norm" || op_type == "layer_norm" ||
+           op_type == "sync_batch_norm") &&
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }

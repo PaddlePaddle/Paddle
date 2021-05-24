@@ -81,7 +81,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       });
     }
   } else if (platform::is_gpu_place(in_tensor.place())) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     VarHandle *out_handle = nullptr;
     int root_id =
         BOOST_GET_CONST(platform::CUDAPlace, in_tensor.place()).device;

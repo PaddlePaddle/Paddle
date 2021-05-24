@@ -16,8 +16,12 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/string/split.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
@@ -61,6 +65,7 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
+std::once_flag npu_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -92,6 +97,7 @@ bool InitGflags(std::vector<std::string> args) {
   return successed;
 }
 
+#ifdef PADDLE_WITH_CUDA
 void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
@@ -117,14 +123,17 @@ void InitCupti() {
 #undef MULTIPLY_ATTR_VALUE
 #endif
 }
+#endif
 
 void InitDevices() {
-  // CUPTI attribute should be set before any CUDA context is created (see CUPTI
-  // documentation about CUpti_ActivityAttribute).
+// CUPTI attribute should be set before any CUDA context is created (see CUPTI
+// documentation about CUpti_ActivityAttribute).
+#ifdef PADDLE_WITH_CUDA
   InitCupti();
+#endif
   /*Init all available devices by default */
   std::vector<int> devices;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   try {
     // use user specified GPUs in single-node multi-process mode.
     devices = platform::GetSelectedDevices();
@@ -138,6 +147,17 @@ void InitDevices() {
     devices = platform::GetXPUSelectedDevices();
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
+  platform::AclInstance::Instance();  // NOLINT
+  try {
+    // use user specified XPUs in single-node multi-process mode.
+    devices = platform::GetSelectedNPUDevices();
+  } catch (const std::exception &exp) {
+    LOG(WARNING)
+        << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
   }
 #endif
   InitDevices(devices);
@@ -154,15 +174,18 @@ void InitDevices(const std::vector<int> devices) {
       continue;
     }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     places.emplace_back(platform::CUDAPlace(devices[i]));
 #endif
 #ifdef PADDLE_WITH_XPU
     places.emplace_back(platform::XPUPlace(devices[i]));
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+    places.emplace_back(platform::NPUPlace(devices[i]));
+#endif
   }
   places.emplace_back(platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(platform::CUDAPinnedPlace());
 #endif
   platform::DeviceContextPool::Init(places);

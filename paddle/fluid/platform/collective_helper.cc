@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/collective_helper.h"
+#include <utility>
+
+#include "paddle/fluid/platform/cuda_resource_pool.h"
 
 namespace paddle {
 namespace platform {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class NCCLCommImpl : public NCCLComm {
  public:
   void set_ring_id(int ring_id) { ring_id_ = ring_id; }
@@ -35,12 +38,25 @@ class NCCLCommImpl : public NCCLComm {
   void set_comm(ncclComm_t comm) { comm_ = comm; }
   ncclComm_t comm() const override { return comm_; }
 
-  cudaStream_t stream() const override { return dev_ctx_->stream(); }
+  gpuStream_t stream() const override { return dev_ctx_->stream(); }
 
   void set_dev_ctx(std::unique_ptr<CUDADeviceContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);
   }
   CUDADeviceContext* dev_context() const override { return dev_ctx_.get(); }
+
+  gpuEvent_t compute_event() const override { return compute_event_.get(); }
+
+  gpuEvent_t comm_event() const override { return comm_event_.get(); }
+
+  void set_compute_event(
+      std::shared_ptr<platform::CudaEventObject>&& compute_event) {
+    compute_event_ = std::move(compute_event);
+  }
+
+  void set_comm_event(std::shared_ptr<platform::CudaEventObject>&& comm_event) {
+    comm_event_ = std::move(comm_event);
+  }
 
  private:
   int ring_id_;
@@ -48,6 +64,12 @@ class NCCLCommImpl : public NCCLComm {
   int rank_;
   ncclComm_t comm_;
   std::unique_ptr<CUDADeviceContext> dev_ctx_;
+
+  // used for comm wait compute, compute_stream-->event-->comm_stream
+  std::shared_ptr<platform::CudaEventObject> compute_event_;
+
+  // used for compute wait comm, comm_stream-->event-->compute_stream
+  std::shared_ptr<platform::CudaEventObject> comm_event_;
 };
 
 NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
@@ -123,12 +145,19 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(ncclComm_t comm, int nranks, int rank,
   std::unique_ptr<CUDADeviceContext> dev_ctx(
       new CUDADeviceContext(CUDAPlace(dev_id)));
 
+  std::shared_ptr<platform::CudaEventObject> compute_event(
+      platform::CudaEventResourcePool::Instance().New(dev_id));
+  std::shared_ptr<platform::CudaEventObject> comm_event(
+      platform::CudaEventResourcePool::Instance().New(dev_id));
+
   NCCLCommImpl* c = new NCCLCommImpl;
   c->set_ring_id(ring_id);
   c->set_nranks(nranks);
   c->set_rank(rank);
   c->set_comm(comm);
   c->set_dev_ctx(std::move(dev_ctx));
+  c->set_compute_event(std::move(compute_event));
+  c->set_comm_event(std::move(comm_event));
 
   comm_map_mutex_.lock();
   if (comm_map_.count(ring_id) == 0) {

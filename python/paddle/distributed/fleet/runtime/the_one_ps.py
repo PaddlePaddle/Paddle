@@ -25,12 +25,14 @@ from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 def conv_indent(indent):
     return "".join([" "] * indent)
 
 
-PSERVER_SAVE_SUFFIX = "_txt"
+PSERVER_SAVE_SUFFIX = ".shard"
 
 
 class Accessor:
@@ -58,6 +60,7 @@ class CommonAccessor:
     def __init__(self):
         self.accessor_class = ""
         self.table_name = None
+        self.entry = None
         self.attrs = []
         self.params = []
         self.dims = []
@@ -76,10 +79,13 @@ class CommonAccessor:
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
+        opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
+                                          ("LearningRate", 1)]
 
         opt_attr_map = {}
         opt_attr_map["sgd"] = []
         opt_attr_map["sum"] = []
+        opt_attr_map["naive_adagrad"] = []
         opt_attr_map["adam"] = [("beta1", "f"), ("beta2", "f"),
                                 ("epsilon", "f")]
 
@@ -92,6 +98,24 @@ class CommonAccessor:
         self.opt_attr_map = opt_attr_map
         self.opt_input_map = opt_input_map
         self.opt_init_map = opt_init_map
+
+    def parse_entry(self, varname, o_main_program):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
+
+        for op in o_main_program.global_block().ops:
+            if not is_distributed_sparse_op(op) and not is_sparse_op(op):
+                continue
+
+            param_name = op.input("W")[0]
+
+            if param_name == varname and op.type == "lookup_table":
+                self.entry = op.attr('entry')
+                break
+
+            if param_name == varname and op.type == "lookup_table_v2":
+                self.entry = "none"
+                break
 
     def get_shard(self, total_dim, shard_num, pserver_id):
         # remainder = total_dim % shard_num
@@ -131,7 +155,8 @@ class CommonAccessor:
         oop = None
 
         for op in optimizer_ops:
-            if op.input("Param")[0] == param_name:
+            if ("Param" in op.input_names) and (
+                    op.input("Param")[0] == param_name):
                 oop = op
                 break
 
@@ -149,6 +174,10 @@ class CommonAccessor:
             param_varnames = self.opt_input_map["sum"]
             attr_varnames = self.opt_attr_map["sum"]
             self.accessor_class = "sum"
+        elif compiled_strategy.use_ps_gpu and is_sparse:
+            param_varnames = self.opt_input_map["naive_adagrad"]
+            attr_varnames = self.opt_attr_map["naive_adagrad"]
+            self.accessor_class = "sgd"
         else:
             param_varnames = self.opt_input_map[oop.type]
             attr_varnames = self.opt_attr_map[oop.type]
@@ -156,20 +185,28 @@ class CommonAccessor:
 
         for (formal_name, shape) in param_varnames:
             params.append(formal_name)
-            param = main_program.global_block().vars[oop.input(formal_name)[0]]
-            if formal_name == "LearningRate" and param.name != "learning_rate_0":
-                warnings.warn("will support decay soon")
-                param = main_program.global_block().vars["learning_rate_0"]
+            if formal_name == "G2Sum":
+                dims.append(1)
+                initializer = "fill_constant&0"
+                initializers.append(initializer)
+            else:
+                param = main_program.global_block().vars[oop.input(formal_name)[
+                    0]]
+                if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                    warnings.warn("will support decay soon")
+                    param = main_program.global_block().vars["learning_rate_0"]
 
-            if shape is None:
-                if is_sparse:
-                    shape = total_dims
-                else:
-                    shape = self.get_shard(total_dims, pserver_num, pserver_id)
-            dims.append(shape)
+                if shape is None:
+                    if is_sparse:
+                        shape = total_dims
+                    else:
+                        shape = self.get_shard(total_dims, pserver_num,
+                                               pserver_id)
+                dims.append(shape)
 
-            initializer = self.get_initializer_attr(param.name, startup_program)
-            initializers.append(initializer)
+                initializer = self.get_initializer_attr(param.name,
+                                                        startup_program)
+                initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
             value = oop.attr(attr_varname)
@@ -188,6 +225,8 @@ class CommonAccessor:
         if self.table_name:
             attrs += "table_name: \"{}\" ".format(self.table_name)
 
+        if self.entry:
+            attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
 
@@ -413,6 +452,8 @@ class TheOnePSRuntime(RuntimeBase):
         if not strategy:
             raise ValueError("k_steps must be invalid value, please check")
 
+        if dist_strategy.a_sync_configs["use_ps_gpu"]:
+            strategy.use_ps_gpu = True
         return strategy
 
     def build_compiled_startegy(self):
@@ -421,6 +462,8 @@ class TheOnePSRuntime(RuntimeBase):
         compiled_config = CompileTimeStrategy(
             self.origin_main_program, self.origin_main_program,
             self.async_strategy, self.role_maker)
+        if self.async_strategy.use_ps_gpu:
+            compiled_config.use_ps_gpu = True
         return compiled_config
 
     def _init_worker(self):
@@ -430,6 +473,17 @@ class TheOnePSRuntime(RuntimeBase):
         is_sync = self.compiled_strategy.is_sync_mode()
         worker = self._get_fleet_proto(is_server=False, is_sync=is_sync)
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
+
+        dist_strategy = self.context["valid_strategy"]
+        use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
+        if use_ps_gpu:
+            main_program = self.context['loss'].block.program
+            if not main_program._fleet_opt:
+                main_program._fleet_opt = {}
+            main_program._fleet_opt["use_ps_gpu"] = True
+            gpus_env = os.getenv("FLAGS_selected_gpus")
+            main_program._fleet_opt[
+                "worker_places"] = [int(s) for s in gpus_env.split(",")]
 
         def sync_strategy_envs():
             kwargs = {}
@@ -655,36 +709,31 @@ class TheOnePSRuntime(RuntimeBase):
                 use_origin_program=True,
                 split_dense_table=self.role_maker.
                 _is_heter_parameter_server_mode)
+
             tables = []
             for idx, (name, ctx) in enumerate(send_ctx.items()):
-                table = Table()
-                table.id = ctx.table_id()
-
-                if ctx.is_tensor_table():
+                if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
                     continue
 
+                table = Table()
+                table.id = ctx.table_id()
+                common = CommonAccessor()
+
                 if ctx.is_sparse():
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
                     table.type = "PS_SPARSE_TABLE"
+                    table.shard_num = 256
 
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
                         table.table_class = "CommonSparseTable"
-                    table.shard_num = 256
-                else:
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
-                    table.type = "PS_DENSE_TABLE"
-                    table.table_class = "CommonDenseTable"
-                    table.shard_num = 256
 
-                common = CommonAccessor()
-                if ctx.is_sparse():
                     common.table_name = self.compiled_strategy.grad_name_to_param_name[
                         ctx.origin_varnames()[0]]
                 else:
+                    table.type = "PS_DENSE_TABLE"
+                    table.table_class = "CommonDenseTable"
+                    table.shard_num = 256
                     common.table_name = "MergedDense"
 
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
@@ -692,6 +741,10 @@ class TheOnePSRuntime(RuntimeBase):
                                           ctx.sections()[1] if ctx.is_sparse()
                                           else ctx.sections()[0],
                                           self.compiled_strategy)
+
+                if ctx.is_sparse():
+                    common.parse_entry(common.table_name,
+                                       self.origin_main_program)
 
                 if is_sync:
                     common.sync = "true"
@@ -720,6 +773,11 @@ class TheOnePSRuntime(RuntimeBase):
             downpour_server = DownpourServer()
 
             service = Service()
+            dist_strategy = self.context["valid_strategy"]
+            use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
+            if use_ps_gpu:
+                service.server_class = "PsLocalServer"
+                service.client_class = "PsLocalClient"
             downpour_server.set_service_param(service)
 
             tables = _get_tables()
@@ -747,7 +805,7 @@ class TheOnePSRuntime(RuntimeBase):
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
 
-        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("server: \n{}".format(proto_txt))
 
@@ -858,7 +916,7 @@ class TheOnePSRuntime(RuntimeBase):
             self.compiled_strategy.origin_main_program, True)
         values = []
         for id, names in context.items():
-            if names not in distributed_varnames:
+            if names[0] not in distributed_varnames:
                 # only save sparse param to local
                 self._worker.recv_and_save_model(id, dirname)
             # save sparse & distributed param on server
@@ -895,11 +953,11 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars()))
 
-        fluid.io.save_vars(
-            executor,
-            main_program=main_program,
-            dirname=dirname,
-            vars=remaining_vars)
+        import paddle
+        for var in remaining_vars:
+            tensor = var.get_value()
+            paddle.save(
+                tensor, os.path.join(dirname, var.name), use_binary_format=True)
 
     def _ps_inference_save_persistables(self,
                                         executor,
@@ -920,20 +978,19 @@ class TheOnePSRuntime(RuntimeBase):
 
         if isinstance(executor, ParallelExecutor):
             raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
+                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
             )
 
         if not isinstance(executor, Executor):
             raise TypeError(
-                "in fleet.save_persistables() function, executor must be as Executor type"
-            )
+                "in fleet.save() function, executor must be as Executor type")
 
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(
-                "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
+                "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
         # Todo(MrChengmo): Save optimizer status
@@ -946,7 +1003,8 @@ class TheOnePSRuntime(RuntimeBase):
                                            feeded_var_names,
                                            target_vars,
                                            main_program=None,
-                                           export_for_deployment=True):
+                                           export_for_deployment=True,
+                                           mode=0):
         """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
@@ -954,39 +1012,53 @@ class TheOnePSRuntime(RuntimeBase):
 
         if isinstance(executor, ParallelExecutor):
             raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
+                "in fleet.save() function, executor must be as Executor type, ParallelExecutor is not allowed"
             )
 
         if not isinstance(executor, Executor):
             raise TypeError(
-                "in fleet.save_inference_model() function, executor must be as Executor type"
+                "in fleet.save() function, executor must be as Executor type")
+
+        import paddle
+        program = self.origin_main_program if main_program is None else main_program
+
+        if isinstance(program, CompiledProgram):
+            raise TypeError(
+                "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        if main_program is not None:
-            if isinstance(main_program, CompiledProgram):
-                raise TypeError(
-                    "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
-                )
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor, main_program,
-                                          None, None, export_for_deployment)
-        else:
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor,
-                                          self.origin_main_program, None, None,
-                                          export_for_deployment, True)
-            model_basename = "__model__"
-            model_filename = os.path.join(dirname, model_basename)
+        feed_vars = [
+            program.global_block().var(name) for name in feeded_var_names
+        ]
 
-            with open(model_filename, "rb") as f:
-                program_desc_str = f.read()
+        infer_program = paddle.static.normalize_program(program, feed_vars,
+                                                        target_vars)
 
-            program = Program.parse_from_string(program_desc_str)
-            program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(executor, dirname, program)
+        infer_program._copy_dist_param_info_from(program)
+
+        model_basename = "__model__"
+        model_basename = os.path.join(dirname, model_basename)
+        paddle.save(infer_program, model_basename)
+
+        self._ps_inference_save_persistables(executor, dirname, infer_program,
+                                             mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
 
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
+
+    def _shrink(self, threshold):
+        import paddle.distributed.fleet as fleet
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            sparses = self.compiled_strategy.get_the_one_recv_context(
+                is_dense=False,
+                split_dense_table=self.role_maker.
+                _is_heter_parameter_server_mode,
+                use_origin_program=True)
+
+            for id, names in sparses.items():
+                self._worker.shrink_sparse_table(id, threshold)
+        fleet.util.barrier()

@@ -42,9 +42,13 @@ limitations under the License. */
 #include <miopen/miopen.h>
 #include <rocblas.h>
 #include <thrust/system/hip/error.h>
-#include <thrust/system_error.h>                  // NOLINT
-#include "paddle/fluid/platform/cuda_error.pb.h"  // NOLINT
+#include <thrust/system_error.h>  // NOLINT
 #endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "acl/acl.h"
+#include "hccl/hccl_types.h"
+#endif  // PADDLE_WITH_ASCEND_CL
 
 #include <fstream>
 #include <iomanip>
@@ -971,7 +975,6 @@ DEFINE_CUDA_STATUS_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #endif
-
 }  // namespace details
 
 #define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                        \
@@ -986,6 +989,16 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
           ::paddle::platform::build_nvidia_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                     \
     }                                                            \
+  } while (0)
+
+#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                                 \
+  do {                                                                         \
+    auto res = cudaGetLastError();                                             \
+    if (UNLIKELY(res != cudaSuccess)) {                                        \
+      auto msg = ::paddle::platform::build_nvidia_error_msg(res);              \
+      PADDLE_THROW(platform::errors::Fatal("CUDA error after kernel (%s): %s", \
+                                           OP, msg));                          \
+    }                                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned milliseconds) {
@@ -1034,11 +1047,6 @@ inline void retry_sleep(unsigned milliseconds) {
 inline bool is_error(hipError_t e) { return e != hipSuccess; }
 
 inline std::string build_rocm_error_msg(hipError_t e) {
-#if defined(PADDLE_WITH_HIP)
-  int32_t cuda_version = 100;
-#else
-  int32_t cuda_version = -1;
-#endif
   std::ostringstream sout;
   sout << " Hip error(" << e << "), " << hipGetErrorString(e) << ".";
   return sout.str();
@@ -1209,6 +1217,49 @@ inline void retry_sleep(unsigned millisecond) {
 
 #undef DEFINE_CUDA_STATUS_TYPE
 #endif  // PADDLE_WITH_HIP
+
+#ifdef PADDLE_WITH_ASCEND_CL
+namespace details {
+template <typename T>
+struct NPUStatusType {};
+
+#define DEFINE_NPU_STATUS_TYPE(type, success_value) \
+  template <>                                       \
+  struct NPUStatusType<type> {                      \
+    using Type = type;                              \
+    static constexpr Type kSuccess = success_value; \
+  }
+
+DEFINE_NPU_STATUS_TYPE(aclError, ACL_ERROR_NONE);
+DEFINE_NPU_STATUS_TYPE(HcclResult, HCCL_SUCCESS);
+}  // namespace details
+
+inline std::string build_npu_error_msg(aclError stat) {
+  std::ostringstream sout;
+  sout << " ACL error, the error code is : " << stat << ". ";
+  return sout.str();
+}
+
+inline std::string build_npu_error_msg(HcclResult stat) {
+  std::ostringstream sout;
+  sout << " HCCL error, the error code is : " << stat << ". ";
+  return sout.str();
+}
+
+#define PADDLE_ENFORCE_NPU_SUCCESS(COND)                       \
+  do {                                                         \
+    auto __cond__ = (COND);                                    \
+    using __NPU_STATUS_TYPE__ = decltype(__cond__);            \
+    constexpr auto __success_type__ =                          \
+        ::paddle::platform::details::NPUStatusType<            \
+            __NPU_STATUS_TYPE__>::kSuccess;                    \
+    if (UNLIKELY(__cond__ != __success_type__)) {              \
+      auto __summary__ = ::paddle::platform::errors::External( \
+          ::paddle::platform::build_npu_error_msg(__cond__));  \
+      __THROW_ERROR_INTERNAL__(__summary__);                   \
+    }                                                          \
+  } while (0)
+#endif  // PADDLE_WITH_ASCEND_CL
 
 }  // namespace platform
 }  // namespace paddle

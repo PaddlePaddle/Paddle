@@ -91,30 +91,6 @@ enum class ActivationMode {
   kBandPass,
 };
 
-#if CUDNN_VERSION < 6000
-#pragma message "CUDNN version under 6.0 is supported at best effort."
-#pragma message "We strongly encourage you to move to 6.0 and above."
-#pragma message "This message is intended to annoy you enough to update."
-#pragma message \
-    "please see https://docs.nvidia.com/deeplearning/sdk/cudnn-release-notes/"
-
-inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
-  switch (mode) {
-    case PoolingMode::kMaximumDeterministic:
-      return CUDNN_POOLING_MAX;
-    case PoolingMode::kAverageExclusive:
-      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-    case PoolingMode::kAverageInclusive:
-      return CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
-    case PoolingMode::kMaximum:
-      return CUDNN_POOLING_MAX;
-    default:
-      PADDLE_THROW(
-          platform::errors::Unimplemented("Unexpected CUDNN pooling mode."));
-  }
-}
-#else
-
 inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
   switch (mode) {
     case PoolingMode::kMaximumDeterministic:
@@ -130,7 +106,6 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
           platform::errors::Unimplemented("Unexpected CUDNN pooling mode."));
   }
 }
-#endif  // CUDNN_VERSION < 6000
 
 inline ActivationMode StringToActivationMode(const std::string& str) {
   if (str == "identity") {
@@ -470,19 +445,6 @@ class ScopedConvolutionDescriptor {
             "The size of pads and dilations should be equal. But received size "
             "of pads is %d, size of dilations is %d.",
             pads.size(), dilations.size()));
-
-#if !CUDNN_VERSION_MIN(6, 0, 0)
-    // cudnn v5 does not support dilation conv, the argument is called upscale
-    // instead of dilations and it is must be one.
-    for (size_t i = 0; i < dilations.size(); ++i) {
-      PADDLE_ENFORCE_EQ(dilations[i], 1,
-                        platform::errors::InvalidArgument(
-                            "Dilations conv is not supported in this cuDNN "
-                            "version(%d.%d.%d).",
-                            CUDNN_VERSION / 1000, CUDNN_VERSION % 1000 / 100,
-                            CUDNN_VERSION % 100));
-    }
-#endif
 
     cudnnDataType_t compute_type =
         (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;

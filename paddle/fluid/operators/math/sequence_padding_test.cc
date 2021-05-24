@@ -105,7 +105,7 @@ TEST(Seq2BatchPadding, CPU) {
                                                                  128);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(SequencePadding, CUDA) {
   auto place = paddle::platform::CUDAPlace(0);
   auto *context = static_cast<paddle::platform::CUDADeviceContext *>(

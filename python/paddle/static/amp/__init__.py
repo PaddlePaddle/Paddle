@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.contrib import mixed_precision
-from ...fluid.contrib.mixed_precision import *
-
-__all__ = mixed_precision.__all__
+from ...fluid.contrib.mixed_precision import decorate  # noqa: F401
+from ...fluid.contrib.mixed_precision import CustomOpLists  # noqa: F401
+from ...fluid.contrib.mixed_precision import AutoMixedPrecisionLists  # noqa: F401
+from ...fluid.contrib.mixed_precision import fp16_guard  # noqa: F401
+from ...fluid.contrib.mixed_precision import cast_model_to_fp16  # noqa: F401
+from ...fluid.contrib.mixed_precision import cast_parameters_to_fp16  # noqa: F401
+from ...fluid.contrib.mixed_precision import bf16  # noqa: F401

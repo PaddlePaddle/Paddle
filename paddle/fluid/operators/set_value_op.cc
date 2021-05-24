@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/set_value_op.h"
-
 #include <string>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -57,21 +57,54 @@ class SetValue : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StepsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
 class SetValueMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    // Input
     AddInput("Input", "(Tensor) Input tensor of set_value operator.");
     AddInput("ValueTensor", "(Tensor) Value tensor of set_value operator.")
         .AsDispensable();
+    AddInput("StartsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this. The shape of the tensor in vector must be [1]."
+             "It has higher priority compare with attr(starts).")
+        .AsDuplicable()
+        .AsDispensable();
+    AddInput("EndsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this. The shape of the tensor in vector must BE [1]."
+             "It has higher priority compare with attr(ends).")
+        .AsDuplicable()
+        .AsDispensable();
+
+    AddInput("StepsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this. The shape of the tensor in vector must BE [1]."
+             "It has higher priority compare with attr(steps).")
+        .AsDuplicable()
+        .AsDispensable();
+
+    // Output
     AddOutput("Out",
               "(Tensor) Output tensor of set_value operator. The output is the "
               "same Tensor as input");
 
+    // Attr
     AddAttr<int>("dtype", "data type of input.")
         .InEnum(
             {framework::proto::VarType::BOOL, framework::proto::VarType::INT32,
@@ -82,20 +115,28 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
         "axes", "(list<int64_t>) Axes that `starts` and `ends` apply to.");
     AddAttr<std::vector<int64_t>>(
         "starts",
-        "(list<int64_t>) Starting indices of corresponding axis in `axes`");
+        "(list<int64_t>) Starting indices of corresponding axis in `axes`.")
+        .SetDefault({});
     AddAttr<std::vector<int64_t>>(
         "ends",
-        "(list<int64_t>) Ending indices of corresponding axis in `axes`.");
+        "(list<int64_t>) Ending indices of corresponding axis in `axes`.")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>(
+        "steps", "(list<int64_t>) Stride step from the start to the end.")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>("decrease_axes",
+                                  "(list<int>) The axes to decrease.")
+        .SetDefault({});
 
-    AddAttr<std::vector<int>>("bool_values", "store the bool values")
+    AddAttr<std::vector<int>>("bool_values", "Store the bool values.")
         .SetDefault({});
-    AddAttr<std::vector<float>>("fp32_values", "store the float32 values")
+    AddAttr<std::vector<float>>("fp32_values", "Store the float32 values.")
         .SetDefault({});
-    AddAttr<std::vector<int>>("int32_values", "store the int32 values")
+    AddAttr<std::vector<int>>("int32_values", "Store the int32 values.")
         .SetDefault({});
-    AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
+    AddAttr<std::vector<int64_t>>("int64_values", "Store the int64 values.")
         .SetDefault({});
-    AddAttr<std::vector<double>>("fp64_values", "store the float64 values")
+    AddAttr<std::vector<double>>("fp64_values", "Store the float64 values.")
         .SetDefault({});
 
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
@@ -105,19 +146,105 @@ Assignment to a Tensor in static mode.
 )DOC");
   }
 };
+
+template <typename T>
+class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    if (this->HasInput("ValueTensor")) {
+      op->SetType("slice");
+      op->SetInput("Input", this->OutputGrad("Out"));
+      if (this->HasInput("StartsTensorList")) {
+        op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+      }
+      if (this->HasInput("EndsTensorList")) {
+        op->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+      }
+
+      // convert std::vector<int64_t > to std::vector<int >
+      std::vector<int64_t> axes_int64 = static_cast<std::vector<int64_t>>(
+          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("axes")));
+      std::vector<int64_t> starts_int64 = static_cast<std::vector<int64_t>>(
+          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("starts")));
+      std::vector<int64_t> ends_int64 = static_cast<std::vector<int64_t>>(
+          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("ends")));
+      std::vector<int64_t> decrease_axes_int64 =
+          static_cast<std::vector<int64_t>>(BOOST_GET_CONST(
+              std::vector<int64_t>, this->GetAttr("decrease_axes")));
+
+      std::vector<int> axes(axes_int64.begin(), axes_int64.end());
+      std::vector<int> starts(starts_int64.begin(), starts_int64.end());
+      std::vector<int> ends(ends_int64.begin(), ends_int64.end());
+      std::vector<int> decrease_axes(decrease_axes_int64.begin(),
+                                     decrease_axes_int64.end());
+
+      op->SetAttr("axes", axes);
+      op->SetAttr("starts", starts);
+      op->SetAttr("ends", ends);
+      op->SetAttr("decrease_axis", decrease_axes);
+      op->SetAttr("infer_flags", std::vector<int>({}));
+
+      op->SetOutput("Out", this->InputGrad("ValueTensor"));
+    } else {
+      op->SetType("assign");
+      op->SetInput("X", this->OutputGrad("Out"));
+      op->SetOutput("Out", this->InputGrad("Input"));
+    }
+  }
+};
+
+DECLARE_INPLACE_OP_INFERER(SetValueOpInplaceInferer, {"Input", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(
-    set_value, ops::SetValue, ops::SetValueMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(set_value, ops::SetValue, ops::SetValueMaker,
+                  ops::SetValueGradMaker<paddle::framework::OpDesc>,
+                  ops::SetValueGradMaker<paddle::imperative::OpBase>,
+                  ops::SetValueOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     set_value, ops::SetValueKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SetValueKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SetValueKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SetValueKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SetValueKernel<paddle::platform::CPUDeviceContext, bool>);
+    ops::SetValueKernel<plat::CPUDeviceContext, int64_t>,
+    ops::SetValueKernel<plat::CPUDeviceContext, float>,
+    ops::SetValueKernel<plat::CPUDeviceContext, double>,
+    ops::SetValueKernel<plat::CPUDeviceContext, bool>);
+
+REGISTER_OP_VERSION(set_value)
+    .AddCheckpoint(
+        R"ROC(
+Upgrade set_value, add 3 inputs [StartsTensorList, EndsTensorList, StepsTensorList] and 1 attribute [steps].
+              )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("StartsTensorList",
+                      "If provided, set_value will use this.The shape of the "
+                      "tensor in vector must be [1]. It has higher priority "
+                      "compare with attr(starts).")
+            .NewInput("EndsTensorList",
+                      "If provided, set_value will use this.The shape of the "
+                      "tensor in vector must be [1]. It has higher priority "
+                      "compare with attr(ends).")
+            .NewInput("StepsTensorList",
+                      "If provided, set_value will use this.The shape of the "
+                      "tensor in vector must be [1]. It has higher priority "
+                      "compare with attr(steps).")
+            .ModifyAttr("starts",
+                        "Starting indices of corresponding axis in `axes`.",
+                        std::vector<int64_t>{})
+            .ModifyAttr("ends",
+                        "Ending indices of corresponding axis in `axes`.",
+                        std::vector<int64_t>{})
+            .NewAttr("steps", "Stride step from the start to the end.",
+                     std::vector<int64_t>{}))
+    .AddCheckpoint(
+        R"ROC(
+Upgrade set_value, add 1 attribute [decrease_axes].
+              )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "decrease_axes", "The axes to decrease.", std::vector<int64_t>{}));

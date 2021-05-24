@@ -131,13 +131,13 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
   platform::XPUPlace cur_place;
   std::size_t cur_count = 0;
 
-  while (cur_count < op_deps_.size()) {
+  while (cur_count < op_deps->size()) {
     cur_count++;
     auto cur_op = ready_ops->Pop();
     // when execption, get cur_op == nullptr
     if (cur_op == nullptr) {
       std::lock_guard<std::mutex> lock(mutex_);
-      exec_op_count_ = op_deps_.size();
+      exec_op_count_ = op_deps->size();
       break;
     }
     auto dev_ctxes_ = cur_op->DeviceContext();
@@ -153,7 +153,7 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
   }
   {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [&] { return exec_op_count_ >= op_deps_.size(); });
+    cv_.wait(lock, [&] { return exec_op_count_ >= op_deps->size(); });
   }
 
   if (exception_.IsCaught()) {

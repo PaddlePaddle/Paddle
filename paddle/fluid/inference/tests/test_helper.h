@@ -168,7 +168,7 @@ void TestInference(const std::string& dirname,
   if (paddle::platform::is_cpu_place(place)) {
     state = paddle::platform::ProfilerState::kCPU;
   } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     state = paddle::platform::ProfilerState::kAll;
     // The default device_id of paddle::platform::CUDAPlace is 0.
     // Users can get the device_id using:

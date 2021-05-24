@@ -34,7 +34,7 @@ void HeterClient::MainThread() {
 void HeterClient::Stop() {
   running_ = false;
   if (!is_initialized_) {
-    VLOG(0) << "HeterClient is not inited, do nothing";
+    VLOG(3) << "HeterClient is not inited, do nothing";
   } else {
     if (main_thread_) {
       auto status = StopHeterWorker();
@@ -42,20 +42,20 @@ void HeterClient::Stop() {
       main_thread_->join();
       main_thread_.reset(nullptr);
     }
-    VLOG(1) << "HeterClient Stop Done";
+    VLOG(3) << "HeterClient Stop Done";
   }
 }
 
 void HeterClient::FinalizeWorker() {
   running_ = false;
   if (!is_initialized_) {
-    VLOG(0) << "HeterClient is not inited, do nothing";
+    VLOG(3) << "HeterClient is not inited, do nothing";
   } else {
     if (main_thread_) {
       main_thread_->join();
       main_thread_.reset(nullptr);
     }
-    VLOG(1) << "HeterClient Stop Done";
+    VLOG(3) << "HeterClient Stop Done";
   }
 }
 

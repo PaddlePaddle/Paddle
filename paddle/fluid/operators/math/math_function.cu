@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
@@ -33,13 +34,19 @@ using complex64 = paddle::platform::complex64;
 using complex128 = paddle::platform::complex128;
 
 template struct SetConstant<platform::CUDADeviceContext, platform::float16>;
+template struct SetConstant<platform::CUDADeviceContext, platform::bfloat16>;
 template struct SetConstant<platform::CUDADeviceContext, float>;
 template struct SetConstant<platform::CUDADeviceContext, double>;
+template struct SetConstant<platform::CUDADeviceContext, uint8_t>;
 template struct SetConstant<platform::CUDADeviceContext, int>;
 template struct SetConstant<platform::CUDADeviceContext, int64_t>;
 template struct SetConstant<platform::CUDADeviceContext, bool>;
 template struct SetConstant<platform::CUDADeviceContext, platform::complex64>;
 template struct SetConstant<platform::CUDADeviceContext, platform::complex128>;
+template struct SetConstant<platform::CUDADeviceContext,
+                            platform::complex<float>>;
+template struct SetConstant<platform::CUDADeviceContext,
+                            platform::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                             \
   template struct Transpose<platform::CUDADeviceContext, float, RANK>;     \
@@ -49,6 +56,10 @@ template struct SetConstant<platform::CUDADeviceContext, platform::complex128>;
   template struct Transpose<platform::CUDADeviceContext, int8_t, RANK>;    \
   template struct Transpose<platform::CUDADeviceContext, int32_t, RANK>;   \
   template struct Transpose<platform::CUDADeviceContext, int64_t, RANK>;   \
+  template struct Transpose<platform::CUDADeviceContext,                   \
+                            paddle::platform::complex<float>, RANK>;       \
+  template struct Transpose<platform::CUDADeviceContext,                   \
+                            paddle::platform::complex<double>, RANK>;      \
   template struct Transpose<platform::CUDADeviceContext, complex64, RANK>; \
   template struct Transpose<platform::CUDADeviceContext, complex128, RANK>;
 
@@ -142,6 +153,8 @@ DEFINE_GPU_TRANS_NORMAL(uint8_t);
 DEFINE_GPU_TRANS_NORMAL(int8_t);
 DEFINE_GPU_TRANS_NORMAL(complex64);
 DEFINE_GPU_TRANS_NORMAL(complex128);
+DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<float>);
+DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<double>);
 
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const platform::DeviceContext& context,

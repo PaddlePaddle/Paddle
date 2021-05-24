@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <thrust/random.h>
 #endif
 
@@ -36,7 +36,7 @@ struct Random<platform::CPUDeviceContext> {
   using UniformIntDist = std::uniform_int_distribution<T>;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 struct Random<platform::CUDADeviceContext> {
   using Engine = thrust::minstd_rand;
@@ -59,16 +59,6 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   size_t offset_i = offsets[i];
 
   if (i == rank - 1) {
-    PADDLE_ENFORCE(x_stride == 1,
-                   "When i:%d == rank:%d - 1, x_stride of random_crop_op "
-                   "expected to be 1, but got %ld. Please check input "
-                   "value.",
-                   i, rank, x_stride);
-    PADDLE_ENFORCE(out_stride == 1,
-                   "When i:%d == rank:%d - 1, out_stride of random_crop_op "
-                   "expected to be 1, but got %ld. Please check input "
-                   "value.",
-                   i, rank, out_stride);
     x += offset_i;
     for (size_t j = 0; j < out_dim_i; ++j) {
       *out++ = *x++;
