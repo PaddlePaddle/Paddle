@@ -1191,12 +1191,12 @@ class OpTest(unittest.TestCase):
                         np.float32, np.float64
                 ]:
                     actual_t = convert_uint16_to_float(actual_t)
-                    atol = 0.03
+                    atol = max(atol, 0.03)
 
                 if expect_t.dtype == np.uint16 and actual_t.dtype == np.uint16:
                     expect_t = convert_uint16_to_float(expect_t)
                     actual_t = convert_uint16_to_float(actual_t)
-                    atol = 0.03
+                    atol = max(atol, 0.03)
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_t.size == 0:
