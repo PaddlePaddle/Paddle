@@ -22,6 +22,31 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
+template <typename T, typename Enable = void>
+struct CudaModFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    T res = args[0] % args[1];
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((args[1] ^ res) < 0)) res += args[1];
+    return res;
+  }
+};
+
+template <typename T>
+struct CudaModFunctor<
+    T, typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    T res = fmod(args[0], args[1]);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0) && ((res < 0) != (args[1] < 0))) res += args[1];
+    return res;
+  }
+};
+
 template <typename T>
 class ElementwiseModKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
