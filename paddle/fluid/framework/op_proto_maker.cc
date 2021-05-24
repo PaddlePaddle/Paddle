@@ -13,7 +13,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+
 #include <string>
+#include "google/protobuf/text_format.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -60,6 +66,20 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   }
 }
 
+bool WriteProtoToTextFile(const google::protobuf::Message& proto, const std::string& filename)
+{
+    int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1)
+        return false;
+
+    google::protobuf::io::FileOutputStream* output = new google::protobuf::io::FileOutputStream(fd);
+    bool success = google::protobuf::TextFormat::Print(proto, output);
+
+    delete output;
+    close(fd);
+    return success;
+}
+
 void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                         OpAttrChecker* attr_checker) {
   proto_ = proto;
@@ -93,6 +113,10 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
       .SetDefault("");
   Validate();
+
+  std::string path{std::string(proto_->type()) + ".pbtxt"};
+  WriteProtoToTextFile(*proto_, path);
+  std::cout << "========= hello!! " << path << "=========\n";
 }
 
 }  // namespace framework

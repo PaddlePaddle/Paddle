@@ -195,8 +195,8 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
     info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
     T maker;
-    maker(info->proto_, info->checker_);
     info->proto_->set_type(op_type);
+    maker(info->proto_, info->checker_);
     PADDLE_ENFORCE_EQ(
         info->proto_->IsInitialized(), true,
         platform::errors::PreconditionNotMet(

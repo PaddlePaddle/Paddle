@@ -96,6 +96,8 @@ class OpProtoAndCheckerMaker {
 
   void AddComment(const std::string &comment) { proto_->set_comment(comment); }
 
+  const proto::OpProto* raw_proto() const { return proto_; }
+
  private:
   void CheckNoDuplicatedInOutAttrs();
   void Validate();
