@@ -25,7 +25,7 @@ namespace operators {
   template <typename T, typename Enable = void>               \
   struct Func##Functor {                                      \
     using ELEMENT_TYPE = T;                                   \
-    inline HOSTDEVICE T operator()(const T* args) const {     \
+    inline HOSTDEVICE bool operator()(const T* args) const {  \
       return args[0] op args[1];                              \
     }                                                         \
   };
