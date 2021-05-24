@@ -185,6 +185,7 @@ class PRChecker(object):
     def get_pr_diff_lines(self):
         file_to_diff_lines = {}
         r = requests.get(self.pr.diff_url)
+        print(r.text)
         print(r)
         data = r.text
         data = data.split('\n')
