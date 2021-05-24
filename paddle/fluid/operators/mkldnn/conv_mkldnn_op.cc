@@ -301,8 +301,6 @@ class ConvMKLDNNHandlerT
 
       int groups = ctx.Attr<int>("groups");
 
-      bool is_conv3d = strides.size() == 3U;
-
       auto input_dims = in->dims();
       auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
       auto filter_dims = filter->dims();
