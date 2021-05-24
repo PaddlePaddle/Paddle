@@ -89,12 +89,13 @@ class RnnXPUKernel : public framework::OpKernel<T> {
     auto last_c = state[1];
 
     // check shape
+    const int& direction_num = is_bidirec ? 2 : 1;
     int seq_len = input->dims()[0];
     int batch_size = input->dims()[1];
     int input_dim = input->dims()[2];
 
     PADDLE_ENFORCE_EQ(
-        init_h->dims()[0], num_layers,
+        init_h->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument("The num_layers of in RNN layer must"
                                           " be the same as first dim of init "
                                           "hidden, but received num_layers:%d,"
@@ -102,7 +103,7 @@ class RnnXPUKernel : public framework::OpKernel<T> {
                                           num_layers, init_h->dims()[0]));
 
     PADDLE_ENFORCE_EQ(
-        init_c->dims()[0], num_layers,
+        init_c->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument(
             "The num_layers of in RNN layer must"
             " be the same as first dim of cell state hidden, but received"
@@ -222,12 +223,13 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     }
 
     // check shape
+    const int& direction_num = is_bidirec ? 2 : 1;
     int seq_len = input->dims()[0];
     int batch_size = input->dims()[1];
     int input_dim = input->dims()[2];
 
     PADDLE_ENFORCE_EQ(
-        init_h->dims()[0], num_layers,
+        init_h->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument("The num_layers of in RNN layer must"
                                           " be the same as first dim of init "
                                           "hidden, but received num_layers:%d,"
@@ -235,7 +237,7 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
                                           num_layers, init_h->dims()[0]));
 
     PADDLE_ENFORCE_EQ(
-        init_c->dims()[0], num_layers,
+        init_c->dims()[0], num_layers * direction_num,
         platform::errors::InvalidArgument(
             "The num_layers of in RNN layer must"
             " be the same as first dim of cell state hidden, but received"
@@ -283,10 +285,10 @@ class RnnXPUGradKernel : public framework::OpKernel<T> {
     T* forward_w_h_grad = parameter_lists_grad[0][1];
     T* forward_b_x_grad = parameter_lists_grad[0][2];
     T* forward_b_h_grad = parameter_lists_grad[0][3];
-    T* backward_w_x_grad = is_bidirec ? parameter_lists_grad[0][0] : nullptr;
-    T* backward_w_h_grad = is_bidirec ? parameter_lists_grad[0][1] : nullptr;
-    T* backward_b_x_grad = is_bidirec ? parameter_lists_grad[0][2] : nullptr;
-    T* backward_b_h_grad = is_bidirec ? parameter_lists_grad[0][3] : nullptr;
+    T* backward_w_x_grad = is_bidirec ? parameter_lists_grad[0][4] : nullptr;
+    T* backward_w_h_grad = is_bidirec ? parameter_lists_grad[0][5] : nullptr;
+    T* backward_b_x_grad = is_bidirec ? parameter_lists_grad[0][6] : nullptr;
+    T* backward_b_h_grad = is_bidirec ? parameter_lists_grad[0][7] : nullptr;
     const T* i_f_g_o = reserve_data->data<T>();
     const T* c = i_f_g_o + seq_len * batch_size * hidden_size * 4;
 
