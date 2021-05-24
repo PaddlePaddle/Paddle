@@ -15,34 +15,25 @@ limitations under the License. */
 syntax = "proto2";
 package paddle.framework.proto;
 
-message InferOpProto {
+message InferOp {
 
-enum VarCat {
-  UNKNOWN = 0;
-  ALGOTITHM = 1;
-  RUNTIME = 2;
-}
-
-enum AttrCat {
-  UNKNOWN = 0;
-  ALGOTITHM = 1;
-  RUNTIME = 2;
-}
-
-message Var {
+message VarDef {
   required string name = 1;
-  optional VarType type = 2;
-  required VarCat cat = 3;
+  reserved 2;
 }
 
-message Attr {
+message AttrDef {
   required string name = 1;
   required AttrType type = 2;
-  required AttrCat cat = 3;
 }
 
-required string type = 1;
-repeated Var inputs = 2;
-repeated Var outputs = 3;
-repeated Attr attrs = 4;
+message Desc {
+  repeated VarDef inputs = 2;
+  repeated VarDef outputs = 3;
+  repeated AttrDef attrs = 4;
+}
+
+  required string type = 1;
+  required Desc def = 2;
+  optional Desc extra = 3;
 }
