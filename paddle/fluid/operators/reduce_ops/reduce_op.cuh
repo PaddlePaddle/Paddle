@@ -127,7 +127,7 @@ static inline paddle::framework::Array<T, ElementCount> from(
 enum ReduceType {
   kReduceAll = 0x00,
   kReduceLastDim = 0x01,
-  kReduceFirstDim = 0x02,
+  kReduceHigherDim = 0x02,  // ReduceFirstDim or reduceSecondDim
   kReduceAny = 0x03,
 };
 
@@ -155,7 +155,7 @@ struct ReduceConfig {
     if (should_reduce_again) {
       output_data = tmp.mutable_data<Ty>(
           framework::make_ddim(
-              {static_cast<int64_t>(left_num * reduce_num * sizeof(Ty))}),
+              {static_cast<int64_t>(left_num * grid.y * sizeof(Ty))}),
           place);
     } else {
       output_data = y_data;
@@ -249,7 +249,7 @@ struct ReduceConfig {
   }
 
   // get the reduceType
-  // eg: x_dim = [8, 6] reduce_dim = [0] --> reduceFirstDim
+  // eg: x_dim = [8, 6] reduce_dim = [0] --> ReduceHigherDim -->reduceFirstDim
   //     x_dim = [8, 6] reduce_dim = [1] --> reduceLastDim
   //     x_dim = [8] reduce_dim = [0] --> reduceAll
   //     x_dim = [8, 6, 4, 2] reduce_dim = [0, 2] --> reduceAny
@@ -262,9 +262,9 @@ struct ReduceConfig {
 
     } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
-
-    } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 0) {
-      reduce_type = static_cast<int>(ReduceType::kReduceFirstDim);
+    } else if (reduce_rank == 1) {
+      // ReduceFirstDim and reduceSecondDim
+      reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
 
     } else {
       reduce_type = static_cast<int>(ReduceType::kReduceAny);
@@ -272,7 +272,7 @@ struct ReduceConfig {
   }
 
   // set block and grid for launch kernel
-  // for reduceFirstDim: if block is enough -> splite reduce_num
+  // for ReduceHigherDim: if block is enough -> splite reduce_num
   //                     else init block(32, 1) grid(block_num, 1)
   // for others: block(block_num, 1) , grid(left_num, 1)
   void SetBlockDim() {
@@ -284,7 +284,15 @@ struct ReduceConfig {
     dim3 grid_dim(left_num, 1);
     blocking_size = reduce_num;
 
-    if (reduce_type == ReduceType::kReduceFirstDim) {
+    if (reduce_type == ReduceType::kReduceHigherDim) {
+      int last_dim_num = x_dim.back();
+      // update left_num
+      int grid_z = left_num / last_dim_num;
+      left_num = last_dim_num;
+
+      block_dim.z = 1;
+      grid_dim.z = grid_z;
+
       int device_id = platform::GetCurrentDeviceId();
       int max_mp = platform::GetCUDAMultiProcessors(device_id);
       int max_threads_per_mp =
@@ -293,6 +301,7 @@ struct ReduceConfig {
 
       // init
       int num_block = (max_threads / left_num);
+
 
       if (num_block > 1 && reduce_num >= 512) {
         blocking_size = detail::GetLastPow2(reduce_num / num_block);
@@ -367,7 +376,7 @@ __device__ __forceinline__ void ReduceLastDim(const Tx* x, Ty* y,
 }
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
-__device__ __forceinline__ void ReduceFirstDim(const Tx* x, Ty* y,
+__device__ __forceinline__ void ReduceHigherDim(const Tx* x, Ty* y,
                                                ReduceOp reducer,
                                                TransformOp transformer, Ty init,
                                                int reduce_num, int left_num,
@@ -382,31 +391,10 @@ __device__ __forceinline__ void ReduceFirstDim(const Tx* x, Ty* y,
     int loop = reduce_num - idy;
     loop = loop > block_size ? block_size : loop;
     for (int iy = 0; iy < loop; iy++) {
-      int id = (idy + iy) * left_num + idx;
+      int id = (idy + iy) * left_num + idx + blockIdx.z * reduce_num * left_num;
       reduce_var = reducer(reduce_var, static_cast<Ty>(x[id]));
     }
-    y[idx + blockIdx.y * left_num] = static_cast<Ty>(transformer(reduce_var));
-  }
-}
-
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
-__global__ void ReduceFirstDim_t(const Tx* x, Ty* y, ReduceOp reducer,
-                                 TransformOp transformer, Ty init,
-                                 int reduce_num, int left_num, int block_size) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int idy = blockIdx.y * block_size;
-
-  Ty temp = init;
-  Ty reduce_var = init;
-
-  if (idx < left_num) {
-    int loop = reduce_num - idy;
-    loop = loop > block_size ? block_size : loop;
-    for (int iy = 0; iy < loop; iy++) {
-      int id = (idy + iy) * left_num + idx;
-      reduce_var = reducer(reduce_var, static_cast<Ty>(x[id]));
-    }
-    y[idx + blockIdx.y * left_num] = static_cast<Ty>(transformer(reduce_var));
+    y[idx + blockIdx.y * left_num + blockIdx.z * gridDim.y * left_num] = static_cast<Ty>(transformer(reduce_var));
   }
 }
 
@@ -474,8 +462,8 @@ __device__ __forceinline__ void ReduceModule(
     ReduceLastDim<Tx, Ty, ReduceOp, TransformOp, BlockDim>(
         x, y, reducer, transformer, init, reduce_num);
 
-  } else if (ReduceType == ReduceType::kReduceFirstDim) {
-    ReduceFirstDim<Tx, Ty, ReduceOp, TransformOp>(
+  } else if (ReduceType == ReduceType::kReduceHigherDim) {
+    ReduceHigherDim<Tx, Ty, ReduceOp, TransformOp>(
         x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
 
   } else {
@@ -524,9 +512,26 @@ static void launchKernel(const Tx* x_data, Ty* y_data,
 
   switch (config.reduce_type) {
     CUB_REDUCE_TYPE_CASE(1);  // reduceLastDim
-    CUB_REDUCE_TYPE_CASE(2);  // reduceFirstDim
+    CUB_REDUCE_TYPE_CASE(2);  // ReduceHigherDim
     CUB_REDUCE_TYPE_CASE(3);  // reduceAny
   }
+
+  if (config.should_reduce_again) {
+    dim3 block(config.block.x, 1, 1);
+    dim3 grid(config.grid.x, 1,  config.grid.z);
+
+    ReduceKernelFunction<Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, 128,
+                         kRank, kReduceRank, ReduceType::kReduceHigherDim><<<
+        grid, block, 0, stream>>>(
+        config.output_data, y_data, reducer, detail::IdentityFunctor<Ty>(),
+        init, config.grid.y, config.left_num, config.grid.y,
+        detail::from<int, kRank>(config.x_strides),
+        detail::from<int, kReduceRank>(config.reduce_dim),
+        detail::from<int, kReduceRank>(config.reduce_strides),
+        detail::from<int, kRank - kReduceRank>(config.left_dim),
+        detail::from<int, kRank - kReduceRank>(config.left_strides));
+  }
+
 }
 
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
@@ -588,29 +593,15 @@ static void launchReduceKernel(const Tx* x_data, Ty* y_data,
     CUB_RANK_CASE(9, CUB_REDUCE_RANK_CASE(4); CUB_REDUCE_RANK_CASE(5););
   }
 
-  if (config.should_reduce_again) {
-    constexpr int kRank = 2;
-    constexpr int kReduceRank = 1;
-    ReduceKernelFunction<Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, 128,
-                         kRank, kReduceRank, ReduceType::kReduceFirstDim><<<
-        config.grid.x, config.block.x, 0, stream>>>(
-        config.output_data, y_data, reducer, detail::IdentityFunctor<Ty>(),
-        init, config.grid.y, config.left_num, config.grid.y,
-        detail::from<int, kRank>(config.x_strides),
-        detail::from<int, kReduceRank>(config.reduce_dim),
-        detail::from<int, kReduceRank>(config.reduce_strides),
-        detail::from<int, kRank - kReduceRank>(config.left_dim),
-        detail::from<int, kRank - kReduceRank>(config.left_strides));
-  }
 
 #undef CUB_REDUCE_RANK_CASE
 #undef CUB_RANK_CASE
 }
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
-void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
-                  std::vector<int> origin_reduce_dims, const Ty& init,
-                  const ReduceOp& reducer, const TransformOp& transformer,
-                  gpuStream_t stream) {
+void TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
+                      std::vector<int> origin_reduce_dims, const Ty& init,
+                      const ReduceOp& reducer, const TransformOp& transformer,
+                      gpuStream_t stream) {
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();
@@ -619,7 +610,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
   auto y_data = y->mutable_data<Ty>(x.place());
 
   framework::Tensor tmp;
-  // SetOutputData for reduceFirstDim when should_reduce_again is true,
+  // SetOutputData for ReduceHigherDim when should_reduce_again is true,
   //   temp_output should be stored temp_data in output_data space or stored in
   //   y_data;
   config.SetOutputData(y_data, x.place(), tmp);
