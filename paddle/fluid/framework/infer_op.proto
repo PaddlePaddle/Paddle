@@ -32,6 +32,7 @@ enum AttrCat {
 message Var {
   required string name = 1;
   optional VarType type = 2;
+  required VarCat cat = 3;
 }
 
 message Attr {
