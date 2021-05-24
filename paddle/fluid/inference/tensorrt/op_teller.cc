@@ -148,6 +148,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (desc.HasAttr("strides")) {
         const std::vector<int> strides =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+        // there is no issue if strides.size() less than 2
         if (strides.size() > 1) {
           for (size_t i = 0; i < strides.size(); i++) {
             if (strides[i] > 1) return false;
@@ -243,6 +244,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (desc.HasAttr("strides")) {
         const std::vector<int> strides =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+        // there is no issue if strides.size() less than 2
         if (strides.size() > 1) {
           for (size_t i = 0; i < strides.size(); i++) {
             if (strides[i] > 1) return false;
