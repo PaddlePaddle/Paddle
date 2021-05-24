@@ -42,10 +42,10 @@ if IS_WINDOWS and six.PY3:
     from unittest.mock import Mock
     _du_build_ext.get_export_symbols = Mock(return_value=None)
 
+CUDA_HOME = find_cuda_home()
 if core.is_compiled_with_rocm():
     ROCM_HOME = find_rocm_home()
-else:
-    CUDA_HOME = find_cuda_home()
+    CUDA_HOME = ROCM_HOME
 
 
 def setup(**attr):
