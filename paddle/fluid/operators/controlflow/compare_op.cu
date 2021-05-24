@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/compare_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -22,17 +21,53 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
+#define DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(Func, op) \
+  template <typename T, typename Enable = void>               \
+  struct Func##Functor {                                      \
+    using ELEMENT_TYPE = T;                                   \
+    inline HOSTDEVICE T operator()(const T* args) const {     \
+      return args[0] op args[1];                              \
+    }                                                         \
+  };
+
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaLessThan, <)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaLessEqual, <=)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaGreaterThan, >)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaGreaterEqual, >=)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaEqual, ==)
+DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaNotEqual, !=)
+#undef DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT
+
+template <typename T>
+struct CudaEqualFunctor<
+    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  using ELEMENT_TYPE = T;
+  HOSTDEVICE bool operator()(const T* args) const {
+    return fabs(static_cast<double>(args[0] - args[1])) < 1e-8;
+  }
+};
+
+template <typename T>
+struct CudaNotEqualFunctor<
+    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  using ELEMENT_TYPE = T;
+  HOSTDEVICE bool operator()(const T* args) const {
+    return fabs(static_cast<double>(args[0] - args[1])) > 1e-8;
+  }
+};
+
 template <typename DeviceContext, typename Functor>
 class CompareOpCudaKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
- public:
-  using T = typename Functor::ELEMENT_TYPE;
+  using InT = typename Functor::ELEMENT_TYPE;
+  using OutT = bool;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* z = ctx.Output<framework::LoDTensor>("Out");
-    z->mutable_data<T>(ctx.GetPlace());
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* z = ctx.Output<framework::Tensor>("Out");
+    z->mutable_data<OutT>(ctx.GetPlace());
+
     int axis = ctx.Attr<int>("axis");
     axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
     auto functor = Functor();
@@ -42,7 +77,7 @@ class CompareOpCudaKernel
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, bool>(
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
         cuda_ctx, ins, &outs, axis, functor);
   }
 };

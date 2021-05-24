@@ -268,6 +268,8 @@ struct BroadcastArgsWarpper {
     args[idx] = in_data[idx][offset];
   }
 
+  // To judge if the input tensor data could be directly vectorized load without
+  // divmod
   __device__ __forceinline__ void LoadVectorizedData(InT (*args)[VecSize],
                                                      int tid) {
 #pragma unroll(ET)
@@ -281,6 +283,8 @@ struct BroadcastArgsWarpper {
     }
   }
 
+  // To judge if the input tensor data could be directly scalarized load without
+  // divmod
   __device__ __forceinline__ void LoadScalarizedData(InT args[], int tid) {
 #pragma unroll(ET)
     for (int j = 0; j < ET; ++j) {
@@ -343,7 +347,6 @@ template <typename InT, typename OutT, typename BroadcastArgsWarpper,
 __global__ void ElementwiseBroadcastKernel(
     BroadcastArgsWarpper broadcast_warpper, int main_tid, int tail_tid) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
   // Vectorized calculation of major data whose length is the max multipler of
   // VecSize,
   // eg: Calcualting the front 1024-length data in total 1027 data once VecSize
@@ -370,6 +373,11 @@ void LaunchBroadcastKernelForDifferentDimSize(
   int numel = out->numel();
   const int threads = 256;
   int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
+
+  // main_tid : To judege the quantity of thread needed in vectorized
+  // calculation.
+  // tail_tid : To judege the quantity of thread needed in scalarized
+  // calculation.
   int main_tid = numel / VecSize;
   int tail_tid = numel % VecSize;
   int vec_len = main_tid * VecSize;
@@ -501,7 +509,7 @@ void LaunchBroadcastElementwiseCudaKernel(
   }
 }
 
-template <ElementwiseType ET, typename InT, typename OutType, typename Functor>
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel(
     const platform::CUDADeviceContext &cuda_ctx,
     const std::vector<const framework::Tensor *> &ins,
@@ -512,12 +520,11 @@ void LaunchElementwiseCudaKernel(
   }
 
   if (no_broadcast_flag) {
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutType>(
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
         cuda_ctx, ins, outs, func);
   } else {
-    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, InT,
-                                         OutType>(cuda_ctx, ins, outs, axis,
-                                                  func);
+    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
+        cuda_ctx, ins, outs, axis, func);
   }
 }
 
