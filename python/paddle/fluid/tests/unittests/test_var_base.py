@@ -248,6 +248,21 @@ class TestVarBase(unittest.TestCase):
                 a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
                 self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
 
+    def test_to_tensor_with_lodtensor(self):
+        if core.is_compiled_with_cuda():
+            a_np = np.random.rand(1024, 1024)
+            with paddle.fluid.dygraph.guard(core.CPUPlace()):
+                lod_tensor = core.LoDTensor()
+                lod_tensor.set(a_np, core.CPUPlace())
+                a = paddle.to_tensor(lod_tensor)
+                self.assertTrue(np.array_equal(a_np, a.numpy()))
+
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                lod_tensor = core.LoDTensor()
+                lod_tensor.set(a_np, core.CUDAPlace(0))
+                a = paddle.to_tensor(lod_tensor)
+                self.assertTrue(np.array_equal(a_np, a.numpy()))
+
     def test_to_variable(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array, name="abc")
