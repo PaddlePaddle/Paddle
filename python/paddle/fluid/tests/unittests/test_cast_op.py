@@ -86,7 +86,6 @@ class TestCastOp4(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        # only test on CUDAPlace
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
@@ -107,7 +106,6 @@ class TestCastOp5(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        # only test on CUDAPlace
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
