@@ -1,4 +1,5 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +22,7 @@ import pandas as pd
 from multiprocessing import Process, Lock
 """ Some terms to clarify the code
     in most case, one or more paremeters may be set as input args for a class or a function
-    in form of single variable or k-v dict
+    in form of single variable or k-v dict 
 
     1.  trainerId
     2.  gpuId
@@ -97,6 +98,7 @@ class FileReader(object):
         self._logger.info(self._gpuPerTrainer)
         self._logger.info("minTimeStamp:")
         self._logger.info(self._minTimeStamp)
+
     def _checkArgsKey(self, key, type):
         if not self._args.has_key(key):
             raise KeyError("args should has key [%s]!" % key)
@@ -106,7 +108,7 @@ class FileReader(object):
                 "Invalid type of key [%s] in args dict, it should be a %s!" %
                 (key, type))
 
-        exec("self._%s = self._args[\"%s\"]" % (key, key))
+        exec ("self._%s = self._args[\"%s\"]" % (key, key))
 
     def _align_ts(self, ts):
         return ts - self._minTimeStamp
@@ -222,6 +224,7 @@ class FileReader(object):
 
         elif self._organizeForm == FILEORGANIZEFORM_BYTRAINER:
             return len(self._fileList) * self._gpuPerTrainer
+
     def getTrainerNum(self):
         if self._organizeForm == FILEORGANIZEFORM_BYRANK:
             return len(self._fileList) / self._gpuPerTrainer
@@ -310,6 +313,7 @@ class FileReader(object):
         if not os.path.exists(tmpPath):
             os.makedirs(tmpPath)
         self._lock.release()
+
         if pretty:
             jsObj = json.dumps(data, indent=4, separators=(',', ': '))
         else:
@@ -347,6 +351,7 @@ def getLogger():
     logger.addHandler(fh)
     return logger
 
+
 def test_FileReader(args):
     try:
         testReader = FileReader(None, args)
@@ -354,6 +359,7 @@ def test_FileReader(args):
         print(Argument)
     else:
         testReader.printArgs()
+
 
 if __name__ == "__main__":
     args = 0

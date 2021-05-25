@@ -33,6 +33,7 @@ from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
 from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
 from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
 
+
 class profileFileReader(FileReader):
     def _parseSingleFile(self, profile):
         with open(profile, 'rb') as f:
@@ -473,6 +474,7 @@ def test_profileFileReader():
     fileObject = open('jsonFile.json', 'w')
     fileObject.write(jsObj)
     fileObject.close()
+
 
 if __name__ == "__main__":
     test_profileFileReader()
