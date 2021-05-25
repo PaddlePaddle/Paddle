@@ -469,10 +469,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         ###########################   -- END --    ###########################
 
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
-        # Note(Aurelius84): This marco will impact memory layout of `Tensor`.
-        # We align it automatically with pre-installed Paddle.
-        if core.is_compiled_with_mkldnn():
-            add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_MKLDNN'])
 
         if use_cuda:
             extra_link_args.append('-lcudart')

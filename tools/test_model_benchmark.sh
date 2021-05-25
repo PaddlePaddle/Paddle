@@ -36,7 +36,10 @@ function check_whl {
     diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
     if [ ${diff_whl} -eq 0 ];then
         echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
+        echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
         exit 0
+    else
+        echo "ipipe_log_param_isSkipTest_model_benchmark: 0"
     fi
 }
 

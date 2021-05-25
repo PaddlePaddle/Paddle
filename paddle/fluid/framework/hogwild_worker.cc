@@ -39,9 +39,6 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
   for (int i = 0; i < param_.stat_var_names_size(); ++i) {
     stat_var_name_map_[param_.stat_var_names(i)] = 1;
   }
-#ifdef PADDLE_WITH_HETERPS
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
-#endif
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {

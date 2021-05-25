@@ -96,11 +96,11 @@ REGISTER_OPERATOR(imag, ops::ImagOp, ops::ImagOpMaker,
 REGISTER_OPERATOR(imag_grad, ops::ImagGradOp);
 
 REGISTER_OP_CPU_KERNEL(imag, ops::ImagKernel<paddle::platform::CPUDeviceContext,
-                                             paddle::platform::complex64>,
+                                             paddle::platform::complex<float>>,
                        ops::ImagKernel<paddle::platform::CPUDeviceContext,
-                                       paddle::platform::complex128>);
+                                       paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(imag_grad,
                        ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex64>,
+                                           paddle::platform::complex<float>>,
                        ops::ImagGradKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::complex128>);
+                                           paddle::platform::complex<double>>);

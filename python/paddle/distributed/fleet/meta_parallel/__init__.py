@@ -20,7 +20,7 @@ from .parallel_layers import PipelineLayer  # noqa: F401
 from .parallel_layers import RNGStatesTracker  # noqa: F401
 from .parallel_layers import model_parallel_random_seed  # noqa: F401
 from .parallel_layers import get_rng_state_tracker  # noqa: F401
-from .model_parallel import ModelParallel  # noqa: F401
+from .tensor_parallel import TensorParallel  # noqa: F401
 from .pipeline_parallel import PipelineParallel  # noqa: F401
 
 __all__ = []
