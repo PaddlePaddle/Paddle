@@ -447,6 +447,8 @@ STATIC_MODE_TESTING_LIST = [
     'test_sample_logits_op',
     'test_save_model_without_var',
     'test_scale_op',
+    'test_scale_mkldnn_op',
+    'test_scale_bf16_mkldnn_op',
     'test_scaled_dot_product_attention',
     'test_scatter_nd_op',
     'test_seed_op',
