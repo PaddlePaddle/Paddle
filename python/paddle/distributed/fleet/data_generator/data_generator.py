@@ -15,6 +15,8 @@
 import os
 import sys
 
+__all__ = []
+
 
 class DataGenerator(object):
     """

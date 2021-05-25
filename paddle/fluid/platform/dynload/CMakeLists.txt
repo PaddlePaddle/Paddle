@@ -2,6 +2,10 @@ cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 
 list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc cusolver.cc nvtx.cc)
 
+if (NOT WITH_NV_JETSON)
+    list(APPEND CUDA_SRCS nvjpeg.cc)
+endif()
+
 if (WITH_ROCM)
   list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc)
 endif()
@@ -9,7 +13,7 @@ endif()
 # There is no macOS version of NCCL.
 # Disable nvrtc and cuda_driver api on MacOS and Windows, and only do a early test on Linux.
 if (NOT APPLE AND NOT WIN32)
-  list(APPEND CUDA_SRCS nvrtc.cc cuda_driver.cc)
+    list(APPEND CUDA_SRCS nvrtc.cc cuda_driver.cc)
   if (WITH_NCCL)
     list(APPEND CUDA_SRCS nccl.cc)
   endif()
@@ -32,6 +36,8 @@ endif(CUPTI_FOUND)
 if(WITH_ROCM)
   hip_library(dynload_cuda SRCS ${HIP_SRCS} DEPS dynamic_loader)
   cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
+elseif (WITH_ASCEND_CL)
+  cc_library(dynload_warpctc SRCS warpctc.cc hccl.cc DEPS dynamic_loader warpctc)
 else()
   nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
   cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)

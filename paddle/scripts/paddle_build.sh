@@ -145,6 +145,18 @@ function cmake_base() {
             else
                 exit 1
             fi
+        elif [ "$1" == "cp39-cp39" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib"
+                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$1" != "" ]; then
@@ -205,6 +217,13 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp39-cp39" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.9.0/bin/python3.9
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.9.0/include/python3.9
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.9.0/lib/libpython3.so"
+                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
            elif [ "$1" == "conda-python3.7" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
@@ -227,8 +246,13 @@ function cmake_base() {
     fi
 
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
-    grpc_flag="OFF"
     gloo_flag=${distibuted_flag}
+
+    if [ "$CMD" != "assert_file_approvals" ];then
+      python -m pip install distro
+      python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
+    fi
 
     cat <<EOF
     ========================================
@@ -238,7 +262,6 @@ function cmake_base() {
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
-        -DWITH_RCCL=${WITH_RCCL:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -250,13 +273,11 @@ function cmake_base() {
         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_GRPC=${grpc_flag}
         -DWITH_PSCORE=${distibuted_flag}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
@@ -264,6 +285,7 @@ function cmake_base() {
         -DLITE_GIT_TAG=release/v2.8
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_STRIP=${WITH_STRIP:-ON}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -276,7 +298,6 @@ EOF
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
-        -DWITH_RCCL=${WITH_RCCL:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -294,7 +315,6 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_GRPC=${grpc_flag} \
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=release/v2.8 \
@@ -302,6 +322,7 @@ EOF
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -523,8 +544,7 @@ function run_brpc_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [[ ${WITH_TESTING:-ON} == "ON" \
-        && ${WITH_DISTRIBUTE:-OFF} == "ON" \
-        && ${WITH_GRPC:-OFF} == "OFF" ]] ; then
+        && ${WITH_DISTRIBUTE:-OFF} == "ON" ]] ; then
     cat <<EOF
     ========================================
     Running brpc unit tests ...
@@ -587,6 +607,8 @@ EOF
             pip3.7 uninstall -y paddlepaddle
         elif [ "$1" == "cp38-cp38" ]; then
             pip3.8 uninstall -y paddlepaddle
+        elif [ "$1" == "cp39-cp39" ]; then
+            pip3.9 uninstall -y paddlepaddle
         fi
         set -ex
 
@@ -602,6 +624,8 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp38-cp38" ]; then
             pip3.8 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        elif [ "$1" == "cp39-cp39" ]; then
+            pip3.9 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
@@ -609,7 +633,7 @@ EOF
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
-            nightly_label=""
+            nightly_label="(NIGHTLY_LABEL)"
         else
             nightly_label="(RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
             echo "========================================="
@@ -687,28 +711,23 @@ EOF
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         paddle version
         # Recovery proxy to avoid failure in later steps
-        set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
         if [ "$mactest_error" != 0 ];then
             show_ut_retry_result
         fi
-        set -x
     fi
 }
 
 function get_precision_ut_mac() {
     on_precision=0
-    set -x
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precison_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then
-            set +x
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
-            set -x
         fi
     fi
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
@@ -805,7 +824,7 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38" ]; then
+    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38" ] || [ "$1" == "cp39-cp39" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
@@ -850,7 +869,7 @@ function check_approvals_of_unittest() {
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
-                exit 1
+                exit 6
             fi
         fi
     fi
@@ -1243,11 +1262,13 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests_high_parallel" 1 8        # run cases the most each time with single GPU
+        card_test "$single_card_tests_high_parallel" 1 6        # run cases the most each time with single GPU
         card_test "$single_card_tests_two_parallel" 1 2         # run cases 2 job each time with single GPU
         card_test "$single_card_tests_non_parallel" 1           # run cases 1 job each time with single GPU
+        
         card_test "$multiple_card_tests_two_parallel" 2 2       # run cases 2 job each time with two GPUs
         card_test "$multiple_card_tests_non_parallel" 2         # run cases 1 job each time with two GPUs
+        
         card_test "$exclusive_tests_two_parallel" -1 2          # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         card_test "$exclusive_tests_non_parallel" -1            # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         collect_failed_tests
@@ -1396,6 +1417,175 @@ EOF
     fi
 }
 
+function insert_pile_to_h_cu_diff {
+    # TODO get develop h/cu md5
+    cd ${PADDLE_ROOT}
+    find ${PADDLE_ROOT} -name '*.h'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
+    find ${PADDLE_ROOT} -name '*.cu'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'get_h_file_md5' ${PADDLE_ROOT}
+    
+    # TODO insert pile to diff h/cu file 
+
+    #insert pile to full h/cu file 
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'insert_pile_to_h_file' ${PADDLE_ROOT}
+}
+
+function precise_card_test_single {
+    set +e
+    set +x
+    testcases=$1
+    num=$2
+    for case in $(echo $testcases | tr "$|^" "\n")
+    do
+        cd ${PADDLE_ROOT}/build
+        precise_card_test "^${case}$" $num
+        # c++ 
+        if [ -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
+            rm -rf ${PADDLE_ROOT}/build/ut_map/$case
+        fi
+        set -x
+        mkdir ${PADDLE_ROOT}/build/ut_map/$case
+        find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
+        
+        # python
+        ls python-coverage.data.*
+        if [[ $? == 0 ]]
+        then
+            mkdir -p ${PADDLE_ROOT}/build/pytest/$case
+            mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
+        fi
+        find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
+    done
+}
+
+function precise_card_test() {
+    set -m
+    testcases=$1
+    if (( $# > 1 )); then
+        cardnumber=$2
+        cuda_list="0"
+        if [ $cardnumber -eq 2 ]; then
+            cuda_list=${CUDA_VISIBLE_DEVICES}
+        else
+            cuda_list="0"
+        fi
+    else
+        cardnumber=2
+        cuda_list=${CUDA_VISIBLE_DEVICES}
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    echo "****************************************************************"
+    echo "***Running ut: $testcases***"
+    echo "****************************************************************"
+    
+    tmpfile=$tmp_dir/$testcases".log"
+    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    set +m
+}
+
+function get_precise_tests_map_file {
+    cd ${PADDLE_ROOT}/build
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    ut_total_startTime_s=`date +%s`
+    EXIT_CODE=0;
+    test_cases=$(ctest -N -V) # get all test cases
+    single_card_tests='' # all cases list which would take one graph card
+    exclusive_tests=''        # cases list which would be run exclusively
+    multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+    is_exclusive=''           # indicate whether the case is exclusive type
+    is_multicard=''           # indicate whether the case is multiple GPUs type
+set +x
+
+    while read -r line; do
+        if [[ "$line" == "" ]]; then
+            continue
+        fi
+            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            if [[ "$matchstr" == "" ]]; then
+                # Any test case with LABELS property would be parse here
+                # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+            if [[ "$is_multicard" == "" ]]; then
+                # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
+                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+            fi
+
+            if [[ "$is_exclusive" != "" ]]; then
+                if [[ "$exclusive_tests" == "" ]]; then
+                    exclusive_tests="^$testcase$"
+                else
+                    exclusive_tests="$exclusive_tests|^$testcase$"
+                fi
+            elif [[ "$is_multicard" != "" ]]; then
+                if [[ "$multiple_card_tests" == "" ]]; then
+                    multiple_card_tests="^$testcase$"
+                else
+                    multiple_card_tests="$multiple_card_tests|^$testcase$"
+                fi
+            else
+                if [[ "${single_card_tests}" -gt 3000 ]];then
+                    if [[ "$single_card_tests_1" == "" ]]; then
+                        single_card_tests_1="^$testcase$"
+                    else
+                        single_card_tests_1="$single_card_tests_1|^$testcase$"
+                    fi
+                    continue
+                fi
+                if [[ "$single_card_tests" == "" ]]; then
+                    single_card_tests="^$testcase$"
+                else
+                    single_card_tests="$single_card_tests|^$testcase$"
+                fi
+            fi
+            is_exclusive=''
+            is_multicard=''
+            is_nightly=''
+            matchstr=''
+            testcase=''
+    done <<< "$test_cases";
+
+set -x
+    mkdir -p ${PADDLE_ROOT}/build/ut_map
+    mkdir -p ${PADDLE_ROOT}/build/pytest
+
+    precise_card_test_single "$single_card_tests" 1
+    precise_card_test_single "$single_card_tests_1" 1
+    precise_card_test_single "$multiple_card_tests" 2
+    precise_card_test_single "$exclusive_tests"
+
+    python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
+    
+    if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
+        rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
+        precise_card_test_single "$rerun_tests"
+    fi
+    wait;
+
+    #generate python coverage and generate python file to tests_map_file
+    python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
+
+    #analy h/cu to Map file
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
+
+    #generate ut map
+    python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
+    wait;
+}
+
+
+
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -1433,10 +1623,11 @@ set -x
 }
 
 function parallel_test() {
-    ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    ut_total_startTime_s=`date +%s`
     if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     else
@@ -1542,12 +1733,14 @@ EOF
     ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp38-cp38-linux_x86_64.whl
+    ref_paddle39=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp39-cp39-linux_x86_64.whl
 
     ref_paddle2_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp27-cp27mu-linux_x86_64.whl
     ref_paddle35_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp35-cp35m-linux_x86_64.whl
     ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp38-cp38-linux_x86_64.whl
+    ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp39-cp39-linux_x86_64.whl
 
     if [[ ${PADDLE_BRANCH} != "0.0.0" && ${WITH_MKL} == "ON" && ${WITH_GPU} == "ON" ]]; then
         ref_paddle2=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp27-cp27mu-linux_x86_64.whl
@@ -1555,11 +1748,13 @@ EOF
         ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
         ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
         ref_paddle38=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp38-cp38-linux_x86_64.whl
+        ref_paddle39=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp39-cp39-linux_x86_64.whl
         ref_paddle2_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp27-cp27mu-linux_x86_64.whl
         ref_paddle35_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp35-cp35m-linux_x86_64.whl
         ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
         ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
         ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp38-cp38-linux_x86_64.whl
+        ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp39-cp39-linux_x86_64.whl
     fi
 
     #ref_paddle2_mv1=""
@@ -1679,6 +1874,22 @@ EOF
         wget ${ref_web}/${ref_paddle38} && pip3.8 install ${ref_paddle38_whl}; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f ${ref_paddle38} && \
+        ldconfig
+EOF
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    # run paddle version to install python packages first
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+        libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+        xz-utils tk-dev libffi-dev liblzma-dev
+    RUN wget -q https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz && \
+        tar -xzf Python-3.9.0.tgz && cd Python-3.9.0 && \
+        CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+        make -j8 > /dev/null && make altinstall > /dev/null && cd ../ && rm Python-3.9.0.tgz
+    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && ldconfig && \
+        wget ${ref_web}/${ref_paddle39} && pip3.9 install ${ref_paddle39_whl}; apt-get install -f -y && \
+        apt-get clean -y && \
+        rm -f ${ref_paddle39} && \
         ldconfig
 EOF
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -1830,6 +2041,10 @@ function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
 }
 
+function test_model_benchmark() {
+    bash ${PADDLE_ROOT}/tools/test_model_benchmark.sh
+}
+
 function summary_check_problems() {
     set +x
     local check_style_code=$1
@@ -1864,10 +2079,6 @@ function main() {
     local CMD=$1 
     local parallel_number=$2
     init
-    if [ "$CMD" != "assert_file_approvals" ];then
-      python ${PADDLE_ROOT}/tools/summary_env.py
-      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
-    fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -1943,6 +2154,12 @@ function main() {
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
+      ci_preciseTest)
+        insert_pile_to_h_cu_diff 
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        enable_unused_var_check
+        get_precise_tests_map_file
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
@@ -2023,6 +2240,9 @@ function main() {
         ;;
       test_op_benchmark)
         test_op_benchmark
+        ;;
+      test_model_benchmark)
+        test_model_benchmark
         ;;
       *)
         print_usage

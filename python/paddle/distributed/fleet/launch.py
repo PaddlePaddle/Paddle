@@ -75,6 +75,8 @@ from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
 import paddle.distributed.fleet.ascend_utils as ascend_utils
 
+__all__ = []
+
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
@@ -112,17 +114,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     base_group.add_argument(
         "--run_mode",
         type=str,
-        default="collective",
-        help="run mode of job, can be:collective/ps/ps-heter")
-
-    base_group.add_argument(
-        "--ascend_npus",
-        type=str,
         default=None,
-        help="It's for ascend npu training."
-        "For example:"
-        "--ascend_npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
-    )
+        help="run mode of job, can be:collective/ps/ps-heter")
 
     if fluid.core.is_compiled_with_cuda():
         base_group.add_argument(
@@ -243,7 +236,6 @@ def launch_collective(args):
         cluster, pod = ascend_utils.get_cloud_cluster(
             rank_table_file=os.getenv("RANK_TABLE_FILE", None),
             device_mode=device_mode,
-            devices_per_proc=devices_per_proc,
             start_port=start_port)
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
@@ -335,8 +327,8 @@ def which_distributed_mode(args):
 
     if fluid.core.is_compiled_with_cuda():
         accelerators = fluid.core.get_cuda_device_count()
-    elif fluid.core.is_compiled_with_ascend():
-        accelerators = fluid.core.NPUDevice.get_device_count()
+    elif fluid.core.is_compiled_with_npu():
+        accelerators = fluid.core.get_npu_device_count()
     elif fluid.core.is_compiled_with_xpu():
         accelerators = fluid.core.get_xpu_device_count()
     else:

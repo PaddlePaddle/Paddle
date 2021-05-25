@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle
+from paddle.nn.functional import interpolate
 
 
 def nearest_neighbor_interp_np(X,
@@ -524,6 +525,28 @@ class TestNearestAPI(unittest.TestCase):
             np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
         for i in range(len(results) - 1):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
+
+
+class TestNearestInterpOpAPI_dy(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("int64")
+            scale_np = np.array([2, 2]).astype("int64")
+            input_x = paddle.to_tensor(input_data)
+            scale = paddle.to_tensor(scale_np)
+            expect_res = nearest_neighbor_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False)
+            out = interpolate(
+                x=input_x,
+                scale_factor=scale,
+                mode="nearest",
+                align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
 
 
 class TestNearestInterpException(unittest.TestCase):

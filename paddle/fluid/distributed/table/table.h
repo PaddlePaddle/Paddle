@@ -36,7 +36,7 @@ class Table {
   Table() {}
   virtual ~Table() {}
   virtual int32_t initialize(const TableParameter &config,
-                             const FsClientParameter &fs_config) final;
+                             const FsClientParameter &fs_config);
 
   virtual int32_t pull_dense(float *values, size_t num) = 0;
   virtual int32_t push_dense(const float *values, size_t num) = 0;
@@ -48,10 +48,19 @@ class Table {
     return 0;
   }
 
+  virtual int32_t pull_sparse_ptr(char **pull_values, const uint64_t *keys,
+                                  size_t num) {
+    VLOG(0) << "NOT IMPLEMENT";
+    return 0;
+  }
   virtual int32_t pull_sparse(float *values,
                               const PullSparseValue &pull_value) = 0;
   virtual int32_t push_sparse(const uint64_t *keys, const float *values,
                               size_t num) = 0;
+  virtual int32_t push_sparse(const uint64_t *keys, const float **values,
+                              size_t num) {
+    return 0;
+  }
   virtual int32_t push_sparse_param(const uint64_t *keys, const float *values,
                                     size_t num) {
     return 0;
@@ -101,7 +110,7 @@ class Table {
   virtual int32_t save(const std::string &path,
                        const std::string &converter) = 0;
 
-  virtual int32_t set_shard(size_t shard_idx, size_t shard_num) final {
+  virtual int32_t set_shard(size_t shard_idx, size_t shard_num) {
     _shard_idx = shard_idx;
     _shard_num = shard_num;
     return initialize_shard();
@@ -116,7 +125,7 @@ class Table {
 
  protected:
   virtual int32_t initialize() = 0;
-  virtual int32_t initialize_accessor() final;
+  virtual int32_t initialize_accessor();
   virtual int32_t initialize_shard() = 0;
   virtual std::string table_dir(const std::string &model_dir) {
     return paddle::string::format_string("%s/%03d/", model_dir.c_str(),

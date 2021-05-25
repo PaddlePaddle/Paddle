@@ -28,10 +28,12 @@ def _create_regularization_of_grad(param, grad, regularization=None):
     Function helper of append_regularization_ops.
     """
     # If no gradient or no regularization is specified,  then we don't need to do anything
-    if grad is None or (param.regularizer is None and regularization is None):
+    if grad is None or ((not hasattr(param, 'regularizer') or (
+            hasattr(param, 'regularizer') and param.regularizer is None)) and
+                        regularization is None):
         return grad
     regularization_term = None
-    if param.regularizer is not None:
+    if hasattr(param, 'regularizer') and param.regularizer is not None:
         # Add variable for regularization term in grad block
         regularization_term = param.regularizer(param, grad, grad.block)
     elif regularization is not None:
@@ -213,7 +215,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         Returns:
             new variable for weight decay
         """
-        assert isinstance(param, framework.Parameter)
+        assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
         inputs = {"X": [param]}
@@ -320,23 +322,25 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         Returns:
             new variable for weight decay
         """
-        assert isinstance(param, framework.Parameter)
+        assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
         if framework.in_dygraph_mode():
+            sign = block.create_var(dtype=param.dtype, shape=param.shape)
             decay = block.create_var(dtype=param.dtype, shape=param.shape)
         else:
+            sign = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         # Append sign op
-        block.append_op(
-            type='sign', inputs={"X": param}, outputs={"Out": decay})
+        block.append_op(type='sign', inputs={"X": param}, outputs={"Out": sign})
 
         # Append scale op to the output of sign op
         block.append_op(
             type='scale',
-            inputs={"X": decay},
+            inputs={"X": sign},
             outputs={"Out": decay},
             attrs={"scale": self._regularization_coeff})
 

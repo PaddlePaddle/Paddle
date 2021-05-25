@@ -18,6 +18,8 @@ import paddle
 from collections import OrderedDict
 from paddle.static import Program, program_guard, Variable
 
+__all__ = []
+
 
 class VarWrapper(object):
     def __init__(self, var, graph):
