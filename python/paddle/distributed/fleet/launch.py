@@ -69,6 +69,7 @@ from argparse import ArgumentParser, REMAINDER
 import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet import launch_utils
+import signal
 
 #from paddle.distributed.fleet.launch_utils import DistributeMode, DeviceMode, get_logger, get_cluster
 from paddle.distributed.fleet.launch_utils import *
@@ -76,6 +77,9 @@ import paddle.distributed.fleet.cloud_utils as cloud_utils
 import paddle.distributed.fleet.ascend_utils as ascend_utils
 
 from paddle.distributed.fleet.elastic import ElasticManager
+from paddle.distributed.fleet.elastic import LauncherInterface
+from paddle.distributed.fleet.elastic import ElasticStatus
+from paddle.distributed.fleet.elastic import ELASTIC_EXIT_CODE
 
 __all__ = []
 
@@ -180,7 +184,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     # parameter elastic mode
     elastic_group = parser.add_argument_group("Elastic Parameters")
     elastic_group.add_argument("--elastic_server", type=str, help="")
-    elastic_group.add_argument("--job_name", type=str, help="")
+    elastic_group.add_argument("--job_id", type=str, help="")
     elastic_group.add_argument("--np", type=int, help="")
     elastic_group.add_argument("--scale", type=int, default=0, help="")
     elastic_group.add_argument("--port", type=int, help="")
@@ -229,66 +233,13 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
                        devices_per_proc)
 
 
-class LauncherInterface(object):
-    def __init__(self, args):
-        self.args = args
-        self.procs = []
-
-    def _terminate_procs(self):
-        for p in self.procs:
-            if p.proc.poll() is None:
-                p.proc.terminate()
-                if p.log_fn:
-                    p.log_fn.close()
-                logger.debug("terminate process id:{}".format(p.proc.pid))
-
-        for step in range(0, 50):
-            alive = False
-            for p in self.procs:
-                if p.proc.poll() is None:  # not termniate
-                    os.kill(p.proc.pid, signal.SIGKILL)
-                    alive = True
-
-            if not alive:
-                logger.info("terminate all the procs")
-                return True
-
-            time.sleep(1)
-        return False
-
-    def _check_procs(self):
-        alive = False
-        result = None
-        for p in self.procs:
-            ret = p.proc.poll()
-            if ret is None:
-                alive = True
-            elif ret != 0:
-                logger.error("ERROR rank {} error with code {}".format(p.rank,
-                                                                       ret))
-                result = ret
-        if not alive and result is None:
-            return 0
-        else:
-            return result
-
-    def launch(self):
-        raise NotImplementedError
-
-    def stop(self):
-        raise NotImplementedError
-
-    def watch(self):
-        raise NotImplementedError
-
-
 class CollectiveLauncher(LauncherInterface):
     def __init__(self, args):
         self.args = args
         self.procs = []
 
     def launch(self):
-        print("collective lauchner launch ...")
+        logger.info("collective lauchner launch ...")
         args = self.args
         # parse arguments, used for cloud-single-machine and local
         (device_mode,
@@ -336,16 +287,16 @@ class CollectiveLauncher(LauncherInterface):
             envs=global_envs)
 
         for idx, proc in enumerate(self.procs):
-            print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+            logger.info("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
 
     def stop(self):
-        print("collective lauchner stop ...")
+        logger.info("collective lauchner stop ...")
         self._terminate_procs()
         if os.path.exists(self.gloo_rendezvous_dir):
             shutil.rmtree(self.gloo_rendezvous_dir)
 
     def watch(self):
-        print("collective lauchner watch ...")
+        logger.debug("collective lauchner watch ...")
         for p in self.procs:
             if p.log_fn and p.local_rank == 0:
                 pull_worker_log(p)
@@ -444,61 +395,39 @@ def launch():
     logger = get_logger()
     _print_arguments(args)
 
-    print('launch host', args.host)
-    elastic_server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
-    job_name = args.job_name or os.getenv('PADDLE_JOB_NAME')
-    np = args.np or int(os.getenv('PADDLE_NP', 0))
-    host = args.host or os.getenv('POD_IP')
-    scale = args.scale or int(os.getenv('PADDLE_SCALE', 0))
-    force = args.force or os.getenv('PADDLE_FORCE')
+    distribute_mode = which_distributed_mode(args)
+    # TODO(kuizhiqing) support ps later
+    if not distribute_mode == DistributeMode.COLLECTIVE:
+        launch_ps(args, distribute_mode)
+        return
 
-    elastic = ElasticManager(
-        elastic_server,
-        job_name,
-        np,
-        host,
-        scale=scale,
-        force=force, )
+    elastic = ElasticManager(args)
+
     signal.signal(signal.SIGTERM, elastic.signal_handler)
     signal.signal(signal.SIGABRT, elastic.signal_handler)
     signal.signal(signal.SIGINT, elastic.signal_handler)
 
-    while elastic.ready():
+    while True:
 
-        if elastic.enable:
-            args.ips = ','.join(elastic.hosts)
-            os.environ['PADDLE_TRAINERS'] = ','.join(elastic.hosts)
+        # wait for all nodes ready to run
+        elastic.wait()
 
-        distribute_mode = which_distributed_mode(args)
-        if distribute_mode == DistributeMode.COLLECTIVE:
-            launcher = CollectiveLauncher(args)
-        else:
-            # TODO(kuizhiqing) ps elastic support later
-            launch_ps(args, distribute_mode)
-            return
+        # run self with specified launcher
+        elastic.run(CollectiveLauncher)
 
-        launcher.launch()
+        # keep wathing the health status of self and being notified for other's failure
+        ret = elastic.watch()
+        if ret == ElasticStatus.COMPLETED:
+            break
+        if ret == ElasticStatus.HOLD:
+            continue
+        if ret == ElasticStatus.EXIT:
+            break
+        if ret == ElasticStatus.ERROR:
+            sys.exit(3)
+        if ret == ElasticStatus.RESTART:
+            sys.exit(ELASTIC_EXIT_CODE)
 
-        while True:
-
-            ret = launcher.watch()
-            print("launch watch ret", ret)
-
-            if ret is not None:
-                print('job exit', ret)
-                # process is completed if ret >= 0 or error else
-                completed = True if ret == 0 else False
-                launcher.stop()
-                elastic.exit(completed=completed)
-                sys.exit(ret)
-
-            if not elastic.health():
-                launcher.stop()
-                break
-
-            time.sleep(3)
-
-    launcher.stop()
     sys.exit(0)
 
 
