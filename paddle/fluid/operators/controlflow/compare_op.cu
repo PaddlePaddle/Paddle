@@ -68,9 +68,10 @@ class CompareOpCudaKernel
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<OutT>(ctx.GetPlace());
+
+    auto functor = Functor();
     int axis = ctx.Attr<int>("axis");
     axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
-    auto functor = Functor();
 
     std::vector<const framework::Tensor*> ins = {x, y};
     std::vector<framework::Tensor*> outs = {z};
