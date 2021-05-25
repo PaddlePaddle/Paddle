@@ -39,9 +39,10 @@ namespace details {
 void AppendSkipDeletionVars(const std::vector<std::string>& append_vars,
                             std::vector<std::string>* all_vars);
 
-std::vector<std::string> ParseSafeEagerDeletionSkipVars(
+void ParseSafeEagerDeletionSkipVars(
     const ProgramDesc& program, int64_t forward_op_nums,
-    const std::vector<std::string>& output_var_names);
+    const std::vector<std::string>& output_var_names,
+    std::vector<std::string>* skip_eager_delete_vars);
 
 }  // namespace details
 class ExecutorInfoCache {

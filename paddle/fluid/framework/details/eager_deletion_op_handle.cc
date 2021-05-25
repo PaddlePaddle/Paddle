@@ -120,7 +120,7 @@ void EagerDeletionOpHandle::RunImpl() {
     auto *var_info = var_infos_[i];
     if (var_info->IsSkippedAllMemoryOptimization() ||
         !var_info->DecreaseRefCnt()) {
-      VLOG(1) << "skip memory optimization with var: " << var_info->Name();
+      VLOG(4) << "skip memory optimization with var: " << var_info->Name();
       continue;
     }
 

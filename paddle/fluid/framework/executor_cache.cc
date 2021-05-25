@@ -70,14 +70,14 @@ void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
  *   1. it is an output var in run_program_op
  *   2. it is an input var used in backward_op
  */
-std::vector<std::string> ParseSafeEagerDeletionSkipVars(
+void ParseSafeEagerDeletionSkipVars(
     const ProgramDesc &program, int64_t forward_op_nums,
-    const std::vector<std::string> &output_var_names) {
-  // step 1: all out_vars are skip_eager_var
-  std::vector<std::string> skip_eager_vars(output_var_names);
-  std::unordered_set<std::string> visited_vars;
-
+    const std::vector<std::string> &output_var_names,
+    std::vector<std::string> *skip_eager_delete_vars) {
   auto all_ops = program.Block(0).AllOps();
+  // NOTE: skip `shape` and `fill_constant` op created by
+  // fluid.backward.gradients, one forward output will generate one `shape`
+  // and `fill_constant`.
   size_t backward_op_start_index =
       forward_op_nums + (output_var_names.size() * 2);
 
@@ -100,11 +100,10 @@ std::vector<std::string> ParseSafeEagerDeletionSkipVars(
   for (const std::string &var_name : op_inputs) {
     if (op_outputs.find(var_name) == op_outputs.end()) {
       VLOG(2) << "skip eager var: " << var_name;
-      skip_eager_vars.emplace_back(var_name);
+      skip_eager_delete_vars->emplace_back(var_name);
     }
   }
-  VLOG(3) << "Found skip_eager_vars: " << skip_eager_vars.size();
-  return skip_eager_vars;
+  VLOG(3) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars->size();
 }
 
 }  // namespace details
