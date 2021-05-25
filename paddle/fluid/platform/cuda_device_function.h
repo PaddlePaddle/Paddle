@@ -94,7 +94,7 @@ template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleDownSync(
     unsigned mask, paddle::platform::complex<float> val, int delta, int width) {
   float real = __shfl_down(val.real, delta, width);
-  float imag = __shfl_down(val.imag, delta, width));
+  float imag = __shfl_down(val.imag, delta, width);
   return paddle::platform::complex<float>(real, imag);
 }
 
@@ -103,7 +103,7 @@ __forceinline__ __device__ paddle::platform::complex<double>
 CudaShuffleDownSync(unsigned mask, paddle::platform::complex<double> val,
                     int delta, int width) {
   double real = __shfl_down(val.real, delta, width);
-  double imag = __shfl_down(val.imag, delta, width));
+  double imag = __shfl_down(val.imag, delta, width);
   return paddle::platform::complex<double>(real, imag);
 }
 
@@ -117,7 +117,7 @@ template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleXorSync(
     unsigned mask, paddle::platform::complex<float> val, int width) {
   float real = __shfl_xor(val.real, width);
-  float imag = __shfl_xor(val.imag, width));
+  float imag = __shfl_xor(val.imag, width);
   return paddle::platform::complex<float>(real, imag);
 }
 
@@ -125,7 +125,7 @@ template <>
 __forceinline__ __device__ paddle::platform::complex<double> CudaShuffleXorSync(
     unsigned mask, paddle::platform::complex<double> val, int width) {
   double real = __shfl_xor(val.real, width);
-  double imag = __shfl_xor(val.imag, width));
+  double imag = __shfl_xor(val.imag, width);
   return paddle::platform::complex<double>(real, imag);
 }
 #else
