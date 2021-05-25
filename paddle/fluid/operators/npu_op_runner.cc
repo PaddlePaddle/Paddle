@@ -89,20 +89,20 @@ NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
 }
 
 NpuOpRunner::~NpuOpRunner() {
-  VLOG(5) << "Free NpuOpRunner of " << op_type_;
+  VLOG(5) << "Free NpuOpRunner(" << this << ") of " << op_type_;
   // Is it safe to free the descs/buffers after run called in host ?
-  PADDLE_ENFORCE_NPU_SUCCESS(aclopDestroyAttr(attr_));
+  aclopDestroyAttr(attr_);  // return void
   for (auto desc : input_descs_) {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(desc));
+    aclDestroyTensorDesc(desc);
   }
   for (auto desc : output_descs_) {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(desc));
+    aclDestroyTensorDesc(desc);
   }
-  for (auto desc : input_buffers_) {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(desc));
+  for (auto buffer : input_buffers_) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyDataBuffer(buffer));
   }
-  for (auto desc : output_buffers_) {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyTensorDesc(desc));
+  for (auto buffer : output_buffers_) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyDataBuffer(buffer));
   }
 }
 
@@ -200,6 +200,8 @@ NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
 }
 
 NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
+  input_descs_.reserve(tensors.size());
+  input_buffers_.reserve(tensors.size());
   for (auto tensor : tensors) {
     // create aclTensorDesc
     input_descs_.emplace_back(CreateTensorDesc(tensor));
@@ -225,6 +227,8 @@ NpuOpRunner &NpuOpRunner::AddInputNames(const std::vector<std::string> &names) {
 }
 
 NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
+  output_descs_.reserve(tensors.size());
+  output_buffers_.reserve(tensors.size());
   for (auto tensor : tensors) {
     // create aclTensorDesc
     output_descs_.emplace_back(CreateTensorDesc(tensor));
@@ -300,7 +304,7 @@ void NpuOpRunner::Run(aclrtStream stream) {
     VLOG(4) << "Run with default current npu stream: " << stream;
     stream = GetCurrentNPUStream();
   }
-
+  VLOG(5) << "NpuOpRunner(" << this << ") Run:";
   VLOG(4) << "op_type: " << op_type_;
   VLOG(4) << "input_desc.size: " << input_descs_.size();
   VLOG(4) << "output_desc.size: " << output_descs_.size();
