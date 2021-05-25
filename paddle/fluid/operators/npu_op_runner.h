@@ -79,7 +79,7 @@ class NpuOpRunner {
 
   std::vector<aclDataBuffer *> &GetOutputBuffers();
 
-  void Run(aclrtStream stream = nullptr);
+  void Run(aclrtStream stream = nullptr) const;
 
  private:
   aclTensorDesc *CreateTensorDesc(Tensor tensor);

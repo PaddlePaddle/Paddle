@@ -33,7 +33,7 @@ class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto& runner = NpuOpRunner("Sub", {*x, *y}, {*out}, {});
+    const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*out}, {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -70,7 +70,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
       dx->mutable_data<T>(ctx.GetPlace());
       // For dx
       // stage 1
-      auto& reduce_ndim = dout->dims().size() - dx->dims().size();
+      auto reduce_ndim = dout->dims().size() - dx->dims().size();
       std::vector<int> axes;
       for (auto i = 0; i < reduce_ndim; ++i) {
         axes.push_back(i);
@@ -84,8 +84,9 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
         }
         reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
         reduced_dout.mutable_data<T>(ctx.GetPlace());
-        auto& runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
-                                   {{"axes", axes}, {"keep_dims", false}});
+        const auto& runner =
+            NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
+                        {{"axes", axes}, {"keep_dims", false}});
         runner.Run(stream);
         tmp_dout = &reduced_dout;
       }
@@ -98,8 +99,8 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
         }
       }
       if (axes.size() != 0) {
-        auto& runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dx},
-                                   {{"axes", axes}, {"keep_dims", true}});
+        const auto& runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dx},
+                                         {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
       } else {
         framework::TensorCopy(
@@ -111,7 +112,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
       dy->mutable_data<T>(ctx.GetPlace());
       // For dy
       // stage 1
-      auto& reduce_ndim = dout->dims().size() - dy->dims().size();
+      auto reduce_ndim = dout->dims().size() - dy->dims().size();
       std::vector<int> axes;
       for (auto i = 0; i < reduce_ndim; ++i) {
         axes.push_back(i);
@@ -127,8 +128,9 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
         }
         reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
         reduced_dout.mutable_data<T>(ctx.GetPlace());
-        auto& runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
-                                   {{"axes", axes}, {"keep_dims", false}});
+        const auto& runner =
+            NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
+                        {{"axes", axes}, {"keep_dims", false}});
         runner.Run(stream);
         tmp_dout = &reduced_dout;
       }
@@ -144,14 +146,15 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
       if (axes.size() != 0) {
         reduced_dy.Resize(dy->dims());
         reduced_dy.mutable_data<T>(ctx.GetPlace());
-        auto& runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {reduced_dy},
-                                   {{"axes", axes}, {"keep_dims", true}});
+        const auto& runner =
+            NpuOpRunner("ReduceSumD", {*tmp_dout}, {reduced_dy},
+                        {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
         tmp_dy = &reduced_dy;
       }
 
       // stage 3, negative
-      auto& runner = NpuOpRunner("Neg", {*tmp_dy}, {*dy}, {});
+      const auto& runner = NpuOpRunner("Neg", {*tmp_dy}, {*dy}, {});
       runner.Run(stream);
     }
   }

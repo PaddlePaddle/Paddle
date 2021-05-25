@@ -299,7 +299,7 @@ aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
   return buffer;
 }
 
-void NpuOpRunner::Run(aclrtStream stream) {
+void NpuOpRunner::Run(aclrtStream stream) const {
   if (!stream) {
     VLOG(4) << "Run with default current npu stream: " << stream;
     stream = GetCurrentNPUStream();

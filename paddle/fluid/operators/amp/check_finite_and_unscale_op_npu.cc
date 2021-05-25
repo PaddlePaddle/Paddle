@@ -58,7 +58,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     Tensor inverse_out(scale->type());
     inverse_out.Resize(scale->dims());
     inverse_out.mutable_data<T>(ctx.GetPlace());
-    auto& runner_inverse =
+    const auto& runner_inverse =
         NpuOpRunner("Div", {const_tensor, *scale}, {inverse_out}, {});
     runner_inverse.Run(stream);
     tmp_inverse_out = &inverse_out;
@@ -69,14 +69,14 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 
     // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
     // tmp is only placeholder.
-    auto& runner_float_status =
+    const auto& runner_float_status =
         NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
                     {{"message", std::string("check_nan_and_inf")}});
     runner_float_status.Run(stream);
 
     Tensor sum;
     sum.mutable_data<float>({1}, ctx.GetPlace());
-    auto& runner_reduce_sum =
+    const auto& runner_reduce_sum =
         NpuOpRunner("ReduceSumD", {*float_status}, {sum},
                     {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
     runner_reduce_sum.Run(stream);
@@ -95,7 +95,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(ctx.GetPlace());
       if (!found_inf_data) {
         // MatMul
-        auto& runner_matmul =
+        const auto& runner_matmul =
             NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
         runner_matmul.Run(stream);
       }
@@ -114,7 +114,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::DeviceContext>(), found_inf);
     ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
 
-    auto& runner_clear_status =
+    const auto& runner_clear_status =
         NpuOpRunner("NPUClearFloatStatus", {*float_status}, {tmp});
     runner_clear_status.Run(stream);
   }
