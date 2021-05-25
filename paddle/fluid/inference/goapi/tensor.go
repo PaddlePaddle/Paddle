@@ -114,6 +114,9 @@ func (t *Tensor) Lod() [][]uint {
 	cLod := C.PD_TensorGetLod(t.c)
 	length := int(cLod.size)
 	res := make([][]uint, length)
+	if length == 0 {
+		return res
+	}
 	cLodSlice := (*[1 << 27]*C.struct_PD_OneDimArraySize)(unsafe.Pointer(cLod.data))[:length:length]
 
 	for i := 0; i < length; i++ {

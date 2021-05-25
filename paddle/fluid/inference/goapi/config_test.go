@@ -90,7 +90,7 @@ func TestLite(t *testing.T) {
 	t.Log(config.ProgFile())
 	t.Log(config.ParamsFile())
 
-	config.EnableLiteEngine(Precision_Float32, true, []string{}, []string{})
+	config.EnableLiteEngine(PrecisionFloat32, true, []string{}, []string{})
 	t.Logf("LiteEngineEnabled:%+v", config.LiteEngineEnabled())
 }
 
