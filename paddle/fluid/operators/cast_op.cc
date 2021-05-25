@@ -90,7 +90,7 @@ class CastOp : public framework::OperatorWithKernel {
       int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
       int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
 
-      if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) or
+      if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
           (out_dtype != dtype_fp32 && out_dtype != dtype_bf16))
         return false;
 
