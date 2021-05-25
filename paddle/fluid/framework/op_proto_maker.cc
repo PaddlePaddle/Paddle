@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_def.pb.h"
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -80,12 +81,60 @@ bool WriteProtoToTextFile(const google::protobuf::Message& proto, const std::str
     return success;
 }
 
+void PrintSample() {
+  static bool a{false};
+  if(!a) { 
+    proto::OpDef op_def;
+    op_def.set_type("while");
+    op_def.mutable_def()->add_inputs()->set_name("X");
+    op_def.mutable_def()->add_inputs()->set_name("Condition");
+    op_def.mutable_def()->add_outputs()->set_name("Out");
+    op_def.mutable_def()->add_outputs()->set_name("StepScopes");
+
+    auto* sub_block = op_def.mutable_def()->add_attrs();
+    sub_block->set_type(proto::AttrType::BLOCK);
+    sub_block->set_name("sub_block");
+
+    auto* is_test = op_def.mutable_extra()->add_attrs();
+    is_test->set_type(proto::AttrType::BOOLEAN);
+    is_test->set_name("is_test");
+
+    auto* skip_eager_deletion_vars = op_def.mutable_extra()->add_attrs();
+    skip_eager_deletion_vars->set_type(proto::AttrType::STRINGS);
+    skip_eager_deletion_vars->set_name("skip_eager_deletion_vars");
+
+    auto* op_role = op_def.mutable_extra()->add_attrs();
+    op_role->set_type(proto::AttrType::INT);
+    op_role->set_name("op_role");
+
+    auto* op_role_var = op_def.mutable_extra()->add_attrs();
+    op_role_var->set_type(proto::AttrType::STRINGS);
+    op_role_var->set_name("op_role_var");
+
+    auto* op_namescope = op_def.mutable_extra()->add_attrs();
+    op_namescope->set_type(proto::AttrType::STRING);
+    op_namescope->set_name("op_namescope");
+
+    auto* op_callstack = op_def.mutable_extra()->add_attrs();
+    op_callstack->set_type(proto::AttrType::STRINGS);
+    op_callstack->set_name("op_callstack");
+
+    auto* op_device = op_def.mutable_extra()->add_attrs();
+    op_device->set_type(proto::AttrType::STRING);
+    op_device->set_name("op_device");
+
+    WriteProtoToTextFile(op_def, "hello.pbtxt");
+    a = !a;
+  }
+}
+
 void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                         OpAttrChecker* attr_checker) {
   proto_ = proto;
   op_checker_ = attr_checker;
   Make();
   op_checker_->RecordExplicitCheckerNum();
+  PrintSample();
 
   AddAttr<int>(OpRoleAttrName(), "The role of this operator")
       .InEnum(

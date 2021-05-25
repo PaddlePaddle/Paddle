@@ -26,8 +26,7 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 #ddim lib
-proto_library(framework_proto SRCS framework.proto)
-proto_library(op_def_proto SRCS op_def.proto)
+proto_library(framework_proto SRCS framework.proto op_def.proto)
 proto_library(heter_service_proto SRCS heter_service.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
