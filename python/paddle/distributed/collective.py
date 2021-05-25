@@ -98,6 +98,13 @@ class Group():
         else:
             return -1
 
+    def __repr__(self):
+        debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
+            self.rank, self.nranks, self.id)
+        debug_str += ", ".join(map(str, self.ranks))
+        debug_str += ". "
+        return debug_str
+
 
 _global_env = None
 
