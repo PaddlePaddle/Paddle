@@ -147,8 +147,10 @@ class ReshapeOp : public framework::OperatorWithKernel {
                                        const framework::DDim &in_dims) {
     const int64_t in_size = framework::product(in_dims);
     auto in_dims_vec = framework::vectorize(in_dims);
+    // we allow build a empty tensor who has a "0" dim in its shape
+    // "dim = 0" is determined and should be distinguish with "dim = -1"
     bool all_positive = std::all_of(in_dims_vec.cbegin(), in_dims_vec.cend(),
-                                    [](int64_t i) { return i > 0; });
+                                    [](int64_t i) { return i >= 0; });
     // only one dimension can be set to -1, whose size will be automatically
     // infered.
     const int64_t unk_dim_val = -1;
@@ -196,16 +198,24 @@ class ReshapeOp : public framework::OperatorWithKernel {
         // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
         // capacity = -24, in_size = -8, output_shape[0] = 0
         // the following check will fail.
-        output_shape[unk_dim_idx] = -in_size / capacity;
-        PADDLE_ENFORCE_EQ(
-            output_shape[unk_dim_idx] * capacity, -in_size,
-            platform::errors::InvalidArgument(
-                "The 'shape' attribute in ReshapeOp is invalid. "
-                "The input tensor X'size must be divisible by known "
-                "capacity of 'shape'. "
-                "But received X's shape = [%s], X's size = %d, "
-                "'shape' is [%s], known capacity of 'shape' is %d.",
-                in_dims, in_size, framework::make_ddim(shape), capacity));
+        if (in_size == 0) {
+          PADDLE_ENFORCE_EQ(capacity, 0,
+                            platform::errors::InvalidArgument(
+                                "specified 'shape' [%s], is invalid for input "
+                                "with shape [%s].",
+                                framework::make_ddim(shape), in_dims));
+        } else {
+          output_shape[unk_dim_idx] = -in_size / capacity;
+          PADDLE_ENFORCE_EQ(
+              output_shape[unk_dim_idx] * capacity, -in_size,
+              platform::errors::InvalidArgument(
+                  "The 'shape' attribute in ReshapeOp is invalid. "
+                  "The input tensor X'size must be divisible by known "
+                  "capacity of 'shape'. "
+                  "But received X's shape = [%s], X's size = %d, "
+                  "'shape' is [%s], known capacity of 'shape' is %d.",
+                  in_dims, in_size, framework::make_ddim(shape), capacity));
+        }
       } else {
         output_shape[unk_dim_idx] = -1;
       }
