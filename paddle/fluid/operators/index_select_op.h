@@ -175,6 +175,17 @@ void IndexSelectAdd<double, platform::avx>(const int n, const double* src,
   IndexSelectAdd<double, platform::isa_any>(n, src, dst);
 #endif
 }
+
+template <>
+void IndexSelectAdd<int64_t, platform::avx>(const int n, const int64_t* src,
+                                            int64_t* dst) {
+  IndexSelectAdd<int64_t, platform::isa_any>(n, src, dst);
+}
+
+template <>
+void IndexSelectAdd<int, platform::avx>(const int n, const int* src, int* dst) {
+  IndexSelectAdd<int, platform::isa_any>(n, src, dst);
+}
 #endif
 
 template <typename T, typename IndexT = int>
@@ -214,9 +225,9 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
 
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
 #ifdef __AVX__
-      index_select_add<T, platform::avx>(slice_size, src, dst);
+      IndexSelectAdd<T, platform::avx>(slice_size, src, dst);
 #else
-      index_select_add<T>(slice_size, src, dst);
+      IndexSelectAdd<T>(slice_size, src, dst);
 #endif
 #endif
     }
