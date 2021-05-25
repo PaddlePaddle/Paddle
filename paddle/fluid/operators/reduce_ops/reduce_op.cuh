@@ -79,15 +79,15 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 }
 
 #ifdef __HIPCC__
-constexpr int kMaxBlockDim = 256;
+constexpr int kMaxBlock = 256;
 #else
-constexpr int kMaxBlockDim = 512;
+constexpr int kMaxBlock = 512;
 #endif
 
 // get blockDim for reduceLastDim and reduceAny
 static inline int GetBlockDim(int block_dim) {
-  return block_dim >= kMaxBlockDim
-             ? kMaxBlockDim
+  return block_dim >= kMaxBlock
+             ? kMaxBlock
              : (1 << static_cast<int>(std::log2(block_dim)));
 }
 
