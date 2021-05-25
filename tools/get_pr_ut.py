@@ -232,13 +232,12 @@ class PRChecker(object):
         return True
 
     def get_all_count(self):
-        os.system(
-            "cd %sbuild && ctest -N|grep 'Total Tests:' | awk -F ': ' '{print $2}' > testCount"
-            % PADDLE_ROOT)
-        f = open("%sbuild/testCount" % PADDLE_ROOT)
-        testCount = f.read()
-        f.close()
-        return int(testCount.strip())
+        p = subprocess.Popen("cd ../build && ctest -N", shell=True, stdout=subprocess.PIPE)
+        out,err = p.communicate()
+        for line in out.splitlines():
+            if 'Total Tests:' in str(line):
+                all_counts = line.split()[-1]
+        return int(all_counts)
 
     def get_pr_ut(self):
         """ Get unit tests in pull request. """
