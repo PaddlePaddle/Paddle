@@ -17,17 +17,97 @@ import socket
 import os
 import six
 import logging
+import signal
+
+logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
+logger = logging.getLogger("ELASTIC")
+
+ELASTIC_EXIT_CODE = 10001
+
+
+class ElasticStatus:
+    COMPLETED = "completed"
+    ERROR = "error"
+    HOLD = "hold"
+    RESTART = "restart"
+    EXIT = "exit"
+
+
+class LauncherInterface(object):
+    def __init__(self, args):
+        self.args = args
+        self.procs = []
+
+    def _terminate_procs(self):
+        for p in self.procs:
+            if p.proc.poll() is None:
+                p.proc.terminate()
+                if p.log_fn:
+                    p.log_fn.close()
+                logger.info("terminate process id:{}".format(p.proc.pid))
+
+        for step in range(0, 50):
+            alive = False
+            for p in self.procs:
+                if p.proc.poll() is None:  # not termniate
+                    os.kill(p.proc.pid, signal.SIGKILL)
+                    alive = True
+
+            if not alive:
+                logger.info("terminate all the procs")
+                return True
+
+            time.sleep(1)
+        return False
+
+    def _check_procs(self):
+        alive = False
+        result = None
+        for p in self.procs:
+            ret = p.proc.poll()
+            if ret is None:
+                alive = True
+            elif ret != 0:
+                logger.error("ERROR rank {} error with code {}".format(p.rank,
+                                                                       ret))
+                result = ret
+        if not alive and result is None:
+            return 0
+        else:
+            return result
+
+    def launch(self):
+        raise NotImplementedError
+
+    def stop(self):
+        raise NotImplementedError
+
+    def watch(self):
+        raise NotImplementedError
 
 
 class ElasticManager(object):
-    def __init__(self, server, name, np, host=None, scale=0, force=False):
+    def __init__(self, args):
 
-        print('[elastic] init with server {} host {}'.format(server, host))
+        self.args = args
+        server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
+        name = args.job_id or os.getenv('PADDLE_ELASTIC_JOB_ID')
+        np = args.np or int(os.getenv('PADDLE_ELASTIC_NP', 0))
+        host = args.host or os.getenv('POD_IP')
+        scale = args.scale or int(os.getenv('PADDLE_SCALE', 0))
+        force = args.force or os.getenv('PADDLE_FORCE')
+
+        self.elastic_level = int(
+            os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL', 1))
+
+        #elastic_timeout = os.getenv('PADDLE_ELASTIC_TIMEOUT',1)
+
+        logger.debug('init with server {} host {}'.format(server, host))
 
         self.hosts = []
         self.stopped = False
 
-        if not server or not name or not np:
+        if not server or ':' not in server or not name or not np:
             self.enable = False
             return
         else:
@@ -60,23 +140,22 @@ class ElasticManager(object):
 
         def host_call_back(event):
             if self.etcd.get(self.host_path)[0] == None:
-                print('[elastic] register host agin {}'.format(self.host))
+                logger.debug('register host again {}'.format(self.host))
                 self.etcd.put(self.host_path, six.b(self.host))
 
         host_watch = self.etcd.add_watch_callback(self.host_path,
                                                   host_call_back)
 
-        # np
-        #
+        # np describes the exact number of nodes to run the job
         inp = int(self.etcd.get(self.np_path)[0] or 0)
         if scale == 0 and not force:
             assert (
                 inp == np,
-                "[elastic] np {} is not consistent with np in etcd {}, maybe the job with the same name exited unexpected, try --force=true".
+                "np {} is not consistent with np in etcd {}, maybe the job with the same name exited unexpected, try --force=true".
                 format(np, inp))
         else:
             assert (inp == np or inp == self.np,
-                    "[elastic] np {} scale to {} by {} is not allowed".format(
+                    "np {} scale to {} by {} is not allowed".format(
                         inp, self.np, scale))
 
         self.etcd.put(self.np_path, six.b("%d" % (self.np)))
@@ -84,7 +163,7 @@ class ElasticManager(object):
         def np_call_back(event):
             gnp = int(self.etcd.get(self.np_path)[0])
             if gnp != self.np:
-                print("[elastic] scale np {} to {} ".format(self.np, gnp))
+                logger.info("scale np {} to {} ".format(self.np, gnp))
                 self.np = gnp
 
         np_watch = self.etcd.add_watch_callback(self.np_path, np_call_back)
@@ -92,7 +171,7 @@ class ElasticManager(object):
         self.watches = [host_watch, np_watch]
 
     def exit(self, completed=False):
-        print('[elastic] manager exist completed {}'.format(completed))
+        logger.info('manager exist completed {}'.format(completed))
 
         if not self.enable:
             return
@@ -115,6 +194,9 @@ class ElasticManager(object):
             return '127.0.0.1'
 
     def _completed(self):
+        if not self.enable:
+            return True
+
         return int(self.etcd.get(self.prefix)[0]) == 1
 
     def _match(self):
@@ -126,27 +208,60 @@ class ElasticManager(object):
         else:
             return False
 
-    def ready(self):
+    def _update_hosts(self):
+        assert (len(self.hosts) != 0, 'hosts empty')
+        hosts = ','.join(self.hosts)
+        self.args.ips = hosts
+        os.environ['PADDLE_TRAINERS'] = hosts
+        os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
+            self.hosts.index(self.host))
+
+    def wait(self):
         if not self.enable:
-            return True
+            return
 
         while not self.stopped:
             if self._match():
-                print('[elastic] ready with hosts {}'.format(self.hosts))
-                return True
-            print('[elastic] not ready for np {} with hosts {}'.format(
-                self.np, self.hosts))
+                logger.info('ready with hosts {}'.format(self.hosts))
+                self._update_hosts()
+                return
+            logger.info('not ready for np {} with hosts {}'.format(self.np,
+                                                                   self.hosts))
             time.sleep(3)
-        return False
+        return
 
-    def health(self):
+    def run(self, launcher):
         if self.stopped:
-            return False
+            return
 
-        if not self.enable:
-            return True
+        self.launcher = launcher(self.args)
+        self.launcher.launch()
 
-        return self._completed() or self._match()
+    def watch(self):
+
+        while not self.stopped:
+            ret = self.launcher.watch()
+
+            if ret is not None:  # self terminated
+                logger.info('job exit with code {}'.format(ret))
+                # process is completed if ret >= 0 or error else
+                completed = True if ret == 0 else False
+                self.launcher.stop()
+                self.exit(completed=completed)
+                if completed:
+                    return ElasticStatus.COMPLETED
+                if self.elastic_level == 1:
+                    return ElasticStatus.RESTART
+                else:
+                    return ElasticStatus.ERROR
+
+            if not self._completed() and not self._match():
+                self.launcher.stop()
+                return ElasticStatus.HOLD
+
+            time.sleep(3)
+
+        return ElasticStatus.EXIT
 
     def signal_handler(self, sigint, frame):
         if self.enable:
