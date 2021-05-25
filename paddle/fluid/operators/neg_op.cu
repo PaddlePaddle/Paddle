@@ -42,7 +42,7 @@ class NegKernel<platform::CUDADeviceContext, T>
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaNegFunctor<T>();
-    LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, math::Real<T>>(
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, math::Real<T>>(
         dev_ctx, ins, &outs, functor);
   }
 };
