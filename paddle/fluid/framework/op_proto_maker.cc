@@ -163,9 +163,33 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
       .SetDefault("");
   Validate();
 
+  proto::OpDef op_def;
+
+  op_def.set_type(proto_->type());
+  auto* extra = op_def.mutable_extra();
+  extra->add_inputs();
+  extra->add_outputs();
+  extra->add_attrs();
+
+  auto* def = op_def.mutable_def();
+  for (auto& i : proto_->inputs()) {
+    auto* input = def->add_inputs();
+    input->set_name(i.name());
+  }
+  for (auto& i : proto_->outputs()) {
+    auto* output = def->add_outputs();
+    output->set_name(i.name());
+  }
+  for (auto& i : proto_->attrs()) {
+    auto* attr = def->add_attrs();
+    attr->set_name(i.name());
+    attr->set_type(i.type());
+  }
+
+
   std::string path{std::string(proto_->type()) + ".pbtxt"};
-  WriteProtoToTextFile(*proto_, path);
-  std::cout << "========= hello!! " << path << "=========\n";
+  WriteProtoToTextFile(op_def, path);
+  std::cout << "========= hello!! 123" << path << "=========\n";
 }
 
 }  // namespace framework
