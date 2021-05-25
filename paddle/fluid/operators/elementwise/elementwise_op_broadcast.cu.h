@@ -343,7 +343,6 @@ template <typename InT, typename OutT, typename BroadcastArgsWarpper,
 __global__ void ElementwiseBroadcastKernel(
     BroadcastArgsWarpper broadcast_warpper, int main_tid, int tail_tid) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
   // Vectorized calculation of major data whose length is the max multipler of
   // VecSize,
   // eg: Calcualting the front 1024-length data in total 1027 data once VecSize
