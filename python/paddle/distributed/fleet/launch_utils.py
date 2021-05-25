@@ -510,7 +510,7 @@ def start_local_trainers(cluster,
     if bind is not None:
         cpu_info = get_cpu_info()
         num_gpus = len(pod.trainers)
-        cores_per_gpu = cpu_info['physical_cores'] / num_gpus
+        cores_per_gpu = int(cpu_info['physical_cores'] / num_gpus)
 
     for idx, t in enumerate(pod.trainers):
         proc_env = {
@@ -549,6 +549,8 @@ def start_local_trainers(cluster,
             numactl_args = '--physcpubind={}-{}'.format(
                 idx * cores_per_gpu, (idx + 1) * cores_per_gpu - 1)
             cmd += ['numactl', numactl_args]
+            logger.info('local_rank={} bind with physical_core={}-{}'.format(
+                idx, idx * cores_per_gpu, (idx + 1) * cores_per_gpu - 1))
 
         cmd += [sys.executable, "-u", training_script] + training_script_args
 
