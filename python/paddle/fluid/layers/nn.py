@@ -1501,6 +1501,9 @@ def conv2d(input,
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'conv2d')
+    if len(input.shape) != 4:
+        raise ValueError("Input size should be 4, "
+                         "but received {}".format(len(input.shape)))
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
         raise ValueError("Attr(use_cudnn) should be True or False. Received "
@@ -1519,16 +1522,12 @@ def conv2d(input,
             "Received: %s." % (str(input.shape), str(num_channels)))
     assert param_attr is not False, "param_attr should not be False here."
 
-    l_type = 'conv2d'
-    if (num_channels == groups and num_filters % num_channels == 0 and
-            not use_cudnn):
-        l_type = 'depthwise_conv2d'
-
-    helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
-
     if groups is None:
         num_filter_channels = num_channels
+    elif groups <= 0:
+        raise ValueError("the groups of input must be greater than 0, "
+                         "but received the groups of input is {}".format(
+                             groups))
     else:
         if num_channels % groups != 0:
             raise ValueError(
@@ -1536,6 +1535,14 @@ def conv2d(input,
                 "received: the channel of input is {}, the shape of input is {}"
                 ", the groups is {}".format(num_channels, input.shape, groups))
         num_filter_channels = num_channels // groups
+
+    l_type = 'conv2d'
+    if (num_channels == groups and num_filters % num_channels == 0 and
+            not use_cudnn):
+        l_type = 'depthwise_conv2d'
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
@@ -1592,6 +1599,11 @@ def conv2d(input,
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
@@ -1873,6 +1885,12 @@ def conv3d(input,
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * filter_size[
             2] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
+
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
@@ -14403,6 +14421,11 @@ def deformable_conv(input,
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
