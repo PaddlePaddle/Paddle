@@ -15,8 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 
 #ifdef __HIPCC__
 #define ELEMENTWISE_BLOCK_SIZE 256
@@ -28,11 +27,6 @@ namespace paddle {
 namespace operators {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2 };
-
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) CudaAlignedVector {
-  T val[Size];
-};
 
 template <typename T>
 int GetVectorizedSizeImpl(const T *pointer) {
@@ -181,7 +175,7 @@ __global__ void ScalarKernel(const InT *__restrict__ in0,
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
-void LaunchElementwiseCudaKernel(
+void LaunchSameDimsElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {

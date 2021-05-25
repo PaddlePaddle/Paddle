@@ -39,6 +39,7 @@ from . import unique_name
 import paddle.version as fluid_version
 import warnings
 import functools
+from .variable_index import _getitem_impl_, _setitem_impl_
 
 __all__ = [
     'Program',
@@ -776,141 +777,6 @@ class ParameterMetaClass(VariableMetaClass):
             return issubclass(t, ParamBase)
         else:
             return issubclass(t, Parameter)
-
-
-def _getitem_impl_(var, item):
-    """
-    Slice the variable.
-
-    Args:
-        item(int/slice/tuple) : the index.
-
-    Returns:
-        Sliced variable
-    """
-
-    if not isinstance(item, tuple):
-        item = [item]
-
-    decrease_axes = []
-    axes = []
-    starts = []
-    ends = []
-    steps = []
-
-    use_strided_slice = False
-    reverse_axis = []
-
-    max_integer = 2**31 - 1
-    for dim, slice_item in enumerate(item):
-        if isinstance(slice_item, slice):
-            start = slice_item.start
-            end = slice_item.stop
-            step = slice_item.step
-
-            if start is None and end is None and step is None:
-                continue
-
-            step = 1 if step is None else step
-
-            if start is None and end is None:
-                assert (step == -1)
-                reverse_axis.append(dim)
-                continue
-
-            if start is None:
-                start = 0
-
-            if end is None:
-                end = max_integer
-
-        else:
-            decrease_axes.append(dim)
-            start = slice_item
-            step = 1
-            end = slice_item + 1 if slice_item != -1 else max_integer
-
-        axes.append(dim)
-        starts.append(start)
-        ends.append(end)
-        steps.append(step)
-        use_strided_slice = True if step != 1 else use_strided_slice
-
-    inputs = {'Input': [var]}
-    attrs = {
-        'axes': axes,
-        'starts': [],
-        'ends': [],
-        'decrease_axis': decrease_axes
-    }
-    if use_strided_slice == True:
-        attrs['strides'] = []
-
-    infer_flags = list(1 for i in range(len(axes)))
-    from .layers import utils
-
-    def deal_attrs(attr, attr_name, tensor_attr_name, inputs, infer_flags):
-        if utils._contain_var(attr):
-            inputs[tensor_attr_name] = utils._convert_to_tensor_list(
-                attr, dtype="int64")
-            for i, dim in enumerate(attr):
-                if isinstance(dim, Variable):
-                    attrs[attr_name].append(-1)
-                    infer_flags[i] = -1
-                else:
-                    attrs[attr_name].append(dim)
-        else:
-            attrs[attr_name] = attr
-
-    deal_attrs(starts, "starts", "StartsTensorList", inputs, infer_flags)
-    deal_attrs(ends, "ends", "EndsTensorList", inputs, infer_flags)
-    deal_attrs(steps, "strides", "StridesTensorList", inputs, infer_flags)
-
-    # infer_flags
-    attrs['infer_flags'] = infer_flags
-
-    out = var
-    target_block = default_main_program().current_block()
-    if use_strided_slice == False and len(axes) > 0:
-        # append slice_op here
-        slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
-            dtype=var.dtype)
-
-        target_block.append_op(
-            type="slice",
-            inputs=inputs,
-            outputs={'Out': [slice_out_var]},
-            attrs=attrs)
-
-        out = slice_out_var
-    elif use_strided_slice == True and len(axes) > 0:
-        strided_slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name +
-                                                         "_strided_slice"),
-            dtype=var.dtype)
-        target_block.append_op(
-            type="strided_slice",
-            inputs=inputs,
-            outputs={'Out': [strided_slice_out_var]},
-            attrs=attrs)
-
-        out = strided_slice_out_var
-
-    if len(reverse_axis) > 0:
-        reverse_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name +
-                                                         "_slice_reverse"),
-            dtype=var.dtype)
-        target_block.append_op(
-            type="reverse",
-            inputs={'X': out},
-            outputs={'Out': [reverse_out_var]},
-            attrs={'axis': reverse_axis})
-
-        out = reverse_out_var
-
-    return out
 
 
 @six.add_metaclass(VariableMetaClass)
@@ -1768,160 +1634,7 @@ class Variable(object):
         return _getitem_impl_(self, item)
 
     def __setitem__(self, item, value):
-        inputs = {'Input': self}
-
-        # 1. Parse item
-        if not isinstance(item, tuple):
-            item = [item]
-
-        decrease_axes = []
-        axes = []
-        starts = []
-        ends = []
-        steps = []
-
-        max_integer = sys.maxsize
-
-        def replace_ellipsis(item):
-            # Use slice(None) to replace Ellipsis.
-            # For var, var.shape = [3,4,5,6]
-            #
-            #   var[..., 1:2] -> var[:, :, :, 1:2]
-            #   var[0, ...] -> var[0]
-            #   var[0, ..., 1:2] -> var[0, :, :, 1:2]
-
-            item = list(item)
-
-            # Remove Variable to skip bug when counting Ellipsis
-            item_remove_var = [
-                ele for ele in item if not isinstance(ele, Variable)
-            ]
-            ell_count = item_remove_var.count(Ellipsis)
-            if ell_count == 0:
-                return item
-            elif ell_count > 1:
-                raise IndexError(
-                    "An index can only have a single ellipsis ('...')")
-
-            ell_idx = item.index(Ellipsis)
-
-            if ell_idx == len(item) - 1:
-                return item[:-1]
-            else:
-                item[ell_idx:ell_idx + 1] = [slice(None)] * (
-                    len(self.shape) - len(item) + 1)
-
-            return item
-
-        item = replace_ellipsis(item)
-
-        for dim, slice_item in enumerate(item):
-            if isinstance(slice_item, slice):
-                start = slice_item.start
-                end = slice_item.stop
-                step = slice_item.step
-
-                if start is None and end is None and step is None:
-                    continue
-
-                step = 1 if step is None else step
-
-                # TODO: support cases when step < 1
-                if not isinstance(step, Variable) and step == 0:
-                    raise ValueError(
-                        "When assign a value to a paddle.Tensor, step can not be 0, "
-                        "but received step is {}.".format(step))
-
-                if isinstance(step, Variable) and (start is None or
-                                                   end is None):
-                    raise ValueError(
-                        "When assign a value to a paddle.Tensor, it's not supported that "
-                        "the start or end is None when the type of step is paddle.Tensor."
-                    )
-
-                if start is None:
-                    start = 0 if step > 0 else max_integer
-
-                if end is None:
-                    end = max_integer if step > 0 else (0 - max_integer)
-            else:
-                decrease_axes.append(dim)
-                start = slice_item
-                end = slice_item + 1 if slice_item != -1 else max_integer
-                step = 1
-
-            axes.append(dim)
-            starts.append(start)
-            ends.append(end)
-            steps.append(step)
-
-        attrs = {
-            'axes': axes,
-            'starts': starts,
-            'ends': ends,
-            'steps': steps,
-            'decrease_axes': decrease_axes
-        }
-
-        from .layers import utils
-        if utils._contain_var(starts):
-            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
-            del attrs['starts']
-        if utils._contain_var(ends):
-            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
-            del attrs['ends']
-        if utils._contain_var(steps):
-            inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
-            del attrs['steps']
-
-        # 2. Parse value
-        dtype = self.dtype
-        attrs['dtype'] = dtype
-
-        from .data_feeder import convert_dtype
-        #  2.1 value is an integer of float
-        if isinstance(value, (int, float)):
-            value = np.array([value]).astype(convert_dtype(dtype))
-
-        #  2.2 value is a np.ndarray
-        if isinstance(value, np.ndarray):
-            shape = list(value.shape)
-            if dtype == core.VarDesc.VarType.BOOL:
-                value_name = "bool_values"
-                values = [bool(v) for v in value.flat]
-            elif dtype == core.VarDesc.VarType.FP32:
-                value_name = "fp32_values"
-                values = [float(v) for v in value.flat]
-            elif dtype == core.VarDesc.VarType.FP64:
-                value_name = "fp64_values"
-                values = [float(v) for v in value.flat]
-            elif dtype == core.VarDesc.VarType.INT32:
-                value_name = "int32_values"
-                values = [int(v) for v in value.flat]
-            elif dtype == core.VarDesc.VarType.INT64:
-                value_name = "int64_values"
-                values = [int(v) for v in value.flat]
-            else:
-                raise TypeError(
-                    "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
-                    "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
-                    "received %s." % convert_dtype(dtype))
-            attrs[value_name] = values
-            attrs["shape"] = shape
-
-        elif isinstance(value, Variable):
-            inputs["ValueTensor"] = value
-        else:
-            raise TypeError(
-                "Only support to assign an integer, float, numpy.ndarray or "
-                "paddle.Tensor to a paddle.Tensor, but received {}".format(
-                    type(value)))
-
-        cur_block = default_main_program().current_block()
-        cur_block.append_op(
-            type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
-
-        return self
+        return _setitem_impl_(self, item, value)
 
     def get_value(self, scope=None):
         """
@@ -3158,14 +2871,22 @@ class Block(object):
                                        if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
+            from paddle.fluid.dygraph.base import param_guard
+
             op_desc = self.desc.append_op()
-            op = Operator(
-                block=self,
-                desc=op_desc,
-                type=kwargs.get("type", None),
-                inputs=kwargs.get("inputs", None),
-                outputs=kwargs.get("outputs", None),
-                attrs=kwargs.get("attrs", None))
+            # NOTE(Aurelius84): In case of @to_static, all VarBase(s) should
+            # be converted into Variable(s) with same name and block location.
+            # This is ONE and ONLY logic of type transformation of dy2static.
+            inputs = kwargs.get("inputs", None)
+            outputs = kwargs.get("outputs", None)
+            with param_guard(inputs), param_guard(outputs):
+                op = Operator(
+                    block=self,
+                    desc=op_desc,
+                    type=kwargs.get("type", None),
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=kwargs.get("attrs", None))
 
             self.ops.append(op)
 

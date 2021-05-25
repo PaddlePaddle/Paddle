@@ -84,9 +84,9 @@ struct npy_format_descriptor<paddle::platform::bfloat16> {
   static constexpr auto name = _("bfloat16");
 };
 
-// we register paddle::platform::complex64 as numpy.complex64.
+// we register paddle::platform::complex<float> as numpy.complex64.
 template <>
-struct npy_format_descriptor<paddle::platform::complex64> {
+struct npy_format_descriptor<paddle::platform::complex<float>> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX64);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -103,9 +103,8 @@ struct npy_format_descriptor<paddle::platform::complex64> {
   static constexpr auto name = _("complext64");
 };
 
-// we register paddle::platform::complex128 as numpy.complex128.
 template <>
-struct npy_format_descriptor<paddle::platform::complex128> {
+struct npy_format_descriptor<paddle::platform::complex<double>> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX128);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -168,8 +167,8 @@ struct ValidDTypeToPyArrayChecker {
 
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::bfloat16);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex64);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex128);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<float>);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<double>);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
@@ -188,9 +187,9 @@ inline std::string TensorDTypeToPyDTypeStr(
     } else if (std::is_same<T, platform::bfloat16>::value) {                \
       /* NumPy character code of uint16 due to no support for bfloat16 */   \
       return "H";                                                           \
-    } else if (std::is_same<T, platform::complex64>::value) {               \
+    } else if (std::is_same<T, platform::complex<float>>::value) {          \
       return "F";                                                           \
-    } else if (std::is_same<T, platform::complex128>::value) {              \
+    } else if (std::is_same<T, platform::complex<double>>::value) {         \
       return "D";                                                           \
     } else {                                                                \
       constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
@@ -367,12 +366,14 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
                                                         zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::complex64>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::complex64, P>(self, array, place,
-                                                          zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::complex128>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::complex128, P>(self, array, place,
-                                                           zero_copy);
+  } else if (py::isinstance<py::array_t<paddle::platform::complex<float>>>(
+                 array)) {
+    SetTensorFromPyArrayT<paddle::platform::complex<float>, P>(
+        self, array, place, zero_copy);
+  } else if (py::isinstance<py::array_t<paddle::platform::complex<double>>>(
+                 array)) {
+    SetTensorFromPyArrayT<paddle::platform::complex<double>, P>(
+        self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // since there is still no support for bfloat16 in NumPy,
     // uint16 is used for casting bfloat16
@@ -594,9 +595,9 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
     case framework::proto::VarType::BF16:
       return _sliceAndConcat<paddle::platform::bfloat16>(self, obj, dim);
     case framework::proto::VarType::COMPLEX64:
-      return _sliceAndConcat<paddle::platform::complex64>(self, obj, dim);
+      return _sliceAndConcat<paddle::platform::complex<float>>(self, obj, dim);
     case framework::proto::VarType::COMPLEX128:
-      return _sliceAndConcat<paddle::platform::complex128>(self, obj, dim);
+      return _sliceAndConcat<paddle::platform::complex<double>>(self, obj, dim);
     case framework::proto::VarType::FP32:
       return _sliceAndConcat<float>(self, obj, dim);
     case framework::proto::VarType::FP64:
