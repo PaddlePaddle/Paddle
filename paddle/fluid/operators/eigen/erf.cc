@@ -14,6 +14,9 @@ limitations under the License. */
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/float16.h"
