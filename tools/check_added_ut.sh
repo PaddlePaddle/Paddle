@@ -35,8 +35,8 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
     git remote | grep upstream
     if [ $? != 0 ]; then 
         git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-        git fetch upstream develop
     fi
+    git fetch upstream ${BRANCH}
 fi
 CURBRANCH=`git rev-parse --abbrev-ref HEAD`
 echo $CURBRANCH
