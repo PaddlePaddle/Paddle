@@ -221,9 +221,10 @@ int32_t SSDSparseTable::update_table() {
   return 0;
 }
 
-int64_t SSDSparseTable::SaveToText(std::ostream* os,
-                                   std::shared_ptr<ValueBlock> block,
-                                   const int mode, int shard_id) {
+int64_t SSDSparseTable::SaveValueToText(std::ostream* os,
+                                        std::shared_ptr<ValueBlock> block,
+                                        std::shared_ptr<::ThreadPool> pool,
+                                        const int mode, int shard_id) {
   int64_t save_num = 0;
 
   for (auto& table : block->values_) {

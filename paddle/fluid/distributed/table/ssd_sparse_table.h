@@ -24,9 +24,13 @@ class SSDSparseTable : public CommonSparseTable {
   virtual ~SSDSparseTable() {}
 
   virtual int32_t initialize() override;
-  virtual int64_t SaveToText(std::ostream* os,
-                             std::shared_ptr<ValueBlock> block, const int mode,
-                             int shard_id);
+
+  void SaveMetaToText(std::ostream* os, const CommonAccessorParameter& common,
+                      const size_t shard_idx, const int64_t total);
+
+  int64_t SaveValueToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
+                          std::shared_ptr<::ThreadPool> pool, const int mode,
+                          int shard_id);
 
   virtual int64_t LoadFromText(
       const std::string& valuepath, const std::string& metapath,
