@@ -17,7 +17,7 @@ go get -d -v github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi@76e5724
 
 3. 下载C预测库
 
-您可以选择直接下载paddle [c预测库, todo 提供下载方式]()，或通过源码编译的方式安装，源码编译方式参考官网文档，注意这里cmake编译时打开`-DON_INFER=ON`,在编译目录下得到`paddle_inference_c_install_dir`。
+您可以选择直接下载[paddle_inference_c]()预测库，或通过源码编译的方式安装，源码编译方式参考官网文档，注意这里cmake编译时打开`-DON_INFER=ON`,在编译目录下得到`paddle_inference_c_install_dir`。
 
 
 4. 软链
