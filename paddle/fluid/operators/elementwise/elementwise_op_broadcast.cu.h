@@ -470,7 +470,11 @@ void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
-  static_assert(ET == (ElementwiseType)2, "Only Support binary calculation.");
+  PADDLE_ENFORCE_EQ(ET, ElementwiseType::kBinary,
+                    platform::errors::InvalidArgument(
+                        "Currently, only Support binary calculation, "
+                        "but received %d input tensors.\n",
+                        static_cast<int>(ET)));
   int in_vec_size = 4;
   framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {
@@ -516,12 +520,21 @@ void LaunchElementwiseCudaKernel(
   }
 
   if (no_broadcast_flag) {
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
-        cuda_ctx, ins, outs, func);
+    LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
+                                                       func);
   } else {
-    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
-        cuda_ctx, ins, outs, axis, func);
+    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
+                                                        axis, func);
   }
+}
+
+template <typename InT, typename OutT, typename Functor>
+void LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT, Functor>(
+    const platform::CUDADeviceContext &cuda_ctx,
+    const std::vector<const framework::Tensor *> &ins,
+    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
+      cuda_ctx, ins, outs, func);
 }
 
 }  // namespace operators
