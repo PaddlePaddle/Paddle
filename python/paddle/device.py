@@ -25,7 +25,7 @@ __all__ = [
     'set_device',
     'get_device',
     'XPUPlace',
-    'is_compiled_with_xpu'
+    'is_compiled_with_xpu',
     #            'cpu_places',
     #            'CPUPlace',
     #            'cuda_pinned_places',
