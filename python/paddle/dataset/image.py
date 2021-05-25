@@ -32,16 +32,20 @@ the image layout as follows.
 
 from __future__ import print_function
 
-import os
 import six
 import numpy as np
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
 # https://github.com/numpy/numpy/issues/12497
 if six.PY3:
+    import os
     import subprocess
     import sys
+    if os.path.exists(os.path.join(sys.exec_prefix, 'python.exe')):
+        exec_path = os.path.join(sys.exec_prefix, 'python.exe')
+    else:
+        exec_path = sys.executable
     import_cv2_proc = subprocess.Popen(
-        [os.path.join(sys.prefix, 'python.exe'), "-c", "import cv2"],
+        [exec_path, "-c", "import cv2"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     out, err = import_cv2_proc.communicate()
