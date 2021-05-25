@@ -52,7 +52,7 @@ cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS ${GRAPH_PA
 
 cc_library(op_compat_sensible_pass SRCS op_compat_sensible_pass.cc DEPS graph_pattern_detector)
 cc_library(subgraph_detector SRCS subgraph_detector.cc DEPS graph_pattern_detector executor)
-cc_library(fuse_pass_base SRCS fuse_pass_base.cc DEPS pass)
+cc_library(fuse_pass_base SRCS fuse_pass_base.cc DEPS op_compat_sensible_pass)
 cc_library(placement_pass_base SRCS placement_pass_base.cc DEPS pass)
 
 cc_library(coalesce_grad_tensor_pass SRCS coalesce_grad_tensor_pass.cc DEPS graph graph_helper)
