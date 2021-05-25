@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP)
 
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"

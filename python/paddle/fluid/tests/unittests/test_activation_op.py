@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -1103,12 +1103,19 @@ class TestRelu(TestActivation):
         self.init_dtype()
 
         np.random.seed(1024)
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        # The same reason with TestAbs
-        x[np.abs(x) < 0.005] = 0.02
-        out = np.maximum(x, 0)
+        if self.dtype == np.uint16:
+            x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+            # The same reason with TestAbs
+            x[np.abs(x) < 0.005] = 0.02
+            out = convert_float_to_uint16(np.maximum(x, 0))
+            self.inputs = {'X': convert_float_to_uint16(x)}
+        else:
+            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            # The same reason with TestAbs
+            x[np.abs(x) < 0.005] = 0.02
+            out = np.maximum(x, 0)
+            self.inputs = {'X': x}
 
-        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -2718,7 +2725,7 @@ create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
-create_test_act_fp16_class(TestSoftRelu)
+create_test_act_fp16_class(TestSoftRelu, grad_atol=0.85)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog)
@@ -2736,8 +2743,35 @@ create_test_act_fp16_class(TestSoftplus)
 create_test_act_fp16_class(TestSoftsign)
 create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
-create_test_act_fp16_class(TestSwish)
+create_test_act_fp16_class(TestSwish, grad_atol=0.85)
 create_test_act_fp16_class(TestHardSwish)
+
+
+def create_test_act_bf16_class(parent,
+                               atol=1e-2,
+                               grad_check=True,
+                               grad_atol=0.80):
+    @unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActBF16(parent):
+        def init_dtype(self):
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=atol)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=grad_atol)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "bf16")
+    TestActBF16.__name__ = cls_name
+    globals()[cls_name] = TestActBF16
+
+
+create_test_act_bf16_class(TestRelu)
 
 if __name__ == "__main__":
     unittest.main()
