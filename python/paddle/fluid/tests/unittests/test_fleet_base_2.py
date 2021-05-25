@@ -14,6 +14,8 @@
 
 import unittest
 import paddle
+paddle.enable_static()
+
 import os
 import paddle.fluid as fluid
 
@@ -21,18 +23,16 @@ import paddle.fluid as fluid
 class TestFleetBase(unittest.TestCase):
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
+            "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_ps_minimize(self):
         import paddle
         import paddle.distributed.fleet as fleet
 
-        os.environ["TRAINING_ROLE"] = "PSERVER"
-        os.environ["POD_IP"] = "127.0.0.1"
-        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["PADDLE_TRAINER_ID"] = "1"
 
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
@@ -47,24 +47,26 @@ class TestFleetBase(unittest.TestCase):
 
         role = fleet.PaddleCloudRoleMaker(is_collective=False)
         fleet.init(role)
+
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False
+        strategy.a_sync_configs = {"launch_barrier": False}
+
         optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
+        exe.run(paddle.static.default_startup_program())
         pe = fluid.ParallelExecutor(use_cuda=False, loss_name=avg_cost.name)
         compiled_prog = fluid.compiler.CompiledProgram(
             fluid.default_main_program())
-        self.assertRaises(
-            Exception,
-            fleet.save_inference_model,
-            dirname='/tmp/',
-            feeded_var_names=['x', 'y'],
-            target_vars=[avg_cost],
-            executor=pe)
+
+        fleet.fleet.save(dirname="/tmp", feed=['x', 'y'], fetch=[avg_cost])
+        fleet.fleet.save(
+            dirname="/tmp", feed=[input_x, input_y], fetch=[avg_cost])
+        fleet.fleet.save(dirname="/tmp")
 
         self.assertRaises(
             Exception,
