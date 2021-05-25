@@ -190,10 +190,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
                           "float16 can only be used when CUDNN is used"));
   }
 #if PADDLE_WITH_CUDA
-  if (input_data_type == framework::proto::VarType::BF16) {
-    PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
-                      platform::errors::InvalidArgument(
-                          "bfloat16 can only be used when CUDNN is used"));
+  if (input_data_type == framework::proto::VarType::BF16 &&
+      library == framework::LibraryType::kCUDNN) {
     PADDLE_ENFORCE_GE(
         platform::CudnnVersion(), 8100,
         platform::errors::InvalidArgument(
