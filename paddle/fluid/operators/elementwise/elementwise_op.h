@@ -109,7 +109,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
-/*
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
@@ -117,7 +116,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
-*/
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 

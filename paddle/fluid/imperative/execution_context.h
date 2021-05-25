@@ -105,7 +105,9 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     bool find = ( it != attrs_.end() );
     if( it == attrs_.end() )
     {
+        //LOG( ERROR) << "1"; 
         it = default_attrs_.find( name );
+        //LOG( ERROR) << "2";
         find = (  it != default_attrs_.end() );
     }
     PADDLE_ENFORCE_NE(

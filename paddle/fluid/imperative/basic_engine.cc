@@ -473,11 +473,11 @@ void BasicEngine::Execute() {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
         try {
           if (tmp_ins_ptr == nullptr) {
-            OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
+            OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(), cur_op.DefaultAttrs(),
                         cur_op.place());
           } else {
             OpBase::Run(cur_op.InnerOp(), *tmp_ins_ptr, tmp_outs,
-                        cur_op.Attrs(), cur_op.place());
+                        cur_op.Attrs(), cur_op.DefaultAttrs(), cur_op.place());
           }
         } catch (platform::EnforceNotMet& exception) {
           Clear();

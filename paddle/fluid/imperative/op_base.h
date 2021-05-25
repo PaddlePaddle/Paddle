@@ -49,6 +49,10 @@ class OpBase {
   }
 
   const framework::AttributeMap& Attrs() const { return attrs_; }
+  const framework::AttributeMap& DefaultAttrs() const { return *default_attrs_; }
+
+  void SetDefaultAttrMap(const framework::AttributeMap* attrs) { 
+      default_attrs_ = attrs; }
 
   const framework::OpInfo& Info() const {
     PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
@@ -156,12 +160,14 @@ class OpBase {
                   const NameVarMap<VarBase>& ins,
                   const NameVarMap<VarBase>& outs,
                   const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<VariableWrapper>& ins,
                   const NameVarMap<VariableWrapper>& outs,
                   const framework::AttributeMap& attrs,
+                  const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
  private:
@@ -174,6 +180,7 @@ class OpBase {
   NameVarMap<VariableWrapper> ins_;
   NameVarMap<VariableWrapper> outs_;
   framework::AttributeMap attrs_;
+  mutable const framework::AttributeMap* default_attrs_;
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};

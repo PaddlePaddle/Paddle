@@ -153,13 +153,17 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   
   
+  
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
-  
+    
+  //std::cerr << "check" << std::endl;
   if (attr_checker) {
-    attr_checker->Check(&attrs, true);
+    attr_checker->Check(&attrs, true, true);
   }
+  //std::cerr << "check fin" << std::endl;
   
+   
   
 
   NameVarBaseMap new_ins = ins;
@@ -185,8 +189,15 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     }
-
-    OpBase::Run(*op, new_ins, outs, attrs, place);
+    
+    framework::AttributeMap empty_map;
+    if(  attr_checker == nullptr )
+    {
+        LOG(ERROR) << "null attr";;
+    }
+    OpBase::Run(*op, new_ins, outs, attrs, 
+            attr_checker->default_attr_map(),
+            place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);
@@ -209,7 +220,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, place, inplace_map);
+    CreateGradOpNode(*op, new_ins, outs, attrs, attr_checker->default_attr_map(), place, inplace_map);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

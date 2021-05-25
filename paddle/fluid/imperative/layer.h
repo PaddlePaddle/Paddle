@@ -283,6 +283,7 @@ class Layer {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
