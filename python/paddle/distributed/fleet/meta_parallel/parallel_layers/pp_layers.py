@@ -16,7 +16,7 @@ import paddle
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
 
-__all__ = ['LayerDesc', 'PipelineLayer']
+__all__ = []
 
 
 class SegmentLayers(object):

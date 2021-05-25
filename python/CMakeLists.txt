@@ -43,9 +43,20 @@ set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
 IF(WIN32)
     # Python would use the .pyd by default under Windows series platform
     set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.pyd)
-    set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.pyd)
+    set(FLUID_CORE_LIB ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.lib)
+    
+    add_custom_command(OUTPUT ${FLUID_CORE}
+      COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
+      COMMAND cmake -E copy $<TARGET_LINKER_FILE:paddle_pybind> ${FLUID_CORE_LIB}
+      DEPENDS paddle_pybind)
+
+    set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.pyd)  
 ELSE()
     set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.so)
+    add_custom_command(OUTPUT ${FLUID_CORE}
+        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
+        DEPENDS paddle_pybind)
+
     set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.so)
 ENDIF()
 
@@ -68,9 +79,6 @@ if(HAS_NOAVX_CORE AND EXISTS "${NOAVX_CORE_FILE}")
   list(APPEND FLUID_CORE_DEPS ${FLUID_NOAVX_CORE})
 endif()
 
-add_custom_command(OUTPUT ${FLUID_CORE}
-        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
-        DEPENDS paddle_pybind)
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE_DEPS})
 
 IF(WIN32)
@@ -84,6 +92,7 @@ ELSE(WIN32)
     COMMAND touch stub.cc
     COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+    COMMENT "Packing whl packages------>>>"
     DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
 ENDIF()
 

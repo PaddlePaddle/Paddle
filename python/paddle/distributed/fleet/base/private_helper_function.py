@@ -17,6 +17,8 @@ import socket
 from contextlib import closing
 from six import string_types
 
+__all__ = []
+
 
 def wait_server_ready(endpoints):
     """

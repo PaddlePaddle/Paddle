@@ -37,7 +37,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 from functools import reduce
 
-__all__ = ["ShardingOptimizer"]
+__all__ = []
 
 
 class ShardingOptimizer(MetaOptimizerBase):
@@ -298,7 +298,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 print("persistable FP32 grad: ")
                 print(accumulated_grad_names)
                 first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(
-                    main_block)
+                    main_block, raise_error=self.user_defined_strategy.amp)
                 insert_reduce_ops(
                     main_block,
                     first_optimize_op_index,
@@ -309,14 +309,15 @@ class ShardingOptimizer(MetaOptimizerBase):
                     use_calc_stream=True)
             if self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
                 first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(
-                    main_block)
-                insert_allreduce_ops(
-                    main_block,
-                    first_optimize_op_index,
-                    self.dp_ring_id,
-                    accumulated_grad_names,
-                    core.op_proto_and_checker_maker.OpRole.Optimize,
-                    use_calc_stream=True)
+                    main_block, raise_error=self.user_defined_strategy.amp)
+                if first_optimize_op_index >= 0:
+                    insert_allreduce_ops(
+                        main_block,
+                        first_optimize_op_index,
+                        self.dp_ring_id,
+                        accumulated_grad_names,
+                        core.op_proto_and_checker_maker.OpRole.Optimize,
+                        use_calc_stream=True)
 
         # if not use sharding, adapt amp/clip, for remain parallelism.
         # cast --> amp --> clip --> opt
