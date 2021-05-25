@@ -24,6 +24,9 @@ class TestHybridPipeParallel(TestMultipleGpus):
     def test_hybrid_parallel_pp_layer(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_layer.py')
 
+    def test_hybrid_parallel_pp_tuple_inputs(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py')
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -232,7 +232,7 @@ class PRChecker(object):
         return True
 
     def get_all_count(self):
-        p = subprocess.Popen("cd ../build && ctest -N", shell=True, stdout=subprocess.PIPE)
+        p = subprocess.Popen("cd {}build && ctest -N".format(PADDLE_ROOT), shell=True, stdout=subprocess.PIPE)
         out,err = p.communicate()
         for line in out.splitlines():
             if 'Total Tests:' in str(line):
