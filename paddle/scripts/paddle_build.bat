@@ -18,7 +18,7 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 @ECHO ON
-setlocal
+setlocal enabledelayedexpansion
 
 rem -------clean up environment-----------
 set work_dir=%cd%
@@ -236,6 +236,8 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
 set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+rem Use 64-bit ToolSet to compile
+set PreferredToolArchitecture=x64
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -366,7 +368,7 @@ echo Build third_party the %build_times% time:
 if %GENERATOR% == "Ninja" (
     ninja third_party
 ) else (
-    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:quiet third_party.vcxproj
+    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
 )
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
