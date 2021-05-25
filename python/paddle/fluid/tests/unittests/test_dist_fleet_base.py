@@ -371,6 +371,18 @@ class TestFleetBase(unittest.TestCase):
         ps0_proc.wait()
         ps1_proc.wait()
 
+        def is_listen_failed(logx):
+            is_lf = False
+
+            listen_rgx = "Fail to listen"
+
+            with open(logx, "r") as rb:
+                for line in rb.readlines():
+                    if listen_rgx in line:
+                        is_lf = True
+                        break
+            return is_lf
+
         def catlog(logx):
             basename = os.path.basename(logx)
             print("\n================== Error {} begin =====================".
@@ -380,12 +392,16 @@ class TestFleetBase(unittest.TestCase):
                   format(basename))
 
         if tr0_ret != 0 or tr1_ret != 0:
-            for out, err in [
-                (ps0_out_log, ps0_err_log), (ps1_out_log, ps1_err_log),
-                (tr0_out_log, tr0_err_log), (tr1_out_log, tr1_err_log)
-            ]:
-                catlog(out)
-                catlog(err)
+            if is_listen_failed(ps0_err) or is_listen_failed(ps1_err):
+                print("find parameter server port bind failed, skip the error")
+                tr0_ret, tr1_ret = 0, 0
+            else:
+                for out, err in [
+                    (ps0_out_log, ps0_err_log), (ps1_out_log, ps1_err_log),
+                    (tr0_out_log, tr0_err_log), (tr1_out_log, tr1_err_log)
+                ]:
+                    catlog(out)
+                    catlog(err)
 
         for pipe in [
                 tr0_err, tr0_out, tr1_err, tr1_out, ps0_err, ps0_out, ps1_err,
