@@ -93,62 +93,44 @@ class Flowers(Dataset):
                 .format(backend))
         self.backend = backend
 
-        self.flag = MODE_FLAG_MAP[mode.lower()]
+        flag = MODE_FLAG_MAP[mode.lower()]
 
-        self.data_file = data_file
-        if self.data_file is None:
+        if not data_file:
             assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(
+            data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'flowers', download)
 
-        self.label_file = label_file
-        if self.label_file is None:
+        if not label_file:
             assert download, "label_file is not set and downloading automatically is disabled"
-            self.label_file = _check_exists_and_download(
+            label_file = _check_exists_and_download(
                 label_file, LABEL_URL, LABEL_MD5, 'flowers', download)
 
-        self.setid_file = setid_file
-        if self.setid_file is None:
+        if not setid_file:
             assert download, "setid_file is not set and downloading automatically is disabled"
-            self.setid_file = _check_exists_and_download(
+            setid_file = _check_exists_and_download(
                 setid_file, SETID_URL, SETID_MD5, 'flowers', download)
 
         self.transform = transform
 
-        # read dataset into memory
-        self._load_anno()
-
-        self.dtype = paddle.get_default_dtype()
-
-    def _load_anno(self):
-        self.name2mem = {}
-        self.data_tar = tarfile.open(self.data_file)
-        for ele in self.data_tar.getmembers():
-            self.name2mem[ele.name] = ele
+        data_tar = tarfile.open(data_file)
+        self.data_path = data_file.replace(".tgz", "/")
+        if not os.path.exists(self.data_path):
+            os.mkdir(self.data_path)
+        data_tar.extractall(self.data_path)
 
         scio = try_import('scipy.io')
-
-        # double check data download
-        self.label_file = _check_exists_and_download(self.label_file, LABEL_URL,
-                                                     LABEL_MD5, 'flowers', True)
-
-        self.setid_file = _check_exists_and_download(self.setid_file, SETID_URL,
-                                                     SETID_MD5, 'flowers', True)
-
-        self.labels = scio.loadmat(self.label_file)['labels'][0]
-        self.indexes = scio.loadmat(self.setid_file)[self.flag][0]
+        self.labels = scio.loadmat(label_file)['labels'][0]
+        self.indexes = scio.loadmat(setid_file)[flag][0]
 
     def __getitem__(self, idx):
         index = self.indexes[idx]
         label = np.array([self.labels[index - 1]])
         img_name = "jpg/image_%05d.jpg" % index
-        img_ele = self.name2mem[img_name]
-        image = self.data_tar.extractfile(img_ele).read()
-
+        image = os.path.join(self.data_path, img_name)
         if self.backend == 'pil':
-            image = Image.open(io.BytesIO(image))
+            image = Image.open(image)
         elif self.backend == 'cv2':
-            image = np.array(Image.open(io.BytesIO(image)))
+            image = np.array(Image.open(image))
 
         if self.transform is not None:
             image = self.transform(image)
@@ -156,7 +138,7 @@ class Flowers(Dataset):
         if self.backend == 'pil':
             return image, label.astype('int64')
 
-        return image.astype(self.dtype), label.astype('int64')
+        return image.astype(paddle.get_default_dtype()), label.astype('int64')
 
     def __len__(self):
         return len(self.indexes)
