@@ -154,6 +154,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
@@ -254,11 +256,13 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             lr->data<MPDType>(), grad->data<T>(), param->data<T>(),
             param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
             master_out_data, param->numel());
-        // Cpu update
-        beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
-            beta1 * beta1_pow->data<MPDType>()[0];
-        beta2_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
-            beta2 * beta2_pow->data<MPDType>()[0];
+        if (!use_global_beta_pow) {
+          // Cpu update
+          beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta1 * beta1_pow->data<MPDType>()[0];
+          beta2_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta2 * beta2_pow->data<MPDType>()[0];
+        }
       } else {
         AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1, beta2, epsilon, beta1_pow->data<MPDType>(),
@@ -269,14 +273,15 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             lr->data<MPDType>(), grad->data<T>(), param->data<T>(),
             param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
             master_out_data, param->numel());
-        // Update with gpu
-        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
-            beta1, beta2, beta1_pow->data<MPDType>(),
-            beta2_pow->data<MPDType>(),
-            beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
-            beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
+        if (!use_global_beta_pow) {
+          // Update with gpu
+          UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+              beta1, beta2, beta1_pow->data<MPDType>(),
+              beta2_pow->data<MPDType>(),
+              beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
+              beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
+        }
       }
-
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
@@ -328,11 +333,13 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             param_out->mutable_data<T>(ctx.GetPlace()), master_in_data,
             master_out_data, rows, row_numel, grad_merge.rows().size(),
             lazy_mode, ndim);
-        // Update with cpu
-        beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
-            beta1 * beta1_pow->data<MPDType>()[0];
-        beta2_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
-            beta2 * beta2_pow->data<MPDType>()[0];
+        if (!use_global_beta_pow) {
+          // Update with cpu
+          beta1_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta1 * beta1_pow->data<MPDType>()[0];
+          beta2_pow_out->mutable_data<MPDType>(platform::CPUPlace())[0] =
+              beta2 * beta2_pow->data<MPDType>()[0];
+        }
       } else {
         SparseAdamFunctor<T, GPUAdam, MPDType> functor(
             beta1, beta2, epsilon, beta1_pow->data<MPDType>(),
@@ -351,12 +358,14 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                 ctx.device_context()),
             param->numel());
         for_range(functor);
-        // update beta1 and beta2
-        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
-            beta1, beta2, beta1_pow->data<MPDType>(),
-            beta2_pow->data<MPDType>(),
-            beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
-            beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
+        if (!use_global_beta_pow) {
+          // update beta1 and beta2
+          UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+              beta1, beta2, beta1_pow->data<MPDType>(),
+              beta2_pow->data<MPDType>(),
+              beta1_pow_out->mutable_data<MPDType>(ctx.GetPlace()),
+              beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
+        }
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

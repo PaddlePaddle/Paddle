@@ -186,7 +186,15 @@ def _download(url, path, md5sum=None):
 
         logger.info("Downloading {} from {}".format(fname, url))
 
-        req = requests.get(url, stream=True)
+        try:
+            req = requests.get(url, stream=True)
+        except Exception as e:  # requests.exceptions.ConnectionError
+            logger.info(
+                "Downloading {} from {} failed {} times with exception {}".
+                format(fname, url, retry_cnt + 1, str(e)))
+            time.sleep(1)
+            continue
+
         if req.status_code != 200:
             raise RuntimeError("Downloading from {} failed with code "
                                "{}!".format(url, req.status_code))
