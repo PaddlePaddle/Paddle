@@ -184,7 +184,7 @@ class PRChecker(object):
     def get_pr_diff_lines(self):
         file_to_diff_lines = {}
         r = requests.get(self.pr.diff_url)
-        time.sleep(0.5)
+        time.sleep(3)
         print(r)
         print(os.getenv('GITHUB_API_TOKEN'))
         data = r.text
