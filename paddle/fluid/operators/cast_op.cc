@@ -87,8 +87,8 @@ class CastOp : public framework::OperatorWithKernel {
     int out_dtype = ctx.Attr<int>("out_dtype");
 
     auto MKLDNNSupportsCast = [&]() -> bool {
-      int dtype_fp32 = (int)framework::proto::VarType::FP32;
-      int dtype_bf16 = (int)framework::proto::VarType::BF16;
+      int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
+      int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
 
       if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) or
           (out_dtype != dtype_fp32 && out_dtype != dtype_bf16))
