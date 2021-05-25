@@ -55,23 +55,25 @@ class GradTransformer(gast.NodeTransformer):
         static_keywords = []
 
         for kw in node.keywords:
-            if kw.arg not in dygraph_grad_parameters:
+            if kw.arg not in dygraph_grad_parameters or kw.arg not in to_static_grad_param:
                 warnings.warn("paddle.grad has unsupported parameter in jit: " +
                               kw.arg + ", jit will discard it")
                 continue
-            if kw.arg in to_static_grad_param:
-                dygraph_grad_parameters.remove(kw.arg)
-                kw.arg = to_static_grad_param[kw.arg]
-                static_keywords.append(kw)
+            dygraph_grad_parameters.remove(kw.arg)
+            kw.arg = to_static_grad_param[kw.arg]
+            static_keywords.append(kw)
 
         for i in range(len(node.args)):
             arg_name = dygraph_grad_parameters[i]
-            if arg_name in to_static_grad_param:
-                kw = gast.keyword(
-                    arg=to_static_grad_param[arg_name], value=node.args[i])
-                static_keywords.append(kw)
+            if arg_name not in to_static_grad_param:
+                warnings.warn("paddle.grad has unsupported parameter in jit: " +
+                              kw.arg + ", jit will discard it")
+                continue
+            kw = gast.keyword(
+                arg=to_static_grad_param[arg_name], value=node.args[i])
+            static_keywords.append(kw)
 
-        node.func = gast.parse('paddle.gradients').body[0].value
+        node.func = gast.parse('paddle.static.gradients').body[0].value
         node.keywords = static_keywords
         node.args = []
         return node
