@@ -49,17 +49,16 @@ class LogicalOpCudaKernel
   using OutT = bool;
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::Tensor>("X");
-    auto* z = ctx.Output<framework::Tensor>("Out");
     auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* z = ctx.Output<framework::Tensor>("Out");
     z->mutable_data<OutT>(ctx.GetPlace());
-
-    int axis = ctx.Attr<int>("axis");
     auto functor = Functor();
     std::vector<framework::Tensor*> outs = {z};
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 
-    if (y != nullptr) {
+    int axis = -1;
+    if (y == nullptr) {
       std::vector<const framework::Tensor*> ins = {x};
       LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
           cuda_ctx, ins, &outs, axis, functor);
