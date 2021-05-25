@@ -654,7 +654,7 @@ class TestElementwiseAddBfloat16Dtype2(TestElementwiseAddOp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=2)
+        self.check_output_with_place(place, atol=1)
 
     # The same reason as when self.dtype = np.float16. no grad check here
     # as this op is not in NO_FP64_CHECK_GRAD_OP_LIST, and this op's grad
