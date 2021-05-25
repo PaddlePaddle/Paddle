@@ -78,7 +78,8 @@ inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
-                                    platform::Place place);
+                                    platform::Place place,
+                                    bool always_copy = false);
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
