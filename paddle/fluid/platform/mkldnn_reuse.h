@@ -78,6 +78,10 @@ class MKLDNNHandlerT {
     auto backward_p =
         std::static_pointer_cast<TBackward_params>(dev_ctx_.GetBlob(key_p));
     if (backward_p == nullptr) {
+      PADDLE_ENFORCE_NOT_NULL(bwd_w_pd_, platform::errors::Unavailable(
+                                             "Error: BWD_PD should be set when "
+                                             "getting BWD prim witk key: %s .",
+                                             key_p));
       backward_p = std::make_shared<TBackward_params>(*bwd_w_pd_);
       dev_ctx_.SetBlob(key_p, backward_p);
     }
@@ -131,6 +135,10 @@ class MKLDNNHandlerT {
   // Buffer of given Tensor is used for oneDNN computation
   std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemory(
       framework::Tensor* diff_weights) {
+    PADDLE_ENFORCE_NOT_NULL(
+        bwd_w_pd_,
+        platform::errors::Unavailable(
+            "Error: BWD_W_PD should be set when getting BWD grad of weights."));
     T* ptr = diff_weights->mutable_data<T>(
         place_, bwd_w_pd_->diff_weights_desc().get_size());
     return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(), ptr,
@@ -139,6 +147,10 @@ class MKLDNNHandlerT {
 
   // Buffer is allocated by oneDNN to store computation results
   std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemory(void) {
+    PADDLE_ENFORCE_NOT_NULL(
+        bwd_w_pd_,
+        platform::errors::Unavailable(
+            "Error: BWD_W_PD should be set when getting BWD grad of weights."));
     return this->AcquireMemoryFromPrimitive(bwd_w_pd_->diff_weights_desc(),
                                             "@diff_wei_mem_p");
   }
