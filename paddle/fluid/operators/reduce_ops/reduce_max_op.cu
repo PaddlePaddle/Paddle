@@ -33,7 +33,9 @@ class ReduceMaxKernel : public framework::OpKernel<T> {
     std::vector<int> reduce_dims;
     if (reduce_all) {
       reduce_dims.resize(input->dims().size());
-      for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
+      for (int i = 0; i < reduce_dims.size(); ++i) {
+        reduce_dims[i] = i;
+      }
     } else {
       for (auto e : dims) {
         reduce_dims.push_back(e >= 0 ? e : e + input->dims().size());
