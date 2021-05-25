@@ -2081,11 +2081,15 @@ function build_so_cache(){
 }
 
 function reuse_so_cache() {
-    wget -q https://xly-devops.bj.bcebos.com/PR/Paddle/32993/0a57846ae6710338f161257720041ba8d02510cf/workspace/Paddle/build/proto_so.tar.gz
-    if [ "$?" -eq 0 ];then
+    get_html="https://api.github.com/repos/PaddlePaddle/Paddle"
+    merge_commit=grep sha tmp.txt `curl -X GET ${get_html}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt` |awk -F \" 'NR==1{print $(NF-1)}'
+    merge_pr=grep -oP -m 1 '(#[0-9]*)' tmp.txt `curl -X GET ${get_html}/commits/${merge_commit} -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt` |sed 's/#//g'
+    pr_commit=grep "sha" tmp.txt `curl -X GET ${get_html}/pulls/${merge_pr}/commits -H "authorization: token ${GITHUB_API_TOKEN}"` |tail -3|head -1|awk -F : '{print $NF}'|sed 's#"##g'|sed 's#,##g'
+    set +e
+    down_proto_so=`wget -q https://xly-devops.bj.bcebos.com/PR/Paddle/${merge_pr}/${pr_commit}/workspace/Paddle/build/proto_so.tar.gz`
+    set -e
+    if [ "${down_proto_so}" -eq 0 ];then
         export CI_SKIP_CPP_TEST=ON
-        echo "good"
-        ls
         cd build && mv ../proto_so.tar.gz .
         tar --use-compress-program=pigz -xpf proto_so.tar.gz
         cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
@@ -2097,7 +2101,6 @@ function reuse_so_cache() {
     else
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
     fi
-
 }
 
 function main() {
@@ -2227,8 +2230,7 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        #parallel_test
-        build_so_cache
+        parallel_test
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
