@@ -31,11 +31,28 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     bool transpose_x = ctx.Attr<bool>("trans_x");
     bool transpose_y = ctx.Attr<bool>("trans_y");
 
+    auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+
+    Tensor tmp_x(x->type());
+    tmp_x.Resize(x->dims());
+    tmp_x.mutable_data<T>(ctx.GetPlace());
+    tmp_x.set_layout(DataLayout::kFractalNZ);
+    if (x->layout() != tmp_x.layout()) {
+      auto runner_cast_x = NpuOpRunner(
+          "TransData", {*x}, {tmp_x},
+          {{"src_format", ConvertToNpuFormat(x->layout())}, {"dst_format", ACL_FORMAT_FRACTAL_NZ}});
+      runner_cast_x.Run(stream);
+    } else {
+      tmp_x.ShareDataWith(*x);
+    }
+
     if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());
 
       auto runner = NpuOpRunner(
-          "MatMul", {*x, *y}, {*out},
+          "MatMul", {tmp_x, *y}, {*out},
           {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}});
 
       auto stream =
@@ -47,7 +64,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(ctx.GetPlace());
 
       auto runner =
-          NpuOpRunner("BatchMatMul", {*x, *y}, {*out},
+          NpuOpRunner("BatchMatMul", {tmp_x, *y}, {*out},
                       {{"adj_x1", transpose_x}, {"adj_x2", transpose_y}});
 
       auto stream =
@@ -158,3 +175,4 @@ REGISTER_OP_NPU_KERNEL(
     ops::MatMulV2GradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MatMulV2GradNPUKernel<paddle::platform::NPUDeviceContext,
                                paddle::platform::float16>);
+

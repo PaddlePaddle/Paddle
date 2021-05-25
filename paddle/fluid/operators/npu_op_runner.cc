@@ -44,6 +44,7 @@ static std::map<DataLayout, aclFormat> DATA_LAYOUT_2_ACL_FORMAT = {
     {DataLayout::kNCHW, ACL_FORMAT_NCHW},
     {DataLayout::kNHWC, ACL_FORMAT_NHWC},
     {DataLayout::kAnyLayout, ACL_FORMAT_ND},
+    {DataLayout::kFractalNZ, ACL_FORMAT_FRACTAL_NZ},
 };
 
 aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype) {

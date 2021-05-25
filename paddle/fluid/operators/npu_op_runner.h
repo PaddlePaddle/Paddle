@@ -88,6 +88,8 @@ class NpuOpRunner {
 
 aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype);
 
+aclFormat ConvertToNpuFormat(DataLayout layout);
+
 aclrtStream GetCurrentNPUStream(int device_id = -1);
 
 template <typename T>

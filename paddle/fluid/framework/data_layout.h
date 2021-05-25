@@ -28,6 +28,7 @@ enum class DataLayout {
   kNCHW = 1,
   kAnyLayout = 2,
   kMKLDNN = 3,  // all layouts supported by MKLDNN internally
+  kFractalNZ = 4, // only for NPU device
 };
 
 inline DataLayout StringToDataLayout(const std::string& str) {
@@ -44,6 +45,8 @@ inline DataLayout StringToDataLayout(const std::string& str) {
     return DataLayout::kAnyLayout;
   } else if (s == "MKLDNNLAYOUT") {
     return DataLayout::kMKLDNN;
+  } else if (s == "FRACTAL_NZ") {
+    return DataLayout::kFractalNZ;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unknown data layout type string: %s.", s));
@@ -60,6 +63,8 @@ inline std::string DataLayoutToString(const DataLayout& data_layout) {
       return "ANY_LAYOUT";
     case DataLayout::kMKLDNN:
       return "MKLDNNLAYOUT";
+    case DataLayout::kFractalNZ:
+      return "FRACTAL_NZ";
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unknown Data Layout type %d.", data_layout));
@@ -73,3 +78,4 @@ inline std::ostream& operator<<(std::ostream& out, const DataLayout& l) {
 
 }  // namespace framework
 }  // namespace paddle
+
