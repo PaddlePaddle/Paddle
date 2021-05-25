@@ -126,14 +126,24 @@ class IndexSelectKernel : public framework::OpKernel<T> {
 };
 
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
-template <typename T>
-void index_sum(const size_t n, const T* src, T* dst) {
+template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+void IndexSelectAdd(const int n, const T* src, T* dst) {
+  for (auto k = 0; k < n; ++k) {
+    dst[k] += src[k];
+  }
+}
+
+// description: Index addition uses intel intrinsic instruction set to read and
+// write data in parallel
+template <>
+void IndexSelectAdd<float, platform::avx>(const int n, const float* src,
+                                          float* dst) {
 #ifdef __AVX__
   constexpr int block = YMM_FLOAT_BLOCK;
-  unsigned int i, end;
-  i = end = 0;
-  end = n & ~(block - 1);
+  int i = 0;
+  int end = n & ~(block - 1);
   for (i = 0; i < end; i += block) {
+    // Quote from https://software.intel.com/sites/landingpage/IntrinsicsGuide/
     _mm256_storeu_ps(reinterpret_cast<float*>(dst) + i,
                      _mm256_add_ps(_mm256_loadu_ps((const float*)dst + i),
                                    _mm256_loadu_ps((const float*)src + i)));
@@ -142,19 +152,17 @@ void index_sum(const size_t n, const T* src, T* dst) {
     dst[i] += src[i];
   }
 #else
-  for (size_t k = 0; k < n; k++) {
-    dst[k] += src[k];
-  }
+  IndexSelectAdd<float, platform::isa_any>(n, src, dst);
 #endif
 }
 
 template <>
-void index_sum(const size_t n, const double* src, double* dst) {
+void IndexSelectAdd<double, platform::avx>(const int n, const double* src,
+                                           double* dst) {
 #ifdef __AVX__
   constexpr int block = XMM_FLOAT_BLOCK;
-  unsigned int i, end;
-  i = end = 0;
-  end = n & ~(block - 1);
+  int i = 0;
+  int end = n & ~(block - 1);
   for (i = 0; i < end; i += block) {
     _mm256_storeu_pd(reinterpret_cast<double*>(dst) + i,
                      _mm256_add_pd(_mm256_loadu_pd((const double*)dst + i),
@@ -164,9 +172,7 @@ void index_sum(const size_t n, const double* src, double* dst) {
     dst[i] += src[i];
   }
 #else
-  for (size_t k = 0; k < n; k++) {
-    dst[k] += src[k];
-  }
+  IndexSelectAdd<double, platform::isa_any>(n, src, dst);
 #endif
 }
 #endif
@@ -182,6 +188,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
   std::memset(out_data, 0.0, x_grad->numel() * sizeof(T));
+
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
@@ -202,17 +209,15 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
     auto output_start_offset = i * output_width;
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
-#ifdef __AVX__
       auto src = input_data + input_start_offset + j * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
+
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
-      index_sum(slice_size, src, dst);
-#endif
+#ifdef __AVX__
+      index_select_add<T, platform::avx>(slice_size, src, dst);
 #else
-      for (auto k = 0; k < slice_size; k++) {
-        out_data[output_start_offset + index_value * slice_size + k] +=
-            input_data[input_start_offset + j * slice_size + k];
-      }
+      index_select_add<T>(slice_size, src, dst);
+#endif
 #endif
     }
   }
