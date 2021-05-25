@@ -168,7 +168,7 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
     globals()[cls_name] = TestConv2DCUDNNFp16
 
 
-def create_test_cudnn_bf16_class(parent, check_grad=False):
+def create_test_cudnn_bf16_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
         "core is not compiled with CUDA and cudnn version need larger than 8.1.0"

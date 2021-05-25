@@ -191,16 +191,13 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 #if PADDLE_WITH_CUDA
   if (input_data_type == framework::proto::VarType::BF16) {
-#if CUDNN_VERSION_MIN(8, 1, 0)
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
                       platform::errors::InvalidArgument(
                           "bfloat16 can only be used when CUDNN is used"));
-#else
-    PADDLE_ENFORCE_NE(
-        library, framework::LibraryType::kCUDNN,
+    PADDLE_ENFORCE_GE(
+        platform::CudnnVersion(), 8100,
         platform::errors::InvalidArgument(
             "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
-#endif  // CUDNN_VERSION >= 8100
   }
 #endif  // PADDLE_WITH_CUDA
 
