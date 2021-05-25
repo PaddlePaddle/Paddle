@@ -198,8 +198,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
         // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
         // capacity = -24, in_size = -8, output_shape[0] = 0
         // the following check will fail.
-        if (in_size == 0) {
-          PADDLE_ENFORCE_EQ(capacity, 0,
+        if (capacity == 0) {
+          PADDLE_ENFORCE_EQ(1, 0,
                             platform::errors::InvalidArgument(
                                 "specified 'shape' [%s], is invalid for input "
                                 "with shape [%s].",
