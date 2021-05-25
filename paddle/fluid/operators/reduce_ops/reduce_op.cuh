@@ -645,7 +645,7 @@ void TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
   //   temp_output should be stored temp_data in output_data space or stored in
   //   y_data;
-  config.SetOutputData(y_data, x.place(), tmp);
+  config.SetOutputData(y_data, x.place(), &tmp);
 
   if (config.reduce_num == 1) {
     auto out_dims = y->dims();
