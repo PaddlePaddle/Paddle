@@ -52,7 +52,7 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner = NpuOpRunner(
+    auto& runner = NpuOpRunner(
         "ConcatD", {inputs}, {*out},
         {{"concat_dim", axis}, {"N", static_cast<int>(inputs.size())}});
     runner.AddInputNames(names);
@@ -101,8 +101,8 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
             sizes.push_back(ins[j]->dims()[dim]);
           }
         }
-        auto runner = NpuOpRunner("SliceD", {*out_grad}, {*outs[j]},
-                                  {{"offsets", offsets}, {"size", sizes}});
+        auto& runner = NpuOpRunner("SliceD", {*out_grad}, {*outs[j]},
+                                   {{"offsets", offsets}, {"size", sizes}});
         runner.Run(stream);
       }
       if (ins[j]->numel() != 0UL) {

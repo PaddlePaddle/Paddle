@@ -53,11 +53,11 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     if (overwrite) {
-      auto runner_update = NpuOpRunner("TensorScatterUpdate",
-                                       {*x, *index, *updates}, {*out}, {});
+      auto& runner_update = NpuOpRunner("TensorScatterUpdate",
+                                        {*x, *index, *updates}, {*out}, {});
       runner_update.Run(stream);
     } else {
-      auto runner_add =
+      auto& runner_add =
           NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*out}, {});
       runner_add.Run(stream);
     }

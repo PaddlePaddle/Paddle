@@ -35,10 +35,10 @@ class PowNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("Power", {*x}, {*out},
-                              {{"power", factor},
-                               {"scale", static_cast<float>(1.0)},
-                               {"shift", static_cast<float>(0.0)}});
+    auto& runner = NpuOpRunner("Power", {*x}, {*out},
+                               {{"power", factor},
+                                {"scale", static_cast<float>(1.0)},
+                                {"shift", static_cast<float>(0.0)}});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -68,8 +68,8 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // Step1: Compute x_pow = x.pow(factor-1)
     Tensor x_pow(x->type());
     x_pow.mutable_data<T>(x->dims(), place);
-    auto runner_pow = NpuOpRunner("Power", {*x}, {x_pow},
-                                  {{"power", factor - static_cast<float>(1)}});
+    auto& runner_pow = NpuOpRunner("Power", {*x}, {x_pow},
+                                   {{"power", factor - static_cast<float>(1)}});
     runner_pow.Run(stream);
 
     // Step 2: Construct a broadcast factor, which has the same shape with x.
@@ -83,20 +83,20 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // factor.
     Tensor factor_bc_tensor(framework::proto::VarType::FP32);
     factor_bc_tensor.mutable_data<float>(x_dims, place);
-    auto runner_bc = NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
-                                 {{"dims", framework::vectorize(x_dims)}});
+    auto& runner_bc = NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
+                                  {{"dims", framework::vectorize(x_dims)}});
     runner_bc.Run(stream);
 
     // Step 3: Compute x_power_mul_factor = factor * x.pow(factor-1)
     Tensor x_power_mul_factor(x->type());
     x_power_mul_factor.mutable_data<T>(x->dims(), place);
-    auto runner_mul_1 =
+    auto& runner_mul_1 =
         NpuOpRunner("Mul", {factor_bc_tensor, x_pow}, {x_power_mul_factor}, {});
     runner_mul_1.Run(stream);
 
     // Step 4: Compute dx = dout * factor * x.pow(factor-1)
     dx->mutable_data<T>(place);
-    auto runner_mul_2 =
+    auto& runner_mul_2 =
         NpuOpRunner("Mul", {*dout, x_power_mul_factor}, {*dx}, {});
     runner_mul_2.Run(stream);
   }
@@ -111,11 +111,11 @@ class ReluNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("Relu",
-                              {
-                                  *x,
-                              },
-                              {*out}, {});
+    auto& runner = NpuOpRunner("Relu",
+                               {
+                                   *x,
+                               },
+                               {*out}, {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -137,7 +137,7 @@ class ReluGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     dx->mutable_data<T>(ctx.GetPlace());
-    auto runner = NpuOpRunner("ReluGrad", {*dout, *out}, {*dx}, {});
+    auto& runner = NpuOpRunner("ReluGrad", {*dout, *out}, {*dx}, {});
 
     runner.Run(stream);
   }
@@ -159,7 +159,7 @@ class SqrtNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Sqrt", {*x}, {*out}, {});
+    auto& runner = NpuOpRunner("Sqrt", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };
@@ -233,7 +233,7 @@ class LogGradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner = NpuOpRunner("DivNoNan", {*dout, *x}, {*dx}, {});
+    auto& runner = NpuOpRunner("DivNoNan", {*dout, *x}, {*dx}, {});
     runner.Run(stream);
   }
 };
@@ -254,7 +254,7 @@ class TanhNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Tanh", {*x}, {*out}, {});
+    auto& runner = NpuOpRunner("Tanh", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };
@@ -297,7 +297,7 @@ class SquareNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Square", {*x}, {*out}, {});
+    auto& runner = NpuOpRunner("Square", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };

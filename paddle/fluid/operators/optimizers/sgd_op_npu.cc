@@ -32,7 +32,7 @@ class SGDNPUKernel : public framework::OpKernel<T> {
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner =
+    auto& runner =
         NpuOpRunner("ApplyGradientDescent",
                     {*param_var, *learning_rate, *grad_var}, {*param_out}, {});
 

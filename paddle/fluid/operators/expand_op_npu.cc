@@ -27,7 +27,7 @@ template <typename DeviceContext, typename T>
 class ExpandNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto rank = context.Input<Tensor>("X")->dims().size();
+    auto& rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
         rank, 1,
         platform::errors::InvalidArgument(
@@ -65,7 +65,7 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
 
     out0->Resize(out_dims);
     out0->mutable_data<T>(context.device_context().GetPlace());
-    auto runner =
+    auto& runner =
         NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()

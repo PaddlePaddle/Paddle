@@ -40,7 +40,7 @@ class ElementwiseDivNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Div", {*x, *y}, {*out}, {});
+    auto& runner = NpuOpRunner("Div", {*x, *y}, {*out}, {});
     runner.Run(stream);
   }
 };

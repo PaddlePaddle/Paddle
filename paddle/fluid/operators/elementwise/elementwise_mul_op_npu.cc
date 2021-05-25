@@ -41,7 +41,7 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Mul", {*x, *y}, {*out}, {});
+    auto& runner = NpuOpRunner("Mul", {*x, *y}, {*out}, {});
     runner.Run(stream);
   }
 };

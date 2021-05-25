@@ -32,7 +32,7 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
+    auto& runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -68,7 +68,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
       dx->mutable_data<T>(ctx.GetPlace());
       // For dx
       // stage 1
-      auto reduce_ndim = dout->dims().size() - dx->dims().size();
+      auto& reduce_ndim = dout->dims().size() - dx->dims().size();
       std::vector<int> axes;
       for (auto i = 0; i < reduce_ndim; ++i) {
         axes.push_back(i);
@@ -82,8 +82,8 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         }
         reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
         reduced_dout.mutable_data<T>(ctx.GetPlace());
-        auto runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
-                                  {{"axes", axes}, {"keep_dims", false}});
+        auto& runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
+                                   {{"axes", axes}, {"keep_dims", false}});
         runner.Run(stream);
         tmp_dout = &reduced_dout;
       }
@@ -96,8 +96,8 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         }
       }
       if (axes.size() != 0) {
-        auto runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dx},
-                                  {{"axes", axes}, {"keep_dims", true}});
+        auto& runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dx},
+                                   {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
       } else {
         framework::TensorCopy(
@@ -109,7 +109,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
     if (dy) {
       // For dy
       // stage 1
-      auto reduce_ndim = dout->dims().size() - dy->dims().size();
+      auto& reduce_ndim = dout->dims().size() - dy->dims().size();
       std::vector<int> axes;
       for (auto i = 0; i < reduce_ndim; ++i) {
         axes.push_back(i);
@@ -123,8 +123,8 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         }
         reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
         reduced_dout.mutable_data<T>(ctx.GetPlace());
-        auto runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
-                                  {{"axes", axes}, {"keep_dims", false}});
+        auto& runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
+                                   {{"axes", axes}, {"keep_dims", false}});
         runner.Run(stream);
         tmp_dout = &reduced_dout;
       }
@@ -138,8 +138,8 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
       }
       if (axes.size() != 0) {
         dy->mutable_data<T>(ctx.GetPlace());
-        auto runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dy},
-                                  {{"axes", axes}, {"keep_dims", true}});
+        auto& runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dy},
+                                   {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
       } else {
         framework::TensorCopy(

@@ -39,7 +39,7 @@ class GeluNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Gelu", {*x}, {*out}, {});
+    auto& runner = NpuOpRunner("Gelu", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };
