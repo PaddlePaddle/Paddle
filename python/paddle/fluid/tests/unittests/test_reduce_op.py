@@ -37,6 +37,8 @@ class TestSumOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSumOp_fp16(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -44,15 +46,30 @@ class TestSumOp_fp16(OpTest):
             'X': np.random.uniform(0, 0.1, (5, 6, 10)).astype("float16")
         }
         self.attrs = {'dim': [0, 1, 2]}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=None)}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+        self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_output_with_place(place, atol=1e-2)
+
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return grad,
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['X'], 'Out', user_defined_grads=self.gradient)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSumOp_fp16_withInt(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -60,13 +77,26 @@ class TestSumOp_fp16_withInt(OpTest):
             'X': np.random.randint(0, 30, (10, 10)).astype("float16")
         }
         self.attrs = {'dim': [0, 1]}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=None)}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+        self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_output_with_place(place)
+
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return grad,
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['X'], 'Out', user_defined_grads=self.gradient)
 
 
 class TestSumOp5D(OpTest):
