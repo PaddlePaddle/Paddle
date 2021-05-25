@@ -13,15 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/hostdevice.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {

@@ -160,9 +160,9 @@ struct ReduceConfig {
 
   // when should_reduce_again is true, we need malloc temp space for temp data
   void SetOutputData(Ty* y_data, const platform::Place& place,
-                     framework::Tensor& tmp) {
+                     framework::Tensor* tmp) {
     if (should_reduce_again) {
-      output_data = tmp.mutable_data<Ty>(
+      output_data = tmp->mutable_data<Ty>(
           framework::make_ddim(
               {static_cast<int64_t>(left_num * grid.y * sizeof(Ty))}),
           place);
@@ -585,7 +585,7 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 #define CUB_REDUCE_RANK_CASE(i, ...)                                           \
   case i: {                                                                    \
     constexpr auto kReduceRank = i;                                            \
-    launchKernel<Tx, Ty, BlockDim, ReduceOp, TransformOp, kRank, kReduceRank>( \
+    LaunchKernel<Tx, Ty, BlockDim, ReduceOp, TransformOp, kRank, kReduceRank>( \
         x_data, y_data, place, reducer, transformer, init, stream, config);    \
   } break
 
