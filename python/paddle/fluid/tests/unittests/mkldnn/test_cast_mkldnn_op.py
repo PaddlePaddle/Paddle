@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,11 +48,11 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
             core.CPUPlace(), ["X"],
             "Out",
             check_dygraph=False,
-            user_defined_grads=[self.x_bf16],
-            user_defined_grad_outputs=[self.x_fp32])
+            user_defined_grads=[self.inputs['X']],
+            user_defined_grad_outputs=[self.outputs['Out']])
 
 
-class TestCastFP32ToBF16MKLDNNOp(OpTest):
+class TestCastFP32ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
     def setUp(self):
         self.x_fp32 = np.random.random(size=[2, 6]).astype("float32")
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
@@ -66,19 +66,8 @@ class TestCastFP32ToBF16MKLDNNOp(OpTest):
         }
         self.op_type = 'cast'
 
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
 
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
-            "Out",
-            check_dygraph=False,
-            user_defined_grads=[self.x_fp32],
-            user_defined_grad_outputs=[self.x_bf16])
-
-
-class TestCastBF16ToBF16MKLDNNOp(OpTest):
+class TestCastBF16ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
     def setUp(self):
         self.x_fp32 = np.random.random(size=[6, 13]).astype("float32")
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
@@ -92,19 +81,8 @@ class TestCastBF16ToBF16MKLDNNOp(OpTest):
         }
         self.op_type = 'cast'
 
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
 
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
-            "Out",
-            check_dygraph=False,
-            user_defined_grads=[self.x_bf16],
-            user_defined_grad_outputs=[self.x_bf16])
-
-
-class TestCastFP32ToFP32MKLDNNOp(OpTest):
+class TestCastFP32ToFP32MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
     def setUp(self):
         self.x_fp32 = np.random.random(size=[7, 15]).astype("float32")
 
@@ -116,17 +94,6 @@ class TestCastFP32ToFP32MKLDNNOp(OpTest):
             'use_mkldnn': True
         }
         self.op_type = 'cast'
-
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
-            "Out",
-            check_dygraph=False,
-            user_defined_grads=[self.x_fp32],
-            user_defined_grad_outputs=[self.x_fp32])
 
 
 if __name__ == '__main__':
