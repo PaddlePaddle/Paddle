@@ -65,8 +65,8 @@ func (p *Predictor) Clone() *Predictor {
 ///
 /// \return input number
 ///
-func (p *Predictor) GetInputNum() int {
-	return int(C.PD_PredictorGetInputNum(p.c))
+func (p *Predictor) GetInputNum() uint {
+	return uint(C.PD_PredictorGetInputNum(p.c))
 }
 
 ///
@@ -74,8 +74,8 @@ func (p *Predictor) GetInputNum() int {
 ///
 /// \return output number
 ///
-func (p *Predictor) GetOutputNum() int {
-	return int(C.PD_PredictorGetOutputNum(p.c))
+func (p *Predictor) GetOutputNum() uint {
+	return uint(C.PD_PredictorGetOutputNum(p.c))
 }
 
 ///
