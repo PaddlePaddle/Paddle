@@ -26,6 +26,7 @@ import types
 import numpy
 import six
 
+from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
@@ -40,6 +41,9 @@ __all__ = ["convert_call"]
 BUILTIN_LIKELY_MODULES = [
     collections, pdb, copy, inspect, re, six, numpy, logging
 ]
+# The api(s) should be considered as plain function and convert
+# them into static layer code.
+PADDLE_NEED_CONVERT_APIS = [Sequential]
 
 translator_logger = TranslatorLogger()
 
@@ -91,6 +95,10 @@ def is_unsupported(func):
                     "Whitelist: {} is part of built-in module and does not have to be transformed.".
                     format(func))
                 return True
+
+    # NOTE: should be placed before `is_paddle_func`
+    if type(func) in PADDLE_NEED_CONVERT_APIS:
+        return False
 
     if is_paddle_func(func):
         translator_logger.log(

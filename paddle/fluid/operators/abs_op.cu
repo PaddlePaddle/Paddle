@@ -70,8 +70,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::AbsKernel<plat::CUDADeviceContext, int>,
     ops::AbsKernel<plat::CUDADeviceContext, int64_t>,
     ops::AbsKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::AbsKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::AbsKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::AbsKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::AbsKernel<plat::CUDADeviceContext, plat::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     abs_grad, ops::AbsGradKernel<plat::CUDADeviceContext, float>,
@@ -79,8 +79,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::AbsGradKernel<plat::CUDADeviceContext, int>,
     ops::AbsGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::AbsGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::AbsGradKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::AbsGradKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::AbsGradKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::AbsGradKernel<plat::CUDADeviceContext, plat::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     abs_grad_grad, ops::AbsDoubleGradKernel<plat::CUDADeviceContext, float>,
@@ -88,5 +88,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::AbsDoubleGradKernel<plat::CUDADeviceContext, int>,
     ops::AbsDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::AbsDoubleGradKernel<plat::CUDADeviceContext, plat::complex<double>>);
