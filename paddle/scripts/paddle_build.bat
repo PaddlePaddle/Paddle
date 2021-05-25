@@ -263,12 +263,12 @@ rem ------initialize the python environment------
 @ECHO ON
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
-if %WITH_PYTHON% == "ON" (
+if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     pip install wheel --user
     pip install -r %work_dir%\python\requirements.txt --user
-    if %ERRORLEVEL% NEQ 0 (
+    if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 7
     )
