@@ -975,29 +975,31 @@ class RNNBase(LayerList):
                             "use_align": False,
                             "dtype": params[0].dtype
                         })
-            if fluid.core.is_compiled_with_rocm() and get_device() != 'cpu':
-                if self.num_directions == 2:
-                    for i in range(0, len(self._all_weights), 4):
-                        self._all_weights[i + 1], self._all_weights[
-                            i + 2] = self._all_weights[
-                                i + 2], self._all_weights[i + 1]
-                if self.mode == 'GRU':
-                    for i in range(len(self._all_weights)):
-                        _w = split(self._all_weights[i], 3, 0)
-                        self._all_weights[i] = concat([_w[1], _w[0], _w[2]])
-                elif self.mode == 'LSTM':
-                    for i in range(len(self._all_weights)):
-                        _w = split(self._all_weights[i], 4, 0)
-                        self._all_weights[i] = concat(
-                            [_w[0], _w[1], _w[3], _w[2]])
 
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
+        if fluid.core.is_compiled_with_rocm() and get_device() != 'cpu':
+            _all_weights = [x for x in self._all_weights]
+            if self.num_directions == 2:
+                for i in range(0, len(_all_weights), 4):
+                    _all_weights[i + 1], _all_weights[i + 2] = _all_weights[
+                        i + 2], _all_weights[i + 1]
+            if self.mode == 'GRU':
+                for i in range(len(_all_weights)):
+                    _w = split(_all_weights[i], 3, 0)
+                    _all_weights[i] = concat([_w[1], _w[0], _w[2]])
+            elif self.mode == 'LSTM':
+                for i in range(len(_all_weights)):
+                    _w = split(_all_weights[i], 4, 0)
+                    _all_weights[i] = concat([_w[0], _w[1], _w[3], _w[2]])
+        else:
+            _all_weights = self._all_weights
+
         if fluid.framework.in_dygraph_mode():
             _, _, out, state = framework.core.ops.rnn(
-                inputs, initial_states, self._all_weights, sequence_length,
+                inputs, initial_states, _all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',
                 self.dropout, 'is_bidirec', self.num_directions == 2,
                 'input_size', self.input_size, 'hidden_size', self.hidden_size,
@@ -1014,7 +1016,7 @@ class RNNBase(LayerList):
 
             inputs = {
                 'Input': inputs,
-                'WeightList': self._all_weights,
+                'WeightList': _all_weights,
                 'PreState': initial_states,
                 'SequenceLength': sequence_length
             }
