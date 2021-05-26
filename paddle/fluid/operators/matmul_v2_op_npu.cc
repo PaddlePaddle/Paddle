@@ -35,24 +35,59 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
 
+    
+    /*Tensor tmp_x_nd(x->type());
+    tmp_x_nd.Resize(x->dims());
+    tmp_x_nd.set_layout(DataLayout::kAnyLayout);
+    tmp_x_nd.mutable_data<T>(ctx.GetPlace());
+    tmp_x_nd.ShareDataWith(*x);*/
+    //char name_nchw[] = "NCHW";
+    //char name_nz[] = "FRACTAL_Zn";
+    
     Tensor tmp_x(x->type());
     tmp_x.Resize(x->dims());
     tmp_x.mutable_data<T>(ctx.GetPlace());
     tmp_x.set_layout(DataLayout::kFractalNZ);
-    if (x->layout() != tmp_x.layout()) {
+    VLOG(3) << "yoki x_layout" << framework::DataLayoutToString(x->layout());
+    //VLOG(3) << "yoki tmp_x_nd_layout" << framework::DataLayoutToString(tmp_x_nd.layout());
+    VLOG(3) << "yoki tmp_layout" << framework::DataLayoutToString(tmp_x.layout());
+    //if (x->layout() != tmp_x.layout()) {
       auto runner_cast_x = NpuOpRunner(
           "TransData", {*x}, {tmp_x},
-          {{"src_format", ConvertToNpuFormat(x->layout())}, {"dst_format", ACL_FORMAT_FRACTAL_NZ}});
+          {{"src_format", framework::DataLayoutToString(x->layout())}, {"dst_format", framework::DataLayoutToString(tmp_x.layout())}, {"groups", 1}});
+      //    {{"src_format", ACL_FORMAT_NCHW}, {"dst_format", ACL_FORMAT_NCHW}, {"groups", 1}});
+      //    {{"src_format", name_nchw}, {"dst_format", name_nz}});
+      //    {{"src_format", ConvertToNpuFormat(tmp_x_nd.layout())}, {"dst_format", ConvertToNpuFormat(tmp_x.layout())}});
+      //    {{"src_format", ConvertToNpuFormat(x->layout())}, {"dst_format", ACL_FORMAT_FRACTAL_NZ}});
+      VLOG(3) << "yoki ok";
       runner_cast_x.Run(stream);
+    //} else {
+    //  tmp_x.ShareDataWith(*x);
+    //}
+
+    Tensor tmp_y(y->type());
+    tmp_y.Resize(y->dims());
+    tmp_y.mutable_data<T>(ctx.GetPlace());
+    tmp_y.set_layout(DataLayout::kFractalNZ);
+    // framework::TensorCopy(
+    //       *y, ctx.GetPlace(),
+    //       ctx.template device_context<platform::DeviceContext>(), &tmp_y);
+    if (y->layout() != tmp_y.layout()) {
+      auto runner_cast_y = NpuOpRunner(
+          "TransData", {*y}, {tmp_y},
+          {{"src_format", framework::DataLayoutToString(y->layout())}, {"dst_format", framework::DataLayoutToString(tmp_y.layout())}, {"groups", 1}});
+      runner_cast_y.Run(stream);
     } else {
-      tmp_x.ShareDataWith(*x);
+     tmp_y.ShareDataWith(*y);
     }
+
 
     if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());
+      out->set_layout(DataLayout::kFractalNZ);
 
       auto runner = NpuOpRunner(
-          "MatMul", {tmp_x, *y}, {*out},
+          "MatMul", {tmp_x, tmp_y}, {*out},
           {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}});
 
       auto stream =
@@ -64,7 +99,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(ctx.GetPlace());
 
       auto runner =
-          NpuOpRunner("BatchMatMul", {tmp_x, *y}, {*out},
+          NpuOpRunner("BatchMatMul", {tmp_x, tmp_y}, {*out},
                       {{"adj_x1", transpose_x}, {"adj_x2", transpose_y}});
 
       auto stream =
