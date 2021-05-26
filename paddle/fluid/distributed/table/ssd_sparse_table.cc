@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/distributed/table/ssd_sparse_table.h"
 
 DEFINE_string(rocksdb_path, "database", "path of sparse table rocksdb file");
@@ -358,3 +359,4 @@ int64_t SSDSparseTable::LoadFromText(
 
 }  // namespace ps
 }  // namespace paddle
+#endif

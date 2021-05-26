@@ -16,10 +16,17 @@ set_source_files_properties(common_graph_table.cc PROPERTIES COMPILE_FLAGS ${DIS
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
-cc_library(common_table SRCS common_sparse_table.cc ssd_sparse_table.cc common_dense_table.cc
-sparse_geo_table.cc barrier_table.cc common_graph_table.cc DEPS ${TABLE_DEPS}
+set(EXTERN_DEP "")
+if(WITH_HETERPS)
+    set(TABLE_SRC common_sparse_table.cc ssd_sparse_table.cc common_dense_table.cc sparse_geo_table.cc barrier_table.cc common_graph_table.cc)
+    set(EXTERN_DEP rocksdb)
+else()
+    set(TABLE_SRC common_sparse_table.cc common_dense_table.cc sparse_geo_table.cc barrier_table.cc common_graph_table.cc)
+endif()
+
+cc_library(common_table SRCS ${TABLE_SRC} DEPS ${TABLE_DEPS}
 ${RPC_DEPS} graph_edge graph_node device_context string_helper
-simple_threadpool xxhash generator rocksdb)
+simple_threadpool xxhash generator ${EXTERN_DEP})
 
 set_source_files_properties(tensor_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(tensor_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -29,4 +36,3 @@ cc_library(tensor_table SRCS tensor_table.cc DEPS eigen3 ps_framework_proto exec
 set_source_files_properties(table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
 cc_library(table SRCS table.cc DEPS common_table tensor_accessor tensor_table ps_framework_proto string_helper device_context gflags glog boost)
-#target_link_libraries(table -lbz2)

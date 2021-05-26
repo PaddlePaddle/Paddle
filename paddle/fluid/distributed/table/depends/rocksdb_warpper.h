@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
 #include <rocksdb/db.h>
 #include <rocksdb/filter_policy.h>
@@ -154,3 +155,4 @@ class RocksDBHandler {
 };
 }
 }
+#endif

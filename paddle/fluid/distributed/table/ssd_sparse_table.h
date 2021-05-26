@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
 #include "paddle/fluid/distributed/table/depends/rocksdb_warpper.h"
-
+#ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace distributed {
 class SSDSparseTable : public CommonSparseTable {
@@ -58,3 +58,4 @@ class SSDSparseTable : public CommonSparseTable {
 
 }  // namespace ps
 }  // namespace paddle
+#endif
