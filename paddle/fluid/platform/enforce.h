@@ -691,24 +691,24 @@ namespace details {
 template <typename T>
 struct ExternalApiType {};
 
-#define DEFINE_CUDA_STATUS_TYPE(type, success_value, proto_type) \
-  template <>                                                    \
-  struct ExternalApiType<type> {                                 \
-    using Type = type;                                           \
-    static constexpr Type kSuccess = success_value;              \
-    static constexpr const char* kTypeString = #proto_type;      \
-    static constexpr platform::proto::ApiType kProtoType =       \
-        platform::proto::ApiType::proto_type;                    \
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value, proto_type) \
+  template <>                                                     \
+  struct ExternalApiType<type> {                                  \
+    using Type = type;                                            \
+    static constexpr Type kSuccess = success_value;               \
+    static constexpr const char* kTypeString = #proto_type;       \
+    static constexpr platform::proto::ApiType kProtoType =        \
+        platform::proto::ApiType::proto_type;                     \
   }
 
-DEFINE_CUDA_STATUS_TYPE(cudaError_t, cudaSuccess, CUDA);
-DEFINE_CUDA_STATUS_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
-DEFINE_CUDA_STATUS_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
-DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
-DEFINE_CUDA_STATUS_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
+DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess, CUDA);
+DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
+DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
+DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
+DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess, NCCL);
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess, NCCL);
 #endif
 
 }  // namespace details
@@ -977,7 +977,7 @@ inline void retry_sleep(unsigned milliseconds) {
     }                                                                   \
   } while (0)
 
-#undef DEFINE_CUDA_STATUS_TYPE
+#undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_CUDA
 
 /**************************************************************************/
@@ -1096,20 +1096,20 @@ namespace details {
 template <typename T>
 struct ExternalApiType {};
 
-#define DEFINE_CUDA_STATUS_TYPE(type, success_value) \
-  template <>                                        \
-  struct ExternalApiType<type> {                     \
-    using Type = type;                               \
-    static constexpr Type kSuccess = success_value;  \
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value) \
+  template <>                                         \
+  struct ExternalApiType<type> {                      \
+    using Type = type;                                \
+    static constexpr Type kSuccess = success_value;   \
   }
 
-DEFINE_CUDA_STATUS_TYPE(hipError_t, hipSuccess);
-DEFINE_CUDA_STATUS_TYPE(hiprandStatus_t, HIPRAND_STATUS_SUCCESS);
-DEFINE_CUDA_STATUS_TYPE(miopenStatus_t, miopenStatusSuccess);
-DEFINE_CUDA_STATUS_TYPE(rocblas_status, rocblas_status_success);
+DEFINE_EXTERNAL_API_TYPE(hipError_t, hipSuccess);
+DEFINE_EXTERNAL_API_TYPE(hiprandStatus_t, HIPRAND_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(miopenStatus_t, miopenStatusSuccess);
+DEFINE_EXTERNAL_API_TYPE(rocblas_status, rocblas_status_success);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
-DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 #endif
 
 }  // namespace details
@@ -1156,7 +1156,7 @@ inline void retry_sleep(unsigned millisecond) {
     }                                                                   \
   } while (0)
 
-#undef DEFINE_CUDA_STATUS_TYPE
+#undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
 
 #ifdef PADDLE_WITH_ASCEND_CL
