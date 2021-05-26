@@ -20,7 +20,8 @@ SET(MKLDNN_SOURCE_DIR     ${THIRD_PARTY_PATH}/mkldnn/src/extern_mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 SET(MKLDNN_REPOSITORY     ${GIT_URL}/oneapi-src/oneDNN.git)
-SET(MKLDNN_TAG            f58682cd8bd0615f41d879f8afc8f1511ab42d24)
+SET(MKLDNN_TAG            f3999b71d8e4415c1985a0dfb812a3ed77ee21fa)
+
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
@@ -59,8 +60,8 @@ ExternalProject_Add(
     DEPENDS             ${MKLDNN_DEPENDS}
     PREFIX              ${MKLDNN_PREFIX_DIR}
     SOURCE_DIR          ${MKLDNN_SOURCE_DIR}
-    BUILD_ALWAYS        1
-    # UPDATE_COMMAND      ""
+    UPDATE_COMMAND      ""
+    #BUILD_ALWAYS        1
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}

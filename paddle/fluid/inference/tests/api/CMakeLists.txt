@@ -176,7 +176,7 @@ if(NOT APPLE AND WITH_MKLML)
     inference_analysis_api_test(test_analyzer_seq_pool1_fuse_compare_zero_copy ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_fuse_compare_zero_copy_tester.cc)
     inference_analysis_api_test(test_analyzer_seq_pool1_fuse_statis ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_fuse_statis_tester.cc)
     inference_analysis_api_test(test_analyzer_seq_pool1_profile ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_profile_tester.cc)
-    if(NOT WIN32)
+    if(NOT WIN32 AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
         set_tests_properties(test_analyzer_seq_pool1_compare_determine PROPERTIES TIMEOUT 120)
         set_tests_properties(test_analyzer_seq_pool1 PROPERTIES TIMEOUT 120)
         set_tests_properties(test_analyzer_seq_pool1_fuse_compare_zero_copy PROPERTIES TIMEOUT 120)
@@ -242,10 +242,10 @@ download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz")
 inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
     ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
-if(NOT WIN32 AND NOT APPLE)
+if(NOT WIN32 AND NOT APPLE AND TEST test_analyzer_ernie_large)
     set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
 endif()
-if (WIN32)
+if (WIN32 AND TEST test_analyzer_ernie_large)
     set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 200)
 endif()
 
@@ -643,6 +643,10 @@ if(WITH_GPU)
     inference_analysis_test(paddle_infer_api_test SRCS paddle_infer_api_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR})
+endif()
+
+if("$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+    return()
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)

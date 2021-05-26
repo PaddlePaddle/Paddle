@@ -14,12 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include <cstdint>
+#include "paddle/fluid/platform/hostdevice.h"
 
 #define INT_BITS 32
 
 namespace paddle {
 namespace operators {
+
+template <typename T, int Size>
+struct alignas(sizeof(T) * Size) CudaAlignedVector {
+  T val[Size];
+};
 
 struct FastDivMod {
   // 1st value represents the result of input number divides by recorded divisor
