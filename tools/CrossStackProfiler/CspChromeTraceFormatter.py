@@ -25,10 +25,7 @@ import tempfile
 import platform
 import pandas as pd
 
-<<<<<<< HEAD
-=======
 
->>>>>>> a3d86da391... add cross stack profiler to profile super ernie
 class ChromeTraceFormatter(object):
     def __init__(self):
         self._events = []
@@ -122,19 +119,11 @@ class ChromeTraceFormatter(object):
             return json.dumps(trace, indent=4, separators=(',', ': '))
         else:
             return json.dumps(trace, separators=(',', ':'))
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> a3d86da391... add cross stack profiler to profile super ernie
     def clear(self):
         self._events = []
         self._metadata = []
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-    pass  
-=======
     pass
->>>>>>> a3d86da391... add cross stack profiler to profile super ernie
