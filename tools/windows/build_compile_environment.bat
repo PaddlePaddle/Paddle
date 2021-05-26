@@ -132,7 +132,7 @@ goto :eof
 :vs
 echo ">>>>>>>> step [4/7]: Visual Studio 2017 "
 cmd /C "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"  > nul 2> nul || call :install_visual_studio
-goto :cuda10
+goto :cuda
 
 :install_visual_studio
 echo There is not Visual Studio in this PC, will install VS2017.
@@ -153,7 +153,7 @@ goto :eof
 :: ===== end step 4: Visual Studio 2017 =====
 
 :: ===== start step 5: CUDA 11 =====
-:cuda10
+:cuda
 echo ">>>>>>>> step [5/7]: CUDA 11.2"
 cmd /C nvcc --version 2> nul | findstr /C:"11.2" > nul 2> nul || call :install_cuda
 goto java-jre
