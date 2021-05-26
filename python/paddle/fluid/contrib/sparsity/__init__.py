@@ -15,10 +15,20 @@
 
 from __future__ import print_function
 
-from . import utils
-from .utils import *
-from . import asp
-from .asp import *
+from .utils import calculate_density
+from .utils import check_mask_1d
+from .utils import get_mask_1d
+from .utils import check_mask_2d
+from .utils import get_mask_2d_greedy
+from .utils import get_mask_2d_best
+from .utils import create_mask
+from .utils import check_sparsity
+from .utils import MaskAlgo
+from .utils import CheckMethod
+from .asp import ASPHelper
 
-__all__ = utils.__all__
-__all__ += asp.__all__
+__all__ = [
+    'calculate_density', 'check_mask_1d', 'get_mask_1d', 'check_mask_2d',
+    'get_mask_2d_greedy', 'get_mask_2d_best', 'create_mask', 'check_sparsity',
+    'MaskAlgo', 'CheckMethod', 'ASPHelper'
+]

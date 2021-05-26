@@ -147,7 +147,7 @@ class ASPHelper(object):
         return ASPOptimizerWrapper(optimizer)
 
     @classmethod
-    def __get_program_asp_info(cls, main_program):
+    def _get_program_asp_info(cls, main_program):
         if not main_program in cls.__asp_info:
             cls.__asp_info[main_program] = ProgramASPInfo()
         return cls.__asp_info[main_program]
@@ -161,7 +161,7 @@ class ASPHelper(object):
             main_program (Program, optional): Program with model definition and its parameters.
             param_names (list): A list contains names of parameters.
         """
-        asp_info = cls.__get_program_asp_info(main_program)
+        asp_info = cls._get_program_asp_info(main_program)
         asp_info.update_excluded_layers(param_names)
 
     @classmethod
@@ -177,7 +177,7 @@ class ASPHelper(object):
             for asp_info in cls.__asp_info:
                 asp_info.reset_excluded_layers()
         else:
-            cls.__get_program_asp_info(main_program).reset_excluded_layers()
+            cls._get_program_asp_info(main_program).reset_excluded_layers()
 
     @classmethod
     def is_supported_layer(cls, main_program, param_name):
@@ -209,7 +209,7 @@ class ASPHelper(object):
         if ASPHelper.MASKE_APPENDDED_NAME in param_name:
             return False
 
-        for layer in cls.__get_program_asp_info(main_program).excluded_layers:
+        for layer in cls._get_program_asp_info(main_program).excluded_layers:
             if layer in param_name:
                 return False
 
@@ -323,7 +323,7 @@ class ASPHelper(object):
                     ASPHelper.create_mask_variables(main_program, startup_program, params_and_grads)
                     ASPHelper.insert_sparse_mask_ops(main_program, params_and_grads)
         """
-        asp_info = cls.__get_program_asp_info(main_program)
+        asp_info = cls._get_program_asp_info(main_program)
         with program_guard(main_program, startup_program):
             for param_and_grad in params_and_grads:
                 if ASPHelper.is_supported_layer(main_program,
@@ -372,7 +372,7 @@ class ASPHelper(object):
                     ASPHelper.insert_sparse_mask_ops(main_program, params_and_grads)
         """
         block = main_program.global_block()
-        asp_info = cls.__get_program_asp_info(main_program)
+        asp_info = cls._get_program_asp_info(main_program)
         for param_grad in param_grads:
             if param_grad[0].name in asp_info.mask_vars:
                 block.append_op(
@@ -448,7 +448,7 @@ class ASPHelper(object):
         if main_program is None:
             main_program = paddle.static.default_main_program()
 
-        asp_info = cls.__get_program_asp_info(main_program)
+        asp_info = cls._get_program_asp_info(main_program)
         for param in main_program.global_block().all_parameters():
             if ASPHelper.is_supported_layer(main_program, param.name):
                 weight_tensor = global_scope().find_var(param.name).get_tensor()
