@@ -30,6 +30,7 @@ from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
 from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
 from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
 
+
 def get_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -60,6 +61,7 @@ def get_argparse():
         help='Num of line need to display in a group.')
 
     return parser.parse_args()
+
 
 class CspReporter(object):
     def __init__(self, args):
