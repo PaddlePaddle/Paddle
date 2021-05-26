@@ -361,15 +361,19 @@ echo    ========================================
 
 for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
+
 set build_times=1
+rem MSbuild will build third_party first to improve compiler stability.
+if NOT %GENERATOR% == "Ninja" (
+    goto :build_tp
+) else (
+    goto :build_paddle
+)
+
 :build_tp
 echo Build third_party the %build_times% time:
+MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
 
-if %GENERATOR% == "Ninja" (
-    ninja third_party
-) else (
-    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
-)
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR %retry_times% (
