@@ -26,7 +26,7 @@ import numpy as np
 paddle.enable_static()
 
 
-class TestASPHelper(unittest.TestCase):
+class TestASPHelperPruning2DBest(unittest.TestCase):
     def setUp(self):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
@@ -50,9 +50,6 @@ class TestASPHelper(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
-        self.__pruning_and_checking(exe, place,
-                                    sparsity.MaskAlgo.MASK_2D_GREEDY,
-                                    sparsity.CheckMethod.CHECK_2D, False)
         self.__pruning_and_checking(exe, place, sparsity.MaskAlgo.MASK_2D_BEST,
                                     sparsity.CheckMethod.CHECK_2D, False)
 
@@ -70,9 +67,6 @@ class TestASPHelper(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
-        self.__pruning_and_checking(exe, place,
-                                    sparsity.MaskAlgo.MASK_2D_GREEDY,
-                                    sparsity.CheckMethod.CHECK_2D, True)
         self.__pruning_and_checking(exe, place, sparsity.MaskAlgo.MASK_2D_BEST,
                                     sparsity.CheckMethod.CHECK_2D, True)
 

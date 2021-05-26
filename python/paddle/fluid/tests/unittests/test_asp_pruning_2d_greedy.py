@@ -26,7 +26,7 @@ import numpy as np
 paddle.enable_static()
 
 
-class TestASPHelperPruning1D(unittest.TestCase):
+class TestASPHelperPruning2DGreedy(unittest.TestCase):
     def setUp(self):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
@@ -50,8 +50,9 @@ class TestASPHelperPruning1D(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
-        self.__pruning_and_checking(exe, place, sparsity.MaskAlgo.MASK_1D,
-                                    sparsity.CheckMethod.CHECK_1D, False)
+        self.__pruning_and_checking(exe, place,
+                                    sparsity.MaskAlgo.MASK_2D_GREEDY,
+                                    sparsity.CheckMethod.CHECK_2D, False)
 
     def test_training_pruning(self):
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -67,8 +68,9 @@ class TestASPHelperPruning1D(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
-        self.__pruning_and_checking(exe, place, sparsity.MaskAlgo.MASK_1D,
-                                    sparsity.CheckMethod.CHECK_1D, True)
+        self.__pruning_and_checking(exe, place,
+                                    sparsity.MaskAlgo.MASK_2D_GREEDY,
+                                    sparsity.CheckMethod.CHECK_2D, True)
 
     def __pruning_and_checking(self, exe, place, mask_func_name,
                                check_func_name, with_mask):
