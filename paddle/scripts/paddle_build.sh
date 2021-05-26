@@ -1992,6 +1992,10 @@ EOF
     # run go test
     cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
     bash test.sh
+    EXIT_CODE=$?
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
 }
 
 function test_fluid_lib_train() {
