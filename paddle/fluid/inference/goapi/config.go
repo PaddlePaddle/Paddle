@@ -96,7 +96,7 @@ func (config *Config) SetParamsFile(params string) {
 ///
 /// \param cacheDir the path of optimization cache directory.
 ///
-func (config *Config) SetOptionCacheDir(cacheDir string) {
+func (config *Config) SetOptimCacheDir(cacheDir string) {
 	ccacheDir := C.CString(cacheDir)
 	C.PD_ConfigSetOptimCacheDir(config.c, ccacheDir)
 	defer C.free(unsafe.Pointer(ccacheDir))

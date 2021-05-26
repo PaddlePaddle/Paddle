@@ -1978,6 +1978,22 @@ EOF
     fi
 }
 
+function test_go_inference_api() {
+    cat <<EOF
+    ========================================
+    Testing go inference api ...
+    ========================================
+EOF
+
+    # ln paddle_inference_c lib
+    cd ${PADDLE_ROOT}/build
+    ln -s ${PADDLE_ROOT}/build/paddle_inference_c_install_dir/ ${PADDLE_ROOT}/paddle/fluid/inference/goapi/paddle_inference_c
+
+    # run go test
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
+    bash test.sh
+}
+
 function test_fluid_lib_train() {
     cat <<EOF
     ========================================
@@ -2176,6 +2192,8 @@ function main() {
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train
+        #go inference test
+        test_go_inference_api
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}

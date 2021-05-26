@@ -21,7 +21,7 @@ func TestNewConfig(t *testing.T) {
 	config.SetProgFile("model")
 	config.SetParamsFile("params")
 
-	config.SetOptionCacheDir("cache")
+	config.SetOptimCacheDir("cache")
 
 	config.DisableFCPadding()
 	t.Logf("UseFcPadding:%+v", config.UseFcPadding())
