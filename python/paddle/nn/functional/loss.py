@@ -927,9 +927,10 @@ def kl_div(input, label, reduction='mean', name=None):
         return paddle.mean(loss, name=name)
     elif reduction == 'batchmean':
         if paddle.in_dynamic_mode():
-            return paddle.sum(loss, name=name) / loss.shape[0]
+            batch = loss.shape[0]
         else:
-            return paddle.sum(loss, name=name) / paddle.shape(loss)[0]
+            batch = paddle.shape(loss)[0]
+        return paddle.sum(loss, name=name) / batch
     else:
         return paddle.sum(loss, name=name)
 
