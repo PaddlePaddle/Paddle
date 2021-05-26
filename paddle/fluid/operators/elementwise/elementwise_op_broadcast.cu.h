@@ -524,6 +524,7 @@ void LaunchElementwiseCudaKernel(
   }
 }
 
+#ifndef __HIPCC__
 template <typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT, Functor>(
     const platform::CUDADeviceContext &cuda_ctx,
@@ -532,6 +533,7 @@ void LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT, Functor>(
   LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
       cuda_ctx, ins, outs, func);
 }
+#endif  // end of __HIPCC__
 
 }  // namespace operators
 }  // namespace paddle
