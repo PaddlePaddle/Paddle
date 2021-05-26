@@ -926,7 +926,23 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
         dims_(dims),
         vtype_(vtype),
-        dtype_(dtype) {}
+        vtype_dst_(vtype),
+        dtype_(dtype),
+        dtype_dst_(dtype) {}
+
+  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
+                       framework::proto::VarType::Type vtype,
+                       mkldnn::memory::data_type dtype,
+                       framework::proto::VarType::Type vtype_dst,
+                       mkldnn::memory::data_type dtype_dst,
+                       const platform::MKLDNNDeviceContext& dev_ctx,
+                       mkldnn::engine engine, const std::string& base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
+        dims_(dims),
+        vtype_(vtype),
+        vtype_dst_(vtype_dst),
+        dtype_(dtype),
+        dtype_dst_(dtype_dst) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const MKLDNNMemoryFormat& fmt, void* ptr) {
@@ -940,15 +956,16 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
-      auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_, fmt);
-      auto dst_data = output->mutable_data(place, vtype_, dst_md.get_size());
+      auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
+      auto dst_data =
+          output->mutable_data(place, vtype_dst_, dst_md.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
       // Even if memory object exists , we may be using it for diffrent tensor
       auto dst_data =
-          output->mutable_data(place, vtype_, mem_p->get_desc().get_size());
+          output->mutable_data(place, vtype_dst_, mem_p->get_desc().get_size());
       mem_p->set_data_handle(dst_data);
     }
     return mem_p;
@@ -970,8 +987,8 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
 
  private:
   std::vector<int64_t> dims_;
-  framework::proto::VarType::Type vtype_;
-  mkldnn::memory::data_type dtype_;
+  framework::proto::VarType::Type vtype_, vtype_dst_;
+  mkldnn::memory::data_type dtype_, dtype_dst_;
 };
 
 template <typename T>
