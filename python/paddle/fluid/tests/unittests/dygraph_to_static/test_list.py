@@ -62,9 +62,6 @@ def test_list_append_in_for_loop(x, iter_num):
     return a[0]
 
 
-paddle.jit.set_code_level(100)
-
-
 def test_list_append_in_for_subscript(x):
     x = fluid.dygraph.to_variable(x)
     iter_num = paddle.shape(x)[0]
