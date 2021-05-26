@@ -903,25 +903,35 @@ def kl_div(input, label, reduction='mean', name=None):
         label = fluid.layers.cast(label, 'float64')
 
     if paddle.in_dynamic_mode():
-        out = core.ops.kldiv_loss(input, label, 'reduction', reduction)
-        return out
+        loss = core.ops.kldiv_loss(input, label, 'reduction', 'none')
+    else:
+        helper = LayerHelper('kl_div', **locals())
 
-    helper = LayerHelper('kl_div', **locals())
+        fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'kl_div')
+        fluid.data_feeder.check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'kl_div')
+        fluid.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
 
-    fluid.data_feeder.check_variable_and_dtype(input, 'input',
-                                               ['float32', 'float64'], 'kl_div')
-    fluid.data_feeder.check_variable_and_dtype(label, 'label',
-                                               ['float32', 'float64'], 'kl_div')
-    fluid.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
+        loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type='kldiv_loss',
+            inputs={'X': input,
+                    'Target': label},
+            outputs={'Loss': loss},
+            attrs={'reduction': 'none'})
 
-    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='kldiv_loss',
-        inputs={'X': input,
-                'Target': label},
-        outputs={'Loss': loss},
-        attrs={'reduction': reduction})
-    return loss
+    if reduction == 'none':
+        return loss
+    elif reduction == 'mean':
+        return paddle.mean(loss, name=name)
+    elif reduction == 'batchmean':
+        if paddle.in_dynamic_mode():
+            return paddle.sum(out, name=name) / loss.shape[0]
+        else:
+            return paddle.sum(loss, name=name) / paddle.shape(loss)[0]
+    else:
+        return paddle.sum(loss, name=name)
 
 
 def mse_loss(input, label, reduction='mean', name=None):
