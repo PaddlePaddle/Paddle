@@ -449,3 +449,28 @@ REGISTER_OP_CPU_KERNEL(
                          paddle::platform::complex64>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex128>);
+
+REGISTER_OP_CUDA_KERNEL(
+    slice, ops::SliceKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::float16>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::complex64>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::complex128>);
+
+REGISTER_OP_CUDA_KERNEL(
+    slice_grad,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::float16>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex64>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex128>);
