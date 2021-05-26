@@ -251,8 +251,8 @@ class TestNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-4))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-4))
+        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-3))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -335,8 +335,8 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-4))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-4))
+        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-3))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
 
 
 if __name__ == '__main__':
