@@ -20,6 +20,13 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
+# Note(zhouwei): Ninja Generator will set CMAKE_BUILD_TYPE to Debug
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
+      FORCE)
+endif()
+
 project(paddle CXX C)
 
 # enable language CUDA
@@ -213,12 +220,6 @@ if(NOT PY_VERSION)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
-# CMAKE_BUILD_TYPE
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-      FORCE)
-endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
