@@ -233,9 +233,9 @@ class PRChecker(object):
 
     def get_all_count(self):
         os.system(
-            "cd %s/build && ctest -N|grep 'Total Tests:' | awk -F ': ' '{print $2}' > testCount"
+            "cd %sbuild && ctest -N|grep 'Total Tests:' | awk -F ': ' '{print $2}' > testCount"
             % PADDLE_ROOT)
-        f = open("%s/build/testCount" % PADDLE_ROOT)
+        f = open("%sbuild/testCount" % PADDLE_ROOT)
         testCount = f.read()
         f.close()
         return int(testCount.strip())
