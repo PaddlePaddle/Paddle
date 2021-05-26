@@ -24,7 +24,7 @@ class TestNegOp(OpTest):
     def setUp(self):
         self.op_type = 'neg'
         self.init_dtype_type()
-        self.inputs = {'X': np.random.random((32, 64)).astype(self.dtype)}
+        self.inputs = {'X': np.random.random((32, 8)).astype(self.dtype)}
         self.outputs = {'Out': np.negative(self.inputs['X'])}
 
     def init_dtype_type(self):
@@ -51,6 +51,7 @@ class TestNegOpInt64(TestNegOp):
     def init_dtype_type(self):
         self.dtype = np.int64
 
+    # Interface check_grad() does not work for int64 dtype.
     def test_check_grad_normal(self):
         pass
 
@@ -59,6 +60,7 @@ class TestNegOpInt32(TestNegOp):
     def init_dtype_type(self):
         self.dtype = np.int32
 
+    # Interface check_grad() does not work for int32 dtype.
     def test_check_grad_normal(self):
         pass
 
