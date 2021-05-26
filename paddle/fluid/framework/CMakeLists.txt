@@ -383,6 +383,9 @@ cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_te
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
 cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
 
+#cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
+cc_binary(new_executor SRCS new_exec.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
+
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
