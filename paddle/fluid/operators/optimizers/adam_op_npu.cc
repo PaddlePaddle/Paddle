@@ -147,7 +147,7 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner =
+    const auto& runner =
         NpuOpRunner("ApplyAdamD",
                     {
                         *param, *mom1, *mom2, *beta1_pow, *beta2_pow, *lr,
@@ -179,10 +179,10 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     if (!use_global_beta_pow) {
       beta1_pow_out->mutable_data<T>(ctx.GetPlace());
       beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-      auto runner_m1 =
+      const auto& runner_m1 =
           NpuOpRunner("Mul", {*beta1_pow, *beta1_tensor}, {*beta1_pow_out}, {});
       runner_m1.Run(stream);
-      auto runner_m2 =
+      const auto& runner_m2 =
           NpuOpRunner("Mul", {*beta2_pow, *beta2_tensor}, {*beta2_pow_out}, {});
       runner_m2.Run(stream);
     }

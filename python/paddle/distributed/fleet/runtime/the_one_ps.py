@@ -847,8 +847,6 @@ class TheOnePSRuntime(RuntimeBase):
         dirname = os.path.normpath(dirname)
         pserver_id = self.role_maker._role_id()
 
-        import time
-        begin = time.time()
         for var_name in load_varnames:
             table_id = sparse_table_maps[var_name]
             path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
@@ -856,9 +854,6 @@ class TheOnePSRuntime(RuntimeBase):
             meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.meta".format(var_name, pserver_id))
             self._server.load_sparse(path, meta, table_id)
-        end = time.time()
-        print("init sparse variables: {} cost time: {}".format(load_varnames,
-                                                               end - begin))
 
     def _run_server(self):
         if self.role_maker._is_heter_worker():

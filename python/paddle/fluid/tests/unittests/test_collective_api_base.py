@@ -154,7 +154,10 @@ class TestDistBase(unittest.TestCase):
         #update environment
         env0.update(envs)
         env1.update(envs)
-        tr_cmd = "%s %s"
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            tr_cmd = "%s -m coverage run --branch -p %s"
+        else:
+            tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
