@@ -14,15 +14,6 @@
 
 # TODO: define classes of convolutional neural network
 
-__all__ = [
-    'Conv1D',
-    'Conv2D',
-    'Conv3D',
-    'Conv1DTranspose',
-    'Conv2DTranspose',
-    'Conv3DTranspose',
-]
-
 import numpy as np
 
 from ...fluid import get_flags
@@ -33,6 +24,8 @@ from ...fluid.initializer import Normal
 from .. import functional as F
 from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
+
+__all__ = []
 
 
 def _get_default_param_initializer(num_channels, filter_size):
@@ -206,7 +199,7 @@ class Conv1D(_ConvNd):
     * :math:`X`: Input value, a ``Tensor`` with 'NCL' format or 'NLC' format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCK] .
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -232,16 +225,16 @@ class Conv1D(_ConvNd):
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of filter. It is as same as the output
             feature map.
-        kernel_size (int|tuple|list): The filter size. If kernel_size is a tuple,
+        kernel_size (int|tuple|list): The filter size. If kernel_size is a tuple/list,
             it must contain one integer, (kernel_size).
-        stride (int|tuple|list, optional): The stride size. If stride is a tuple, it must
+        stride (int|tuple|list, optional): The stride size. If stride is a tuple/list, it must
             contain one integer, (stride_size). Default: 1.
         padding(int|str|tuple|list, optional): The size of zeros to be padded. It must be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
             3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
             The default value is 0.
-        dilation (int|tuple|list, optional): The dilation size. If dilation is a tuple, it must
+        dilation (int|tuple|list, optional): The dilation size. If dilation is a tuple/list, it must
             contain one integer, (dilation_size). Default: 1.
         groups (int, optional): The groups number of the conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
@@ -266,11 +259,15 @@ class Conv1D(_ConvNd):
             is not set, the bias is initialized zero. Default: None.
 
     Attribute:
+
         **weight** (Parameter): the learnable weights of filter of this layer.
+
         **bias** (Parameter or None): the learnable bias of this layer.
 
     Shape:
         - x: 3-D tensor with shape: (batch, in_channels, length) or (batch, length, in_channels).
+        - weight: 3-D tensor with shape: (out_channels, in_channels, kernel_size)
+        - bias: 1-D tensor with shape: (out_channels)
         - output: 3-D tensor with same shape as input x.
     
     Raises:
@@ -410,12 +407,12 @@ class Conv1DTranspose(_ConvNd):
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of the filter. It is as same as the output
             feature map.
-        kernel_size(int|tuple|list, optional): The filter size. If kernel_size is a tuple,
+        kernel_size(int|tuple|list, optional): The filter size. If kernel_size is a tuple/list,
             it must contain one integers, (kernel_size). None if
             use output size to calculate kernel_size. Default: None. kernel_size and
             output_size should not be None at the same time.
         stride(int|tuple|list, optional): The stride size. It means the stride in transposed convolution.
-            If stride is a tuple, it must contain one integer, (stride_size).
+            If stride is a tuple/list, it must contain one integer, (stride_size).
             Default: stride = 1.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
              `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
@@ -423,7 +420,7 @@ class Conv1DTranspose(_ConvNd):
              If `padding` is a tuple or list, it could be in two forms:
              `[pad]` or `[pad_left, pad_right]`. Default: padding = 0.
         output_padding(int|list|tuple, optional): The count of zeros to be added to tail of each dimension.
-             If it is a tuple, it must contain one integer. Default: 0.
+             If it is a tuple/list, it must contain one integer. Default: 0.
         groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -432,7 +429,7 @@ class Conv1DTranspose(_ConvNd):
             Default: groups = 1.
         bias(bool, optional): Whether to use bias. Default: True.
         dilation(int|tuple|list, optional): The dilation size. It means the spacing between the kernel points.
-            If dilation is a tuple, it must contain one integer, (dilation_size).
+            If dilation is a tuple/list, it must contain one integer, (dilation_size).
             Default: dilation = 1.
         weight_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv1d_transpose. If it is set to None or one attribute of ParamAttr, conv1d_transpose
@@ -451,7 +448,9 @@ class Conv1DTranspose(_ConvNd):
     Shape:
 
         - x(Tensor): 3-D tensor with shape (batch, in_channels, length) when data_format is "NCL" or shape (batch, length, in_channels) when data_format is "NLC".
-        - output_size(int|tuple|list, optional): The output image size. If output size is a tuple, it must contain one integer, (feature_length). None if use kernel_size, padding, output_padding and stride to calculate output_size. If output_size and kernel_size are specified at the same time, They should follow the formula above. Default: None. output_size and kernel_size should not be None at the same time.
+        - weight(Tensor): 3-D tensor with shape (in_channels, out_channels, kernel_length).
+        - bias(Tensor): 1-D tensor with shape (out_channels).
+        - output_size(int|tuple|list, optional): The output image size. If output size is a tuple/list, it must contain one integer, (feature_length). None if use kernel_size, padding, output_padding and stride to calculate output_size. If output_size and kernel_size are specified at the same time, They should follow the formula above. Default: None. output_size and kernel_size should not be None at the same time.
         - output(Tensor): 3-D tensor with same shape as input x.
 
     Examples:
@@ -547,7 +546,7 @@ class Conv2D(_ConvNd):
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
     
@@ -555,7 +554,7 @@ class Conv2D(_ConvNd):
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
         kernel_size(int|list|tuple, optional): The size of the convolving kernel.
-        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
@@ -565,7 +564,7 @@ class Conv2D(_ConvNd):
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
-        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
         groups(int, optional): The groups number of the Conv3D Layer. According to grouped
@@ -596,6 +595,10 @@ class Conv2D(_ConvNd):
     Shape:
 
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
+
+        - weight: :math:`(C_{out}, C_{in}, K_{h}, K_{w})`
+
+        - bias: :math:`(C_{out})`
 
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
 
@@ -683,15 +686,15 @@ class Conv2DTranspose(_ConvNd):
     filter, and dilations, strides, paddings. Input and output
     are in NCHW format. Where N is batch size, C is the number of feature map,
     H is the height of the feature map, and W is the width of the feature map.
-    Filter's shape is [MCHW] , where M is the number of input feature map,
-    C is the number of output feature map, H is the height of the filter,
+    Filter's shape is [CMHW] , where C is the number of input feature map,
+    M is the number of output feature map, H is the height of the filter,
     and W is the width of the filter. If the groups is greater than 1,
     C will equal the number of input feature map divided by the groups.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
     The details of convolution transpose layer, please refer to the following explanation and references
-    `conv2dtranspose <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_ .
+    `conv2dtranspose <https://arxiv.org/pdf/1603.07285.pdf>`_ .
     For each input :math:`X`, the equation is:
 
     ..  math::
@@ -701,19 +704,19 @@ class Conv2DTranspose(_ConvNd):
     Where:
 
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
-    * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
+    * :math:`W`: Filter value, a ``Tensor`` with shape [CMHW] .
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
     
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by the convolution.
-        kernel_size(int|list|tuple): The kernel size. If kernel_size is a tuple,
+        kernel_size(int|list|tuple): The kernel size. If kernel_size is a list/tuple,
             it must contain two integers, (kernel_size_H, kernel_size_W).
             Otherwise, the kernel will be a square.
-        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
@@ -725,7 +728,7 @@ class Conv2DTranspose(_ConvNd):
             The default value is 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
         groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
@@ -755,6 +758,10 @@ class Conv2DTranspose(_ConvNd):
     Shape:
 
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
+
+        - weight: :math:`(C_{in}, C_{out}, K_{h}, K_{w})`
+
+        - bias: :math:`(C_{out})`
 
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
 
@@ -858,7 +865,7 @@ class Conv3D(_ConvNd):
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -866,7 +873,7 @@ class Conv3D(_ConvNd):
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
         kernel_size(int|list|tuple, optional): The size of the convolving kernel.
-        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
@@ -876,7 +883,7 @@ class Conv3D(_ConvNd):
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
-        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
         groups(int, optional): The groups number of the Conv3D Layer. According to grouped
@@ -907,6 +914,10 @@ class Conv3D(_ConvNd):
     Shape:
 
         - x: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+        - weight: :math:`(C_{out}, C_{in}, K_{d}, K_{h}, K_{w})`
+
+        - bias: :math:`(C_{out})`
 
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
 
@@ -1002,7 +1013,7 @@ class Conv3DTranspose(_ConvNd):
     is the width of the feature. Parameters(dilations, strides, paddings) are
     two elements. These two elements represent height and width, respectively.
     The details of convolution transpose layer, please refer to the following
-    explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    explanation and references `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -1015,9 +1026,9 @@ class Conv3DTranspose(_ConvNd):
     In the above equation:
 
     * :math:`X`: Input value, a tensor with NCDHW format.
-    * :math:`W`: Filter value, a tensor with MCDHW format.
+    * :math:`W`: Filter value, a tensor with CMDHW format.
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -1037,11 +1048,11 @@ class Conv3DTranspose(_ConvNd):
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by the convolution.
-        kernel_size(int|list|tuple): The kernel size. If kernel_size is a tuple,
+        kernel_size(int|list|tuple): The kernel size. If kernel_size is a list/tuple,
             it must contain three integers, (kernel_size_D, kernel_size_H, kernel_size_W).
             Otherwise, the kernel will be a square.
         stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
-            If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
+            If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height, 
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
             The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
@@ -1053,7 +1064,7 @@ class Conv3DTranspose(_ConvNd):
             The default value is 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
         groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
@@ -1071,11 +1082,6 @@ class Conv3DTranspose(_ConvNd):
             If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. The default value is None.
-        output_size(int|list|tuple, optional): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). None if use
-            filter_size, padding, and stride to calculate output_size.
-            if output_size and filter_size are specified at the same time, They
-            should follow the formula above. Default: None.
         data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCDHW" or "NDHWC". Default: "NCDHW".
 
@@ -1088,6 +1094,10 @@ class Conv3DTranspose(_ConvNd):
     Shape:
 
         - x: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
+        - weight: :math:`(C_{in}, C_{out}, K_{d}, K_{h}, K_{w})`
+
+        - bias: :math:`(C_{out})`
 
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
 

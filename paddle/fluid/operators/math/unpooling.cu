@@ -87,7 +87,11 @@ class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
+#ifdef __HIPCC__
+    int threads = 256;
+#else
     int threads = 1024;
+#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMax<T><<<grid, threads, 0, context.stream()>>>(
         input.numel(), input_data, indices_data, input_height, input_width,
@@ -117,7 +121,11 @@ class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, T> {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+#ifdef __HIPCC__
+    int threads = 256;
+#else
     int threads = 1024;
+#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMaxGrad<T><<<grid, threads, 0, context.stream()>>>(
         input.numel(), input_data, indices_data, input_height, input_width,

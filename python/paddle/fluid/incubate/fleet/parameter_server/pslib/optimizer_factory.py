@@ -489,6 +489,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 # user do not have to set it in config_fleet
                 if accessor == "DownpourFeatureValueAccessor" \
                         or accessor == "DownpourCtrAccessor" \
+                        or accessor == "DownpourDoubleUnitAccessor" \
                         or accessor == "DownpourUnitAccessor":
                     if st.get("sparse_embedx_dim") is not None \
                             and st["sparse_embedx_dim"] != emb_to_size[key] - 3:
@@ -769,7 +770,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
                     "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",
-                    "DownpourUnitAccessor"
+                    "DownpourUnitAccessor", "DownpourDoubleUnitAccessor"
                 ]:
             opt_info["dump_slot"] = True
         elif server._server.downpour_server_param.downpour_table_param[

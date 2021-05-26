@@ -37,6 +37,7 @@ hidden_size = 10
 inner_size = 8
 output_size = 2
 seq_length = 2
+batch_size = 4
 
 
 class SimpleMPNet(fluid.dygraph.Layer):
@@ -130,18 +131,6 @@ class SimpleDPNet(fluid.dygraph.Layer):
         return x
 
 
-class TrainDataset(Dataset):
-    def __init__(self, length):
-        self.length = length
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, index):
-        np_input_data = np.random.randint(0, vocab_size, (seq_length, ))
-        return np_input_data
-
-
 class TestDistMPTraning(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
@@ -178,20 +167,6 @@ class TestDistMPTraning(unittest.TestCase):
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
-        train_data = TrainDataset(length=10000)
-
-        train_batch_sampler = paddle.io.DistributedBatchSampler(
-            train_data,
-            batch_size=4,
-            shuffle=False,
-            num_replicas=self.data_parallel_size,
-            rank=dp_id)
-        train_data_loader = DataLoader(
-            dataset=train_data,
-            batch_sampler=train_batch_sampler,
-            num_workers=0,
-            return_list=True)
-
         model_a = SimpleMPNet(vocab_size, hidden_size, inner_size, output_size,
                               np_fc1, np_fc2, mp_id)
         optimizer_a = self.build_optimizer(model_a)
@@ -202,16 +177,17 @@ class TestDistMPTraning(unittest.TestCase):
                               np_fc1, np_fc2)
         optimizer_b = self.build_optimizer(model_b)
 
-        return model_a, optimizer_a, model_b, optimizer_b, train_data_loader
+        return model_a, optimizer_a, model_b, optimizer_b
 
     def test_mp_model(self):
-        model_a, optimizer_a, model_b, optimizer_b, train_data_loader = self.build_model_optimizer(
+        model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
         )
 
-        for step, batch in enumerate(train_data_loader):
-            if step > 5:
-                return
-
+        for _ in range(5):
+            np_data = np.random.randint(0, vocab_size, (
+                batch_size,
+                seq_length, ))
+            batch = paddle.to_tensor(np_data)
             loss_a = self.train_batch(batch, model_a, optimizer_a, True)
             loss_b = self.train_batch(batch, model_b, optimizer_b, False)
 

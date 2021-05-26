@@ -14,6 +14,8 @@
 from paddle.fluid import core, framework, unique_name
 from .meta_optimizer_base import MetaOptimizerBase
 
+__all__ = []
+
 
 class FP16AllReduceOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

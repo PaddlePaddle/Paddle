@@ -559,8 +559,11 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
-        ctx, framework::GradVarName("Out"));
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    auto input_data_type =
+        (in_dtype >= 0) ? static_cast<framework::proto::VarType::Type>(in_dtype)
+                        : OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
     auto CanMKLDNNReduceGradBeUsed = [&]() {
@@ -568,18 +571,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
 
       if (dx_dims.size() > 5) return false;  // max 5D tensor is supported
 
-      if (ctx.Attr<bool>("reduce_all") ||
-          ((int)ctx.Attr<std::vector<int>>("dim").size() == dx_dims.size()))
-        return true;
-
-      auto dy_dims = ctx.Input<Tensor>(framework::GradVarName("Out"))->dims();
-
-      // Subtensor must be on rightmost part of the bigger tensor
-      for (int i = 0; i < dy_dims.size(); ++i) {
-        if (dx_dims[dx_dims.size() - dy_dims.size() + i] != dy_dims[i]) {
-          return false;
-        }
-      }
       return true;
     };
     if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
@@ -590,12 +581,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    int in_dtype = ctx.Attr<int>("in_dtype");
-    if (in_dtype >= 0) {
-      return framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(in_dtype),
-          ctx.GetPlace());
-    }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

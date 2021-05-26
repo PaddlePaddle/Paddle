@@ -31,6 +31,7 @@ class TestParallelDygraphMnist(TestDistBase):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
+        self._find_unused_parameters = True
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
