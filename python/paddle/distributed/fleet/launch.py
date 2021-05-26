@@ -71,7 +71,7 @@ import paddle.fluid as fluid
 from paddle.distributed.fleet import launch_utils
 import signal
 
-#from paddle.distributed.fleet.launch_utils import DistributeMode, DeviceMode, get_logger, get_cluster
+# TODO(danleifeng): Don't import * from a module
 from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
 import paddle.distributed.fleet.ascend_utils as ascend_utils

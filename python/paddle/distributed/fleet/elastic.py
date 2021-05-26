@@ -95,7 +95,7 @@ class ElasticManager(object):
         np = args.np or int(os.getenv('PADDLE_ELASTIC_NP', 0))
         host = args.host or os.getenv('POD_IP')
         scale = args.scale or int(os.getenv('PADDLE_SCALE', 0))
-        force = args.force or os.getenv('PADDLE_FORCE')
+        force = args.force or os.getenv('PADDLE_ELASTIC_FORCE')
 
         self.elastic_level = int(
             os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL', 1))
@@ -136,7 +136,6 @@ class ElasticManager(object):
         # register self host to etcd
         # register watch to reset host after host been deleted
         self.etcd.delete_prefix(self.node_prefix)
-        self.etcd.put(self.host_path, six.b(self.host))
 
         def host_call_back(event):
             if self.etcd.get(self.host_path)[0] == None:
@@ -145,18 +144,16 @@ class ElasticManager(object):
 
         host_watch = self.etcd.add_watch_callback(self.host_path,
                                                   host_call_back)
+        self.etcd.put(self.host_path, six.b(self.host))
 
         # np describes the exact number of nodes to run the job
         inp = int(self.etcd.get(self.np_path)[0] or 0)
         if scale == 0 and not force:
-            assert (
-                inp == np,
-                "np {} is not consistent with np in etcd {}, maybe the job with the same name exited unexpected, try --force=true".
-                format(np, inp))
+            assert inp == np or inp == 0, "np {} is not consistent with np in etcd {}".format(
+                np, inp)
         else:
-            assert (inp == np or inp == self.np,
-                    "np {} scale to {} by {} is not allowed".format(
-                        inp, self.np, scale))
+            assert inp == np or inp == self.np, "np {} scale to {} by {} is not allowed".format(
+                inp, self.np, scale)
 
         self.etcd.put(self.np_path, six.b("%d" % (self.np)))
 
@@ -209,7 +206,7 @@ class ElasticManager(object):
             return False
 
     def _update_hosts(self):
-        assert (len(self.hosts) != 0, 'hosts empty')
+        assert len(self.hosts) != 0, 'hosts empty'
         hosts = ','.join(self.hosts)
         self.args.ips = hosts
         os.environ['PADDLE_TRAINERS'] = hosts
