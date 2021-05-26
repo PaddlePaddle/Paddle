@@ -36,8 +36,8 @@ class TestASPHelper(unittest.TestCase):
                 name='img', shape=[None, 3, 32, 32], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = fluid.layers.conv2d(
-                input=img, num_filters=8, filter_size=3, padding=2, act="relu")
-            hidden = fluid.layers.fc(input=hidden, size=64, act='relu')
+                input=img, num_filters=4, filter_size=3, padding=2, act="relu")
+            hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
             prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
             return img, label, prediction
 
@@ -115,18 +115,6 @@ class TestASPHelper(unittest.TestCase):
         self.__check_mask_variables_and_ops(param_names,
                                             param_names_after_minimize)
 
-    def test_minimize(self):
-        param_names = self.__get_param_names(self.main_program.global_block()
-                                             .all_parameters())
-        with fluid.program_guard(self.main_program, self.startup_program):
-            sparsity.ASPHelper.minimize(self.optimizer, self.loss,
-                                        self.main_program, self.startup_program)
-        param_names_after_minimize = self.__get_param_names(
-            self.main_program.global_block().all_parameters())
-
-        self.__check_mask_variables_and_ops(param_names,
-                                            param_names_after_minimize)
-
     def test_asp_training(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             sparsity.ASPHelper.minimize(self.optimizer, self.loss,
@@ -141,10 +129,9 @@ class TestASPHelper(unittest.TestCase):
         exe.run(self.startup_program)
         sparsity.ASPHelper.prune_model(place, self.main_program)
 
-        for _ in range(3):
-            data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-                10, size=(64, 1)))
-            exe.run(self.main_program, feed=feeder.feed([data]))
+        data = (np.random.randn(64, 3, 32, 32), np.random.randint(
+            10, size=(64, 1)))
+        exe.run(self.main_program, feed=feeder.feed([data]))
 
         for param in self.main_program.global_block().all_parameters():
             if sparsity.ASPHelper.is_supported_layer(self.main_program,
@@ -169,10 +156,9 @@ class TestASPHelper(unittest.TestCase):
             exe.run(self.startup_program)
             sparsity.ASPHelper.prune_model(place, self.main_program)
 
-            for _ in range(10):
-                data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-                    10, size=(64, 1)))
-                exe.run(self.main_program, feed=feeder.feed([data]))
+            data = (np.random.randn(64, 3, 32, 32), np.random.randint(
+                10, size=(64, 1)))
+            exe.run(self.main_program, feed=feeder.feed([data]))
 
             for param in self.main_program.global_block().all_parameters():
                 if sparsity.ASPHelper.is_supported_layer(self.main_program,
