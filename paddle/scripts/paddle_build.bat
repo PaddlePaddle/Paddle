@@ -505,7 +505,6 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-dir paddle\third_party\externalError\data
 : set CI_SKIP_CPP_TEST if only *.py changed
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 

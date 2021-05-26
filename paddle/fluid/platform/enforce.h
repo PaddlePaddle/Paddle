@@ -689,11 +689,11 @@ struct EOFException : public std::exception {
 namespace details {
 
 template <typename T>
-struct CudaStatusType {};
+struct ExternalApiType {};
 
 #define DEFINE_CUDA_STATUS_TYPE(type, success_value, proto_type) \
   template <>                                                    \
-  struct CudaStatusType<type> {                                  \
+  struct ExternalApiType<type> {                                 \
     using Type = type;                                           \
     static constexpr Type kSuccess = success_value;              \
     static constexpr const char* kTypeString = #proto_type;      \
@@ -717,7 +717,7 @@ template <typename T>
 inline const char* GetErrorMsgUrl(T status) {
   using __CUDA_STATUS_TYPE__ = decltype(status);
   platform::proto::ApiType proto_type =
-      details::CudaStatusType<__CUDA_STATUS_TYPE__>::kProtoType;
+      details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
   switch (proto_type) {
     case platform::proto::ApiType::CUDA:
       return "https://docs.nvidia.com/cuda/cuda-runtime-api/"
@@ -798,15 +798,12 @@ inline std::string GetExternalErrorMsg(T status) {
           "\\..\\..\\third_party\\externalerror\\data\\externalErrorMsg.pb";
     }
 #endif
-    std::cout << filePath << std::endl;
     std::ifstream fin(filePath, std::ios::in | std::ios::binary);
     _initSucceed = externalError.ParseFromIstream(&fin);
   }
   using __CUDA_STATUS_TYPE__ = decltype(status);
   platform::proto::ApiType proto_type =
-      details::CudaStatusType<__CUDA_STATUS_TYPE__>::kProtoType;
-  std::cout << _initSucceed << std::endl;
-  std::cout << proto_type << std::endl;
+      details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
   if (_initSucceed) {
     for (int i = 0; i < externalError.errors_size(); ++i) {
       if (proto_type == externalError.errors(i).type()) {
@@ -824,7 +821,7 @@ inline std::string GetExternalErrorMsg(T status) {
   sout << "\n  [Hint: Please search for the error code(" << status
        << ") on website (" << GetErrorMsgUrl(status)
        << ") to get Nvidia's official solution and advice about "
-       << details::CudaStatusType<__CUDA_STATUS_TYPE__>::kTypeString
+       << details::ExternalApiType<__CUDA_STATUS_TYPE__>::kTypeString
        << " Error.]";
   return sout.str();
 }
@@ -925,7 +922,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
     auto __cond__ = (COND);                                      \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);             \
     constexpr auto __success_type__ =                            \
-        ::paddle::platform::details::CudaStatusType<             \
+        ::paddle::platform::details::ExternalApiType<            \
             __CUDA_STATUS_TYPE__>::kSuccess;                     \
     if (UNLIKELY(__cond__ != __success_type__)) {                \
       auto __summary__ = ::paddle::platform::errors::External(   \
@@ -966,7 +963,7 @@ inline void retry_sleep(unsigned milliseconds) {
     int retry_count = 1;                                                \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);                    \
     constexpr auto __success_type__ =                                   \
-        ::paddle::platform::details::CudaStatusType<                    \
+        ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
       retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
@@ -1097,11 +1094,11 @@ inline std::string build_rocm_error_msg(ncclResult_t nccl_result) {
 namespace details {
 
 template <typename T>
-struct CudaStatusType {};
+struct ExternalApiType {};
 
 #define DEFINE_CUDA_STATUS_TYPE(type, success_value) \
   template <>                                        \
-  struct CudaStatusType<type> {                      \
+  struct ExternalApiType<type> {                     \
     using Type = type;                               \
     static constexpr Type kSuccess = success_value;  \
   }
@@ -1122,7 +1119,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
     auto __cond__ = (COND);                                    \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);           \
     constexpr auto __success_type__ =                          \
-        ::paddle::platform::details::CudaStatusType<           \
+        ::paddle::platform::details::ExternalApiType<          \
             __CUDA_STATUS_TYPE__>::kSuccess;                   \
     if (UNLIKELY(__cond__ != __success_type__)) {              \
       auto __summary__ = ::paddle::platform::errors::External( \
@@ -1145,7 +1142,7 @@ inline void retry_sleep(unsigned millisecond) {
     int retry_count = 1;                                                \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);                    \
     constexpr auto __success_type__ =                                   \
-        ::paddle::platform::details::CudaStatusType<                    \
+        ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
       retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
