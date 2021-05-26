@@ -42,7 +42,7 @@ def _check_stride(stride, op_name):
     for item in stride:
         if item <= 0:
             raise ValueError(
-                "Excepted stride of  API {} to be greater than 0, bute received {}".
+                "Excepted stride of  API {} to be greater than 0, but received {}".
                 format(op_name, item))
 
 
