@@ -68,7 +68,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
 
     // run ascend
     const auto& runner = NpuOpRunner("TopKD", {*input, assist_seq_tensor},
-                                     {*output, *indices}, attr_input);
+                                     {*output, tmp_indices}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
