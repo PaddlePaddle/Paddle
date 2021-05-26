@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -130,6 +131,24 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
 
 template <typename T>
 class CudnnDataType;
+
+#if CUDNN_VERSION >= 8100
+template <>
+class CudnnDataType<bfloat16> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_BFLOAT16;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+#endif
 
 template <>
 class CudnnDataType<float16> {

@@ -1306,6 +1306,17 @@ class BatchNormDoubleGradKernel<platform::CUDADeviceContext, T>
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+#if CUDNN_VERSION >= 8100
+#define BATCH_NORM_BFLOAT16_REGISTER \
+  ops::BatchNormKernel<plat::CUDADeviceContext, plat::bfloat16>,
+#define BATCH_NORM_GRAD_BFLOAT16_REGISTER \
+  ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::bfloat16>,
+#else
+#define BATCH_NORM_BFLOAT16_REGISTER
+#define BATCH_NORM_GRAD_BFLOAT16_REGISTER
+#endif
+
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
 REGISTER_OP_CUDA_KERNEL(
@@ -1317,15 +1328,18 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad_grad,
     ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, float>);
+
 #else
 REGISTER_OP_CUDA_KERNEL(
     batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormKernel<plat::CUDADeviceContext, double>,
-    ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
+    BATCH_NORM_BFLOAT16_REGISTER
+        ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormGradKernel<plat::CUDADeviceContext, double>,
-    ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
+    BATCH_NORM_GRAD_BFLOAT16_REGISTER
+        ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad_grad,
     ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, float>,
