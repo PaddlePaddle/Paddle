@@ -71,8 +71,21 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
      tmp_y.ShareDataWith(*y);
     }*/
 
-    Tensor tmp_x = CastNPUFormat(*x, 29);
-    Tensor tmp_y = CastNPUFormat(*y, 29);
+    Tensor tmp_x(src_tensor.type());
+    tmp_x.Resize(src_tensor->dims());
+    tmp_x.mutable_data<T>(ctx.GetPlace());
+    framework::TensorCopy(
+        src_tensor, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), &tmp_x);
+    tmp_x = CastNPUFormat(*x, 29);
+
+    Tensor tmp_y(src_tensor.type());
+    tmp_y.Resize(src_tensor->dims());
+    tmp_y.mutable_data<T>(ctx.GetPlace());
+    framework::TensorCopy(
+        src_tensor, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), &tmp_y);
+    tmp_y = CastNPUFormat(*y, 29);
 
     if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());

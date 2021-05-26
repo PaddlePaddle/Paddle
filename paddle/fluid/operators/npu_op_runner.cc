@@ -226,8 +226,10 @@ std::vector<int64_t> InferShapeNCHWToND(std::vector<int64_t> base_dims) {
 
 Tensor FormatCastBetweenGroup(const Tensor &src_tensor, Tensor dst_tensor,
                               Tensor trans_src_tensor) {
-  string src_format_name = framework::DataLayoutToString(src_tensor.layout());
-  string dst_format_name = framework::DataLayoutToString(dst_tensor.layout());
+  std::string src_format_name =
+      framework::DataLayoutToString(src_tensor.layout());
+  std::string dst_format_name =
+      framework::DataLayoutToString(dst_tensor.layout());
 
   if (src_format_name == "NCHW" && dst_format_name == "FRACTAL_NZ") {
     auto dims = framework::vectorize(src_tensor.dims());
@@ -244,7 +246,7 @@ std::vector<int64_t> InferShapeNDToNZ(std::vector<int64_t> dims) {
   std::vector<int64_t> res;
   // sum(keepdim = false) may make tensor dim = 0
   std::vector<int64_t> dim;
-  for (int i = 0; i < dims.size(); i++) {
+  for (int64_t i = 0; i < dims.size(); i++) {
     dim.emplace_back(dims[i]);
   }
 
@@ -257,7 +259,7 @@ std::vector<int64_t> InferShapeNDToNZ(std::vector<int64_t> dims) {
     dim.emplace_back(1);
   }
 
-  int i = 0;
+  int64_t i = 0;
   for (; i < dim.size() - 2; i++) {
     res.emplace_back(dim[i]);
   }
@@ -275,7 +277,8 @@ Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
   auto dst_format = ConvertToNpuFormat(dst_tensor.layout());
   // string src_format_name =
   // framework::DataLayoutToString(src_tensor.layout());
-  string dst_format_name = framework::DataLayoutToString(dst_tensor.layout());
+  std::string dst_format_name =
+      framework::DataLayoutToString(dst_tensor.layout());
   auto src_base_format = FindBaseFormat(src_format);
   auto dst_base_format = FindBaseFormat(dst_format);
 
@@ -304,7 +307,8 @@ Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
   return dst_tensor;
 }
 
-Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
+Tensor CastNPUFormat(const Tensor &src_tensor, Tensor dst_tensor,
+                     int acl_format_id) {
   auto dtype = src_tensor.type();
   auto src_format = ConvertToNpuFormat(src_tensor.layout());
   // auto dims = framework::vectorize(src_tensor.dims());
@@ -314,7 +318,7 @@ Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
   if (src_format == acl_format) {
     VLOG(4) << "The format of input tensor has met the requirements. There's "
                "no need to cast format.";
-    return src;
+    return src_tensor;
   }
 
   PADDLE_ENFORCE_EQ(dtype == framework::proto::VarType::FP32 ||
@@ -324,17 +328,7 @@ Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
                               "format must be float or float16, but got %s",
                               framework::DataTypeToString(dtype)));
 
-  Tensor dst_tensor(src_tensor.type());
-  dst_tensor.Resize(src_tensor->dims());
-  if (dtype == framework::proto::VarType::FP32) {
-    dst_tensor.mutable_data<float>(ctx.GetPlace());
-  } else if (dtype == framework::proto::VarType::FP16) {
-    dst_tensor.mutable_data<paddle::platform::float16>(ctx.GetPlace());
-  }
   dst_tensor.set_layout(ConvertNpuFormatToDataLayout(acl_format));
-  framework::TensorCopy(src_tensor, ctx.GetPlace(),
-                        ctx.template device_context<platform::DeviceContext>(),
-                        &dst_tensor);
   // if (src_tensor->layout() != tmp_x.layout()) {
   //   auto runner_cast_x = NpuOpRunner(
   //       "TransData", {src_tensor}, {tmp_x},
@@ -345,6 +339,7 @@ Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
   // }
 
   RunTransDataToCastFormat(src_tensor, dst_tensor);
+  return dst_tensor;
 }
 
 NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {
