@@ -41,6 +41,14 @@ class NpuOpRunner {
                        const std::vector<Tensor> &outputs = {},
                        const NPUAttributeMap &attrs = {});
 
+  // NOTE(zhiqiu): why forbid copy and operator= ?
+  // Since we will free the tensor_descs and data_buffers in the ~NpuOpRunner,
+  // if shallow copy is performed on tensor_descs and data_buffers, it may
+  // result
+  // in use-after-free bugs.
+  NpuOpRunner(const NpuOpRunner &runner) = delete;
+  NpuOpRunner &operator=(const NpuOpRunner &runner) = delete;
+
   ~NpuOpRunner();
 
   const std::string &Type();
@@ -71,7 +79,7 @@ class NpuOpRunner {
 
   std::vector<aclDataBuffer *> &GetOutputBuffers();
 
-  void Run(aclrtStream stream = nullptr);
+  void Run(aclrtStream stream = nullptr) const;
 
  private:
   aclTensorDesc *CreateTensorDesc(Tensor tensor);

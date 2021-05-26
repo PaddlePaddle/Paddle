@@ -220,3 +220,10 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CropGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    crop, ops::CropKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CropKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    crop_grad, ops::CropGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CropGradKernel<paddle::platform::CUDADeviceContext, double>);
