@@ -22,11 +22,12 @@ go get -d -v github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi@76e5724
 
 4. 软链
 
-`go get`默认会将代码下载到`GOMODCACHE`目录下，您可以通过`go env | grep GOMODCACHE`的方式，查看该路径，在官网发布的docker镜像中该路径一般默认为`/root/gopath/pkg/mod`，进入到golang api代码路径建立软连接，将c预测库命名为`paddle_inference_c`。
+go1.15新增了`GOMODCACHE`环境变量，`go get`默认会将代码下载到`GOMODCACHE`目录下，您可以通过`go env | grep GOMODCACHE`的方式，查看该路径，在官网发布的docker镜像中该路径一般默认为`/root/gopath/pkg/mod`，进入到golang api代码路径建立软连接，将c预测库命名为`paddle_inference_c`。
 
 ```bash
-# 路径名不一致，按需修改
-cd /root/gopath/pkg/mod/github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi\@v0.0.0-20210517084506-76e5724c16a5/
+eval $(go env | grep GOMODCACHE)
+# 按需修改最后的goapi版本号
+cd ${GOMODCACHE}/github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi\@v0.0.0-20210517084506-76e5724c16a5/
 ln -s ${PADDLE_C_DOWNLOAD_DIR}/paddle_inference_c_install_dir paddle_inference_c
 ```
 

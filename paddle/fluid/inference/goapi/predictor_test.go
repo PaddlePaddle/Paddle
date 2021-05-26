@@ -15,6 +15,8 @@
 package paddle
 
 import (
+	"io"
+	"os"
 	"testing"
 )
 
@@ -56,11 +58,50 @@ func TestNewPredictor(t *testing.T) {
 	outHandle.CopyToCpu(outData)
 	t.Log(outData)
 
-	// t.Log(outHandle.Data().([][]float32))
-	// t.Log(outHandle.OneDimData().([]float32))
-
 	cloned := predictor.Clone()
 	t.Logf("InputNum:%+v", cloned.GetInputNum())
 	t.Logf("OutputNum:%+v", cloned.GetInputNum())
 	cloned.ClearIntermediateTensor()
+}
+
+func TestFromBuffer(t *testing.T) {
+	modelFile, err := os.Open("./mobilenetv1/inference.pdmodel")
+	if err != nil {
+		t.Fatal(err)
+	}
+	paramsFile, err := os.Open("./mobilenetv1/inference.pdiparams")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer modelFile.Close()
+	defer paramsFile.Close()
+
+	model, err := io.ReadAll(modelFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	params, err := io.ReadAll(paramsFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := NewConfig()
+	config.SetModelBuffer(string(model), string(params))
+
+	predictor := NewPredictor(config)
+	inNames := predictor.GetInputNames()
+	outNames := predictor.GetOutputNames()
+	inHandle := predictor.GetInputHandle(inNames[0])
+	inHandle.Reshape([]int32{1, 3, 224, 224})
+	data := make([]float32, numElements([]int32{1, 3, 224, 224}))
+	for i := 0; i < int(numElements([]int32{1, 3, 224, 224})); i++ {
+		data[i] = float32(i%255) * 0.1
+	}
+	inHandle.CopyFromCpu(data)
+	predictor.Run()
+	outHandle := predictor.GetOutputHandle(outNames[0])
+	outShape := outHandle.Shape()
+	t.Logf("outHandle Shape:%+v", outShape)
+	outData := make([]float32, numElements(outShape))
+	outHandle.CopyToCpu(outData)
+	t.Log(outData)
 }
