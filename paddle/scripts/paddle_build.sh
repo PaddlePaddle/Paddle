@@ -2075,6 +2075,16 @@ function summary_check_problems() {
     set -x
 }
 
+function download_tar() {
+    cd ${cfs_dir}
+    tar --use-compress-program=pigz -cpf Paddle.tar.gz ${PADDLE_ROOT} 
+}
+
+function upload_tar() {
+    cd ${cfs_dir}
+    tar --use-compress-program=pigz -xpf Paddle.tar.gz -C ${PADDLE_ROOT}
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2151,6 +2161,19 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        parallel_test
+        check_coverage
+        check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
+      cpu_cicheck_coverage)
+        check_approvals_of_unittest 1
+        check_diff_file_for_coverage
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        enable_unused_var_check
+        download_tar
+        ;;
+      gpu_cicheck_coverage)
+        upload_tar
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
