@@ -31,11 +31,55 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     bool transpose_x = ctx.Attr<bool>("trans_x");
     bool transpose_y = ctx.Attr<bool>("trans_y");
 
+    /*auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+
+    Tensor tmp_x(x->type());
+    tmp_x.Resize(x->dims());
+    tmp_x.mutable_data<T>(ctx.GetPlace());
+    tmp_x.set_layout(DataLayout::kFractalNZ);
+    // framework::TensorCopy(
+    //       *x, ctx.GetPlace(),
+    //       ctx.template device_context<platform::DeviceContext>(), &tmp_x);
+    if (x->layout() != tmp_x.layout()) {
+      auto runner_cast_x = NpuOpRunner(
+          "TransData", {*x}, {tmp_x},
+          {{"src_format", framework::DataLayoutToString(x->layout())},
+    {"dst_format", framework::DataLayoutToString(tmp_x.layout())}, {"groups",
+    1}});
+      runner_cast_x.Run(stream);
+    } else {
+     tmp_x.ShareDataWith(*x);
+    }
+
+    Tensor tmp_y(y->type());
+    tmp_y.Resize(y->dims());
+    tmp_y.mutable_data<T>(ctx.GetPlace());
+    tmp_y.set_layout(DataLayout::kFractalNZ);
+    // framework::TensorCopy(
+    //       *y, ctx.GetPlace(),
+    //       ctx.template device_context<platform::DeviceContext>(), &tmp_y);
+    if (y->layout() != tmp_y.layout()) {
+      auto runner_cast_y = NpuOpRunner(
+          "TransData", {*y}, {tmp_y},
+          {{"src_format", framework::DataLayoutToString(y->layout())},
+    {"dst_format", framework::DataLayoutToString(tmp_y.layout())}, {"groups",
+    1}});
+      runner_cast_y.Run(stream);
+    } else {
+     tmp_y.ShareDataWith(*y);
+    }*/
+
+    Tensor tmp_x = CastNPUFormat(*x, 29);
+    Tensor tmp_y = CastNPUFormat(*y, 29);
+
     if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());
+      out->set_layout(DataLayout::kFractalNZ);
 
       auto runner = NpuOpRunner(
-          "MatMul", {*x, *y}, {*out},
+          "MatMul", {tmp_x, tmp_y}, {*out},
           {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}});
 
       auto stream =
@@ -47,7 +91,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(ctx.GetPlace());
 
       auto runner =
-          NpuOpRunner("BatchMatMul", {*x, *y}, {*out},
+          NpuOpRunner("BatchMatMul", {tmp_x, tmp_y}, {*out},
                       {{"adj_x1", transpose_x}, {"adj_x2", transpose_y}});
 
       auto stream =
