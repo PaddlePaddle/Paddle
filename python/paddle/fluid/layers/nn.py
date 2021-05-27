@@ -6134,6 +6134,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             warnings.warn(
                 "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
             )
+        if isinstance(shape, int):
+            shape = [shape]
         if isinstance(shape, (list, tuple)):
             shape = [
                 item.numpy().item(0) if isinstance(item, Variable) else item
@@ -6183,6 +6185,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     inputs = {"X": x}
     attrs = {}
+    if isinstance(shape, int):
+        shape = [shape]
     if isinstance(shape, Variable):
         shape.stop_gradient = True
         inputs["Shape"] = shape
