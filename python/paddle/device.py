@@ -19,6 +19,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cuda  #DEFINE_ALIAS
+from paddle.fluid.framework import is_compiled_with_rocm  #DEFINE_ALIAS
 
 __all__ = [
     'get_cudnn_version',
@@ -33,6 +34,7 @@ __all__ = [
     #            'CUDAPinnedPlace',
     #            'CUDAPlace',
     'is_compiled_with_cuda',
+    'is_compiled_with_rocm',
     'is_compiled_with_npu'
 ]
 
