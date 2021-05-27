@@ -22,12 +22,16 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.nn import functional as F
+from paddle.fluid.log_helper import get_logger
 
 __all__ = [
     'FakeQuantMovingAverage', 'FakeQuantAbsMax',
     'FakeChannelWiseQuantDequantAbsMax', 'QuantizedConv2D', 'QuantizedLinear',
     'QuantizedNoweightLayer', 'MovingAverageAbsMaxScale'
 ]
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class FakeQuantMovingAverage(layers.Layer):
@@ -498,12 +502,15 @@ class QuantizedNoweightLayer(layers.Layer):
             quant_on_weight=False)
 
     def forward(self, input):
-        quant_input = self._fake_quant_input(input)
         # TODO (jc): support ops that have several inputs
-        if isinstance(input, list):
-            assert len(input) == 1, \
-                "The QuantizedNoweightLayer should only have one input."
-        return self._layer.forward(quant_input)
+        if (isinstance(input, list) or isinstance(input, tuple)) \
+            and len(input) > 1:
+            _logger.info("%s has several inputs, so skip collecting "
+                         "the input scales" % self._layer.full_name())
+            return self._layer.forward(input)
+        else:
+            quant_input = self._fake_quant_input(input)
+            return self._layer.forward(quant_input)
 
 
 class MovingAverageAbsMaxScale(layers.Layer):
@@ -601,8 +608,11 @@ class QuantizedOutputLayer(layers.Layer):
             MovingAverageAbsMaxScale(layer.full_name(), moving_rate, dtype)
 
     def forward(self, input):
-        if isinstance(input, list):
-            assert len(input) == 1, \
-                "The QuantizedOutputLayer should only have one input."
         out = self._layer(input)
-        return self._moving_average_abs_max_scale(out)
+        # TODO (jc): support the ops of several outputs
+        if (isinstance(out, list) or isinstance(out, tuple)) and len(out) > 1:
+            _logger.info("%s has several outputs, so skip collecting "
+                         "the output threshold" % self._layer.full_name())
+            return out
+        else:
+            return self._moving_average_abs_max_scale(out)

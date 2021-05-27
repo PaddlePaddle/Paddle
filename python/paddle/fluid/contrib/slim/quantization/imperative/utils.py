@@ -54,7 +54,8 @@ quant_output_layers = (
     paddle.nn.PReLU, paddle.nn.ReLU, paddle.nn.ReLU6, paddle.nn.SELU,
     paddle.nn.Sigmoid, paddle.nn.Softmax, paddle.nn.Softplus,
     paddle.nn.Softshrink, paddle.nn.Softsign, paddle.nn.Swish, paddle.nn.Tanh,
-    paddle.nn.Tanhshrink, paddle.nn.ThresholdedReLU, paddle.nn.Upsample)
+    paddle.nn.Tanhshrink, paddle.nn.ThresholdedReLU, paddle.nn.Upsample,
+    paddle.nn.quant.FloatFunctionalLayer)
 
 weight_op_types = [
     "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
