@@ -9,3 +9,4 @@ Pillow
 six
 decorator==4.4.2
 astor
+wheel
