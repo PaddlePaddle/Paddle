@@ -154,7 +154,10 @@ class TestDistBase(unittest.TestCase):
         #update environment
         env0.update(envs)
         env1.update(envs)
-        tr_cmd = "%s %s"
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            tr_cmd = "%s -m coverage run --branch -p %s"
+        else:
+            tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
@@ -277,6 +280,19 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     result_data, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "alltoall":
+            need_result1 = np.vstack((input1[0:input1.shape[0] // 2, :],
+                                      input2[0:input2.shape[0] // 2, :]))
+            need_result2 = np.vstack((input1[input1.shape[0] // 2:, :],
+                                      input2[input2.shape[0] // 2:, :]))
+            tr0_out = np.vstack(tr0_out)
+            tr1_out = np.vstack(tr1_out)
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
         elif col_type == "sendrecv":
             result_data = tr1_out[0]
             self.assertTrue(

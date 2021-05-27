@@ -39,7 +39,7 @@ class GeluNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Gelu", {*x}, {*out}, {});
+    const auto& runner = NpuOpRunner("Gelu", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };
@@ -63,11 +63,12 @@ class GeluGradNPUKernel : public framework::OpKernel<T> {
 
     Tensor out(x->type());
     out.mutable_data<T>(x->dims(), place);
-    auto out_runner = NpuOpRunner("Gelu", {*x}, {out}, {});
-    out_runner.Run(stream);
+    const auto& runner_out = NpuOpRunner("Gelu", {*x}, {out}, {});
+    runner_out.Run(stream);
 
-    auto dx_runner = NpuOpRunner("GeluGrad", {*dout, *x, out}, {*dx}, {});
-    dx_runner.Run(stream);
+    const auto& runner_dx =
+        NpuOpRunner("GeluGrad", {*dout, *x, out}, {*dx}, {});
+    runner_dx.Run(stream);
   }
 };
 

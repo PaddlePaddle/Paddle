@@ -19,6 +19,7 @@ import numpy as np
 import os
 import sys
 import six
+import platform
 
 import paddle
 import paddle.nn as nn
@@ -162,12 +163,13 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             path = 'test_save_load_error/temp'
             paddle.save({}, path, use_binary_format=True)
-
-        with self.assertRaises(ValueError):
-            path = 'test_save_load_error/temp'
-            with open(path, "w") as f:
-                f.write('\0')
-            paddle.load(path)
+        # On the Windows platform, when parsing a string that can't be parsed as a `Program`, `desc_.ParseFromString` has a timeout risk.
+        if 'Windows' != platform.system():
+            with self.assertRaises(ValueError):
+                path = 'test_save_load_error/temp'
+                with open(path, "w") as f:
+                    f.write('\0')
+                paddle.load(path)
 
         with self.assertRaises(ValueError):
             temp_lod = fluid.core.LoDTensor()

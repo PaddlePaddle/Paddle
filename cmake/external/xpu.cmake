@@ -13,7 +13,7 @@ if(NOT XPU_SDK_ROOT)
   elseif(WITH_SUNWAY)
       SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/sunway/xpu_2021_01_13.tar.gz" CACHE STRING "" FORCE)
   else()
-      SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu_2021_04_09.tar.gz" CACHE STRING "" FORCE)
+      SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu_2021_05_19.tar.gz" CACHE STRING "" FORCE)
   endif()
 
   SET(XPU_SOURCE_DIR              "${THIRD_PARTY_PATH}/xpu")

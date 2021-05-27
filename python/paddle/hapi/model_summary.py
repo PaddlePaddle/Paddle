@@ -22,7 +22,7 @@ from paddle.static import InputSpec
 
 from collections import OrderedDict
 
-__all__ = ['summary']
+__all__ = []
 
 
 def summary(net, input_size, dtypes=None):

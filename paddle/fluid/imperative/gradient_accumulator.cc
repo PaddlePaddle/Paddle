@@ -24,8 +24,7 @@
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -132,6 +131,12 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
+  void operator()(const platform::NPUPinnedPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
   // there is NO blas in CUDAPinnedPlace
   void operator()(const platform::CUDAPinnedPlace& place) {
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -194,8 +199,8 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
   PADDLE_TENSOR_ADD(double);
   // NOTE(chenweihang): only support complex grad tensor accumulated,
   // support selected rows if needed in the future
-  PADDLE_TENSOR_ADD(platform::complex64);
-  PADDLE_TENSOR_ADD(platform::complex128);
+  PADDLE_TENSOR_ADD(platform::complex<float>);
+  PADDLE_TENSOR_ADD(platform::complex<double>);
 #endif
 
 #undef PADDLE_TENSOR_ADD

@@ -86,6 +86,12 @@ void RunPyObject(py::object *py_object,
       }
     }
   } else {
+    if (1 != outs->size()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The number of outputs of `PyLayer.backward` should be %d, but "
+          "received 1.",
+          outs->size()));
+    }
     if ((*outs)[0] != nullptr) {
       if (Py_None != py_result.ptr()) {
         try {
@@ -151,9 +157,12 @@ class PyLayerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &op_ = ctx.GetOp();
-    auto pylayer_op = dynamic_cast<const PyLayerOp *>(&op_);
-    if (pylayer_op) {
-      auto py_layer_context = pylayer_op->GetPyLayerContext();
+    auto const_pylayer_op = dynamic_cast<const PyLayerOp *>(&op_);
+    if (const_pylayer_op) {
+      auto pylayer_op = const_cast<PyLayerOp *>(const_pylayer_op);
+
+      // Release contex after executing the compute
+      auto py_layer_context = pylayer_op->ReleasePyLayerContext();
       py::object bk_ctx(py::handle(py_layer_context->GetMutableCtx()), true);
       auto &input_vars = ctx.MultiInputVar("X");
       auto output_vars = ctx.MultiOutputVar("Out");

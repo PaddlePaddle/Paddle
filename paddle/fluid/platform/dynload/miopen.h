@@ -110,6 +110,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenActivationBackward);                      \
   __macro(miopenConvolutionBackwardWeights);              \
   __macro(miopenConvolutionForward);                      \
+  __macro(miopenConvolutionForwardBias);                  \
   __macro(miopenConvolutionBackwardBias);                 \
   __macro(miopenConvolutionForwardGetWorkSpaceSize);      \
   __macro(miopenConvolutionBackwardDataGetWorkSpaceSize); \

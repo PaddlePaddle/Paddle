@@ -14,6 +14,8 @@
 from paddle.fluid.optimizer import GradientMergeOptimizer as GM
 from .meta_optimizer_base import MetaOptimizerBase
 
+__all__ = []
+
 
 class GradientMergeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

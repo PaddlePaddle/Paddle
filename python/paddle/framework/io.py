@@ -38,6 +38,8 @@ from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 
+__all__ = []
+
 
 def _build_saved_state_dict(state_dict):
     save_dict = {}
@@ -489,12 +491,12 @@ def _save_binary_var(obj, path):
             format(type(obj)))
 
 
-def save(obj, path, protocol=2, **configs):
+def save(obj, path, protocol=4, **configs):
     '''
     Save an object to the specified path.
     
     .. note::
-        Now supports saving ``state_dict`` of Layer or Optimizer, Tensor.
+        Now supports saving ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
         Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
@@ -510,7 +512,7 @@ def save(obj, path, protocol=2, **configs):
         path(str) : The path of the object to be saved. 
           If saved in the current directory, the input path string will be used as the file name. 
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: 2
+                                 Default: 4
         **configs(dict, optional): optional keyword arguments. The following options are currently supported:
           use_binary_format(bool): When the saved object is static graph variable, you can specify ``use_binary_for_var``. 
           If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
@@ -542,7 +544,18 @@ def save(obj, path, protocol=2, **configs):
             # save weight of emb
             paddle.save(emb.weight, "emb.weight.pdtensor")
 
-            # example 2: static graph
+            # example 2: Save multiple state_dict at the same time
+            from paddle import nn
+            from paddle.optimizer import Adam
+
+            layer = paddle.nn.Linear(3, 4)
+            adam = Adam(learning_rate=0.001, parameters=layer.parameters())
+            obj = {'model': layer.state_dict(), 'opt': adam.state_dict(), 'epoch': 100}
+            path = 'example/model.pdparams'
+            paddle.save(obj, path)
+
+
+            # example 3: static graph
             import paddle
             import paddle.static as static
 
@@ -558,7 +571,7 @@ def save(obj, path, protocol=2, **configs):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [224, 10]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
 
             # save/load tensor
@@ -568,6 +581,18 @@ def save(obj, path, protocol=2, **configs):
             # save/load state_dict
             path_state_dict = 'temp/model.pdparams'
             paddle.save(prog.state_dict("param"), path_tensor)
+
+            # example 4: save program
+            import paddle
+
+            paddle.enable_static()
+
+            data = paddle.static.data(
+                name='x_static_save', shape=(None, 224), dtype='float32')
+            y_static = z = paddle.static.nn.fc(data, 10)
+            main_program = paddle.static.default_main_program()
+            path = "example/main_program.pdmodel"
+            paddle.save(main_program, path)
     '''
     # 1. input check
     filename = os.path.basename(path)
@@ -665,7 +690,7 @@ def load(path, **configs):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now supports load ``state_dict`` of Layer or Optimizer, Tensor.
+        Now supports loading ``state_dict`` of Layer/Optimizer, Layer, Tensor and nested structure containing Tensor, Program.
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
@@ -712,8 +737,6 @@ def load(path, **configs):
     Examples:
         .. code-block:: python
 
-            import paddle
-
             # example 1: dynamic graph
             import paddle
             emb = paddle.nn.Embedding(10, 10)
@@ -742,7 +765,19 @@ def load(path, **configs):
             load_weight = paddle.load("emb.weight.pdtensor")
 
 
-            # example 2: static graph
+            # example 2: Load multiple state_dict at the same time
+            from paddle import nn
+            from paddle.optimizer import Adam
+
+            layer = paddle.nn.Linear(3, 4)
+            adam = Adam(learning_rate=0.001, parameters=layer.parameters())
+            obj = {'model': layer.state_dict(), 'opt': adam.state_dict(), 'epoch': 100}
+            path = 'example/model.pdparams'
+            paddle.save(obj, path)
+            obj_load = paddle.load(path)
+
+
+            # example 3: static graph
             import paddle
             import paddle.static as static
 
@@ -758,7 +793,7 @@ def load(path, **configs):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [224, 10]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
 
             # save/load tensor
@@ -770,6 +805,22 @@ def load(path, **configs):
             path_state_dict = 'temp/model.pdparams'
             paddle.save(prog.state_dict("param"), path_tensor)
             load_state_dict = paddle.load(path_tensor)
+
+
+            # example 4: load program
+            import paddle
+
+            paddle.enable_static()
+
+            data = paddle.static.data(
+                name='x_static_save', shape=(None, 224), dtype='float32')
+            y_static = z = paddle.static.nn.fc(data, 10)
+            main_program = paddle.static.default_main_program()
+            path = "example/main_program.pdmodel"
+            paddle.save(main_program, path)
+            load_main = paddle.load(path)
+            print(load_main)
+
 
     '''
 

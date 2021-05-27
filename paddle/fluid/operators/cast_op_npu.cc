@@ -78,8 +78,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Cast", {*x}, {*out},
-                              {{"dst_type", static_cast<int32_t>(aclDtype)}});
+    const auto& runner = NpuOpRunner(
+        "Cast", {*x}, {*out}, {{"dst_type", static_cast<int32_t>(aclDtype)}});
     runner.Run(stream);
   }
 };

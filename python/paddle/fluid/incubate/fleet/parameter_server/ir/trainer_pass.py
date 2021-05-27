@@ -365,7 +365,41 @@ def ps_gpu_pass(program):
         for name in remove_var:
             program.global_block()._remove_var(name)
 
+    def _remove_optimizer_var(program):
+
+        embedding_w = {}
+        for idx, op in list(enumerate(program.global_block().ops)):
+            if op.type == "lookup_table_grad":
+                for name in op.input("W"):
+                    embedding_w[name] = 1
+
+        optimize_vars = []
+        optimize_op_role_vars = []
+        optimize_need_delete_vars = []
+        for op in _get_optimize_ops(program):
+            for name in op.input("Param"):
+                if name in embedding_w:
+                    optimize_op_role_vars.extend(op.attr("op_role_var"))
+                    for key_name in op.input_names:
+                        if key_name == "LearningRate":
+                            continue
+                        for var in op.input(key_name):
+                            optimize_vars.append(var)
+
+        optimize_vars = list(set(optimize_vars))
+        optimize_op_role_vars = list(set(optimize_op_role_vars))
+
+        for var in optimize_vars:
+            if var not in optimize_op_role_vars:
+                optimize_need_delete_vars.append(var)
+        need_delete_optimize_vars = list(set(optimize_need_delete_vars))
+
+        for name in need_delete_optimize_vars:
+            if program.global_block().has_var(name):
+                program.global_block()._remove_var(name)
+
     _add_push_box_sparse_op(program)
+    _remove_optimizer_var(program)
     _remove_lookup_table_grad_op_and_var(program)
     return program
 
@@ -527,7 +561,7 @@ def create_heter_program(program, config, heter_program, heter_ops,
     # This function mainly includes the following contents:
     # 1. For every heter block:
     #     a) copy heter device op from origin program
-    #     b) create variables which belong to heter op：
+    #     b) create variables which belong to heter op:
     #         -> if variable is persistable, clone it in global_scope
     #         -> if variable is temp, create it in heter block
     #     c) create communicate related op as follow:

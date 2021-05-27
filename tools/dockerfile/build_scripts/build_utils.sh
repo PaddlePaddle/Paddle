@@ -93,8 +93,8 @@ function do_cpython_build {
     rm -rf Python-$py_ver
     # Some python's install as bin/python3. Make them available as
     # bin/python.
-    if [ -e ${prefix}/bin/python3 ]; then
-        ln -s python3 ${prefix}/bin/python
+    if [ -e ${prefix}/bin/python3.6 ]; then
+        ln -s python3.6 ${prefix}/bin/python
     fi
     if [ -e ${prefix}/bin/python3.7 ]; then
         ln -s python3.7 ${prefix}/bin/python
@@ -106,7 +106,13 @@ function do_cpython_build {
         ln -s python3.9 ${prefix}/bin/python
     fi
     # NOTE Make libpython shared library visible to python calls below
-    LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python get-pip.py
+    if [ -e ${prefix}/bin/python3.6 ]; then
+        LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python ez_setup.py
+        LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m easy_install pip
+        LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip install --upgrade pip==20.3.3
+    else
+        LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python get-pip.py
+    fi
     LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/pip install wheel==0.32.2
     cd /
     ls ${MY_DIR}
@@ -137,6 +143,8 @@ function build_cpythons {
             GET_PIP_URL="https://bootstrap.pypa.io/2.7/get-pip.py"
         elif [ ${py_ver} == "3.5.1" ]  ;then
             GET_PIP_URL="https://bootstrap.pypa.io/3.5/get-pip.py"
+        elif [ ${py_ver} == "3.6.0" ]  ;then
+            GET_PIP_URL="https://bootstrap.pypa.io/ez_setup.py"
         fi
 
         check_var $GET_PIP_URL
@@ -144,6 +152,7 @@ function build_cpythons {
         build_cpython $py_ver
     done
     rm get-pip.py
+    rm ez_setup.py
 }
 
 
