@@ -6151,7 +6151,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     check_variable_and_dtype(x, 'x', [
         'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'uint16'
     ], 'reshape')
-    check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
+    check_type(shape, 'shape', (list, tuple, int, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
     helper = LayerHelper("reshape2", **locals())

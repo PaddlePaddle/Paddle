@@ -48,30 +48,6 @@ class TestReshapeOp(OpTest):
         self.check_grad(["X"], "Out")
 
 
-# situation 1: have shape(int, no tensor), no actual shape(Tensor)
-class TestReshapeOpIntShape(OpTest):
-    def setUp(self):
-        self.init_data()
-        self.op_type = "reshape2"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
-        self.attrs = {"shape": self.new_shape}
-        self.outputs = {
-            "Out": self.inputs["X"].reshape(self.infered_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
-        }
-
-    def init_data(self):
-        self.ori_shape = (2, 60)
-        self.new_shape = -1
-        self.infered_shape = -1
-
-    def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-
-
 class TestReshapeOpDimInfer1(TestReshapeOp):
     def init_data(self):
         self.ori_shape = (5, 25)
@@ -289,6 +265,7 @@ class TestReshapeAPI(unittest.TestCase):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
+        shape_int = -1
         main_prog = Program()
         with program_guard(main_prog, Program()):
             positive_five = self.fill_constant([1], "int32", 5)
@@ -296,7 +273,7 @@ class TestReshapeAPI(unittest.TestCase):
 
             actual_shape = self.data(name="shape", shape=[3], dtype="int32")
 
-            # situation 1: have shape( list, no tensor), no actual shape(Tensor)
+            # situation 1: have shape(list, no tensor), no actual shape(Tensor)
             out_1 = self.reshape(x, shape)
 
             # situation 2: have shape(list, no tensor), have actual shape(Tensor)
@@ -309,17 +286,21 @@ class TestReshapeAPI(unittest.TestCase):
             # Situation 4: have shape(Tensor), no actual shape(Tensor)
             out_4 = self.reshape(x, shape=actual_shape)
 
+            # situation 5: have shape(int, no tensor), no actual shape(Tensor)
+            out_5 = self.reshape(x, shape_int)
+
         exe = paddle.static.Executor(place=paddle.CPUPlace())
-        res_1, res_2, res_3, res_4 = exe.run(
+        res_1, res_2, res_3, res_4, res_5 = exe.run(
             main_prog,
             feed={"x": input,
                   "shape": np.array([2, 5, 5]).astype("int32")},
-            fetch_list=[out_1, out_2, out_3, out_4])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5])
 
         assert np.array_equal(res_1, input.reshape(shape))
         assert np.array_equal(res_2, input.reshape(shape))
         assert np.array_equal(res_3, input.reshape([5, 10]))
         assert np.array_equal(res_4, input.reshape(shape))
+        assert np.array_equal(res_5, input.reshape(shape_int))
 
     def test_paddle_api(self):
         self._set_paddle_api()
@@ -409,12 +390,6 @@ class TestReshapeOpError(unittest.TestCase):
 
             x3 = self.data(name="x3", shape=[2, 25], dtype="float32")
 
-            # The argument shape's type of reshape_op must be list, tuple or Variable.
-            def test_shape_type():
-                self.reshape(x3, shape=1)
-
-            self.assertRaises(TypeError, test_shape_type)
-
             # The argument actual_shape's type of reshape_op must be Variable or None.
             def test_actual_shape_type():
                 self.reshape(x3, shape=[25, 2], actual_shape=1)
@@ -480,6 +455,15 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_shape_int(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 20]).astype("float32")
+        input = paddle.to_tensor(input_1)
+        output = self.reshape(x=input, shape=-1)
+        out_np = output.numpy()
+        expected_out = np.reshape(input_1, newshape=-1)
         self.assertTrue(np.allclose(expected_out, out_np))
 
 
