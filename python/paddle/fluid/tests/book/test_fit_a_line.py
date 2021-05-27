@@ -21,6 +21,7 @@ import paddle.static.amp as amp
 import contextlib
 import numpy
 import unittest
+from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
 import math
 import sys
 import os
@@ -84,7 +85,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                                           feed=feeder.feed(data),
                                           fetch_list=[avg_cost])
                 if avg_loss_value[0] < 10.0 or pure_bf16:
-                    if save_dirname is not None and not pure_bf16:
+                    if save_dirname is not None:
                         fluid.io.save_inference_model(save_dirname, ['x'],
                                                       [y_predict], exe)
                     return
@@ -152,7 +153,8 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
                           feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
         print("infer shape: ", results[0].shape)
-        print("infer results: ", results[0])
+        print("infer results: ", results[0] if results[0].dtype != numpy.uint16
+              else convert_uint16_to_float(results[0]))
         print("ground truth: ", test_label)
 
 

@@ -479,6 +479,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_squared_l2_norm_op',
     'test_stack_op',
     'test_static_save_load',
+    'test_static_save_load_bf16',
     'test_sum_op',
     'test_switch',
     'test_switch_case',
