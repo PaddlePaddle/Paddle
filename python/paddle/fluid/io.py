@@ -86,6 +86,12 @@ class _open_buffer(object):
 class _buffer_reader(_open_buffer):
     def __init__(self, buffer):
         super(_buffer_reader, self).__init__(buffer)
+        self.initial_tell = self.buffer.tell()
+
+    def __exit__(self, *args):
+        # `args[0]` is type of exception. When the `read` is abnormal, the file pointer returns to the initial position.
+        if args[0] is not None:
+            self.buffer.seek(self.initial_tell)
 
 
 class _buffer_writer(_open_buffer):

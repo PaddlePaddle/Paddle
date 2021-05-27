@@ -784,9 +784,6 @@ class TestSaveLoadToMemory(unittest.TestCase):
             paddle.save(4, 3)
         with self.assertRaises(ValueError):
             paddle.save(state_dict, '')
-        byio_assert = BytesIO()
-        with self.assertRaises(NotImplementedError):
-            paddle.save(tensor, byio_assert, use_binary_format=True)
 
     def test_static_save_to_memory(self):
         paddle.enable_static()
@@ -809,9 +806,17 @@ class TestSaveLoadToMemory(unittest.TestCase):
             tensor = state_dict[keys[0]]
 
             byio = BytesIO()
+            byio2 = BytesIO()
+            paddle.save(prog, byio2)
             paddle.save(tensor, byio)
             paddle.save(state_dict, byio)
             byio.seek(0)
+            byio2.seek(0)
+
+            prog_load = paddle.load(byio2)
+            self.assertTrue(prog.desc.serialize_to_string() ==
+                            prog_load.desc.serialize_to_string())
+
             tensor_load = paddle.load(byio, return_numpy=True)
             self.assertTrue(np.array_equal(tensor_load, np.array(tensor)))
 

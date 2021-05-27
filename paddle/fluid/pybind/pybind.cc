@@ -546,6 +546,30 @@ PYBIND11_MODULE(core_noavx, m) {
           fin.close();
           return tellg;
         });
+  m.def("_save_lod_tensor_memory", [](const LoDTensor &tensor) -> py::bytes {
+    std::ostringstream ss;
+    SerializeToStream(ss, tensor);
+    return ss.str();
+  });
+  m.def("_load_lod_tensor_memory",
+        [](LoDTensor &tensor, const std::string &tensor_bytes) {
+          std::istringstream fin(tensor_bytes, std::ios::in | std::ios::binary);
+          DeserializeFromStream(fin, &tensor);
+        });
+  m.def("_save_selected_rows_memory",
+        [](const SelectedRows &selected_rows) -> py::bytes {
+          std::ostringstream ss;
+          SerializeToStream(ss, selected_rows);
+          return ss.str();
+        });
+  m.def(
+      "_load_selected_rows_memory",
+      [](SelectedRows &selected_rows, const std::string &selected_rows_bytes) {
+        std::istringstream fin(selected_rows_bytes,
+                               std::ios::in | std::ios::binary);
+        DeserializeFromStream(fin, &selected_rows);
+      });
+
   m.def("_save_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
            const Scope &scope) {

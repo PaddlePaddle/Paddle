@@ -454,38 +454,78 @@ def _save_lod_tensor(tensor, file_name):
     if _is_file_path(file_name):
         _seek = core._save_lod_tensor(tensor, file_name)
         # '_seek' is the end position of this tensor in the file.
-        return _seek
+
+    elif _is_memory_buffer(file_name):
+        tensor_bytes = core._save_lod_tensor_memory(tensor)
+
+        with _open_file_buffer(file_name, 'wb') as f:
+            f.write(tensor_bytes)
+            _seek = f.tell()
+
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file. `file_name` should be string, but received {}'.
-            format(file_name))
+            'Only supports saving objects to file or BytesIO, but received {}'.
+            format(type(file_name)))
+    return _seek
 
 
 def _load_lod_tensor(file_name):
-
     temp_t = paddle.fluid.core.LoDTensor()
-    # '_seek' is the end position of this tensor in the file.
-    _seek = paddle.fluid.core._load_lod_tensor(temp_t, file_name)
+    if _is_file_path(file_name):
+        # '_seek' is the end position of this tensor in the file.
+        _seek = paddle.fluid.core._load_lod_tensor(temp_t, file_name)
+
+    elif _is_memory_buffer(file_name):
+        with _open_file_buffer(file_name, 'rb') as f:
+            tensor_bytes = f.read()
+            paddle.fluid.core._load_lod_tensor_memory(temp_t, tensor_bytes)
+            _seek = f.tell()
+
+    else:
+        raise NotImplementedError(
+            'Only supports load objects from file or BytesIO, but received {}'.
+            format(type(file_name)))
+
     return temp_t, _seek
 
 
 def _save_selected_rows(selected_rows, file_name):
+    if not selected_rows.get_tensor()._is_initialized():
+        raise ValueError("The saved tensor is not initialized.")
     if _is_file_path(file_name):
         # '_seek' is the end position of this SelectedRows in the file.
-        if not selected_rows.get_tensor()._is_initialized():
-            raise ValueError("The saved tensor is not initialized.")
         _seek = core._save_selected_rows(selected_rows, file_name)
-        return _seek
+
+    elif _is_memory_buffer(file_name):
+        selected_rows_bytes = core._save_selected_rows_memory(selected_rows)
+        with _open_file_buffer(file_name, 'wb') as f:
+            f.write(selected_rows_bytes)
+            _seek = f.tell()
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file. `file_name` should be string, but received {}'.
-            format(file_name))
+            'Only supports saving objects to file or BytesIO, but received {}'.
+            format(type(file_name)))
+    return _seek
 
 
 def _load_selected_rows(file_name):
     temp_sr = core.SelectedRows()
-    # '_seek' is the end position of this SelectedRows in the file.
-    _seek = core._load_selected_rows(temp_sr, file_name)
+    if _is_file_path(file_name):
+        # '_seek' is the end position of this SelectedRows in the file.
+        _seek = core._load_selected_rows(temp_sr, file_name)
+
+    elif _is_memory_buffer(file_name):
+        with _open_file_buffer(file_name, 'rb') as f:
+            selected_rows_bytes = f.read()
+            paddle.fluid.core._load_selected_rows_memory(temp_sr,
+                                                         selected_rows_bytes)
+        _seek = f.tell()
+
+    else:
+        raise NotImplementedError(
+            'Only supports load objects from file or BytesIO, but received {}'.
+            format(type(file_name)))
+
     return temp_sr, _seek
 
 
@@ -619,9 +659,7 @@ def save(obj, path, protocol=4, **configs):
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
             os.makedirs(dirname)
-    elif _is_memory_buffer(path):
-        pass
-    else:
+    elif not _is_memory_buffer(path):
         raise ValueError(
             "only supports saving objects to file and `BytesIO`, but got {}".
             format(type(path)))
@@ -688,7 +726,6 @@ def _legacy_save(obj, path, protocol=2):
         if dirname and not os.path.exists(dirname):
             os.makedirs(dirname)
 
-    # TODO(chenweihang): supports save other object
     if isinstance(obj, dict):
         saved_obj = _build_saved_state_dict(obj)
 
