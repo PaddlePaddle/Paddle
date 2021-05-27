@@ -47,7 +47,6 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   }
 
   auto index_size = index.dims()[0];
-
   const T* input_data = input.data<T>();
   const IndexT* index_data = index.data<IndexT>();
   T* out_data = output->mutable_data<T>(platform::CPUPlace());
