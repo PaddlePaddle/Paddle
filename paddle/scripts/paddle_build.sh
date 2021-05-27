@@ -2075,10 +2075,12 @@ function summary_check_problems() {
     set -x
 }
 
+
 function download_tar() {
     cd ${cfs_dir}
     tar --use-compress-program=pigz -cpPf Paddle.tar.gz ${PADDLE_ROOT} 
 }
+
 
 function main() {
     local CMD=$1 
