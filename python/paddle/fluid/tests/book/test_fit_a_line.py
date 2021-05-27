@@ -21,7 +21,6 @@ import paddle.static.amp as amp
 import contextlib
 import numpy
 import unittest
-from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
 import math
 import sys
 import os
@@ -153,8 +152,7 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
                           feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
         print("infer shape: ", results[0].shape)
-        print("infer results: ", results[0] if results[0].dtype != numpy.uint16
-              else convert_uint16_to_float(results[0]))
+        print("infer results: ", results[0])
         print("ground truth: ", test_label)
 
 
