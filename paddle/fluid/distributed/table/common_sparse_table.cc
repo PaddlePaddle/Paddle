@@ -25,83 +25,12 @@ class ValueBlock;
 }  // namespace distributed
 }  // namespace paddle
 
-#define PSERVER_SAVE_SUFFIX ".shard"
-using boost::lexical_cast;
-
 namespace paddle {
 namespace distributed {
 
-enum SaveMode { all, base, delta };
-
-struct Meta {
-  std::string param;
-  int shard_id;
-  std::vector<std::string> names;
-  std::vector<int> dims;
-  uint64_t count;
-  std::unordered_map<std::string, int> dims_map;
-
-  explicit Meta(const std::string& metapath) {
-    std::ifstream file(metapath);
-    std::string line;
-    int num_lines = 0;
-    while (std::getline(file, line)) {
-      if (StartWith(line, "#")) {
-        continue;
-      }
-      auto pairs = paddle::string::split_string<std::string>(line, "=");
-      PADDLE_ENFORCE_EQ(
-          pairs.size(), 2,
-          paddle::platform::errors::InvalidArgument(
-              "info in %s except k=v, but got %s", metapath, line));
-
-      if (pairs[0] == "param") {
-        param = pairs[1];
-      }
-      if (pairs[0] == "shard_id") {
-        shard_id = std::stoi(pairs[1]);
-      }
-      if (pairs[0] == "row_names") {
-        names = paddle::string::split_string<std::string>(pairs[1], ",");
-      }
-      if (pairs[0] == "row_dims") {
-        auto dims_strs =
-            paddle::string::split_string<std::string>(pairs[1], ",");
-        for (auto& str : dims_strs) {
-          dims.push_back(std::stoi(str));
-        }
-      }
-      if (pairs[0] == "count") {
-        count = std::stoull(pairs[1]);
-      }
-    }
-    for (int x = 0; x < names.size(); ++x) {
-      dims_map[names[x]] = dims[x];
-    }
-  }
-
-  Meta(std::string param, int shard_id, std::vector<std::string> row_names,
-       std::vector<int> dims, uint64_t count) {
-    this->param = param;
-    this->shard_id = shard_id;
-    this->names = row_names;
-    this->dims = dims;
-    this->count = count;
-  }
-
-  std::string ToString() {
-    std::stringstream ss;
-    ss << "param=" << param << "\n";
-    ss << "shard_id=" << shard_id << "\n";
-    ss << "row_names=" << paddle::string::join_strings(names, ',') << "\n";
-    ss << "row_dims=" << paddle::string::join_strings(dims, ',') << "\n";
-    ss << "count=" << count << "\n";
-    return ss.str();
-  }
-};
-
-void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
-                  const int64_t id, std::vector<std::vector<float>>* values) {
+void CommonSparseTable::ProcessALine(const std::vector<std::string>& columns,
+                                     const Meta& meta, const int64_t id,
+                                     std::vector<std::vector<float>>* values) {
   auto colunmn_size = columns.size();
   auto load_values =
       paddle::string::split_string<std::string>(columns[colunmn_size - 1], ",");
@@ -134,8 +63,10 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
   }
 }
 
-void SaveMetaToText(std::ostream* os, const CommonAccessorParameter& common,
-                    const size_t shard_idx, const int64_t total) {
+void CommonSparseTable::SaveMetaToText(std::ostream* os,
+                                       const CommonAccessorParameter& common,
+                                       const size_t shard_idx,
+                                       const int64_t total) {
   // save meta
   std::stringstream stream;
   stream << "param=" << common.table_name() << "\n";
@@ -148,8 +79,10 @@ void SaveMetaToText(std::ostream* os, const CommonAccessorParameter& common,
   os->write(stream.str().c_str(), sizeof(char) * stream.str().size());
 }
 
-int64_t SaveValueToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
-                        std::shared_ptr<::ThreadPool> pool, const int mode) {
+int64_t CommonSparseTable::SaveValueToText(std::ostream* os,
+                                           std::shared_ptr<ValueBlock> block,
+                                           std::shared_ptr<::ThreadPool> pool,
+                                           const int mode, int shard_id) {
   int64_t save_num = 0;
   for (auto& table : block->values_) {
     for (auto& value : table) {
@@ -186,10 +119,10 @@ int64_t SaveValueToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
   return save_num;
 }
 
-int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
-                     const int pserver_id, const int pserver_num,
-                     const int local_shard_num,
-                     std::vector<std::shared_ptr<ValueBlock>>* blocks) {
+int64_t CommonSparseTable::LoadFromText(
+    const std::string& valuepath, const std::string& metapath,
+    const int pserver_id, const int pserver_num, const int local_shard_num,
+    std::vector<std::shared_ptr<ValueBlock>>* blocks) {
   Meta meta = Meta(metapath);
 
   int num_lines = 0;
@@ -198,7 +131,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
 
   while (std::getline(file, line)) {
     auto values = paddle::string::split_string<std::string>(line, "\t");
-    auto id = lexical_cast<int64_t>(values[0]);
+    auto id = lexical_cast<uint64_t>(values[0]);
 
     if (id % pserver_num != pserver_id) {
       VLOG(3) << "will not load " << values[0] << " from " << valuepath
@@ -388,8 +321,9 @@ int32_t CommonSparseTable::save(const std::string& dirname,
   int64_t total_ins = 0;
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     // save values
-    auto shard_save_num = SaveValueToText(vs.get(), shard_values_[shard_id],
-                                          _shards_task_pool[shard_id], mode);
+    auto shard_save_num =
+        SaveValueToText(vs.get(), shard_values_[shard_id],
+                        _shards_task_pool[shard_id], mode, shard_id);
     total_ins += shard_save_num;
   }
   vs->close();
