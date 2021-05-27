@@ -246,7 +246,7 @@ std::vector<int64_t> InferShapeNDToNZ(std::vector<int64_t> dims) {
   std::vector<int64_t> res;
   // sum(keepdim = false) may make tensor dim = 0
   std::vector<int64_t> dim;
-  for (int64_t i = 0; i < dims.size(); i++) {
+  for (uint64_t i = 0; i < dims.size(); i++) {
     dim.emplace_back(dims[i]);
   }
 
@@ -259,7 +259,7 @@ std::vector<int64_t> InferShapeNDToNZ(std::vector<int64_t> dims) {
     dim.emplace_back(1);
   }
 
-  int64_t i = 0;
+  uint64_t i = 0;
   for (; i < dim.size() - 2; i++) {
     res.emplace_back(dim[i]);
   }
