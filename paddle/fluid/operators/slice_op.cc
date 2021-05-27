@@ -474,4 +474,3 @@ REGISTER_OP_CUDA_KERNEL(
                          paddle::platform::complex<float>>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
                          paddle::platform::complex<double>>);
-
