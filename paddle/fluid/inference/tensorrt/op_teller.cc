@@ -49,6 +49,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
+#endif
+#if CUDA_VERSION >= 10200
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
 #endif
