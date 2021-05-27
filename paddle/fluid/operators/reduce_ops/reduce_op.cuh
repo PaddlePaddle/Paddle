@@ -86,9 +86,8 @@ constexpr int kMaxBlock = 512;
 
 // get blockDim for reduceLastDim and reduceAny
 static inline int GetBlockDim(int block_dim) {
-  return block_dim >= kMaxBlock
-             ? kMaxBlock
-             : (1 << static_cast<int>(std::log2(block_dim)));
+  return block_dim >= kMaxBlock ? kMaxBlock
+                                : (1 << static_cast<int>(std::log2(block_dim)));
 }
 
 // check reduce rand is valid
@@ -177,50 +176,71 @@ struct ReduceConfig {
   //     --SetReduceDim--> x_dim = [8,6], reduce_dim = [0], left_dim = [1]
   void SetReduceDim() {
     std::set<int> reduce_set;
-
     for (auto e : reduce_dims_origin) {
       auto pos = e >= 0 ? e : e + x_dim.size();
       reduce_set.insert(pos);
     }
+
     std::vector<int> reduce_dim_temp(reduce_set.begin(), reduce_set.end());
     std::sort(reduce_dim_temp.begin(), reduce_dim_temp.end());
-    // get reduce_dim
+
+    // update reduce_dim and x_dim
+    std::vector<int> x_new_dim;
+
+    reduce_dim.push_back(reduce_dim_temp[0]);
+    x_new_dim.push_back(x_dim[0]);
+
+    int idx_reduce = 1;
+    int num = 0;
+
     if (reduce_dim_temp.size() > 1) {
-      int num = 0;  // for update axis
-      reduce_dim.push_back(reduce_dim_temp[0]);
-      for (int idx = 1; idx < reduce_dim_temp.size(); idx++) {
-        // update x_dim
-        if (reduce_dim_temp[idx] - reduce_dim_temp[idx - 1] == 1) {
-          x_dim[reduce_dim_temp[idx - 1]] *= x_dim[reduce_dim_temp[idx]];
-          x_dim.erase(x_dim.begin() + reduce_dim_temp[idx]);
-          num++;
+      for (int i = 1; i < x_dim.size(); i++) {
+        if (idx_reduce < reduce_dim_temp.size() &&
+            i == reduce_dim_temp[idx_reduce]) {
+          int result =
+              reduce_dim_temp[idx_reduce] - reduce_dim[reduce_dim.size() - 1];
+          bool is_equal = (result - num == 1);
+          if (is_equal) {
+            x_new_dim[x_new_dim.size() - 1] *= x_dim[i];
+            num++;
+          } else {
+            reduce_dim.push_back(reduce_dim_temp[idx_reduce] - num);
+            x_new_dim.push_back(x_dim[i]);
+          }
+          idx_reduce++;
         } else {
-          reduce_dim.push_back(reduce_dim_temp[idx] - num);
+          x_new_dim.push_back(x_dim[i]);
         }
       }
     } else {
-      reduce_dim = reduce_dim_temp;
+      x_new_dim = x_dim;
     }
 
-    // update new_x_dim and new_reduce_dim
-    std::vector<int> new_x_dim, new_reduce_dim_temp;
+    // update x_dim
+    x_dim = x_new_dim;
+    std::vector<int>().swap(x_new_dim);
+
+    std::vector<int> reduce_dim_new;
     int is_reduced = 0;
     for (auto e : reduce_dim) {
+      auto pos = e >= 0 ? e : e + x_dim.size();
       is_reduced |= 1 << e;
     }
 
+    std::vector<int>().swap(reduce_dim);
+
     for (int i = 0; i < x_dim.size(); i++) {
       if ((i == 0) || (((is_reduced >> i) ^ (is_reduced >> (i - 1))) & 1)) {
-        new_x_dim.push_back(x_dim[i]);
+        x_new_dim.push_back(x_dim[i]);
         if ((is_reduced >> i) & 1)
-          new_reduce_dim_temp.push_back(new_x_dim.size() - 1);
+          reduce_dim_new.push_back(x_new_dim.size() - 1);
       } else {
-        new_x_dim[new_x_dim.size() - 1] *= x_dim[i];
+        x_new_dim[x_new_dim.size() - 1] *= x_dim[i];
       }
     }
 
-    x_dim = new_x_dim;
-    reduce_dim = new_reduce_dim_temp;
+    x_dim = x_new_dim;
+    reduce_dim = reduce_dim_new;
 
     int x_rank = static_cast<int>(x_dim.size());
     std::set<int> left_set;
