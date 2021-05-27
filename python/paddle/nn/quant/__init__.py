@@ -13,5 +13,13 @@
 # limitations under the License.
 
 from .functional_layers import FloatFunctionalLayer  # noqa: F401
+from .functional_layers import add  # noqa: F401
+from .functional_layers import subtract  # noqa: F401
+from .functional_layers import multiply  # noqa: F401
+from .functional_layers import divide  # noqa: F401
+from .functional_layers import reshape  # noqa: F401
+from .functional_layers import tranpose  # noqa: F401
+from .functional_layers import concat  # noqa: F401
+from .functional_layers import flatten  # noqa: F401
 
-__all__ = ['FloatFunctionalLayer']
+__all__ = []

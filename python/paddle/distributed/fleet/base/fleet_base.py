@@ -17,6 +17,7 @@ import copy
 import warnings
 import paddle
 import os
+import numpy as np
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
@@ -28,7 +29,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from . import topology as tp
 from .topology import ParallelMode
-from ..meta_parallel import ModelParallel
+from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel
 from ..meta_optimizers import HybridParallelOptimizer
 from ..meta_optimizers import HybridParallelGradScaler
@@ -278,6 +279,14 @@ class Fleet(object):
             dims=[self.dp_degree, self.pp_degree, self.mp_degree])
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
+
+        if self.mp_degree > 1:
+            tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
+            tensor_init_seed = tensor_parallel_configs["tensor_init_seed"]
+            if tensor_init_seed == -1:
+                model_parallel_random_seed()
+            else:
+                model_parallel_random_seed(tensor_init_seed)
 
     def get_hybrid_communicate_group(self):
         assert self._hcg is not None
@@ -530,6 +539,29 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_server(*args, **kwargs)
+
+    def load_model(self, path, mode):
+        """
+        load fleet model from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.load_model("path", "mode")
+
+        """
+        self._runtime_handle.load_model(path, mode)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -829,8 +861,8 @@ class Fleet(object):
                 last_comm_group_size_MB,
                 find_unused_parameters=self._user_defined_strategy.
                 find_unused_parameters)
-        elif self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL:
-            distributed_model = ModelParallel(
+        elif self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
+            distributed_model = TensorParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
         elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
             distributed_model = PipelineParallel(

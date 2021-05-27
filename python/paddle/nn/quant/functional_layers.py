@@ -22,50 +22,83 @@ class FloatFunctionalLayer(layers.Layer):
     def __init__(self):
         super(FloatFunctionalLayer, self).__init__()
 
-    def add(x, y, name=None):
-        """
-        Wrap paddle.add
-        """
-        return math.add(x, y, name)
 
-    def subtract(x, y, name=None):
-        """
-        Wrap paddle.subtract
-        """
-        return math.subtract(x, y, name)
+class add(FloatFunctionalLayer):
+    def __init__(self, name=None):
+        super(add, self).__init__()
+        self._name = name
 
-    def multiply(x, y, name=None):
-        """
-        Wrap paddle.multiply
-        """
-        return math.multiply(x, y, name)
+    def forward(self, inputs):
+        assert len(inputs) == 2, "The inputs should be (x, y)"
+        return math.add(inputs[0], inputs[1], self._name)
 
-    def divide(x, y, name=None):
-        """
-        Wrap paddle.divide
-        """
-        return math.divide(x, y, name)
 
-    def reshape(x, shape, name=None):
-        """
-        Wrap paddle.reshape
-        """
-        return manipulation.reshape(x, shape, name)
+class subtract(FloatFunctionalLayer):
+    def __init__(self, name=None):
+        super(subtract, self).__init__()
+        self._name = name
 
-    def tranpose(x, perm, name=None):
-        """
-        Wrap paddle.tranpose
-        """
-        return manipulation.transpose(x, perm, name)
+    def forward(self, inputs):
+        assert len(inputs) == 2, "The inputs should be (x, y)"
+        return math.subtract(inputs[0], inputs[1], self._name)
 
-    def concat(x, axis=0, name=None):
-        """
-        Warp paddle.concat
-        """
-        return manipulation.concat(x, axis, name)
 
-    def flatten(x, start_axis=0, stop_axis=-1, name=None):
-        """
-        Warp paddle.flatten
-        """
-        return manipulation.flatten(x, start_axis, stop_axis, name)
+class multiply(FloatFunctionalLayer):
+    def __init__(self, name=None):
+        super(multiply, self).__init__()
+        self._name = name
+
+    def forward(self, inputs):
+        assert len(inputs) == 2, "The inputs should be (x, y)"
+        return math.multiply(inputs[0], inputs[1], self._name)
+
+
+class divide(FloatFunctionalLayer):
+    def __init__(self, name=None):
+        super(divide, self).__init__()
+        self._name = name
+
+    def forward(self, inputs):
+        assert len(inputs) == 2, "The inputs should be (x, y)"
+        return math.divide(inputs[0], inputs[1], self._name)
+
+
+class reshape(FloatFunctionalLayer):
+    def __init__(self, name=None):
+        super(reshape, self).__init__()
+        self._name = name
+
+    def forward(self, inputs):
+        assert len(inputs) == 2, "The inputs should be (x, shape)"
+        return manipulation.reshape(inputs[0], inputs[1], self._name)
+
+
+class tranpose(FloatFunctionalLayer):
+    def __init__(self, name=None):
+        super(tranpose, self).__init__()
+        self._name = name
+
+    def forward(self, inputs):
+        assert len(inputs) == 2, "The inputs should be (x, perm)"
+        return manipulation.tranpose(inputs[0], inputs[1], self._name)
+
+
+class concat(FloatFunctionalLayer):
+    def __init__(self, name=None):
+        super(concat, self).__init__()
+        self._name = name
+
+    def forward(self, inputs):
+        assert len(inputs) == 2, "The inputs should be (x, axis)"
+        return manipulation.concat(inputs[0], inputs[1], self._name)
+
+
+class flatten(FloatFunctionalLayer):
+    def __init__(self, name=None):
+        super(flatten, self).__init__()
+        self._name = name
+
+    def forward(self, inputs):
+        assert len(
+            inputs) == 3, "The inputs should be (x, start_axis, stop_axis)"
+        return manipulation.flatten(inputs[0], inputs[1], inputs[2], self._name)

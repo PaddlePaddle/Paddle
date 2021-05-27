@@ -22,6 +22,7 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.nn import functional as F
+import logging
 from paddle.fluid.log_helper import get_logger
 
 __all__ = [

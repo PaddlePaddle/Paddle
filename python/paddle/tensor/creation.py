@@ -118,6 +118,16 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         place = _current_expected_place()
 
     if not isinstance(data, np.ndarray):
+
+        def _handle_diff_place_dtype(data, dtype, place, stop_gradient):
+            data.stop_gradient = stop_gradient
+            if not data.place._equals(place):
+                data = data._copy_to(place, False)
+            if dtype:
+                if convert_dtype(dtype) != convert_dtype(data.dtype):
+                    return data.astype(convert_dtype(dtype))
+            return data
+
         if np.isscalar(data) and not isinstance(data, str):
             data = np.array([data])
         elif isinstance(data, (list, tuple)):
@@ -128,13 +138,11 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "this means the input data contains nested lists with different lengths. "
                 )
         elif isinstance(data, paddle.Tensor):
-            data.stop_gradient = stop_gradient
-            if not data.place._equals(place):
-                data = data._copy_to(place, False)
-            if dtype:
-                if convert_dtype(dtype) != convert_dtype(data.dtype):
-                    return data.astype(convert_dtype(dtype))
-            return data
+            return _handle_diff_place_dtype(data, dtype, place, stop_gradient)
+        elif isinstance(data, (core.Tensor, core.LoDTensor)):
+            # convert LoDTensor to VarBase first, and then process it as input VarBase
+            data = paddle.Tensor(data)
+            return _handle_diff_place_dtype(data, dtype, place, stop_gradient)
         else:
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".

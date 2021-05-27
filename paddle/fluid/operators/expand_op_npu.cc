@@ -11,7 +11,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <iostream>
 #include <memory>
 #include <string>
@@ -65,7 +64,7 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
 
     out0->Resize(out_dims);
     out0->mutable_data<T>(context.device_context().GetPlace());
-    auto runner =
+    const auto& runner =
         NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
@@ -82,5 +81,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>);
-
-#endif
