@@ -292,16 +292,27 @@ Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
   if (dst_format_name == "FRACTAL_NZ") {
     auto dims = framework::vectorize(dst_tensor.dims());
     std::vector<int64_t> dst_cast_dims = InferShapeNDToNZ(dims);
-    trans_src_tensor.Resize(framework::make_ddim(storage_dims));
+    dst_tensor.Resize(framework::make_ddim(dst_cast_dims));
     VLOG(4) << "Cast NPU format from ND to FRACTAL_NZ.";
   }
 
   std::string src_format_name = "ND";
   auto stream = GetCurrentNPUStream();
-  auto runner_cast = NpuOpRunner("TransData", {trans_src_tensor}, {dst_tensor},
-                                 {{"src_format", src_format_name},
-                                  {"dst_format", dst_format_name},
-                                  {"groups", 1}});
+
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
+      pool.Get(platform::NPUPlace(platform::GetCurrentNPUDeviceId())));
+  auto place = dev_ctx->GetPlace();
+  if (trans_src_tensor.type() == framework::proto::VarType::FP32) {
+    dst_tensor.mutable_data<float>(place);
+  } else if (trans_src_tensor.type() == framework::proto::VarType::FP16) {
+    dst_tensor.mutable_data<paddle::platform::float16>(place);
+  }
+  const auto &runner_cast =
+      NpuOpRunner("TransData", {trans_src_tensor}, {dst_tensor},
+                  {{"src_format", src_format_name},
+                   {"dst_format", dst_format_name},
+                   {"groups", 1}});
   runner_cast.Run(stream);
 
   return dst_tensor;
@@ -338,7 +349,7 @@ Tensor CastNPUFormat(const Tensor &src_tensor, Tensor dst_tensor,
   //   runner_cast_x.Run(stream);
   // }
 
-  RunTransDataToCastFormat(src_tensor, dst_tensor);
+  dst_tensor = RunTransDataToCastFormat(src_tensor, dst_tensor);
   return dst_tensor;
 }
 

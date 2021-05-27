@@ -71,28 +71,37 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
      tmp_y.ShareDataWith(*y);
     }*/
 
-    Tensor tmp_x(src_tensor.type());
-    tmp_x.Resize(src_tensor->dims());
-    tmp_x.mutable_data<T>(ctx.GetPlace());
-    framework::TensorCopy(
-        src_tensor, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), &tmp_x);
-    tmp_x = CastNPUFormat(*x, 29);
+    Tensor tmp_x(x->type());
+    tmp_x.Resize(x->dims());
+    // tmp_x.mutable_data<T>(ctx.GetPlace());
+    // framework::TensorCopy(
+    //     *x, ctx.GetPlace(),
+    //     ctx.template device_context<platform::DeviceContext>(), &tmp_x);
+    tmp_x = CastNPUFormat(*x, tmp_x, 29);
 
-    Tensor tmp_y(src_tensor.type());
-    tmp_y.Resize(src_tensor->dims());
-    tmp_y.mutable_data<T>(ctx.GetPlace());
-    framework::TensorCopy(
-        src_tensor, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), &tmp_y);
-    tmp_y = CastNPUFormat(*y, 29);
+    Tensor tmp_y(y->type());
+    tmp_y.Resize(y->dims());
+    // tmp_y.mutable_data<T>(ctx.GetPlace());
+    // framework::TensorCopy(
+    //     *y, ctx.GetPlace(),
+    //     ctx.template device_context<platform::DeviceContext>(), &tmp_y);
+    tmp_y = CastNPUFormat(*y, tmp_y, 29);
 
     if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());
-      out->set_layout(DataLayout::kFractalNZ);
+      // out->set_layout(DataLayout::kFractalNZ);
+
+      // Tensor tmp_out(out->type());
+      // tmp_out.Resize(out->dims());
+      // tmp_out = CastNPUFormat(*out, tmp_out, 29);
+
+      Tensor tmp_out(out->type());
+      tmp_out.Resize(framework::make_ddim({7, 7, 16, 16}));
+      tmp_out.mutable_data<T>(ctx.GetPlace());
+      tmp_out.set_layout(DataLayout::kFractalNZ);
 
       const auto& runner = NpuOpRunner(
-          "MatMul", {tmp_x, tmp_y}, {*out},
+          "MatMul", {tmp_x, tmp_y}, {tmp_out},
           {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}});
 
       auto stream =
