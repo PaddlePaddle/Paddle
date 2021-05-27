@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle
+import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
@@ -24,6 +25,8 @@ from paddle.fluid.tests.unittests.test_static_save_load import PtbModel
 import numpy as np
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestSaveLoadBF16(unittest.TestCase):
     def set_place(self):
         return fluid.CPUPlace()
