@@ -2075,10 +2075,6 @@ function summary_check_problems() {
     set -x
 }
 
-function build_so_cache(){
-    pwd
-    tar --use-compress-program=pigz -cpf proto_so.tar.gz `find . -name "*.so" -o -name "proto" -o -name "*.so.*"`
-}
 
 function reuse_so_cache() {
     get_html="https://api.github.com/repos/PaddlePaddle/Paddle"
