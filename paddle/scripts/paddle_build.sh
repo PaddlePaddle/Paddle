@@ -2077,12 +2077,7 @@ function summary_check_problems() {
 
 function download_tar() {
     cd ${cfs_dir}
-    tar --use-compress-program=pigz -cpf Paddle.tar.gz ${PADDLE_ROOT} 
-}
-
-function upload_tar() {
-    cd ${cfs_dir}
-    tar --use-compress-program=pigz -xpf Paddle.tar.gz -C ${PADDLE_ROOT}
+    tar --use-compress-program=pigz -cpPf Paddle.tar.gz ${PADDLE_ROOT} 
 }
 
 function main() {
@@ -2173,7 +2168,6 @@ function main() {
         download_tar
         ;;
       gpu_cicheck_coverage)
-        upload_tar
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
