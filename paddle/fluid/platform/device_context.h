@@ -750,6 +750,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   using ExecMap = std::unordered_map<
       void*, std::vector<std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>>>;
+  using ExecShape = std::unordered_map<std::string, std::shared_ptr<ExecMap>>;
 
   explicit MKLDNNDeviceContext(CPUPlace place);
 
@@ -758,6 +759,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   // Register object to currently used executor's map
   void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;
+  void RemoveShapeEntriesWithExecutor(void) const;
 
   // Remove all entries from the blob map
   void ResetBlobMap(void* ptr);
@@ -772,7 +774,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
   // Calculate number of oneDNN objects cached
-  unsigned int GetCachedObjectsNumber(void);
+  unsigned int GetCachedObjectsNumber(void) const;
 
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
@@ -785,7 +787,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<BlobMap> p_blobmap_;
   // Map key is pointer of executor and value is a data(iterator in map) needed
   // to erase
-  std::shared_ptr<ExecMap> p_exec_items_;
+  std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
 };
