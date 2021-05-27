@@ -511,7 +511,7 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         event->set_name(c->second->name());
-        event->set_detail_info(r.name);
+        event->set_detail_info(c->second->attr());
         find++;
       } else {
         VLOG(10) << "Missing Kernel Event: " + r.name;

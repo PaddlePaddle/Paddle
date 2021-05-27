@@ -589,6 +589,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_matmul_op_with_head',
     'test_var_conv_2d',
     'test_batch_norm_mkldnn_op',
+    'test_cast_mkldnn_op',
     'test_concat_int8_mkldnn_op',
     'test_concat_bf16_mkldnn_op',
     'test_concat_mkldnn_op',
@@ -709,4 +710,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_lamb_op_xpu',
     'test_model_cast_to_bf16',
     'test_sgd_op_bf16',
+    'test_marker_op',
 ]

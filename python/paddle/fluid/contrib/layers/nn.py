@@ -967,6 +967,7 @@ def sparse_embedding(input,
                      padding_idx=None,
                      is_test=False,
                      entry=None,
+                     table_class="CommonSparseTable",
                      param_attr=None,
                      dtype='float32'):
     helper = LayerHelper('sparse_embedding', **locals())
@@ -988,6 +989,10 @@ def sparse_embedding(input,
 
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
+
+    if table_class not in ["CommonSparseTable", "SSDSparseTable"]:
+        raise ValueError(
+            "table_class must be in [CommonSparseTable, SSDSparseTable]")
 
     entry_str = "none"
 
@@ -1011,7 +1016,8 @@ def sparse_embedding(input,
             'is_distributed': True,
             'remote_prefetch': True,
             'is_test': is_test,
-            'entry': entry_str
+            'entry': entry_str,
+            'table_class': table_class
         })
 
     return tmp

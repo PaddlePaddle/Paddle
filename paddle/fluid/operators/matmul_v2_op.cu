@@ -21,12 +21,12 @@ REGISTER_OP_CUDA_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<plf::CUDADeviceContext, float>,
     ops::MatMulV2Kernel<plf::CUDADeviceContext, double>,
     ops::MatMulV2Kernel<plf::CUDADeviceContext, plf::float16>,
-    ops::MatMulV2Kernel<plf::CUDADeviceContext, plf::complex64>,
-    ops::MatMulV2Kernel<plf::CUDADeviceContext, plf::complex128>);
+    ops::MatMulV2Kernel<plf::CUDADeviceContext, plf::complex<float>>,
+    ops::MatMulV2Kernel<plf::CUDADeviceContext, plf::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     matmul_v2_grad, ops::MatMulV2GradKernel<plf::CUDADeviceContext, float>,
     ops::MatMulV2GradKernel<plf::CUDADeviceContext, double>,
     ops::MatMulV2GradKernel<plf::CUDADeviceContext, plf::float16>,
-    ops::MatMulV2GradKernel<plf::CUDADeviceContext, plf::complex64>,
-    ops::MatMulV2GradKernel<plf::CUDADeviceContext, plf::complex128>);
+    ops::MatMulV2GradKernel<plf::CUDADeviceContext, plf::complex<float>>,
+    ops::MatMulV2GradKernel<plf::CUDADeviceContext, plf::complex<double>>);
