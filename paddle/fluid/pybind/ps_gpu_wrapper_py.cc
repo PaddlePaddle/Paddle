@@ -47,6 +47,10 @@ void BindPSGPUWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("end_pass", &framework::PSGPUWrapper::EndPass,
            py::call_guard<py::gil_scoped_release>())
+      .def("pre_build", &framework::PSGPUWrapper::PreBuild,
+           py::call_guard<py::gil_scoped_release>())
+      .def("build_gpu_task", &framework::PSGPUWrapper::BuildGPUTask,
+           py::call_guard<py::gil_scoped_release>())
       .def("build_gpu_ps", &framework::PSGPUWrapper::BuildGPUPS,
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper

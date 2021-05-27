@@ -82,6 +82,8 @@ class PSGPUWrapper {
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
 
+  void PreBuild(const uint64_t table_id, int feature_dim);
+  void BuildGPUTask();
   void BuildGPUPS(const uint64_t table_id, int feature_dim);
   void BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t table_id,
                  int feature_dim);
@@ -228,6 +230,7 @@ class PSGPUWrapper {
   std::vector<int> heter_devices_;
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
+  HeterObjectPool<HeterContext> task_queue_;
   std::vector<std::vector<std::unordered_set<uint64_t>>> thread_keys_;
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
