@@ -25,12 +25,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
+using Variable = framework::Variable;
+using LoDTensorArray = framework::LoDTensorArray;
+using DDim = framework::DDim;
 
 inline void DealTensorArray(const framework::ExecutionContext& ctx,
                             const std::vector<int64_t>& starts,
                             const std::vector<int64_t>& ends,
-                            bool out_is_tensor_array) {
-  auto in_array = ctx.Input<framework::LoDTensorArray>("Input");
+                            bool out_is_array) {
+  auto in_array = ctx.Input<LoDTensorArray>("Input");
   // If the input is LoDTensorArray, the rank of input is 1.
   int64_t in_size = in_array->size();
   int64_t start = starts[0] < 0 ? (starts[0] + in_size) : starts[0];
@@ -47,8 +50,8 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
                         ends[0], starts[0]));
   int64_t out_size = end - start;
 
-  if (out_is_tensor_array) {
-    auto out_array = ctx.Output<framework::LoDTensorArray>("Out");
+  if (out_is_array) {
+    auto out_array = ctx.Output<LoDTensorArray>("Out");
     out_array->resize(out_size);
 
     for (int i = 0; i < out_size; ++i) {
@@ -64,7 +67,7 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
       }
     }
   } else {
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto out = ctx.Output<Tensor>("Out");
     auto in_tensor = in_array->at(start);
     TensorCopy(in_tensor, ctx.GetPlace(), out);
   }
@@ -74,11 +77,9 @@ template <typename DeviceContext, typename T>
 class SliceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Variable* input_var = ctx.InputVar("Input");
-    bool is_tensor_array = input_var->IsType<framework::LoDTensorArray>();
-    int rank = is_tensor_array
-                   ? 1
-                   : ctx.Input<framework::Tensor>("Input")->dims().size();
+    const Variable* input_var = ctx.InputVar("Input");
+    bool is_tensor_array = input_var->IsType<LoDTensorArray>();
+    int rank = is_tensor_array ? 1 : ctx.Input<Tensor>("Input")->dims().size();
 
     switch (rank) {
       case 1:
@@ -108,10 +109,10 @@ class SliceKernel : public framework::OpKernel<T> {
  private:
   template <size_t D>
   void SliceCompute(const framework::ExecutionContext& ctx) const {
-    const framework::Variable* input_var = ctx.InputVar("Input");
-    framework::Variable* out_var = ctx.OutputVar("Out");
-    bool input_is_tensor_array = input_var->IsType<framework::LoDTensorArray>();
-    bool out_is_tensor_array = out_var->IsType<framework::LoDTensorArray>();
+    const Variable* input_var = ctx.InputVar("Input");
+    Variable* out_var = ctx.OutputVar("Out");
+    bool input_is_array = input_var->IsType<LoDTensorArray>();
+    bool out_is_array = out_var->IsType<LoDTensorArray>();
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -148,12 +149,12 @@ class SliceKernel : public framework::OpKernel<T> {
             "The size of ends must be equal to the size of axes."));
 
     // Step 2: Compute output
-    if (input_is_tensor_array) {
-      DealTensorArray(ctx, starts, ends, out_is_tensor_array);
+    if (input_is_array) {
+      DealTensorArray(ctx, starts, ends, out_is_array);
       return;
     } else {
-      auto in = ctx.Input<framework::Tensor>("Input");
-      auto out = ctx.Output<framework::Tensor>("Out");
+      auto in = ctx.Input<Tensor>("Input");
+      auto out = ctx.Output<Tensor>("Out");
 
       auto in_dims = in->dims();
       auto out_dims = out->dims();
@@ -205,11 +206,11 @@ class SliceKernel : public framework::OpKernel<T> {
           extents_32bit[i] = extents[i];
         }
         EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-                eigen_place, framework::To32BitIndex(out_t),
+            eigen_place, framework::To32BitIndex(out_t),
             framework::To32BitIndex(in_t), offsets_32bit, extents_32bit);
       } else {
         EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-                eigen_place, out_t, in_t, offsets, extents);
+            eigen_place, out_t, in_t, offsets, extents);
       }
 
       out->Resize(out_dims);
@@ -221,11 +222,9 @@ template <typename DeviceContext, typename T>
 class SliceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Variable* input_var = ctx.InputVar("Input");
-    bool is_tensor_array = input_var->IsType<framework::LoDTensorArray>();
-    size_t rank = is_tensor_array
-                      ? 1
-                      : ctx.Input<framework::Tensor>("Input")->dims().size();
+    const Variable* input_var = ctx.InputVar("Input");
+    bool is_array = input_var->IsType<LoDTensorArray>();
+    size_t rank = is_array ? 1 : ctx.Input<Tensor>("Input")->dims().size();
 
     switch (rank) {
       case 1:
@@ -246,6 +245,9 @@ class SliceGradKernel : public framework::OpKernel<T> {
       case 6:
         SliceCompute<6>(ctx);
         break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The rank of input should be less than 7, but received %d.", rank));
     }
   }
 
@@ -258,40 +260,33 @@ class SliceGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
     std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
 
-    // starts
-    auto starts_tensor_list =
-        ctx.MultiInput<framework::Tensor>("StartsTensorList");
-    if (starts_tensor_list.size() > 0) {
+    // Get the accurate attribute value of starts and ends
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    if (ctx.HasInput("StartsTensor")) {
+      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+    } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
-    } else if (ctx.HasInput("StartsTensor")) {
-      auto* starts_tensor = ctx.Input<framework::Tensor>("StartsTensor");
-      starts = GetDataFromTensor<int64_t>(starts_tensor);
     }
 
-    // ends
-    auto ends_tensor_list = ctx.MultiInput<framework::Tensor>("EndsTensorList");
-    if (ends_tensor_list.size() > 0) {
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    if (ctx.HasInput("EndsTensor")) {
+      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+    } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
-    } else if (ctx.HasInput("EndsTensor")) {
-      auto* ends_tensor = ctx.Input<framework::Tensor>("EndsTensor");
-      ends = GetDataFromTensor<int64_t>(ends_tensor);
     }
 
-    framework::Variable* d_input_var =
-        ctx.OutputVar(framework::GradVarName("Input"));
-    const framework::Variable* d_out_var =
-        ctx.InputVar(framework::GradVarName("Out"));
-    bool d_input_is_tensor_array =
-        d_input_var->IsType<framework::LoDTensorArray>();
-    bool d_out_is_tensor_array = d_out_var->IsType<framework::LoDTensorArray>();
+    Variable* d_input_var = ctx.OutputVar(framework::GradVarName("Input"));
+    const Variable* d_out_var = ctx.InputVar(framework::GradVarName("Out"));
+    bool d_input_is_array = d_input_var->IsType<LoDTensorArray>();
+    bool d_out_is_array = d_out_var->IsType<LoDTensorArray>();
 
-    if (d_input_is_tensor_array) {
-      auto* input_array = ctx.Input<framework::LoDTensorArray>("Input");
-      auto* d_input_array = ctx.Output<framework::LoDTensorArray>(
-          framework::GradVarName("Input"));
+    if (d_input_is_array) {
+      auto* input_array = ctx.Input<LoDTensorArray>("Input");
+      auto* d_in_arr =
+          ctx.Output<LoDTensorArray>(framework::GradVarName("Input"));
 
       int64_t d_in_size = input_array->size();
-      d_input_array->resize(d_in_size);
+      d_in_arr->resize(d_in_size);
       // If the input is LoDTensorArray, the rank of input is 1.
       // So only use the 0th element of starts.
       int64_t start = starts[0] < 0 ? (starts[0] + d_in_size) : starts[0];
@@ -300,66 +295,59 @@ class SliceGradKernel : public framework::OpKernel<T> {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto& dev_ctx = *pool.Get(ctx.GetPlace());
-      T value = T(0);
       math::SetConstant<DeviceContext, T> functor;
       for (int i = 0; i < d_in_size; ++i) {
         auto dim = input_array->at(i).dims();
-        d_input_array->at(i).Resize(dim);
-        d_input_array->at(i).mutable_data<T>(ctx.GetPlace());
+        d_in_arr->at(i).Resize(dim);
+        d_in_arr->at(i).mutable_data<T>(ctx.GetPlace());
         functor(reinterpret_cast<const DeviceContext&>(dev_ctx),
-                &d_input_array->at(i), static_cast<T>(value));
+                &d_in_arr->at(i), static_cast<T>(0));
       }
 
-      if (d_out_is_tensor_array) {
-        auto* d_out_array =
-            ctx.Input<framework::LoDTensorArray>(framework::GradVarName("Out"));
-        int d_out_size = d_out_array->size();
+      if (d_out_is_array) {
+        auto* d_out_arr =
+            ctx.Input<LoDTensorArray>(framework::GradVarName("Out"));
+        int d_out_size = d_out_arr->size();
         for (int i = 0; i < d_out_size; ++i) {
-          TensorCopy(d_out_array->at(i), ctx.GetPlace(),
-                     &(d_input_array->at(start + i)));
+          TensorCopy(d_out_arr->at(i), ctx.GetPlace(),
+                     &(d_in_arr->at(start + i)));
         }
-
       } else {
-        auto* d_out =
-            ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-        TensorCopy(*d_out, ctx.GetPlace(), &(d_input_array->at(start)));
+        auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
+        TensorCopy(*d_out, ctx.GetPlace(), &(d_in_arr->at(start)));
       }
       return;
     }
 
-    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-
-    auto* d_input =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Input"));
-
+    auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_input = ctx.Output<Tensor>(framework::GradVarName("Input"));
     d_input->mutable_data<T>(ctx.GetPlace());
 
     auto out_dims = d_out->dims();
     auto in_dims = d_input->dims();
 
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
-    if (decrease_axis.size() > 0) {
-      if (decrease_axis.size() == (size_t)in_dims.size()) {
+    auto decrease_size = decrease_axis.size();
+    if (decrease_size > 0) {
+      if (decrease_size == (size_t)in_dims.size()) {
         // all dims decrease
-        std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
-        out_dims = framework::make_ddim(vec_origin_out_shape);
+        std::vector<int> origin_out_shape(decrease_size, 1);
+        out_dims = framework::make_ddim(std::vector<int>(decrease_size, 1));
       } else {
-        std::vector<int> vec_origin_out_shape(
-            out_dims.size() + decrease_axis.size(), -1);
-
-        for (size_t i = 0; i < decrease_axis.size(); ++i) {
-          vec_origin_out_shape[decrease_axis[i]] = 1;
+        std::vector<int> origin_out_shape(out_dims.size() + decrease_size, -1);
+        for (size_t i = 0; i < decrease_size; ++i) {
+          origin_out_shape[decrease_axis[i]] = 1;
         }
 
         int index = 0;
-        for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
-          if (vec_origin_out_shape[i] == -1) {
-            vec_origin_out_shape[i] = out_dims[index];
+        for (size_t i = 0; i < origin_out_shape.size(); ++i) {
+          if (origin_out_shape[i] == -1) {
+            origin_out_shape[i] = out_dims[index];
             ++index;
           }
         }
 
-        out_dims = framework::make_ddim(vec_origin_out_shape);
+        out_dims = framework::make_ddim(origin_out_shape);
       }
     }
 
@@ -369,15 +357,14 @@ class SliceGradKernel : public framework::OpKernel<T> {
       offsets[i] = 0;
       extents[i] = out_dims[i];
     }
-    int64_t start;
+
     for (size_t i = 0; i < axes.size(); ++i) {
-      start = starts[i];
-      if (start < 0) {
-        start = (start + in_dims[axes[i]]);
-      }
+      int axis = axes[i];
+      int64_t start = starts[i] < 0 ? (starts[i] + in_dims[axis]) : starts[i];
       start = std::max(start, static_cast<int64_t>(0));
-      offsets[axes[i]] = start;
+      offsets[axis] = start;
     }
+
     Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
     for (size_t i = 0; i < paddings.size(); ++i) {
       paddings[i].first = offsets[i];
@@ -388,9 +375,8 @@ class SliceGradKernel : public framework::OpKernel<T> {
 
   template <size_t D>
   void EigenPaddingCompute(
-      const framework::ExecutionContext& context, framework::Tensor* d_input,
-      const framework::DDim& in_dims, const framework::Tensor* d_out,
-      const framework::DDim& out_dims,
+      const framework::ExecutionContext& context, Tensor* d_input,
+      const DDim& in_dims, const Tensor* d_out, const DDim& out_dims,
       const Eigen::array<std::pair<int64_t, int64_t>, D>& paddings) const {
     if (D <= 3) {
       // if dimension less than 3, cannot reduce dimension
@@ -446,10 +432,8 @@ class SliceGradKernel : public framework::OpKernel<T> {
           out_tore_shape[1] = out_dims[pad_dim];
 
           // convert array from std::vector to DDim
-          framework::DDim reshaped_in_dims =
-              framework::make_ddim(in_tore_shape);
-          framework::DDim reshaped_out_dims =
-              framework::make_ddim(out_tore_shape);
+          DDim reshaped_in_dims = framework::make_ddim(in_tore_shape);
+          DDim reshaped_out_dims = framework::make_ddim(out_tore_shape);
 
           // after reshape: the first dimension do not need padding,
           // set padding[0] zero
@@ -477,10 +461,8 @@ class SliceGradKernel : public framework::OpKernel<T> {
           }
 
           // convert array from std::vector to DDim
-          framework::DDim reshaped_in_dims =
-              framework::make_ddim(in_tore_shape);
-          framework::DDim reshaped_out_dims =
-              framework::make_ddim(out_tore_shape);
+          DDim reshaped_in_dims = framework::make_ddim(in_tore_shape);
+          DDim reshaped_out_dims = framework::make_ddim(out_tore_shape);
 
           // after reshape:
           // the first dimension is the previous padding dimension
@@ -513,10 +495,8 @@ class SliceGradKernel : public framework::OpKernel<T> {
           }
 
           // convert array from std::vector to DDim
-          framework::DDim reshaped_in_dims =
-              framework::make_ddim(in_tore_shape);
-          framework::DDim reshaped_out_dims =
-              framework::make_ddim(out_tore_shape);
+          DDim reshaped_in_dims = framework::make_ddim(in_tore_shape);
+          DDim reshaped_out_dims = framework::make_ddim(out_tore_shape);
 
           // after reshape:
           // the first dimension do not need padding, set padding[0] zero
@@ -540,9 +520,8 @@ class SliceGradKernel : public framework::OpKernel<T> {
 
   template <size_t D>
   void LaunchEigenPadding(
-      const framework::ExecutionContext& context, framework::Tensor* d_input,
-      const framework::DDim& in_dims, const framework::Tensor* d_out,
-      const framework::DDim& out_dims,
+      const framework::ExecutionContext& context, Tensor* d_input,
+      const DDim& in_dims, const Tensor* d_out, const DDim& out_dims,
       const Eigen::array<std::pair<int64_t, int64_t>, D>& paddings) const {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
