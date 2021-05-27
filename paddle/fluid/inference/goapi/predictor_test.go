@@ -15,7 +15,7 @@
 package paddle
 
 import (
-	"io"
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -76,11 +76,11 @@ func TestFromBuffer(t *testing.T) {
 	defer modelFile.Close()
 	defer paramsFile.Close()
 
-	model, err := io.ReadAll(modelFile)
+	model, err := ioutil.ReadAll(modelFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	params, err := io.ReadAll(paramsFile)
+	params, err := ioutil.ReadAll(paramsFile)
 	if err != nil {
 		t.Fatal(err)
 	}
