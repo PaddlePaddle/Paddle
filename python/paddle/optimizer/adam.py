@@ -199,7 +199,7 @@ class Adam(Optimizer):
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
         self._master_weights = {}
-        self.default_dict = {
+        self._default_dict = {
             'beta1': beta1,
             'beta2': beta2,
             'epsilon': epsilon,
@@ -415,7 +415,7 @@ class Adam(Optimizer):
                 loss=None, startup_program=None, params_grads=params_grads)
         else:
             # optimize parameters in groups
-            for param_group in self.param_groups:
+            for param_group in self._param_groups:
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
                     if param.stop_gradient:
@@ -430,10 +430,10 @@ class Adam(Optimizer):
                     loss=None, startup_program=None, params_grads=params_grads)
 
     def _update_param_group(self, parameters):
-        self._beta1 = parameters.get('beta1', self.default_dict['beta1'])
-        self._beta2 = parameters.get('beta2', self.default_dict['beta2'])
-        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
+        self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self._lazy_mode = parameters.get('lazy_mode',
-                                         self.default_dict['lazy_mode'])
+                                         self._default_dict['lazy_mode'])
         parameters = parameters.get('params')
         return parameters

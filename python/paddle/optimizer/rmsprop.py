@@ -183,7 +183,7 @@ class RMSProp(Optimizer):
         self._epsilon = epsilon
         self._momentum = momentum
         self._centered = centered
-        self.default_dict = {
+        self._default_dict = {
             'rho': rho,
             'epsilon': epsilon,
             'momentum': momentum,
@@ -242,11 +242,11 @@ class RMSProp(Optimizer):
         return rmsprop_op
 
     def _update_param_group(self, parameters):
-        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
-        self._rho = parameters.get('rho', self.default_dict['rho'])
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
+        self._rho = parameters.get('rho', self._default_dict['rho'])
         self._momentum = parameters.get('momentum',
-                                        self.default_dict['momentum'])
+                                        self._default_dict['momentum'])
         self._centered = parameters.get('centered',
-                                        self.default_dict['centered'])
+                                        self._default_dict['centered'])
         parameters = parameters.get('params')
         return parameters

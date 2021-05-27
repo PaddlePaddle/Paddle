@@ -129,7 +129,7 @@ class Adadelta(Optimizer):
         self.type = "adadelta"
         self._epsilon = epsilon
         self._rho = rho
-        self.default_dict = {
+        self._default_dict = {
             'epsilon': epsilon,
             'rho': rho,
         }
@@ -177,7 +177,7 @@ class Adadelta(Optimizer):
         return adadelta_op
 
     def _update_param_group(self, parameters):
-        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
-        self._rho = parameters.get('rho', self.default_dict['rho'])
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
+        self._rho = parameters.get('rho', self._default_dict['rho'])
         parameters = parameters.get('params')
         return parameters

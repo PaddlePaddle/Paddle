@@ -170,7 +170,7 @@ class AdamW(Adam):
             name=name,
             lazy_mode=lazy_mode,
             multi_precision=multi_precision)
-        self.default_dict = {'coeff': coeff}
+        self._default_dict = {'coeff': coeff}
 
     def _append_decoupled_weight_decay(self, block, param_and_grad):
         """
@@ -240,6 +240,6 @@ class AdamW(Adam):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
 
     def _update_param_group(self, parameters):
-        self._coeff = parameters.get('coeff', self.default_dict['coeff'])
+        self._coeff = parameters.get('coeff', self._default_dict['coeff'])
         parameters = parameters.get('params')
         return parameters

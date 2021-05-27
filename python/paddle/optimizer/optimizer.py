@@ -137,6 +137,11 @@ class Optimizer(object):
                     "`parameters` argument given to the optimizer should be "
                     "an iterable of paddle Tensors, but got argument type is `{}`.".
                     format(type(parameters)))
+            if isinstance(parameters, dict):
+                raise TypeError(
+                    "`parameters` argument should not get dict type, "
+                    "if parameter groups is needed, please set `parameters`"
+                    " as list of dict")
             self._parameter_list = list(parameters)
         else:
             self._parameter_list = None
@@ -200,18 +205,18 @@ class Optimizer(object):
         self._accumulators_holder = {}
         self._param_device_map = dict()
         self.clear_gradients = self.clear_grad
-        self.default_dict = {
+        self._default_dict = {
             'learning_rate': self._learning_rate,
             'weight_decay': self.regularization,
             'grad_clip': self._grad_clip
         }
 
-        self.param_groups = []
+        self._param_groups = []
         if self._parameter_list and isinstance(self._parameter_list[0], dict):
             for param_group in self._parameter_list:
                 self._add_param_group(param_group.copy())
         else:
-            self.param_groups = self._parameter_list
+            self._param_groups = self._parameter_list
 
     @framework.dygraph_only
     def state_dict(self):
@@ -931,7 +936,7 @@ class Optimizer(object):
                 if not p.stop_gradient:
                     p.clear_gradient()
         else:
-            for param_group in self.param_groups:
+            for param_group in self._param_groups:
                 for p in param_group['params']:
                     if not p.stop_gradient:
                         p.clear_gradient()
@@ -1027,9 +1032,9 @@ class Optimizer(object):
                 adam.clear_grad()
         """
 
-        if not isinstance(self.param_groups[0], dict):
+        if not isinstance(self._param_groups[0], dict):
             params_grads = []
-            for param in self.param_groups:
+            for param in self._param_groups:
                 if param.stop_gradient:
                     continue
                 if param._grad_ivar() is not None:
@@ -1041,7 +1046,7 @@ class Optimizer(object):
 
         else:
             # optimize parameters in groups
-            for param_group in self.param_groups:
+            for param_group in self._param_groups:
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
                     if param.stop_gradient:
@@ -1064,21 +1069,21 @@ class Optimizer(object):
             different optimization options.
         """
         params = param_group['params']
-        if type(params) == Parameter:
+        if isinstance(params, Parameter):
             param_group['params'] = [params]
         elif isinstance(params, set):
             raise TypeError(
-                "optimizer parameters should be in order collections,"
+                "optimizer parameters should be in ordered collections,"
                 "but received set, please use list instead.")
         else:
             param_group['params'] = list(params)
 
         # Update optimization options for each groups
-        for k, v in self.default_dict.items():
+        for k, v in self._default_dict.items():
             param_group.setdefault(k, v)
 
         param_set = set()
-        for group in self.param_groups:
+        for group in self._param_groups:
             param_set.update(set(group['params']))
 
         if not param_set.isdisjoint(set(param_group['params'])):
@@ -1095,13 +1100,13 @@ class Optimizer(object):
             param.regularizer = regularization
             param.optimize_attr['learning_rate'] = param_group['learning_rate']
 
-        self.param_groups.append(param_group)
+        self._param_groups.append(param_group)
 
     def _update_param_group(self, parameters):
         """
         Update the param group with new entry
         Args:
             parameters (dict): The extra group of Tensors to be optimzed with
-            different optimization options.
+            different optimization options. Only used in child class.
         """
-        return parameters
+        pass

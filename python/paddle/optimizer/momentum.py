@@ -160,7 +160,7 @@ class Momentum(Optimizer):
         self._rescale_grad = rescale_grad
         self._master_weights = {}
 
-        self.default_dict = {
+        self._default_dict = {
             'momentum': momentum,
             'use_nesterov': use_nesterov,
             'rescale_grad': rescale_grad,
@@ -171,7 +171,7 @@ class Momentum(Optimizer):
         if framework.in_dygraph_mode():
             self.helper = LayerHelper(self.__class__.__name__)
             if isinstance(self._parameter_list[0], dict):
-                for parameters in self.param_groups:
+                for parameters in self._param_groups:
                     for p in parameters['params']:
                         self._add_accumulator(self._velocity_acc_str, p)
             else:
@@ -314,14 +314,15 @@ class Momentum(Optimizer):
 
     def _update_param_group(self, parameters):
         self._momentum = parameters.get('momentum',
-                                        self.default_dict['momentum'])
+                                        self._default_dict['momentum'])
         self._use_nesterov = parameters.get('use_nesterov',
-                                            self.default_dict['use_nesterov'])
+                                            self._default_dict['use_nesterov'])
         self._rescale_grad = parameters.get('rescale_grad',
-                                            self.default_dict['rescale_grad'])
+                                            self._default_dict['rescale_grad'])
         self._regularization_method = parameters.get(
-            'regularization_method', self.default_dict['regularization_method'])
+            'regularization_method',
+            self._default_dict['regularization_method'])
         self._regularization_coeff = parameters.get(
-            'regularization_coeff', self.default_dict['regularization_coeff'])
+            'regularization_coeff', self._default_dict['regularization_coeff'])
         parameters = parameters.get('params')
         return parameters

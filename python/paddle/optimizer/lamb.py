@@ -143,7 +143,7 @@ class Lamb(Optimizer):
         self._epsilon = epsilon
         self._lamb_weight_decay = lamb_weight_decay
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
-        self.default_dict = {
+        self._default_dict = {
             'beta1': beta1,
             'beta2': beta2,
             'epsilon': epsilon,
@@ -241,13 +241,13 @@ class Lamb(Optimizer):
         return lamb_op
 
     def _update_param_group(self, parameters):
-        self._beta1 = parameters.get('beta1', self.default_dict['beta1'])
-        self._beta2 = parameters.get('beta2', self.default_dict['beta2'])
-        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
+        self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self._lamb_weight_decay = parameters.get(
-            'lamb_weight_decay', self.default_dict['lamb_weight_decay'])
+            'lamb_weight_decay', self._default_dict['lamb_weight_decay'])
         self._exclude_from_weight_decay_fn = parameters.get(
             'exclude_from_weight_decay_fn',
-            self.default_dict['exclude_from_weight_decay_fn'])
+            self._default_dict['exclude_from_weight_decay_fn'])
         parameters = parameters.get('params')
         return parameters

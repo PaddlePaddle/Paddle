@@ -160,7 +160,11 @@ class Adamax(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        self.default_dict = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
+        self._default_dict = {
+            'beta1': beta1,
+            'beta2': beta2,
+            'epsilon': epsilon
+        }
 
     def _create_accumulators(self, block, parameters):
         if isinstance(parameters, dict):
@@ -238,7 +242,7 @@ class Adamax(Optimizer):
                     beta1_pow_acc = self._get_accumulator(
                         self._beta1_pow_acc_str, param)
                     self._beta1 = parameters_and_grads.get(
-                        'beta1', self.default_dict['beta1'])
+                        'beta1', self._default_dict['beta1'])
                     block.append_op(
                         type="scale",
                         inputs={"X": beta1_pow_acc},
@@ -247,8 +251,8 @@ class Adamax(Optimizer):
                         stop_gradient=True)
 
     def _update_param_group(self, parameters):
-        self._beta1 = parameters.get('beta1', self.default_dict['beta1'])
-        self._beta2 = parameters.get('beta2', self.default_dict['beta2'])
-        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
+        self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         parameters = parameters.get('params')
         return parameters

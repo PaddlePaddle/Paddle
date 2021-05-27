@@ -127,7 +127,7 @@ class Adagrad(Optimizer):
         self.type = "adagrad"
         self._epsilon = epsilon
         self.initial_accumulator_value = initial_accumulator_value
-        self.default_dict = {
+        self._default_dict = {
             'epsilon': epsilon,
             'initial_accumulator_value': initial_accumulator_value,
         }
@@ -169,9 +169,9 @@ class Adagrad(Optimizer):
         return adagrad_op
 
     def _update_param_group(self, parameters):
-        self._epsilon = parameters.get('epsilon', self.default_dict['epsilon'])
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self.initial_accumulator_value = parameters.get(
             'initial_accumulator_value',
-            self.default_dict['initial_accumulator_value'])
+            self._default_dict['initial_accumulator_value'])
         parameters = parameters.get('params')
         return parameters
