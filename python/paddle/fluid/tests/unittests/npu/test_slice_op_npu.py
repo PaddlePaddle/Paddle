@@ -24,7 +24,7 @@ import paddle
 paddle.enable_static()
 
 SEED = 2021
-EPOCH = 1
+EPOCH = 100
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -45,12 +45,12 @@ class TestSliceOp(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([4, 512, 256]).astype(self.dtype)
-        self.starts = [0]
-        self.ends = [1]
-        self.axes = [1]
-        self.infer_flags = [1]
-        self.out = self.input[:, 0:1, :]
+        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
+        self.starts = [1, 0, 2]
+        self.ends = [3, 3, 4]
+        self.axes = [0, 1, 2]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[1:3, 0:3, 2:4, :]
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -62,31 +62,33 @@ class TestSliceOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
-    # def test_check_grad_normal(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad_with_place(
-    #         self.place, ['Input'], 'Out', check_dygraph=False)
+    def test_check_grad_normal(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            self.place, ['Input'], 'Out', check_dygraph=False)
 
-    # class TestSliceOp2(TestSliceOp):
-    #     def config(self):
-    #         self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
-    #         self.starts = [1, 0, -3]
-    #         self.ends = [3, 3, -1]
-    #         self.axes = [0, 1, 2]
-    #         self.infer_flags = [1, 1, 1]
-    #         self.out = self.input[1:3, 0:3, -3:-1, :]
 
-    # @unittest.skipIf(not paddle.is_compiled_with_npu(),
-    #                  "core is not compiled with NPU")
-    # class TestSliceOpFp16(TestSliceOp):
-    #     def init_dtype(self):
-    #         self.dtype = np.float16
+class TestSliceOp2(TestSliceOp):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
+        self.starts = [1, 0, -3]
+        self.ends = [3, 3, -1]
+        self.axes = [0, 1, 2]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[1:3, 0:3, -3:-1, :]
 
-    #     def set_npu(self):
-    #         self.__class__.use_npu = True
-    #         self.__class__.no_need_check_grad = True
-    #         self.place = paddle.NPUPlace(0)
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestSliceOpFp16(TestSliceOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
+        self.place = paddle.NPUPlace(0)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -99,8 +101,8 @@ class TestSliceNet(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        batch_size = 4
-        data_shape = (4, 512, 256)
+        batch_size = 32
+        data_shape = (32, 32)
         a_np = np.random.random(size=data_shape).astype('float32')
         b_np = np.random.random(size=data_shape).astype('float32')
         label_np = np.random.randint(2, size=(batch_size, 1)).astype('int64')
@@ -112,9 +114,9 @@ class TestSliceNet(unittest.TestCase):
                 name="label", shape=[batch_size, 1], dtype='int64')
 
             sum = paddle.add(a, b)
-            z = paddle.slice(sum, axes=[1], starts=[0], ends=[1])
+            z = paddle.slice(sum, axes=[0, 1], starts=[0, 0], ends=[33, 2])
 
-            prediction = paddle.static.nn.fc(z, size=256, activation='softmax')
+            prediction = paddle.static.nn.fc(z, size=2, activation='softmax')
 
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction, label=label)
@@ -148,7 +150,7 @@ class TestSliceNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        # self.assertTrue(np.allclose(npu_pred, cpu_pred))
+        self.assertTrue(np.allclose(npu_pred, cpu_pred))
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 

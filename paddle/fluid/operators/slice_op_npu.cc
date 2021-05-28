@@ -29,13 +29,10 @@ void UpdateAttr(const framework::DDim in_dims, const std::vector<int> axes,
                 const std::vector<int> starts, const std::vector<int> ends,
                 std::vector<int>* offsets, std::vector<int>* size) {
   int cnt = 0;
-  VLOG(4) << in_dims;
   for (int i = 0; i < in_dims.size(); ++i) {
     int start = 0;
     int end = in_dims[i];
     int axis = axes[cnt];
-    VLOG(4) << i << " " << cnt << " " << start << " " << end << " " << axis
-            << " " << starts[cnt] << " " << ends[cnt];
 
     if (axis == i) {
       start = starts[cnt];
@@ -73,7 +70,6 @@ class SliceNPUKernel : public framework::OpKernel<T> {
     std::vector<int> offsets(in_dims.size());
     std::vector<int> size(in_dims.size());
 
-    VLOG(4) << in_dims;
     UpdateAttr(in_dims, axes, starts, ends, &offsets, &size);
 
     const auto& runner = NpuOpRunner("SliceD", {*input}, {*out},
@@ -103,17 +99,12 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
 
     std::vector<int> offsets(rank);
     std::vector<int> size(rank);
-    VLOG(4) << "in_dims " << in_dims;
     UpdateAttr(in_dims, axes, starts, ends, &offsets, &size);
 
     std::vector<std::vector<int64_t>> paddings(rank, std::vector<int64_t>(2));
     for (int i = 0; i < rank; ++i) {
       paddings[i][0] = static_cast<int64_t>(offsets[i]);
       paddings[i][1] = static_cast<int64_t>(in_dims[i] - size[i] - offsets[i]);
-      VLOG(4) << "offsets " << i << ":" << offsets[i];
-      VLOG(4) << "size " << i << ":" << size[i];
-      VLOG(4) << "paddings " << i << ":" << paddings[i][0] << " "
-              << paddings[i][1];
     }
 
     dinput->mutable_data<T>(ctx.GetPlace());
