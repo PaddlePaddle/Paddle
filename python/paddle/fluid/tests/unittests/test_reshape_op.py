@@ -457,9 +457,9 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         expected_out = np.reshape(input_1, newshape=[5, 10])
         self.assertTrue(np.allclose(expected_out, out_np))
 
-    def test_shape_int(self):
+    def test_out_shape_int(self):
         paddle.disable_static()
-        input_1 = np.random.random([5, 20]).astype("float32")
+        input_1 = np.random.random([5, 1, 10]).astype("float32")
         input = paddle.to_tensor(input_1)
         output = self.reshape(x=input, shape=-1)
         out_np = output.numpy()
