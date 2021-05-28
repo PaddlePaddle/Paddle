@@ -172,7 +172,7 @@ NpuOpRunner &NpuOpRunner::AddAttrs(const NPUAttributeMap &attrs) {
 
 NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor) {
   // create aclTensorDesc
-  input_descs_.emplace_back(CreateTensorDesc(tensor));
+  input_descs_.emplace_back(CreateTensorDesc(tensor, framework::vectorize(tensor.dims())));
   // create aclDataBuffer
   input_buffers_.emplace_back(CreateDataBuffer(tensor));
   return *this;
@@ -180,18 +180,26 @@ NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor) {
 
 NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
   // create aclTensorDesc
-  output_descs_.emplace_back(CreateTensorDesc(tensor));
+  output_descs_.emplace_back(CreateTensorDesc(tensor, framework::vectorize(tensor.dims())));
   // create aclDataBuffer
   output_buffers_.emplace_back(CreateDataBuffer(tensor));
   return *this;
 }
 
 NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
+  int count = 0;
   for (auto tensor : tensors) {
     // create aclTensorDesc
-    input_descs_.emplace_back(CreateTensorDesc(tensor));
+    if (op_type_ == "MatMul" && count == 0) {
+        input_descs_.emplace_back(CreateTensorDesc(tensor, framework::vectorize(framework::make_ddim({100, 24}))));
+    } else if (op_type_ == "MatMul" && count == 1) {
+        input_descs_.emplace_back(CreateTensorDesc(tensor, framework::vectorize(framework::make_ddim({24, 100}))));
+    } else {
+    input_descs_.emplace_back(CreateTensorDesc(tensor, framework::vectorize(tensor.dims())));
+    }
     // create aclDataBuffer
     input_buffers_.emplace_back(CreateDataBuffer(tensor));
+    count += 1;
   }
   return *this;
 }
@@ -214,7 +222,11 @@ NpuOpRunner &NpuOpRunner::AddInputNames(const std::vector<std::string> &names) {
 NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
   for (auto tensor : tensors) {
     // create aclTensorDesc
-    output_descs_.emplace_back(CreateTensorDesc(tensor));
+    if (op_type_ == "MatMul") {
+        output_descs_.emplace_back(CreateTensorDesc(tensor, framework::vectorize(framework::make_ddim({100, 100}))));
+    } else {
+    output_descs_.emplace_back(CreateTensorDesc(tensor, framework::vectorize(tensor.dims())));
+    }
     // create aclDataBuffer
     output_buffers_.emplace_back(CreateDataBuffer(tensor));
   }
@@ -255,7 +267,7 @@ std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() {
   return output_buffers_;
 }
 
-aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
+aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor, std::vector<int64_t> ori_dims) {
   auto dtype = ConvertToNpuDtype(tensor.type());
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
@@ -264,7 +276,13 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format;
 
-  auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
+  aclFormat ori_format;
+  if (op_type_ == "MatMul") {
+      ori_format = ACL_FORMAT_NCHW;
+  } else {
+      ori_format = format;
+  }
+  auto *desc = aclCreateTensorDesc(dtype, ori_dims.size(), ori_dims.data(), ori_format);
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
   PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));

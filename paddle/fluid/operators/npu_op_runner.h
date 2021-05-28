@@ -74,7 +74,7 @@ class NpuOpRunner {
   void Run(aclrtStream stream = nullptr);
 
  private:
-  aclTensorDesc *CreateTensorDesc(Tensor tensor);
+  aclTensorDesc *CreateTensorDesc(Tensor tensor, std::vector<int64_t> ori_dims);
   aclDataBuffer *CreateDataBuffer(Tensor tensor);
 
  private:

@@ -45,7 +45,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     //char name_nz[] = "FRACTAL_Zn";
     
     Tensor tmp_x(x->type());
-    tmp_x.Resize(x->dims());
+    tmp_x.Resize(framework::make_ddim({2,7,16,16}));
     tmp_x.mutable_data<T>(ctx.GetPlace());
     tmp_x.set_layout(DataLayout::kFractalNZ);
     VLOG(3) << "yoki x_layout" << framework::DataLayoutToString(x->layout());
@@ -66,7 +66,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     //}
 
     Tensor tmp_y(y->type());
-    tmp_y.Resize(y->dims());
+    tmp_y.Resize(framework::make_ddim({7,2,16,16}));
     tmp_y.mutable_data<T>(ctx.GetPlace());
     tmp_y.set_layout(DataLayout::kFractalNZ);
     // framework::TensorCopy(
@@ -84,16 +84,26 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
 
     if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());
-      out->set_layout(DataLayout::kFractalNZ);
+      //out->set_layout(DataLayout::kFractalNZ);
+
+      Tensor tmp_out(out->type());
+      tmp_out.Resize(framework::make_ddim({7,7,16,16}));
+      tmp_out.mutable_data<T>(ctx.GetPlace());
+      tmp_out.set_layout(DataLayout::kFractalNZ);
 
       auto runner = NpuOpRunner(
-          "MatMul", {tmp_x, tmp_y}, {*out},
+          "MatMul", {tmp_x, tmp_y}, {tmp_out},
           {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}});
 
       auto stream =
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
       runner.Run(stream);
+
+      auto runner_cast_out = NpuOpRunner(
+          "TransData", {tmp_out}, {*out},
+          {{"src_format", framework::DataLayoutToString(tmp_out.layout())}, {"dst_format", framework::DataLayoutToString(out->layout())}, {"groups", 1}});
+      runner_cast_out.Run(stream);
 
     } else if (x->dims().size() > 2) {
       out->mutable_data<T>(ctx.GetPlace());
