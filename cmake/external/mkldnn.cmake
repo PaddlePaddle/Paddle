@@ -60,8 +60,8 @@ ExternalProject_Add(
     DEPENDS             ${MKLDNN_DEPENDS}
     PREFIX              ${MKLDNN_PREFIX_DIR}
     SOURCE_DIR          ${MKLDNN_SOURCE_DIR}
-    BUILD_ALWAYS        1
-    # UPDATE_COMMAND      ""
+    UPDATE_COMMAND      ""
+    #BUILD_ALWAYS        1
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
@@ -110,7 +110,7 @@ if(WIN32)
     add_custom_command(TARGET ${MKLDNN_PROJECT} POST_BUILD VERBATIM
         COMMAND echo EXPORTS >> ${MKLDNN_INSTALL_DIR}/bin/mkldnn.def)
     add_custom_command(TARGET ${MKLDNN_PROJECT} POST_BUILD VERBATIM
-        COMMAND for /f "skip=19 tokens=4" %A in (${MKLDNN_INSTALL_DIR}/bin/exports.txt) do echo %A >> ${MKLDNN_INSTALL_DIR}/bin/mkldnn.def)
+        COMMAND echo off &&(for /f "skip=19 tokens=4" %A in (${MKLDNN_INSTALL_DIR}/bin/exports.txt) do echo %A >> ${MKLDNN_INSTALL_DIR}/bin/mkldnn.def)&& echo on)
     add_custom_command(TARGET ${MKLDNN_PROJECT} POST_BUILD VERBATIM
         COMMAND lib /def:${MKLDNN_INSTALL_DIR}/bin/mkldnn.def /out:${MKLDNN_INSTALL_DIR}/bin/mkldnn.lib /machine:x64)
 else(WIN32)

@@ -483,19 +483,19 @@ struct ConjHelper {
 };
 
 template <typename DeviceContext>
-struct ConjHelper<DeviceContext, paddle::platform::complex64> {
+struct ConjHelper<DeviceContext, paddle::platform::complex<float>> {
   explicit ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
 
   HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
     dst.Resize(src.dims());
-    auto* src_data = src.data<paddle::platform::complex64>();
-    auto* dst_data = dst.mutable_data<paddle::platform::complex64>(
+    auto* src_data = src.data<paddle::platform::complex<float>>();
+    auto* dst_data = dst.mutable_data<paddle::platform::complex<float>>(
         ctx_.GetPlace(),
-        size_t(src.numel() * sizeof(paddle::platform::complex64)));
+        size_t(src.numel() * sizeof(paddle::platform::complex<float>)));
 
     platform::ForRange<DeviceContext> for_range(
         ctx_.template device_context<DeviceContext>(), src.numel());
-    math::ConjFunctor<paddle::platform::complex64> functor(
+    math::ConjFunctor<paddle::platform::complex<float>> functor(
         src_data, src.numel(), dst_data);
     for_range(functor);
     return;
@@ -504,19 +504,19 @@ struct ConjHelper<DeviceContext, paddle::platform::complex64> {
 };
 
 template <typename DeviceContext>
-struct ConjHelper<DeviceContext, paddle::platform::complex128> {
+struct ConjHelper<DeviceContext, paddle::platform::complex<double>> {
   explicit ConjHelper(const framework::ExecutionContext& ctx) : ctx_(ctx) {}
 
   HOSTDEVICE void operator()(framework::Tensor& src, framework::Tensor& dst) {
     dst.Resize(src.dims());
-    auto* src_data = src.data<paddle::platform::complex128>();
-    auto* dst_data = dst.mutable_data<paddle::platform::complex128>(
+    auto* src_data = src.data<paddle::platform::complex<double>>();
+    auto* dst_data = dst.mutable_data<paddle::platform::complex<double>>(
         ctx_.GetPlace(),
-        size_t(src.numel() * sizeof(paddle::platform::complex128)));
+        size_t(src.numel() * sizeof(paddle::platform::complex<double>)));
 
     platform::ForRange<DeviceContext> for_range(
         ctx_.template device_context<DeviceContext>(), src.numel());
-    math::ConjFunctor<paddle::platform::complex128> functor(
+    math::ConjFunctor<paddle::platform::complex<double>> functor(
         src_data, src.numel(), dst_data);
     for_range(functor);
     return;

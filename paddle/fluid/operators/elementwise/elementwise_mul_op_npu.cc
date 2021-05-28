@@ -41,7 +41,7 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Mul", {*x, *y}, {*out}, {});
+    const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*out}, {});
     runner.Run(stream);
   }
 };
@@ -65,14 +65,14 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
 
     if (dx) {
       dx->mutable_data<T>(place);
-      auto dx_runner = NpuOpRunner("Mul", {*dout, *y}, {*dx}, {});
-      dx_runner.Run(stream);
+      const auto& runner_dx = NpuOpRunner("Mul", {*dout, *y}, {*dx}, {});
+      runner_dx.Run(stream);
     }
 
     if (dy) {
       dy->mutable_data<T>(place);
-      auto dy_runner = NpuOpRunner("Mul", {*x, *dout}, {*dy}, {});
-      dy_runner.Run(stream);
+      const auto& runner_dy = NpuOpRunner("Mul", {*x, *dout}, {*dy}, {});
+      runner_dy.Run(stream);
     }
   }
 };
