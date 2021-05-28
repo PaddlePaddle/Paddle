@@ -246,11 +246,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 // strides > 1 and 'SAME' is only supported by trt7.0 above
 #if !IS_TRT_VERSION_GE(7000)
       if (op_type == "conv2d" || op_type == "conv2d_fusion" ||
-          op_type == "depthwise_conv2d_transpose") {
+          op_type == "depthwise_conv2d") {
         if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
           auto padding_algorithm =
               BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-          if (padding_algorithm == "SAME" || desc.HasAttr("strides")) {
+          if (padding_algorithm == "SAME" && desc.HasAttr("strides")) {
             const std::vector<int> strides =
                 BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
             // there is no issue if strides.size() less than 2
