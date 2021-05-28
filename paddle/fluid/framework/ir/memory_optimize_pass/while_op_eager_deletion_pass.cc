@@ -28,7 +28,9 @@ class WhileOpEagerDeletionPass : public ir::Pass {
   void ApplyImpl(ir::Graph *graph) const override {
     auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
 
-    // Find all while_op and while_grad_op
+    // Find all while_op and while_grad_op. In case of @to_static, graph
+    // may be constructed only by forward or backward program, so we use
+    // OpVariant here instead of OperatorBase.
     std::unordered_map<
         size_t, std::pair<std::vector<OpVariant>, std::vector<OpVariant>>>
         target_ops;
@@ -45,10 +47,11 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       }
     }
     if (graph->IsConstructedByPartialProgram()) {
-      PADDLE_ENFORCE_LE(target_ops.size(), 1,
-                        platform::errors::InvalidArgument(
-                            "Unsupport multi device if graph is constructed by "
-                            "partial program."));
+      PADDLE_ENFORCE_LE(
+          target_ops.size(), 1,
+          platform::errors::InvalidArgument(
+              "Unsupported multi device if graph is constructed by "
+              "partial program."));
       size_t scope_idx = 0;
       auto &while_ops = target_ops[scope_idx].first;
       auto &while_grad_ops = target_ops[scope_idx].second;

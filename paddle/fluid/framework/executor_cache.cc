@@ -35,7 +35,9 @@ static ExecutionStrategy GetExecutionStrategy(
       break;
     }
     case platform::DeviceType::CUDA: {
-      execution_strategy.num_threads_ = 4;
+      // NOTE: According experiments, one thread is faster in
+      // most model training.
+      execution_strategy.num_threads_ = 1;
       break;
     }
     case platform::DeviceType::XPU: {
@@ -43,7 +45,7 @@ static ExecutionStrategy GetExecutionStrategy(
       break;
     }
     default:
-      PADDLE_THROW(platform::errors::Unavailable("Unsupport Device type %d.",
+      PADDLE_THROW(platform::errors::Unavailable("Unsupported Device type %d.",
                                                  cache_key.device_type_));
   }
   execution_strategy.use_device_ = cache_key.device_type_;
