@@ -173,7 +173,7 @@ std::set<std::string> inplace_op_duplicable_ins_set = {
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
-    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
+    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
 const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE = R"({"%s", ConstructDuplicableOutput(%s)})";
 
 const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
@@ -255,12 +255,11 @@ R"(
   ConstructAttrMapFromPyArgs("%s", %d, &attrs, args);
   {
     py::gil_scoped_release release;
-    auto tracer = imperative::GetCurrentTracer();
     %s
     imperative::NameVarBaseMap outs = %s;
     imperative::NameVarBaseMap ins = %s;
     %s
-    tracer->TraceOp("%s", ins, outs, attrs, {%s});
+    imperative::GetCurrentTracer()->TraceOp("%s", ins, outs, attrs, {%s});
     return %s;
   }
 })";
@@ -585,7 +584,8 @@ int main(int argc, char* argv[]) {
   out << "namespace py = pybind11;"
       << "\n";
   out << "namespace paddle {\n"
-      << "namespace pybind {\n";
+      << "namespace pybind {\n\n";
+  out << "std::atomic<int> VarBaseUniqueNameID{0};\n";
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 
