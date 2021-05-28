@@ -30,7 +30,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* logits = ctx.Input<Tensor>("Logits");
     auto* labels = ctx.Input<Tensor>("Label");
-    // auto* softmax = ctx.Output<Tensor>("Softmax");
+    auto* softmax = ctx.Output<Tensor>("Softmax");
     auto* loss = ctx.Output<Tensor>("Loss");
     auto* backprop = ctx.Output<Tensor>("Backprop");
     auto soft_label = ctx.Attr<bool>("soft_label");
@@ -53,30 +53,26 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
 
     loss->mutable_data<T>(ctx.GetPlace());
     backprop->mutable_data<T>(ctx.GetPlace());
+    softmax->mutable_data<T>(ctx.GetPlace());
 
-    Tensor logits_2d, labels_1d, loss_1d, backprop_2d;
+    Tensor logits_2d, labels_1d, loss_1d, backprop_2d, softmax_2d;
     logits_2d.ShareDataWith(*logits).Resize({n, d});
     labels_1d.ShareDataWith(*labels).Resize({n});
     loss_1d.ShareDataWith(*loss).Resize({n});
     backprop_2d.ShareDataWith(*backprop).Resize({n, d});
+    softmax_2d.ShareDataWith(*softmax).Resize({n, d});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    // NOTE(zhiqiu): In most case, the softmax is only used for backward
-    // calculation. However, in npu kernel, backprop is used for backward.
-    // So, softmax is not needed and we skip its calculation for better
-    // performance.
-
-    // softmax->mutable_data<T>(ctx.GetPlace());
-    // std::vector<int> axes;
-    // for (auto i = axis; i < logits->dims().size(); ++i) {
-    //   axes.push_back(i);
-    // }
-    // const auto& runner_softmax =
-    //     NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {{"axes", axes}});
-    // runner_softmax.Run(stream);
+    std::vector<int> axes;
+    for (auto i = axis; i < logits->dims().size(); ++i) {
+      axes.push_back(i);
+    }
+    const auto& runner_softmax =
+        NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {{"axes", axes}});
+    runner_softmax.Run(stream);
 
     // SparseSoftmaxCrossEntropyWithLogits
     const auto& runner_s =

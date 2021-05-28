@@ -1258,12 +1258,6 @@ def softmax_with_cross_entropy(logits,
             out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
             print(out)
     """
-    if return_softmax and core.is_compiled_with_npu():
-        warnings.warn(
-            "return_softmax should be Fale when paddle is compiled with NPU support."
-        )
-        return_softmax = False
-
     if in_dygraph_mode():
         if core.is_compiled_with_npu():
             softmax, backprop, loss = core.ops.softmax_with_cross_entropy(

@@ -86,8 +86,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.attrs['axis'] = self.axis
 
     def test_check_output(self):
-        self.check_output_with_place(
-            self.place, no_check_set=['Softmax'], check_dygraph=False)
+        self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
