@@ -143,3 +143,10 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     hinge_loss_grad,
     ops::HingeLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(
+    hinge_loss,
+    ops::HingeLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    hinge_loss_grad,
+    ops::HingeLossGradKernel<paddle::platform::CUDADeviceContext, float>);

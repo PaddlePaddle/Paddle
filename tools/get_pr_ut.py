@@ -130,7 +130,10 @@ class PRChecker(object):
             if not files:
                 break
             for f in files:
-                file_list.append(PADDLE_ROOT + f.filename)
+                if f.status == 'removed':
+                    file_list.append('removed')
+                else:
+                    file_list.append(PADDLE_ROOT + f.filename)
             page += 1
         return file_list
 
@@ -228,6 +231,15 @@ class PRChecker(object):
         print('PREC {} is only comment'.format(f))
         return True
 
+    def get_all_count(self):
+        os.system(
+            "cd %sbuild && ctest -N|grep 'Total Tests:' | awk -F ': ' '{print $2}' > testCount"
+            % PADDLE_ROOT)
+        f = open("%sbuild/testCount" % PADDLE_ROOT)
+        testCount = f.read()
+        f.close()
+        return int(testCount.strip())
+
     def get_pr_ut(self):
         """ Get unit tests in pull request. """
         if self.full_case:
@@ -236,77 +248,89 @@ class PRChecker(object):
         ut_list = []
         file_ut_map = None
         ret = self.__urlretrieve(
-            'https://sys-p0.bj.bcebos.com/prec/file_ut.json{}'.format(
-                self.suffix), 'file_ut.json{}'.format(self.suffix))
+            'https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json',
+            'ut_file_map.json')
         if not ret:
             print('PREC download file_ut.json failed')
             exit(1)
-        with open('file_ut.json' + self.suffix) as jsonfile:
+        with open('ut_file_map.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
-        for f in self.get_pr_files():
-            current_system = platform.system()
-            if current_system == "Darwin" or current_system == "Windows":
-                f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
-                f_judge = f_judge.replace('//', '/')
-            else:
-                f_judge = f
-            if f_judge not in file_ut_map:
-                if f.endswith('.md'):
-                    ut_list.append('md_placeholder')
-                elif f.endswith('.h') or f.endswith('.cu'):
+
+        current_system = platform.system()
+        notHitMapFiles = []
+        hitMapFiles = []
+        onlyCommentsFilesOrXpu = []
+        file_list = self.get_pr_files()
+        if 'removed' in file_list:
+            print("ipipe_log_param_PRECISION_TEST: false")
+            print("notHitMapFiles: [rm file]")
+            return ''
+        else:
+            for f in file_list:
+                if current_system == "Darwin" or current_system == "Windows" or self.suffix == ".py3":
+                    f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
+                    f_judge = f_judge.replace('//', '/')
+                else:
+                    f_judge = f
+                if f_judge not in file_ut_map:
+                    if f_judge.endswith('.md'):
+                        ut_list.append('md_placeholder')
+                        onlyCommentsFilesOrXpu.append(f_judge)
+                    elif 'tests/unittests/xpu' in f_judge or 'tests/unittests/npu' in f_judge:
+                        ut_list.append('xpu_npu_placeholder')
+                        onlyCommentsFilesOrXpu.append(f_judge)
+                    elif f_judge.endswith(('.h', '.cu', '.cc', 'py')):
+                        if f_judge.find('test_') != -1 or f_judge.find(
+                                '_test') != -1:
+                            check_added_ut = True
+                        if self.is_only_comment(f):
+                            ut_list.append('comment_placeholder')
+                            onlyCommentsFilesOrXpu.append(f_judge)
+                        else:
+                            notHitMapFiles.append(f_judge)
+                    else:
+                        notHitMapFiles.append(f_judge)
+                else:
                     if self.is_only_comment(f):
-                        ut_list.append('h_cu_comment_placeholder')
+                        ut_list.append('comment_placeholder')
+                        onlyCommentsFilesOrXpu.append(f_judge)
                     else:
-                        print(
-                            'PREC dismatch: {} not in file ut map and not md or comment'.
-                            format(f))
-                        return ''
-                elif f.endswith('.cc') or f.endswith('.py') or f.endswith(
-                        '.cu'):
-                    if f.find('test_') != -1 or f.find('_test') != -1:
-                        print('PREC {} need check new ut'.format(f))
-                        check_added_ut = True
-                    elif self.is_only_comment(f):
-                        ut_list.append('nomap_comment_placeholder')
+                        hitMapFiles.append(f_judge)
+                        ut_list.extend(file_ut_map.get(f_judge))
+            ut_list = list(set(ut_list))
+            if len(notHitMapFiles) != 0:
+                print("ipipe_log_param_PRECISION_TEST: false")
+                print("notHitMapFiles: %s" % notHitMapFiles)
+                return ''
+            else:
+                if check_added_ut:
+                    with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
+                        for ut in utfile:
+                            ut_list.append(ut.rstrip('\r\n'))
+                if ut_list:
+                    ret = self.__urlretrieve(
+                        'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',
+                        'prec_delta')
+                    if ret:
+                        with open('prec_delta') as delta:
+                            for ut in delta:
+                                ut_list.append(ut.rstrip('\r\n'))
                     else:
-                        print(
-                            'PREC dismatch: {} not in file ut map and not new ut or comment'.
-                            format(f))
-                        return ''
-                else:
-                    print('PREC dismatch: {} not in file ut map'.format(f))
-                    return ''
-            else:
-                if self.is_only_comment(f):
-                    ut_list.append('map_comment_placeholder')
-                else:
-                    ut_list.extend(file_ut_map.get(f_judge))
-        ut_list = list(set(ut_list))
-
-        if check_added_ut:
-            with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
-                for ut in utfile:
-                    print('PREC NEW UT: {}'.format(ut.rstrip('\r\n')))
-                    ut_list.append(ut.rstrip('\r\n'))
-
-        if ut_list:
-            ret = self.__urlretrieve(
-                'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
-                    self.suffix), 'prec_delta{}'.format(self.suffix))
-            if ret:
-                with open('prec_delta' + self.suffix) as delta:
-                    for ut in delta:
-                        ut_list.append(ut.rstrip('\r\n'))
-            else:
-                print('PREC download prec_delta failed')
-                exit(1)
-
-        return '\n'.join(ut_list)
+                        print('PREC download prec_delta failed')
+                        exit(1)
+                    print("ipipe_log_param_PRECISION_TEST: true")
+                    print("ipipe_log_param_PRECISION_TEST_Cases_count: %s" %
+                          len(ut_list))
+                    PRECISION_TEST_Cases_ratio = format(
+                        float(len(ut_list)) / float(self.get_all_count()),
+                        '.2f')
+                    print("ipipe_log_param_PRECISION_TEST_Cases_ratio: %s" %
+                          PRECISION_TEST_Cases_ratio)
+                return '\n'.join(ut_list)
 
 
 if __name__ == '__main__':
     pr_checker = PRChecker()
     pr_checker.init()
-    #print(pr_checker.get_pr_ut())
     with open('ut_list', 'w') as f:
         f.write(pr_checker.get_pr_ut())

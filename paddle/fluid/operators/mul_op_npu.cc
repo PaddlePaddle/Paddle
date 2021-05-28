@@ -36,7 +36,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
     if (x_num_col_dims == 1 && y_num_col_dims == 1) {
       if (x->dims().size() == 2 && y->dims().size() == 2) {
         out->mutable_data<T>(ctx.GetPlace());
-        auto runner =
+        const auto& runner =
             NpuOpRunner("MatMul", {*x, *y}, {*out},
                         {{"transpose_x1", false}, {"transpose_x2", false}});
 
@@ -54,7 +54,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
         tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
         out->mutable_data<T>(ctx.GetPlace());
         // matmul
-        auto runner =
+        const auto& runner =
             NpuOpRunner("MatMul", {tmp_x, *y}, {*out},
                         {{"transpose_x1", false}, {"transpose_x2", false}});
         runner.Run(stream);
@@ -85,7 +85,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
       tmp_matmul.Resize(framework::make_ddim({first_dim, y->dims()[1]}));
       tmp_matmul.mutable_data<T>(ctx.GetPlace());
 
-      auto runner_matmul =
+      const auto& runner_matmul =
           NpuOpRunner("MatMul", {tmp_x, *y}, {tmp_matmul},
                       {{"transpose_x1", false}, {"transpose_x2", false}});
 
@@ -121,7 +121,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
       if (x->dims().size() == 2 && y->dims().size() == 2) {
         if (dx) {
           dx->mutable_data<T>(ctx.GetPlace());
-          auto runner_dx =
+          const auto& runner_dx =
               NpuOpRunner("MatMul", {*dout, *y}, {*dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
 
@@ -130,7 +130,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
 
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
-          auto runner_dy =
+          const auto& runner_dy =
               NpuOpRunner("MatMul", {*x, *dout}, {*dy},
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
@@ -144,7 +144,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           dx->mutable_data<T>(ctx.GetPlace());
           auto dx_dims = dx->dims();
           dx->Resize(framework::make_ddim({dout->dims()[0], y->dims()[0]}));
-          auto runner_matmul =
+          const auto& runner_matmul =
               NpuOpRunner("MatMul", {*dout, *y}, {*dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
           runner_matmul.Run(stream);
@@ -164,7 +164,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
               ctx.template device_context<platform::DeviceContext>(), &tmp_x);
           tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
           dy->mutable_data<T>(ctx.GetPlace());
-          auto runner_dy =
+          const auto& runner_dy =
               NpuOpRunner("MatMul", {tmp_x, *dout}, {*dy},
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
@@ -193,7 +193,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         dx->mutable_data<T>(ctx.GetPlace());
         auto dx_dims = dx->dims();
         dx->Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
-        auto runner_matmul =
+        const auto& runner_matmul =
             NpuOpRunner("MatMul", {tmp_dout, *y}, {*dx},
                         {{"transpose_x1", false}, {"transpose_x2", true}});
         runner_matmul.Run(stream);
@@ -213,7 +213,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
         // mamtul [6,4] [6,5] =>[4,5]
         dy->mutable_data<T>(ctx.GetPlace());
-        auto runner_dy =
+        const auto& runner_dy =
             NpuOpRunner("MatMul", {tmp_x, tmp_dout}, {*dy},
                         {{"transpose_x1", true}, {"transpose_x2", false}});
         runner_dy.Run(stream);
