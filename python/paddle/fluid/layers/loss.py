@@ -26,6 +26,7 @@ from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer, Constant
 from .. import core
+import warnings
 
 __all__ = [
     'center_loss',
@@ -1257,7 +1258,18 @@ def softmax_with_cross_entropy(logits,
             out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
             print(out)
     """
+    if return_softmax and core.is_compiled_with_npu():
+        warnings.warn(
+            "return_softmax should be Fale when paddle is compiled with NPU support."
+        )
+        return_softmax = False
+
     if in_dygraph_mode():
+        if core.is_compiled_with_npu():
+            softmax, backprop, loss = core.ops.softmax_with_cross_entropy(
+                logits, label, 'soft_label', soft_label, 'ignore_index',
+                ignore_index, 'numeric_stable_mode', numeric_stable_mode,
+                'axis', axis)
         softmax, loss = core.ops.softmax_with_cross_entropy(
             logits, label, 'soft_label', soft_label, 'ignore_index',
             ignore_index, 'numeric_stable_mode', numeric_stable_mode, 'axis',
@@ -1276,12 +1288,16 @@ def softmax_with_cross_entropy(logits,
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+
+    outputs = {'Softmax': softmax, 'Loss': loss}
+    if core.is_compiled_with_npu():
+        backprop = helper.create_variable_for_type_inference(dtype=logits.dtype)
+        outputs['backprop'] = backprop
     helper.append_op(
         type='softmax_with_cross_entropy',
         inputs={'Logits': logits,
                 'Label': label},
-        outputs={'Softmax': softmax,
-                 'Loss': loss},
+        outputs=outputs,
         attrs=attrs)
 
     if return_softmax:

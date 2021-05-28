@@ -70,6 +70,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
 
         self.inputs = {"Logits": logits, "Label": labels}
         self.outputs = {
+            "Backprop": softmax.astype(self.dtype),
             "Softmax": softmax.astype(self.dtype),
             "Loss": loss.astype(self.dtype)
         }
