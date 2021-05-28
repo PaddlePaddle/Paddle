@@ -50,6 +50,10 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
 #endif
+#if CUDA_VERSION >= 10200
+    teller_set.insert("reshape");
+    teller_set.insert("reshape2");
+#endif
   }
 
   bool operator()(const std::string& op_type, const framework::OpDesc& desc,
@@ -673,7 +677,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
     }
-
+    if (op_type == "reshape" || op_type == "reshape2") {
+      if (!desc.HasAttr("shape")) {
+        return false;
+      } else {
+        std::vector<int> shape =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+        if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
+    }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
