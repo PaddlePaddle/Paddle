@@ -492,6 +492,24 @@ class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
+class TestImperativeLarsMomentumOptimizerWithMP(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = LarsMomentumOptimizer(
+            learning_rate=0.001,
+            momentum=0.9,
+            parameter_list=parameter_list,
+            multi_precision=True)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = LarsMomentumOptimizer(
+            learning_rate=0.001, momentum=0.9, multi_precision=True)
+        return optimizer
+
+    def test_larsmomentum(self):
+        self._check_mlp()
+
+
 class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = LarsMomentumOptimizer(

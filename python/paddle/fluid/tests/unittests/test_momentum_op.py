@@ -134,6 +134,63 @@ class TestMomentumOp2(OpTest):
         self.check_output()
 
 
+class TestLarsMomentumOpWithMP(OpTest):
+    def setUp(self):
+        self.op_type = "lars_momentum"
+
+        master_param = np.random.random((123, 321)).astype("float32")
+        param = master_param.astype("float16")
+        grad = np.random.random((123, 321)).astype("float16")
+        velocity = np.zeros((123, 321)).astype("float32")
+        learning_rate = np.array([0.001]).astype("float32")
+        mu = 0.0001
+        lars_coeff = 0.001
+        lars_weight_decay = 0.0005
+        rescale_grad = 1.0
+
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Velocity': velocity,
+            'LearningRate': learning_rate,
+            'MasterParam': master_param,
+        }
+
+        self.attrs = {
+            'mu': mu,
+            'lars_coeff': lars_coeff,
+            'lars_weight_decay': lars_weight_decay,
+            'multi_precision': True,
+            'rescale_grad': rescale_grad
+        }
+
+        fp32_grad = grad.astype("float32")
+        pnorm = np.sqrt(np.square(master_param).sum())
+        gnorm = np.sqrt(np.square(fp32_grad).sum())
+        local_lr = learning_rate * lars_coeff * pnorm / (
+            gnorm + lars_weight_decay * master_param)
+        grad = fp32_grad * rescale_grad
+        velocity_out = mu * velocity + local_lr * (grad + lars_weight_decay *
+                                                   master_param)
+        p_new = master_param - velocity_out
+        param_out = p_new.astype("float16")
+        master_param_out = p_new
+
+        self.outputs = {
+            'ParamOut': param_out,
+            'VelocityOut': velocity_out,
+            'MasterParamOut': master_param_out
+        }
+
+    def test_check_output(self):
+        paddle.enable_static()
+        if core.is_compiled_with_cuda():
+            place = fluid.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(
+                    place, atol=1e-2, check_dygraph=False)
+
+
 class TestLarsMomentumOp(OpTest):
     def setUp(self):
         self.op_type = "lars_momentum"
