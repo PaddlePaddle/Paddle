@@ -58,12 +58,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     logits_2d.ShareDataWith(*logits).Resize({n, d});
     labels_1d.ShareDataWith(*labels).Resize({n});
     loss_1d.ShareDataWith(*loss).Resize({n});
-    backprop_2d.ShareDataWith(*logits).Resize({n, d});
-
-    std::vector<int> axes;
-    for (auto i = axis; i < logits->dims().size(); ++i) {
-      axes.push_back(i);
-    }
+    backprop_2d.ShareDataWith(*backprop).Resize({n, d});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -75,6 +70,10 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     // performance.
 
     // softmax->mutable_data<T>(ctx.GetPlace());
+    // std::vector<int> axes;
+    // for (auto i = axis; i < logits->dims().size(); ++i) {
+    //   axes.push_back(i);
+    // }
     // const auto& runner_softmax =
     //     NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {{"axes", axes}});
     // runner_softmax.Run(stream);
