@@ -91,9 +91,9 @@ namespace paddle {
     const auto& __dtype__ = TYPE;                                          \
     switch (__dtype__) {                                                   \
       PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,            \
-                           ::paddle::complex64, __VA_ARGS__)               \
+                           ::paddle::complex<float>, __VA_ARGS__)          \
       PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,           \
-                           ::paddle::complex128, __VA_ARGS__)              \
+                           ::paddle::complex<double>, __VA_ARGS__)         \
       default:                                                             \
         PD_THROW("function " #NAME " is not implemented for data type `" + \
                  ::paddle::ToString(__dtype__) + "`");                     \
@@ -136,9 +136,9 @@ namespace paddle {
       PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,      \
                            __VA_ARGS__)                                    \
       PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,            \
-                           ::paddle::complex64, __VA_ARGS__)               \
+                           ::paddle::complex<float>, __VA_ARGS__)          \
       PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,           \
-                           ::paddle::complex128, __VA_ARGS__)              \
+                           ::paddle::complex<double>, __VA_ARGS__)         \
       default:                                                             \
         PD_THROW("function " #NAME " is not implemented for data type `" + \
                  ::paddle::ToString(__dtype__) + "`");                     \
@@ -165,9 +165,9 @@ namespace paddle {
       PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,          \
                            __VA_ARGS__)                                       \
       PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,               \
-                           ::paddle::complex64, __VA_ARGS__)                  \
+                           ::paddle::complex<float>, __VA_ARGS__)             \
       PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,              \
-                           ::paddle::complex128, __VA_ARGS__)                 \
+                           ::paddle::complex<double>, __VA_ARGS__)            \
       default:                                                                \
         PD_THROW("function " #NAME " is not implemented for data type `" +    \
                  ::paddle::ToString(__dtype__) + "`");                        \
