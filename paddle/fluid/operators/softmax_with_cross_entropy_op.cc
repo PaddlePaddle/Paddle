@@ -51,7 +51,8 @@ class SoftmaxWithCrossEntropyOpMaker
         "Input(Logits). "
         "The intermediate value used for backward calculation. The calculation "
         "is :"
-        "exp(logits -max_logits) / sum(exp(logits - max_logits)) - labels. "
+        "exp(logits -max_logits) / sum(exp(logits - max_logits)) - labels, "
+        "where labels is ont-hot."
         "Currently, the tensor is generated and used in npu kernel only. ")
         .AsIntermediate()
         .AsDispensable();
@@ -350,7 +351,8 @@ REGISTER_OP_VERSION(softmax_with_cross_entropy)
             "Backprop",
             "The intermediate value used for backward calculation. The "
             "calculation is :"
-            "exp(logits -max_logits) / sum(exp(logits - max_logits)) - labels. "
+            "exp(logits -max_logits) / sum(exp(logits - max_logits)) - labels, "
+            "where labels is ont-hot."
             "Currently, the tensor is generated and used in npu kernel "
             "only. "));
 #else
