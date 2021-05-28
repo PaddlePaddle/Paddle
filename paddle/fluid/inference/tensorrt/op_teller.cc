@@ -143,7 +143,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
       if (paddings.size() > 2) return false;
-// strides > 1 && 'SAME' is only supported by trt7.0 above
+// strides > 1 and 'SAME' is only supported by trt7.0 above
 #if !IS_TRT_VERSION_GE(7000)
       if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
         auto padding_algorithm =
