@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import Variable, set_flags, core, PADDLE_FLAGS
+from paddle.fluid.framework import Variable, set_flags, core, _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
@@ -121,18 +121,18 @@ class DistributedStrategy(object):
 
         # Set the default values of the following flags to the ones set by users
         key = 'FLAGS_cudnn_batchnorm_spatial_persistent'
-        if PADDLE_FLAGS.is_public(key):
+        if _global_flags().is_public(key):
             self.strategy.cudnn_batchnorm_spatial_persistent = bool(
-                PADDLE_FLAGS[key])
+                _global_flags()[key])
         key = 'FLAGS_conv_workspace_size_limit'
-        if PADDLE_FLAGS.is_public(key):
-            self.strategy.conv_workspace_size_limit = int(PADDLE_FLAGS[key])
+        if _global_flags().is_public(key):
+            self.strategy.conv_workspace_size_limit = int(_global_flags()[key])
         key = 'FLAGS_cudnn_exhaustive_search'
-        if PADDLE_FLAGS.is_public(key):
-            self.strategy.cudnn_exhaustive_search = bool(PADDLE_FLAGS[key])
+        if _global_flags().is_public(key):
+            self.strategy.cudnn_exhaustive_search = bool(_global_flags()[key])
         key = 'FLAGS_sync_nccl_allreduce'
-        if PADDLE_FLAGS.is_public(key):
-            self.strategy.sync_nccl_allreduce = bool(PADDLE_FLAGS[key])
+        if _global_flags().is_public(key):
+            self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
         self.__lock_attr = True
 
@@ -1558,8 +1558,8 @@ class DistributedStrategy(object):
         ]
 
         for i, key in enumerate(keys):
-            if PADDLE_FLAGS.is_public(key):
-                PADDLE_FLAGS[key] = values[i]
+            if _global_flags().is_public(key):
+                _global_flags()[key] = values[i]
 
     def _is_strict_auto(self):
         global non_auto_func_called

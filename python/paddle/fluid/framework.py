@@ -58,7 +58,7 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
-    'PADDLE_FLAGS',
+    '_global_flags',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -71,8 +71,7 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
-
-PADDLE_FLAGS = core.globals()
+_global_flags_ = core.globals()
 
 
 def require_version(min_version, max_version=None):
@@ -285,6 +284,10 @@ fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 def _dygraph_tracer():
     return _dygraph_tracer_
+
+
+def _global_flags():
+    return _global_flags_
 
 
 def _current_expected_place():
@@ -6156,8 +6159,8 @@ def set_flags(flags):
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
     for key, value in flags.items():
-        if PADDLE_FLAGS.is_public(key):
-            PADDLE_FLAGS[key] = value
+        if _global_flags().is_public(key):
+            _global_flags()[key] = value
         else:
             raise ValueError(
                 "Flag %s cannot set its value through this function." % (key))
@@ -6186,8 +6189,8 @@ def get_flags(flags):
     flags_value = {}
     if isinstance(flags, (list, tuple)):
         for key in flags:
-            if (PADDLE_FLAGS.is_public(key)):
-                value = PADDLE_FLAGS[key]
+            if (_global_flags().is_public(key)):
+                value = _global_flags()[key]
                 temp = {key: value}
                 flags_value.update(temp)
             else:
@@ -6195,8 +6198,8 @@ def get_flags(flags):
                     'Flag %s cannot get its value through this function.' %
                     (key))
     elif isinstance(flags, str):
-        if (PADDLE_FLAGS.is_public(flags)):
-            value = PADDLE_FLAGS[flags]
+        if (_global_flags().is_public(flags)):
+            value = _global_flags()[flags]
             temp = {flags: value}
             flags_value.update(temp)
         else:
