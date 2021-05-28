@@ -73,7 +73,10 @@ def resnet_cifar10(input, depth=32):
     return pool
 
 
-def train(use_pure_fp16=True, use_nesterov=False, use_adam=False):
+def train(use_pure_fp16=True,
+          use_nesterov=False,
+          use_adam=False,
+          use_lars=False):
     classdim = 10
     data_shape = [3, 32, 32]
     BATCH_SIZE = 32
@@ -102,6 +105,11 @@ def train(use_pure_fp16=True, use_nesterov=False, use_adam=False):
                 epsilon=1e-8,
                 weight_decay=0.0,
                 multi_precision=True)
+        elif use_lars:
+            optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
+                learning_rate=0.001,
+                momentum=0.9,
+                multi_precision=use_pure_fp16)
         else:
             optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.001,
@@ -169,25 +177,41 @@ class TestImageMultiPrecision(unittest.TestCase):
         if not fluid.core.is_compiled_with_cuda():
             return
 
-        def do_test(use_nesterov=False, use_adam=False):
+        def do_test(use_nesterov=False, use_adam=False, use_lars=False):
+            assert not (use_adam and
+                        use_lars), "cannot use adam and lars at the same time"
             if use_adam:
                 suffix = "use Adam"
+            elif use_lars:
+                suffix = "use Lars"
             else:
                 suffix = "with Nesterov" if use_nesterov else "without Nesterov"
             with self.scope_prog_guard():
                 print("-----------------FP16 Train {}-----------------".format(
                     suffix))
-                train_loss_fp16, test_loss_fp16 = train(
-                    use_pure_fp16=True,
-                    use_nesterov=use_nesterov,
-                    use_adam=use_adam)
+                if use_lars:
+                    train_loss_fp16, test_loss_fp16 = train(
+                        use_pure_fp16=True,
+                        use_nesterov=use_nesterov,
+                        use_lars=use_lars)
+                else:
+                    train_loss_fp16, test_loss_fp16 = train(
+                        use_pure_fp16=True,
+                        use_nesterov=use_nesterov,
+                        use_adam=use_adam)
             with self.scope_prog_guard():
                 print("-----------------FP32 Train {}-----------------".format(
                     suffix))
-                train_loss_fp32, test_loss_fp32 = train(
-                    use_pure_fp16=False,
-                    use_nesterov=use_nesterov,
-                    use_adam=use_adam)
+                if use_lars:
+                    train_loss_fp32, test_loss_fp32 = train(
+                        use_pure_fp16=False,
+                        use_nesterov=use_nesterov,
+                        use_lars=use_lars)
+                else:
+                    train_loss_fp32, test_loss_fp32 = train(
+                        use_pure_fp16=False,
+                        use_nesterov=use_nesterov,
+                        use_adam=use_adam)
 
             self.assertTrue(
                 np.allclose(
@@ -209,6 +233,7 @@ class TestImageMultiPrecision(unittest.TestCase):
         do_test(use_nesterov=False)
         do_test(use_nesterov=True)
         do_test(use_adam=True)
+        do_test(use_lars=True)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
