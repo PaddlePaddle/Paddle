@@ -1270,10 +1270,11 @@ def softmax_with_cross_entropy(logits,
                 logits, label, 'soft_label', soft_label, 'ignore_index',
                 ignore_index, 'numeric_stable_mode', numeric_stable_mode,
                 'axis', axis)
-        softmax, loss = core.ops.softmax_with_cross_entropy(
-            logits, label, 'soft_label', soft_label, 'ignore_index',
-            ignore_index, 'numeric_stable_mode', numeric_stable_mode, 'axis',
-            axis)
+        else:
+            softmax, loss = core.ops.softmax_with_cross_entropy(
+                logits, label, 'soft_label', soft_label, 'ignore_index',
+                ignore_index, 'numeric_stable_mode', numeric_stable_mode,
+                'axis', axis)
         if not return_softmax:
             return loss
         else:
@@ -1292,7 +1293,7 @@ def softmax_with_cross_entropy(logits,
     outputs = {'Softmax': softmax, 'Loss': loss}
     if core.is_compiled_with_npu():
         backprop = helper.create_variable_for_type_inference(dtype=logits.dtype)
-        outputs['backprop'] = backprop
+        outputs['Backprop'] = backprop
     helper.append_op(
         type='softmax_with_cross_entropy',
         inputs={'Logits': logits,
