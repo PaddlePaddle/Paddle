@@ -59,6 +59,9 @@ message TrainerDesc {
   optional int32 xpu_start_idx = 30;
   optional int32 xpu_end_idx = 31;
 
+  optional bool use_ps_gpu = 32 [ default = false ];
+  optional string user_define_dump_filename = 33;
+
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;
@@ -84,12 +87,15 @@ message DownpourWorkerParameter {
 }
 
 message SectionWorkerParameter {
-  repeated SectionConfig section_config = 1;
+  optional SectionConfig section_config = 1;
   optional int32 queue_size = 2 [ default = 1 ];
   optional int64 sync_steps = 3 [ default = 1 ];
   optional int32 start_cpu_core_id = 4 [ default = 1 ];
   repeated string param_need_sync = 5;
   optional int32 num_microbatches = 6;
+  optional int32 num_pipeline_stages = 7 [ default = 1 ];
+  optional int32 pipeline_stage = 8 [ default = 1 ];
+  optional int32 schedule_mode = 9 [ default = 0 ];
 }
 
 message SectionConfig {

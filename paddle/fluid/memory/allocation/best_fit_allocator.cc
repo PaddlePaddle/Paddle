@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
-#include <math.h>
+#include <cmath>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = []
+
 
 def create_graph(optimizer_list):
     nsize = len(optimizer_list)
@@ -128,6 +130,9 @@ class StrategyCompiler(StrategyCompilerBase):
         self._user_defined_strategy = None
         self._meta_optimizer_candidates = []
         self._graph_optimizer_candidates = []
+
+    def _get_applied_meta_optimizer(self):
+        return self._meta_optimizers
 
     def _get_applied_meta_list(self):
         return [type(opt).__name__ for opt in self._meta_optimizers]

@@ -8,7 +8,7 @@
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  //
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
@@ -39,6 +39,8 @@ class EmbEltwiseLayernormPluginDynamicImplBase {
                       const nvinfer1::PluginTensorDesc* outputDesc,
                       const void* const* inputs, void* const* outputs,
                       void* workspace, cudaStream_t stream) = 0;
+  virtual void shareGPUData(
+      const EmbEltwiseLayernormPluginDynamicImplBase* anthor) = 0;
 };
 
 template <typename T>
@@ -67,6 +69,7 @@ class EmbEltwiseLayernormPluginDynamicImpl
               const nvinfer1::PluginTensorDesc* outputDesc,
               const void* const* inputs, void* const* outputs, void* workspace,
               cudaStream_t stream);
+  void shareGPUData(const EmbEltwiseLayernormPluginDynamicImplBase* anthor);
 
  private:
   std::vector<float*> embs_;
@@ -87,6 +90,7 @@ class EmbEltwiseLayernormPluginDynamicImpl
   framework::Tensor in_ptr_tensor_, emb_ptr_tensor_;
   int device_id_{0};
   uintptr_t old_input_ptr_{0};
+  bool is_initialized_{false};
 };
 
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
@@ -105,18 +109,24 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
         scale_size_(scale_size),
         hidden_size_(hidden_size),
         eps_(eps),
-        with_fp16_(with_fp16),
         own_host_buff_(false) {
-    if (with_fp16) {
-#ifdef SUPPORTS_CUDA_FP16
+    with_fp16_ = with_fp16;
+    if (with_fp16_) {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+      VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
 #else
       PADDLE_THROW(platform::errors::Fatal(
-          "Unsupported data type, current GPU doesn't support half."));
-#endif  // SUPPORTS_CUDA_FP16
+          "The Ernie(Bert) tensorRT plugin should be "
+          "complied with CUDA version >= 10.0 when running with fp16. "
+          "Please recomplie it or try to use fp32 by set "
+          "config.EnableTensorRtEngine(1 << 30, 1, 5, "
+          "AnalysisConfig::Precision::kFloat32, false, false) "));
+#endif
     } else {
+      VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
@@ -160,14 +170,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 
     if (with_fp16_) {
-#ifdef SUPPORTS_CUDA_FP16
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
 #else
       PADDLE_THROW(platform::errors::Fatal(
-          "Unsupported data type, current GPU doesn't support half."));
-#endif  // SUPPORTS_CUDA_FP16
+          "The Ernie(Bert) tensorRT plugin should be "
+          "complied with CUDA version >= 10.0 when running with fp16. "
+          "Please recomplie it or try to use fp32 by set "
+          "config.EnableTensorRtEngine(1 << 30, 1, 5, "
+          "AnalysisConfig::Precision::kFloat32, false, false) "));
+#endif
     } else {
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
@@ -179,6 +193,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     auto ptr = new EmbEltwiseLayernormPluginDynamic(
         embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
         eps_, with_fp16_);
+    ptr->shareGPUData(this);
     return ptr;
   }
 
@@ -283,14 +298,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   int hidden_size_;
   float eps_;
 
-  bool with_fp16_;
   bool own_host_buff_{false};
   EmbEltwiseLayernormPluginDynamicImplBase* impl_{nullptr};
+
+  void shareGPUData(const EmbEltwiseLayernormPluginDynamic* anthor) {
+    impl_->shareGPUData(anthor->impl_);
+  }
 };
 
-class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
+class EmbEltwiseLayernormPluginDynamicCreator
+    : public nvinfer1::IPluginCreator {
  public:
-  EmbEltwiseLayernormPluginV2Creator() {}
+  EmbEltwiseLayernormPluginDynamicCreator() {}
   const char* getPluginName() const override {
     return "fused_embedding_eltwise_layernorm_plugin";
   }
@@ -327,7 +346,7 @@ class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-REGISTER_TRT_PLUGIN_V2(EmbEltwiseLayernormPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(EmbEltwiseLayernormPluginDynamicCreator);
 
 #endif
 }  // namespace plugin

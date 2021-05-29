@@ -133,16 +133,18 @@ namespace op = paddle::operators;
 REGISTER_OPERATOR(sequence_concat, op::SequenceConcatOp, op::SeqConcatOpMaker,
                   op::SeqConcatGradOpMaker<paddle::framework::OpDesc>,
                   op::SeqConcatGradOpMaker<paddle::imperative::OpBase>);
-template <typename T>
-using Kernel = op::SeqConcatKernel<paddle::platform::CPUDeviceContext, T>;
-REGISTER_OP_CPU_KERNEL(sequence_concat, Kernel<float>, Kernel<double>,
-                       Kernel<int>, Kernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_concat,
+    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, float>,
+    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, double>,
+    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, int>,
+    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 REGISTER_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
                   op::SeqConcatGradNoNeedBufferVarsInferer);
-template <typename T>
-using GradKernel =
-    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, T>;
-REGISTER_OP_CPU_KERNEL(sequence_concat_grad, GradKernel<float>,
-                       GradKernel<double>, GradKernel<int>,
-                       GradKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_concat_grad,
+    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
+    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
+    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
+    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

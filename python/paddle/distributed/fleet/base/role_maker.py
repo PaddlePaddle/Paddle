@@ -22,6 +22,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 class Role:
     WORKER = 1
@@ -171,20 +173,20 @@ class Gloo(object):
 
     def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
         def __start_kv_server(http_server_d, size_d):
+            print("start http_server: {}, {}".format(port, size_d))
             from paddle.distributed.fleet.utils.http_server import KVServer
             http_server = KVServer(port, size_d)
             http_server.start()
             wait_seconds = 5
-            while http_server_d.get("running", False):
+            while http_server_d.get("running",
+                                    False) or not http_server.should_stop():
                 time.sleep(wait_seconds)
             http_server.stop()
 
         def init_kv_server(http_server_d):
-            size_d = {
-                "trainer": self._worker_num,
-                "pserver": self._server_num,
-                "all": self._worker_num + self._server_num
-            }
+            worker_key = prefix + '_' + 'worker'
+            size_d = {worker_key: self._worker_num, }
+            print("worker_key:{}, size: {}".format(worker_key, size_d))
 
             http_server_d["running"] = True
             # child process for http server
@@ -204,7 +206,7 @@ class Gloo(object):
             gloo.set_iface(self._iface)
             gloo.set_timeout_seconds(self._init_timeout_seconds,
                                      self._run_timeout_seconds)
-            gloo.set_http_store(ip, port, role)
+            gloo.set_http_store(ip, port, 'worker')
             ep = ":".join([ip, str(port)])
             wait_server_ready([ep])
             gloo.init()
@@ -213,21 +215,15 @@ class Gloo(object):
         port = int(port)
 
         if start_http_server:
+            print("to start http_server")
             http_server = init_kv_server(http_server_d)
 
         if self._role == Role.WORKER:
             rank, nodes = self._get_rank_nodes(Role.WORKER)
             gloo = init(rank, nodes, "WORKER")
             self._worker_comm = gloo
-        else:
-            rank, nodes = self._get_rank_nodes(Role.SERVER)
-            gloo = init(rank, nodes, "SERVER")
-            self._server_comm = gloo
+        # TODO (sandyhouse): initialize gloo for server and all
 
-        if self._need_init_all:
-            rank, nodes = self._get_rank_nodes(Role.ALL)
-            gloo = init(rank, nodes, "ALL")
-            self._nodes_comm = gloo
         if start_http_server:
             http_server_d["running"] = False
             http_server.join()
@@ -628,6 +624,29 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._generate_role()
         return self._nodes_num
 
+    def _get_node_num(self):
+        """
+        return the training node number
+        """
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._nodes_num
+
+    def _get_local_rank(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._local_rank
+
+    def _get_local_device_ids(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._local_device_ids
+
+    def _get_world_device_ids(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._world_device_ids
+
     def _get_trainer_endpoints(self):
         """
         get endpoint of all trainers
@@ -788,6 +807,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = len(self._worker_endpoints)
         self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
+        self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
+        self._local_device_ids = os.getenv("PADDLE_LOCAL_DEVICE_IDS")
+        self._world_device_ids = os.getenv("PADDLE_WORLD_DEVICE_IDS")
 
     def _gloo_init(self):
         # PADDLE_WITH_GLOO 1: trainer barrier, 2: all barrier

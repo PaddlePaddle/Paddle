@@ -51,7 +51,7 @@ struct RowwiseMean2D {
                   const framework::Tensor& input, framework::Tensor* vec);
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 class RowwiseMean2D<platform::CUDADeviceContext, T> {
  public:
@@ -97,7 +97,7 @@ struct ColwiseSum2D {
                   const framework::Tensor& input, framework::Tensor* vec);
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 class ColwiseSum2D<platform::CUDADeviceContext, T> {
  public:
@@ -163,11 +163,11 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 class LayerNormDirectCUDAFunctor {
  public:
-  void operator()(cudaStream_t stream, const T* input,
+  void operator()(gpuStream_t stream, const T* input,
                   std::vector<int> input_shape, const T* bias, const T* scale,
                   T* output, T* mean, T* variance, int begin_norm_axis,
                   float eps);

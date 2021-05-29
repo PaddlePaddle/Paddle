@@ -23,9 +23,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 6
-
+// 1. BOOST_PP_REPEAT macro represents a fast horizontal repetition construct.
+//    Usage: BOOST_PP_REPEAT(count, macro, data).
+//    This macro expands to the sequence:
+//    macro(z, 0, data) macro(z, 1, data) ... macro(z, count - 1, data).
+// 2. As for our case, count = MAX_RANK_SUPPORTED(which is 6).
+//    So the range of n is 0-5(which is count-1).
+//    We want to generate case 1-6 instead of case 0-5.
+//    So we need to change n to n + 1.
 #define EXPAND_AS_TEMPLATE(z, n, data) \
   case n + 1: {                        \
     ExpandAs<n + 1>(context);          \
@@ -33,10 +41,10 @@ limitations under the License. */
   }
 #define REP_EXPAND_AS_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_AS_TEMPLATE, ~)
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
-#define EXPAND_AS_GRAD_CASE(n)                                       \
-  case n: {                                                          \
-    ExpandAsBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
-    break;                                                           \
+#define EXPAND_AS_GRAD_CASE(n)                                           \
+  case n + 1: {                                                          \
+    ExpandAsBackward<n + 1>(context, reshape_dims_vec, reduce_dims_vec); \
+    break;                                                               \
   }
 #define EXPAND_AS_GRAD_TEMPLATE(z, n, data) \
   BOOST_PP_IF(COND(n), EXPAND_AS_GRAD_CASE(n), )
@@ -59,8 +67,8 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
-    auto* target_tensor = context.Input<Tensor>("target_tensor");
-    auto target_rank = target_tensor->dims().size();
+    auto target_shape = context.Attr<std::vector<int>>("target_shape");
+    auto target_rank = target_shape.size();
     PADDLE_ENFORCE_GE(target_rank, rank,
                       platform::errors::InvalidArgument(
                           "The rank (%d) of the input 'target_tensor' for "
@@ -85,9 +93,8 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
   void ExpandAs(const framework::ExecutionContext& context) const {
     auto* in0 = context.Input<Tensor>("X");
     auto in_dims = in0->dims();
-    auto* target_tensor = context.Input<Tensor>("target_tensor");
+    auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto vec_in_dims = framework::vectorize<int>(in_dims);
-    auto target_shape = framework::vectorize<int>(target_tensor->dims());
     auto diff = target_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> repeat_times(vec_in_dims.size());
@@ -109,7 +116,7 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
       }
     }
     auto* out0 = context.Output<Tensor>("Out");
-    Eigen::DSizes<int, Rank> bcast_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       bcast_dims[i] = repeat_times[i];
     }
@@ -123,7 +130,8 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
     auto y = EigenTensor<T, Rank>::From(*out0, out_dims);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    y.device(place) = x.broadcast(bcast_dims);
+    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                 bcast_dims);
   }
 };
 
@@ -132,9 +140,8 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
-    auto* target_tensor = context.Input<Tensor>("target_tensor");
+    auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto x_dims = in0->dims();
-    auto target_shape = target_tensor->dims();
     auto vec_in_dims = framework::vectorize<int>(x_dims);
     auto diff = target_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -178,7 +185,14 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
                             "expand_as_v2_grad op must be less than or equal "
                             "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
-      switch (dims) { REP_EXPAND_AS_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
+      switch (dims) {
+        REP_EXPAND_AS_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and 6. But "
+              "received tensor's rank = %d.",
+              dims));
+      }
     }
   }
 
@@ -193,20 +207,19 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
-    Eigen::DSizes<int, Dims * 2> reshape_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<int, Dims> reduce_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(
-        *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims)
-            .sum(reduce_dims)
-            .reshape(x_grad.dimensions());
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

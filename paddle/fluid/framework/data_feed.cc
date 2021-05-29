@@ -22,19 +22,8 @@ limitations under the License. */
 #include <stdio_ext.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #endif
-#include <utility>
-#include "gflags/gflags.h"
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
 #include "io/fs.h"
-#include "io/shell.h"
-#include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/fleet/box_wrapper.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 
@@ -162,9 +151,12 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
   } else {
 #ifdef PADDLE_WITH_CUDA
     cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_HIP)
+    hipMemcpy(dst, src, size, hipMemcpyHostToDevice);
 #else
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Not supported GPU, please compile with option WITH_GPU=ON."));
+        "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
+        "WITH_ROCM=ON."));
 #endif
   }
 }
@@ -527,7 +519,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         VLOG(0) << "error: the number of ids is a negative number: " << num;
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       } else if (num == 0) {
@@ -538,14 +530,14 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
                "characters.";
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       } else if (errno == ERANGE || num > INT_MAX) {
         VLOG(0) << "error: the number of ids greater than INT_MAX";
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       }
@@ -557,7 +549,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
                        "representable values for float";
             VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -566,7 +558,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           }
           if (j + 1 != num && endptr - str == len) {
             VLOG(0) << "error: there is a wrong with the number of ids.";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -582,7 +574,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           if (errno == ERANGE) {
             VLOG(0) << "error: the value is out of the range of "
                        "representable values for uint64_t";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -593,7 +585,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           }
           if (j + 1 != num && endptr - str == len) {
             VLOG(0) << "error: there is a wrong with the number of ids.";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -646,25 +638,34 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
 
     const char* str = reader.get();
     std::string line = std::string(str);
-    // VLOG(3) << line;
+
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      PADDLE_ENFORCE_NE(
-          num, 0,
-          platform::errors::InvalidArgument(
-              "The number of ids can not be zero, you need padding "
-              "it in data generator; or if there is something wrong with "
-              "the data, please check if the data contains unresolvable "
-              "characters.\nplease check this error line: %s, \n Specifically, "
-              "something wrong happened(the length of this slot's feasign is 0)"
-              "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
-              "\nWe detect the feasign number of this slot is %d, "
-              "which is illegal.",
-              str, i, num));
+
+      if (num <= 0) {
+        std::stringstream ss;
+        ss << "\n\nGot unexpected input, maybe something wrong with it.\n";
+        ss << "\n----------------------\n";
+        ss << "The Origin Input Data:\n";
+        ss << "----------------------\n";
+
+        ss << line << "\n";
+
+        ss << "\n----------------------\n";
+        ss << "Some Possible Errors:\n";
+        ss << "----------------------\n";
+        ss << "1. The number of ids can not be zero, you need padding.\n";
+        ss << "2. The input data contains unresolvable characters.\n";
+        ss << "3. We detect the slot " << i << "'s feasign number is " << num
+           << " which is illegal.\n";
+        ss << "\n";
+
+        PADDLE_THROW(platform::errors::InvalidArgument(ss.str()));
+      }
+
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float
@@ -717,7 +718,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -955,7 +956,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -968,7 +969,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
               continue;
             }
-            FeatureKey f;
+            FeatureFeasign f;
             f.float_feasign_ = feasign;
             instance->float_feasigns_.push_back(FeatureItem(f, idx));
           }
@@ -980,7 +981,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             if (feasign == 0 && !use_slots_is_dense_[i]) {
               continue;
             }
-            FeatureKey f;
+            FeatureFeasign f;
             f.uint64_feasign_ = feasign;
             instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
           }
@@ -1026,7 +1027,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
               "characters.\nplease check this error line: %s, \n Specifically, "
               "something wrong happened(the length of this slot's feasign is 0)"
               "when we parse the %d th slots."
-              "Maybe something wrong around this slot",
+              "Maybe something wrong around this slot"
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
@@ -1038,7 +1039,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
             if (fabs(feasign) < 1e-6) {
               continue;
             }
-            FeatureKey f;
+            FeatureFeasign f;
             f.float_feasign_ = feasign;
             instance->float_feasigns_.push_back(FeatureItem(f, idx));
           }
@@ -1048,7 +1049,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
             if (feasign == 0) {
               continue;
             }
-            FeatureKey f;
+            FeatureFeasign f;
             f.uint64_feasign_ = feasign;
             instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
           }
@@ -1168,7 +1169,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 template <typename T>
 void PrivateInstantDataFeed<T>::PutToFeedVec() {
   for (size_t i = 0; i < use_slots_.size(); ++i) {

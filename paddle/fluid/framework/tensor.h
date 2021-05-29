@@ -43,6 +43,49 @@ namespace framework {
 
 class LoDTensor;
 
+/*
+ NOTE(liym27): [ What is TensorInplaceVersion used for? ]
+
+ TensorInplaceVersion is a version counter and every Tensor has a version
+ counter. It's used to check whether an inplace operation will result in an
+ incorrect gradient calculation. Version is incremented when the data of the
+ Variable is modified in place.
+
+ - Question: In what scenarios will version counters be shared?
+ - Answer: When two Variables/VarBases share the same C++ Tensor(its Allocation
+ may change), both of them share the same version counter. For examples:
+  1. `z = paddle.assign(input=x, output=y)`, `z` shares the same version counter
+    of `y` because z and y is the same VarBase;
+  2. `y = x.detach()`, `y` shares the same version counter of `x`.
+
+ - Question: In what scenarios will version counters NOT be shared?
+ - Answer: Replacing a `Variable`'s data by calling `Tensor::ShareDataWith(...)`
+ or `Tensor::ShareBufferWith(...)`. Because they share the same Allocation but
+ not framework::Tensor.
+
+ - Question: Why put the inplace_version_counter_ in framework::Tensor instead
+ of Allocation or Variable?
+ - Answer:
+  1. Tensor can call ResetHolder() to reset the corresponding Allocation so that
+  the inplace_version_counter_ changes if it's in Allocation, which will lead to
+  confusing information about inplace version.
+  2. If inplace_version_counter_ is in Variable, different VariableWrappers
+  should be able to share the same Variable. However, a VariableWrapper hold a
+  Variable object but not a pointer.
+*/
+
+class TensorInplaceVersion {
+ public:
+  explicit TensorInplaceVersion(uint32_t inplace_version = 0)
+      : inplace_version_(inplace_version) {}
+  bool IsUnique() const { return inplace_version_ == 0; }
+  void Bump() { ++inplace_version_; }
+  uint32_t CurrentVersion() const { return inplace_version_; }
+
+ private:
+  uint32_t inplace_version_;
+};
+
 class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
@@ -77,7 +120,10 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : type_(proto::VarType::FP32), offset_(0) {}
+  Tensor()
+      : type_(proto::VarType::FP32),
+        offset_(0),
+        inplace_version_counter_(std::make_shared<TensorInplaceVersion>(0)) {}
 
   explicit Tensor(const proto::VarType::Type&);
 
@@ -128,6 +174,9 @@ class Tensor {
   /*! The internal of two tensors share the same memory block. */
   Tensor& ShareDataWith(const Tensor& src);
 
+  /*! The internal of two tensors share the same inplace version counter. */
+  Tensor& ShareInplaceVersionCounterWith(const Tensor& src);
+
   /**
    * @brief  Return a sub-tensor of the given tensor.
    *
@@ -153,6 +202,24 @@ class Tensor {
             "Tensor not initialized yet when Tensor::type() is called."));
     return type_;
   }
+
+  /**
+   * [Add method get the saved type of tensor]
+   *
+   * After the introduction of complex number calculations, Ops that support
+   * complex number calculations generally support type promotion, such as
+   * x(float32) + y(complex64) = out(complex64), then the type of the grad
+   * tensor should be dout(complex64), dx(float32), dy (complex64), but the
+   * type of dx to be recognized to be float32 by the grad Op relay on the type
+   * of forward tensor x. But many of our ops have registered InplaceInferer,
+   * covering the tensor memory of x with out, so as to save storage.
+   *
+   * In this case, the dim and type information recorded by x still exist,
+   * but because x becomes an uninitialized tensor, The type of x record cannot
+   * be obtained with x.type(), but the type is still valid here, so we
+   * add saved_type(), This method SHOULD NOT be called by general scenarios.
+   */
+  proto::VarType::Type saved_type() const { return type_; }
 
   // memory size returns the holding memory size in byte.
   size_t memory_size() const;
@@ -190,6 +257,10 @@ class Tensor {
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
                            const proto::VarType::Type type);
 
+  TensorInplaceVersion& InplaceVersionCounter() {
+    return *inplace_version_counter_;
+  }
+
  private:
   /*! holds the memory block if allocated. */
   std::shared_ptr<memory::Allocation> holder_;
@@ -225,6 +296,7 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
+  std::shared_ptr<TensorInplaceVersion> inplace_version_counter_;
 };
 
 }  // namespace framework

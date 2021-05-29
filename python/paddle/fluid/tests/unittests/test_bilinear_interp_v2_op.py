@@ -623,5 +623,68 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
             self.assertTrue(np.allclose(out.numpy(), expect_res))
 
 
+class TestBilinearInterpOpAPI_dy2(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            size_np = np.array([12, 12]).astype("int64")
+            input_x = paddle.to_tensor(input_data)
+            size = paddle.to_tensor(size_np)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False)
+            out = interpolate(
+                x=input_x, size=size, mode="bilinear", align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
+
+
+class TestBilinearInterpOpAPI_dy3(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            size_1 = np.array([12]).astype("int64")
+            input_x = paddle.to_tensor(input_data)
+            size = paddle.to_tensor(size_1)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False)
+            out = interpolate(
+                x=input_x,
+                size=[size, size],
+                mode="bilinear",
+                align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
+
+
+class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            scale_np = np.array([2, 2]).astype("int64")
+            input_x = paddle.to_tensor(input_data)
+            scale = paddle.to_tensor(scale_np)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False)
+            out = interpolate(
+                x=input_x,
+                scale_factor=scale,
+                mode="bilinear",
+                align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
+
+
 if __name__ == "__main__":
     unittest.main()

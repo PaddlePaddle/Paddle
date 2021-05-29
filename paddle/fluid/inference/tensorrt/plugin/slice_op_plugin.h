@@ -29,7 +29,7 @@ namespace plugin {
 class SlicePlugin : public PluginTensorRT {
  public:
   explicit SlicePlugin(std::vector<int> starts, std::vector<int> ends,
-                       std::vector<int> axes, bool ban_fp16);
+                       std::vector<int> axes, bool with_fp16);
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
@@ -58,7 +58,6 @@ class SlicePlugin : public PluginTensorRT {
   std::vector<int> starts_;
   std::vector<int> ends_;
   std::vector<int> axes_;
-  bool ban_fp16_{false};
   int* offset_temp_data_{nullptr};
   cudaEvent_t copy_event_;
   cudaStream_t copy_stream_;
@@ -68,10 +67,10 @@ class SlicePlugin : public PluginTensorRT {
 class SlicePluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SlicePluginDynamic(std::vector<int> starts, std::vector<int> ends,
-                              std::vector<int> axes, bool ban_fp16);
+                              std::vector<int> axes, bool with_fp16);
 
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new SlicePluginDynamic(starts_, ends_, axes_, ban_fp16_);
+    return new SlicePluginDynamic(starts_, ends_, axes_, with_fp16_);
   }
 
   SlicePluginDynamic(void const* serialData, size_t serialLength);
@@ -117,15 +116,14 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> starts_;
   std::vector<int> ends_;
   std::vector<int> axes_;
-  bool ban_fp16_{false};
   int* offset_temp_data_{nullptr};
   cudaEvent_t copy_event_;
   cudaStream_t copy_stream_;
 };
 
-class SlicePluginV2Creator : public nvinfer1::IPluginCreator {
+class SlicePluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  SlicePluginV2Creator() {}
+  SlicePluginDynamicCreator() {}
   const char* getPluginName() const override { return "slice_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
@@ -157,7 +155,7 @@ class SlicePluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection field_collection_;
 };
 
-REGISTER_TRT_PLUGIN_V2(SlicePluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(SlicePluginDynamicCreator);
 
 #endif
 

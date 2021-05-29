@@ -17,10 +17,19 @@ import numpy
 import warnings
 from paddle import Tensor
 
-__all__ = [
-    'LRScheduler', 'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay',
-    'InverseTimeDecay', 'PolynomialDecay', 'LinearWarmup', 'ExponentialDecay',
-    'MultiStepDecay', 'StepDecay', 'LambdaDecay', 'ReduceOnPlateau',
+__all__ = [ #noqa
+    'LRScheduler',
+    'NoamDecay',
+    'PiecewiseDecay',
+    'NaturalExpDecay',
+    'InverseTimeDecay',
+    'PolynomialDecay',
+    'LinearWarmup',
+    'ExponentialDecay',
+    'MultiStepDecay',
+    'StepDecay',
+    'LambdaDecay',
+    'ReduceOnPlateau',
     'CosineAnnealingDecay'
 ]
 
@@ -192,7 +201,7 @@ class LRScheduler(object):
 
 
 class NoamDecay(LRScheduler):
-    """
+    r"""
 
     Applies Noam Decay to the initial learning rate. 
 
@@ -303,8 +312,8 @@ class PiecewiseDecay(LRScheduler):
             learning_rate = 0.1
 
     Args:
-        boundaries(list): A list of steps numbers. The type of element in the list is python int. 
-        values(list): A list of learning rate values that will be picked during different epoch boundaries. 
+        boundaries(list|tuple): A list/tuple of steps numbers. The type of element in the list is python int. 
+        values(list|tuple): A list/tuple of learning rate values that will be picked during different epoch boundaries. 
             The type of element in the list is python float.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
@@ -376,7 +385,7 @@ class PiecewiseDecay(LRScheduler):
 
 
 class NaturalExpDecay(LRScheduler):
-    """
+    r"""
 
     Applies natural exponential decay to the initial learning rate.
     
@@ -455,7 +464,7 @@ class NaturalExpDecay(LRScheduler):
 
 
 class InverseTimeDecay(LRScheduler):
-    """
+    r"""
 
     Applies inverse time decay to the initial learning rate.
 
@@ -536,7 +545,7 @@ class InverseTimeDecay(LRScheduler):
 
 
 class PolynomialDecay(LRScheduler):
-    """
+    r"""
 
     Applies polynomial decay to the initial learning rate.
 
@@ -656,7 +665,7 @@ class PolynomialDecay(LRScheduler):
 
 
 class LinearWarmup(LRScheduler):
-    """
+    r"""
 
     Linear learning rate warm up strategy. Update the learning rate preliminarily before the normal learning rate scheduler.
     For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
@@ -786,15 +795,14 @@ class LinearWarmup(LRScheduler):
                 self.last_epoch) / float(self.warmup_steps) + self.start_lr
         else:
             if isinstance(self.learning_rate, LRScheduler):
-                lr_value = self.learning_rate()
-                self.learning_rate.step()
-                return lr_value
+                self.learning_rate.step(self.last_epoch - self.warmup_steps)
+                return self.learning_rate()
 
             return self.learning_rate
 
 
 class ExponentialDecay(LRScheduler):
-    """
+    r"""
 
     Update learning rate by `gamma` each epoch.
 
@@ -1383,7 +1391,7 @@ class ReduceOnPlateau(LRScheduler):
 
 
 class CosineAnnealingDecay(LRScheduler):
-    """
+    r"""
 
     Set the learning rate using a cosine annealing schedule, where :math:`\eta_{max}` is set to 
     the initial learning_rate. :math:`T_{cur}` is the number of epochs since the last restart in 

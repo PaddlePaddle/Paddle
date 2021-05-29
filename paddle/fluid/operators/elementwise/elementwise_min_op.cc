@@ -40,15 +40,11 @@ class ElementwiseMinOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = min(X, Y)"; }
 
   void AddInputX() override {
-    AddInput(
-        "X",
-        "(Variable), The first tensor holding the elements to be compared.");
+    AddInput("X", "The first tensor holding the elements to be compared.");
   }
 
   void AddInputY() override {
-    AddInput(
-        "Y",
-        "(Variable), The second tensor holding the elements to be compared.");
+    AddInput("Y", "The second tensor holding the elements to be compared.");
   }
 
   std::string GetOpFuntionality() const override {
@@ -98,3 +94,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+REGISTER_OP_VERSION(elementwise_min)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_min for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_min.",
+            1.0f));

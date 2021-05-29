@@ -146,4 +146,6 @@ class TestFusionGRUINT8MKLDNNOp5(TestFusionGRUINT8MKLDNNOp):
 
 
 if __name__ == "__main__":
+    from paddle import enable_static
+    enable_static()
     unittest.main()

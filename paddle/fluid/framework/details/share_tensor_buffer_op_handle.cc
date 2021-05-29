@@ -15,12 +15,7 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
 
 #include <string>
-#include <unordered_set>
 
-#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -89,7 +84,7 @@ void ShareTensorBufferOpHandle::SetShareDims(bool share_dims) {
 }
 
 void ShareTensorBufferOpHandle::InitCUDA() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int dev_id =
       BOOST_GET_CONST(platform::CUDAPlace, dev_ctxes_.begin()->first).device;
   events_[dev_id] = nullptr;

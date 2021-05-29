@@ -14,11 +14,10 @@
 
 from __future__ import print_function
 
-__all__ = ['convert_call']
-
 import collections
 import copy
 import functools
+import logging
 import inspect
 import pdb
 import re
@@ -27,17 +26,42 @@ import types
 import numpy
 import six
 
+from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
 from paddle.fluid.dygraph.layers import Layer
 
+__all__ = ["convert_call"]
+
 # TODO(liym27): A better way to do this.
-BUILTIN_LIKELY_MODULES = [collections, pdb, copy, inspect, re, six, numpy]
+BUILTIN_LIKELY_MODULES = [
+    collections, pdb, copy, inspect, re, six, numpy, logging
+]
+# The api(s) should be considered as plain function and convert
+# them into static layer code.
+PADDLE_NEED_CONVERT_APIS = [Sequential]
 
 translator_logger = TranslatorLogger()
+
+CONVERSION_OPTIONS = "An attribute for a function that indicates conversion flags of the function in dynamic-to-static."
+
+
+class ConversionOptions(object):
+    """
+    A container for conversion flags of a function in dynamic-to-static.
+
+    Attributes:
+        not_convert(bool): An attribute indicates that the function won't be converted in dynamic-to-static.
+
+    NOTE(liym27): More attributes and methods can be added in this class.
+    """
+
+    def __init__(self, not_convert=False):
+        self.not_convert = not_convert
 
 
 def is_builtin(func):
@@ -53,11 +77,6 @@ def is_builtin_len(func):
     if isinstance(func, types.BuiltinFunctionType) and func.__name__ == 'len':
         return True
     return False
-
-
-def is_paddle_func(func):
-    m = inspect.getmodule(func)
-    return m is not None and m.__name__.startswith("paddle")
 
 
 def is_unsupported(func):
@@ -76,6 +95,10 @@ def is_unsupported(func):
                     "Whitelist: {} is part of built-in module and does not have to be transformed.".
                     format(func))
                 return True
+
+    # NOTE: should be placed before `is_paddle_func`
+    if type(func) in PADDLE_NEED_CONVERT_APIS:
+        return False
 
     if is_paddle_func(func):
         translator_logger.log(
@@ -129,6 +152,14 @@ def convert_call(func):
     # Function in convert_call may be decorated by another `@to_static`,
     # in this case, unwraps it into a raw method or function.
     _, func = unwrap_decorators(func)
+
+    options = getattr(func, CONVERSION_OPTIONS, None)
+    if options is not None and options.not_convert:
+        translator_logger.log(
+            2,
+            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".
+            format(func))
+        return func
 
     if is_builtin_len(func):
         return convert_len
@@ -199,7 +230,7 @@ def convert_call(func):
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
                 setattr(func, 'forward', forward_func.__get__(func))
-            except Exception:
+            except (IOError, OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
             converted_call = func
@@ -208,7 +239,7 @@ def convert_call(func):
                 call_func = func.__class__.__call__
                 converted_call = convert_to_static(call_func)
                 func_self = func
-            except Exception:
+            except (IOError, OSError, TypeError):
                 # NOTE:
                 # If `func` is a class which is being initialized, for example `convert_call(Foo)()`,
                 # it doesn't need to be transformed

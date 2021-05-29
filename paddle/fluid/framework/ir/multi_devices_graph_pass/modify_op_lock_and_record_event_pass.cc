@@ -23,7 +23,9 @@ namespace ir {
 
 static bool IsLockAndRecordEventFreeComputationOpHandle(
     details::ComputationOpHandle *op, const OpGraphView &graph_view) {
-  if (!platform::is_gpu_place(op->GetPlace())) return false;
+  if (!platform::is_gpu_place(op->GetPlace()) &&
+      !platform::is_xpu_place(op->GetPlace()))
+    return false;
   for (auto &pending_op : graph_view.PendingOps(op)) {
     auto *tmp = dynamic_cast<details::ComputationOpHandle *>(pending_op);
     if (tmp == nullptr || !(tmp->GetPlace() == op->GetPlace())) {

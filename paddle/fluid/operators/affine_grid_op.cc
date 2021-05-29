@@ -17,8 +17,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
 #endif
 
 namespace paddle {
@@ -108,7 +112,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       library = framework::LibraryType::kCUDNN;
     }
@@ -225,7 +229,7 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
@@ -271,3 +275,11 @@ REGISTER_OP_CPU_KERNEL(
     affine_grid_grad,
     ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(affine_grid)
+    .AddCheckpoint(
+        R"ROC(
+               Compatible upgrade of affine_grid, add a new attribute [align_corners])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "align_corners",
+            "Whether to align the corners of input and output.", true));

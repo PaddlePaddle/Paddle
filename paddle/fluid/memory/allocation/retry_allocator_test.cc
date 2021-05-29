@@ -14,19 +14,12 @@
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 
-#include <algorithm>
-#include <chrono>              // NOLINT
-#include <condition_variable>  // NOLINT
-#include <mutex>               // NOLINT
-#include <string>
 #include <thread>  // NOLINT
-#include <vector>
-
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #endif
 
@@ -127,7 +120,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
     }
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     platform::CUDAPlace p(0);
     RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), retry_ms);

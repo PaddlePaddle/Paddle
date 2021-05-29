@@ -287,6 +287,15 @@ class FusedElemwiseActivationGradMaker
   }
 };
 
+class FusedElemwiseAddActivationMaker : public FusedElemwiseActivationMaker {};
+
+template <typename T>
+class FusedElemwiseAddActivationGradMaker
+    : public FusedElemwiseActivationGradMaker<T> {
+ public:
+  using FusedElemwiseActivationGradMaker<T>::FusedElemwiseActivationGradMaker;
+};
+
 class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -361,10 +370,61 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Y"), ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
+
+class FusedElemwiseAddActivationOp : public FusedElemwiseActivationOp {
+ public:
+  using FusedElemwiseActivationOp::FusedElemwiseActivationOp;
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    FusedElemwiseActivationOp::InferShape(ctx);
+    std::vector<std::string> functor_names =
+        ctx->Attrs().Get<std::vector<std::string>>("functor_list");
+    bool elemntwise_add_detected = false;
+    for (auto names : functor_names) {
+      if (names == "elementwise_add") {
+        elemntwise_add_detected = true;
+        break;
+      }
+    }
+    PADDLE_ENFORCE_EQ(
+        elemntwise_add_detected, true,
+        platform::errors::InvalidArgument(
+            "When the FusedElemwiseAddActivationOp Is used in fused pass, the "
+            "elementwise_add Op must be"
+            "detected and used, Please check the fuse pass pattern"));
+  }
+};
+
+class FusedElemwiseAddActivationOpGrad : public FusedElemwiseActivationOpGrad {
+ public:
+  using FusedElemwiseActivationOpGrad::FusedElemwiseActivationOpGrad;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    FusedElemwiseActivationOpGrad::InferShape(ctx);
+    std::vector<std::string> functor_names =
+        ctx->Attrs().Get<std::vector<std::string>>("functor_list");
+    bool elemntwise_add_grad_detected = false;
+    for (auto names : functor_names) {
+      if (names == "elementwise_add_grad") {
+        elemntwise_add_grad_detected = true;
+        break;
+      }
+    }
+    PADDLE_ENFORCE_EQ(
+        elemntwise_add_grad_detected, true,
+        platform::errors::InvalidArgument(
+            "When the FusedElemwiseAddActivationOpGrad Is used in fused pass, "
+            "the elementwise_add_grad Op must be"
+            "detected and used, Please check the fuse pass pattern"));
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    FusedElemwiseAddActivationNoNeddBufVarInferer, "X", "Y");
 }  // namespace operators
 }  // namespace paddle
 
@@ -386,6 +446,30 @@ REGISTER_OP_CPU_KERNEL(
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation_grad,
+    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                           float>,
+    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                           double>);
+
+// for memory optimization, we register the fused_elemwise_add_activation OP
+REGISTER_OPERATOR(
+    fused_elemwise_add_activation, ops::FusedElemwiseAddActivationOp,
+    ops::FusedElemwiseAddActivationMaker,
+    ops::FusedElemwiseAddActivationGradMaker<paddle::framework::OpDesc>,
+    ops::FusedElemwiseAddActivationGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
+                  ops::FusedElemwiseAddActivationNoNeddBufVarInferer,
+                  ops::FusedElemwiseAddActivationOpGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    fused_elemwise_add_activation,
+    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
+                                       float>,
+    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
+                                       double>);
+
+REGISTER_OP_CPU_KERNEL(
+    fused_elemwise_add_activation_grad,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
                                            float>,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,

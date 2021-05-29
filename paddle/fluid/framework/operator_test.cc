@@ -76,7 +76,7 @@ REGISTER_OP_WITHOUT_GRADIENT(test_operator,
                              paddle::framework::OpWithoutKernelCheckerMaker);
 
 TEST(OperatorBase, all) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("test_operator");
   BuildVar("input", {"IN1"}, op_desc.add_inputs());
@@ -228,7 +228,7 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
 
 // test with single input
 TEST(OpKernel, all) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   BuildVar("x", {"IN1"}, op_desc.add_inputs());
@@ -268,7 +268,7 @@ REGISTER_OP_CPU_KERNEL(op_multi_inputs_with_kernel,
 
 // test with multi inputs
 TEST(OpKernel, multi_inputs) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
 
   op_desc.set_type("op_multi_inputs_with_kernel");
@@ -419,7 +419,7 @@ REGISTER_OP_CPU_KERNEL(indicate_other_data_type_test,
                            paddle::platform::CPUDeviceContext, int>);
 
 TEST(IndicateVarDataTypeTest, lodtensor) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("indicate_lod_tensor_data_type_test");
   BuildVar("LoDTensor", {"lodtensor_1"}, op_desc.add_inputs());
@@ -447,7 +447,7 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
 }
 
 TEST(IndicateVarDataTypeTest, selectedrows) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("indicate_selected_rows_data_type_test");
   BuildVar("SelectedRows", {"selected_rows_1"}, op_desc.add_inputs());
@@ -474,7 +474,7 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
 }
 
 TEST(IndicateVarDataTypeTest, other) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("indicate_other_data_type_test");
   BuildVar("Other", {"lod_rank_table_1"}, op_desc.add_inputs());
@@ -504,7 +504,7 @@ TEST(IndicateVarDataTypeTest, other) {
 }
 
 TEST(ExecutionContextAttrAndInOut, new_api) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("test_operator");
   BuildVar("input", {"IN1"}, op_desc.add_inputs());
@@ -596,7 +596,7 @@ REGISTER_OP_CPU_KERNEL(set_lod_level_test,
                            paddle::platform::CPUDeviceContext, float>);
 
 void SetGetLoDLevelTestMain(std::string op_type) {
-  paddle::framework::InitDevices(false, {});
+  paddle::framework::InitDevices({});
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type(op_type);
   BuildVar("X", {"x.0"}, op_desc.add_inputs());
@@ -701,7 +701,7 @@ REGISTER_OP_CPU_KERNEL(op_without_unused_var,
 TEST(OpWithUnusedVar, all) {
   // enable the unused_var_check
   FLAGS_enable_unused_var_check = true;
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("op_with_unused_var");
   BuildVar("X", {"X"}, op_desc.add_inputs());
@@ -726,7 +726,7 @@ TEST(OpWithoutUnusedVar, all) {
   // enable the unused_var_check
   FLAGS_enable_unused_var_check = true;
 
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("op_without_unused_var");
   BuildVar("X", {"X"}, op_desc.add_inputs());

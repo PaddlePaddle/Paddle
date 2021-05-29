@@ -27,7 +27,8 @@ void* tensorrt_plugin_dso_handle;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-TENSORRT_RAND_ROUTINE_EACH(DEFINE_WRAP);
+TENSORRT_RAND_ROUTINE_EACH_POINTER(DEFINE_WRAP);
+TENSORRT_RAND_ROUTINE_EACH_NON_POINTER(DEFINE_WRAP);
 TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
 void* GetDsoHandle(const std::string& dso_name) {
@@ -42,7 +43,7 @@ void* GetDsoHandle(const std::string& dso_name) {
   if (nullptr == dso_handle) {
     auto error_msg =
         "You are using Paddle compiled with TensorRT, but TensorRT dynamic "
-        "library is not found. Ignore this if TensorRT is not needed.";
+        "library is not found. Ignore this if TensorRT is not needed.\n";
     std::cerr << error_msg;
   }
   return dso_handle;

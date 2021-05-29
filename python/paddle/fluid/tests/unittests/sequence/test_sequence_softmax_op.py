@@ -28,10 +28,10 @@ class TestSequenceSoftmaxOp(OpTest):
         self.op_type = "sequence_softmax"
         self.use_cudnn = False
         self.init_op_type()
-
-        x = np.random.uniform(0.1, 1, (110, 1)).astype("float64")
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+        x = np.random.uniform(0.1, 1, (110, 1)).astype(self.dtype)
         self.init_lod()
-        out = np.zeros((110, 1)).astype("float64")
+        out = np.zeros((110, 1)).astype(self.dtype)
         offset = 0
         for i in range(len(self.lod[0])):
             if (self.lod[0][i] == 0):

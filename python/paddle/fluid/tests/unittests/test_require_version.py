@@ -79,7 +79,7 @@ class TestErrors(unittest.TestCase):
 
         self.assertRaises(TypeError, test_input_type_1)
 
-        # The value of params must be in format '\d+(\.\d+){0,3}', like '1.5.2.0', '1.6' ...
+        # The value of params must be in format r'\d+(\.\d+){0,3}', like '1.5.2.0', '1.6' ...
         def test_input_value_1():
             fluid.require_version('string')
 

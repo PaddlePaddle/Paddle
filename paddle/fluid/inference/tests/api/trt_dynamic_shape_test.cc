@@ -12,26 +12,41 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
 namespace inference {
 
-void TestDynamic(bool with_dynamic = true) {
+void TestDynamic(bool with_dynamic = true, bool delete_cache = true,
+                 bool delete_conv_bn = false) {
   std::string model_dir =
       FLAGS_infer_model + "/conv_bn_swish_split_gelu/conv_bn_swish_split_gelu";
+
+  std::string opt_cache_dir = model_dir + "/my_cache";
+  if (delete_cache) {
+    delete_cache_files(opt_cache_dir);
+  }
+
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
-  config.SetModel(model_dir + "/model", model_dir + "/params");
+  std::string buffer_prog, buffer_param;
+  ReadBinaryFile(model_dir + "/model", &buffer_prog);
+  ReadBinaryFile(model_dir + "/params", &buffer_param);
+  config.SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
+                        buffer_param.size());
+  config.SetOptimCacheDir(opt_cache_dir);
+
   config.SwitchUseFeedFetchOps(false);
   // Set the input's min, max, opt shape
-
   config.EnableTensorRtEngine(1 << 30, 1, 1,
-                              AnalysisConfig::Precision::kFloat32, false, true);
+                              AnalysisConfig::Precision::kFloat32, true, true);
+  if (delete_conv_bn) {
+    config.pass_builder()->DeletePass("conv_bn_fuse_pass");
+  }
   if (with_dynamic) {
     std::map<std::string, std::vector<int>> min_input_shape = {
         {"image", {1, 1, 3, 3}}};
@@ -130,6 +145,12 @@ void TestDynamic2() {
 
 TEST(AnalysisPredictor, trt_dynamic) { TestDynamic(true); }
 TEST(AnalysisPredictor, trt_static) { TestDynamic(false); }
+TEST(AnalysisPredictor, trt_memory_serialize) {
+  // serailize
+  TestDynamic(false, true, true);
+  // deserailize
+  TestDynamic(false, false, true);
+}
 TEST(AnalysisPredictor, trt_dynamic2) { TestDynamic2(); }
 
 }  // namespace inference

@@ -13,8 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+
+import math
+import numpy
 import six
+import warnings
 from six.moves import reduce
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
@@ -27,8 +32,7 @@ from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.utils import deprecated
-import numpy
-import warnings
+
 from .utils import check_shape
 
 __all__ = [
@@ -144,7 +148,7 @@ def create_global_var(shape,
     This function creates a new tensor variable with value in the global block(block 0).
 
     Parameters:
-        shape (list of int): Shape of the variable
+        shape (list[int]|tuple[int]): Shape of the variable
         value (float): The value of the variable. The new created
                       variable will be filled with it.
         dtype (str): Data type of the variable
@@ -200,7 +204,7 @@ def create_global_var(shape,
 def cast(x, dtype):
     """
 
-    This OP takes in the Variable :attr:`x` with :attr:`x.dtype` and casts it
+    This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
@@ -221,17 +225,24 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
-    check_variable_and_dtype(
-        x, 'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
-        'cast')
+    if in_dygraph_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return out
+
+    check_variable_and_dtype(x, 'x', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'uint16'
+    ], 'cast')
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64',
-        'uint8'
+        'uint8', 'uint16'
     ], 'cast')
 
     helper = LayerHelper('cast', **locals())
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+    out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=x.stop_gradient)
     helper.append_op(
         type='cast',
         inputs={'X': [x]},
@@ -318,6 +329,10 @@ def concat(input, axis=0, name=None):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
 
     if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        # NOTE(liym27): Don't remove this if branch!
+        # This feature is supported for Dynamic-to-Static, because after transformed, the type of inputs[0]
+        # is LOD_TENSOR_ARRAY in some scenarios. And this feature can be used in static mode.
+
         assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
                 "number of the elements must be 1, but received %s." % len(input)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
@@ -343,7 +358,7 @@ def concat(input, axis=0, name=None):
 
 
 def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
-    """
+    r"""
     This function concatenates or stacks all tensors in the input LoDTensorArray
     along the axis mentioned and returns that as the output.
 
@@ -452,7 +467,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
 
 
 def sums(input, out=None):
-    """
+    r"""
     This function computes the sum of multiple input Tensors elementwisely.
 
     - Case 1, sum of 3 Tensors
@@ -532,35 +547,48 @@ def assign(input, output=None):
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
-        input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
-            float16, float32, float64, int32 and int64.
-        output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
+        input (Tensor|numpy.ndarray|list|tuple|scalar): A tensor, numpy ndarray, tuple/list of scalar,
+            or scalar. Its data type supports float16, float32, float64, int32, int64, and bool.
+            Note: the float64 data will be converted to float32 because of current platform protobuf
+            data limitation.
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
 
     Returns:
-        Variable: A tensor with the same shape, data type and value as :attr:`input`.
+        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
 
           import paddle
           import numpy as np
-          data = paddle.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           array = np.array([[1, 1],
                             [3, 4],
                             [1, 3]]).astype(np.int64)
           result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-          paddle.nn.functional.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
-          result2 = paddle.nn.functional.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = paddle.nn.functional.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
-    check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
-    if isinstance(input, Variable):
-        check_dtype(
-            input.dtype, 'input',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-            'assign', '(When the type of input in assign is Variable.)')
+    check_type(input, 'input', (Variable, numpy.ndarray, list, tuple, float,
+                                int, bool), 'assign')
+    is_inplace = True if output is not None else False
+
+    if numpy.isscalar(input) and not isinstance(input, str):
+        input = numpy.array([input])
+    elif isinstance(input, (list, tuple)):
+        input = numpy.array(input)
+    # NOTE(Aurelius84): Why we judge core.VarBase?
+    # In case of @to_static, a VarBase can be as input of `assign`,
+    # but in_dygraph_mode()==False under @to_static, which means
+    # isinstance(VarBase, Variable) == False. It will cause return None
+    # after this api.
+    if isinstance(input, (Variable, core.VarBase)):
+        check_dtype(input.dtype, 'input', [
+            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'
+        ], 'assign', '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
@@ -568,6 +596,14 @@ def assign(input, output=None):
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
+        if dtype == VarDesc.VarType.FP64:
+            # Setting FP64 numpy data is not supported in Paddle, so we
+            # use FP32 here
+            warnings.warn(
+                "paddle.assign doesn't support float64 input now due "
+                "to current platform protobuf data limitation, we convert "
+                "it to float32")
+            dtype = VarDesc.VarType.FP32
         if dtype == VarDesc.VarType.BOOL:
             value_name = "bool_values"
             values = [bool(v) for v in input.flat]
@@ -600,6 +636,9 @@ def assign(input, output=None):
                 value_name: values
             })
 
+    if is_inplace and in_dygraph_mode():
+        output._bump_inplace_version()
+
     return output
 
 
@@ -616,7 +655,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
             If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
         dtype(np.dtype|str): Data type of the output Tensor which can
-            be float16, float32, float64, int32, int64.
+            be float16, float32, float64, uint8, int32, int64.
         value(bool|float|int|Tensor): The constant value used to initialize 
             the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
         force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
@@ -654,7 +693,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     attrs = {'force_cpu': force_cpu}
     dtype = convert_dtype(dtype)
     if not isinstance(value, Variable):
-        if dtype in ['int64', 'int32']:
+        if dtype in ['uint8', 'int64', 'int32']:
             attrs['str_value'] = str(int(value))
             attrs['value'] = int(value)
         else:
@@ -667,7 +706,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out = _varbase_creator(dtype=dtype)
 
         if isinstance(value, Variable):
-            if dtype in ['int64', 'int32']:
+            if dtype in ['uint8', 'int64', 'int32']:
                 attrs['str_value'] = str(int(value.numpy().item(0)))
             else:
                 attrs['str_value'] = str(float(value.numpy().item(0)))
@@ -687,9 +726,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         inputs['ValueTensor'] = value
 
     check_shape(shape)
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'fill_constant')
+    check_dtype(
+        dtype, 'dtype',
+        ['bool', 'float16', 'float32', 'float64', 'uint8', 'int32', 'int64'],
+        'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 
     if out is not None:
@@ -1271,28 +1311,26 @@ def has_nan(x):
 
 def isfinite(x):
     """
-	:alias_main: paddle.isfinite
-	:alias: paddle.isfinite,paddle.tensor.isfinite,paddle.tensor.logic.isfinite
-	:old_api: paddle.fluid.layers.isfinite
 
     Test if any of x contains an infinity/NAN number. If all the elements are finite,
     returns true, else false.
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+        x(Tensor): The Tensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, contains a bool value.
+        Tensor: The tensor storing the output, contains a bool value.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            var = fluid.layers.data(name="data",
-                                    shape=(4, 6),
-                                    dtype="float32")
-            out = fluid.layers.isfinite(var)
+            import paddle
+
+            x = paddle.rand(shape=[4, 6], dtype='float32')
+            y = paddle.fluid.layers.isfinite(x)
+            print(y)
+
     """
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "isfinite")
@@ -1355,21 +1393,26 @@ def range(start, end, step, dtype, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    out_shape = None
+    if not isinstance(start, Variable) and not isinstance(
+            end, Variable) and not isinstance(step, Variable):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(start, Variable):
         with device_guard("cpu"):
-            start = fill_constant([1], dtype, start)
+            start = fill_constant([1], dtype, start, force_cpu=True)
     elif start.dtype != dtype:
         start = cast(start, dtype)
 
     if not isinstance(end, Variable):
         with device_guard("cpu"):
-            end = fill_constant([1], dtype, end)
+            end = fill_constant([1], dtype, end, force_cpu=True)
     elif end.dtype != dtype:
         end = cast(end, dtype)
 
     if not isinstance(step, Variable):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step)
+            step = fill_constant([1], dtype, step, force_cpu=True)
     elif step.dtype != dtype:
         step = cast(step, dtype)
 
@@ -1379,7 +1422,7 @@ def range(start, end, step, dtype, name=None):
     check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
                 'range/arange')
     helper = LayerHelper('range', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
+    out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
     helper.append_op(
         type='range',
         inputs={'Start': start,
@@ -1391,7 +1434,7 @@ def range(start, end, step, dtype, name=None):
 
 
 def linspace(start, stop, num, dtype=None, name=None):
-    """
+    r"""
     This OP return fixed number of evenly spaced values within a given interval.
 
     Args:
@@ -1479,6 +1522,8 @@ def linspace(start, stop, num, dtype=None, name=None):
                 'Num': tensor_num},
         attrs={'dtype': dtype},
         outputs={'Out': [out]})
+    if isinstance(num, int):
+        out.desc.set_shape((num, ))
     return out
 
 
@@ -1527,7 +1572,7 @@ def zeros_like(x, out=None):
 
 @deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
-    """
+    r"""
 	:alias_main: paddle.diag
 	:alias: paddle.diag,paddle.tensor.diag,paddle.tensor.creation.diag
 	:old_api: paddle.fluid.layers.diag
@@ -1651,7 +1696,7 @@ def eye(num_rows,
         expand_times = batch_shape + [1, 1]
         if in_dygraph_mode():
             out = core.ops.reshape(out, 'shape', re_shape)
-            return core.ops.expand(out, 'expand_times', expand_times)
+            return core.ops.expand(out, None, 'expand_times', expand_times)
 
         if not isinstance(batch_shape, list):
             raise TypeError("batch_shape should be a list")

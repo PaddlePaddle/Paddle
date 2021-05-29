@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <stdint.h>
 #include <algorithm>
 #include <mutex>  // NOLINT
 #include <unordered_map>

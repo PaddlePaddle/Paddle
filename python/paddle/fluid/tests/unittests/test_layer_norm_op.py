@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
+import paddle
 
 from operator import mul
 import paddle.fluid.core as core
@@ -117,8 +118,12 @@ class TestLayerNormOp(unittest.TestCase):
                                begin_norm_axis,
                                has_scale=True,
                                has_bias=True,
-                               y_grad_scale=1.0):
-        def test_with_place(place, shape, begin_norm_axis):
+                               y_grad_scale=1.0,
+                               use_mkldnn=False):
+        def test_with_place(place,
+                            shape,
+                            begin_norm_axis,
+                            use_mkldnn=use_mkldnn):
             # attr
             epsilon = 0.00001
             x_shape = shape
@@ -181,7 +186,8 @@ class TestLayerNormOp(unittest.TestCase):
                     },
                     attrs={
                         "epsilon": epsilon,
-                        "begin_norm_axis": begin_norm_axis
+                        "begin_norm_axis": begin_norm_axis,
+                        "use_mkldnn": use_mkldnn
                     })
                 # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
@@ -305,6 +311,8 @@ class TestLayerNormAPI(unittest.TestCase):
 class TestDygraphLayerNormAPIError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
+            paddle.enable_static()
+
             layer_norm = fluid.LayerNorm([32, 32])
             # the input of LayerNorm must be Variable.
             x1 = np.random.random((3, 32, 32)).astype('float32')

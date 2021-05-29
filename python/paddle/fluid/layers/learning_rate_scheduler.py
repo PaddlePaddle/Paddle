@@ -425,22 +425,24 @@ Applies piecewise decay to the initial learning rate.
                         dtype='float32',
                         value=float(boundaries[i]),
                         force_cpu=True)
-                    value_var = tensor.fill_constant(
-                        shape=[1], dtype='float32', value=float(values[i]))
                     with switch.case(global_step < boundary_val):
-                        tensor.assign(value_var, lr)
-                last_value_var = tensor.fill_constant(
-                    shape=[1],
-                    dtype='float32',
-                    value=float(values[len(values) - 1]))
+                        tensor.fill_constant(
+                            shape=[1],
+                            dtype="float32",
+                            value=float(values[i]),
+                            out=lr)
                 with switch.default():
-                    tensor.assign(last_value_var, lr)
+                    tensor.fill_constant(
+                        shape=[1],
+                        dtype="float32",
+                        value=float(values[len(values) - 1]),
+                        out=lr)
 
             return lr
 
 
 def cosine_decay(learning_rate, step_each_epoch, epochs):
-    """
+    r"""
 
     Applies cosine decay to the learning rate.
 

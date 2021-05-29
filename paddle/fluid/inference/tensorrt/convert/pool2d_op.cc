@@ -18,6 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Scope;
+
 namespace proto {
 class OpDesc;
 }  // namespace proto
@@ -65,15 +66,6 @@ class Pool2dOpConverter : public OpConverter {
     VLOG(4)
         << "convert a fluid pool2d op to tensorrt pool2d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
-    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1UL,
-                      platform::errors::InvalidArgument(
-                          "TRT Pool2d expect 1 input, but got %d input.",
-                          op_desc.Input("X").size()));
-    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL,
-                      platform::errors::InvalidArgument(
-                          "TRT Pool2d expect 1 Output, but got %d output.",
-                          op_desc.Output("Out").size()));
-
     auto *input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     nvinfer1::Dims input_shape = input1->getDimensions();
     int input_dims = input_shape.nbDims;
@@ -97,18 +89,18 @@ class Pool2dOpConverter : public OpConverter {
       adaptive = BOOST_GET_CONST(bool, op_desc.GetAttr("adaptive"));
 
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
+    nvinfer1::ReduceOperation reduce_operation =
+        nvinfer1::ReduceOperation::kMAX;
     plugin::PoolPlugin::PoolType plugin_pool_type =
         plugin::PoolPlugin::PoolType::max;
     if (pool_type == "max") {
       nv_pool_type = nvinfer1::PoolingType::kMAX;
+      reduce_operation = nvinfer1::ReduceOperation::kMAX;
       plugin_pool_type = plugin::PoolPlugin::PoolType::max;
     } else if (pool_type == "avg") {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
+      reduce_operation = nvinfer1::ReduceOperation::kAVG;
       plugin_pool_type = plugin::PoolPlugin::PoolType::avg;
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Wrong pool op type, the trt do not support the %s pool type.",
-          pool_type));
     }
 
     nvinfer1::DimsHW nv_ksize(ksize[0], ksize[1]);
@@ -126,18 +118,23 @@ class Pool2dOpConverter : public OpConverter {
     }
 
     if (engine_->with_dynamic_shape()) {
-      if (!adaptive && pool_type == "max" && !global_pooling && !ceil_mode) {
+      if (!adaptive && !global_pooling && !ceil_mode) {
         auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
                                                 nv_pool_type, nv_ksize);
         pool_layer->setStride(nv_strides);
         pool_layer->setPadding(nv_paddings);
+        pool_layer->setAverageCountExcludesPadding(exclusive);
         layer = pool_layer;
+      } else if (global_pooling) {
+        auto *reduce_layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *input1,
+                                                  reduce_operation, 12, true);
+        layer = reduce_layer;
       } else {
 #if IS_TRT_VERSION_GE(6000)
         plugin::PoolPluginDynamic *plugin =
             new plugin::PoolPluginDynamic(ceil_mode, pool_type, adaptive, ksize,
                                           strides, paddings, global_pooling);
-        layer = engine_->AddPluginV2(&input1, 1, plugin);
+        layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
 #endif
       }
       auto output_name = op_desc.Output("Out")[0];
@@ -153,16 +150,20 @@ class Pool2dOpConverter : public OpConverter {
     if (global_pooling == true) {
       nv_ksize.d[0] = input_shape.d[input_dims - 2];
       nv_ksize.d[1] = input_shape.d[input_dims - 1];
-      auto *layer = TRT_ENGINE_ADD_LAYER(
+      auto *pool_layer = TRT_ENGINE_ADD_LAYER(
           engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
           nv_pool_type, nv_ksize);
       PADDLE_ENFORCE_NOT_NULL(
-          layer, platform::errors::Fatal(
-                     "trt pool layer in converter could not be created."));
+          pool_layer, platform::errors::Fatal(
+                          "trt pool layer in converter could not be created."));
       auto output_name = op_desc.Output("Out")[0];
-      layer->setName(("pool2d (Output: " + output_name + ")").c_str());
-      layer->getOutput(0)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, layer->getOutput(0));
+      pool_layer->setStride(nv_strides);
+      pool_layer->setPadding(nv_paddings);
+      pool_layer->setAverageCountExcludesPadding(exclusive);
+      pool_layer->setName(("pool2d (Output: " + output_name + ")").c_str());
+      pool_layer->getOutput(0)->setName(output_name.c_str());
+      engine_->SetITensor(output_name, pool_layer->getOutput(0));
+      layer = pool_layer;
       if (test_mode) {
         engine_->DeclareOutput(output_name);
       }
@@ -184,9 +185,9 @@ class Pool2dOpConverter : public OpConverter {
             engine_, Padding, *const_cast<nvinfer1::ITensor *>(input1), pre_pad,
             post_pad);
         PADDLE_ENFORCE_NOT_NULL(
-            pad_layer,
-            platform::errors::Fatal(
-                "pad layer in poolOp converter could not be created."));
+            pad_layer, platform::errors::Fatal(
+                           "Pad layer in poolOp converter could not be "
+                           "created. The pointer to pad layer is `NULL`."));
         input1 = pad_layer->getOutput(0);
       }
       auto *pool_layer = TRT_ENGINE_ADD_LAYER(

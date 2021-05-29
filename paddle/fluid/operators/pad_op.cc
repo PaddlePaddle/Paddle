@@ -142,6 +142,19 @@ class PadOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class PadOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("pad");
+    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -150,7 +163,9 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(pad_grad, ops::PadOpGrad);
+REGISTER_OPERATOR(pad_grad, ops::PadOpGrad,
+                  ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
@@ -159,3 +174,16 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    pad, ops::PadKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext,
+                   paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    pad_grad, ops::PadGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::PadGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::PadGradKernel<paddle::platform::CUDADeviceContext,
+                       paddle::platform::float16>);

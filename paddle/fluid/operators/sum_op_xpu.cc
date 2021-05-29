@@ -50,8 +50,25 @@ class SumXPUKernel : public framework::OpKernel<T> {
     }
     int r = xpu::sum_batch(dev_ctx.x_context(), ptrs.data(), out->data<T>(),
                            valid_count, out->numel());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::Fatal("XPU sum kernel error!"));
+    if (r == xpu::Error_t::INVALID_PARAM) {
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::InvalidArgument(
+              "XPU kernel error of SumOp, error message: INVALID_PARAM, "
+              "please check your input & output."));
+    } else if (r == xpu::Error_t::RUNTIME_ERROR) {
+      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                        platform::errors::Unavailable(
+                            "XPU kernel error of SumOp, error message: "
+                            "RUNTIME_ERROR, please check whether Baidu "
+                            "Kunlun Card is properly installed."));
+    } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
+      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                        platform::errors::ResourceExhausted(
+                            "XPU kernel error of SumOp, error "
+                            "message: NO_ENOUGH_WORKSPACE, XPU "
+                            "has no enough memory."));
+    }
   }
 };
 

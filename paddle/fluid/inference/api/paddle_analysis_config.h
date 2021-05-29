@@ -177,7 +177,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void DisableGpu();
 
-  void EnableXpu(int l3_workspace_size = 0xfffc00);
+  void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
+                 bool autotune = true, const std::string& autotune_file = "",
+                 const std::string& precision = "int16",
+                 bool adaptive_seqlen = false);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -185,11 +188,23 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
+  /// \brief A boolean state telling whether the XPU is turned on.
+  ///
+  /// \return bool Whether the XPU is turned on.
+  ///
+  bool use_xpu() const { return use_xpu_; }
+  ///
   /// \brief Get the GPU device id.
   ///
   /// \return int The GPU device id.
   ///
-  int gpu_device_id() const { return device_id_; }
+  int gpu_device_id() const { return gpu_device_id_; }
+  ///
+  /// \brief Get the XPU device id.
+  ///
+  /// \return int The XPU device id.
+  ///
+  int xpu_device_id() const { return xpu_device_id_; }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -314,17 +329,42 @@ struct PD_INFER_DECL AnalysisConfig {
       bool disable_trt_plugin_fp16 = false);
 
   ///
+  /// \brief Prevent ops running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
+  void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
+
+  ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
-  /// https://github.com/NVIDIA/TensorRT), with which some models's inference may 
-  /// be more high-performance. Libnvinfer_plugin.so greater than V7.2.1 is needed.
+  /// https://github.com/NVIDIA/TensorRT), with which some models's inference
+  /// may be more high-performance. Libnvinfer_plugin.so greater than
+  /// V7.2.1 is needed.
   ///
   void EnableTensorRtOSS();
+
   ///
   /// \brief A boolean state telling whether to use the TensorRT OSS.
   ///
   /// \return bool Whether to use the TensorRT OSS.
   ///
   bool tensorrt_oss_enabled() { return trt_use_oss_; }
+
+  ///
+  /// \brief Enable TensorRT DLA
+  /// \param dla_core ID of DLACore, which should be 0, 1,
+  ///        ..., IBuilder.getNbDLACores() - 1
+  ///
+  void EnableTensorRtDLA(int dla_core = 0);
+
+  ///
+  /// \brief A boolean state telling whether to use the TensorRT DLA.
+  ///
+  /// \return bool Whether to use the TensorRT DLA.
+  ///
+  bool tensorrt_dla_enabled() { return trt_use_dla_; }
+
+  void EnableDlnne(int min_subgraph_size = 3);
+  bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
@@ -557,7 +597,8 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // GPU related.
   bool use_gpu_{false};
-  int device_id_{0};
+  int gpu_device_id_{0};
+  int xpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
 
   bool use_cudnn_{false};
@@ -584,10 +625,17 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
   bool trt_use_oss_{false};
+  bool trt_use_dla_{false};
+  int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> optim_input_shape_{};
+  std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
+
+  // dlnne related.
+  bool use_dlnne_{false};
+  int dlnne_min_subgraph_size_{3};
 
   // memory reuse related.
   bool enable_memory_optim_{false};
@@ -623,6 +671,11 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_xpu_{false};
   int xpu_l3_workspace_size_;
+  bool xpu_locked_;
+  bool xpu_autotune_;
+  std::string xpu_autotune_file_;
+  std::string xpu_precision_;
+  bool xpu_adaptive_seqlen_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

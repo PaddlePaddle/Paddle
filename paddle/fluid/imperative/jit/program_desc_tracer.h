@@ -66,7 +66,7 @@ class ProgramDescTracer {
       const std::string &feed_prefix,
       const std::vector<std::shared_ptr<VarBase>> &fetch_vars,
       const std::string &fetch_prefix, const std::string &tmp_prefix) const;
-
+  bool ContainVar(const std::weak_ptr<VarBase> &var) const;
   void Reset();
 
  private:

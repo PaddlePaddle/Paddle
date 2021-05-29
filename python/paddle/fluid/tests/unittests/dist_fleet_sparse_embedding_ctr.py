@@ -177,7 +177,6 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_inference_model(exe, model_dir,
                                        [feed.name for feed in self.feeds],
                                        self.avg_cost)
-        fleet.stop_worker()
 
 
 if __name__ == "__main__":

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include <unordered_map>
 #include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
@@ -29,9 +28,19 @@ namespace internal {
 template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
-  if (std::is_same<T, platform::float16>::value ||
-      std::is_same<T, platform::bfloat16>::value ||
-      std::is_floating_point<T>::value) {
+  if (std::is_same<T, platform::complex<float>>::value ||
+      std::is_same<T, platform::complex<double>>::value ||
+      std::is_same<T, platform::complex64>::value ||
+      std::is_same<T, platform::complex128>::value) {
+    // The current dlpack library version is v0.2, and does not define
+    // kDLComplex value. But kDLComplex is defined by 5U in v0.4, so we set
+    // dtype.code to 5U directly here. After the dlpack library version being
+    // upgraded to v0.4, it should be written as follow.
+    // dtype.code = kDLComplex;
+    dtype.code = 5U;
+  } else if (std::is_same<T, platform::float16>::value ||
+             std::is_same<T, platform::bfloat16>::value ||
+             std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
     dtype.code = kDLUInt;
@@ -83,8 +92,18 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));
   }
 
+  inline ::DLContext operator()(const platform::NPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::NPUPlace is not supported"));
+  }
+
+  inline ::DLContext operator()(const platform::NPUPinnedPlace &place) const {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "platform::NPUPinnedPlace is not supported"));
+  }
+
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;
     ctx.device_type = kDLGPU;
     ctx.device_id = place.device;
@@ -96,7 +115,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
   }
 
   inline ::DLContext operator()(const platform::CUDAPinnedPlace &place) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;
     ctx.device_type = kDLCPUPinned;
     ctx.device_id = 0;

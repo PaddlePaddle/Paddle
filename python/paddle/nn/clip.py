@@ -13,19 +13,8 @@
 # limitations under the License.
 
 # TODO: define the functions to clip gradient of parameter  
-from ..fluid.clip import ClipGradByGlobalNorm  #DEFINE_ALIAS
-from ..fluid.clip import ClipGradByNorm  #DEFINE_ALIAS
-from ..fluid.clip import ClipGradByValue  #DEFINE_ALIAS
-from ..fluid.layers import clip  #DEFINE_ALIAS
+from ..fluid.clip import ClipGradByGlobalNorm  # noqa: F401
+from ..fluid.clip import ClipGradByNorm  # noqa: F401
+from ..fluid.clip import ClipGradByValue  # noqa: F401
 
-from ..fluid.layers import clip_by_norm  #DEFINE_ALIAS
-
-__all__ = [
-    #       'ErrorClipByValue',
-    'ClipGradByGlobalNorm',
-    'ClipGradByNorm',
-    'ClipGradByValue',
-    #       'set_gradient_clip',
-    'clip',
-    'clip_by_norm'
-]
+__all__ = []

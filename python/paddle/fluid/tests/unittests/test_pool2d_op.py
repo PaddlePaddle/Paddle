@@ -41,6 +41,8 @@ def max_pool2D_forward_naive(x,
                              exclusive=True,
                              adaptive=False,
                              data_type=np.float64):
+    if data_type == np.float64 and core.is_compiled_with_rocm():
+        data_type = np.float32
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -81,6 +83,8 @@ def avg_pool2D_forward_naive(x,
                              exclusive=True,
                              adaptive=False,
                              data_type=np.float64):
+    if data_type == np.float64 and core.is_compiled_with_rocm():
+        data_type = np.float32
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -340,7 +344,7 @@ class TestPool2D_Op(OpTest):
         self.use_cudnn = False
 
     def init_data_type(self):
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
     def init_pool_type(self):
         self.pool_type = "avg"

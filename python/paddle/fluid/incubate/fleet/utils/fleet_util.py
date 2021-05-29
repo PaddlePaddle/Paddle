@@ -23,18 +23,18 @@ import os
 import sys
 import time
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_pslib
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
 from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 from . import utils
+OpRole = core.op_proto_and_checker_maker.OpRole
 
 __all__ = ["FleetUtil"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-fleet = fleet_pslib
+fleet = None
 
 
 class FleetUtil(object):
@@ -52,9 +52,13 @@ class FleetUtil(object):
 
     def __init__(self, mode="pslib"):
         global fleet
+        op_maker = core.op_proto_and_checker_maker
+        self.op_role_key = op_maker.kOpRoleAttrName()
         if mode == "pslib":
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet_pslib
             fleet = fleet_pslib
         elif mode == "transpiler":
+            from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
             fleet = fleet_transpiler
         else:
             raise ValueError(
@@ -149,7 +153,7 @@ class FleetUtil(object):
                          stat_pos="_generated_var_2",
                          stat_neg="_generated_var_3",
                          print_prefix=""):
-        """
+        r"""
         Print global auc of all distributed workers.
 
         Args:
@@ -1069,7 +1073,7 @@ class FleetUtil(object):
                                 hadoop_fs_name,
                                 hadoop_fs_ugi,
                                 hadoop_home="$HADOOP_HOME"):
-        """
+        r"""
         get last saved base xbox info from xbox_base_done.txt
 
         Args:
@@ -1114,7 +1118,7 @@ class FleetUtil(object):
                            hadoop_fs_name,
                            hadoop_fs_ugi,
                            hadoop_home="$HADOOP_HOME"):
-        """
+        r"""
         get last saved xbox info from xbox_patch_done.txt
 
         Args:
@@ -1160,7 +1164,7 @@ class FleetUtil(object):
                             hadoop_fs_name,
                             hadoop_fs_ugi,
                             hadoop_home="$HADOOP_HOME"):
-        """
+        r"""
         get last saved model info from donefile.txt
 
         Args:
@@ -1275,7 +1279,7 @@ class FleetUtil(object):
                            q_name="q",
                            pos_ins_num_name="pos",
                            total_ins_num_name="total"):
-        """
+        r"""
         get global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
@@ -1465,7 +1469,7 @@ class FleetUtil(object):
                              pos_ins_num_name="pos",
                              total_ins_num_name="total",
                              print_prefix=""):
-        """
+        r"""
         print global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
@@ -1616,20 +1620,26 @@ class FleetUtil(object):
         program = utils.load_program(prog_path, is_text)
         utils.parse_program(program, output_dir)
 
+    def _is_optimizer_op(self, op):
+        return self.op_role_key in op.attr_names and \
+                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
+
     def split_program_by_device(self, program):
         ops_list = []
         type_list = []
         pre = None
         type_cpu = "cpu"
         for op in program.global_block().ops:
+            if self._is_optimizer_op(op):
+                break
             if op.has_attr("op_device"):
-                if pre is None or pre != op.attr("op_device"):
+                cur_attr = op.attr("op_device") if op.attr(
+                    "op_device") != "" else type_cpu
+                if pre is None or pre != cur_attr:
                     ops_list.append([])
-                    type_list.append(
-                        op.attr("op_device")
-                        if op.attr("op_device") != "" else type_cpu)
+                    type_list.append(cur_attr)
                 ops_list[-1].append(op)
-                pre = op.attr("op_device")
+                pre = cur_attr
         l = len(type_list)
         i = 0
         type_heter = None

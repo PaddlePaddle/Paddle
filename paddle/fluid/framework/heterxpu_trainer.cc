@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
     (defined PADDLE_WITH_PSLIB)
@@ -415,7 +416,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
   std::shared_ptr<HeterServiceContext> context = object_pool_.Get();
 
   if (!context->scope_) {
-    int num = rand_r() % places_.size();
+    int num = rand() % places_.size();
     context->place_num_ = num;
     auto place = places_[num];
     context->scope_ = &(place_scopes_[num]->NewScope());

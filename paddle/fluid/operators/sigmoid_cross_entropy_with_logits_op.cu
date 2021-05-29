@@ -11,7 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
@@ -23,7 +29,11 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+#ifdef __HIPCC__
+static constexpr int kNumCUDAThreads = 256;
+#else
 static constexpr int kNumCUDAThreads = 512;
+#endif
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {

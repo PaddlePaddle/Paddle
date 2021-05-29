@@ -16,6 +16,8 @@ import unittest
 import paddle
 import os
 
+paddle.enable_static()
+
 
 class TestFleetMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -28,19 +30,14 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        with paddle.fluid.device_guard("cpu"):
+        with paddle.fluid.device_guard("gpu:0"):
             input_x = paddle.fluid.layers.data(
                 name="x", shape=[32], dtype='float32')
             input_y = paddle.fluid.layers.data(
                 name="y", shape=[1], dtype='int64')
-            data_loader = paddle.fluid.io.DataLoader.from_generator(
-                feed_list=[input_x, input_y],
-                capacity=64,
-                use_double_buffer=True,
-                iterable=False)
             fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
 
-        with paddle.fluid.device_guard("gpu:0"):
+        with paddle.fluid.device_guard("gpu:1"):
             fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
             prediction = paddle.fluid.layers.fc(input=[fc_2],
                                                 size=2,
@@ -51,9 +48,12 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.pipeline = True
-        strategy.pipeline_configs = {'micro_batch': 2}
+        strategy.pipeline_configs = {
+            'micro_batch_size': 1,
+            'accumulate_steps': 2
+        }
 
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.Adam(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

@@ -204,8 +204,8 @@ def train(word_idx):
     :rtype: callable
     """
     return reader_creator(
-        re.compile("train/pos/.*\.txt$"),
-        re.compile("train/neg/.*\.txt$"), word_idx)
+        re.compile(r"train/pos/.*\.txt$"),
+        re.compile(r"train/neg/.*\.txt$"), word_idx)
 
 
 def test(word_idx):
@@ -221,8 +221,8 @@ def test(word_idx):
     :rtype: callable
     """
     return reader_creator(
-        re.compile("test/pos/.*\.txt$"),
-        re.compile("test/neg/.*\.txt$"), word_idx)
+        re.compile(r"test/pos/.*\.txt$"),
+        re.compile(r"test/neg/.*\.txt$"), word_idx)
 
 
 if __name__ == "__main__":

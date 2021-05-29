@@ -16,6 +16,7 @@ from __future__ import print_function
 import six
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
+from ..utils import deprecated
 
 __all__ = [
     "simple_img_conv_pool",
@@ -42,7 +43,7 @@ def simple_img_conv_pool(input,
                          bias_attr=None,
                          act=None,
                          use_cudnn=True):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
@@ -332,8 +333,9 @@ def sequence_conv_pool(input,
     return pool_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.glu")
 def glu(input, dim=-1):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
@@ -384,7 +386,7 @@ def scaled_dot_product_attention(queries,
                                  values,
                                  num_heads=1,
                                  dropout_rate=0.):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This interface Multi-Head Attention using scaled dot product.

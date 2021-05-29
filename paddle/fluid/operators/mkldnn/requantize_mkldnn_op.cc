@@ -65,9 +65,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     float reorder_scale = scale_out / scale_in;
 
-    std::string key =
-        platform::CreateKey(platform::ThreadIDasStr(), src_tz, scale_in,
-                            scale_out, ctx.OutputName("Output"));
+    std::string key = platform::CreateKey(dev_ctx, src_tz, scale_in, scale_out,
+                                          ctx.OutputName("Output"));
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     const std::string key_prim = key + "@r";
     const std::string key_src_mem = key + "@s";
     const std::string key_dst_mem = key + "@d";
@@ -137,9 +137,13 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    dnnl::stream astream(engine);
-    reorder_p->execute(astream, *src_memory, *dst_memory);
-    astream.wait();
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder_p->execute(astream, *src_memory, *dst_memory);
+      astream.wait();
+    }
 
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_memory));
@@ -152,4 +156,5 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(requantize, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::ReQuantOpKernel<int8_t>, ops::ReQuantOpKernel<uint8_t>);
+                   ops::ReQuantOpKernel<int8_t>, ops::ReQuantOpKernel<uint8_t>,
+                   ops::ReQuantOpKernel<paddle::platform::bfloat16>);

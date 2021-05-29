@@ -17,7 +17,6 @@ include(ExternalProject)
 
 set(THIRD_PARTY_PATH  "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
     "A path setting third party libraries download & build directories.")
-
 set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
     "A path cache third party source code to avoid repeated download.")
 
@@ -30,9 +29,9 @@ set(third_party_deps)
 # 2. REPOSITORY:    specify git REPOSITORY of 3rd party
 # 3. TAG:           specify git tag/branch/commitID of 3rd party
 # 4. DIR:           overwrite the original SOURCE_DIR when cache directory
-# 
+#
 # The function Return 1 PARENT_SCOPE variables:
-#  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add, 
+#  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add,
 #                            and you no longer need to set any donwnload steps in ExternalProject_Add.
 # For example:
 #    Cache_third_party(${TARGET}
@@ -53,7 +52,7 @@ FUNCTION(cache_third_party TARGET)
         SET(${TARGET_NAME}_DOWNLOAD_CMD
                 GIT_REPOSITORY  ${cache_third_party_REPOSITORY})
         IF(cache_third_party_TAG)
-            LIST(APPEND   ${TARGET_NAME}_DOWNLOAD_CMD  
+            LIST(APPEND   ${TARGET_NAME}_DOWNLOAD_CMD
                     GIT_TAG     ${cache_third_party_TAG})
         ENDIF()
     ELSEIF(cache_third_party_URL)
@@ -112,10 +111,11 @@ FUNCTION(file_download_and_uncompress URL NAME)
   MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}")
   SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME}/data PARENT_SCOPE)
   ExternalProject_Add(
-      extern_download_${NAME}
+      download_${NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${THIRD_PARTY_PATH}/${NAME}
       URL                   ${URL}
+      TIMEOUT               120
       DOWNLOAD_DIR          ${THIRD_PARTY_PATH}/${NAME}/data/
       SOURCE_DIR            ${THIRD_PARTY_PATH}/${NAME}/data/
       DOWNLOAD_NO_PROGRESS  1
@@ -124,14 +124,14 @@ FUNCTION(file_download_and_uncompress URL NAME)
       UPDATE_COMMAND        ""
       INSTALL_COMMAND       ""
     )
-  set(third_party_deps ${third_party_deps} extern_download_${NAME} PARENT_SCOPE)
+  set(third_party_deps ${third_party_deps} download_${NAME} PARENT_SCOPE)
 ENDFUNCTION()
 
 
 # Correction of flags on different Platform(WIN/MAC) and Print Warning Message
 if (APPLE)
     if(WITH_MKL)
-        MESSAGE(WARNING 
+        MESSAGE(WARNING
             "Mac is not supported with MKL in Paddle yet. Force WITH_MKL=OFF.")
         set(WITH_MKL OFF CACHE STRING "Disable MKL for building on mac" FORCE)
     endif()
@@ -142,7 +142,7 @@ if(WIN32 OR APPLE)
     SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in Windows and MacOS" FORCE)
 
     if(WITH_LIBXSMM)
-        MESSAGE(WARNING 
+        MESSAGE(WARNING
             "Windows, Mac are not supported with libxsmm in Paddle yet."
             "Force WITH_LIBXSMM=OFF")
         SET(WITH_LIBXSMM OFF CACHE STRING "Disable LIBXSMM in Windows and MacOS" FORCE)
@@ -209,11 +209,6 @@ include(external/warpctc)   # download, build, install warpctc
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
-if(WITH_AMD_GPU)
-    include(external/rocprim)   # download, build, install rocprim
-    list(APPEND third_party_deps extern_rocprim)
-endif()
-
 include(cblas)              	# find first, then download, build, install openblas
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
@@ -228,7 +223,7 @@ if(WITH_MKLDNN)
 endif()
 
 include(external/protobuf)  	# find first, then download, build, install protobuf
-if(NOT PROTOBUF_FOUND OR WIN32)
+if(TARGET extern_protobuf)
     list(APPEND third_party_deps extern_protobuf)
 endif()
 
@@ -238,7 +233,7 @@ if(WITH_PYTHON)
     list(APPEND third_party_deps extern_pybind)
 endif()
 
-IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
+IF(WITH_TESTING OR WITH_DISTRIBUTE)
     include(external/gtest)     # download, build, install gtest
     list(APPEND third_party_deps extern_gtest)
 ENDIF()
@@ -248,8 +243,20 @@ if(WITH_GPU)
         include(external/cub)       # download cub
         list(APPEND third_party_deps extern_cub)
     endif()
-    set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
-    file_download_and_uncompress(${CUDAERROR_URL} "cudaerror") # download file cudaErrorMessage
+    set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg.tar.gz" CACHE STRING "" FORCE)
+    file_download_and_uncompress(${URL} "externalError")   # download file externalErrorMsg.tar.gz
+    if(WITH_TESTING)
+        # copy externalErrorMsg.pb for unittest 'enforce_test'
+        set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)
+        if(WIN32 AND (NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja"))
+            set(DST_DIR ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
+        else()
+            set(DST_DIR ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
+        endif()
+        add_custom_command(TARGET download_externalError POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR}
+            COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
+    endif()
 endif(WITH_GPU)
 
 if(WITH_XPU)
@@ -267,6 +274,14 @@ if(WITH_PSLIB)
     if(WITH_PSLIB_BRPC)
         include(external/pslib_brpc) # download, build, install pslib_brpc
         list(APPEND third_party_deps extern_pslib_brpc)
+    else()    
+        include(external/snappy)
+        list(APPEND third_party_deps extern_snappy)
+
+        include(external/leveldb)
+        list(APPEND third_party_deps extern_leveldb)
+        include(external/brpc)
+        list(APPEND third_party_deps extern_brpc)
     endif()
 endif(WITH_PSLIB)
 
@@ -280,13 +295,32 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
-if(WITH_DISTRIBUTE)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
+    include(external/ascend)
+    if(WITH_ASCEND OR WITH_ASCEND_CL)
+        list(APPEND third_party_deps extern_ascend)
+    endif()
+    if(WITH_ASCEND_CL)
+        list(APPEND third_party_deps extern_ascend_cl)
+    endif()
+endif ()
 
-    if(WITH_GRPC)
-        list(APPEND third_party_deps extern_grpc)
-    else()
-        list(APPEND third_party_deps extern_leveldb)
-        list(APPEND third_party_deps extern_brpc)
+if (WITH_PSCORE)
+    include(external/snappy)
+    list(APPEND third_party_deps extern_snappy)
+
+    include(external/leveldb)
+    list(APPEND third_party_deps extern_leveldb)
+
+    include(external/brpc)
+    list(APPEND third_party_deps extern_brpc)
+
+    include(external/libmct)     # download, build, install libmct
+    list(APPEND third_party_deps extern_libmct)
+    
+    if (WITH_HETERPS)
+        include(external/rocksdb)     # download, build, install libmct
+        list(APPEND third_party_deps extern_rocksdb)
     endif()
 endif()
 
@@ -308,11 +342,14 @@ if(WITH_DGC)
 endif()
 
 if (WITH_LITE)
+    message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    list(APPEND third_party_deps extern_cryptopp)
+    add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

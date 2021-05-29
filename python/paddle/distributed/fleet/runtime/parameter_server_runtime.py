@@ -26,6 +26,8 @@ from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 class ParameterServerRuntime(RuntimeBase):
     def __init__(self):
@@ -207,6 +209,7 @@ class ParameterServerRuntime(RuntimeBase):
             SyncStrategy, GeoStrategy
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
+        print(trainer_config)
 
         dist_strategy = self.context["valid_strategy"]
         launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]

@@ -14,12 +14,11 @@
 
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 
-#include <memory>
-#include <unordered_map>
-
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle_test.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -32,6 +31,8 @@ namespace framework {
 namespace details {
 
 struct VarHandle;
+
+using DeviceType = paddle::platform::DeviceType;
 
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
   std::vector<std::string> out_varnames_;
@@ -55,22 +56,25 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     // create op handle node
     nodes_.emplace_back(
         ir::CreateNodeForTest("fused_broadcast", ir::Node::Type::kOperation));
-    if (use_gpu_) {
-#if defined(PADDLE_WITH_NCCL)
+    if (use_device_ == p::kCUDA) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
-    } else {
-#if defined(PADDLE_WITH_NCCL)
+    } else if (use_device_ == p::kXPU) {
+#if defined(PADDLE_WITH_XPU_BKCL)
       op_handle_ = new FusedBroadcastOpHandle(
-          nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
+          nodes_.back().get(), local_scopes_, place_list_, bkcl_ctxs_.get());
 #else
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with XPU."));
+#endif
+    } else {
       op_handle_ = new FusedBroadcastOpHandle(nodes_.back().get(),
                                               local_scopes_, place_list_);
-#endif
     }
 
     op_handle_->SetLocalExecScopes(scope_map);
@@ -108,7 +112,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
           InitLoDTensor(varname, input_scope_idxes[i], lod, val_scalar));
     }
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
@@ -131,7 +136,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
                                              rows, height, val_scalar));
     }
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
@@ -147,7 +153,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
 TEST(FusedBroadcastTester, CPULodTensor) {
   TestFusedBroadcastOpHandle test_op;
   std::vector<size_t> input_scope_idxes = {0, 1};
-  test_op.InitCtxOnGpu(false);
+  test_op.InitCtxOnDevice(p::kCPU);
   test_op.InitFusedBroadcastOp(input_scope_idxes);
   test_op.TestFusedBroadcastLoDTensor(input_scope_idxes);
 }
@@ -155,16 +161,17 @@ TEST(FusedBroadcastTester, CPULodTensor) {
 TEST(FusedBroadcastTester, CPUSelectedRows) {
   TestFusedBroadcastOpHandle test_op;
   std::vector<size_t> input_scope_idxes = {0, 1};
-  test_op.InitCtxOnGpu(false);
+  test_op.InitCtxOnDevice(p::kCPU);
   test_op.InitFusedBroadcastOp(input_scope_idxes);
   test_op.TestFusedBroadcastSelectedRows(input_scope_idxes);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_NCCL)) || \
+    (defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL))
 TEST(FusedBroadcastTester, GPULodTensor) {
   TestFusedBroadcastOpHandle test_op;
   std::vector<size_t> input_scope_idxes = {0, 1};
-  test_op.InitCtxOnGpu(true);
+  test_op.InitCtxOnDevice(p::kCUDA);
   test_op.InitFusedBroadcastOp(input_scope_idxes);
   test_op.TestFusedBroadcastLoDTensor(input_scope_idxes);
 }
@@ -172,9 +179,19 @@ TEST(FusedBroadcastTester, GPULodTensor) {
 TEST(FusedBroadcastTester, GPUSelectedRows) {
   TestFusedBroadcastOpHandle test_op;
   std::vector<size_t> input_scope_idxes = {0, 1};
-  test_op.InitCtxOnGpu(true);
+  test_op.InitCtxOnDevice(p::kCUDA);
   test_op.InitFusedBroadcastOp(input_scope_idxes);
   test_op.TestFusedBroadcastSelectedRows(input_scope_idxes);
+}
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+TEST(FusedBroadcastTester, XPULodTensor) {
+  TestFusedBroadcastOpHandle test_op;
+  std::vector<size_t> input_scope_idxes = {0, 1};
+  test_op.InitCtxOnDevice(p::kXPU);
+  test_op.InitFusedBroadcastOp(input_scope_idxes);
+  test_op.TestFusedBroadcastLoDTensor(input_scope_idxes);
 }
 #endif
 

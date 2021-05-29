@@ -16,6 +16,8 @@ from paddle.distributed.fleet.meta_optimizers.common import is_optimizer_op
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
 
+__all__ = []
+
 
 class Shard(object):
     def __init__(self, ):
@@ -123,6 +125,14 @@ class Shard(object):
             if base_name in self.global_params:
                 return True
         return False
+
+    def filter_grads(self, grads):
+        grads_in_shard = []
+        for grad in grads:
+            param = grad.split("@")[0]
+            if self.has_param(param):
+                grads_in_shard.append(grad)
+        return grads_in_shard
 
 
 class ProgramSegment(object):

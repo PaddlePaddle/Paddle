@@ -13,21 +13,26 @@
 // limitations under the License.
 
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
-#include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+namespace details {
+class ComputationOpHandle;
+struct VarHandle;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 class InplaceAddToOpPass : public MemoryReusePass {
  protected:

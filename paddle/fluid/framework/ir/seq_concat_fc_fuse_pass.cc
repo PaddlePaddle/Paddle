@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
-#include <set>
-#include <string>
-#include <unordered_set>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -262,7 +260,7 @@ REGISTER_PASS_CAPABILITY(seq_concat_fc_fuse_pass)
             .EQ("sequence_expand", 0)
             .EQ("concat", 0)
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("sigmoid", 0)
             .EQ("tanh", 0)
             .EQ("relu", 0)

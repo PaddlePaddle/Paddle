@@ -13,6 +13,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -58,7 +59,9 @@ class RankAttentionOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ((rank_offset_dims[1] - 1) / 2, max_rank,
                       platform::errors::InvalidArgument(
-                          "Input(RankOffset) has wrong columns."));
+                          "Input(RankOffset) has wrong columns, "
+                          "except columns to be %d, but got %d",
+                          max_rank, (rank_offset_dims[1] - 1) / 2));
 
     ctx->SetOutputDim("Out", {ins_num, para_col});
     ctx->SetOutputDim("InputHelp", {ins_num, block_matrix_row});
@@ -176,3 +179,18 @@ REGISTER_OP_CPU_KERNEL(
     rank_attention,
     ops::RankAttentionKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RankAttentionKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(rank_attention)
+    .AddCheckpoint(
+        R"ROC(
+        Upgrade rank_attention, add 1 outputs [InputHelp] and 1 attribute
+        [MaxSize].
+      )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewOutput("InputHelp",
+                       "Output tensor of rank_attention_Op operator "
+                       "in order to assist calculation in the reverse process.")
+            .NewAttr(
+                "MaxSize",
+                "Forward calculation to set the pre-applied video memory size",
+                0));

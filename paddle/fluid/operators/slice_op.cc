@@ -121,8 +121,18 @@ class SliceOp : public framework::OperatorWithKernel {
           start = std::max(start, 0);
           end = std::max(end, 0);
           end = std::min(end, dim_value);
-          PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
-                                            "end should greater than start"));
+
+          PADDLE_ENFORCE_LE(start, dim_value,
+                            platform::errors::InvalidArgument(
+                                "start should be less than or equal to the "
+                                "dimension value, but received "
+                                "start = %d, shape[%d] = %d.",
+                                starts[i], axes[i], out_dims[axes[i]]));
+          PADDLE_ENFORCE_GT(end, start,
+                            platform::errors::InvalidArgument(
+                                "end should greater than start, but received "
+                                "end = %d, start = %d.",
+                                ends[i], starts[i]));
           out_dims[axes[i]] = end - start;
         }
       }
@@ -424,10 +434,43 @@ REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::SliceKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::complex<float>>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex<float>>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex<double>>);
+
+REGISTER_OP_CUDA_KERNEL(
+    slice, ops::SliceKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::float16>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::complex<float>>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext,
+                     paddle::platform::complex<double>>);
+
+REGISTER_OP_CUDA_KERNEL(
+    slice_grad,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::float16>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex<float>>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex<double>>);

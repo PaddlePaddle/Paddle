@@ -12,11 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
 #include <iostream>
 #include <random>
-#include <string>
-#include <vector>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -863,7 +861,10 @@ void TestKernelSgd() {
     for (int i = 0; i < n; ++i) {
       all.push_back(i);
     }
-    std::random_shuffle(all.begin(), all.end());
+    std::random_device rnd;
+    int64_t seed_tmp = rnd();
+    std::default_random_engine rng(seed_tmp);
+    std::shuffle(all.begin(), all.end(), rng);
     out.insert(out.begin(), all.begin(), all.begin() + n);
     return out;
   };

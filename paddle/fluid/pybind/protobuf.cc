@@ -185,6 +185,8 @@ void BindVarDsec(pybind11::module *m) {
       .value("FP32", pd::proto::VarType::FP32)
       .value("FP64", pd::proto::VarType::FP64)
       .value("BF16", pd::proto::VarType::BF16)
+      .value("COMPLEX64", pd::proto::VarType::COMPLEX64)
+      .value("COMPLEX128", pd::proto::VarType::COMPLEX128)
       .value("LOD_TENSOR", pd::proto::VarType::LOD_TENSOR)
       .value("SELECTED_ROWS", pd::proto::VarType::SELECTED_ROWS)
       .value("FEED_MINIBATCH", pd::proto::VarType::FEED_MINIBATCH)
@@ -233,6 +235,7 @@ void BindOpDesc(pybind11::module *m) {
               const std::vector<std::string> &vec_var_name) {
              self.SetOutput(name, vec_var_name);
            })
+      .def("remove_output", &pd::OpDesc::RemoveOutput)
       .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
       .def("_rename_input", &pd::OpDesc::RenameInput)

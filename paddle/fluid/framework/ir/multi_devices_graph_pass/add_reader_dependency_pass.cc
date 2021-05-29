@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include <queue>
-#include <unordered_set>
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 class AddReaderDependencyPass : public Pass {
  protected:

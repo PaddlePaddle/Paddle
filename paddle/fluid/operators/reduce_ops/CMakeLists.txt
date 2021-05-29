@@ -1,4 +1,8 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    # Load Unity Build rules for operators in paddle/fluid/operators/reduce_ops.
+    include(unity_build_rule.cmake)
+endif()
 if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
         register_operators(DEPS cub)
@@ -9,7 +13,7 @@ else()
     register_operators()
 endif()
 
-if(WITH_GPU)
+if(WITH_GPU OR WITH_ROCM)
     file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.part.cu")
     string(REPLACE ".part.cu" "" OPS "${OPS}")
 
@@ -33,4 +37,12 @@ if(WITH_GPU)
     else()
 	nv_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor)
     endif()
+endif()
+
+if(WITH_ROCM)
+    hip_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor)
+endif()
+
+if(WITH_ASCEND_CL)
+    cc_test(reduce_any_op_npu_test SRCS reduce_any_op_npu_test.cc DEPS op_registry reduce_any_op scope device_context enforce executor)
 endif()

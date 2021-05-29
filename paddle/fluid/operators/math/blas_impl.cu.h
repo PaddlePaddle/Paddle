@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
+
 #include "paddle/fluid/platform/gpu_info.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
@@ -259,6 +260,208 @@ struct CUBlas<platform::float16> {
 };
 
 template <>
+struct CUBlas<platform::complex<float>> {
+  static void GEMV(cublasHandle_t handle, cublasOperation_t transa, int m,
+                   int n, const platform::complex<float> *alpha,
+                   const platform::complex<float> *A, int lda,
+                   const platform::complex<float> *B, int ldb,
+                   const platform::complex<float> *beta,
+                   platform::complex<float> *C, int ldc) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasCgemv(
+        handle, transa, m, n, reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(A), lda,
+        reinterpret_cast<const cuFloatComplex *>(B), ldb,
+        reinterpret_cast<const cuFloatComplex *>(beta),
+        reinterpret_cast<cuFloatComplex *>(C), ldc));
+  }
+
+  static void AXPY(cublasHandle_t handle, int n,
+                   const platform::complex<float> *alpha,
+                   const platform::complex<float> *X, const int incX,
+                   platform::complex<float> *Y, const int incY) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasCaxpy(
+        handle, n, reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(X), incX,
+        reinterpret_cast<cuFloatComplex *>(Y), incY));
+  }
+
+  static void GEMM_STRIDED_BATCH(cublasHandle_t handle,
+                                 cublasOperation_t transa,
+                                 cublasOperation_t transb, int m, int n, int k,
+                                 const platform::complex<float> *alpha,
+                                 const platform::complex<float> *A, int lda,
+                                 long long int strideA,              // NOLINT
+                                 const platform::complex<float> *B,  // NOLINT
+                                 int ldb, long long int strideB,     // NOLINT
+                                 const platform::complex<float> *beta,
+                                 platform::complex<float> *C, int ldc,
+                                 long long int strideC,  // NOLINT
+                                 int batchCount) {
+#if CUDA_VERSION >= 8000
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasCgemmStridedBatched(
+        handle, transa, transb, m, n, k,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(A), lda, strideA,
+        reinterpret_cast<const cuFloatComplex *>(B), ldb, strideB,
+        reinterpret_cast<const cuFloatComplex *>(beta),
+        reinterpret_cast<cuFloatComplex *>(C), ldc, strideC, batchCount));
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "CgemmStridedBatched is not supported on cuda <= 7.5"));
+#endif
+  }
+
+  static void GEMM(cublasHandle_t handle, cublasOperation_t transa,
+                   cublasOperation_t transb, int m, int n, int k,
+                   const platform::complex<float> *alpha,
+                   const platform::complex<float> *A, int lda,
+                   const platform::complex<float> *B, int ldb,
+                   const platform::complex<float> *beta,
+                   platform::complex<float> *C, int ldc) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasCgemm(
+        handle, transa, transb, m, n, k,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(A), lda,
+        reinterpret_cast<const cuFloatComplex *>(B), ldb,
+        reinterpret_cast<const cuFloatComplex *>(beta),
+        reinterpret_cast<cuFloatComplex *>(C), ldc));
+  }
+
+  // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
+  // https://docs.nvidia.com/cuda/cublas/index.html#cublassetmathmode
+  template <typename... ARGS>
+  static void GEMM_EX(platform::CUDADeviceContext *dev_ctx,
+                      cublasOperation_t transa, cublasOperation_t transb, int m,
+                      int n, int k, const void *alpha, const void *A,
+                      cudaDataType_t Atype, int lda, const void *B,
+                      cudaDataType_t Btype, int ldb, const void *beta, void *C,
+                      cudaDataType_t Ctype, int ldc,
+                      cudaDataType_t computeType) {
+#if CUDA_VERSION >= 8000
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
+#if CUDA_VERSION >= 9000
+    bool use_tensor_op_math = dev_ctx->tensor_core_available();
+    if (use_tensor_op_math) {
+      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+    }
+    VLOG(5) << "use_tensor_op_math: "
+            << (use_tensor_op_math ? "True" : "False");
+#endif  // CUDA_VERSION >= 9000
+
+    dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+          handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
+          beta, C, Ctype, ldc, computeType, algo));
+    });
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "cublasGemmEx is not supported on cuda <= 7.5"));
+#endif
+  }
+};
+
+template <>
+struct CUBlas<platform::complex<double>> {
+  static void GEMV(cublasHandle_t handle, cublasOperation_t transa, int m,
+                   int n, const platform::complex<double> *alpha,
+                   const platform::complex<double> *A, int lda,
+                   const platform::complex<double> *B, int ldb,
+                   const platform::complex<double> *beta,
+                   platform::complex<double> *C, int ldc) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasZgemv(
+        handle, transa, m, n, reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(A), lda,
+        reinterpret_cast<const cuDoubleComplex *>(B), ldb,
+        reinterpret_cast<const cuDoubleComplex *>(beta),
+        reinterpret_cast<cuDoubleComplex *>(C), ldc));
+  }
+
+  static void AXPY(cublasHandle_t handle, int n,
+                   const platform::complex<double> *alpha,
+                   const platform::complex<double> *X, const int incX,
+                   platform::complex<double> *Y, const int incY) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasZaxpy(
+        handle, n, reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(X), incX,
+        reinterpret_cast<cuDoubleComplex *>(Y), incY));
+  }
+
+  static void GEMM_STRIDED_BATCH(cublasHandle_t handle,
+                                 cublasOperation_t transa,
+                                 cublasOperation_t transb, int m, int n, int k,
+                                 const platform::complex<double> *alpha,
+                                 const platform::complex<double> *A, int lda,
+                                 long long int strideA,               // NOLINT
+                                 const platform::complex<double> *B,  // NOLINT
+                                 int ldb, long long int strideB,      // NOLINT
+                                 const platform::complex<double> *beta,
+                                 platform::complex<double> *C, int ldc,
+                                 long long int strideC,  // NOLINT
+                                 int batchCount) {
+#if CUDA_VERSION >= 8000
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasZgemmStridedBatched(
+        handle, transa, transb, m, n, k,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(A), lda, strideA,
+        reinterpret_cast<const cuDoubleComplex *>(B), ldb, strideB,
+        reinterpret_cast<const cuDoubleComplex *>(beta),
+        reinterpret_cast<cuDoubleComplex *>(C), ldc, strideC, batchCount));
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "CgemmStridedBatched is not supported on cuda <= 7.5"));
+#endif
+  }
+
+  static void GEMM(cublasHandle_t handle, cublasOperation_t transa,
+                   cublasOperation_t transb, int m, int n, int k,
+                   const platform::complex<double> *alpha,
+                   const platform::complex<double> *A, int lda,
+                   const platform::complex<double> *B, int ldb,
+                   const platform::complex<double> *beta,
+                   platform::complex<double> *C, int ldc) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasZgemm(
+        handle, transa, transb, m, n, k,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(A), lda,
+        reinterpret_cast<const cuDoubleComplex *>(B), ldb,
+        reinterpret_cast<const cuDoubleComplex *>(beta),
+        reinterpret_cast<cuDoubleComplex *>(C), ldc));
+  }
+
+  // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
+  // https://docs.nvidia.com/cuda/cublas/index.html#cublassetmathmode
+  template <typename... ARGS>
+  static void GEMM_EX(platform::CUDADeviceContext *dev_ctx,
+                      cublasOperation_t transa, cublasOperation_t transb, int m,
+                      int n, int k, const void *alpha, const void *A,
+                      cudaDataType_t Atype, int lda, const void *B,
+                      cudaDataType_t Btype, int ldb, const void *beta, void *C,
+                      cudaDataType_t Ctype, int ldc,
+                      cudaDataType_t computeType) {
+#if CUDA_VERSION >= 8000
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
+#if CUDA_VERSION >= 9000
+    bool use_tensor_op_math = dev_ctx->tensor_core_available();
+    if (use_tensor_op_math) {
+      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+    }
+    VLOG(5) << "use_tensor_op_math: "
+            << (use_tensor_op_math ? "True" : "False");
+#endif  // CUDA_VERSION >= 9000
+
+    dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+          handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
+          beta, C, Ctype, ldc, computeType, algo));
+    });
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "cublasGemmEx is not supported on cuda <= 7.5"));
+#endif
+  }
+};
+
+template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                                              CBLAS_TRANSPOSE transB, int M,
@@ -334,6 +537,103 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
     CUBlas<platform::float16>::GEMM(handle, cuTransB, cuTransA, N, M, K,
                                     &h_alpha, h_B, ldb, h_A, lda, &h_beta, h_C,
                                     N);
+  });
+#endif  // CUDA_VERSION >= 8000
+}
+
+template <>
+template <>
+inline void Blas<platform::CUDADeviceContext>::GEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    platform::complex<float> alpha, const platform::complex<float> *A,
+    const platform::complex<float> *B, platform::complex<float> beta,
+    platform::complex<float> *C) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(), 53,
+      platform::errors::InvalidArgument(
+          "cublas complex64 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          context_.GetComputeCapability()));
+
+  thrust::complex<float> c_alpha =
+      thrust::complex<float>(alpha.real, alpha.imag);
+  thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
+
+#if CUDA_VERSION >= 8000
+  // cublasHgemm does true FP16 computation which is slow for non-Volta
+  // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
+  // input/output in fp16, computation in fp32, which can also be accelerated
+  // using tensor cores in volta GPUs.
+  auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
+  CUBlas<platform::complex<float>>::GEMM_EX(
+      &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B, CUDA_C_32F, ldb, A,
+      CUDA_C_32F, lda, &c_beta, C, CUDA_C_32F, N, CUDA_C_32F);
+#else
+  // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<platform::complex<float>>::GEMM(handle, cuTransB, cuTransA, N, M, K,
+                                           &c_alpha, h_B, ldb, h_A, lda,
+                                           &c_beta, h_C, N);
+  });
+#endif  // CUDA_VERSION >= 8000
+}
+
+template <>
+template <>
+inline void Blas<platform::CUDADeviceContext>::GEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    platform::complex<double> alpha, const platform::complex<double> *A,
+    const platform::complex<double> *B, platform::complex<double> beta,
+    platform::complex<double> *C) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(), 53,
+      platform::errors::InvalidArgument(
+          "cublas complex128 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          context_.GetComputeCapability()));
+
+  thrust::complex<double> c_alpha =
+      thrust::complex<double>(alpha.real, alpha.imag);
+  thrust::complex<double> c_beta =
+      thrust::complex<double>(beta.real, beta.imag);
+
+#if CUDA_VERSION >= 8000
+  // cublasHgemm does true FP16 computation which is slow for non-Volta
+  // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
+  // input/output in fp16, computation in fp32, which can also be accelerated
+  // using tensor cores in volta GPUs.
+  auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
+  CUBlas<platform::complex<double>>::GEMM_EX(
+      &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B, CUDA_C_64F, ldb, A,
+      CUDA_C_64F, lda, &c_beta, C, CUDA_C_64F, N, CUDA_C_64F);
+#else
+  // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<platform::complex<double>>::GEMM(handle, cuTransB, cuTransA, N, M, K,
+                                            &c_alpha, h_B, ldb, h_A, lda,
+                                            &c_beta, h_C, N);
   });
 #endif  // CUDA_VERSION >= 8000
 }

@@ -26,6 +26,10 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
+namespace nvinfer1 {
+class ITensor;
+}  // namespace nvinfer1
+
 DECLARE_bool(profile);
 
 namespace paddle {
@@ -40,9 +44,10 @@ typedef std::function<PluginTensorRT*(const void*, size_t)>
 
 typedef std::function<PluginTensorRT*(void)> PluginConstructFunc;
 
+// Deprecated. Do not inherit this class, please refer to PluginTensorRTV2Ext
 class PluginTensorRT : public nvinfer1::IPluginExt {
  public:
-  PluginTensorRT() {}
+  PluginTensorRT() : with_fp16_(false) {}
   // It was used for TensorRT deserialization.
   // It should not be called by users.
   PluginTensorRT(const void* serialized_data, size_t length) {}
@@ -112,12 +117,121 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   nvinfer1::PluginFormat data_format_;
 
   std::vector<nvinfer1::ITensor*> inputs_;
+  bool with_fp16_;
+};
+
+// TensorRT introduced IPluginV2Ext after 5.1, Paddle no longer supports
+// versions before 5.1
+class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
+ public:
+  PluginTensorRTV2Ext() : with_fp16_(false) {}
+  PluginTensorRTV2Ext(const void* serialized_data, size_t length) {}
+
+  nvinfer1::Dims const& getInputDims(int index) const {
+    return input_dims_.at(index);
+  }
+  size_t getMaxBatchSize() const { return max_batch_size_; }
+  nvinfer1::DataType getDataType() const { return data_type_; }
+  nvinfer1::PluginFormat getDataFormat() const { return data_format_; }
+
+  // The Func in IPluginV2Ext
+  virtual nvinfer1::DataType getOutputDataType(
+      int index, const nvinfer1::DataType* input_types,
+      int nb_inputs) const = 0;
+
+  virtual bool isOutputBroadcastAcrossBatch(int32_t output_index,
+                                            const bool* input_is_broadcasted,
+                                            int32_t nb_inputs) const {
+    return false;
+  }
+
+  virtual bool canBroadcastInputAcrossBatch(int32_t input_index) const {
+    return false;
+  }
+
+  void configurePlugin(const nvinfer1::Dims* input_dims, int32_t nb_inputs,
+                       const nvinfer1::Dims* output_dims, int32_t nb_outputs,
+                       const nvinfer1::DataType* input_types,
+                       const nvinfer1::DataType* output_types,
+                       const bool* input_is_broadcast,
+                       const bool* output_is_broadcast,
+                       nvinfer1::PluginFormat float_format,
+                       int32_t max_batch_size) override;
+
+  virtual IPluginV2Ext* clone() const = 0;
+
+  void attachToContext(cudnnContext*, cublasContext*,
+                       nvinfer1::IGpuAllocator*) override {}
+
+  void detachFromContext() override {}
+
+  // The Func in IPluginV2
+  virtual const char* getPluginType() const = 0;
+  const char* getPluginVersion() const override { return "1"; }
+  virtual int32_t getNbOutputs() const { return 1; }
+  virtual nvinfer1::Dims getOutputDimensions(int32_t index,
+                                             const nvinfer1::Dims* inputs,
+                                             int32_t nb_input) = 0;
+  // Check format support. The default is FLOAT32 and NCHW.
+  bool supportsFormat(nvinfer1::DataType type,
+                      nvinfer1::PluginFormat format) const override {
+    return ((type == nvinfer1::DataType::kFLOAT) &&
+            (format == nvinfer1::PluginFormat::kNCHW));
+  }
+  // Initialize the layer for execution.
+  // This is called when the engine is created.
+  int initialize() override { return 0; }
+
+  // Shutdown the layer. This is called when the engine is destroyed
+  void terminate() override {}
+
+  // Find the workspace size required by the layer
+  size_t getWorkspaceSize(int) const override { return 0; }
+
+  // Execute the layer
+  virtual int enqueue(int batch_size, const void* const* inputs, void** outputs,
+                      void* workspace, cudaStream_t stream) = 0;
+
+  // Find the size of the serialization buffer required
+  virtual size_t getSerializationSize() const = 0;
+
+  // Serialize the layer config to buffer.
+  // TensorRT will call this func to serialize the configuration of TensorRT
+  // engine. It should not be called by users.
+  virtual void serialize(void* buffer) const = 0;
+
+  virtual void destroy() = 0;
+
+  void setPluginNamespace(const char* plugin_namespace) override {
+    name_space_ = plugin_namespace;
+  }
+
+  const char* getPluginNamespace() const override {
+    return name_space_.c_str();
+  }
+
+ protected:
+  void deserializeBase(void const*& serial_data,  // NOLINT
+                       size_t& serial_length);    // NOLINT
+  size_t getBaseSerializationSize() const;
+  void serializeBase(void*& buffer) const;  // NOLINT
+
+ protected:
+  std::vector<nvinfer1::Dims> input_dims_;
+  size_t max_batch_size_;
+  nvinfer1::DataType data_type_;
+  nvinfer1::PluginFormat data_format_;
+  std::vector<nvinfer1::ITensor*> inputs_;
+  bool with_fp16_;
+
+ private:
+  std::string name_space_;
 };
 
 #if IS_TRT_VERSION_GE(6000)
 class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
  public:
-  DynamicPluginTensorRT() {}
+  DynamicPluginTensorRT() : with_fp16_(false) {}
   DynamicPluginTensorRT(const void* serialized_data, size_t length) {}
 
   // The Func in IPluginExt or IpluginExtV2
@@ -173,11 +287,13 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
                        size_t& serial_length);    // NOLINT
   size_t getBaseSerializationSize() const;
   void serializeBase(void*& buffer) const;  // NOLINT
+  bool with_fp16_;
 
  private:
   std::string name_space_;
   std::string plugin_base_;
 };
+#endif
 
 template <typename T>
 class TrtPluginRegistrarV2 {
@@ -196,8 +312,6 @@ class TrtPluginRegistrarV2 {
 #define REGISTER_TRT_PLUGIN_V2(name)                                     \
   static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
       plugin_registrar_##name {}
-
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

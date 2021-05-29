@@ -31,6 +31,11 @@ elseif(SSE3_FOUND)
     set(SIMD_FLAG ${SSE3_FLAG})
 endif()
 
+if (SSE3_FOUND)
+    # TODO: Runtime detection should be used here.
+    add_definitions(-DPADDLE_WITH_SSE3)
+endif()
+
 if(WIN32)
   # windows header option for all targets.
   add_definitions(-D_XKEYCHECK_H)
@@ -73,6 +78,14 @@ if(WITH_BOX_PS)
     add_definitions(-DPADDLE_WITH_BOX_PS)
 endif()
 
+if(WITH_ASCEND)
+    add_definitions(-DPADDLE_WITH_ASCEND)
+endif()
+
+if(WITH_ASCEND_CL)
+    add_definitions(-DPADDLE_WITH_ASCEND_CL)
+endif()
+
 if(WITH_XPU)
     message(STATUS "Compile with XPU!")
     add_definitions(-DPADDLE_WITH_XPU)
@@ -84,13 +97,18 @@ if(WITH_GPU)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
-    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 7)
-        message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
+    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 10.1)
+        message(FATAL_ERROR "Paddle needs CUDA >= 10.1 to compile")
     endif()
 
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
+
+    if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+        message(FATAL_ERROR "Paddle needs CUDNN >= 7.0 to compile")
+    endif()
+
     if(CUPTI_FOUND)
         include_directories(${CUPTI_INCLUDE_DIR})
         add_definitions(-DPADDLE_WITH_CUPTI)
@@ -121,10 +139,10 @@ if(WITH_GPU)
         endif()
         include_directories(${TENSORRT_INCLUDE_DIR})
     endif()
-elseif(WITH_AMD_GPU)
+elseif(WITH_ROCM)
     add_definitions(-DPADDLE_WITH_HIP)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
+    add_definitions(-DEIGEN_USE_GPU)
+    add_definitions(-DEIGEN_USE_HIP)
 else()
     add_definitions(-DHPPL_STUB_FUNC)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
@@ -151,9 +169,13 @@ if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
 endif()
 
-if(WITH_GRPC)
-    add_definitions(-DPADDLE_WITH_GRPC)
-endif(WITH_GRPC)
+if(WITH_PSCORE)
+    add_definitions(-DPADDLE_WITH_PSCORE)
+endif()
+
+if(WITH_HETERPS)
+    add_definitions(-DPADDLE_WITH_HETERPS)
+endif()
 
 if(WITH_BRPC_RDMA)
     add_definitions(-DPADDLE_WITH_BRPC_RDMA)

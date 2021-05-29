@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -41,7 +42,7 @@ struct SameDimsElemwiseDiv<platform::CUDADeviceContext, platform::float16> {
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
     auto size = x->numel();
-    dim3 grid_size = dim3(((size + 1) / 2 + PADDLE_CUDA_THREAD_SIZE - 1) /
+    dim3 grid_size = dim3(((size + 7) / 8 + PADDLE_CUDA_THREAD_SIZE - 1) /
                               PADDLE_CUDA_THREAD_SIZE,
                           1);
     dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
@@ -69,6 +70,50 @@ static __global__ void SimpleElemwiseDivGradCUDAKernel(const T* x, const T* y,
     T o = dout[col];
     dx[col] = o / y[col];
     dy[col] = -o * out[col] / y[col];
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <>
+__global__ void
+SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex<float>>(
+    const paddle::platform::complex<float>* x,
+    const paddle::platform::complex<float>* y,
+    const paddle::platform::complex<float>* out,
+    const paddle::platform::complex<float>* dout, int64_t size,
+    paddle::platform::complex<float>* dx,
+    paddle::platform::complex<float>* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    paddle::platform::complex<float> o = dout[col];
+    paddle::platform::complex<float> y_conj(y[col].real, -y[col].imag);
+    paddle::platform::complex<float> out_div_y_conj((out[col] / y[col]).real,
+                                                    -(out[col] / y[col]).imag);
+    dx[col] = o / y_conj;
+    dy[col] = -o * out_div_y_conj;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <>
+__global__ void
+SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex<double>>(
+    const paddle::platform::complex<double>* x,
+    const paddle::platform::complex<double>* y,
+    const paddle::platform::complex<double>* out,
+    const paddle::platform::complex<double>* dout, int64_t size,
+    paddle::platform::complex<double>* dx,
+    paddle::platform::complex<double>* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    paddle::platform::complex<double> o = dout[col];
+    paddle::platform::complex<double> y_conj(y[col].real, -y[col].imag);
+    paddle::platform::complex<double> out_div_y_conj((out[col] / y[col]).real,
+                                                     -(out[col] / y[col]).imag);
+    dx[col] = o / y_conj;
+    dy[col] = -o * out_div_y_conj;
     col += blockDim.x * gridDim.x;
   }
 }
@@ -102,7 +147,11 @@ REGISTER_OP_CUDA_KERNEL(
                               paddle::platform::float16>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::complex<float>>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -110,8 +159,11 @@ REGISTER_OP_CUDA_KERNEL(
                                   paddle::platform::float16>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
-                                  int64_t>);
+                                  paddle::platform::complex<float>>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_div_grad_grad,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -123,4 +175,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         int>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        int64_t>);
+                                        int64_t>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex<float>>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex<double>>);

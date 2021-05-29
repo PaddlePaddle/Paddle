@@ -42,11 +42,11 @@ Diff:  set(['test_parallel_executor_crf'])
         for l in fn.readlines():
             if l.find("Test ") != -1 and \
                 l.find("Passed") != -1:
-                m = re.search("Test\s+#[0-9]*\:\s([a-z0-9_]+)", escape(l))
+                m = re.search(r"Test\s+#[0-9]*\:\s([a-z0-9_]+)", escape(l))
                 passed.add(m.group(1))
             if l.find("Start ") != -1:
                 start_parts = escape(l).split(" ")
-                m = re.search("Start\s+[0-9]+\:\s([a-z0-9_]+)", escape(l))
+                m = re.search(r"Start\s+[0-9]+\:\s([a-z0-9_]+)", escape(l))
                 started.add(m.group(1))
     print("Diff: ", started - passed)
 

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
-#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace operators {
@@ -61,6 +60,12 @@ class CheckFiniteAndUnscaleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Scale",
              "(Tensor) 1-dim tensor, the scale of check_finite_and_unscale "
              "operator.");
+#ifdef PADDLE_WITH_ASCEND_CL
+    AddInput("FloatStatus",
+             "(Tensor) 1-dim tensor of shape [8], allocated by "
+             "alloc_float_status op")
+        .AsDispensable();
+#endif
     AddOutput("Out",
               "(Tensors) The scaled output tensor of "
               "check_finite_and_unscale operator.")

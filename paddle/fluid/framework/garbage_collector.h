@@ -48,6 +48,10 @@ class GarbageCollector {
   template <typename Container, typename Callback>
   void Add(Container &&objs, Callback &&callback);
 
+  void DirectClearCallback(const std::function<void()> &callback) {
+    ClearCallback(callback);
+  }
+
  protected:
   virtual void ClearCallback(const std::function<void()> &callback) = 0;
 
@@ -76,7 +80,7 @@ class XPUGarbageCollector : public GarbageCollector {
 };
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class UnsafeFastGPUGarbageCollector : public GarbageCollector {
  public:
   UnsafeFastGPUGarbageCollector(const platform::CUDAPlace &place,
@@ -106,14 +110,46 @@ class StreamGarbageCollector : public GarbageCollector {
 
   void Wait() const override;
 
-  cudaStream_t stream() const;
+  gpuStream_t stream() const;
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
 
  private:
-  cudaStream_t stream_;
-  std::unique_ptr<platform::StreamCallbackManager> callback_manager_;
+  gpuStream_t stream_;
+  std::unique_ptr<platform::StreamCallbackManager<gpuStream_t>>
+      callback_manager_;
+};
+
+class CUDAPinnedGarbageCollector : public GarbageCollector {
+ public:
+  CUDAPinnedGarbageCollector(const platform::CUDAPinnedPlace &place,
+                             size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+class NPUDefaultStreamGarbageCollector : public GarbageCollector {
+ public:
+  NPUDefaultStreamGarbageCollector(const platform::NPUPlace &place,
+                                   size_t max_memory_size);
+
+  void Wait() const override;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class NPUUnsafeFastGarbageCollector : public GarbageCollector {
+ public:
+  NPUUnsafeFastGarbageCollector(const platform::NPUPlace &place,
+                                size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
 };
 #endif
 

@@ -14,28 +14,48 @@
 
 # TODO: define the functions to manipulate devices 
 import re
-
+import os
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cuda  #DEFINE_ALIAS
+from paddle.fluid.framework import is_compiled_with_rocm  #DEFINE_ALIAS
 
 __all__ = [
     'get_cudnn_version',
     'set_device',
     'get_device',
     'XPUPlace',
-    'is_compiled_with_xpu'
+    'is_compiled_with_xpu',
     #            'cpu_places',
     #            'CPUPlace',
     #            'cuda_pinned_places',
     #            'cuda_places',
     #            'CUDAPinnedPlace',
     #            'CUDAPlace',
-    'is_compiled_with_cuda'
+    'is_compiled_with_cuda',
+    'is_compiled_with_rocm',
+    'is_compiled_with_npu'
 ]
 
 _cudnn_version = None
+
+
+# TODO: WITH_ASCEND_CL may changed to WITH_NPU or others in the future
+# for consistent.
+def is_compiled_with_npu():
+    """
+    Whether paddle was built with WITH_ASCEND_CL=ON to support Ascend NPU.
+
+    Returns (bool): `True` if NPU is supported, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_npu = paddle.is_compiled_with_npu()
+    """
+    return core.is_compiled_with_npu()
 
 
 def is_compiled_with_xpu():
@@ -101,28 +121,7 @@ def get_cudnn_version():
         return _cudnn_version
 
 
-def set_device(device):
-    """
-    Paddle supports running calculations on various types of devices, including CPU, GPU and XPU.
-    They are represented by string identifiers. This function can specify the global device
-    which the OP will run.
-
-    Parameters:
-        device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
-            index of the GPUs or XPUs. 
-
-    Examples:
-
-     .. code-block:: python
-            
-        import paddle
-
-        paddle.set_device("cpu")
-        x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
-        x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
-        data = paddle.stack([x1,x2], axis=1)
-    """
+def _convert_to_place(device):
     lower_device = device.lower()
     if lower_device == 'cpu':
         place = core.CPUPlace()
@@ -137,7 +136,9 @@ def set_device(device):
             raise ValueError(
                 "The device should not be 'xpu', " \
                 "since PaddlePaddle is not compiled with XPU")
-        place = core.XPUPlace(ParallelEnv().dev_id)
+        selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
+        device_id = int(selected_xpus[0])
+        place = core.XPUPlace(device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
@@ -163,6 +164,32 @@ def set_device(device):
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
+    return place
+
+
+def set_device(device):
+    """
+    Paddle supports running calculations on various types of devices, including CPU, GPU and XPU.
+    They are represented by string identifiers. This function can specify the global device
+    which the OP will run.
+
+    Parameters:
+        device(str): This parameter determines the specific running device.
+            It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
+            index of the GPUs or XPUs. 
+
+    Examples:
+
+     .. code-block:: python
+            
+        import paddle
+
+        paddle.set_device("cpu")
+        x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
+        x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
+        data = paddle.stack([x1,x2], axis=1)
+    """
+    place = _convert_to_place(device)
     framework._set_expected_place(place)
     return place
 

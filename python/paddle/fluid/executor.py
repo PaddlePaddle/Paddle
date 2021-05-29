@@ -480,11 +480,13 @@ class Executor(object):
     and single/multiple-CPU running.
 
     Args:
-        place(paddle.CPUPlace()|paddle.CUDAPlace(n)|None): This parameter represents
+        place(paddle.CPUPlace()|paddle.CUDAPlace(n)|str|None): This parameter represents
             which device the executor runs on. When this parameter is None, PaddlePaddle
             will set the default device according to its installation version. If Paddle
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
             GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
+            If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
+            is the index of the GPUs.
 
     Returns:
         Executor
@@ -550,7 +552,7 @@ class Executor(object):
             expected_place = framework._current_expected_place()
             self.place = expected_place
         else:
-            self.place = place
+            self.place = framework._get_paddle_place(place)
         self.program_caches = dict()
         self.ctx_caches = dict()
         self.scope_caches = dict()
@@ -561,6 +563,7 @@ class Executor(object):
         self._default_executor = core.Executor(p)
         self._closed = False
         self.pruned_program_scope_caches = dict()
+        self._prepare_to_run_called = False
 
         self._auto_checkpoint_name = unique_name.generate(
             "__auto_checkpoint_executor__")
@@ -1115,6 +1118,24 @@ class Executor(object):
         use_default_main_program = program is None
         if program is None:
             program = default_main_program()
+
+        if fetch_list is not None:
+            if isinstance(fetch_list, Variable) or isinstance(
+                    fetch_list, str) or isinstance(fetch_list,
+                                                   six.string_types):
+                fetch_list = [fetch_list]
+            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
+                "Currently , The fetch_list type only should be list or tuple, \n"\
+                "but the input type is {}. For more information please refer to \n"\
+                "the executor.run(...).".format(type(fetch_list))
+        else:
+            fetch_list = []
+
+        if isinstance(program, Program) and program._pipeline_opt:
+            if "startup_program" in program._pipeline_opt:
+                program = program._pipeline_opt["startup_program"]
+            else:
+                return self.train_from_dataset(program, fetch_list=fetch_list)
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
             if use_default_main_program:
@@ -1130,18 +1151,6 @@ class Executor(object):
 
         if scope is None:
             scope = global_scope()
-
-        if fetch_list is not None:
-            if isinstance(fetch_list, Variable) or isinstance(
-                    fetch_list, str) or isinstance(fetch_list,
-                                                   six.string_types):
-                fetch_list = [fetch_list]
-            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
-                "Currently , The fetch_list type only should be list or tuple, \n"\
-                "but the input type is {}. For more information please refer to \n"\
-                "the executor.run(...).".format(type(fetch_list))
-        else:
-            fetch_list = []
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
@@ -1204,6 +1213,7 @@ class Executor(object):
             # In distributed training, the compiled program is saved in Program._graph
             has_compiled_graph = isinstance(program._graph,
                                             compiler.CompiledProgram)
+
             if has_compiled_graph:
                 program._graph._compile(scope, self.place)
                 # _graph in program does not support inference since the _graph is optimized
@@ -1363,11 +1373,14 @@ class Executor(object):
                          fetch_info=None,
                          print_period=100):
         is_heter = 0
+        use_ps_gpu = 0
         if not program._fleet_opt is None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
                 is_heter = 1
+            if program._fleet_opt.get("use_ps_gpu", False):
+                use_ps_gpu = True
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -1402,7 +1415,9 @@ class Executor(object):
             trainer._set_program(program.program)
 
         if thread <= 0:
-            if dataset.thread_num <= 0:
+            if use_ps_gpu:
+                trainer._set_thread(len(program._fleet_opt["worker_places"]))
+            elif dataset.thread_num <= 0:
                 raise RuntimeError(
                     "You should set thread num first, either in Dataset"
                     "or in Executor.train_from_dataset")
@@ -1436,8 +1451,12 @@ class Executor(object):
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            dataset = paddle.fluid.DatasetFactory().create_dataset(
-                'FileInstantDataset')
+            if core.is_compiled_with_npu():
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'InMemoryDataset')
+            else:
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'FileInstantDataset')
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -1447,6 +1466,32 @@ class Executor(object):
                 raise RuntimeError("dataset is need and should be initialized")
 
         dataset._prepare_to_run()
+        real_fetch_list = []
+        if program._pipeline_opt:
+            real_program = program._pipeline_opt["section_program"]
+            for fetch_var in fetch_list:
+                if isinstance(fetch_var, Variable):
+                    fetch_var_name = fetch_var.name
+                else:
+                    fetch_var_name = fetch_var
+                if fetch_var_name in real_program.global_block().vars:
+                    real_fetch_list.append(fetch_var)
+
+            program._pipeline_opt["section_program"] = self._add_feed_fetch_ops(
+                program=program._pipeline_opt["section_program"],
+                feed=[],
+                fetch_list=real_fetch_list,
+                feed_var_name='feed',
+                fetch_var_name='fetch')
+            main_block = program._pipeline_opt["section_program"].block(0)
+            for op in main_block.ops:
+                # set the op_role of fetch op to Optimize to avoid
+                # erase the fetched vars by gc for pipeline
+                if op.type == 'fetch':
+                    op._set_attr(
+                        'op_role',
+                        core.op_proto_and_checker_maker.OpRole.Optimize)
+            fetch_list = None
 
         scope, trainer = self._prepare_trainer(
             program=program,
@@ -1462,6 +1507,9 @@ class Executor(object):
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)
+        # in case of calling _set_use_ps_gpu explicitly
+        if dataset.use_ps_gpu is False:
+            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_instance = self._default_executor.init_for_dataset(
@@ -1481,6 +1529,10 @@ class Executor(object):
 
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
+        if real_fetch_list:
+            arr = scope.find_var('fetch').get_fetch_list()
+            tensors = arr._move_to_list()
+            return as_numpy(tensors)
 
         return None
 

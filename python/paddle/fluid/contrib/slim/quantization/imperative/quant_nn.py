@@ -21,16 +21,17 @@ from paddle.fluid.framework import _varbase_creator
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.nn import functional as F
 
 __all__ = [
-    'FakeQuantMovingAverage', 'FakeQuantAbsMax', 'QuantizedConv2D',
-    'QuantizedLinear', 'FakeChannelWiseQuantDequantAbsMax',
-    'MovingAverageAbsMaxScale'
+    'FakeQuantMovingAverage', 'FakeQuantAbsMax',
+    'FakeChannelWiseQuantDequantAbsMax', 'QuantizedConv2D', 'QuantizedLinear',
+    'QuantizedNoweightLayer', 'MovingAverageAbsMaxScale'
 ]
 
 
 class FakeQuantMovingAverage(layers.Layer):
-    """
+    r"""
     FakeQuantMovingAverage layer does the moving_average_abs_max quant and then dequant.
     Its computational formula is described as below:
 
@@ -128,7 +129,7 @@ class FakeQuantMovingAverage(layers.Layer):
 
 
 class FakeQuantAbsMax(layers.Layer):
-    """
+    r"""
     FakeQuantAbsMax layer does the abs_max quant and then dequant.
     Its computational formula is described as below:
 
@@ -144,7 +145,6 @@ class FakeQuantAbsMax(layers.Layer):
                  quant_on_weight=False):
         super(FakeQuantAbsMax, self).__init__()
         self._quant_bits = quant_bits
-        self._dtype = dtype
         self._name = name
         scale_prefix = "{}.scale".format(
             name) if name else 'quant_dequant.scale'
@@ -332,88 +332,81 @@ class QuantizedConv2D(layers.Layer):
                  activation_bits=8,
                  moving_rate=0.9,
                  weight_quantize_type='abs_max',
-                 activation_quantize_type='abs_max'):
+                 activation_quantize_type='abs_max',
+                 weight_pre_layer=None,
+                 act_pre_layer=None,
+                 weight_quant_layer=None,
+                 act_quant_layer=None):
         super(QuantizedConv2D, self).__init__()
         # For Conv2D
         self._groups = getattr(layer, '_groups')
         self._stride = getattr(layer, '_stride')
         self._padding = getattr(layer, '_padding')
+        self._padding_mode = getattr(layer, '_padding_mode')
+        if self._padding_mode != 'zeros':
+            self._reversed_padding_repeated_twice = getattr(
+                layer, '_reversed_padding_repeated_twice')
         self._dilation = getattr(layer, '_dilation')
-        self._act = getattr(layer, '_act')
-        self._use_cudnn = getattr(layer, '_use_cudnn')
-        self._dtype = getattr(layer, '_dtype')
-        self._l_type = getattr(layer, '_l_type')
+        self._data_format = getattr(layer, '_data_format')
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
+
         # For FakeQuant
         self._conv2d_quant_axis = 0
-        self._fake_quant_weight = _get_fake_quant_type(
-            weight_quantize_type,
-            name=self.weight.name,
-            moving_rate=moving_rate,
-            quant_bits=weight_bits,
-            dtype=self._dtype,
-            quant_on_weight=True,
-            channel_num=self.weight.shape[self._conv2d_quant_axis],
-            quant_axis=self._conv2d_quant_axis)
-        self._fake_quant_input = _get_fake_quant_type(
-            activation_quantize_type,
-            name=layer.full_name(),
-            moving_rate=moving_rate,
-            quant_bits=activation_bits,
-            dtype=self._dtype,
-            quant_on_weight=False)
+        if weight_quant_layer is not None:
+            self._fake_quant_weight = weight_quant_layer()
+        else:
+            self._fake_quant_weight = _get_fake_quant_type(
+                weight_quantize_type,
+                name=self.weight.name,
+                moving_rate=moving_rate,
+                quant_bits=weight_bits,
+                dtype=self._dtype,
+                quant_on_weight=True,
+                channel_num=self.weight.shape[self._conv2d_quant_axis],
+                quant_axis=self._conv2d_quant_axis)
+        if act_quant_layer is not None:
+            self._fake_quant_input = act_quant_layer()
+        else:
+            self._fake_quant_input = _get_fake_quant_type(
+                activation_quantize_type,
+                name=layer.full_name(),
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                dtype=self._dtype,
+                quant_on_weight=False)
+
+        self._act_preprocess = act_pre_layer(
+        ) if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer(
+        ) if weight_pre_layer is not None else None
 
     def forward(self, input):
+        if self._act_preprocess is not None:
+            input = self._act_preprocess(input)
         quant_input = self._fake_quant_input(input)
-        quant_weight = self._fake_quant_weight(self.weight)
 
-        if in_dygraph_mode() and self._l_type == 'conv2d':
-            attrs = ('strides', self._stride, 'paddings', self._padding,
-                     'dilations', self._dilation, 'groups', self._groups
-                     if self._groups else 1, 'use_cudnn', self._use_cudnn)
-            pre_bias = core.ops.conv2d(quant_input, quant_weight, *attrs)
+        weight = self.weight
+        if self._weight_preprocess is not None:
+            weight = self._weight_preprocess(self.weight)
+        quant_weight = self._fake_quant_weight(weight)
 
-            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
-                                                            1)
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
-        check_variable_and_dtype(quant_input, 'input',
-                                 ['float16', 'float32', 'float64'],
-                                 'QuantizedConv2D')
-        attrs = {
-            'strides': self._stride,
-            'paddings': self._padding,
-            'dilations': self._dilation,
-            'groups': self._groups if self._groups else 1,
-            'use_cudnn': self._use_cudnn,
-            'use_mkldnn': False,
-        }
-        pre_bias = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype)
+        if self._padding_mode != 'zeros':
+            quant_input = F.pad(quant_input,
+                                self._reversed_padding_repeated_twice,
+                                mode=self._padding_mode,
+                                data_format=self._data_format)
+            self._padding = 0
 
-        self._helper.append_op(
-            type=self._l_type,
-            inputs={
-                'Input': quant_input,
-                'Filter': quant_weight,
-            },
-            outputs={"Output": pre_bias},
-            attrs=attrs)
-
-        if self.bias is not None:
-            pre_act = self._helper.create_variable_for_type_inference(
-                dtype=self._dtype)
-            self._helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias],
-                        'Y': [self.bias]},
-                outputs={'Out': [pre_act]},
-                attrs={'axis': 1})
-        else:
-            pre_act = pre_bias
-
-        return self._helper.append_activation(pre_act, act=self._act)
+        return F.conv2d(
+            quant_input,
+            quant_weight,
+            bias=self.bias,
+            padding=self._padding,
+            stride=self._stride,
+            dilation=self._dilation,
+            groups=self._groups,
+            data_format=self._data_format)
 
 
 class QuantizedLinear(layers.Layer):
@@ -428,26 +421,76 @@ class QuantizedLinear(layers.Layer):
                  activation_bits=8,
                  moving_rate=0.9,
                  weight_quantize_type='abs_max',
-                 activation_quantize_type='abs_max'):
+                 activation_quantize_type='abs_max',
+                 weight_pre_layer=None,
+                 act_pre_layer=None,
+                 weight_quant_layer=None,
+                 act_quant_layer=None):
         super(QuantizedLinear, self).__init__()
         # For Linear
-        self._act = getattr(layer, '_act')
-        self._dtype = getattr(layer, '_dtype')
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
+        self.name = getattr(layer, 'name')
         # For FakeQuant
         self._linear_quant_axis = 1
-        self._fake_quant_weight = _get_fake_quant_type(
-            weight_quantize_type,
-            name=self.weight.name,
-            moving_rate=moving_rate,
-            quant_bits=weight_bits,
-            dtype=self._dtype,
-            quant_on_weight=True,
-            channel_num=self.weight.shape[self._linear_quant_axis],
-            quant_axis=self._linear_quant_axis)
+
+        if weight_quant_layer is not None:
+            self._fake_quant_weight = weight_quant_layer()
+        else:
+            self._fake_quant_weight = _get_fake_quant_type(
+                weight_quantize_type,
+                name=self.weight.name,
+                moving_rate=moving_rate,
+                quant_bits=weight_bits,
+                dtype=self._dtype,
+                quant_on_weight=True,
+                channel_num=self.weight.shape[self._linear_quant_axis],
+                quant_axis=self._linear_quant_axis)
+
+        if act_quant_layer is not None:
+            self._fake_quant_input = act_quant_layer()
+        else:
+            self._fake_quant_input = _get_fake_quant_type(
+                activation_quantize_type,
+                name=layer.full_name(),
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                dtype=self._dtype,
+                quant_on_weight=False)
+
+        self._act_preprocess = act_pre_layer(
+        ) if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer(
+        ) if weight_pre_layer is not None else None
+
+    def forward(self, input):
+        if self._act_preprocess is not None:
+            input = self._act_preprocess(input)
+        quant_input = self._fake_quant_input(input)
+
+        weight = self.weight
+        if self._weight_preprocess is not None:
+            weight = self._weight_preprocess(self.weight)
+        quant_weight = self._fake_quant_weight(weight)
+
+        out = F.linear(
+            x=quant_input, weight=quant_weight, bias=self.bias, name=self.name)
+        return out
+
+
+class QuantizedNoweightLayer(layers.Layer):
+    def __init__(self,
+                 layer,
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 *args,
+                 **kwargs):
+
+        super(QuantizedNoweightLayer, self).__init__()
+        self._layer = layer
         self._fake_quant_input = _get_fake_quant_type(
-            activation_quantize_type,
+            'moving_average_abs_max',
             name=layer.full_name(),
             moving_rate=moving_rate,
             quant_bits=activation_bits,
@@ -456,66 +499,31 @@ class QuantizedLinear(layers.Layer):
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
-        quant_weight = self._fake_quant_weight(self.weight)
-        if in_dygraph_mode():
-            pre_bias = _varbase_creator(dtype=input.dtype)
-            core.ops.matmul(quant_input, quant_weight, pre_bias, 'transpose_X',
-                            False, 'transpose_Y', False, "alpha", 1)
-            pre_act = dygraph_utils._append_bias_in_dygraph(
-                pre_bias, self.bias, axis=len(input.shape) - 1)
-
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
-
-        check_variable_and_dtype(input, 'input',
-                                 ['float16', 'float32', 'float64'],
-                                 "QuantizedLinear")
-        attrs = {
-            "transpose_X": False,
-            "transpose_Y": False,
-            "alpha": 1,
-        }
-        inputs = {"X": [quant_input], "Y": [quant_weight]}
-        mul_out = self._helper.create_variable_for_type_inference(self._dtype)
-
-        self._helper.append_op(
-            type="matmul",
-            inputs=inputs,
-            outputs={"Out": [mul_out]},
-            attrs=attrs)
-        if self.bias is not None:
-            pre_activation = self._helper.create_variable_for_type_inference(
-                dtype=self._dtype)
-            self._helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [mul_out],
-                        'Y': [self.bias]},
-                outputs={'Out': [pre_activation]},
-                attrs={'axis': len(input.shape) - 1})
-        else:
-            pre_activation = mul_out
-        return self._helper.append_activation(pre_activation, act=self._act)
+        # TODO (jc): support ops that have several inputs
+        if isinstance(input, list):
+            assert len(input) == 1, \
+                "The QuantizedNoweightLayer should only have one input."
+        return self._layer.forward(quant_input)
 
 
 class MovingAverageAbsMaxScale(layers.Layer):
     def __init__(self, name=None, moving_rate=0.9, dtype='float32'):
-        """
-        MovingAverageMaxScale layer is used to calculating the output quantization scale of Layer.
-        Its computational formula is described as below:
+        r"""
+        MovingAverageMaxScale layer is used to calculating the output quantization
+        scale of Layer. Its computational formula is described as below:
 
         :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
         :math:`Out = X`
         """
         super(MovingAverageAbsMaxScale, self).__init__()
         self._moving_rate = moving_rate
-        self._dtype = dtype
 
         scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
-        name = unique_name.generate(scale_prefix)
+        scale_name = unique_name.generate(scale_prefix)
         scale_attr = ParamAttr(
-            name=name, initializer=Constant(1), trainable=False)
+            name=scale_name, initializer=Constant(1), trainable=False)
         self._scale = self.create_parameter(
-            shape=[1], attr=scale_attr, dtype=self._dtype)
+            shape=[1], attr=scale_attr, dtype=dtype)
         self._scale.stop_gradient = True
 
         state_prefix = "{}.state".format(name) if name else 'outscale.state'
@@ -524,7 +532,7 @@ class MovingAverageAbsMaxScale(layers.Layer):
             initializer=Constant(1),
             trainable=False)
         self._state = self.create_parameter(
-            shape=[1], attr=state_attr, dtype=self._dtype)
+            shape=[1], attr=state_attr, dtype=dtype)
         self._state.stop_gradient = True
 
         accum_prefix = "{}.accum".format(name) if name else 'outscale.accum'
@@ -533,9 +541,8 @@ class MovingAverageAbsMaxScale(layers.Layer):
             initializer=Constant(1),
             trainable=False)
         self._accum = self.create_parameter(
-            shape=[1], attr=accum_attr, dtype=self._dtype)
+            shape=[1], attr=accum_attr, dtype=dtype)
         self._accum.stop_gradient = True
-        MovingAverageAbsMaxScale._has_create = True
 
     def forward(self, input):
         if in_dygraph_mode():
@@ -543,19 +550,30 @@ class MovingAverageAbsMaxScale(layers.Layer):
                      not self.training)
             state = self._state if self.training else None
             accum = self._accum if self.training else None
+            quant_out = _varbase_creator(
+                type=input.type,
+                name="{}.tmp".format(input.name),
+                shape=input.shape,
+                dtype=input.dtype,
+                persistable=False)
 
-            out_scale, _, _ = core.ops.moving_average_abs_max_scale(
-                input, accum, state, self._scale, state, accum, *attrs)
-            return out_scale
+            out, _, _, _ = core.ops.moving_average_abs_max_scale(
+                input, accum, state, quant_out, self._scale, state, accum,
+                *attrs)
+            return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'MovingAverageAbsMaxScale')
 
-        scale_out = self._scale
         attrs = {'moving_rate': self._moving_rate, 'is_test': not self.training}
-
         inputs = {"X": [input]}
-        outputs = {"OutScale": [scale_out]}
+        quant_out = self._helper.create_variable(
+            name="{}.tmp".format(input.name),
+            dtype=input.dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=False)
+        outputs = {"Out": [quant_out], "OutScale": [self._scale]}
 
         if self.training:
             inputs['InState'] = [self._state]
@@ -569,4 +587,22 @@ class MovingAverageAbsMaxScale(layers.Layer):
             outputs=outputs,
             attrs=attrs)
 
-        return scale_out
+        return quant_out
+
+
+class QuantizedOutputLayer(layers.Layer):
+    def __init__(self, layer=None, moving_rate=0.9, dtype='float32'):
+        r"""
+        Add MovingAverageMaxScale layer to the behind of the input layer.
+        """
+        super(QuantizedOutputLayer, self).__init__()
+        self._layer = layer
+        self._moving_average_abs_max_scale = \
+            MovingAverageAbsMaxScale(layer.full_name(), moving_rate, dtype)
+
+    def forward(self, input):
+        if isinstance(input, list):
+            assert len(input) == 1, \
+                "The QuantizedOutputLayer should only have one input."
+        out = self._layer(input)
+        return self._moving_average_abs_max_scale(out)

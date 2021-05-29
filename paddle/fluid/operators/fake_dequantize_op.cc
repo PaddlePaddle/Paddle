@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fake_dequantize_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -238,3 +239,10 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(fake_channel_wise_dequantize_max_abs,
                        ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, float>,
                        ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, double>);
+
+REGISTER_OP_VERSION(fake_channel_wise_dequantize_max_abs)
+    .AddCheckpoint(
+        R"ROC(add new attributes [quant_axis] for applying per-channel "
+        "dequantization to conv2d_tranpose and mul ops.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "quant_axis", "The axis for dequantization.", 0));

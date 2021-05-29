@@ -27,8 +27,8 @@ class _DatasetFetcher(object):
 
 class _IterableDatasetFetcher(_DatasetFetcher):
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
-        super(_IterableDatasetFetcher, self).__init__(dataset, auto_collate_batch,
-                                              collate_fn, drop_last)
+        super(_IterableDatasetFetcher, self).__init__(
+            dataset, auto_collate_batch, collate_fn, drop_last)
         self.dataset_iter = iter(dataset)
 
     def fetch(self, batch_indices):
@@ -53,7 +53,8 @@ class _IterableDatasetFetcher(_DatasetFetcher):
 
 class _MapDatasetFetcher(_DatasetFetcher):
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
-        super(_MapDatasetFetcher, self).__init__(dataset, auto_collate_batch, collate_fn, drop_last)
+        super(_MapDatasetFetcher, self).__init__(dataset, auto_collate_batch,
+                                                 collate_fn, drop_last)
 
     def fetch(self, batch_indices):
         if self.auto_collate_batch:

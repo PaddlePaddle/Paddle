@@ -30,16 +30,30 @@ class ElementwiseMulOp : public ElementwiseOp {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -119,8 +133,30 @@ struct MulGradDX {
 };
 
 template <typename T>
+struct MulGradDX<paddle::platform::complex<T>> {
+  HOSTDEVICE paddle::platform::complex<T> operator()(
+      paddle::platform::complex<T> x, paddle::platform::complex<T> y,
+      paddle::platform::complex<T> out,
+      paddle::platform::complex<T> dout) const {
+    paddle::platform::complex<T> y_conj(y.real, -y.imag);
+    return dout * y_conj;
+  }
+};
+
+template <typename T>
 struct MulGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
+};
+
+template <typename T>
+struct MulGradDY<paddle::platform::complex<T>> {
+  HOSTDEVICE paddle::platform::complex<T> operator()(
+      paddle::platform::complex<T> x, paddle::platform::complex<T> y,
+      paddle::platform::complex<T> out,
+      paddle::platform::complex<T> dout) const {
+    paddle::platform::complex<T> x_conj(x.real, -x.imag);
+    return dout * x_conj;
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -136,7 +172,7 @@ elementwise_mul_grad(const framework::ExecutionContext& ctx,
       ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<

@@ -91,22 +91,27 @@ class IfElseTransformer(gast.NodeTransformer):
 
 
 class NameVisitor(gast.NodeVisitor):
-    def __init__(self, end_node=None):
+    def __init__(self, after_node=None, end_node=None):
+        # The start node (exclusive) of the visitor
+        self.after_node = after_node
         # The terminate node of the visitor.
         self.end_node = end_node
         # Dict to store the names and ctxs of vars.
         self.name_ids = defaultdict(list)
         # List of current visited nodes
         self.ancestor_nodes = []
-        # Available only when end_node is set.
-        self._is_finished = False
+        # True when in range (after_node, end_node).
+        self._in_range = after_node is None
         self._candidate_ctxs = (gast.Store, gast.Load, gast.Param)
         self._def_func_names = set()
 
     def visit(self, node):
         """Visit a node."""
-        if node == self.end_node or self._is_finished:
-            self._is_finished = True
+        if self.after_node is not None and node == self.after_node:
+            self._in_range = True
+            return
+        if node == self.end_node:
+            self._in_range = False
             return
 
         self.ancestor_nodes.append(node)
@@ -137,18 +142,19 @@ class NameVisitor(gast.NodeVisitor):
         In above two cases, we should consider to manage the scope of vars to parsing
         the arguments and returned vars correctly.
         """
-        if not self.end_node:
+        if not self._in_range or not self.end_node:
             self.generic_visit(node)
+            return
         else:
             before_if_name_ids = copy.deepcopy(self.name_ids)
             body_name_ids = self._visit_child(node.body)
             # If traversal process stops early in `if.body`, return the currently seen name_ids.
-            if self._is_finished:
+            if not self._in_range:
                 self._update_name_ids(before_if_name_ids)
             else:
                 else_name_ids = self._visit_child(node.orelse)
                 # If traversal process stops early in `if.orelse`, return the currently seen name_ids.
-                if self._is_finished:
+                if not self._in_range:
                     self._update_name_ids(before_if_name_ids)
                 else:
                     # Blocks the vars in `if.body` and only inserts the vars both created in 'if/else' branch
@@ -161,10 +167,13 @@ class NameVisitor(gast.NodeVisitor):
                     self.name_ids = before_if_name_ids
 
     def visit_Attribute(self, node):
-        if not self._is_call_func_name_node(node):
+        if not self._in_range or not self._is_call_func_name_node(node):
             self.generic_visit(node)
 
     def visit_Name(self, node):
+        if not self._in_range:
+            self.generic_visit(node)
+            return
         blacklist = {'True', 'False', 'None'}
         if node.id in blacklist: return
         if node.id in self._def_func_names:
@@ -174,11 +183,17 @@ class NameVisitor(gast.NodeVisitor):
                 self.name_ids[node.id].append(node.ctx)
 
     def visit_Assign(self, node):
+        if not self._in_range:
+            self.generic_visit(node)
+            return
         # Visit `value` firstly.
         node._fields = ('value', 'targets')
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
+        if not self._in_range:
+            self.generic_visit(node)
+            return
         self._def_func_names.add(node.name)
         if not self.end_node:
             self.generic_visit(node)
@@ -187,7 +202,7 @@ class NameVisitor(gast.NodeVisitor):
             self.name_ids = defaultdict(list)
             self.generic_visit(node)
 
-            if self._is_finished:
+            if not self._in_range:
                 self._update_name_ids(before_name_ids)
             else:
                 self.name_ids = before_name_ids
@@ -223,11 +238,16 @@ class NameVisitor(gast.NodeVisitor):
         return new_name_ids
 
     def _is_call_func_name_node(self, node):
+        white_func_names = set(['append', 'extend'])
         if len(self.ancestor_nodes) > 1:
             assert self.ancestor_nodes[-1] == node
             parent_node = self.ancestor_nodes[-2]
             if isinstance(parent_node, gast.Call) and parent_node.func == node:
-                return True
+                # e.g: var_list.append(elem), var_list is also a name_id.
+                should_skip = isinstance(
+                    node, gast.Attribute) and node.attr in white_func_names
+                if not should_skip:
+                    return True
         return False
 
     def _update_name_ids(self, new_name_ids):
@@ -235,33 +255,63 @@ class NameVisitor(gast.NodeVisitor):
             self.name_ids[name_id] = ctxs + self.name_ids[name_id]
 
 
-def get_name_ids(nodes, end_node=None):
+def get_name_ids(nodes, after_node=None, end_node=None):
     """
-    Return all ast.Name.id of python variable in nodes.
+    Return all ast.Name.id of python variable in nodes range from
+    (after_node, end_node) exclusively. If after_node or end_node is None, the
+    range is unlimited.
     """
-    name_visitor = NameVisitor(end_node)
+    name_visitor = NameVisitor(after_node, end_node)
     for node in nodes:
         name_visitor.visit(node)
     return name_visitor.name_ids
 
 
-def parse_cond_args(var_ids_dict, return_ids=None, ctx=gast.Load):
+def parse_cond_args(parent_ids_dict,
+                    var_ids_dict,
+                    modified_ids_dict=None,
+                    ctx=gast.Load):
     """
     Find out the ast.Name.id list of input by analyzing node's AST information.
     """
 
-    name_ids = [
+    # 1. filter the var fit the ctx
+    arg_name_ids = [
         var_id for var_id, var_ctx in six.iteritems(var_ids_dict)
         if isinstance(var_ctx[0], ctx)
     ]
-    if return_ids:
-        new_args = set(return_ids) - set(name_ids)
-        name_ids.extend(list(new_args))
-    name_ids.sort()
+
+    # 2. args should contain modified var ids in if-body or else-body
+    #  case:
+    #
+    #   ```
+    #   if b < 1:
+    #     z = y
+    #   else:
+    #     z = x
+    #   ```
+    #
+    #   In the above case, `z` should be in the args of cond()
+    if modified_ids_dict:
+        arg_name_ids = set(arg_name_ids) | set(modified_ids_dict)
+
+    # 3. args should not contain the vars not in parent ids
+    #  case :
+    #
+    #   ```
+    #   x = 1
+    #   if x > y:
+    #     z = [v for v in range(i)]
+    #   ```
+    #
+    #   In the above case, `v` should not be in the args of cond()
+    arg_name_ids = list(set(arg_name_ids) & set(parent_ids_dict))
+
+    arg_name_ids.sort()
     args = [
         gast.Name(
             id=name_id, ctx=gast.Load(), annotation=None, type_comment=None)
-        for name_id in name_ids
+        for name_id in arg_name_ids
     ]
     arguments = gast.arguments(
         args=args,
@@ -353,10 +403,13 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         ])
 
     def _vars_loaded_before_store(ids_dict):
+        """
+        gast.Param is also a kind of `load` semantic.
+        """
         new_dict = defaultdict(list)
         for k, ctxs in six.iteritems(ids_dict):
             for ctx in ctxs:
-                if isinstance(ctx, gast.Load):
+                if isinstance(ctx, (gast.Load, gast.Param)):
                     new_dict[k].append(ctx)
                 elif isinstance(ctx, gast.Store):
                     break
@@ -406,20 +459,8 @@ def transform_if_else(node, root):
     parent_name_ids = get_name_ids([root], end_node=node)
     body_name_ids = get_name_ids(node.body)
     orelse_name_ids = get_name_ids(node.orelse)
-
     # Get after_ifelse_name_ids, which means used var names after If.body and If.orelse node.
-    after_ifelse_name_ids = defaultdict(list)
-    all_name_ids = get_name_ids([root])
-    for name in all_name_ids:
-        before_var_names_ids = parent_name_ids.get(name, []) + \
-                           body_name_ids.get(name, []) + orelse_name_ids.get(name, [])
-        # Note: context of node.Name like gast.Load is a concrete object which has unique id different from other gast.Load
-        #  E.g. ctx of `x` can be [<gast.Load object at 0x142a33c90>, <gast.Load object at 0x142a51950>, <gast.Param object at 0x1407d8250>]
-        after_var_names_ids = [
-            ctx for ctx in all_name_ids[name] if ctx not in before_var_names_ids
-        ]
-        if after_var_names_ids:
-            after_ifelse_name_ids[name] = after_var_names_ids
+    after_ifelse_name_ids = get_name_ids([root], after_node=node)
 
     return_name_ids, modified_name_ids_from_parent, new_vars_to_create = parse_cond_return(
         parent_name_ids, body_name_ids, orelse_name_ids, after_ifelse_name_ids)
@@ -444,12 +485,14 @@ def transform_if_else(node, root):
     true_func_node = create_funcDef_node(
         node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
-        input_args=parse_cond_args(body_name_ids, modified_name_ids),
+        input_args=parse_cond_args(parent_name_ids, body_name_ids,
+                                   modified_name_ids),
         return_name_ids=return_name_ids)
     false_func_node = create_funcDef_node(
         node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
-        input_args=parse_cond_args(orelse_name_ids, modified_name_ids),
+        input_args=parse_cond_args(parent_name_ids, orelse_name_ids,
+                                   modified_name_ids),
         return_name_ids=return_name_ids)
     return create_new_vars_in_parent_stmts, true_func_node, false_func_node, return_name_ids
 

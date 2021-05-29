@@ -26,8 +26,8 @@ class TestExpandAsOpRank1(OpTest):
         self.op_type = "expand_as_v2"
         x = np.random.rand(100).astype("float64")
         target_tensor = np.random.rand(2, 100).astype("float64")
-        self.inputs = {'X': x, 'target_tensor': target_tensor}
-        self.attrs = {}
+        self.inputs = {'X': x}
+        self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [2, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -44,8 +44,8 @@ class TestExpandAsOpRank2(OpTest):
         self.op_type = "expand_as_v2"
         x = np.random.rand(10, 12).astype("float64")
         target_tensor = np.random.rand(10, 12).astype("float64")
-        self.inputs = {'X': x, 'target_tensor': target_tensor}
-        self.attrs = {}
+        self.inputs = {'X': x}
+        self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -62,8 +62,8 @@ class TestExpandAsOpRank3(OpTest):
         self.op_type = "expand_as_v2"
         x = np.random.rand(2, 3, 20).astype("float64")
         target_tensor = np.random.rand(2, 3, 20).astype("float64")
-        self.inputs = {'X': x, 'target_tensor': target_tensor}
-        self.attrs = {}
+        self.inputs = {'X': x}
+        self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [1, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
@@ -80,8 +80,8 @@ class TestExpandAsOpRank4(OpTest):
         self.op_type = "expand_as_v2"
         x = np.random.rand(1, 1, 7, 16).astype("float64")
         target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
-        self.inputs = {'X': x, 'target_tensor': target_tensor}
-        self.attrs = {}
+        self.inputs = {'X': x}
+        self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}

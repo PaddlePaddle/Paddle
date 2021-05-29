@@ -16,62 +16,35 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/npu_info.h"
 
 int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
-  // Because the dynamic library libpaddle_fluid.so clips the symbol table, the
-  // external program cannot recognize the flag inside the so, and the flag
-  // defined by the external program cannot be accessed inside the so.
-  // Therefore, the ParseCommandLine function needs to be called separately
-  // inside and outside.
-  std::vector<char*> external_argv;
-  std::vector<char*> internal_argv;
-
-  // ParseNewCommandLineFlags in gflags.cc starts processing
-  // commandline strings from idx 1.
-  // The reason is, it assumes that the first one (idx 0) is
-  // the filename of executable file.
-  external_argv.push_back(argv[0]);
-  internal_argv.push_back(argv[0]);
-
-  std::vector<google::CommandLineFlagInfo> all_flags;
-  std::vector<std::string> external_flags_name;
-  google::GetAllFlags(&all_flags);
-  for (size_t i = 0; i < all_flags.size(); ++i) {
-    external_flags_name.push_back(all_flags[i].name);
-  }
-
+  std::vector<char*> new_argv;
+  std::string gflags_env;
   for (int i = 0; i < argc; ++i) {
-    bool flag = true;
-    std::string tmp(argv[i]);
-    for (size_t j = 0; j < external_flags_name.size(); ++j) {
-      if (tmp.find(external_flags_name[j]) != std::string::npos) {
-        external_argv.push_back(argv[i]);
-        flag = false;
-        break;
-      }
-    }
-    if (flag) {
-      internal_argv.push_back(argv[i]);
-    }
+    new_argv.push_back(argv[i]);
   }
 
   std::vector<std::string> envs;
   std::vector<std::string> undefok;
-#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_GRPC)
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   std::string str_max_body_size;
-  if (google::GetCommandLineOption("max_body_size", &str_max_body_size)) {
+  if (::GFLAGS_NAMESPACE::GetCommandLineOption("max_body_size",
+                                               &str_max_body_size)) {
     setenv("FLAGS_max_body_size", "2147483647", 1);
     envs.push_back("max_body_size");
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL)
   envs.push_back("fraction_of_gpu_memory_to_use");
   envs.push_back("initial_gpu_memory_in_mb");
   envs.push_back("reallocate_gpu_memory_in_mb");
   envs.push_back("allocator_strategy");
+  envs.push_back("selected_gpus");
 #elif __clang__
   envs.push_back("use_mkldnn");
   envs.push_back("initial_cpu_memory_in_mb");
@@ -90,6 +63,10 @@ int main(int argc, char** argv) {
   undefok.push_back("initial_cpu_memory_in_mb");
 #endif
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+  envs.push_back("selected_npus");
+#endif
+
   char* env_str = nullptr;
   if (envs.size() > 0) {
     std::string env_string = "--tryfromenv=";
@@ -98,7 +75,7 @@ int main(int argc, char** argv) {
     }
     env_string = env_string.substr(0, env_string.length() - 1);
     env_str = strdup(env_string.c_str());
-    internal_argv.push_back(env_str);
+    new_argv.push_back(env_str);
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
@@ -110,20 +87,21 @@ int main(int argc, char** argv) {
     }
     undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
     undefok_str = strdup(undefok_string.c_str());
-    internal_argv.push_back(undefok_str);
+    new_argv.push_back(undefok_str);
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
-  int new_argc = static_cast<int>(external_argv.size());
-  char** external_argv_address = external_argv.data();
-  google::ParseCommandLineFlags(&new_argc, &external_argv_address, false);
-
-  int internal_argc = internal_argv.size();
-  char** arr = internal_argv.data();
-  paddle::platform::ParseCommandLineFlags(internal_argc, arr, true);
-  paddle::framework::InitDevices(true);
+  int new_argc = static_cast<int>(new_argv.size());
+  char** new_argv_address = new_argv.data();
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
+      &new_argc, &new_argv_address, false);
+  paddle::framework::InitDevices();
 
   int ret = RUN_ALL_TESTS();
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  paddle::platform::AclInstance::Instance().Finalize();
+#endif
 
   if (env_str) free(env_str);
   if (undefok_str) free(undefok_str);

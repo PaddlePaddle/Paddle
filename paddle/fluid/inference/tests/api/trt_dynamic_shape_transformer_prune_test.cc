@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -126,7 +126,7 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   run(config, &out_data);
 
   for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(result[i], out_data[i], 1e-5);
+    EXPECT_NEAR(result[i], out_data[i], 2e-3);
   }
 }
 

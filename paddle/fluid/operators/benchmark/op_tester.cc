@@ -57,7 +57,7 @@ void OpTester::Init(const OpTesterConfig &config) {
     place_ = paddle::platform::CPUPlace();
   }
 
-  framework::InitDevices(false);
+  framework::InitDevices();
   scope_.reset(new paddle::framework::Scope());
 
   op_ = framework::OpRegistry::CreateOp(op_desc_);
@@ -77,7 +77,7 @@ void OpTester::Run() {
     if (platform::is_cpu_place(place_)) {
       platform::EnableProfiler(platform::ProfilerState::kCPU);
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::EnableProfiler(platform::ProfilerState::kAll);
       platform::SetDeviceId(config_.device_id);
 #else

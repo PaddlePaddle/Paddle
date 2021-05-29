@@ -22,7 +22,7 @@ from google.protobuf import text_format
 
 
 class DownpourSGD(object):
-    """
+    r"""
     Distributed optimizer of downpour stochastic gradient descent
     Standard implementation of Google's Downpour SGD
     in Large Scale Distributed Deep Networks

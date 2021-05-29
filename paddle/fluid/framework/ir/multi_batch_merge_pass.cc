@@ -14,11 +14,7 @@
 
 #include "paddle/fluid/framework/ir/multi_batch_merge_pass.h"
 
-#include <map>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 

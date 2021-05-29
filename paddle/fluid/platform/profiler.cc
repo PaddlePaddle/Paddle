@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <limits>
 #include <mutex>  // NOLINT
 #include <random>
 #include <string>
@@ -21,6 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/dynload/nvtx.h"
+#endif
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
 
@@ -30,8 +32,12 @@ namespace platform {
 MemEvenRecorder MemEvenRecorder::recorder;
 
 Event::Event(EventType type, std::string name, uint32_t thread_id,
-             EventRole role)
-    : type_(type), name_(name), thread_id_(thread_id), role_(role) {
+             EventRole role, std::string attr)
+    : type_(type),
+      name_(name),
+      thread_id_(thread_id),
+      role_(role),
+      attr_(attr) {
   cpu_ns_ = GetTimeInNsec();
 }
 
@@ -50,7 +56,16 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
+RecordEvent::RecordEvent(const std::string &name, const EventRole role,
+                         const std::string attr) {
+#ifndef _WIN32
+#ifdef PADDLE_WITH_CUDA
+  if (g_enable_nvprof_hook) {
+    dynload::nvtxRangePushA(name.c_str());
+    is_pushed_ = true;
+  }
+#endif
+#endif
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
 
   // do some initialization
@@ -59,12 +74,19 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   is_enabled_ = true;
   // lock is not needed, the code below is thread-safe
   // Maybe need the same push/pop behavior.
-  Event *e = PushEvent(name, role);
+  Event *e = PushEvent(name, role, attr);
   SetCurAnnotation(e);
   name_ = e->name();
 }
 
 RecordEvent::~RecordEvent() {
+#ifndef _WIN32
+#ifdef PADDLE_WITH_CUDA
+  if (g_enable_nvprof_hook && is_pushed_) {
+    dynload::nvtxRangePop();
+  }
+#endif
+#endif
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed, the code below is thread-safe
   DeviceTracer *tracer = GetDeviceTracer();
@@ -169,12 +191,14 @@ void Mark(const std::string &name) {
   GetEventList().Record(EventType::kMark, name, g_thread_id);
 }
 
-Event *PushEvent(const std::string &name, const EventRole role) {
-  return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role);
+Event *PushEvent(const std::string &name, const EventRole role,
+                 std::string attr) {
+  return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role,
+                               attr);
 }
 
-void PopEvent(const std::string &name, const EventRole role) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id, role);
+void PopEvent(const std::string &name, const EventRole role, std::string attr) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id, role, attr);
 }
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state, ProfilerState::kDisabled,
@@ -189,7 +213,7 @@ void EnableProfiler(ProfilerState state) {
   g_state = state;
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll ||
       g_state == ProfilerState::kCPU) {
     // Generate some dummy events first to reduce the startup overhead.
@@ -298,6 +322,13 @@ void SetProfileListener() {
 }
 
 int64_t ListenerId() { return profiler_lister_id; }
+
+void NvprofEnableRecordEvent() {
+  SynchronizeAllDevice();
+  g_enable_nvprof_hook = true;
+}
+
+void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
 
 }  // namespace platform
 }  // namespace paddle

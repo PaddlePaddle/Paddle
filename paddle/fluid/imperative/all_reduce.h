@@ -14,16 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_NCCL
-
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <nccl.h>
-
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/imperative/nccl_context.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 namespace paddle {
 namespace framework {
@@ -38,6 +29,10 @@ struct ParallelStrategy;
 
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
                const ParallelStrategy &strategy);
+
+void AllReduce(const framework::Variable &src, framework::Variable *dst,
+               const ParallelStrategy &strategy, int ring_id,
+               bool use_calc_stream);
 
 }  // namespace imperative
 }  // namespace paddle

@@ -15,22 +15,36 @@
 #pragma once
 
 #include <stdint.h>
+
+#include <cmath>
+#include <cstring>
+#include <iostream>
 #include <limits>
+
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#endif
+
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+#define PADDLE_CUDA_BF16
+#include <cuda_bf16.h>
+#endif
+
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
-#include <cstring>
-
-#include "paddle/fluid/platform/hostdevice.h"
-#include "unsupported/Eigen/CXX11/Tensor"
-
-namespace Eigen {
-template <typename T>
-struct NumTraits;
-}  // namespace Eigen
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
 
 namespace paddle {
 namespace platform {
@@ -39,6 +53,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
  public:
   uint16_t x;
 
+  // Constructors
   bfloat16() = default;
   bfloat16(const bfloat16& o) = default;
   bfloat16& operator=(const bfloat16& o) = default;
@@ -47,12 +62,41 @@ struct PADDLE_ALIGN(2) bfloat16 {
   ~bfloat16() = default;
 
   HOSTDEVICE inline explicit bfloat16(float val) {
+#ifdef PADDLE_WITH_HIP
+    uint32_t res = 0;
+    uint32_t* tempRes;
+    // We should be using memcpy in order to respect the strict aliasing rule
+    // but it fails in the HIP environment.
+    tempRes = reinterpret_cast<uint32_t*>(&val);
+    res = *tempRes;
+    x = res >> 16;
+#else
+#if defined(PADDLE_CUDA_BF16)
+    __nv_bfloat16 tmp = __float2bfloat16(val);
+    x = *reinterpret_cast<uint16_t*>(&tmp);
+#else
     std::memcpy(&x, reinterpret_cast<char*>(&val) + 2, 2);
+#endif
+#endif
   }
+
+#if defined(PADDLE_CUDA_BF16)
+  HOSTDEVICE inline explicit bfloat16(const __nv_bfloat16& val) {
+    x = *reinterpret_cast<const unsigned short*>(&val);
+  }
+#endif
 
   template <class T>
   HOSTDEVICE inline explicit bfloat16(const T& val)
       : x(bfloat16(static_cast<float>(val)).x) {}
+
+// Assignment operators
+#if defined(PADDLE_CUDA_BF16)
+  HOSTDEVICE inline bfloat16& operator=(const __nv_bfloat16& val) {
+    x = *reinterpret_cast<const unsigned short*>(&val);
+    return *this;
+  }
+#endif
 
   HOSTDEVICE inline bfloat16& operator=(bool b) {
     x = b ? 0x3f80 : 0;
@@ -109,13 +153,24 @@ struct PADDLE_ALIGN(2) bfloat16 {
     return *this;
   }
 
+  // Conversion opertors
   HOSTDEVICE inline explicit operator float() const {
+#ifdef PADDLE_CUDA_BF16
+    return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));
+#else
     float val = 0.f;
     uint16_t temp = x;
     memcpy(reinterpret_cast<char*>(&val) + 2, reinterpret_cast<char*>(&temp),
            2);
     return val;
+#endif
   }
+
+#ifdef PADDLE_CUDA_BF16
+  HOSTDEVICE inline explicit operator __nv_bfloat16() const {
+    return *reinterpret_cast<const __nv_bfloat16*>(&x);
+  }
+#endif
 
   HOSTDEVICE inline explicit operator bool() const { return (x & 0x7fff) != 0; }
 
@@ -208,6 +263,7 @@ HOSTDEVICE inline bfloat16 raw_uint16_to_bfloat16(uint16_t a) {
   return res;
 }
 
+// Comparison operators
 HOSTDEVICE inline bool operator==(const bfloat16& a, const bfloat16& b) {
   return static_cast<float>(a) == static_cast<float>(b);
 }
@@ -341,105 +397,3 @@ struct numeric_limits<paddle::platform::bfloat16> {
 };
 
 }  // namespace std
-
-namespace Eigen {
-
-using bfloat16 = paddle::platform::bfloat16;
-
-template <>
-struct NumTraits<bfloat16> : GenericNumTraits<bfloat16> {
-  enum {
-    IsSigned = true,
-    IsInteger = false,
-    IsComplex = false,
-    RequireInitialization = false
-  };
-
-  HOSTDEVICE static inline bfloat16 epsilon() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x3400);
-  }
-  HOSTDEVICE static inline bfloat16 dummy_precision() {
-    return bfloat16(1e-5f);
-  }
-  HOSTDEVICE static inline bfloat16 highest() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x7f7f);
-  }
-  HOSTDEVICE static inline bfloat16 lowest() {
-    return paddle::platform::raw_uint16_to_bfloat16(0xff7f);
-  }
-  HOSTDEVICE static inline bfloat16 infinity() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x7f80);
-  }
-  HOSTDEVICE static inline bfloat16 quiet_NaN() {
-    return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
-  }
-};
-namespace numext {
-
-template <>
-HOSTDEVICE inline bool(isnan)(const bfloat16& a) {
-  return (paddle::platform::isnan)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isinf)(const bfloat16& a) {
-  return (paddle::platform::isinf)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isfinite)(const bfloat16& a) {
-  return (paddle::platform::isfinite)(a);
-}
-
-template <>
-HOSTDEVICE inline bfloat16 exp(const bfloat16& a) {
-  return bfloat16(::expf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 erf(const bfloat16& a) {
-  return bfloat16(::erff(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 log(const bfloat16& a) {
-  return bfloat16(::logf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 tanh(const bfloat16& a) {
-  return bfloat16(::tanhf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 sqrt(const bfloat16& a) {
-  return bfloat16(::sqrtf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 ceil(const bfloat16& a) {
-  return bfloat16(::ceilf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 floor(const bfloat16& a) {
-  return bfloat16(::floorf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 round(const bfloat16& a) {
-  return bfloat16(::roundf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 pow(const bfloat16& a, const bfloat16& b) {
-  return bfloat16(::powf(static_cast<float>(a), static_cast<float>(b)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 abs(const bfloat16& a) {
-  return bfloat16(::fabs(static_cast<float>(a)));
-}
-
-}  // namespace numext
-}  // namespace Eigen
