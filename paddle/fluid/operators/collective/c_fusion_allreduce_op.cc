@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,17 +15,33 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_fusion_allreduce_op.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
 namespace platform {
-struct ASCENDPlace;
+struct CPUPlace;
 struct float16;
 }  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
+namespace operators {
+}  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+REGISTER_OPERATOR(c_fusion_allreduce, paddle::operators::CFusionAllReduceOp,
+    paddle::operators::CFusionAllReduceOpMaker);
+
+#if defined(PADDLE_WITH_ASCEND_CL)
 REGISTER_OP_NPU_KERNEL(
     c_fusion_allreduce_sum, ops::CFusionAllReduceOpASCENDKernel<ops::kRedSum, int>,
     ops::CFusionAllReduceOpASCENDKernel<ops::kRedSum, int8_t>,
     ops::CFusionAllReduceOpASCENDKernel<ops::kRedSum, float>,
     ops::CFusionAllReduceOpASCENDKernel<ops::kRedSum, plat::float16>)
+#endif

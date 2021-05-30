@@ -52,22 +52,24 @@ class CFusionAllReduceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    //fused_var
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X",
                    "c_fusion_allreduce");
-    OP_INOUT_CHECK(ctx->HasInputs("splitted"), "Input", "splitted",
+    OP_INOUT_CHECK(ctx->HasInputs("Splitted"), "Input", "Splitted",
                    "c_fusion_allreduce");
+    //fused_var
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
                    "c_fusion_allreduce");
-    OP_INOUT_CHECK(ctx->HasOutputs("splitted"), "Output", "splitted",
+    OP_INOUT_CHECK(ctx->HasOutputs("Splitted"), "Output", "Splitted",
                    "c_fusion_allreduce");
 
     PADDLE_ENFORCE_EQ(
-        ctx->Inputs("Input").size(), ctx->Outputs("Out").size(),
+        ctx->Inputs("Splitted").size(), ctx->Outputs("Splitted").size(),
         platform::errors::InvalidArgument(
             "The input(X) and output(Out) should have same size in "
             "Operator(c_fusion_allreduce), size of input(X) is %d "
             "and size of output(Out) is %d.",
-            ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
+            ctx->Inputs("Splitted").size(), ctx->Outputs("Splitted").size()));
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
   }
@@ -85,13 +87,8 @@ template <ReduceType red_type, typename T>
 class CFusionAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_GLOO)
-    VLOG(1) << "The CPU fusion allreduce sum";
-    return;     
-#else
     PADDLE_THROW(platform::errors::Unavailable(
-        "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
-#endif
+        "CFusionAllReduceOpCPUKernel not suppored"));
   }
 };
 
@@ -101,14 +98,45 @@ class CFusionAllReduceOpASCENDKernel : public framework::OpKernel<T> {
   CFusionAllReduceOpASCENDKernel():_allreduce_op_kernel(new CAllReduceOpASCENDKernel<red_type,T>()){};
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    const auto inputs = ctx.MultiInput<framework::Tensor>("Input");
-    auto outs = ctx.MultiInput<framework::Tensor>("Out");
-    auto fused = ctx.MultiInput<framework::Tensor>("fused");
-    auto input_size = inputs.size();
+    const auto x = ctx.InputVar("X");
+    auto out = ctx.OuputVar("Out");
+    auto splits = ctx.MultiInputVar<framework::LodTensor>("Splitted");
+    auto splits_size = splits.size();
+    auto offset = ctx.Attr<int>("align_size")
+    VLOG(4) << "The NPU fusion allreduce sum input:"<< splits_size;
 
-    VLOG(4) << "The NPU fusion allreduce sum input:"<< input_size;
+    // Check whether the address space is contiguous.
+    // std::sort(splits.begin(),splits.end());
+
+    //size_t size_of_dtype = framework::SizeOfType(T);
+    for (size_t k = 1; k < splits.size(); ++k) {
+      //pre
+      auto pre_var = splits.at(k - 1);
+      auto per_tensor = pre_var->Get<framework::LodTensor>();
+      const void *pre_address = per_tensor->data<void>();
+      int64_t pre_len = per_tensor->numel();
+      //auto offset = platform::Alignment(pre_len * size_of_dtype, places_[0]);
+      void * infer_address = reinterpret_cast<void *>(
+          reinterpret_cast<uintptr_t>(pre_address) + offset);
+
+      //next
+      auto cur_var = splits.at(k);
+      auto cur_tensor = cur_var->Get<framework::LodTensor>();
+      const void *cur_address = cur_tensor->data<void>();
+
+      VLOG(10) << string::Sprintf(
+          "Input[%d]: pre_address:0X%02x infer_address:0X%02x cur_address:0X%02x offset:%d",
+          k - 1, pre_address, infer_address, cur_address, offset);
+      PADDLE_ENFORCE_EQ(
+          infer_address, cur_address,
+          platform::errors::InvalidArgument(
+              "The infered address of the next tensor should be equal to the "
+              "real address of the next tensor. But got infered address is %p "
+              "and real address is %p.",
+              infer_address, cur_address));
+    }
+
     _allreduce_op_kernel->Compute(ctx);
-
     return; 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -119,18 +147,20 @@ class CFusionAllReduceOpASCENDKernel : public framework::OpKernel<T> {
   std::unique_ptr<CAllReduceOpASCENDKernel<red_type,T>> _allreduce_op_kernel;
 };
 
-
-
 class CFusionAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor), tensor to be allreduced.").AsDuplicable();
-    AddOutput("Out", "(Tensor) the allreduced result.").AsDuplicable();
+    AddInput("X", "(Tensor), tensor to be allreduced.");
+    AddOutput("Out", "(Tensor) the allreduced result.");
+    AddInput("Splitted", "(Tensor), tensor to be allreduced.").AsDuplicable();
+    AddOutput("Splitted", "(Tensor), tensor to be allreduced.").AsDuplicable();
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
 #if defined(PADDLE_WITH_ASCEND_CL)
     AddAttr<std::string>("tag", "(string default tag) tag for all reduce.")
         .SetDefault("tag");
+    AddAttr<int>("align_size", "align size for npu memory")
+        .SetDefault(256);
 #endif
     AddAttr<bool>(
         "use_calc_stream",
@@ -144,12 +174,7 @@ class CFusionAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 CFusionAllReduce %s Operator
-
-Call collective AllReduce with reduce type %s. If input and output are
-the same variable, in-place allreduce will be used.
-Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/usage/operations.html#allreduce
-)DOC",
-                               GetName(), GetName()));
+)DOC", GetName(), GetName()));
   }
 
  protected:
