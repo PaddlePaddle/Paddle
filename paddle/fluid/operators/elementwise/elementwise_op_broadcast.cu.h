@@ -501,23 +501,31 @@ void LaunchBroadcastElementwiseCudaKernel(
   }
 }
 
-template <ElementwiseType ET, typename InT, typename OutType, typename Functor>
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel(
-    const platform::CUDADeviceContext &cuda_ctx,
+    const framework::ExecutionContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+    std::vector<framework::Tensor *> *outs, Functor func) {
+  std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
     no_broadcast_flag = ins[0]->dims() == in->dims();
+    dims_size.emplace_back(in->dims().size());
   }
+  const auto &cuda_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
 
   if (no_broadcast_flag) {
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutType>(
-        cuda_ctx, ins, outs, func);
+    LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
+                                                       func);
   } else {
-    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, InT,
-                                         OutType>(cuda_ctx, ins, outs, axis,
-                                                  func);
+    int axis = ctx.Attr<int>("axis");
+    axis = axis == -1
+               ? *std::max_element(dims_size.begin(), dims_size.end()) -
+                     *std::min_element(dims_size.begin(), dims_size.end())
+               : axis;
+    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
+                                                        axis, func);
   }
 }
 
