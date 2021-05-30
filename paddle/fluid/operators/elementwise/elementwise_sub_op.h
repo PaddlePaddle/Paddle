@@ -55,10 +55,10 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
 
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {
-      SameDimsElemwiseSub<platform::CPUDeviceContext, T> same_dims_sub;
+      SameDimsElemwiseSub<DeviceContext, T> same_dims_sub;
       same_dims_sub(ctx, x, y, z);
     } else {
-      default_elementwise_sub<platform::CPUDeviceContext, T>(ctx, x, y, z);
+      default_elementwise_sub<DeviceContext, T>(ctx, x, y, z);
     }
   }
 };
