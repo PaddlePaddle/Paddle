@@ -55,21 +55,21 @@ class CFusionAllReduceOp : public framework::OperatorWithKernel {
     //fused_var
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X",
                    "c_fusion_allreduce");
-    OP_INOUT_CHECK(ctx->HasInputs("Splitted"), "Input", "Splitted",
+    OP_INOUT_CHECK(ctx->HasInputs("SplittedInput"), "Input", "SplittedInput",
                    "c_fusion_allreduce");
     //fused_var
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
                    "c_fusion_allreduce");
-    OP_INOUT_CHECK(ctx->HasOutputs("Splitted"), "Output", "Splitted",
+    OP_INOUT_CHECK(ctx->HasOutputs("SplittedOutput"), "Output", "SplittedOutput",
                    "c_fusion_allreduce");
 
     PADDLE_ENFORCE_EQ(
-        ctx->Inputs("Splitted").size(), ctx->Outputs("Splitted").size(),
+        ctx->Inputs("SplittedInput").size(), ctx->Outputs("SplittedOutput").size(),
         platform::errors::InvalidArgument(
             "The input(X) and output(Out) should have same size in "
             "Operator(c_fusion_allreduce), size of input(X) is %d "
             "and size of output(Out) is %d.",
-            ctx->Inputs("Splitted").size(), ctx->Outputs("Splitted").size()));
+            ctx->Inputs("SplittedInput").size(), ctx->Outputs("SplittedOutput").size()));
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
   }
@@ -100,7 +100,7 @@ class CFusionAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_ASCEND_CL)
     //const auto x = ctx.InputVar("X");
     //auto out = ctx.OuputVar("Out");
-    auto splits = ctx.MultiInputVar("Splitted");
+    auto splits = ctx.MultiInputVar("SplittedInput");
     auto splits_size = splits.size();
     auto offset = ctx.Attr<int>("align_size");
     VLOG(4) << "The NPU fusion allreduce sum input:"<< splits_size;
@@ -152,8 +152,8 @@ class CFusionAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
     AddOutput("Out", "(Tensor) the allreduced result.");
-    AddInput("Splitted", "(Tensor), tensor to be allreduced.").AsDuplicable();
-    AddOutput("Splitted", "(Tensor), tensor to be allreduced.").AsDuplicable();
+    AddInput("SplittedInput", "(Tensor), tensor to be allreduced.").AsDuplicable();
+    AddOutput("SplittedOutput", "(Tensor), tensor to be allreduced.").AsDuplicable();
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
 #if defined(PADDLE_WITH_ASCEND_CL)
