@@ -98,11 +98,11 @@ class CFusionAllReduceOpASCENDKernel : public framework::OpKernel<T> {
   CFusionAllReduceOpASCENDKernel():_allreduce_op_kernel(new CAllReduceOpASCENDKernel<red_type,T>()){};
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    const auto x = ctx.InputVar("X");
-    auto out = ctx.OuputVar("Out");
-    auto splits = ctx.MultiInputVar<framework::LodTensor>("Splitted");
+    //const auto x = ctx.InputVar("X");
+    //auto out = ctx.OuputVar("Out");
+    auto splits = ctx.MultiInputVar("Splitted");
     auto splits_size = splits.size();
-    auto offset = ctx.Attr<int>("align_size")
+    auto offset = ctx.Attr<int>("align_size");
     VLOG(4) << "The NPU fusion allreduce sum input:"<< splits_size;
 
     // Check whether the address space is contiguous.
@@ -112,16 +112,16 @@ class CFusionAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     for (size_t k = 1; k < splits.size(); ++k) {
       //pre
       auto pre_var = splits.at(k - 1);
-      auto per_tensor = pre_var->Get<framework::LodTensor>();
+      auto per_tensor = &pre_var->Get<framework::LoDTensor>();
       const void *pre_address = per_tensor->data<void>();
-      int64_t pre_len = per_tensor->numel();
+      //int64_t pre_len = per_tensor->numel();
       //auto offset = platform::Alignment(pre_len * size_of_dtype, places_[0]);
       void * infer_address = reinterpret_cast<void *>(
           reinterpret_cast<uintptr_t>(pre_address) + offset);
 
       //next
       auto cur_var = splits.at(k);
-      auto cur_tensor = cur_var->Get<framework::LodTensor>();
+      auto cur_tensor = &cur_var->Get<framework::LoDTensor>();
       const void *cur_address = cur_tensor->data<void>();
 
       VLOG(10) << string::Sprintf(
@@ -176,10 +176,10 @@ class CFusionAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
 CFusionAllReduce %s Operator
 )DOC", GetName(), GetName()));
   }
-
  protected:
   virtual std::string GetName() const = 0;
 };
+
 
 }  // namespace operators
 }  // namespace paddle
