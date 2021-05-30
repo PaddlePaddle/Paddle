@@ -23,13 +23,13 @@
 
 template <typename data_t>
 using EnableComplex = typename std::enable_if<
-    std::is_same<data_t, paddle::complex<float>>::value ||
-    std::is_same<data_t, paddle::complex<double>>::value>::type;
+    std::is_same<data_t, paddle::complex64>::value ||
+    std::is_same<data_t, paddle::complex128>::value>::type;
 
 template <typename data_t>
 using DisableComplex = typename std::enable_if<
-    !std::is_same<data_t, paddle::complex<float>>::value &&
-    !std::is_same<data_t, paddle::complex<double>>::value>::type;
+    !std::is_same<data_t, paddle::complex64>::value &&
+    !std::is_same<data_t, paddle::complex128>::value>::type;
 
 template <typename data_t, typename Enable = void>
 struct ConjFunctor;
