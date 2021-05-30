@@ -43,6 +43,10 @@ class VocabParallelEmbedding(Layer):
         self.origin_num_embeddings = num_embeddings
         self.is_mp = (self.world_size > 1)
 
+        assert num_embeddings % self.world_size == 0, (
+            "The length of the vocabulary must be divisible by the parallelism degree of MP"
+        )
+
         per_part_size = (
             num_embeddings + self.world_size - 1) // self.world_size
         last_part_size = num_embeddings - per_part_size * (self.world_size - 1)
@@ -71,6 +75,12 @@ class VocabParallelEmbedding(Layer):
                 shape=[num_embeddings, embedding_dim],
                 dtype=self._dtype,
                 is_bias=False)
+
+    def get_embedding_weight(self):
+        if self.is_mp:
+            return self.weight[:-1, :]
+        else:
+            return self.weight
 
     def forward(self, x):
         if not self.is_mp:
