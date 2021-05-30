@@ -47,16 +47,11 @@ class ElementwiseAddKernel<platform::CUDADeviceContext, T>
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
-
     std::vector<const framework::Tensor*> ins = {x, y};
     std::vector<framework::Tensor*> outs = {z};
-    const auto& cuda_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
 
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaAddFunctor<T>());
+        ctx, ins, &outs, CudaAddFunctor<T>());
   }
 };
 

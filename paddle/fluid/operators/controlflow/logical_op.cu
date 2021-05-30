@@ -48,23 +48,15 @@ class LogicalOpCudaKernel
   using InT = typename Functor::ELEMENT_TYPE;
   using OutT = bool;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* z = ctx.Output<framework::Tensor>("Out");
-    z->mutable_data<OutT>(ctx.GetPlace());
     auto functor = Functor();
-    std::vector<framework::Tensor*> outs = {z};
-    const auto& cuda_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    PackTensorsIntoVector<T>(ctx, &ins, &outs);
 
-    int axis = -1;
     if (y == nullptr) {
-      std::vector<const framework::Tensor*> ins = {x};
       LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
           cuda_ctx, ins, &outs, axis, functor);
     } else {
-      axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
-      std::vector<const framework::Tensor*> ins = {x, y};
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
           cuda_ctx, ins, &outs, axis, functor);
     }
