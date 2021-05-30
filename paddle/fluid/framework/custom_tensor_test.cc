@@ -110,9 +110,9 @@ void GroupTestCopy() {
   VLOG(2) << "uint8 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<uint8_t>();
   VLOG(2) << "complex<float> cpu-cpu-gpu-gpu-cpu";
-  TestCopyTensor<paddle::complex<float>>();
+  TestCopyTensor<paddle::complex64>();
   VLOG(2) << "complex<double> cpu-cpu-gpu-gpu-cpu";
-  TestCopyTensor<paddle::complex<double>>();
+  TestCopyTensor<paddle::complex128>();
   VLOG(2) << "Fp16 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<paddle::float16>();
 }
@@ -133,9 +133,9 @@ void GroupTestCast() {
   VLOG(2) << "float cast";
   TestCast<float>(paddle::DataType::FLOAT32);
   VLOG(2) << "complex<float> cast";
-  TestCast<paddle::complex<float>>(paddle::DataType::FLOAT32);
+  TestCast<paddle::complex64>(paddle::DataType::FLOAT32);
   VLOG(2) << "complex<double> cast";
-  TestCast<paddle::complex<double>>(paddle::DataType::FLOAT32);
+  TestCast<paddle::complex128>(paddle::DataType::FLOAT32);
   VLOG(2) << "float16 cast";
   TestCast<paddle::float16>(paddle::DataType::FLOAT16);
 }
@@ -148,8 +148,8 @@ void GroupTestDtype() {
   CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
   CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
   CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
-  CHECK(TestDtype<paddle::complex<float>>() == paddle::DataType::COMPLEX64);
-  CHECK(TestDtype<paddle::complex<double>>() == paddle::DataType::COMPLEX128);
+  CHECK(TestDtype<paddle::complex64>() == paddle::DataType::COMPLEX64);
+  CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
   CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
 }
 
