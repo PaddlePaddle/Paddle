@@ -43,13 +43,9 @@ class ElementwiseAddKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* z = ctx.Output<framework::LoDTensor>("Out");
-    z->mutable_data<T>(ctx.GetPlace());
-    std::vector<const framework::Tensor*> ins = {x, y};
-    std::vector<framework::Tensor*> outs = {z};
-
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         ctx, ins, &outs, CudaAddFunctor<T>());
   }

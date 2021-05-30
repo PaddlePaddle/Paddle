@@ -500,7 +500,7 @@ void LaunchBroadcastElementwiseCudaKernel(
   }
 }
 
-template <ElementwiseType ET, typename InT, typename OutType, typename Functor>
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel(
     const framework::ExecutionContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
@@ -514,7 +514,7 @@ void LaunchElementwiseCudaKernel(
   const auto &cuda_ctx =
       ctx.template device_context<platform::CUDADeviceContext>();
   if (no_broadcast_flag) {
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutType>(
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
         cuda_ctx, ins, outs, func);
   } else {
     int axis = ctx.Attr<int>("axis");
