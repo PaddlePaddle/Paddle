@@ -506,33 +506,42 @@ void LaunchBroadcastElementwiseCudaKernel(
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel(
-    const platform::CUDADeviceContext &cuda_ctx,
+    const framework::ExecutionContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+    std::vector<framework::Tensor *> *outs, Functor func) {
+  std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
     no_broadcast_flag = ins[0]->dims() == in->dims();
+    dims_size.emplace_back(in->dims().size());
   }
-
+  const auto &cuda_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
   if (no_broadcast_flag) {
     LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
                                                        func);
   } else {
+    int axis = ctx.Attr<int>("axis");
+    axis = axis == -1
+               ? *std::max_element(dims_size.begin(), dims_size.end()) -
+                     *std::min_element(dims_size.begin(), dims_size.end())
+               : axis;
     LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
                                                         axis, func);
   }
 }
 
-#ifndef __HIPCC__
+// Avoid kUnary instantiation of "LaunchElementwiseCudaKernel" at compile time
 template <typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT, Functor>(
-    const platform::CUDADeviceContext &cuda_ctx,
+    const framework::ExecutionContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+    std::vector<framework::Tensor *> *outs, Functor func) {
+  const auto &cuda_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
   LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
       cuda_ctx, ins, outs, func);
 }
-#endif  // end of __HIPCC__
 
 }  // namespace operators
 }  // namespace paddle
