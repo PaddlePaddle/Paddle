@@ -138,16 +138,16 @@ class PRChecker(object):
     def get_is_white_file(self, filename):
         """ judge is white file in pr's files. """
         isWhiteFile = False
-        white_files = (PADDLE_ROOT + 'cmake/', PADDLE_ROOT + 'patches/',
-                       PADDLE_ROOT + 'tools/dockerfile/',
-                       PADDLE_ROOT + 'tools/windows/',
-                       PADDLE_ROOT + 'tools/test_runner.py',
-                       PADDLE_ROOT + 'tools/parallel_UT_rule.py',
-                       PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
-                       PADDLE_ROOT + 'paddle/scripts/paddle_build.bat')
+        not_white_files = (PADDLE_ROOT + 'cmake/', PADDLE_ROOT + 'patches/',
+                           PADDLE_ROOT + 'tools/dockerfile/',
+                           PADDLE_ROOT + 'tools/windows/',
+                           PADDLE_ROOT + 'tools/test_runner.py',
+                           PADDLE_ROOT + 'tools/parallel_UT_rule.py',
+                           PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
+                           PADDLE_ROOT + 'paddle/scripts/paddle_build.bat')
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
-        elif filename.startswith((white_files)):
+        elif filename.startswith((not_white_files)):
             isWhiteFile = False
         else:
             isWhiteFile = True
@@ -286,11 +286,14 @@ class PRChecker(object):
                 (PADDLE_ROOT + 'python/', PADDLE_ROOT + 'paddle/fluid/')):
                 file_list.append(filename)
             else:
-                isWhiteFile = self.get_is_white_file(filename)
-                if isWhiteFile == False:
+                if file_dict[filename] == 'added':
                     file_list.append(filename)
                 else:
-                    filterFiles.append(filename)
+                    isWhiteFile = self.get_is_white_file(filename)
+                    if isWhiteFile == False:
+                        file_list.append(filename)
+                    else:
+                        filterFiles.append(filename)
         if len(file_list) == 0:
             ut_list.append('filterfiles_placeholder')
             ret = self.__urlretrieve(
