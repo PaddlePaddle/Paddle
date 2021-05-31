@@ -608,8 +608,8 @@ class QuantizedOutputLayer(layers.Layer):
         self._moving_average_abs_max_scale = \
             MovingAverageAbsMaxScale(layer.full_name(), moving_rate, dtype)
 
-    def forward(self, input):
-        out = self._layer(input)
+    def forward(self, *inputs, **kwargs):
+        out = self._layer(*inputs, **kwargs)
         # TODO (jc): support the ops of several outputs
         if (isinstance(out, list) or isinstance(out, tuple)) and len(out) > 1:
             _logger.info("%s has several outputs, so skip collecting "

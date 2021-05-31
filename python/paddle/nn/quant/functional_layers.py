@@ -24,53 +24,43 @@ class FloatFunctionalLayer(layers.Layer):
 
 
 class add(FloatFunctionalLayer):
-    def __init__(self, name=None):
+    def __init__(self):
         super(add, self).__init__()
-        self._name = name
 
-    def forward(self, inputs):
-        assert len(inputs) == 2, "The inputs should be (x, y)"
-        return math.add(inputs[0], inputs[1], self._name)
+    def forward(self, x, y, name=None):
+        return math.add(x, y, name)
 
 
 class subtract(FloatFunctionalLayer):
-    def __init__(self, name=None):
+    def __init__(self):
         super(subtract, self).__init__()
-        self._name = name
 
-    def forward(self, inputs):
-        assert len(inputs) == 2, "The inputs should be (x, y)"
-        return math.subtract(inputs[0], inputs[1], self._name)
+    def forward(self, x, y, name=None):
+        return math.subtract(x, y, name)
 
 
 class multiply(FloatFunctionalLayer):
-    def __init__(self, name=None):
+    def __init__(self):
         super(multiply, self).__init__()
-        self._name = name
 
-    def forward(self, inputs):
-        assert len(inputs) == 2, "The inputs should be (x, y)"
-        return math.multiply(inputs[0], inputs[1], self._name)
+    def forward(self, x, y, name=None):
+        return math.multiply(x, y, name)
 
 
 class divide(FloatFunctionalLayer):
-    def __init__(self, name=None):
+    def __init__(self):
         super(divide, self).__init__()
-        self._name = name
 
-    def forward(self, inputs):
-        assert len(inputs) == 2, "The inputs should be (x, y)"
-        return math.divide(inputs[0], inputs[1], self._name)
+    def forward(self, x, y, name=None):
+        return math.divide(x, y, name)
 
 
 class reshape(FloatFunctionalLayer):
-    def __init__(self, name=None):
+    def __init__(self):
         super(reshape, self).__init__()
-        self._name = name
 
-    def forward(self, inputs):
-        assert len(inputs) == 2, "The inputs should be (x, shape)"
-        return manipulation.reshape(inputs[0], inputs[1], self._name)
+    def forward(self, x, shape, name=None):
+        return manipulation.reshape(x, shape, name)
 
 
 class tranpose(FloatFunctionalLayer):
