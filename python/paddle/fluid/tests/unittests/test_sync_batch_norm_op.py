@@ -288,19 +288,33 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
                 def __init__(self, in_ch=3, out_ch=3, dirate=1):
                     super(SyBNNet, self).__init__()
                     self.bn_s1 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
-                        paddle.nn.BatchNorm3D(out_ch))
+                        paddle.nn.BatchNorm3D(
+                            out_ch,
+                            weight_attr=paddle.ParamAttr(
+                                regularizer=paddle.regularizer.L2Decay(0.))))
+                    self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                        paddle.nn.BatchNorm3D(
+                            out_ch, data_format='NDHWC'))
 
                 def forward(self, x):
-                    out = paddle.sum(paddle.abs(self.bn_s1(x)))
+                    x = self.bn_s1(x)
+                    out = paddle.sum(paddle.abs(self.bn_s2(x)))
                     return out
 
             class BNNet(paddle.nn.Layer):
                 def __init__(self, in_ch=3, out_ch=3, dirate=1):
                     super(BNNet, self).__init__()
-                    self.bn_s1 = paddle.nn.BatchNorm3D(out_ch)
+                    self.bn_s1 = paddle.nn.BatchNorm3D(
+                        out_ch,
+                        weight_attr=paddle.ParamAttr(
+                            regularizer=paddle.regularizer.L2Decay(0.)))
+                    self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                        paddle.nn.BatchNorm3D(
+                            out_ch, data_format='NDHWC'))
 
                 def forward(self, x):
-                    out = paddle.sum(paddle.abs(self.bn_s1(x)))
+                    x = self.bn_s1(x)
+                    out = paddle.sum(paddle.abs(self.bn_s2(x)))
                     return out
 
             bn_model = BNNet()
