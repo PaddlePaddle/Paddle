@@ -19,44 +19,36 @@ namespace operators {
 
 template <typename T>
 struct CustomMin {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+  __device__ T operator()(const T &a, const T &b) const {
     return (b < a) ? b : a;
   }
 };
 
 template <typename T>
 struct CustomMax {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+  __device__ T operator()(const T &a, const T &b) const {
     return (b > a) ? b : a;
   }
 };
 
 template <typename T>
 struct CustomSum {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
-    return b + a;
-  }
+  __device__ T operator()(const T &a, const T &b) const { return b + a; }
 };
 
 template <typename T>
 struct CustomMul {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
-    return b * a;
-  }
+  __device__ T operator()(const T &a, const T &b) const { return b * a; }
 };
 
 template <typename T>
 struct CustomLogicalOr {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
-    return b || a;
-  }
+  __device__ T operator()(const T &a, const T &b) const { return b || a; }
 };
 
 template <typename T>
 struct CustomLogicalAnd {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
-    return b && a;
-  }
+  __device__ T operator()(const T &a, const T &b) const { return b && a; }
 };
 
 }  // namespace operators
