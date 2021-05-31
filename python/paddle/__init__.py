@@ -492,4 +492,5 @@ __all__ = [     #noqa
            'log10',
            'concat',
            'check_shape'
+           'addequaldim'
 ]

@@ -163,6 +163,7 @@ from .math import all  # noqa: F401
 from .math import any  # noqa: F401
 from .math import broadcast_shape  # noqa: F401
 from .math import conj  # noqa: F401
+from .math import addequaldim  #noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
