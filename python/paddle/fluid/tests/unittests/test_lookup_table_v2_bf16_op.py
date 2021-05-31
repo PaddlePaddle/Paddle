@@ -16,107 +16,47 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16, convert_uint16_to_float
+from paddle.fluid.tests.unittests.op_test import (skip_check_grad_ci,
+                                                  convert_uint16_to_float)
+from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
+    _lookup, TestLookupTableBF16Op, TestLookupTableBF16OpIds4D,
+    TestLookupTableBF16OpWIsSelectedRows,
+    TestLookupTableBF16OpWIsSelectedRows4DIds)
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 
 
-def _lookup(weights, ids, flat_ids):
-    w_shape = weights.shape
-    out_shape = [ids.shape[-1]]
-    out_shape.append(w_shape[-1])
-    out = weights[flat_ids].reshape(out_shape)
-    return out
-
-
-def _get_grad(weights, ids, flat_ids):
-    w_shape = weights.shape
-    w_grad = np.zeros((w_shape), dtype=weights.dtype)
-    out_grad_shape = (np.prod(ids.shape[-1]), w_shape[-1])
-    out_grad = weights[flat_ids].reshape(out_grad_shape)
-    for i, idx in enumerate(flat_ids):
-        w_grad[idx, :] += out_grad[i]
-    return w_grad
-
-
-class TestLookupTableV2BF16Op(OpTest):
-    def setUp(self):
+class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
+    def init_test(self):
         self.op_type = "lookup_table_v2"
-        self.dtype = np.uint16
-
-        table = np.random.random((17, 31)).astype("float32")
-        self.ids = np.random.randint(0, 17, 4).astype("int64")
-        self.flat_ids = self.ids.flatten()
-
-        self.w_bf16 = convert_float_to_uint16(table)
-        self.out_bf16 = _lookup(self.w_bf16, self.ids, self.flat_ids)
-        self.out_fp32 = _lookup(table, self.ids, self.flat_ids)
-        self.w_grad_fp32 = _get_grad(table, self.ids, self.flat_ids)
-
-        self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
-        self.outputs = {'Out': self.out_fp32}
-
-    def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ['W'],
-            'Out',
-            no_grad_set=set('Ids'),
-            check_dygraph=False,
-            max_relative_error=1.5e-2,
-            user_defined_grads=[self.w_grad_fp32],
-            user_defined_grad_outputs=[self.out_bf16])
+        self.ids_shape = (4)
 
 
-class TestLookupTableV2BF16OpWIsSelectedRows(unittest.TestCase):
-    def setUp(self):
-        self.ids = np.random.randint(low=0, high=15, size=(10)).astype("int64")
-        self.flat_ids = self.ids.flatten()
-        self.w_fp32 = np.random.random((15, 32)).astype("float32")
-        self.w_bf16 = convert_float_to_uint16(self.w_fp32)
-        self.scope = core.Scope()
-        self.place = core.CPUPlace()
+class TestLookupTableV2BF16OpIds4D(TestLookupTableBF16OpIds4D):
+    def init_test(self):
+        self.op_type = "lookup_table_v2"
+        self.ids_shape = (2, 4, 5)
 
-    def prepare_w(self):
-        rows = [a for a in range(self.w_bf16.shape[0])]
 
-        w_selected_rows = self.scope.var('W').get_selected_rows()
-        w_selected_rows.set_height(len(rows))
-        w_selected_rows.set_rows(rows)
-        w_tensor = w_selected_rows.get_tensor()
-        w_tensor.set(self.w_bf16, self.place)
+class TestLookupTableV2BF16OpWIsSelectedRows(
+        TestLookupTableBF16OpWIsSelectedRows):
+    def init_test(self):
+        self.op_type = "lookup_table_v2"
+        self.ids_shape = (10)
 
-    def prepare_ids(self):
-        ids_tensor = self.scope.var('Ids').get_tensor()
-        ids_tensor.set(self.ids, self.place)
 
-    def _check_output(self, reference, result_array):
-        result_array_fp32 = convert_uint16_to_float(result_array)
-        np.testing.assert_allclose(result_array_fp32, reference, rtol=1e-1)
-
-    def test_check_output(self):
-        self.prepare_ids()
-        self.prepare_w()
-        out_tensor = self.scope.var('Out').get_tensor()
-
-        # create and run lookup_table operator
-        lookup_table = Operator("lookup_table_v2", W='W', Ids='Ids', Out='Out')
-        lookup_table.run(self.scope, self.place)
-
-        # get result from Out
-        result_array = np.array(out_tensor)
-        ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
-        self._check_output(ref, result_array)
+class TestLookupTableV2BF16OpWIsSelectedRows4DIds(
+        TestLookupTableBF16OpWIsSelectedRows4DIds):
+    def init_test(self):
+        self.op_type = "lookup_table_v2"
+        self.ids_shape = (3, 4, 5)
 
 
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
     "test the gradient here.")
-class TestLookupTableV2BF16OpWithPadding(TestLookupTableV2BF16Op):
+class TestLookupTableBF16OpWithPadding(TestLookupTableV2BF16Op):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -125,15 +65,30 @@ class TestLookupTableV2BF16OpWithPadding(TestLookupTableV2BF16Op):
         self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
 
+@skip_check_grad_ci(
+    reason="Since paddings are not trainable and fixed in forward,"
+    "the gradient of paddings makes no sense and we don't "
+    "test the gradient here.")
+class TestLookupTableBF16OpIds4DPadding(TestLookupTableV2BF16OpIds4D):
+    def test_check_output(self):
+        ids = self.inputs['Ids']
+        flatten_idx = ids.flatten()
+        padding_idx = np.random.choice(flatten_idx, 1)[0]
+        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
+        self.attrs = {'padding_idx': int(padding_idx)}
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+
+
 class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
-    Test embedding layer api and results for bfloat16
+    Test embedding layer from input api and results for bfloat16
     """
 
     def set_initializer(self):
         self.initializer = fluid.initializer.Constant(value=self.value)
 
     def setUp(self):
+        self.op_type = "lookup_table_v2"
         self.ids_shape = [4]
         self.w_shape = [10, 64]
         self.ids = np.random.randint(
@@ -167,7 +122,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
     def test_lookup_results(self):
         lookup_result = convert_uint16_to_float(self.result[1])
-        lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
+        lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids, self.op_type)
         self.assertTrue(np.array_equal(lookup_result, lookup_ref))
 
 
