@@ -40,17 +40,17 @@ namespace detail {
 // Post processing function for sum, max, min, prod, any
 template <typename T>
 struct IdentityFunctor {
-  DEVICE explicit inline IdentityFunctor() {}
+  HOSTDEVICE explicit inline IdentityFunctor() {}
 
-  DEVICE inline T operator()(const T& x) const { return x; }
+  HOSTDEVICE inline T operator()(const T& x) const { return x; }
 };
 
 // Post processing function for mean
 template <typename T>
 struct DivideFunctor {
-  DEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
+  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
 
-  DEVICE inline T operator()(const T& x) const { return x * n_inv; }
+  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
 
  private:
   T n_inv;
