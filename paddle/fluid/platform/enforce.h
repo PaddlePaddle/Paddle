@@ -34,7 +34,7 @@ limitations under the License. */
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
-#include "paddle/fluid/platform/cuda_error.pb.h"
+#include "paddle/fluid/platform/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
@@ -682,41 +682,83 @@ struct EOFException : public std::exception {
     END_HANDLE_THE_ERROR                                                     \
   } while (0)
 
-/** CUDA PADDLE ENFORCE FUNCTIONS AND MACROS **/
+/**************************************************************************/
+/**************************** NVIDIA ERROR ********************************/
 #ifdef PADDLE_WITH_CUDA
 
-/***** CUDA ERROR *****/
-inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
+namespace details {
 
-inline std::string GetCudaErrorWebsite(int32_t cuda_version) {
-  std::ostringstream webstr;
-  webstr << "https://docs.nvidia.com/cuda/";
-  if (cuda_version != -1) {
-    double version = cuda_version / 10;
-    webstr << "archive/" << std::fixed << std::setprecision(1) << version;
+template <typename T>
+struct ExternalApiType {};
+
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value, proto_type) \
+  template <>                                                     \
+  struct ExternalApiType<type> {                                  \
+    using Type = type;                                            \
+    static constexpr Type kSuccess = success_value;               \
+    static constexpr const char* kTypeString = #proto_type;       \
+    static constexpr platform::proto::ApiType kProtoType =        \
+        platform::proto::ApiType::proto_type;                     \
   }
-  webstr << "/cuda-runtime-api/group__CUDART__TYPES.html"
-            "#group__CUDART__TYPES_1g3f51e3575c2178246db0a94a430e0038";
-  return webstr.str();
+
+DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess, CUDA);
+DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
+DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
+DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
+DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
+
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess, NCCL);
+#endif
+
+}  // namespace details
+
+template <typename T>
+inline const char* GetErrorMsgUrl(T status) {
+  using __CUDA_STATUS_TYPE__ = decltype(status);
+  platform::proto::ApiType proto_type =
+      details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
+  switch (proto_type) {
+    case platform::proto::ApiType::CUDA:
+      return "https://docs.nvidia.com/cuda/cuda-runtime-api/"
+             "group__CUDART__TYPES.html#group__CUDART__TYPES_"
+             "1g3f51e3575c2178246db0a94a430e0038";
+      break;
+    case platform::proto::ApiType::CURAND:
+      return "https://docs.nvidia.com/cuda/curand/"
+             "group__HOST.html#group__HOST_1gb94a31d5c165858c96b6c18b70644437";
+      break;
+    case platform::proto::ApiType::CUDNN:
+      return "https://docs.nvidia.com/deeplearning/cudnn/api/"
+             "index.html#cudnnStatus_t";
+      break;
+    case platform::proto::ApiType::CUBLAS:
+      return "https://docs.nvidia.com/cuda/cublas/index.html#cublasstatus_t";
+      break;
+    case platform::proto::ApiType::CUSOLVER:
+      return "https://docs.nvidia.com/cuda/cusolver/"
+             "index.html#cuSolverSPstatus";
+      break;
+    case platform::proto::ApiType::NCCL:
+      return "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/"
+             "types.html#ncclresult-t";
+      break;
+    default:
+      return "Unknown type of External API, can't get error message URL!";
+      break;
+  }
 }
 
-inline std::string build_nvidia_error_msg(cudaError_t e) {
-#if CUDA_VERSION >= 10000 && CUDA_VERSION < 11000
-  int32_t cuda_version = 100;
-#elif CUDA_VERSION >= 9000
-  int32_t cuda_version = 90;
-#else
-  int32_t cuda_version = -1;
-#endif
+template <typename T>
+inline std::string GetExternalErrorMsg(T status) {
   std::ostringstream sout;
-  sout << " Cuda error(" << e << "), " << cudaGetErrorString(e) << ".";
-  static platform::proto::cudaerrorDesc cudaerror;
-  static bool _initSucceed = false;
-  if (cudaerror.ByteSizeLong() == 0) {
+  bool _initSucceed = false;
+  platform::proto::ExternalErrorDesc externalError;
+  if (externalError.ByteSizeLong() == 0) {
     std::string filePath;
 #if !defined(_WIN32)
     Dl_info info;
-    if (dladdr(reinterpret_cast<void*>(GetCudaErrorWebsite), &info)) {
+    if (dladdr(reinterpret_cast<void*>(GetCurrentTraceBackString), &info)) {
       std::string strModule(info.dli_fname);
       const size_t last_slash_idx = strModule.find_last_of("/");
       std::string compare_path = strModule.substr(strModule.length() - 6);
@@ -724,18 +766,19 @@ inline std::string build_nvidia_error_msg(cudaError_t e) {
         strModule.erase(last_slash_idx, std::string::npos);
       }
       if (compare_path.compare("avx.so") == 0) {
-        filePath = strModule +
-                   "/../include/third_party/cudaerror/data/cudaErrorMessage.pb";
-      } else {
         filePath =
-            strModule + "/../../thirl_party/cudaerror/data/cudaErrorMessage.pb";
+            strModule +
+            "/../include/third_party/externalError/data/externalErrorMsg.pb";
+      } else {
+        filePath = strModule +
+                   "/../../third_party/externalError/data/externalErrorMsg.pb";
       }
     }
 #else
     char buf[100];
     MEMORY_BASIC_INFORMATION mbi;
     HMODULE h_module =
-        (::VirtualQuery(GetCudaErrorWebsite, &mbi, sizeof(mbi)) != 0)
+        (::VirtualQuery(GetCurrentTraceBackString, &mbi, sizeof(mbi)) != 0)
             ? (HMODULE)mbi.AllocationBase
             : NULL;
     GetModuleFileName(h_module, buf, 100);
@@ -746,198 +789,118 @@ inline std::string build_nvidia_error_msg(cudaError_t e) {
       strModule.erase(last_slash_idx, std::string::npos);
     }
     if (compare_path.compare("avx.pyd") == 0) {
-      filePath =
-          strModule +
-          "\\..\\include\\third_party\\cudaerror\\data\\cudaErrorMessage.pb";
+      filePath = strModule +
+                 "\\..\\include\\third_"
+                 "party\\externalerror\\data\\externalErrorMsg.pb";
     } else {
       filePath =
-          strModule + "\\..\\third_party\\cudaerror\\data\\cudaErrorMessage.pb";
+          strModule +
+          "\\..\\..\\third_party\\externalerror\\data\\externalErrorMsg.pb";
     }
 #endif
     std::ifstream fin(filePath, std::ios::in | std::ios::binary);
-    _initSucceed = cudaerror.ParseFromIstream(&fin);
+    _initSucceed = externalError.ParseFromIstream(&fin);
   }
+  using __CUDA_STATUS_TYPE__ = decltype(status);
+  platform::proto::ApiType proto_type =
+      details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
   if (_initSucceed) {
-    for (int i = 0; i < cudaerror.allmessages_size(); ++i) {
-      if (cuda_version == cudaerror.allmessages(i).version()) {
-        for (int j = 0; j < cudaerror.allmessages(i).messages_size(); ++j) {
-          if (e == cudaerror.allmessages(i).messages(j).errorcode()) {
-            sout << "\n  [Advise: "
-                 << cudaerror.allmessages(i).messages(j).errormessage() << "]";
+    for (int i = 0; i < externalError.errors_size(); ++i) {
+      if (proto_type == externalError.errors(i).type()) {
+        for (int j = 0; j < externalError.errors(i).messages_size(); ++j) {
+          if (status == externalError.errors(i).messages(j).code()) {
+            sout << "\n  [Hint: "
+                 << externalError.errors(i).messages(j).message() << "]";
             return sout.str();
           }
         }
       }
     }
   }
-  sout << "\n  [Advise: Please search for the error code(" << e
-       << ") on website( " << GetCudaErrorWebsite(cuda_version)
-       << " ) to get Nvidia's official solution about CUDA Error.]";
+
+  sout << "\n  [Hint: Please search for the error code(" << status
+       << ") on website (" << GetErrorMsgUrl(status)
+       << ") to get Nvidia's official solution and advice about "
+       << details::ExternalApiType<__CUDA_STATUS_TYPE__>::kTypeString
+       << " Error.]";
   return sout.str();
 }
 
-/** curand ERROR **/
+template std::string GetExternalErrorMsg<cudaError_t>(cudaError_t);
+template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
+template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
+template std::string GetExternalErrorMsg<cublasStatus_t>(cublasStatus_t);
+template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
+#endif
+
+/*************** CUDA ERROR ***************/
+inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
+
+inline std::string build_nvidia_error_msg(cudaError_t e) {
+  std::ostringstream sout;
+  sout << "CUDA error(" << e << "), " << cudaGetErrorString(e) << ". "
+       << GetExternalErrorMsg(e);
+  return sout.str();
+}
+
+/*************** CURAND ERROR ***************/
 inline bool is_error(curandStatus_t stat) {
   return stat != CURAND_STATUS_SUCCESS;
 }
 
-inline const char* curandGetErrorString(curandStatus_t stat) {
-  switch (stat) {
-    case CURAND_STATUS_SUCCESS:
-      return "`CURAND_STATUS_SUCCESS`. No errors.";
-    case CURAND_STATUS_VERSION_MISMATCH:
-      return "`CURAND_STATUS_VERSION_MISMATCH`. Header file and linked library "
-             "version do not match.";
-    case CURAND_STATUS_NOT_INITIALIZED:
-      return "`CURAND_STATUS_NOT_INITIALIZED`. Generator not initialized.";
-    case CURAND_STATUS_ALLOCATION_FAILED:
-      return "`CURAND_STATUS_ALLOCATION_FAILED`. Memory allocation failed.";
-    case CURAND_STATUS_TYPE_ERROR:
-      return "`CURAND_STATUS_TYPE_ERROR`. Generator is wrong type.";
-    case CURAND_STATUS_OUT_OF_RANGE:
-      return "`CURAND_STATUS_OUT_OF_RANGE`. Argument out of range.";
-    case CURAND_STATUS_LENGTH_NOT_MULTIPLE:
-      return "`CURAND_STATUS_LENGTH_NOT_MULTIPLE`. Length requested is not a "
-             "multple of dimension.";
-    case CURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
-      return "`CURAND_STATUS_DOUBLE_PRECISION_REQUIRED`. GPU does not have "
-             "double precision required by MRG32k3a.";
-    case CURAND_STATUS_LAUNCH_FAILURE:
-      return "`CURAND_STATUS_LAUNCH_FAILURE`. Kernel launch failure.";
-    case CURAND_STATUS_PREEXISTING_FAILURE:
-      return "`CURAND_STATUS_PREEXISTING_FAILURE`. Preexisting failure on "
-             "library entry.";
-    case CURAND_STATUS_INITIALIZATION_FAILED:
-      return "`CURAND_STATUS_INITIALIZATION_FAILED`. Initialization of CUDA "
-             "failed.";
-    case CURAND_STATUS_ARCH_MISMATCH:
-      return "`CURAND_STATUS_ARCH_MISMATCH`. Architecture mismatch, GPU does "
-             "not support requested feature.";
-    case CURAND_STATUS_INTERNAL_ERROR:
-      return "`CURAND_STATUS_INTERNAL_ERROR`. Internal library error.";
-    default:
-      return "Unknown curand status";
-  }
-}
-
 inline std::string build_nvidia_error_msg(curandStatus_t stat) {
-  std::string msg(" Curand error, ");
-  return msg + curandGetErrorString(stat) + " ";
+  std::ostringstream sout;
+  sout << "CURAND error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
 }
 
-/***** CUDNN ERROR *****/
+/*************** CUDNN ERROR ***************/
 inline bool is_error(cudnnStatus_t stat) {
   return stat != CUDNN_STATUS_SUCCESS;
 }
 
 inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
-  std::string msg(" Cudnn error, ");
-  return msg + platform::dynload::cudnnGetErrorString(stat) + " ";
+  std::ostringstream sout;
+  sout << "CUDNN error(" << stat << "), "
+       << platform::dynload::cudnnGetErrorString(stat) << ". "
+       << GetExternalErrorMsg(stat);
+  return sout.str();
 }
 
-/***** CUBLAS ERROR *****/
+/*************** CUBLAS ERROR ***************/
 inline bool is_error(cublasStatus_t stat) {
   return stat != CUBLAS_STATUS_SUCCESS;
 }
 
-inline const char* cublasGetErrorString(cublasStatus_t stat) {
-  switch (stat) {
-    case CUBLAS_STATUS_NOT_INITIALIZED:
-      return "`CUBLAS_STATUS_NOT_INITIALIZED`. The cuBLAS library was not "
-             "initialized.";
-    case CUBLAS_STATUS_ALLOC_FAILED:
-      return "`CUBLAS_STATUS_ALLOC_FAILED`. Resource allocation failed inside "
-             "the cuBLAS library.";
-    case CUBLAS_STATUS_INVALID_VALUE:
-      return "`CUBLAS_STATUS_INVALID_VALUE`. An unsupported value or parameter "
-             "was passed to the function (a negative vector size, for "
-             "example).";
-    case CUBLAS_STATUS_ARCH_MISMATCH:
-      return "`CUBLAS_STATUS_ARCH_MISMATCH`. The function requires a feature "
-             "absent from the device architecture; usually caused by the lack "
-             "of support for double precision.";
-    case CUBLAS_STATUS_MAPPING_ERROR:
-      return "`CUBLAS_STATUS_MAPPING_ERROR`. An access to GPU memory space "
-             "failed, which is usually caused by a failure to bind a texture.";
-    case CUBLAS_STATUS_EXECUTION_FAILED:
-      return "`CUBLAS_STATUS_EXECUTION_FAILED`. The GPU program failed to "
-             "execute. This is often caused by a launch failure of the kernel "
-             "on the GPU, which can be caused by multiple reasons.";
-    case CUBLAS_STATUS_INTERNAL_ERROR:
-      return "`CUBLAS_STATUS_INTERNAL_ERROR`. An internal cuBLAS operation "
-             "failed. This error is usually caused by a cudaMemcpyAsync() "
-             "failure.";
-    case CUBLAS_STATUS_NOT_SUPPORTED:
-      return "`CUBLAS_STATUS_NOT_SUPPORTED`. The functionality requested is "
-             "not supported.";
-    case CUBLAS_STATUS_LICENSE_ERROR:
-      return "`CUBLAS_STATUS_LICENSE_ERROR`. The functionality requested "
-             "requires some license and an error was detected when trying to "
-             "check the current licensing.";
-    default:
-      return "Unknown cublas status";
-  }
-}
-
 inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
-  std::string msg(" Cublas error, ");
-  return msg + cublasGetErrorString(stat) + " ";
+  std::ostringstream sout;
+  sout << "CUBLAS error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
 }
 
-/***** CUSOLVER ERROR *****/
+/*************** CUSOLVER ERROR ***************/
 inline bool is_error(cusolverStatus_t stat) {
   return stat != CUSOLVER_STATUS_SUCCESS;
 }
 
-inline const char* cusolverGetErrorString(cusolverStatus_t stat) {
-  switch (stat) {
-    case CUSOLVER_STATUS_NOT_INITIALIZED:
-      return "`CUSOLVER_STATUS_NOT_INITIALIZED`. The cuSolver library was not "
-             "initialized. This is usually caused by the lack of a prior call, "
-             "an error in the CUDA Runtime API called by the cuSolver routine, "
-             "or an error in the hardware setup.";
-    case CUSOLVER_STATUS_ALLOC_FAILED:
-      return "`CUSOLVER_STATUS_ALLOC_FAILED`. Resource allocation failed "
-             "inside the cuSolver library. This is usually caused by a "
-             "cudaMalloc() failure.";
-    case CUSOLVER_STATUS_INVALID_VALUE:
-      return "`CUSOLVER_STATUS_INVALID_VALUE`. An unsupported value or "
-             "parameter was passed to the function (a negative vector size, "
-             "for example).";
-    case CUSOLVER_STATUS_ARCH_MISMATCH:
-      return "`CUSOLVER_STATUS_ARCH_MISMATCH`. The function requires a feature "
-             "absent from the device architecture; usually caused by the lack "
-             "of support for atomic operations or double precision.";
-    case CUSOLVER_STATUS_EXECUTION_FAILED:
-      return "`CUSOLVER_STATUS_EXECUTION_FAILED`. The GPU program failed to "
-             "execute. This is often caused by a launch failure of the kernel "
-             "on the GPU, which can be caused by multiple reasons.";
-    case CUSOLVER_STATUS_INTERNAL_ERROR:
-      return "`CUSOLVER_STATUS_INTERNAL_ERROR`. An internal cuSolver operation "
-             "failed. This error is usually caused by a cudaMemcpyAsync() "
-             "failure.";
-    case CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
-      return "`CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED`. The matrix type is "
-             "not supported by this function. This is usually caused by "
-             "passing an invalid matrix descriptor to the function.";
-    default:
-      return "Unknown cusolver status";
-  }
-}
-
 inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
-  std::string msg(" Cublas error, ");
-  return msg + cusolverGetErrorString(stat) + " ";
+  std::ostringstream sout;
+  sout << "CUSOLVER error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
 }
 
-/****** NCCL ERROR ******/
+/**************** NCCL ERROR ****************/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
   return nccl_result != ncclSuccess;
 }
 
 inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
-  std::string msg(" Nccl error, ");
+  std::ostringstream sout;
+  sout << "NCCL error(" << nccl_result << "), "
+       << platform::dynload::ncclGetErrorString(nccl_result) << ". ";
   if (errno == ENOSPC || errno == EAGAIN) {
     std::string detail(strerror(errno));
     detail += "\nPlease try one of the following solutions:";
@@ -947,48 +910,35 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
         "\n3. Increase shared memory by setting the -shm-size "
         "option when starting docker container, e.g., setting "
         " -shm-size=2g.\n";
-    return msg + platform::dynload::ncclGetErrorString(nccl_result) +
-           ", detail: " + detail + " ";
+    sout << " Detail: " + detail;
   }
-  return msg + platform::dynload::ncclGetErrorString(nccl_result) + " ";
+  sout << GetExternalErrorMsg(nccl_result);
+  return sout.str();
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
-
-namespace details {
-
-template <typename T>
-struct CudaStatusType {};
-
-#define DEFINE_CUDA_STATUS_TYPE(type, success_value) \
-  template <>                                        \
-  struct CudaStatusType<type> {                      \
-    using Type = type;                               \
-    static constexpr Type kSuccess = success_value;  \
-  }
-
-DEFINE_CUDA_STATUS_TYPE(cudaError_t, cudaSuccess);
-DEFINE_CUDA_STATUS_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
-DEFINE_CUDA_STATUS_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
-DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
-DEFINE_CUDA_STATUS_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
-
-#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
-#endif
-}  // namespace details
 
 #define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                        \
   do {                                                           \
     auto __cond__ = (COND);                                      \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);             \
     constexpr auto __success_type__ =                            \
-        ::paddle::platform::details::CudaStatusType<             \
+        ::paddle::platform::details::ExternalApiType<            \
             __CUDA_STATUS_TYPE__>::kSuccess;                     \
     if (UNLIKELY(__cond__ != __success_type__)) {                \
       auto __summary__ = ::paddle::platform::errors::External(   \
           ::paddle::platform::build_nvidia_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                     \
     }                                                            \
+  } while (0)
+
+#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                                 \
+  do {                                                                         \
+    auto res = cudaGetLastError();                                             \
+    if (UNLIKELY(res != cudaSuccess)) {                                        \
+      auto msg = ::paddle::platform::build_nvidia_error_msg(res);              \
+      PADDLE_THROW(platform::errors::Fatal("CUDA error after kernel (%s): %s", \
+                                           OP, msg));                          \
+    }                                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned milliseconds) {
@@ -1013,7 +963,7 @@ inline void retry_sleep(unsigned milliseconds) {
     int retry_count = 1;                                                \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);                    \
     constexpr auto __success_type__ =                                   \
-        ::paddle::platform::details::CudaStatusType<                    \
+        ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
       retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
@@ -1027,10 +977,11 @@ inline void retry_sleep(unsigned milliseconds) {
     }                                                                   \
   } while (0)
 
-#undef DEFINE_CUDA_STATUS_TYPE
+#undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_CUDA
 
-/** HIP PADDLE ENFORCE FUNCTIONS AND MACROS **/
+/**************************************************************************/
+/***************************** HIP ERROR **********************************/
 #ifdef PADDLE_WITH_HIP
 
 /***** HIP ERROR *****/
@@ -1042,7 +993,7 @@ inline std::string build_rocm_error_msg(hipError_t e) {
   return sout.str();
 }
 
-/** HIPRAND ERROR **/
+/***** HIPRAND ERROR *****/
 inline bool is_error(hiprandStatus_t stat) {
   return stat != HIPRAND_STATUS_SUCCESS;
 }
@@ -1143,22 +1094,22 @@ inline std::string build_rocm_error_msg(ncclResult_t nccl_result) {
 namespace details {
 
 template <typename T>
-struct CudaStatusType {};
+struct ExternalApiType {};
 
-#define DEFINE_CUDA_STATUS_TYPE(type, success_value) \
-  template <>                                        \
-  struct CudaStatusType<type> {                      \
-    using Type = type;                               \
-    static constexpr Type kSuccess = success_value;  \
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value) \
+  template <>                                         \
+  struct ExternalApiType<type> {                      \
+    using Type = type;                                \
+    static constexpr Type kSuccess = success_value;   \
   }
 
-DEFINE_CUDA_STATUS_TYPE(hipError_t, hipSuccess);
-DEFINE_CUDA_STATUS_TYPE(hiprandStatus_t, HIPRAND_STATUS_SUCCESS);
-DEFINE_CUDA_STATUS_TYPE(miopenStatus_t, miopenStatusSuccess);
-DEFINE_CUDA_STATUS_TYPE(rocblas_status, rocblas_status_success);
+DEFINE_EXTERNAL_API_TYPE(hipError_t, hipSuccess);
+DEFINE_EXTERNAL_API_TYPE(hiprandStatus_t, HIPRAND_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(miopenStatus_t, miopenStatusSuccess);
+DEFINE_EXTERNAL_API_TYPE(rocblas_status, rocblas_status_success);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
-DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 #endif
 
 }  // namespace details
@@ -1168,7 +1119,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
     auto __cond__ = (COND);                                    \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);           \
     constexpr auto __success_type__ =                          \
-        ::paddle::platform::details::CudaStatusType<           \
+        ::paddle::platform::details::ExternalApiType<          \
             __CUDA_STATUS_TYPE__>::kSuccess;                   \
     if (UNLIKELY(__cond__ != __success_type__)) {              \
       auto __summary__ = ::paddle::platform::errors::External( \
@@ -1191,7 +1142,7 @@ inline void retry_sleep(unsigned millisecond) {
     int retry_count = 1;                                                \
     using __CUDA_STATUS_TYPE__ = decltype(__cond__);                    \
     constexpr auto __success_type__ =                                   \
-        ::paddle::platform::details::CudaStatusType<                    \
+        ::paddle::platform::details::ExternalApiType<                   \
             __CUDA_STATUS_TYPE__>::kSuccess;                            \
     while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
       retry_sleep(FLAGS_gpu_allocator_retry_time);                      \
@@ -1205,7 +1156,7 @@ inline void retry_sleep(unsigned millisecond) {
     }                                                                   \
   } while (0)
 
-#undef DEFINE_CUDA_STATUS_TYPE
+#undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_HIP
 
 #ifdef PADDLE_WITH_ASCEND_CL

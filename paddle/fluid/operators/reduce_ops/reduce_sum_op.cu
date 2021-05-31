@@ -18,11 +18,13 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename Tx, typename Ty = Tx>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
 
-  HOSTDEVICE inline T operator()(const T& x) const { return x; }
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(x);
+  }
 };
 
 template <typename T>
@@ -56,13 +58,13 @@ class ReduceSumKernel : public framework::OpKernel<T> {
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunctor<T, cub::Sum, IdentityFunctor<T>>(
+          TensorReduceFunctor<T, cub::Sum, IdentityFunctor>(
               *input, output, reduce_dims, static_cast<double>(0.0), cub::Sum(),
-              IdentityFunctor<T>(), stream));
+              stream));
     } else {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+      TensorReduce<T, T, cub::Sum, IdentityFunctor<T, T>>(
           *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
-          IdentityFunctor<T>(), stream);
+          IdentityFunctor<T, T>(), stream);
     }
   }
 };
@@ -70,8 +72,9 @@ class ReduceSumKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(reduce_sum, ops::ReduceSumKernel<float>,
-                        ops::ReduceSumKernel<double>, ops::ReduceSumKernel<int>,
-                        ops::ReduceSumKernel<int64_t>,
-                        ops::ReduceSumKernel<paddle::platform::complex64>,
-                        ops::ReduceSumKernel<paddle::platform::complex128>);
+REGISTER_OP_CUDA_KERNEL(
+    reduce_sum, ops::ReduceSumKernel<bool>, ops::ReduceSumKernel<float>,
+    ops::ReduceSumKernel<double>, ops::ReduceSumKernel<int>,
+    ops::ReduceSumKernel<int64_t>,
+    ops::ReduceSumKernel<paddle::platform::complex<float>>,
+    ops::ReduceSumKernel<paddle::platform::complex<double>>);

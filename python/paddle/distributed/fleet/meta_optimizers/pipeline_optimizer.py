@@ -22,6 +22,8 @@ from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_loss_grad_op, is_backward_op, is_optimizer_op
 
+__all__ = []
+
 
 class PipelineOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

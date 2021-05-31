@@ -34,7 +34,7 @@ class EqualNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("Equal", {*x, *y}, {*out}, {});
+    const auto& runner = NpuOpRunner("Equal", {*x, *y}, {*out}, {});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -51,7 +51,7 @@ class LessThanNPUKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<framework::LoDTensor>("Out");
     // int axis = context.Attr<int>("axis");
     z->mutable_data<bool>(ctx.GetPlace());  // allocate
-    auto runner = NpuOpRunner("Less", {*x, *y}, {*z});
+    const auto& runner = NpuOpRunner("Less", {*x, *y}, {*z});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

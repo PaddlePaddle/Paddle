@@ -16,6 +16,8 @@ from paddle.distributed.fleet.proto import index_dataset_pb2
 import numpy as np
 import struct
 
+__all__ = []
+
 
 class Index(object):
     def __init__(self, name):

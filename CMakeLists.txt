@@ -20,6 +20,13 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
+# Note(zhouwei): Ninja Generator will set CMAKE_BUILD_TYPE to Debug
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
+      FORCE)
+endif()
+
 project(paddle CXX C)
 
 # enable language CUDA
@@ -105,9 +112,7 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
-    # NOTE(zhouwei25): temporarily change MP to 1 for reducing CPU & memory utilization
-    set(PROCESS_MAX 1)
-    #math(EXPR PROCESS_MAX "${CPU_CORES} * 1 / 2")
+    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
 
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
@@ -116,7 +121,10 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
+        # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling
+        if(NOT WITH_GPU)
+            set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
+        endif()
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -212,12 +220,6 @@ if(NOT PY_VERSION)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
-# CMAKE_BUILD_TYPE
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-      FORCE)
-endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
@@ -352,6 +354,11 @@ if (WITH_MIPS)
     add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if (WITH_HETERPS)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
+    endif()
+endif()
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")

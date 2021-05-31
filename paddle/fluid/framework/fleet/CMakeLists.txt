@@ -1,5 +1,10 @@
 if(WITH_PSLIB)
-    cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope pslib_brpc pslib)
+    if(WITH_PSLIB_BRPC)
+        set(BRPC_DEPS pslib_brpc)
+    else()
+        set(BRPC_DEPS brpc)
+    endif(WITH_PSLIB_BRPC)
+    cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope ${BRPC_DEPS} pslib)
 else()
     cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope)
 endif(WITH_PSLIB)
@@ -7,11 +12,11 @@ endif(WITH_PSLIB)
 if(WITH_HETERPS)
     if(WITH_NCCL)
         nv_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
-        DEPS heter_ps)
+        DEPS heter_ps ${BRPC_DEPS})
         add_subdirectory(heter_ps)
     elseif(WITH_RCCL)
         hip_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
-        DEPS heter_ps)
+        DEPS heter_ps ${BRPC_DEPS})
         add_subdirectory(heter_ps)
     endif(WITH_NCCL)
 else()
@@ -39,7 +44,17 @@ else()
     cc_library(gloo_wrapper SRCS gloo_wrapper.cc DEPS framework_proto variable_helper scope)
 endif(WITH_GLOO)
 
-cc_library(heter_wrapper SRCS heter_wrapper.cc DEPS framework_proto device_context heter_service_proto)
+if(WITH_PSLIB)
+set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    set(DISTRIBUTE_COMPILE_FLAGS
+            "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+endif()
+set_source_files_properties(heter_wrapper.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+endif()
+
+cc_library(heter_wrapper SRCS heter_wrapper.cc DEPS framework_proto
+device_context heter_service_proto ${BRPC_DEPS})
 
 cc_test(test_fleet_cc SRCS test_fleet.cc DEPS fleet_wrapper gloo_wrapper fs shell)
 

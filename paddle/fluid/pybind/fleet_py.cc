@@ -28,6 +28,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/distributed/common/sparse_sharding_merge.h"
 #include "paddle/fluid/distributed/communicator_common.h"
 #include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/index_dataset/index_dataset.pb.h"
@@ -51,6 +52,7 @@ using paddle::distributed::GraphPyClient;
 using paddle::distributed::FeatureNode;
 using paddle::distributed::GraphIndex;
 using paddle::distributed::GraphItem;
+using paddle::distributed::ShardingMerge;
 
 namespace paddle {
 namespace pybind {
@@ -59,6 +61,8 @@ void BindDistFleetWrapper(py::module* m) {
                                                           "DistFleetWrapper")
       .def(py::init([]() { return FleetWrapper::GetInstance(); }))
       .def("load_sparse", &FleetWrapper::LoadSparseOnServer)
+      .def("load_model", &FleetWrapper::LoadModel)
+      .def("load_one_table", &FleetWrapper::LoadModelOneTable)
       .def("init_server", &FleetWrapper::InitServer)
       .def("run_server",
            (uint64_t (FleetWrapper::*)(void)) & FleetWrapper::RunServer)
@@ -86,6 +90,12 @@ void BindPSHost(py::module* m) {
       .def("to_uint64", &distributed::PSHost::serialize_to_uint64)
       .def("from_uint64", &distributed::PSHost::parse_from_uint64)
       .def("to_string", &distributed::PSHost::to_string);
+}
+
+void BindSparseShardingTools(py::module* m) {
+  py::class_<ShardingMerge>(*m, "ShardingMerge")
+      .def(py::init<>())
+      .def("merge", &ShardingMerge::Merge);
 }
 
 void BindCommunicatorContext(py::module* m) {

@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 
 
@@ -182,7 +183,7 @@ class TestGridSamplerOp(OpTest):
         self.align_corners = True
         self.padding_mode = "zeros"
         self.mode = "bilinear"
-        self.use_cudnn = True
+        self.use_cudnn = False if core.is_compiled_with_rocm() else True
 
 
 class Case1(TestGridSamplerOp):

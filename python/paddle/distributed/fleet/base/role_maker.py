@@ -22,6 +22,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 
 class Role:
     WORKER = 1

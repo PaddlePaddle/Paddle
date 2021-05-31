@@ -19,6 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
+#endif
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -166,8 +170,30 @@ void TensorFromVector(const std::vector<T>& src,
   // Since vector is on cpu, I think this function should be a "sync" operation,
   // so pass nullptr as stream to  memory::Copy().
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 src_place, src_ptr, size, nullptr);
+    //  1. vector -> npu pinned tensor
+    Tensor npu_pinned_tensor(dst->type());
+    platform::NPUPinnedPlace npu_pinned_place;
+    auto npu_pinned_ptr =
+        npu_pinned_tensor.mutable_data<T>(dst->dims(), npu_pinned_place);
+    memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
+
+    //  2. async copy npu pinned tensor -> npu tensor
+    memory::Copy(
+        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+        npu_pinned_place, npu_pinned_ptr, size,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+
+    //  3. record event
+    auto npu_pinned_allocator =
+        static_cast<paddle::memory::allocation::NPUPinnedAllocator*>(
+            paddle::memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(npu_pinned_place)
+                .get());
+    paddle::memory::allocation::Allocation* allocation =
+        npu_pinned_tensor.Holder().get();
+    npu_pinned_allocator->RecordEvent(
+        allocation,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
 }
@@ -206,8 +232,31 @@ inline void TensorFromVector(const std::vector<bool>& src,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 src_place, src_ptr, size, nullptr);
+    //  1. vector -> npu pinned tensor
+    platform::NPUPinnedPlace npu_pinned_place;
+    Tensor npu_pinned_tensor;
+    npu_pinned_tensor.Resize(dst->dims());
+    auto npu_pinned_ptr =
+        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->type());
+    memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
+
+    //  2. async copy npu pinned tensor -> npu tensor
+    memory::Copy(
+        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+        npu_pinned_place, npu_pinned_ptr, size,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+
+    //  3. record event
+    auto npu_pinned_allocator =
+        static_cast<paddle::memory::allocation::NPUPinnedAllocator*>(
+            paddle::memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(npu_pinned_place)
+                .get());
+    paddle::memory::allocation::Allocation* allocation =
+        npu_pinned_tensor.Holder().get();
+    npu_pinned_allocator->RecordEvent(
+        allocation,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
   delete[] array;
