@@ -883,6 +883,25 @@ def _mp_allreduce(tensor,
         raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
 
 
+def _c_embedding(x, weight, start_index=0, name=None):
+
+    if in_dygraph_mode():
+        return core.ops.c_embedding(weight, x, "start_index", start_index)
+    else:
+        helper = LayerHelper('_c_embedding', **locals())
+        dtype = helper.input_dtype(input_param_name='weight')
+
+        check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'embedding')
+        tmp = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='c_embedding',
+            inputs={'Ids': x,
+                    'W': weight},
+            outputs={'Out': tmp},
+            attrs={"start_index": start_index})
+        return tmp
+
+
 class _Linear(layers.Layer):
     """
     Linear

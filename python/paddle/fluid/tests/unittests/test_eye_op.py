@@ -22,6 +22,18 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
+import os
+import sys
+import paddle
+import paddle.fluid as fluid
+import importlib
+from six.moves import cStringIO
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+import static_mode_white_list
+
+#paddle.enable_static()
+
 
 class TestEyeOp(OpTest):
     def setUp(self):

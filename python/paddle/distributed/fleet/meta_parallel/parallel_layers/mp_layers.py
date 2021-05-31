@@ -18,12 +18,38 @@ from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
+from paddle.autograd import PyLayer
 
 __all__ = []
 
 # Follow this paper to achieve the file:
 # Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter 
 # language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
+
+
+class _EmbeddingInModelParallel(PyLayer):
+    @staticmethod
+    def forward(ctx, masked_input, weight, input_mask, name):
+        output_parallel = F.embedding(
+            masked_input,
+            weight=weight,
+            padding_idx=None,
+            sparse=False,
+            name=name)
+        # Mask the output embedding.
+        output_parallel[input_mask, :] = 0.0
+
+        ctx.save_for_backward(output_parallel, input_mask)
+
+        return output_parallel
+
+    @staticmethod
+    def backward(ctx, dout):
+        output_parallel, input_mask = ctx.saved_tensor()
+        paddle.autograd.backward(tensors=[output_parallel], grad_tensors=[dout])
+        output_parallel.grad[input_mask, :] = 0
+
+        return None, output_parallel.grad, None
 
 
 class VocabParallelEmbedding(Layer):
@@ -47,75 +73,52 @@ class VocabParallelEmbedding(Layer):
             "The length of the vocabulary must be divisible by the parallelism degree of MP"
         )
 
-        per_part_size = (
-            num_embeddings + self.world_size - 1) // self.world_size
-        last_part_size = num_embeddings - per_part_size * (self.world_size - 1)
-        if self.rank == self.world_size - 1:
-            per_part_size = last_part_size
-        per_part_size += 1  # make the last row as the padding index
-        self.per_part_size = per_part_size
+        per_part_size = num_embeddings // self.world_size
+
+        self.vocab_start_index = self.rank * per_part_size
+        self.vocab_end_index = self.vocab_start_index + per_part_size
+        # self.num_embeddings_per_partition = self.vocab_end_index - self.vocab_start_index
 
         self._dtype = self._helper.get_default_dtype()
         self._size = [per_part_size, embedding_dim]
         self._weight_attr = weight_attr
         self._name = name
 
-        if self.is_mp:
-            with get_rng_state_tracker().rng_state():
-                self.weight = self.create_parameter(
-                    attr=self._weight_attr,
-                    shape=self._size,
-                    dtype=self._dtype,
-                    is_bias=False)
-            self.weight[per_part_size - 1] = 0.0
-            self.weight.is_distributed = True
-        else:
+        with get_rng_state_tracker().rng_state():
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
-                shape=[num_embeddings, embedding_dim],
+                shape=self._size,
                 dtype=self._dtype,
                 is_bias=False)
+        self.weight.is_distributed = True
 
-    def get_embedding_weight(self):
+    def forward(self, input_):
         if self.is_mp:
-            return self.weight[:-1, :]
+            # Build the mask.
+            input_mask = paddle.logical_or((input_ < self.vocab_start_index),
+                                           (input_ >= self.vocab_end_index))
+            # Mask the input.
+            masked_input = input_.clone() - self.vocab_start_index
+            masked_input[input_mask] = 0
         else:
-            return self.weight
+            masked_input = input_
 
-    def forward(self, x):
-        if not self.is_mp:
-            return F.embedding(
-                x,
-                weight=self.weight,
-                padding_idx=None,
-                sparse=False,
-                name=self._name)
-
-        origin_input_shape = x.shape
-        if len(origin_input_shape) == 2:
-            x = paddle.unsqueeze(x, axis=-1)
-        else:
-            assert origin_input_shape[-1] == 1, (
-                "The last dimension size of x must be 1.")
-        x_shard = paddle.shard_index(x, self.origin_num_embeddings,
-                                     self.world_size, self.rank,
-                                     self.per_part_size - 1)
-        if len(origin_input_shape) == 2:
-            x_shard = paddle.squeeze(x_shard, axis=-1)
-
-        emb_out = F.embedding(
-            x_shard,
+        output_parallel = F.embedding(
+            masked_input,
             weight=self.weight,
-            padding_idx=self.per_part_size - 1,
+            padding_idx=None,
             sparse=False,
             name=self._name)
+        # Mask the output embedding.
+        if self.is_mp:
+            output_parallel[input_mask, :] = 0.0
 
-        emb_out = paddle.distributed.collective._mp_allreduce(
-            emb_out,
+        output = paddle.distributed.collective._mp_allreduce(
+            output_parallel,
             group=self.model_parallel_group,
             use_calc_stream=True,
             use_model_parallel=True)
-        return emb_out
+        return output
 
 
 class ColumnParallelLinear(Layer):
