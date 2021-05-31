@@ -375,7 +375,7 @@ class GroupNorm(layers.Layer):
         self._num_channels = num_channels
         self._num_groups = num_groups
         if data_format != 'NCHW':
-            raise ValueError("unsupported data layout:" + data_layout)
+            raise ValueError("unsupported data layout:" + data_format)
 
         param_shape = [self._num_channels]
 
