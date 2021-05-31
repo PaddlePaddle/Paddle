@@ -104,7 +104,7 @@ aclFormat FindBaseFormat(aclFormat acl_format);
 
 aclrtStream GetCurrentNPUStream(int device_id = -1);
 
-Place GetCurrentNPUPlace(int device_id = -1);
+platform::Place GetCurrentNPUPlace(int device_id = -1);
 
 std::vector<int64_t> InferShapeLessTo4(std::vector<int64_t> dims);
 

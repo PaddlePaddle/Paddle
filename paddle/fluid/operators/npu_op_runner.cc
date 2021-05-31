@@ -106,7 +106,7 @@ aclrtStream GetCurrentNPUStream(int device_id) {
   return dev_ctx->stream();
 }
 
-Place GetCurrentNPUPlace(int device_id) {
+platform::Place GetCurrentNPUPlace(int device_id) {
   if (device_id == -1) {
     device_id = platform::GetCurrentNPUDeviceId();
   }
