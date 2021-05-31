@@ -674,6 +674,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "reshape" || op_type == "reshape2") {
       if (!desc.HasAttr("shape")) {
         return false;
+      } else if (desc.Input("Shape").size() >= 1 ||
+                 desc.Input("ShapeTensor").size() >= 1) {
+        return false;
       } else {
         std::vector<int> shape =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
