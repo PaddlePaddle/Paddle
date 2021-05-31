@@ -330,5 +330,17 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
                 + "Sync BN " + str(sybn_out.numpy()))
 
 
+class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
+    def test_errors(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+            my_sync_batch_norm = paddle.nn.SyncBatchNorm(10, data_format='CN')
+            data = np.random.random([3, 3, 3]).astype('float32')
+            x = paddle.to_tensor(data)
+            self.assertRaises(ValueError, my_sync_batch_norm, x)
+
+
 if __name__ == '__main__':
     unittest.main()
