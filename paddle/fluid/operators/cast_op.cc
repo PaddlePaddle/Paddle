@@ -85,10 +85,30 @@ class CastOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     int in_dtype = ctx.Attr<int>("in_dtype");
     int out_dtype = ctx.Attr<int>("out_dtype");
+    bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
+
+    //all_casts++;
+//
+    //if(!this->CanMKLDNNBeUsed(ctx, tensor->type())){
+    //  native_casts++;
+    //  std::cout<< "cast op" << std::endl;
+    //  std::cout<< "in_dtype==fp32 " << int(in_dtype == (int)framework::proto::VarType::FP32) << std::endl;
+    //  std::cout<< "in_dtype==bf16 " << int(in_dtype == (int)framework::proto::VarType::BF16) << std::endl;
+    //  std::cout<< "out_dtype==fp32 " << int(out_dtype == (int)framework::proto::VarType::FP32) << std::endl;
+    //  std::cout<< "out_dtype==bf16 " << int(out_dtype == (int)framework::proto::VarType::BF16) << std::endl;
+    //  std::cout<< "Tensor->type() == bf16 " << (int)(tensor->type() == framework::proto::VarType::BF16) << std::endl;
+    //  std::cout<< "Tensor->type() == fp32 " << (int)(tensor->type() == framework::proto::VarType::FP32) << std::endl;
+    //  std::cout<< "use_mkldnn " << int(use_mkldnn == true) << std::endl;
+    //  std::cout<< "CanMKLDNNBeUsed " << (int)this->CanMKLDNNBeUsed(ctx, tensor->type()) << std::endl << std::endl;
+    //}
+//
+    //std::cout << "all_casts = " << all_casts << std::endl;
+    //std::cout << "native_casts = " << native_casts << std::endl;
+    int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
+    int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
 
     auto MKLDNNSupportsCast = [&]() -> bool {
-      int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
-      int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
+
 
       if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
           (out_dtype != dtype_fp32 && out_dtype != dtype_bf16))
@@ -96,6 +116,11 @@ class CastOp : public framework::OperatorWithKernel {
 
       return true;
     };
+
+    if(MKLDNNSupportsCast() && (in_dtype == dtype_bf16 || out_dtype == dtype_bf16))
+      return framework::OpKernelType(tensor->type(), ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
 
     if (this->CanMKLDNNBeUsed(ctx, tensor->type()) && MKLDNNSupportsCast()) {
       return framework::OpKernelType(tensor->type(), ctx.GetPlace(),
