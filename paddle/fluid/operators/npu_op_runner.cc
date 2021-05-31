@@ -305,8 +305,7 @@ Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
 
     size_t npu_storage_size = dst_tensor.npu_storage_numel() *
                               framework::SizeOfType(src_tensor.type());
-    dst_tensor.mutable_data(place, src_tensor.type(), src_tensor.type(),
-                            npu_storage_size);
+    dst_tensor.mutable_data(place, src_tensor.type(), npu_storage_size);
     Tensor trans_src_tensor(src_tensor.type());
     trans_src_tensor.ShareDataWith(src_tensor);
     trans_src_tensor.ResizeNPUDims(src_tensor.dims());
