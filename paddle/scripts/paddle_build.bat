@@ -76,6 +76,7 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
+rmdir build\paddle\third_party\externalError /s/q
 rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
@@ -509,7 +510,6 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
-
 
 : set CI_SKIP_CPP_TEST if only *.py changed
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON

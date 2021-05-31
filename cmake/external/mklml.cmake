@@ -51,7 +51,7 @@ cache_third_party(${MKLML_PROJECT}
 # Ninja Generator can not establish the correct dependency relationship between the imported library with target, 
 # the product file in the ExternalProject need to be specified manually, please refer to
 # https://stackoverflow.com/questions/54866067/cmake-and-ninja-missing-and-no-known-rule-to-make-it
-# It is the same to other ExternalProject.
+# It is the same to all other ExternalProject.
 ExternalProject_Add(
     ${MKLML_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}

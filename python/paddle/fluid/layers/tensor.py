@@ -587,7 +587,8 @@ def assign(input, output=None):
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
         check_dtype(input.dtype, 'input', [
-            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'
+            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+            'uint8', 'bool'
         ], 'assign', '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(
