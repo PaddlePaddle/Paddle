@@ -517,7 +517,7 @@ void LaunchElementwiseCudaKernel(
     LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
         cuda_ctx, ins, outs, func);
   } else {
-    int axis = ctx.Attr<int>("axis");
+    int axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
@@ -525,18 +525,6 @@ void LaunchElementwiseCudaKernel(
     LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
                                                         axis, func);
   }
-}
-
-// Avoid kUnary instantiation of "LaunchElementwiseCudaKernel" at compile time
-template <typename InT, typename OutT, typename Functor>
-void LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT, Functor>(
-    const framework::ExecutionContext &ctx,
-    const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, Functor func) {
-  const auto &cuda_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
-  LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
-      cuda_ctx, ins, outs, func);
 }
 
 }  // namespace operators
