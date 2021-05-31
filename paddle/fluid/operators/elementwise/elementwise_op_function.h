@@ -60,6 +60,10 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 namespace paddle {
 namespace operators {
 
+/*
+* To pack the input and output tnesors into vector for
+*  LaunchElementwiseCudaKernel
+*/
 template <typename T>
 void PackTensorsIntoVector(const framework::ExecutionContext &ctx,
                            std::vector<const framework::Tensor *> *ins,

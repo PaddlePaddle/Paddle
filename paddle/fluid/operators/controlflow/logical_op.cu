@@ -41,33 +41,24 @@ struct CudaNotFunctor {
   HOSTDEVICE bool operator()(const T* args) const { return !args[0]; }
 };
 
-template <typename DeviceContext, typename Functor>
-class LogicalOpCudaKernel
+template <typename Functor>
+class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   using InT = typename Functor::ELEMENT_TYPE;
   using OutT = bool;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* z = ctx.Output<framework::Tensor>("Out");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    z->mutable_data<OutT>(ctx.GetPlace());
-
-    int axis = ctx.Attr<int>("axis");
     auto functor = Functor();
-    std::vector<framework::Tensor*> outs = {z};
-    const auto& cuda_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    PackTensorsIntoVector<OutT>(ctx, &ins, &outs);
 
-    if (y != nullptr) {
-      std::vector<const framework::Tensor*> ins = {x};
+    if (ins.size() == 1) {
       LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
-          cuda_ctx, ins, &outs, axis, functor);
+          ctx, ins, &outs, functor);
     } else {
-      axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
-      std::vector<const framework::Tensor*> ins = {x, y};
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
-          cuda_ctx, ins, &outs, axis, functor);
+          ctx, ins, &outs, functor);
     }
   }
 };
@@ -75,13 +66,13 @@ class LogicalOpCudaKernel
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_LOGICAL_CUDA_KERNEL(op_name, func)                         \
-  REGISTER_OP_CUDA_KERNEL(op_type,                                          \
-                          ops::LogicalOpCudaKernel<plat::CUDADeviceContext, \
-                                                   ops::func##Functor<bool>>);
+#define REGISTER_LOGICAL_CUDA_KERNEL(op_name, func)                \
+  REGISTER_OP_CUDA_KERNEL(                                         \
+      op_name, ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, \
+                                          ops::func##Functor<bool>>);
 
-REGISTER_LOGICAL_CUDA_KERNEL(logical_or, CudaOr);
-REGISTER_LOGICAL_CUDA_KERNEL(logical_and, CudaAnd);
-REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, CudaXor);
-REGISTER_LOGICAL_CUDA_KERNEL(logical_not, CudaNot);
+REGISTER_LOGICAL_CUDA_KERNEL(logical_or, CudaOr)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_and, CudaAnd)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, CudaXor)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_not, CudaNot)
 #undef REGISTER_LOGICAL_CUDA_KERNEL
