@@ -60,22 +60,6 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 namespace paddle {
 namespace operators {
 
-template <typename T>
-void PackTensorsIntoVector(const framework::ExecutionContext &ctx,
-                           std::vector<const framework::Tensor *> *ins,
-                           std::vector<framework::Tensor *> *outs) {
-  auto *x = ctx.Input<framework::LoDTensor>("X");
-  auto *y = ctx.Input<framework::LoDTensor>("Y");
-  auto *z = ctx.Output<framework::LoDTensor>("Out");
-  z->mutable_data<T>(ctx.GetPlace());
-  ins->emplace_back(x);
-  outs->emplace_back(z);
-
-  if (y != nullptr) {
-    ins->emplace_back(y);
-  }
-}
-
 /*
 * To pack the input and output tnesors into vector for
 *  LaunchElementwiseCudaKernel
@@ -91,7 +75,7 @@ void PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   ins->emplace_back(x);
   outs->emplace_back(z);
 
-  if (y == nullptr) {
+  if (y != nullptr) {
     ins->emplace_back(y);
   }
 }

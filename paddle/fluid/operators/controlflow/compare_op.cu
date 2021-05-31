@@ -56,8 +56,8 @@ struct CudaNotEqualFunctor<
   }
 };
 
-template <typename DeviceContext, typename Functor>
-class CompareOpCudaKernel
+template <typename Functor, typename InverseFunctor>
+class CompareOpKernel<platform::CUDADeviceContext, Functor, InverseFunctor>
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
  public:
@@ -77,16 +77,16 @@ class CompareOpCudaKernel
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_CUDA_COMPARE_KERNEL(op_type, func)               \
-  REGISTER_OP_CUDA_KERNEL(                                        \
-      op_type, ops::CompareOpCudaKernel<plat::CUDADeviceContext,  \
-                                        ops::func##Functor<int>>, \
-      ops::CompareOpCudaKernel<plat::CUDADeviceContext,           \
-                               ops::func##Functor<int64_t>>,      \
-      ops::CompareOpCudaKernel<plat::CUDADeviceContext,           \
-                               ops::func##Functor<float>>,        \
-      ops::CompareOpCudaKernel<plat::CUDADeviceContext,           \
-                               ops::func##Functor<double>>);
+#define REGISTER_CUDA_COMPARE_KERNEL(op_type, func)                            \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      op_type, ops::CompareOpKernel<plat::CUDADeviceContext,                   \
+                                    ops::func##Functor<int>, void>,            \
+      ops::CompareOpKernel<plat::CUDADeviceContext,                            \
+                           ops::func##Functor<int64_t>, void>,                 \
+      ops::CompareOpKernel<plat::CUDADeviceContext, ops::func##Functor<float>, \
+                           void>,                                              \
+      ops::CompareOpKernel<plat::CUDADeviceContext,                            \
+                           ops::func##Functor<double>, void>);
 
 REGISTER_CUDA_COMPARE_KERNEL(equal, CudaEqual)
 REGISTER_CUDA_COMPARE_KERNEL(not_equal, CudaNotEqual)
