@@ -89,8 +89,8 @@ class TestSpawnAssistMethod(unittest.TestCase):
 
     def test_get_default_nprocs(self):
         paddle.set_device('cpu')
-        nprocs = _get_default_nprocs()
-        self.assertEqual(nprocs, 1)
+        with self.assertRaises(RuntimeError):
+            nprocs = _get_default_nprocs()
 
         paddle.set_device('gpu')
         nprocs = _get_default_nprocs()

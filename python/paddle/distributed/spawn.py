@@ -91,16 +91,13 @@ def _options_valid_check(options):
 
 def _get_default_nprocs():
     device = get_device()
-    if device == 'cpu':
-        # TODO: not supports cpu parallel now
-        return _cpu_num()
-    elif 'gpu' in device:
+    if 'gpu' in device:
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
     else:
-        raise ValueError(
-            "`device` should be a string of `cpu`, 'gpu' or 'xpu', but got {}".
+        raise RuntimeError(
+            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".
             format(device))
 
 
