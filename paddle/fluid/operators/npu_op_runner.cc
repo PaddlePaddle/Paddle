@@ -106,6 +106,16 @@ aclrtStream GetCurrentNPUStream(int device_id) {
   return dev_ctx->stream();
 }
 
+Place GetCurrentNPUPlace(int device_id) {
+  if (device_id == -1) {
+    device_id = platform::GetCurrentNPUDeviceId();
+  }
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
+      pool.Get(platform::NPUPlace(platform::GetCurrentNPUDeviceId())));
+  return dev_ctx->GetPlace();
+}
+
 std::vector<int64_t> InferShapeLessTo4(std::vector<int64_t> dims) {
   std::vector<int64_t> res;
   res.resize(4);
@@ -275,8 +285,8 @@ std::vector<int64_t> InferShapeNDToNZ(std::vector<int64_t> dims) {
 Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
   // auto src_format = ConvertToNpuFormat(src_tensor.layout());
   // auto dst_npu_format = ConvertToNpuFormat(dst_tensor.npu_storage_layout());
-  std::string src_format_name =
-      framework::DataLayoutToString(src_tensor.layout());
+  // std::string src_format_name =
+  framework::DataLayoutToString(src_tensor.layout());
   std::string dst_format_name =
       framework::DataLayoutToString(dst_tensor.npu_storage_layout());
   // auto src_base_format = FindBaseFormat(src_format);
@@ -297,11 +307,7 @@ Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
 
     // std::string src_format_name = "ND";
     auto stream = GetCurrentNPUStream();
-
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
-        pool.Get(platform::NPUPlace(platform::GetCurrentNPUDeviceId())));
-    auto place = dev_ctx->GetPlace();
+    auto place = GetCurrentNPUPlace();
 
     size_t npu_storage_size = dst_tensor.npu_storage_numel() *
                               framework::SizeOfType(src_tensor.type());
@@ -309,12 +315,8 @@ Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
     Tensor trans_src_tensor(src_tensor.type());
     trans_src_tensor.ShareDataWith(src_tensor);
     trans_src_tensor.ResizeNPUDims(src_tensor.dims());
-    const auto &runner_cast =
-        NpuOpRunner("TransData", {trans_src_tensor}, {dst_tensor},
-                    {{"src_format", src_format_name},
-                     {"dst_format", dst_format_name},
-                     {"groups", 1}});
-    runner_cast.Run(stream);
+
+    RunTransDataNPUOP(trans_src_tensor, &dst_tensor, stream);
 
     VLOG(4) << "Complete to cast NPU format from NCHW to FRACTAL_NZ.";
 
@@ -322,6 +324,20 @@ Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
   } else {
     return src_tensor;
   }
+}
+
+void RunTransDataNPUOP(const Tensor &src_tensor, Tensor *dst_tensor,
+                       aclrtStream stream) {
+  std::string src_format_name =
+      framework::DataLayoutToString(src_tensor.npu_storage_layout());
+  std::string dst_format_name =
+      framework::DataLayoutToString(dst_tensor->npu_storage_layout());
+  const auto &runner_trans_data =
+      NpuOpRunner("TransData", {src_tensor}, {*dst_tensor},
+                  {{"src_format", src_format_name},
+                   {"dst_format", dst_format_name},
+                   {"groups", 1}});
+  runner_trans_data.Run(stream);
 }
 
 Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
@@ -357,6 +373,21 @@ Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
 
   dst_tensor = RunTransDataToCastFormat(src_tensor, dst_tensor);
   return dst_tensor;
+}
+
+Tensor GenerateNZTensor(const Tensor &src_tensor) {
+  Tensor out_tensor(src_tensor.type());
+  out_tensor.Resize(src_tensor.dims());
+  out_tensor.ResizeNPUDims(framework::make_ddim(
+      InferShapeNDToNZ(framework::vectorize(src_tensor.dims()))));
+  out_tensor.set_npu_storage_layout(DataLayout::kFractalNZ);
+
+  auto place = GetCurrentNPUPlace();
+  size_t npu_storage_size =
+      out_tensor.npu_storage_numel() * framework::SizeOfType(src_tensor.type());
+  out_tensor.mutable_data(place, src_tensor.type(), npu_storage_size);
+
+  return out_tensor;
 }
 
 NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {
