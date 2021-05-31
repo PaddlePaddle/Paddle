@@ -784,6 +784,8 @@ class TestSaveLoadToMemory(unittest.TestCase):
             paddle.save(4, 3)
         with self.assertRaises(ValueError):
             paddle.save(state_dict, '')
+        with self.assertRaises(ValueError):
+            paddle.fluid.io._open_file_buffer('temp', 'b')
 
     def test_static_save_to_memory(self):
         paddle.enable_static()

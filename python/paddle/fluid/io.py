@@ -79,9 +79,6 @@ class _open_buffer(object):
     def __enter__(self):
         return self.buffer
 
-    def __exit__(self, *args):
-        pass
-
 
 class _buffer_reader(_open_buffer):
     def __init__(self, buffer):
@@ -1826,9 +1823,11 @@ def _legacy_save(param_dict, model_path, protocol=2):
     param_dict = {name: get_tensor(param_dict[name]) for name in param_dict}
 
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-    if sys.platform == 'darwin' and sys.version_info.major == 3:
+    if _is_file_path(
+            model_path
+    ) and sys.platform == 'darwin' and sys.version_info.major == 3:
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
-        with _open_file_buffer(model_path, 'wb') as f:
+        with open(model_path, 'wb') as f:
             max_bytes = 2**30
             for i in range(0, len(pickle_bytes), max_bytes):
                 f.write(pickle_bytes[i:i + max_bytes])

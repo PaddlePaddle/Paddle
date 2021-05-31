@@ -456,7 +456,7 @@ def _save_lod_tensor(tensor, file_name):
         # '_seek' is the end position of this tensor in the file.
 
     elif _is_memory_buffer(file_name):
-        tensor_bytes = core._save_lod_tensor_memory(tensor)
+        tensor_bytes = core._save_lod_tensor_to_memory(tensor)
 
         with _open_file_buffer(file_name, 'wb') as f:
             f.write(tensor_bytes)
@@ -478,7 +478,7 @@ def _load_lod_tensor(file_name):
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             tensor_bytes = f.read()
-            paddle.fluid.core._load_lod_tensor_memory(temp_t, tensor_bytes)
+            paddle.fluid.core._load_lod_tensor_from_memory(temp_t, tensor_bytes)
             _seek = f.tell()
 
     else:
@@ -497,7 +497,7 @@ def _save_selected_rows(selected_rows, file_name):
         _seek = core._save_selected_rows(selected_rows, file_name)
 
     elif _is_memory_buffer(file_name):
-        selected_rows_bytes = core._save_selected_rows_memory(selected_rows)
+        selected_rows_bytes = core._save_selected_rows_to_memory(selected_rows)
         with _open_file_buffer(file_name, 'wb') as f:
             f.write(selected_rows_bytes)
             _seek = f.tell()
@@ -517,8 +517,8 @@ def _load_selected_rows(file_name):
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             selected_rows_bytes = f.read()
-            paddle.fluid.core._load_selected_rows_memory(temp_sr,
-                                                         selected_rows_bytes)
+            paddle.fluid.core._load_selected_rows_from_memory(
+                temp_sr, selected_rows_bytes)
         _seek = f.tell()
 
     else:
@@ -732,9 +732,10 @@ def _legacy_save(obj, path, protocol=2):
     saved_obj = _unpack_saved_dict(saved_obj, protocol)
 
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-    if sys.platform == 'darwin' and sys.version_info.major == 3:
+    if _is_file_path(
+            path) and sys.platform == 'darwin' and sys.version_info.major == 3:
         pickle_bytes = pickle.dumps(saved_obj, protocol=protocol)
-        with _open_file_buffer(path, 'wb') as f:
+        with open(path, 'wb') as f:
             max_bytes = 2**30
             for i in range(0, len(pickle_bytes), max_bytes):
                 f.write(pickle_bytes[i:i + max_bytes])

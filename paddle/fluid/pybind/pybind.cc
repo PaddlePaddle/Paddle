@@ -68,6 +68,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/io.cc"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
@@ -520,55 +521,12 @@ PYBIND11_MODULE(core_noavx, m) {
     fin.close();
     return tellg;
   });
-  m.def("_save_selected_rows", [](const SelectedRows &selected_rows,
-                                  const std::string &str_file_name) {
-    std::ofstream fout(str_file_name, std::ios::binary);
-    PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fout), true,
-        platform::errors::Unavailable("Cannot open %s to save SelectedRows.",
-                                      str_file_name));
-
-    SerializeToStream(fout, selected_rows);
-    int64_t tellp = fout.tellp();
-    fout.close();
-    return tellp;
-  });
-  m.def("_load_selected_rows",
-        [](SelectedRows &selected_rows, const std::string &str_file_name) {
-          std::ifstream fin(str_file_name, std::ios::binary);
-          PADDLE_ENFORCE_EQ(
-              static_cast<bool>(fin), true,
-              platform::errors::Unavailable(
-                  "Cannot open %s to load SelectedRows.", str_file_name));
-
-          DeserializeFromStream(fin, &selected_rows);
-          int64_t tellg = fin.tellg();
-          fin.close();
-          return tellg;
-        });
-  m.def("_save_lod_tensor_memory", [](const LoDTensor &tensor) -> py::bytes {
-    std::ostringstream ss;
-    SerializeToStream(ss, tensor);
-    return ss.str();
-  });
-  m.def("_load_lod_tensor_memory",
-        [](LoDTensor &tensor, const std::string &tensor_bytes) {
-          std::istringstream fin(tensor_bytes, std::ios::in | std::ios::binary);
-          DeserializeFromStream(fin, &tensor);
-        });
-  m.def("_save_selected_rows_memory",
-        [](const SelectedRows &selected_rows) -> py::bytes {
-          std::ostringstream ss;
-          SerializeToStream(ss, selected_rows);
-          return ss.str();
-        });
-  m.def(
-      "_load_selected_rows_memory",
-      [](SelectedRows &selected_rows, const std::string &selected_rows_bytes) {
-        std::istringstream fin(selected_rows_bytes,
-                               std::ios::in | std::ios::binary);
-        DeserializeFromStream(fin, &selected_rows);
-      });
+  m.def("_save_selected_rows", _save_selected_rows);
+  m.def("_load_selected_rows", _load_selected_rows);
+  m.def("_save_lod_tensor_to_memory", _save_lod_tensor_to_memory);
+  m.def("_load_lod_tensor_from_memory", _load_lod_tensor_from_memory);
+  m.def("_save_selected_rows_to_memory", _save_selected_rows_to_memory);
+  m.def("_load_selected_rows_from_memory", _load_selected_rows_from_memory);
 
   m.def("_save_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
