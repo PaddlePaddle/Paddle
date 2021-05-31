@@ -140,7 +140,13 @@ function test_bind(){
     rm -f ${file_0} ${file_1}
 
     distributed_args="--log_dir=testlog --nproc_per_node=2 --bind core"
-    python -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_1
+
+    if [[ ${WITH_COVERAGE} == "ON" ]]; then
+        PYTHON_EXEC="python -u -m coverage run --branch -p "
+    else
+        PYTHON_EXEC="python -u "
+    fi
+    ${PYTHON_EXEC} -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_1
 
     str0="selected_devices:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
     if grep -q "$str0" "$file_0"; then
