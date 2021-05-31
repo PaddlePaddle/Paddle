@@ -23,7 +23,7 @@ function(inference_download INSTALL_DIR URL FILENAME)
   )
 endfunction()
 
-function(inference_download_and_uncompress INSTALL_DIR URL FILENAME URL_VERIFY)
+function(inference_download_and_uncompress INSTALL_DIR URL FILENAME CHECK_SUM)
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
   string(REGEX REPLACE "[-%./\\]" "_" FILENAME_EX ${FILENAME})
   string(REGEX MATCH "[^/\\]+$" DOWNLOAD_NAME ${FILENAME})
@@ -34,7 +34,7 @@ function(inference_download_and_uncompress INSTALL_DIR URL FILENAME URL_VERIFY)
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${INSTALL_DIR}
       URL                   ${URL}/${FILENAME}
-      URL_HASH              MD5=${URL_VERIFY}
+      URL_HASH              MD5=${CHECK_SUM}
       DOWNLOAD_DIR          ${INSTALL_DIR}
       DOWNLOAD_NO_EXTRACT   1
       DOWNLOAD_NO_PROGRESS  1
