@@ -1057,18 +1057,18 @@ class SyncBatchNorm(_BatchNormBase):
               self).__init__(num_features, momentum, epsilon, weight_attr,
                              bias_attr, data_format, None, name)
 
-    def _check_data_format(self, input):
-        if input == 'NCHW' or input == 'NCDHW' or input == 'NC' or input == 'NCL':
+    def _check_data_format(self):
+        if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
             self._data_format = 'NCHW'
-        elif input == "NHWC" or input == "NDHWC" or input == 'NLC':
+        elif self._data_format in ["NHWC", "NDHWC", 'NLC']:
             self._data_format = 'NHWC'
         else:
             raise ValueError(
-                'expected NCDHW, NDHWC, NCL, NLC, NC, NCHW, NHWC or None for data_format input'
+                'expected \'NCDHW\', \'NDHWC\', \'NCL\', \'NLC\', \'NC\', \'NCHW\', \'NHWC\' for data_format'
             )
 
     def forward(self, x):
-        self._check_data_format(self._data_format)
+        self._check_data_format()
         # create output
         # mean and mean_out share the same memory
         mean_out = self._mean
@@ -1158,7 +1158,7 @@ class SyncBatchNorm(_BatchNormBase):
                     bool) and layer._weight_attr.name != None:
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
             if layer._bias_attr != None and not isinstance(
-                    layer._weight_attr, bool) and layer._bias_attr.name != None:
+                    layer._bias_attr, bool) and layer._bias_attr.name != None:
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
             layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
