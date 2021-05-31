@@ -32,7 +32,7 @@ def set_random_seed(seed, dp_id, rank_id):
     paddle.seed(seed + rank_id)
 
 
-vocab_size = 5
+vocab_size = 6
 hidden_size = 10
 inner_size = 8
 output_size = 2
