@@ -1475,6 +1475,73 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         self.assertRaises(ValueError, run_7)
 
+        # ValueError: filter num
+        def run_8():
+            fluid.layers.conv2d(
+                input=input,
+                num_filters=0,
+                filter_size=0,
+                stride=0,
+                padding=0,
+                dilation=0,
+                groups=1,
+                use_cudnn=False,
+                data_format="NCHW")
+
+        self.assertRaises(ValueError, run_8)
+
+        # ValueError: groups
+        def run_9():
+            fluid.layers.conv2d(
+                input=input,
+                num_filters=0,
+                filter_size=0,
+                stride=0,
+                padding=0,
+                dilation=0,
+                groups=0,
+                use_cudnn=False,
+                data_format="NCHW")
+
+        self.assertRaises(ValueError, run_9)
+
+        # ValueError: stride 
+        def run_10():
+            fluid.layers.conv2d(
+                input=input,
+                num_filters=1,
+                filter_size=1,
+                stride=0,
+                padding=0,
+                dilation=0,
+                groups=1,
+                use_cudnn=False,
+                data_format="NCHW")
+
+        self.assertRaises(ValueError, run_10)
+
+    def test_api_with_error_input(self):
+        input = fluid.layers.data(
+            name="error_input",
+            shape=[1],
+            append_batch_size=False,
+            dtype="float32")
+
+        # ValueError: cudnn
+        def run_1():
+            fluid.layers.conv2d(
+                input=input,
+                num_filters=0,
+                filter_size=0,
+                stride=0,
+                padding=0,
+                dilation=0,
+                groups=0,
+                use_cudnn=False,
+                data_format="NCHW")
+
+        self.assertRaises(ValueError, run_1)
+
 
 # --------- test environment variable ------
 @unittest.skipIf(
