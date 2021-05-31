@@ -66,7 +66,19 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
           "input is [%s], the dimension size of input is [%d], the shape "
           "of filter is [%s],  the dimension size of filter is [%d]. ",
           in_dims, in_dims.size(), filter_dims, filter_dims.size()));
-  int in_sub_stride_size = in_dims.size() - strides.size();
+
+  int stride_size = strides.size();
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i], 0,
+        platform::errors::InvalidArgument(
+            "The stride of Op(Conv) should be larget than 0, but received "
+            "stride is %d.",
+            strides[i]));
+  }
+
+  int in_sub_stride_size = in_dims.size() - stride_size;
+
   PADDLE_ENFORCE_EQ(
       in_dims.size() - strides.size(), 2U,
       platform::errors::InvalidArgument(
