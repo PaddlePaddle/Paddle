@@ -89,6 +89,21 @@ def _options_valid_check(options):
                     % key)
 
 
+def _get_default_nprocs():
+    device = get_device()
+    if device == 'cpu':
+        # TODO: not supports cpu parallel now
+        return _cpu_num()
+    elif 'gpu' in device:
+        return core.get_cuda_device_count()
+    elif 'xpu' in device:
+        return core.get_xpu_device_count()
+    else:
+        raise ValueError(
+            "`device` should be a string of `cpu`, 'gpu' or 'xpu', but got {}".
+            format(device))
+
+
 def _get_node_ip(ips):
     node_ip = None
     node_ips = [x.strip() for x in ips.split(',')]
@@ -448,18 +463,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
     # get default nprocs
     if nprocs == -1:
-        device = get_device()
-        if device == 'cpu':
-            # TODO: not supports cpu parallel now
-            nprocs = _cpu_num()
-        elif device == 'gpu':
-            nprocs = core.get_cuda_device_count()
-        elif device == 'xpu':
-            nprocs = core.get_xpu_device_count()
-        else:
-            raise ValueError(
-                "`device` should be a string of `cpu`, 'gpu' or 'xpu', but got {}".
-                format(device))
+        nprocs = _get_default_nprocs()
 
     # NOTE(chenweihang): [ why need get cluster info before run? ]
     # when using `paddle.distributed.spawn` start parallel training, 
