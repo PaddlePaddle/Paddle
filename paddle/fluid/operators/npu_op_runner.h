@@ -115,8 +115,7 @@ std::vector<int64_t> InferShapeNDToNZ(std::vector<int64_t> dims);
 
 Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor);
 
-Tensor CastNPUFormat(const Tensor &src_tensor, Tensor dst_tensor,
-                     int acl_format);
+Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format);
 
 template <typename T>
 void FillNpuTensorWithConstant(Tensor *tensor, T val) {

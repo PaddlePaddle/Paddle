@@ -77,7 +77,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     // framework::TensorCopy(
     //     *x, ctx.GetPlace(),
     //     ctx.template device_context<platform::DeviceContext>(), &tmp_x);
-    tmp_x = CastNPUFormat(*x, 29);
+    Tensor tmp_x = CastNPUFormat(*x, 29);
 
     // Tensor tmp_y(y->type());
     // tmp_y.Resize(y->dims());
@@ -85,10 +85,11 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     // framework::TensorCopy(
     //     *y, ctx.GetPlace(),
     //     ctx.template device_context<platform::DeviceContext>(), &tmp_y);
-    tmp_y = CastNPUFormat(*y, 29);
+    Tensor tmp_y = CastNPUFormat(*y, 29);
 
     if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());
+      out->ResizeNPUDims(out->dims());
       // out->set_layout(DataLayout::kFractalNZ);
 
       // Tensor tmp_out(out->type());
@@ -97,12 +98,12 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
 
       Tensor tmp_out(out->type());
       tmp_out.Resize(out->dims());
-      tmp_out.ResizeNPUDims(framework::make_ddim({7, 7, 16, 16}));
+      tmp_out.ResizeNPUDims(framework::make_ddim(
+          InferShapeNDToNZ(framework::vectorize(out->dims()))));
       tmp_out.set_npu_storage_layout(DataLayout::kFractalNZ);
       size_t npu_storage_size =
-          tmp_out.npu_storage_numel() * SizeOfType(out->type());
-      tmp_out.mutable_data<T>(ctx.GetPlace(),
-                              requested_size = npu_storage_size);
+          tmp_out.npu_storage_numel() * framework::SizeOfType(out->type());
+      tmp_out.mutable_data(ctx.GetPlace(), out->type(), npu_storage_size);
 
       const auto& runner = NpuOpRunner(
           "MatMul", {tmp_x, tmp_y}, {tmp_out},
@@ -113,7 +114,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
               .stream();
       runner.Run(stream);
 
-      auto runner_cast_out = NpuOpRunner(
+      const auto& runner_cast_out = NpuOpRunner(
           "TransData", {tmp_out}, {*out},
           {{"src_format",
             framework::DataLayoutToString(tmp_out.npu_storage_layout())},

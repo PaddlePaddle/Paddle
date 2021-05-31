@@ -144,14 +144,14 @@ const DDim& Tensor::dims() const { return dims_; }
 
 int64_t Tensor::numel() const { return product(dims_); }
 
-Tensor& ResizeNPUDims(const DDim& npu_storage_dims) {
+Tensor& Tensor::ResizeNPUDims(const DDim& npu_storage_dims) {
   npu_storage_dims_ = npu_storage_dims;
   return *this;
 }
 
-const DDim& npu_storage_dims() const { return npu_storage_dims_; }
+const DDim& Tensor::npu_storage_dims() const { return npu_storage_dims_; }
 
-int64_t npu_storage_numel() { return product(npu_storage_dims_); }
+int64_t Tensor::npu_storage_numel() const { return product(npu_storage_dims_); }
 
 void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
   PADDLE_ENFORCE_EQ(
