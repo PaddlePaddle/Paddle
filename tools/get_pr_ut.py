@@ -293,10 +293,24 @@ class PRChecker(object):
                     filterFiles.append(filename)
         if len(file_list) == 0:
             ut_list.append('filterfiles_placeholder')
+            ret = self.__urlretrieve(
+                'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',
+                'prec_delta')
+            if ret:
+                with open('prec_delta') as delta:
+                    for ut in delta:
+                        ut_list.append(ut.rstrip('\r\n'))
+            else:
+                print('PREC download prec_delta failed')
+                exit(1)
+            PRECISION_TEST_Cases_ratio = format(
+                float(len(ut_list)) / float(self.get_all_count()), '.2f')
             print("filterFiles: %s" % filterFiles)
             print("ipipe_log_param_PRECISION_TEST: true")
-            print("ipipe_log_param_PRECISION_TEST_Cases_count: 0")
-            print("ipipe_log_param_PRECISION_TEST_Cases_ratio: 0")
+            print("ipipe_log_param_PRECISION_TEST_Cases_count: %s" %
+                  len(ut_list))
+            print("ipipe_log_param_PRECISION_TEST_Cases_ratio: %s" %
+                  PRECISION_TEST_Cases_ratio)
             return '\n'.join(ut_list)
         else:
             for f in file_list:
