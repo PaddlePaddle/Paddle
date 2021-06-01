@@ -13,9 +13,44 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <cuda.h>
+#include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <cstdint>
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+struct DataBound {
+  static inline T max() { return static_cast<T>(FLT_MAX); }
+  static inline T min() { return static_cast<T>(-FLT_MAX); }
+};
+
+template <>
+struct DataBound<float> {
+  static inline float max() { return FLT_MAX; }
+  static inline float min() { return -FLT_MAX; }
+};
+
+template <>
+struct DataBound<double> {
+  static inline double max() { return DBL_MAX; }
+  static inline double min() { return -DBL_MAX; }
+};
+
+template <>
+struct DataBound<int32_t> {
+  static inline int32_t max() { return INT32_MAX; }
+  static inline int32_t min() { return INT32_MIN; }
+};
+
+template <>
+struct DataBound<int64_t> {
+  static inline int64_t max() { return INT64_MAX; }
+  static inline int64_t min() { return INT64_MIN; }
+};
 
 template <typename T>
 struct CustomMin {

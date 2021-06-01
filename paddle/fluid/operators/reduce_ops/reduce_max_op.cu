@@ -44,7 +44,7 @@ class ReduceMaxKernel : public framework::OpKernel<T> {
 
     auto stream = context.cuda_device_context().stream();
     TensorReduceFunc<T, T, CustomMax<T>, detail::IdentityFunctor<T>>(
-        *input, output, reduce_dims, static_cast<T>(-FLT_MAX), CustomMax<T>(),
+        *input, output, reduce_dims, DataBound<T>::min(), CustomMax<T>(),
         detail::IdentityFunctor<T>(), stream);
   }
 };
