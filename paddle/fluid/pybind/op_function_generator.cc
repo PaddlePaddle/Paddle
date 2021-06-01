@@ -65,6 +65,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
+    {"run_program", {"X", "Params"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -148,6 +149,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"rnn", {"DropoutState"}},
+    {"run_program", {"Out", "OutScope"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
