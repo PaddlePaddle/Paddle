@@ -333,6 +333,7 @@ void VarBase::MoveTo(const platform::Place& dst_place, bool blocking) {
   framework::TensorCopy(*src_tensor, dst_place, &dst_tensor);
   if (blocking) {
     platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+    platform::DeviceContextPool::Instance().Get(Place())->Wait();
   }
   // inplace update src tensor data
   src_tensor->ShareBufferWith(dst_tensor);

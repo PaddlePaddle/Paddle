@@ -1459,6 +1459,43 @@ void BindImperative(py::module *m_ptr) {
              return new_var;
            },
            py::return_value_policy::copy)
+
+      .def("_move_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CPUPlace &place, bool blocking) {
+             self->MoveTo(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return self;
+           })
+      .def("_move_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPinnedPlace &place, bool blocking) {
+             self->MoveTo(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return self;
+           })
+      .def("_move_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::XPUPlace &place, bool blocking) {
+             self->MoveTo(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return self;
+           })
+      .def("_move_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPlace &place, bool blocking) {
+             self->MoveTo(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return self;
+           })
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,
