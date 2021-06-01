@@ -158,7 +158,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
                           {{"transpose_x1", false}, {"transpose_x2", false}});
 
           runner_dx.Run(stream);
-          RunTransDataNPUOP(tmp_dx, *dx, stream);
+          RunTransDataNPUOP(tmp_dx, dx, stream);
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
@@ -169,7 +169,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
           runner_dy.Run(stream);
-          RunTransDataNPUOP(tmp_dy, *dy, stream);
+          RunTransDataNPUOP(tmp_dy, dy, stream);
         }
 
       } else {
@@ -182,7 +182,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
                           {{"transpose_x1", false}, {"transpose_x2", true}});
 
           runner_dx.Run(stream);
-          RunTransDataNPUOP(tmp_dx, *dx, stream);
+          RunTransDataNPUOP(tmp_dx, dx, stream);
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
@@ -193,7 +193,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
           runner_dy.Run(stream);
-          RunTransDataNPUOP(tmp_dy, *dy, stream);
+          RunTransDataNPUOP(tmp_dy, dy, stream);
         }
       }
     } else if (x->dims().size() > 2) {
@@ -207,7 +207,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
                           {{"adj_x1", false}, {"adj_x2", false}});
 
           runner_dx.Run(stream);
-          RunTransDataNPUOP(tmp_dx, *dx, stream);
+          RunTransDataNPUOP(tmp_dx, dx, stream);
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
@@ -218,7 +218,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
                           {{"adj_x1", true}, {"adj_x2", false}});
 
           runner_dy.Run(stream);
-          RunTransDataNPUOP(tmp_dy, *dy, stream);
+          RunTransDataNPUOP(tmp_dy, dy, stream);
         }
       } else {
         if (dx) {
@@ -230,7 +230,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
                           {{"adj_x1", false}, {"adj_x2", true}});
 
           runner_dx.Run(stream);
-          RunTransDataNPUOP(tmp_dx, *dx, stream);
+          RunTransDataNPUOP(tmp_dx, dx, stream);
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
@@ -240,7 +240,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
               NpuOpRunner("BatchMatMul", {tmp_x, tmp_dout}, {tmp_dy},
                           {{"adj_x1", true}, {"adj_x2", false}});
           runner_dy.Run(stream);
-          RunTransDataNPUOP(tmp_dy, *dy, stream);
+          RunTransDataNPUOP(tmp_dy, dy, stream);
         }
       }
     }

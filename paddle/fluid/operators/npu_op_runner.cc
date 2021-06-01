@@ -338,6 +338,8 @@ void RunTransDataNPUOP(const Tensor &src_tensor, Tensor *dst_tensor,
                    {"dst_format", dst_format_name},
                    {"groups", 1}});
   runner_trans_data.Run(stream);
+  VLOG(4) << "Run TransData OP to cast NPU format from "
+          << src_format_name " to " << dst_format_name;
 }
 
 Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
@@ -597,10 +599,13 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
 
   VLOG(4) << "NPU dtype:" << dtype << " "
           << "rank:" << dims.size() << " dims:" << tensor.dims()
-          << " format:" << format;
+          << " format:" << format
+          << " storage_dims:" << tensor.npu_storage_dims()
+          << " storage_format:" << tensor.npu_storage_layout();
 
   aclTensorDesc *desc;
   if (op_type_ == "TransData") {
+    VLOG(4) << "Create Tensor Desc for TransData NPU OP";
     desc = aclCreateTensorDesc(dtype, storage_dims.size(), storage_dims.data(),
                                storage_format);
   } else {
@@ -610,6 +615,8 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
   if (op_type_ == "TransData" || op_type_ == "MatMul" ||
       op_type_ == "BatchMatMul") {
+    VLOG(4) << "Set Storage format and shape for TransData, MatMul, "
+               "BatchMatMul NPU OP";
     PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, storage_format));
     PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageShape(
         desc, storage_dims.size(), storage_dims.data()));
