@@ -48,30 +48,6 @@ class TestMap(unittest.TestCase):
             self.assertEqual(e, i)
 
 
-class TestBuffered(unittest.TestCase):
-    def test_read(self):
-        for size in range(20):
-            b = paddle.reader.buffered(reader_creator_10(0), size)
-            c = 0
-            for i in b():
-                self.assertEqual(i, c)
-                c += 1
-            self.assertEqual(c, 10)
-
-    def test_buffering(self):
-        # read have 30ms delay.
-        b = paddle.reader.buffered(reader_creator_10(0.03), 10)
-        last_time = time.time()
-        for idx, i in enumerate(b()):
-            elapsed_time = time.time() - last_time
-            if i == 0:
-                time.sleep(1)
-            else:
-                # read time should be short, meaning already buffered.
-                self.assertLess(elapsed_time, 0.08)
-            last_time = time.time()
-
-
 class TestCompose(unittest.TestCase):
     def test_compse(self):
         reader = paddle.reader.compose(

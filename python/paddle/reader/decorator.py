@@ -304,65 +304,6 @@ def compose(*readers, **kwargs):
     return reader
 
 
-def buffered(reader, size):
-    """
-    Creates a buffered data reader.
-
-    The buffered data reader will read and save data entries into a
-    buffer. Reading from the buffered data reader will proceed as long
-    as the buffer is not empty.
-
-    Args:
-        reader(generator): the data reader to read from.
-        size(int): max buffer size.
-
-    Returns:
-        generator: the buffered data reader.
-    
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            
-            def reader():
-                for i in range(3):
-                    yield i
-            
-            # Create a buffered reader, and the buffer size is 2.
-            buffered_reader = paddle.io.buffered(reader, 2)
-            
-            # Output: 0 1 2
-            for i in buffered_reader():
-                print(i)
-    """
-
-    class EndSignal():
-        pass
-
-    end = EndSignal()
-
-    def read_worker(r, q):
-        for d in r:
-            q.put(d)
-        q.put(end)
-
-    def data_reader():
-        r = reader()
-        q = Queue(maxsize=size)
-        t = Thread(
-            target=read_worker, args=(
-                r,
-                q, ))
-        t.daemon = True
-        t.start()
-        e = q.get()
-        while e != end:
-            yield e
-            e = q.get()
-
-    return data_reader
-
-
 class XmapEndSignal():
     pass
 
