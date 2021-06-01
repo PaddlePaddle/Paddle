@@ -37,8 +37,6 @@ class TestSumOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestSumOp_fp16(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -52,9 +50,7 @@ class TestSumOp_fp16(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-2)
+        self.check_output(atol=1e-2)
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -62,14 +58,9 @@ class TestSumOp_fp16(OpTest):
         return grad,
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestSumOp_fp16_withInt(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -83,9 +74,7 @@ class TestSumOp_fp16_withInt(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place)
+        self.check_output()
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -93,10 +82,7 @@ class TestSumOp_fp16_withInt(OpTest):
         return grad,
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
 class TestSumOp5D(OpTest):

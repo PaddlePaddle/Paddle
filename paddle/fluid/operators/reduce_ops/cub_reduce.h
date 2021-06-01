@@ -226,7 +226,7 @@ typename std::enable_if<!std::is_same<Tx, paddle::platform::float16>::value,
                         void>::type
 LaunchCubReduceKernel(const Tx* x_data, Ty* y_data,
                       const platform::Place& place, const ReduceOp& reducer,
-                      const TransformOp& transformer, const Ty& init,
+                      const TransformOp& transformer, const MPType& init,
                       int reduce_num, gpuStream_t stream) {
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transformer);
@@ -276,7 +276,7 @@ static void TensorReduceImpl(
     const std::vector<int>& reduce_dim, const std::vector<int>& reduce_strides,
     const std::vector<int>& left_dim, const std::vector<int>& left_strides,
     gpuStream_t stream) {
-  using MPType = typename details::MPTypeTrait<Tx>::Type;
+  using MPType = typename details::MPTypeTrait<Ty>::Type;
   MPType init_mp = static_cast<MPType>(init);
 
 #define CUB_RANK_CASE(i, ...)             \
