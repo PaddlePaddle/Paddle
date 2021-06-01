@@ -52,6 +52,7 @@ __all__ = [
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
+    'is_compiled_with_rocm',
     'is_compiled_with_xpu',
     'Variable',
     'require_version',
@@ -395,6 +396,21 @@ def is_compiled_with_cuda():
             support_gpu = paddle.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
+
+
+def is_compiled_with_rocm():
+    """
+    Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
+
+    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_gpu = paddle.is_compiled_with_rocm()
+    """
+    return core.is_compiled_with_rocm()
 
 
 def cuda_places(device_ids=None):
