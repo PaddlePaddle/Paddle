@@ -23,25 +23,34 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
+template <typename T, typename Enable = void>
+struct CudaDivFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return args[0] / args[1];
+  }
+};
+
+template <typename T>
+struct CudaDivFunctor<T,
+                      typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    PADDLE_ENFORCE(args[1] != 0,
+                   "InvalidArgumentError: Integer division "
+                   "by zero encountered in divide. Please check.\n");
+    return args[0] / args[1];
+  }
+};
+
 template <typename T>
 class ElementwiseDivKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* z = ctx.Output<framework::LoDTensor>("Out");
-    z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
-
-    std::vector<const framework::Tensor*> ins = {x, y};
-    std::vector<framework::Tensor*> outs = {z};
-    const auto& cuda_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaDivFunctor<T>());
+        ctx, ins, &outs, CudaDivFunctor<T>());
   }
 };
 

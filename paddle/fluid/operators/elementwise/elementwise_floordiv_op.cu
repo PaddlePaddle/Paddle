@@ -22,25 +22,38 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
+template <typename T, typename Enable = void>
+struct CudaFloorDivFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
+    if (args[1] == 0) {
+      printf(
+          "InvalidArgumentError: Divide by zero encounterd in floor_divide\n");
+#ifdef __HIPCC__
+      abort();
+#else
+      asm("trap;");
+#endif
+    }
+#else
+    PADDLE_ENFORCE(args[1] != 0,
+                   "InvalidArgumentError: Divide by zero"
+                   "encounterd in floor_divide.\n Please check!");
+#endif
+    return static_cast<T>(std::trunc(args[0] / args[1]));
+  }
+};
+
 template <typename T>
 class ElementwiseFloorDivKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* z = ctx.Output<framework::LoDTensor>("Out");
-    z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    axis = axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis;
-
-    std::vector<const framework::Tensor*> ins = {x, y};
-    std::vector<framework::Tensor*> outs = {z};
-    const auto& cuda_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaFloorDivFunctor<T>());
+        ctx, ins, &outs, CudaFloorDivFunctor<T>());
   }
 };
 
