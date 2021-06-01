@@ -26,5 +26,5 @@ REGISTER_OP_CUDA_KERNEL(reduce_sum_grad, CUDAReduceSumGradKernel<bool>,
                         CUDAReduceSumGradKernel<paddle::platform::float16>,
                         CUDAReduceSumGradKernel<int>,
                         CUDAReduceSumGradKernel<int64_t>,
-                        CUDAReduceSumGradKernel<paddle::platform::complex64>,
-                        CUDAReduceSumGradKernel<paddle::platform::complex128>);
+                        CUDAReduceSumGradKernel<paddle::platform::complex<float>>,
+                        CUDAReduceSumGradKernel<paddle::platform::complex<double>>);

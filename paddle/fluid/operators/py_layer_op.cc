@@ -199,9 +199,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex64>,
+                         ::paddle::platform::complex<float>>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex128>);
+                         ::paddle::platform::complex<double>>);
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
     py_layer, ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, float>,
@@ -218,7 +218,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int16_t>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex64>,
+                         ::paddle::platform::complex<float>>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex128>);
+                         ::paddle::platform::complex<double>>);
 #endif  // PADDLE_WITH_CUDA

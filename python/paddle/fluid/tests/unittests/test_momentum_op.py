@@ -610,5 +610,32 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             self.__test_vs(place=place)
 
 
+class TestMomentumV2Group(TestMomentumV2):
+    def test_momentum_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.Momentum(
+            learning_rate=0.01,
+            parameters=[{
+                'params': linear_1.parameters()
+            }, {
+                'params': linear_2.parameters(),
+                'weight_decay': 0.001,
+                'learning_rate': 0.1,
+                'momentum': 0.99
+            }],
+            weight_decay=0.1,
+            momentum=0.9)
+        out = linear_1(a)
+        out = linear_2(out)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+
 if __name__ == "__main__":
     unittest.main()
