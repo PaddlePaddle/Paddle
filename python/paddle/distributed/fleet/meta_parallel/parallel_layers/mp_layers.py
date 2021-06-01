@@ -55,12 +55,20 @@ class VocabParallelEmbedding(Layer):
         self._weight_attr = weight_attr
         self._name = name
 
-        with get_rng_state_tracker().rng_state():
+        if self.is_mp:
+            with get_rng_state_tracker().rng_state():
+                self.weight = self.create_parameter(
+                    attr=self._weight_attr,
+                    shape=self._size,
+                    dtype=self._dtype,
+                    is_bias=False)
+        else:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=self._size,
                 dtype=self._dtype,
                 is_bias=False)
+
         self.weight.is_distributed = True
 
     def forward(self, x):
