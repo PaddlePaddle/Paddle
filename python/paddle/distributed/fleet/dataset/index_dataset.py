@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.fluid import core
-from paddle.distributed.fleet.proto import index_dataset_pb2
 import numpy as np
 import struct
 
@@ -93,58 +92,6 @@ class TreeIndex(Index):
                                               with_hierarchy)
 
 
-class GraphIndexBuilder:
-    def __init__(self, name=None, width=1, height=1, item_path_nums=1):
-        self.name = name
-        self.width = width  # D
-        self.height = height  # K
-        self.item_path_nums = item_path_nums
-
-    def graph_init_by_random(self, input_filename, output_filename):
-        total_path_num = pow(self.height, self.width)  # K^D
-        item_path_dict = {}
-
-        with open(input_filename, 'r') as f_in:
-            for line in f_in:
-                item_id = int(line.split()[0])
-                if item_id not in item_path_dict:
-                    item_path_dict[item_id] = []
-                else:
-                    continue
-
-                item_path_dict[item_id] = list(
-                    np.random.randint(0, total_path_num, self.item_path_nums))
-
-        self.build(output_filename, item_path_dict)
-
-    def build(self, output_filename, item_path_dict):
-        graph_meta = index_dataset_pb2.GraphMeta()
-        graph_meta.width = self.width
-        graph_meta.height = self.height
-        graph_meta.item_path_nums = self.item_path_nums
-
-        with open(output_filename, 'wb') as f_out:
-            kv_item = index_dataset_pb2.KVItem()
-            kv_item.key = '.graph_meta'.encode("utf8")
-            kv_item.value = graph_meta.SerializeToString()
-
-            self._write_kv(f_out, kv_item.SerializeToString())
-
-            for item in item_path_dict:
-                graph_item = index_dataset_pb2.GraphItem()
-                graph_item.item_id = item
-                for path in item_path_dict[item]:
-                    graph_item.path_id.append(path)
-                node_kv_item = index_dataset_pb2.KVItem()
-                node_kv_item.key = str(item).encode("utf8")
-                node_kv_item.value = graph_item.SerializeToString()
-                self._write_kv(f_out, node_kv_item.SerializeToString())
-
-    def _write_kv(self, fwr, message):
-        fwr.write(struct.pack('i', len(message)))
-        fwr.write(message)
-
-
 class GraphIndex(Index):
     def __init__(self, name, width, height, item_path_nums):
         super(GraphIndex, self).__init__(name)
@@ -153,7 +100,6 @@ class GraphIndex(Index):
         self.width = width
         self.height = height
         self.item_path_nums = item_path_nums
-        self._builder = GraphIndexBuilder(name, width, height, item_path_nums)
         self._wrapper = core.IndexWrapper()
         self.kd_represent_list = []
         self.gen_kd_represent(width, height)
@@ -161,8 +107,6 @@ class GraphIndex(Index):
     def _init_by_random(self):
         self._graph = core.GraphIndex()
         self._graph.initialize(self.height, self.width, self.item_path_nums)
-        # self._builder.graph_init_by_random(input_filename, output_filename)
-        # self._init_graph(output_filename)
 
     def _init_graph(self, filename):
         self._wrapper.insert_graph_index(self._name, filename)
