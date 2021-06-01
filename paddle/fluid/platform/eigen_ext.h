@@ -17,7 +17,6 @@
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
@@ -25,7 +24,6 @@
 
 namespace Eigen {
 
-using complex64 = paddle::platform::complex64;
 using complex128 = paddle::platform::complex128;
 using float16 = paddle::platform::float16;
 template <typename T>
@@ -62,28 +60,6 @@ struct NumTraits<paddle::platform::bfloat16>
   HOSTDEVICE static inline paddle::platform::bfloat16 quiet_NaN() {
     return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
   }
-};
-
-template <>
-struct NumTraits<complex64> : GenericNumTraits<std::complex<float>> {
-  typedef float Real;
-  typedef typename NumTraits<float>::Literal Literal;
-  enum {
-    IsComplex = 1,
-    RequireInitialization = NumTraits<float>::RequireInitialization,
-    ReadCost = 2 * NumTraits<float>::ReadCost,
-    AddCost = 2 * NumTraits<Real>::AddCost,
-    MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
-  };
-
-  EIGEN_DEVICE_FUNC
-  static inline Real epsilon() { return NumTraits<Real>::epsilon(); }
-  EIGEN_DEVICE_FUNC
-  static inline Real dummy_precision() {
-    return NumTraits<Real>::dummy_precision();
-  }
-  EIGEN_DEVICE_FUNC
-  static inline int digits10() { return NumTraits<Real>::digits10(); }
 };
 
 template <>
@@ -269,71 +245,6 @@ template <>
 HOSTDEVICE inline paddle::platform::bfloat16 maxi(
     const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
   return a < b ? b : a;
-}
-
-//////////// complex64 methods /////////////
-
-template <>
-HOSTDEVICE inline bool(isnan)(const complex64& a) {
-  return (paddle::platform::isnan)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isinf)(const complex64& a) {
-  return (paddle::platform::isinf)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isfinite)(const complex64& a) {
-  return (paddle::platform::isfinite)(a);
-}
-
-template <>
-HOSTDEVICE inline complex64 exp(const complex64& a) {
-  float com = ::expf(a.real);
-  float res_real = com * ::cosf(a.imag);
-  float res_imag = com * ::sinf(a.imag);
-  return complex64(res_real, res_imag);
-}
-
-template <>
-HOSTDEVICE inline complex64 log(const complex64& a) {
-  return paddle::platform::log(a);
-}
-
-template <>
-HOSTDEVICE inline complex64 tanh(const complex64& a) {
-  return paddle::platform::tanh(a);
-}
-
-template <>
-HOSTDEVICE inline complex64 sqrt(const complex64& a) {
-  return paddle::platform::sqrt(a);
-}
-
-template <>
-HOSTDEVICE inline complex64 ceil(const complex64& a) {
-  return complex64(::ceilf(a.real), ::ceilf(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex64 floor(const complex64& a) {
-  return complex64(::floorf(a.real), ::floor(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex64 round(const complex64& a) {
-  return complex64(::roundf(a.real), ::roundf(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex64 pow(const complex64& a, const complex64& b) {
-  return paddle::platform::pow(a, b);
-}
-
-template <>
-HOSTDEVICE inline float abs(const complex64& a) {
-  return paddle::platform::abs(a);
 }
 
 //////////// complex128 methods /////////////
