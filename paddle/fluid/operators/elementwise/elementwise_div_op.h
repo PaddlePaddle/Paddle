@@ -64,7 +64,7 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
       SameDimsElemwiseDiv<DeviceContext, T> same_dims_div;
       same_dims_div(ctx, x, y, z);
     } else {
-      default_elementwise_div<platform::CPUDeviceContext, T>(ctx, x, y, z);
+      default_elementwise_div<DeviceContext, T>(ctx, x, y, z);
     }
   }
 };
