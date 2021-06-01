@@ -643,6 +643,62 @@ def assign(input, output=None):
     return output
 
 
+#NOTE(zhiqiu): not public 
+def _memcpy(input, place=None, output=None):
+    """
+
+    The OP copies the :attr:`input` to the :attr:`output`.
+
+    Parameters:
+        input (Tensor): A tensor. Its data type supports float16, float32, float64, int32, int64, and bool.
+        device (Place): Target place for the output.
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
+
+    Returns:
+        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+    """
+    helper = LayerHelper('memcpy', **locals())
+    check_type(input, 'input', (Variable), 'memcpy')
+
+    if isinstance(input, (Variable, core.VarBase)):
+        check_dtype(input.dtype, 'input', [
+            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+            'uint8', 'bool'
+        ], 'memcpy', '(When the type of input in memcpy is Variable.)')
+    if output is None:
+        output = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    dst_place_type = -1
+    if place is None:
+        dst_place_type = -1
+    elif place.is_cpu_place():
+        dst_place_type = 0
+    elif place.is_gpu_place():
+        dst_place_type = 1
+    elif place.is_cuda_pinned_place():
+        dst_place_type = 2
+    elif place.is_xpu_place():
+        dst_place_type = 3
+    elif place.is_npu_place():
+        dst_place_type = 4
+
+    attrs["dst_place_type"] = dst_place_type
+    helper.append_op(
+        type='memcpy',
+        inputs={'X': [input]},
+        outputs={'Out': [output]},
+        attrs=attrs)
+
+
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     """
 
