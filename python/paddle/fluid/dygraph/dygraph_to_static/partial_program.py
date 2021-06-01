@@ -244,6 +244,10 @@ class PartialProgramLayer(layers.Layer):
             elif isinstance(value, core.VarBase):
                 var = value
                 var.name = self._inputs[i].desc.name()
+                # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
+                # into CUDAPlace when it's as input of multi Ops. Because the transformation
+                # is not in-place so we use `_move_to` to move data to avoid this.
+                var._move_to(framework._current_expected_place())
             else:
                 continue
             input_vars.append(var)
