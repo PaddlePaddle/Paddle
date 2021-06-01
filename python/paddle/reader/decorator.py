@@ -363,47 +363,6 @@ def buffered(reader, size):
     return data_reader
 
 
-def firstn(reader, n):
-    """
-    paddle.fluid.io.firstn ( :ref:`api_fluid_io_firstn` ) is recommended to use,
-    and paddle.reader.firstn is an alias.
-    
-    This API creates a decorated reader, and limits the max number of 
-    samples that reader could return.
-
-    Args:
-        reader(callable): the input reader.
-        n(int): the max number of samples in the reader.
-
-    Returns:
-        callable: the decorated reader.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            def reader():
-                for i in range(100):
-                    yield i
-            firstn_reader = fluid.io.firstn(reader, 5)
-            for e in firstn_reader():
-                print(e)
-            # the outputs are: 0 1 2 3 4  
-    """
-
-    # TODO(yuyang18): Check if just drop the reader, could clean the opened
-    # resource or not?
-
-    def firstn_reader():
-        for i, item in enumerate(reader()):
-            if i == n:
-                break
-            yield item
-
-    return firstn_reader
-
-
 class XmapEndSignal():
     pass
 
