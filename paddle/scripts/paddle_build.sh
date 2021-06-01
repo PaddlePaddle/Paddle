@@ -2077,9 +2077,12 @@ function summary_check_problems() {
 
 function reuse_so_cache() {
     get_html="https://api.github.com/repos/PaddlePaddle/Paddle"
-    merge_commit=grep sha tmp.txt `curl -X GET ${get_html}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt` |awk -F \" 'NR==1{print $(NF-1)}'
-    merge_pr=grep -oP -m 1 '(#[0-9]*)' tmp.txt `curl -X GET ${get_html}/commits/${merge_commit} -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt` |sed 's/#//g'
-    pr_commit=grep "sha" tmp.txt `curl -X GET ${get_html}/pulls/${merge_pr}/commits -H "authorization: token ${GITHUB_API_TOKEN}"` |tail -3|head -1|awk -F : '{print $NF}'|sed 's#"##g'|sed 's#,##g'
+    curl -X GET ${get_html}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    merge_commit=`grep "sha" tmp.txt| awk -F \" 'NR==1{print $(NF-1)}'`
+    curl -X GET ${get_html}/commits/${merge_commit} -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    merge_pr=`grep -oP -m 1 '(#[0-9]*)' tmp.txt| sed 's/#//g'`
+    curl -X GET ${get_html}/pulls/${merge_pr}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    pr_commit=`grep "sha" tmp.txt |tail -3|head -1|awk -F : '{print $NF}'|sed 's#"##g'|sed 's#,##g'`
     set +e
     down_proto_so=`wget -q https://xly-devops.bj.bcebos.com/PR/Paddle/${merge_pr}/${pr_commit}/workspace/Paddle/build/proto_so.tar.gz`
     set -e
