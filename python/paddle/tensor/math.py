@@ -2286,7 +2286,7 @@ def neg(x, name=None):
     This function computes the negative of the Tensor elementwisely.
 
     Args:
-        x (Tensor): Input of neg operator, an N-D Tensor, with data type float16, float32, float64, int8, int16, int32, or int64.
+        x (Tensor): Input of neg operator, an N-D Tensor, with data type float32, float64, int8, int16, int32, or int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
