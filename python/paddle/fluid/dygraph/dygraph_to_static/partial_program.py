@@ -247,7 +247,7 @@ class PartialProgramLayer(layers.Layer):
                 # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                 # into CUDAPlace when it's as input of multi Ops. Because the transformation
                 # is not in-place so we use `_move_to` to move data to avoid this.
-                var._move_to(framework._current_expected_place())
+                var._move_to(framework._current_expected_place(), False)
             else:
                 continue
             input_vars.append(var)
