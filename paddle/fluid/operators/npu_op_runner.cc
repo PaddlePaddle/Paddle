@@ -112,7 +112,7 @@ platform::Place GetCurrentNPUPlace(int device_id) {
   }
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
-      pool.Get(platform::NPUPlace(platform::GetCurrentNPUDeviceId())));
+      pool.Get(platform::NPUPlace(device_id)));
   return dev_ctx->GetPlace();
 }
 
@@ -286,7 +286,7 @@ Tensor RunTransDataToCastFormat(const Tensor &src_tensor, Tensor dst_tensor) {
   // auto src_format = ConvertToNpuFormat(src_tensor.layout());
   // auto dst_npu_format = ConvertToNpuFormat(dst_tensor.npu_storage_layout());
   // std::string src_format_name =
-  framework::DataLayoutToString(src_tensor.layout());
+  // framework::DataLayoutToString(src_tensor.layout());
   std::string dst_format_name =
       framework::DataLayoutToString(dst_tensor.npu_storage_layout());
   // auto src_base_format = FindBaseFormat(src_format);
