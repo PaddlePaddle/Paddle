@@ -26,6 +26,8 @@ from paddle.io import Dataset
 import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
+__all__ = []
+
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
 URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'

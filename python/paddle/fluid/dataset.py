@@ -74,6 +74,7 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.use_ps_gpu = False
 
     def set_pipe_command(self, pipe_command):
         """
@@ -251,9 +252,11 @@ class DatasetBase(object):
                 slot_var.type = "float"
             elif var.dtype == core.VarDesc.VarType.INT64:
                 slot_var.type = "uint64"
+            elif var.dtype == core.VarDesc.VarType.INT32:
+                slot_var.type = "uint32"
             else:
                 raise ValueError(
-                    "Currently, fluid.dataset only supports dtype=float32 and dtype=int64"
+                    "Currently, fluid.dataset only supports dtype=float32, dtype=int32 and dtype=int64"
                 )
 
     def set_hdfs_config(self, fs_name, fs_ugi):
@@ -299,6 +302,15 @@ class DatasetBase(object):
         self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_readers()
+
+    def _set_use_ps_gpu(self, use_ps_gpu):
+        """
+        set use_ps_gpu flag
+
+        Args:
+            use_ps_gpu: bool
+        """
+        self.use_ps_gpu = use_ps_gpu
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
@@ -391,7 +403,10 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     @deprecated(
@@ -400,7 +415,10 @@ class InMemoryDataset(DatasetBase):
     )
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
+            if self.use_ps_gpu:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+            else:
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     @deprecated(

@@ -59,7 +59,7 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner = NpuOpRunner(
+    const auto& runner = NpuOpRunner(
         "ParameterizedTruncatedNormal",
         {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor}, {*out},
         {{"seed", seed_var}});

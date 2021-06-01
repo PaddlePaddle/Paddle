@@ -285,6 +285,8 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, float>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, double>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int>;
 template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
+template struct SelectedRowsAddToTensor<platform::CPUDeviceContext,
+                                        platform::bfloat16>;
 
 // This is a separated namespace for manipulate SelectedRows typed
 // data. Like merge duplicated rows, adding two SelectedRows etc.
@@ -294,21 +296,19 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 // add or mul.
 namespace scatter {
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_floating_point<T>::value &&
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add_to(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
-                   size_t data_len, const T* in, T* out) {
-  blas->AXPY(data_len, 1., in, out);
+template <typename T>
+typename std::enable_if<std::is_floating_point<T>::value ||
+                        std::is_same<T, platform::complex<float>>::value ||
+                        std::is_same<T, platform::complex<double>>::value>::type
+elementwise_add_to(BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
+                   const T* in, T* out) {
+  blas->AXPY(data_len, T(1.f), in, out);
 }
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    !std::is_floating_point<T>::value &&
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add_to(const DeviceContext& ctx, BlasT<DeviceContext, T>* blas,
-                   size_t data_len, const T* in, T* out) {
+template <typename T>
+typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
+    BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len, const T* in,
+    T* out) {
   for (size_t i = 0; i < data_len; i++) {
     out[i] += in[i];
   }
@@ -412,7 +412,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
       out.set_rows(merge_rows);
 
       math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
-      constant_functor(context, out.mutable_value(), 0.0);
+      constant_functor(context, out.mutable_value(), static_cast<T>(0.f));
 
       std::unordered_map<int64_t, size_t> rows_to_id;
       for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -429,9 +429,9 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
         for (size_t i = 0; i < input_rows.size(); i++) {
           size_t out_i = rows_to_id[input_rows[i]];
-          elementwise_add_to<platform::CPUDeviceContext, T>(
-              context, &blas, static_cast<size_t>(input_width),
-              &input_data[i * input_width], &out_data[out_i * input_width]);
+          elementwise_add_to<T>(&blas, static_cast<size_t>(input_width),
+                                &input_data[i * input_width],
+                                &out_data[out_i * input_width]);
         }
       }
     }
@@ -524,9 +524,9 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
 
       for (size_t i = 0; i < input_rows.size(); i++) {
         size_t out_i = rows_to_id[input_rows[i]];
-        elementwise_add_to<platform::CPUDeviceContext, T>(
-            context, &blas, static_cast<size_t>(input_width),
-            &input_data[i * input_width], &out_data[out_i * input_width]);
+        elementwise_add_to<T>(&blas, static_cast<size_t>(input_width),
+                              &input_data[i * input_width],
+                              &out_data[out_i * input_width]);
       }
     }
     size_t input_width_cast = static_cast<size_t>(input_width);
@@ -544,9 +544,11 @@ template struct MergeAdd<platform::CPUDeviceContext, int64_t>;
 template struct MergeAdd<platform::CPUDeviceContext, float>;
 template struct MergeAdd<platform::CPUDeviceContext, double>;
 template struct MergeAdd<platform::CPUDeviceContext,
-                         paddle::platform::complex64>;
+                         paddle::platform::complex<float>>;
 template struct MergeAdd<platform::CPUDeviceContext,
-                         paddle::platform::complex128>;
+                         paddle::platform::complex<double>>;
+template struct MergeAdd<platform::CPUDeviceContext,
+                         paddle::platform::bfloat16>;
 
 template struct MergeAverage<platform::CPUDeviceContext, int>;
 template struct MergeAverage<platform::CPUDeviceContext, int64_t>;

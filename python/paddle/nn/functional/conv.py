@@ -13,15 +13,6 @@
 # limitations under the License.
 from __future__ import print_function
 
-__all__ = [
-    'conv1d',
-    'conv1d_transpose',
-    'conv2d',
-    'conv2d_transpose',
-    'conv3d',
-    'conv3d_transpose',
-]
-
 import numpy as np
 from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode
@@ -30,6 +21,8 @@ from ...fluid.layers import nn, utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
 from ...fluid.layer_helper import LayerHelper
+
+__all__ = []
 
 
 def _is_list_or_tuple(input):
@@ -92,6 +85,10 @@ def _update_padding_nd(padding, channel_last, num_dims):
     else:
         padding_algorithm = "EXPLICIT"
         padding = utils.convert_to_list(padding, num_dims, 'padding')
+    if not all([p >= 0 for p in padding]):
+        raise ValueError(
+            "Invalid padding, all value should be larger than or equal to 0, but received: {}".
+            format(padding))
     return padding, padding_algorithm
 
 
@@ -218,7 +215,7 @@ def conv1d(x,
         weight (Tensor): The convolution kernel with shape [M, C/g, K], where M is
             the number of output channels, g is the number of groups, K is the kernel's size. 
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
-        stride (int or tuple, optional): The stride size. If stride is a tuple, it must
+        stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain one integers, (stride_size). Default: 1.
         padding(int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
             1. a string in ['valid', 'same'].
@@ -227,7 +224,7 @@ def conv1d(x,
             4. a list[int] or tuple[int] whose length is 2. It has the form  [pad_before, pad_after].
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
-        dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain one integer, (dilation_size). Default: 1.
         groups (int, optional): The groups number of the conv1d function. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
@@ -250,7 +247,7 @@ def conv1d(x,
         ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `data_format` is not "NCL" or "NLC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
         ShapeError: If the input is not 3-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
@@ -451,8 +448,8 @@ def conv2d(x,
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width. 
         bias (Tensor, optional): The bias with shape [M,].
-        stride (int|tuple): The stride size. It means the stride in convolution. 
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width). 
+        stride (int|list|tuple): The stride size. It means the stride in convolution. 
+            If stride is a list/tuple, it must contain two integers, (stride_height, stride_width). 
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
             on both sides for each dimension.If `padding` is a string, either 'VALID' or
@@ -464,8 +461,8 @@ def conv2d(x,
             when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        dilation (int|tuple): The dilation size. It means the spacing between the kernel
-            points. If dilation is a tuple, it must contain two integers, (dilation_height, 
+        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel
+            points. If dilation is a list/tuple, it must contain two integers, (dilation_height, 
             dilation_width). Otherwise, dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
         groups (int): The groups number of the Conv2D Layer. According to grouped
@@ -488,7 +485,7 @@ def conv2d(x,
         ValueError: If `data_format` is not "NCHW" or "NHWC".
         ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
         ShapeError: If the input is not 4-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
@@ -637,7 +634,7 @@ def conv1d_transpose(x,
             K is the size of the kernel.
         bias(Tensor, optional): The bias, a Tensor with shape [M, ].
         stride(int|tuple|list, optional): The stride size. It means the stride in transposed convolution.
-            If stride is a tuple, it must contain one integer, `(stride_size)`.
+            If stride is a list/tuple, it must contain one integer, `(stride_size)`.
             Default: stride = 1.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
              `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
@@ -645,7 +642,7 @@ def conv1d_transpose(x,
              If `padding` is a tuple or list, it could be in two forms:
              `[pad]` or `[pad_left, pad_right]`. Default: padding = 0.
         output_padding(int|list|tuple, optional): The count of zeros to be added to tail of each dimension.
-             If it is a tuple, it must contain one integer. Default: 0.
+             If it is a list/tuple, it must contain one integer. Default: 0.
         groups(int, optional): The groups number of the conv1d transpose function. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -653,10 +650,10 @@ def conv1d_transpose(x,
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
         dilation(int|tuple|list, optional): The dilation size. It means the spacing between the kernel points.
-            If dilation is a tuple, it must contain one integer, `(dilation_size)`.
+            If dilation is a list/tuple, it must contain one integer, `(dilation_size)`.
             Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
-            tuple, it must contain one integer, `(feature_length)`. None if use
+            tuple/list, it must contain one integer, `(feature_length)`. None if use
             filter_size(shape of weight), padding, and stride to calculate output_size.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCL"`, `"NLC"`.
@@ -675,7 +672,7 @@ def conv1d_transpose(x,
     Raises:
         ValueError: If `data_format` is a string, but not "NCL" or "NLC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
         ValueError: If `output_size` and filter_size are None at the same time.
         ValueError: If `output_padding` is greater than `stride`.
@@ -900,7 +897,7 @@ def conv2d_transpose(x,
             kH is the height of the kernel, and kW is the width of the kernel.
         bias(Tensor, optional): The bias, a Tensor with shape [M, ].
         stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width). 
+            If stride is a list/tuple, it must contain two integers, (stride_height, stride_width). 
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
             on both sides for each dimension. If `padding` is a string, either 'VALID' or 
@@ -921,10 +918,10 @@ def conv2d_transpose(x,
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
         dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width). 
+            If dilation is a list/tuple, it must contain two integers, (dilation_height, dilation_width). 
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
-            tuple, it must contain two integers, (image_height, image_width). None if use
+            tuple/list, it must contain two integers, (image_height, image_width). None if use
             filter_size(shape of weight), padding, and stride to calculate output_size.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -943,7 +940,7 @@ def conv2d_transpose(x,
     Raises:
         ValueError: If `data_format` is not "NCHW" or "NHWC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
         ValueError: If `output_size` and kernel_size are None at the same time.
         ShapeError: If the input is not 4-D Tensor.
@@ -1120,8 +1117,8 @@ def conv3d(x,
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
-        stride (int|tuple): The stride size. It means the stride in convolution. If stride is a 
-            tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
+        stride (int|list|tuple): The stride size. It means the stride in convolution. If stride is a 
+            list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         padding (string|int|list|tuple): The padding size. It means the number of zero-paddings 
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
@@ -1133,8 +1130,8 @@ def conv3d(x,
             when `data_format` is `"NDHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        dilation (int|tuple): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height,
+        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel points. 
+            If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
         groups (int): The groups number of the Conv3D Layer. According to grouped
@@ -1292,7 +1289,7 @@ def conv3d_transpose(x,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
         stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
-            If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
+            If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height, 
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
             Default: stride = 1.
         padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
@@ -1314,11 +1311,11 @@ def conv3d_transpose(x,
             filters is only connected to the second half of the input channels.
             Default: groups=1
         dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height, 
+            If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height, 
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
         output_size(int|list|tuple, optional): The output image size. If output size is a
-            tuple, it must contain three integers, (image_depth, image_height, image_width).
+            list/tuple, it must contain three integers, (image_depth, image_height, image_width).
             None if use filter_size(shape of weight), padding, and stride to calculate output_size.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -1338,7 +1335,7 @@ def conv3d_transpose(x,
     Raises:
         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
         ValueError: If `output_size` and kernel_size are None at the same time.
         ShapeError: If the input is not 5-D Tensor.

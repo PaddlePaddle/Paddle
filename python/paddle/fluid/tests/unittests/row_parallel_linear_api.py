@@ -65,12 +65,12 @@ class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
 
             linear_out = paddle.distributed.split(
                 data,
-                size=(1000, 8),
+                size=(1000, 16),
                 operation='linear',
                 axis=0,
                 num_partitions=2,
                 weight_attr=param_attr,
-                bias_attr=False, )
+                bias_attr=True, )
 
             return [linear_out]
 

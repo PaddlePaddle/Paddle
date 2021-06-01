@@ -47,7 +47,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
 
     // softmax
     softmax->mutable_data<T>(ctx.GetPlace());
-    auto runner_softmax =
+    const auto& runner_softmax =
         NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {{"axes", axes}});
     runner_softmax.Run(stream);
 
@@ -57,7 +57,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
       tmp_labels.Resize(labels->dims());
       tmp_labels.mutable_data(ctx.GetPlace(), framework::proto::VarType::INT32);
       auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::INT32);
-      auto runner_cast_label =
+      const auto& runner_cast_label =
           NpuOpRunner("Cast", {*labels}, {tmp_labels},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_label.Run(stream);
@@ -77,7 +77,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     tmp_onehot.Resize(logits->dims());
     tmp_onehot.mutable_data<int>(ctx.GetPlace());
 
-    auto runner_onehot =
+    const auto& runner_onehot =
         NpuOpRunner("OneHotD", {*labels, on_tensor, off_tensor}, {tmp_onehot},
                     {{"axis", -1}, {"depth", cls_num}});
     runner_onehot.Run(stream);
@@ -87,7 +87,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     cast_onehot.Resize(tmp_onehot.dims());
     cast_onehot.mutable_data<T>(ctx.GetPlace());
     auto dst_dtype = ConvertToNpuDtype(logits->type());
-    auto runner_cast_onehot =
+    const auto& runner_cast_onehot =
         NpuOpRunner("Cast", {tmp_onehot}, {cast_onehot},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast_onehot.Run(stream);
@@ -102,8 +102,9 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     // SoftmaxCrossEntropyWithLogits requires loss to be of shape [batch_size]
     auto loss_dims = loss->dims();
     loss->Resize({loss_dims[0]});
-    auto runner_s = NpuOpRunner("SoftmaxCrossEntropyWithLogits",
-                                {*logits, cast_onehot}, {*loss, backprop}, {});
+    const auto& runner_s =
+        NpuOpRunner("SoftmaxCrossEntropyWithLogits", {*logits, cast_onehot},
+                    {*loss, backprop}, {});
     runner_s.Run(stream);
     loss->Resize(loss_dims);
   }
@@ -130,7 +131,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
       tmp_labels.Resize(labels->dims());
       tmp_labels.mutable_data(ctx.GetPlace(), framework::proto::VarType::INT32);
       auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::INT32);
-      auto runner_cast_label =
+      const auto& runner_cast_label =
           NpuOpRunner("Cast", {*labels}, {tmp_labels},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_label.Run(stream);
@@ -150,7 +151,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     tmp_onehot.Resize(softmax->dims());
     tmp_onehot.mutable_data<int>(ctx.GetPlace());
 
-    auto runner_onehot =
+    const auto& runner_onehot =
         NpuOpRunner("OneHotD", {*labels, on_tensor, off_tensor}, {tmp_onehot},
                     {{"axis", -1}, {"depth", cls_num}});
     runner_onehot.Run(stream);
@@ -160,7 +161,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     cast_onehot.Resize(tmp_onehot.dims());
     cast_onehot.mutable_data<T>(ctx.GetPlace());
     auto dst_dtype = ConvertToNpuDtype(softmax->type());
-    auto runner_cast_onehot =
+    const auto& runner_cast_onehot =
         NpuOpRunner("Cast", {tmp_onehot}, {cast_onehot},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast_onehot.Run(stream);
@@ -169,13 +170,13 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_sub(softmax->type());
     tmp_sub.Resize(softmax->dims());
     tmp_sub.mutable_data<T>(ctx.GetPlace());
-    auto runner_sub =
+    const auto& runner_sub =
         NpuOpRunner("Sub", {*softmax, cast_onehot}, {tmp_sub}, {});
 
     runner_sub.Run(stream);
     // mul
     logits_grad->mutable_data<T>(ctx.GetPlace());
-    auto runner_mul =
+    const auto& runner_mul =
         NpuOpRunner("Mul", {*loss_grad, tmp_sub}, {*logits_grad}, {});
     runner_mul.Run(stream);
   }

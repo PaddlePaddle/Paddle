@@ -21,7 +21,9 @@ import six
 import sys
 import warnings
 
-from paddle.distributed.utils import _print_arguments, _prepare_trainer_env, get_host_name_ip
+from paddle.distributed.utils import _print_arguments
+from paddle.distributed.utils import _prepare_trainer_env
+from paddle.distributed.utils import get_host_name_ip
 from paddle.distributed.cloud_utils import get_cluster_and_pod
 from paddle.distributed.fleet.cloud_utils import use_paddlecloud
 from paddle.device import get_device
@@ -29,6 +31,8 @@ from paddle.device import get_device
 # deprecated module import
 from paddle.fluid import core
 from paddle.fluid.framework import _cpu_num, set_flags
+
+__all__ = []
 
 
 class ParallelEnvArgs(object):
@@ -83,6 +87,18 @@ def _options_valid_check(options):
                 raise ValueError(
                     "The config option (%s) of `paddle.distributed.spawn` is not supported."
                     % key)
+
+
+def _get_default_nprocs():
+    device = get_device()
+    if 'gpu' in device:
+        return core.get_cuda_device_count()
+    elif 'xpu' in device:
+        return core.get_xpu_device_count()
+    else:
+        raise RuntimeError(
+            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".
+            format(device))
 
 
 def _get_node_ip(ips):
@@ -325,7 +341,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         func (function): The target function is called by spawned process.
             This function need to be able to pickled, so it must be defined
             at the top level of a module.
-        args (tuple, optional): Arguments passed to ``func``.
+        args (list|tuple, optional): Arguments passed to ``func``.
         nprocs (int, optional): Number of processed to start. Default: -1.
             when nprocs is -1, the available device will be obtained from 
             the environment variable when the model is executed: If use GPU, 
@@ -444,18 +460,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
     # get default nprocs
     if nprocs == -1:
-        device = get_device()
-        if device == 'cpu':
-            # TODO: not supports cpu parallel now
-            nprocs = _cpu_num()
-        elif device == 'gpu':
-            nprocs = core.get_cuda_device_count()
-        elif device == 'xpu':
-            nprocs = core.get_xpu_device_count()
-        else:
-            raise ValueError(
-                "`device` should be a string of `cpu`, 'gpu' or 'xpu', but got {}".
-                format(device))
+        nprocs = _get_default_nprocs()
 
     # NOTE(chenweihang): [ why need get cluster info before run? ]
     # when using `paddle.distributed.spawn` start parallel training, 
