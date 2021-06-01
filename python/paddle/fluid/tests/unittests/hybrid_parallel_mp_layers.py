@@ -249,7 +249,7 @@ class TestDistTraning(unittest.TestCase):
         optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
                                            parameters=model_b.parameters())
 
-        for _ in range(2):
+        for _ in range(5):
             np_input_data = np.random.randint(0, vocab_size,
                                               (batch_size, seq_length))
             input_data = paddle.to_tensor(np_input_data, dtype="int32")
