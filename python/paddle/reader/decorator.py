@@ -244,66 +244,6 @@ class ComposeNotAligned(ValueError):
     pass
 
 
-def compose(*readers, **kwargs):
-    """
-    Creates a data reader whose output is the combination of input readers.
-
-    If input readers output following data entries:
-    (1, 2)    3    (4, 5)
-    The composed reader will output:
-    (1, 2, 3, 4, 5)
-
-    Args:
-        readers (Reader|list of Reader): readers that will be composed together. 
-        check_alignment(bool, optional): Indicates whether the input readers are checked for
-                              alignment. If True, whether input readers are aligned
-                              correctly will be checked, else alignment will not be checkout and trailing outputs
-                              will be discarded. Defaults to True.
-
-    Returns: 
-        the new data reader (Reader).
-
-    Raises:
-        ComposeNotAligned: outputs of readers are not aligned. This will not raise if check_alignment is set to False.
-  
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          def reader_creator_10(dur):
-              def reader():
-                 for i in range(10):
-                     yield i
-              return reader
-          reader = fluid.io.compose(reader_creator_10(0), reader_creator_10(0))
-    """
-    check_alignment = kwargs.pop('check_alignment', True)
-
-    def make_tuple(x):
-        if isinstance(x, tuple):
-            return x
-        else:
-            return (x, )
-
-    def reader():
-        rs = []
-        for r in readers:
-            rs.append(r())
-        if not check_alignment:
-            for outputs in zip(*rs):
-                yield sum(list(map(make_tuple, outputs)), ())
-        else:
-            for outputs in zip_longest(*rs):
-                for o in outputs:
-                    if o is None:
-                        # None will be not be present if compose is aligned
-                        raise ComposeNotAligned(
-                            "outputs of readers are not aligned.")
-                yield sum(list(map(make_tuple, outputs)), ())
-
-    return reader
-
-
 class XmapEndSignal():
     pass
 

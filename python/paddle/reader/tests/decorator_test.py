@@ -48,36 +48,6 @@ class TestMap(unittest.TestCase):
             self.assertEqual(e, i)
 
 
-class TestCompose(unittest.TestCase):
-    def test_compse(self):
-        reader = paddle.reader.compose(
-            reader_creator_10(0), reader_creator_10(0))
-        for idx, e in enumerate(reader()):
-            self.assertEqual(e, (idx, idx))
-
-    def test_compose_not_aligned(self):
-        total = 0
-        reader = paddle.reader.compose(
-            paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
-            reader_creator_10(0))
-        with self.assertRaises(paddle.reader.ComposeNotAligned):
-            for e in reader():
-                total += 1
-        # expecting 10, not 20
-        self.assertEqual(total, 10)
-
-    def test_compose_not_aligned_no_check(self):
-        total = 0
-        reader = paddle.reader.compose(
-            paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
-            reader_creator_10(0),
-            check_alignment=False)
-        for e in reader():
-            total += 1
-        # expecting 10, not 20
-        self.assertEqual(total, 10)
-
-
 class TestChain(unittest.TestCase):
     def test_chain(self):
         c = paddle.reader.chain(reader_creator_10(0), reader_creator_10(0))
