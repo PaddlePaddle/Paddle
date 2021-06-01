@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// .cc文件用于Op定义和OpMaker的定义及注册、CPU版本kernel的注册
-
 #include "paddle/fluid/operators/add_equal_dim_op.h"
 #include <memory>
 #include <string>
