@@ -236,7 +236,7 @@ class PRChecker(object):
             "cd {}build && ctest -N".format(PADDLE_ROOT),
             shell=True,
             stdout=subprocess.PIPE)
-        out,err = p.communicate()
+        out, err = p.communicate()
         for line in out.splitlines():
             if 'Total Tests:' in str(line):
                 all_counts = line.split()[-1]
