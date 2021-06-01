@@ -108,7 +108,7 @@ class VarBase {
 
   void ClearGradVarBase() { grad_var_ = nullptr; }
 
-  void SetGradVarBase(VarBase& grad_var) {
+  void SetGradVarBase(const VarBase& grad_var) {
     MutableGradVarBase()->CopyFrom(grad_var, true);
   }
 
@@ -222,6 +222,8 @@ class VarBase {
                                       const bool blocking) const;
 
   void CopyFrom(const imperative::VarBase& src, bool blocking);
+
+  void MoveTo(const platform::Place& dst_place, bool blocking);
 
   void BumpInplaceVersion();
 

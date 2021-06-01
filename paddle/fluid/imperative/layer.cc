@@ -306,6 +306,38 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   }
 }
 
+void VarBase::MoveTo(const platform::Place& dst_place, bool blocking) {
+  PADDLE_ENFORCE_NE(
+      SharedVar()->IsEmpty(), true,
+      platform::errors::InvalidArgument(
+          "Variable is not initialized before moving to destination place"));
+
+  if (platform::is_same_place(Place(), dst_place)) {
+    // do nothing
+    return;
+  }
+
+  framework::Tensor* src_tensor = nullptr;
+  if (Var().IsType<framework::LoDTensor>()) {
+    src_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+  } else {
+    src_tensor =
+        MutableVar()->GetMutable<framework::SelectedRows>()->mutable_value();
+  }
+
+  framework::Tensor dst_tensor;
+  dst_tensor.Resize(src_tensor->dims());
+  dst_tensor.mutable_data(dst_place, src_tensor->type());
+
+  // Copy tensor data from src_place into dst_place
+  framework::TensorCopy(*src_tensor, dst_place, &dst_tensor);
+  if (blocking) {
+    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+  }
+  // inplace update src tensor data
+  src_tensor->ShareBufferWith(dst_tensor);
+}
+
 void VarBase::BumpInplaceVersion() {
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized(), true,

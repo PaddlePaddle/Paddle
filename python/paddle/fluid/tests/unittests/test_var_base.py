@@ -439,6 +439,50 @@ class TestVarBase(unittest.TestCase):
                     np.array(copy_selected_rows.get_tensor()),
                     np.array(selected_rows.get_tensor())))
 
+    def _test_move_to(self, in_var, is_selected_row=False):
+        def _get_numpy_data(var, is_selected_row=False):
+            if is_selected_row:
+                np_data = np.array(var.value().get_selected_rows().get_tensor())
+            else:
+                np_data = var.numpy()
+            return np_data
+
+        def _assert_move(var, dst_place, blocking):
+            src_data = _get_numpy_data(var, is_selected_row)
+            var._move_to(dst_place, blocking)
+            self.assertEqual(str(var.place), str(dst_place))
+
+            dst_data = _get_numpy_data(var, is_selected_row)
+            self.assertTrue(np.array_equal(src_data, dst_data))
+
+        for blocking in [True, False]:
+            # CPU -> CUDAPinned -> CUDA
+            _assert_move(in_var, paddle.CPUPlace(), blocking)
+            if core.is_compiled_with_cuda():
+                _assert_move(in_var, paddle.CUDAPinnedPlace(), blocking)
+                _assert_move(in_var, paddle.CUDAPlace(0), blocking)
+                # CUDA -> CUDAPinned -> CPU
+                _assert_move(in_var, paddle.CUDAPinnedPlace(), blocking)
+                _assert_move(in_var, paddle.CPUPlace(), blocking)
+                # CPU -> CUDA -> CPU
+                _assert_move(in_var, paddle.CUDAPlace(0), blocking)
+                _assert_move(in_var, paddle.CPUPlace(), blocking)
+
+    def test_move_to_new_device_inplace(self):
+        # test common VarBase
+        in_var = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+        self._test_move_to(in_var)
+
+        # test move_to with selected rows
+        x = core.VarBase(core.VarDesc.VarType.FP32, [3, 100],
+                         "selected_rows_var",
+                         core.VarDesc.VarType.SELECTED_ROWS, True)
+        selected_rows = x.value().get_selected_rows()
+        selected_rows.get_tensor().set(np.random.rand(3, 100), core.CPUPlace())
+        selected_rows.set_height(10)
+        selected_rows.set_rows([3, 5, 7])
+        self._test_move_to(x, True)
+
     # test some patched methods
     def test_set_value(self):
         with fluid.dygraph.guard():
