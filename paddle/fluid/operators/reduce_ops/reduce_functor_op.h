@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <cuda.h>
 #include <float.h>
 #include <limits.h>
 #include <math.h>
