@@ -48,16 +48,6 @@ class TestMap(unittest.TestCase):
             self.assertEqual(e, i)
 
 
-class TestChain(unittest.TestCase):
-    def test_chain(self):
-        c = paddle.reader.chain(reader_creator_10(0), reader_creator_10(0))
-        idx = 0
-        for e in c():
-            self.assertEqual(e, idx % 10)
-            idx += 1
-        self.assertEqual(idx, 20)
-
-
 class TestShuffle(unittest.TestCase):
     def test_shuffle(self):
         case = [(0, True), (1, True), (10, False), (100, False)]
@@ -94,35 +84,6 @@ class TestXmap(unittest.TestCase):
                             result.sort()
                         for idx, e in enumerate(result):
                             self.assertEqual(e, mapper(idx))
-
-
-class TestMultiProcessReader(unittest.TestCase):
-    def setup(self):
-        self.samples = []
-        for i in range(1000):
-            self.samples.append([[i], [i + 1, i + 2], i + 3])
-
-        def reader(index):
-            for i in range(len(self.samples)):
-                if i % 3 == index:
-                    yield self.samples[i]
-
-        self.reader0 = functools.partial(reader, 0)
-        self.reader1 = functools.partial(reader, 1)
-        self.reader2 = functools.partial(reader, 2)
-
-    def reader_test(self, use_pipe):
-        self.setup()
-        results = []
-        for data in paddle.reader.multiprocess_reader(
-            [self.reader0, self.reader1, self.reader2], 100, use_pipe)():
-            results.append(data)
-        self.assertEqual(sorted(self.samples), sorted(results))
-
-    def test_distributed_batch_reader(self):
-        if sys.platform != 'win32':
-            self.reader_test(use_pipe=False)
-            self.reader_test(use_pipe=True)
 
 
 if __name__ == '__main__':

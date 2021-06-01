@@ -67,8 +67,5 @@ from paddle.reader.decorator import map_readers  # noqa: F401
 from paddle.reader.decorator import shuffle  # noqa: F401
 from paddle.reader.decorator import xmap_readers  # noqa: F401
 from paddle.reader.decorator import cache  # noqa: F401
-from paddle.reader.decorator import ComposeNotAligned  # noqa: F401
-from paddle.reader.decorator import chain  # noqa: F401
-from paddle.reader.decorator import multiprocess_reader  # noqa: F401
 
 __all__ = []
