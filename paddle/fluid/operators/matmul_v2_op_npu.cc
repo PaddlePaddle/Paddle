@@ -143,76 +143,104 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    Tensor tmp_x = CastNPUFormat(*x, 29);
+    Tensor tmp_y = CastNPUFormat(*y, 29);
+    Tensor tmp_dout = CastNPUFormat(*dout, 29);
+
     if (x->dims().size() == 2) {
       if (transpose_y) {
         if (dx) {
           dx->mutable_data<T>(ctx.GetPlace());
+          dx->ResizeNPUDims(dx->dims());
+          Tensor tmp_dx = GenerateNZTensor(*dx);
           const auto& runner_dx =
-              NpuOpRunner("MatMul", {*dout, *y}, {*dx},
+              NpuOpRunner("MatMul", {tmp_dout, tmp_y}, {tmp_dx},
                           {{"transpose_x1", false}, {"transpose_x2", false}});
 
           runner_dx.Run(stream);
+          RunTransDataNPUOP(tmp_dx, *dx, stream);
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
+          dy->ResizeNPUDims(dy->dims());
+          Tensor tmp_dy = GenerateNZTensor(*dy);
           const auto& runner_dy =
-              NpuOpRunner("MatMul", {*dout, *x}, {*dy},
+              NpuOpRunner("MatMul", {tmp_dout, tmp_x}, {tmp_dy},
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
           runner_dy.Run(stream);
+          RunTransDataNPUOP(tmp_dy, *dy, stream);
         }
 
       } else {
         if (dx) {
           dx->mutable_data<T>(ctx.GetPlace());
+          dx->ResizeNPUDims(dx->dims());
+          Tensor tmp_dx = GenerateNZTensor(*dx);
           const auto& runner_dx =
-              NpuOpRunner("MatMul", {*dout, *y}, {*dx},
+              NpuOpRunner("MatMul", {tmp_dout, tmp_y}, {tmp_dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
 
           runner_dx.Run(stream);
+          RunTransDataNPUOP(tmp_dx, *dx, stream);
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
+          dy->ResizeNPUDims(dy->dims());
+          Tensor tmp_dy = GenerateNZTensor(*dy);
           const auto& runner_dy =
-              NpuOpRunner("MatMul", {*x, *dout}, {*dy},
+              NpuOpRunner("MatMul", {tmp_x, tmp_dout}, {tmp_dy},
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
           runner_dy.Run(stream);
+          RunTransDataNPUOP(tmp_dy, *dy, stream);
         }
       }
     } else if (x->dims().size() > 2) {
       if (transpose_y) {
         if (dx) {
           dx->mutable_data<T>(ctx.GetPlace());
+          dx->ResizeNPUDims(dx->dims());
+          Tensor tmp_dx = GenerateNZTensor(*dx);
           const auto& runner_dx =
-              NpuOpRunner("BatchMatMul", {*dout, *y}, {*dx},
+              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_y}, {tmp_dx},
                           {{"adj_x1", false}, {"adj_x2", false}});
 
           runner_dx.Run(stream);
+          RunTransDataNPUOP(tmp_dx, *dx, stream);
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
+          dy->ResizeNPUDims(dy->dims());
+          Tensor tmp_dy = GenerateNZTensor(*dy);
           const auto& runner_dy =
-              NpuOpRunner("BatchMatMul", {*dout, *x}, {*dy},
+              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_x}, {tmp_dy},
                           {{"adj_x1", true}, {"adj_x2", false}});
 
           runner_dy.Run(stream);
+          RunTransDataNPUOP(tmp_dy, *dy, stream);
         }
       } else {
         if (dx) {
           dx->mutable_data<T>(ctx.GetPlace());
+          dx->ResizeNPUDims(dx->dims());
+          Tensor tmp_dx = GenerateNZTensor(*dx);
           const auto& runner_dx =
-              NpuOpRunner("BatchMatMul", {*dout, *y}, {*dx},
+              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_y}, {tmp_dx},
                           {{"adj_x1", false}, {"adj_x2", true}});
 
           runner_dx.Run(stream);
+          RunTransDataNPUOP(tmp_dx, *dx, stream);
         }
         if (dy) {
           dy->mutable_data<T>(ctx.GetPlace());
+          dy->ResizeNPUDims(dy->dims());
+          Tensor tmp_dy = GenerateNZTensor(*dy);
           const auto& runner_dy =
-              NpuOpRunner("BatchMatMul", {*x, *dout}, {*dy},
+              NpuOpRunner("BatchMatMul", {tmp_x, tmp_dout}, {tmp_dy},
                           {{"adj_x1", true}, {"adj_x2", false}});
           runner_dy.Run(stream);
+          RunTransDataNPUOP(tmp_dy, *dy, stream);
         }
       }
     }
