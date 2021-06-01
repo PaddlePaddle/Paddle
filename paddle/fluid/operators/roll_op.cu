@@ -43,9 +43,10 @@ __global__ void roll_cuda_kernel(const T* input, T* output, int64_t N,
 }
 
 template <typename T>
-__global__ void roll_cuda_kernel(const T* input, T* output, int64_t N,
-                                 int64_t shift, int64_t dim_size,
-                                 int64_t stride) {
+__global__ void roll_cuda_kernel_with_one_axis(const T* input, T* output,
+                                               int64_t N, int64_t shift,
+                                               int64_t dim_size,
+                                               int64_t stride) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
@@ -62,8 +63,9 @@ __global__ void roll_cuda_kernel(const T* input, T* output, int64_t N,
   output[output_idx] = input[idx];
 }
 
-template <typename DeviceContext, typename T>
-class RollCUDAKernel : public framework::OpKernel<T> {
+template <typename T>
+class RollKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
@@ -92,9 +94,9 @@ class RollCUDAKernel : public framework::OpKernel<T> {
       }
 
       int64_t shift = (shifts[0] % dim_size + dim_size) % dim_size;
-      roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                             PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+      roll_cuda_kernel_with_one_axis<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                                           PADDLE_CUDA_NUM_THREADS,
+                                       PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           in_data, out_data, numel, shift, dim_size, stride);
       return;
     }
@@ -141,8 +143,9 @@ class RollCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
-class RollGradCUDAKernel : public framework::OpKernel<T> {
+template <typename T>
+class RollGradKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>(framework::GradVarName("Out"));
@@ -170,9 +173,9 @@ class RollGradCUDAKernel : public framework::OpKernel<T> {
       }
 
       int64_t shift = ((-shifts[0]) % dim_size + dim_size) % dim_size;
-      roll_cuda_kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                             PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+      roll_cuda_kernel_with_one_axis<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                                           PADDLE_CUDA_NUM_THREADS,
+                                       PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
           in_data, out_data, numel, shift, dim_size, stride);
       return;
     }
@@ -225,13 +228,12 @@ class RollGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    roll, ops::RollCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::RollCUDAKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::RollCUDAKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::RollCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    roll, ops::RollKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::RollKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::RollKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::RollKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
-    roll_grad,
-    ops::RollGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::RollGradCUDAKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::RollGradCUDAKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::RollGradCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    roll_grad, ops::RollGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::RollGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::RollGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::RollGradKernel<paddle::platform::CUDADeviceContext, int64_t>);

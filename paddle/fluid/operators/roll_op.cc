@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/roll_op.h"
+
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -40,19 +42,18 @@ class RollOp : public framework::OperatorWithKernel {
     if (dims.size() != 0) {
       PADDLE_ENFORCE_EQ(dims.size(), shifts.size(),
                         platform::errors::InvalidArgument(
-                            "When Attr(dims).size() != 0, Attr(dims).size() "
-                            "should be equl to "
-                            "Attr(shifts).size(). But received "
-                            "Attr(dims).size() = %d, Attr(shifts).size() = %d",
+                            "When dims.size() != 0, dims.size() "
+                            "should be equal to "
+                            "shifts.size(). But received "
+                            "dims.size() = %d, shifts.size() = %d",
                             dims.size(), shifts.size()));
     } else {
-      PADDLE_ENFORCE_EQ(dims.size() == 0, shifts.size() == 1,
+      PADDLE_ENFORCE_EQ(shifts.size(), 1,
                         platform::errors::InvalidArgument(
-                            "When Attr(dims).size() == 0, Attr(shifts).size() "
-                            "should be equl to 1"
-                            "But received "
-                            "Attr(dims).size() = %d, Attr(shifts).size() = %d",
-                            dims.size(), shifts.size()));
+                            "When dims.size() == 0, shifts.size() "
+                            "should be equal to 1, But received "
+                            "shifts.size() = %d",
+                            shifts.size()));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -106,7 +107,7 @@ class RollOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>(
         "axis",
         "Axis along which to roll. It must have the same size "
-        "with shifts or size = 0")
+        "with shifts or size == 0")
         .SetDefault({});
     AddComment(R"DOC(
     Roll the tensor along the given dimension(s). 
