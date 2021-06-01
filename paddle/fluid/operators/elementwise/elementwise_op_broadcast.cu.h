@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 
 namespace paddle {
