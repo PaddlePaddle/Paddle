@@ -121,99 +121,98 @@ class TestDistTraning(unittest.TestCase):
         }
         fleet.init(is_collective=True, strategy=strategy)
 
-#    def test_column_parallel_layer(self):
-#        set_random_seed(1024)
-#        global_dtype = "float32"
-#
-#        input_size_per_card = 17
-#        input_size = input_size_per_card * self.model_parallel_size
-#        output_size_per_card = 13
-#        output_size = output_size_per_card * self.model_parallel_size
-#        batch_size = 4
-#
-#        model_a = ColumnLinearNet(input_size, output_size, global_dtype)
-#
-#        # get w
-#        check_group = dist.new_group(list(range(self.model_parallel_size)))
-#        integral_w = []
-#        partial_w = model_a.parallel_linear.weight.clone().detach()
-#        paddle.distributed.all_gather(integral_w, partial_w, group=check_group)
-#        integral_w = paddle.concat(integral_w, axis=1)
-#
-#        model_b = SimpleMatmul(integral_w, output_size, global_dtype)
-#
-#        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
-#                                           parameters=model_a.parameters())
-#        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
-#                                           parameters=model_b.parameters())
-#        for idx in range(5):
-#            input = paddle.randn([batch_size, input_size], global_dtype)
-#            input.stop_gradient = True
-#
-#            output_a = model_a(input)
-#            loss_a = output_a.mean()
-#            loss_a.backward()
-#
-#            output_b = model_b(input)
-#            loss_b = output_b.mean()
-#            loss_b.backward()
-#
-#            optimizer_a.step()
-#            optimizer_b.step()
-#
-#            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
-#
-#    def test_row_parallel_layer(self):
-#        global_dtype = "float32"
-#        paddle.set_default_dtype(global_dtype)
-#        set_random_seed(1024)
-#
-#        self.hcg = fleet.get_hybrid_communicate_group()
-#
-#        self.word_size = self.hcg.get_model_parallel_world_size()
-#        self.rank_id = self.hcg.get_model_parallel_rank()
-#
-#        input_size_per_card = 11
-#        input_size = input_size_per_card * self.model_parallel_size
-#        output_size_per_card = 10
-#        output_size = output_size_per_card * self.model_parallel_size
-#        batch_size = 4
-#
-#        model_a = RowLinearNet(input_size, output_size)
-#
-#        # get w
-#        check_group = dist.new_group(list(range(self.model_parallel_size)))
-#        integral_w = []
-#        partial_w = model_a.parallel_linear.weight.clone().detach()
-#        paddle.distributed.all_gather(integral_w, partial_w, group=check_group)
-#        integral_w = paddle.concat(integral_w, axis=0)
-#
-#        model_b = SimpleMatmul(integral_w, output_size, global_dtype)
-#
-#        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
-#                                           parameters=model_a.parameters())
-#
-#        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
-#                                           parameters=model_b.parameters())
-#
-#        for idx in range(5):
-#            input = paddle.randn([batch_size, input_size], global_dtype)
-#            input.stop_gradient = True
-#
-#            output_a = model_a(input)
-#            loss_a = output_a.mean()
-#            loss_a.backward()
-#
-#            output_b = model_b(input)
-#            loss_b = output_b.mean()
-#            loss_b.backward()
-#
-#            optimizer_a.step()
-#            optimizer_b.step()
-#
-#            np.testing.assert_allclose(
-#                loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
-#
+    def test_column_parallel_layer(self):
+        set_random_seed(1024)
+        global_dtype = "float32"
+
+        input_size_per_card = 17
+        input_size = input_size_per_card * self.model_parallel_size
+        output_size_per_card = 13
+        output_size = output_size_per_card * self.model_parallel_size
+        batch_size = 4
+
+        model_a = ColumnLinearNet(input_size, output_size, global_dtype)
+
+        # get w
+        check_group = dist.new_group(list(range(self.model_parallel_size)))
+        integral_w = []
+        partial_w = model_a.parallel_linear.weight.clone().detach()
+        paddle.distributed.all_gather(integral_w, partial_w, group=check_group)
+        integral_w = paddle.concat(integral_w, axis=1)
+
+        model_b = SimpleMatmul(integral_w, output_size, global_dtype)
+
+        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
+                                           parameters=model_a.parameters())
+        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
+                                           parameters=model_b.parameters())
+        for idx in range(5):
+            input = paddle.randn([batch_size, input_size], global_dtype)
+            input.stop_gradient = True
+
+            output_a = model_a(input)
+            loss_a = output_a.mean()
+            loss_a.backward()
+
+            output_b = model_b(input)
+            loss_b = output_b.mean()
+            loss_b.backward()
+
+            optimizer_a.step()
+            optimizer_b.step()
+
+            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
+
+    def test_row_parallel_layer(self):
+        global_dtype = "float32"
+        paddle.set_default_dtype(global_dtype)
+        set_random_seed(1024)
+
+        self.hcg = fleet.get_hybrid_communicate_group()
+
+        self.word_size = self.hcg.get_model_parallel_world_size()
+        self.rank_id = self.hcg.get_model_parallel_rank()
+
+        input_size_per_card = 11
+        input_size = input_size_per_card * self.model_parallel_size
+        output_size_per_card = 10
+        output_size = output_size_per_card * self.model_parallel_size
+        batch_size = 4
+
+        model_a = RowLinearNet(input_size, output_size)
+
+        # get w
+        check_group = dist.new_group(list(range(self.model_parallel_size)))
+        integral_w = []
+        partial_w = model_a.parallel_linear.weight.clone().detach()
+        paddle.distributed.all_gather(integral_w, partial_w, group=check_group)
+        integral_w = paddle.concat(integral_w, axis=0)
+
+        model_b = SimpleMatmul(integral_w, output_size, global_dtype)
+
+        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
+                                           parameters=model_a.parameters())
+
+        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
+                                           parameters=model_b.parameters())
+
+        for idx in range(5):
+            input = paddle.randn([batch_size, input_size], global_dtype)
+            input.stop_gradient = True
+
+            output_a = model_a(input)
+            loss_a = output_a.mean()
+            loss_a.backward()
+
+            output_b = model_b(input)
+            loss_b = output_b.mean()
+            loss_b.backward()
+
+            optimizer_a.step()
+            optimizer_b.step()
+
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-6)
 
     def test_parallel_embedding(self):
         batch_size = 1
@@ -250,13 +249,10 @@ class TestDistTraning(unittest.TestCase):
         optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
                                            parameters=model_b.parameters())
 
-        for step in range(2):
-            print("===== step {} =====".format(step))
+        for _ in range(2):
             np_input_data = np.random.randint(0, vocab_size,
                                               (batch_size, seq_length))
             input_data = paddle.to_tensor(np_input_data, dtype="int32")
-
-            print("input_data", input_data.numpy())
 
             output_a = model_a(input_data)
             loss_a = output_a.mean()
@@ -267,14 +263,12 @@ class TestDistTraning(unittest.TestCase):
             loss_a.backward()
             loss_b.backward()
 
-            # optimizer_a.step()
-            # optimizer_b.step()
+            optimizer_a.step()
+            optimizer_b.step()
             print(loss_a.numpy(), loss_b.numpy())
-            print(model_a.embedding.weight.grad)
-            print(model_b.embedding.weight.grad)
 
-            # np.testing.assert_allclose(
-            #     loss_a.numpy(), loss_b.numpy(), rtol=1e-6)
+            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
+
 
 if __name__ == '__main__':
     unittest.main()

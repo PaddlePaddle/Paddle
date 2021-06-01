@@ -26,9 +26,6 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids", "CEmbeddingOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CEmbeddingOp");
 
-    // auto start_index = ctx->Attrs().Get<int64_t>("start_index");
-    // auto end_index = ctx->Attrs().Get<int64_t>("end_index");
-
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
     int ids_rank = ids_dims.size();
@@ -41,15 +38,6 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
             "But received c_embedding's dimensions = %d, "
             "c_embedding's shape = [%s].",
             table_dims.size(), table_dims));
-
-    // PADDLE_ENFORCE_EQ(
-    //     end_index - start_index, table_dims[0],
-    //     platform::errors::InvalidArgument(
-    //         "The value of end_index - start_index should be equal to table's
-    //         length."
-    //         "But received end_index - start_index = %d, "
-    //         "table's length = %d.",
-    //         end_index - start_index, table_dims[0]));
 
     auto output_dims = framework::vectorize(ids_dims);
     output_dims.push_back(table_dims[1]);
@@ -81,20 +69,9 @@ class CEmbeddingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The lookup results, which have the same type as W.");
 
     AddAttr<int64_t>("start_index",
-                     "(int64, default 0) "
-                     "If the value is 0, it makes no effect to lookup. "
-                     "Otherwise the given value indicates padding the output "
-                     "with zeros whenever lookup encounters it in Ids.")
+                     "(int64, default 0), The starting index is indeed, "
+                     "and the out-of-bounds will be set to 0 ")
         .SetDefault(0);
-
-    // AddAttr<int64_t>("end_index",
-    //                  "(int64, default -1) "
-    //                  "If the value is -1, it makes no effect to lookup. "
-    //                  "Otherwise the given value indicates padding the output
-    //                  "
-    //                  "with zeros whenever lookup encounters it in Ids.")
-    //     .SetDefault(1);
-
     AddComment(R"DOC(
 c_embedding Operator.
 
@@ -153,7 +130,6 @@ class CEmbeddingOpGradVarTypeInference : public framework::VarTypeInference {
     VLOG(3) << "c_embedding_grad op " << framework::GradVarName("W")
             << " is set to LoDTensor";
     ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
-    // }
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
   }
 };

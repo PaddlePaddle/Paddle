@@ -775,7 +775,7 @@ def _c_identity(tensor, group=None):
     return out
 
 
-def _c_concat(tensor, nranks, group=None):
+def _c_concat(tensor, group=None):
     """
     Return allgather of the tensor, mainly used with model parallel.
 
@@ -791,10 +791,14 @@ def _c_concat(tensor, nranks, group=None):
         return
     ring_id = 0 if group is None else group.id
 
+    global_rank = _get_global_env().rank
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
+
     if in_dygraph_mode():
         return core.ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
-                                 True, 'nranks', nranks, 'use_model_parallel',
-                                 True)
+                                 True, 'rank', rank, 'nranks', nranks,
+                                 'use_model_parallel', True)
 
     op_type = 'c_concat'
     helper = LayerHelper(op_type, **locals())
@@ -812,12 +816,13 @@ def _c_concat(tensor, nranks, group=None):
             'ring_id': ring_id,
             'use_calc_stream': True,
             'use_model_parallel': True,
-            'nranks': nranks
+            'nranks': nranks,
+            'rank': rank
         })
     return out
 
 
-def _c_split(tensor, rank, nranks, group=None):
+def _c_split(tensor, group=None):
     """
     Split tensor evenly among all members, mainly used with model parallel.
 
@@ -833,6 +838,10 @@ def _c_split(tensor, rank, nranks, group=None):
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
+
+    global_rank = _get_global_env().rank
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
 
     if in_dygraph_mode():
         return core.ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
@@ -884,11 +893,10 @@ def _mp_allreduce(tensor,
 
 
 def _c_embedding(x, weight, start_index=0, name=None):
-
     if in_dygraph_mode():
         return core.ops.c_embedding(weight, x, "start_index", start_index)
     else:
-        helper = LayerHelper('_c_embedding', **locals())
+        helper = LayerHelper('c_embedding', **locals())
         dtype = helper.input_dtype(input_param_name='weight')
 
         check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'embedding')
@@ -1008,7 +1016,7 @@ def _parallel_linear(x,
 
     if axis == 0:
         if split_tensor:
-            x = _c_split(x, inner_rank, nranks, group=group)
+            x = _c_split(x, group=group)
     else:
         x = _c_identity(x, group=group)
 

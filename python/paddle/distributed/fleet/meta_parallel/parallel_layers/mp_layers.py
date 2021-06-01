@@ -27,31 +27,6 @@ __all__ = []
 # language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
 
 
-class _EmbeddingInModelParallel(PyLayer):
-    @staticmethod
-    def forward(ctx, masked_input, weight, input_mask, name):
-        output_parallel = F.embedding(
-            masked_input,
-            weight=weight,
-            padding_idx=None,
-            sparse=False,
-            name=name)
-        # Mask the output embedding.
-        output_parallel[input_mask, :] = 0.0
-
-        ctx.save_for_backward(output_parallel, input_mask)
-
-        return output_parallel
-
-    @staticmethod
-    def backward(ctx, dout):
-        output_parallel, input_mask = ctx.saved_tensor()
-        paddle.autograd.backward(tensors=[output_parallel], grad_tensors=[dout])
-        output_parallel.grad[input_mask, :] = 0
-
-        return None, output_parallel.grad, None
-
-
 class VocabParallelEmbedding(Layer):
     def __init__(self,
                  num_embeddings,
@@ -76,9 +51,6 @@ class VocabParallelEmbedding(Layer):
         per_part_size = num_embeddings // self.world_size
 
         self.vocab_start_index = self.rank * per_part_size
-        self.vocab_end_index = self.vocab_start_index + per_part_size
-        # self.num_embeddings_per_partition = self.vocab_end_index - self.vocab_start_index
-
         self._dtype = self._helper.get_default_dtype()
         self._size = [per_part_size, embedding_dim]
         self._weight_attr = weight_attr
@@ -92,32 +64,25 @@ class VocabParallelEmbedding(Layer):
                 is_bias=False)
         self.weight.is_distributed = True
 
-    def forward(self, input_):
+    def forward(self, x):
         if self.is_mp:
-            # Build the mask.
-            input_mask = paddle.logical_or((input_ < self.vocab_start_index),
-                                           (input_ >= self.vocab_end_index))
-            # Mask the input.
-            masked_input = input_.clone() - self.vocab_start_index
-            masked_input[input_mask] = 0
+            output_parallel = paddle.distributed.collective._c_embedding(
+                x,
+                self.weight,
+                start_index=self.vocab_start_index,
+                name=self._name)
+            output = paddle.distributed.collective._mp_allreduce(
+                output_parallel,
+                group=self.model_parallel_group,
+                use_calc_stream=True,
+                use_model_parallel=True)
         else:
-            masked_input = input_
-
-        output_parallel = F.embedding(
-            masked_input,
-            weight=self.weight,
-            padding_idx=None,
-            sparse=False,
-            name=self._name)
-        # Mask the output embedding.
-        if self.is_mp:
-            output_parallel[input_mask, :] = 0.0
-
-        output = paddle.distributed.collective._mp_allreduce(
-            output_parallel,
-            group=self.model_parallel_group,
-            use_calc_stream=True,
-            use_model_parallel=True)
+            output = F.embedding(
+                x,
+                weight=self.weight,
+                padding_idx=None,
+                sparse=False,
+                name=self._name)
         return output
 
 
@@ -188,9 +153,7 @@ class ColumnParallelLinear(Layer):
 
         if self.gather_output and self.is_mp:
             output = paddle.distributed.collective._c_concat(
-                output_parallel,
-                nranks=self.world_size,
-                group=self.model_parallel_group)
+                output_parallel, group=self.model_parallel_group)
         else:
             output = output_parallel
         return output
@@ -258,10 +221,7 @@ class RowParallelLinear(Layer):
         else:
             # split last dim
             input_parallel = paddle.distributed.collective._c_split(
-                x,
-                rank=self.rank,
-                nranks=self.world_size,
-                group=self.model_parallel_group)
+                x, group=self.model_parallel_group)
 
         output_parallel = F.linear(input_parallel, self.weight, name=self._name)
 
