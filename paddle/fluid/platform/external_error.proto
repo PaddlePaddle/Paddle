@@ -15,21 +15,32 @@ limitations under the License. */
 syntax = "proto2";
 package paddle.platform.proto;
 
+// (NOTE:zhouwei): ApiType describes which kind of external third party API
+// More external third party API can be added.
+enum ApiType {
+  CUDA = 0;
+  CURAND = 1;
+  CUDNN = 2;
+  CUBLAS = 3;
+  CUSOLVER = 4;
+  NCCL = 5;
+}
+
 message MessageDesc {
-  // Indicates the type of error
-  required int32 errorCode = 1;
+  // Indicates the code of error
+  required int32 code = 1;
   // Indicates the message of error
-  required string errorMessage = 2;
+  required string message = 2;
 }
 
 message AllMessageDesc {
-  // Version of cuda API
-  required int32 version = 1;
+  // Indicates which kind of third-party API
+  required ApiType type = 1;
   // Error messages of different errortype
-  repeated MessageDesc Messages = 2;
+  repeated MessageDesc messages = 2;
 }
 
-message cudaerrorDesc {
-  // Error messages of different cuda versions(9.0/10.0/10.2)
-  repeated AllMessageDesc AllMessages = 2;
+message ExternalErrorDesc {
+  // Error messages of different kind of external third party API
+  repeated AllMessageDesc errors = 1;
 }

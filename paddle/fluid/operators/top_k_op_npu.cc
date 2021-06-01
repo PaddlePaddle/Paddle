@@ -67,8 +67,8 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 
     // run ascend
-    auto runner = NpuOpRunner("TopKD", {*input, assist_seq_tensor},
-                              {*output, tmp_indices}, attr_input);
+    const auto& runner = NpuOpRunner("TopKD", {*input, assist_seq_tensor},
+                                     {*output, tmp_indices}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -76,7 +76,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
 
     // cast indices from INT32 to INT64
     auto dst_dtype = ConvertToNpuDtype(indices->type());
-    auto runner_cast_indices =
+    const auto& runner_cast_indices =
         NpuOpRunner("Cast", {tmp_indices}, {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast_indices.Run(stream);
