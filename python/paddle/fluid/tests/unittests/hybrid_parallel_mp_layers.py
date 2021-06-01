@@ -215,11 +215,11 @@ class TestDistTraning(unittest.TestCase):
                 loss_a.numpy(), loss_b.numpy(), rtol=1e-6)
 
     def test_parallel_embedding(self):
-        batch_size = 1
-        seq_length = 4
+        batch_size = 17
+        seq_length = 23
         vocab_size_per_card = 2
         vocab_size = vocab_size_per_card * self.model_parallel_size
-        hidden_size = 3
+        hidden_size = 2
         seed = 1236
 
         set_random_seed(seed)
