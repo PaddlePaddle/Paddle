@@ -51,7 +51,7 @@ class AddEqualDimOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           x_dims[i], y_dims[i],
           platform::errors::InvalidArgument(
-              "For mode 'element', dim of y must be equal to the dim of "
+              "For mode 'element', dim of y must be equal to dim of "
               "input(x). But recevied y's dim: %d, x's rank: %d .",
               x_dims[i], y_dims[i]));
     }
