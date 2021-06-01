@@ -69,7 +69,7 @@ class TestSaveLoadBF16(unittest.TestCase):
             sgd = paddle.static.amp.bf16.decorate_bf16(
                 sgd,
                 amp_lists=paddle.static.amp.bf16.AutoMixedPrecisionListsBF16(
-                    custom_fp32_list={'matmul', 'transpose2', 'concat'}),
+                    custom_fp32_list={'transpose2', 'concat'}),
                 use_bf16_guard=False,
                 use_pure_bf16=True)
 

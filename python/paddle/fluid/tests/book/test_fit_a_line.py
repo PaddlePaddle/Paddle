@@ -85,8 +85,8 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                                           fetch_list=[avg_cost])
                 if avg_loss_value[0] < 10.0 or pure_bf16:
                     if save_dirname is not None:
-                        fluid.io.save_inference_model(save_dirname, ['x'],
-                                                      [y_predict], exe)
+                        paddle.static.save_inference_model(save_dirname, [x],
+                                                           [y_predict], exe)
                     return
                 if math.isnan(float(avg_loss_value)):
                     sys.exit("got NaN loss, training failed.")
@@ -132,7 +132,7 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+         fetch_targets] = paddle.static.load_inference_model(save_dirname, exe)
 
         # The input's dimension should be 2-D and the second dim is 13
         # The input data should be >= 0
