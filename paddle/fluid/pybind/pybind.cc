@@ -108,7 +108,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/npu_profiler.h"
 #endif
@@ -840,12 +839,6 @@ PYBIND11_MODULE(core_noavx, m) {
              return DataLayoutToString(self.layout());
            })
       .def("_share_data_with", &framework::Tensor::ShareDataWith)
-#ifdef PADDLE_WITH_ASCEND_CL
-      .def("_cast_npu_format",
-           [](framework::Tensor &self, int acl_format) {
-             return CastNPUFormat(self, acl_format);
-           })
-#endif
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__", [](const framework::Tensor &self) {
         std::stringstream ostr;
