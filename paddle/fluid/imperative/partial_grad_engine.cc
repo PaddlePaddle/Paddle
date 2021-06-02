@@ -47,6 +47,23 @@ struct HashPair {
   }
 };
 
+static std::string GetOpLogString(const OpBase &op) {
+  std::string ret;
+  for (auto &input_pair : op.GetInsMap()) {
+    for (auto &var_wrapper : input_pair.second) {
+      ret += (var_wrapper->Name() + ", ");
+    }
+  }
+  ret += ("= " + op.Type() + "(");
+  for (auto &output_pair : op.GetOutsMap()) {
+    for (auto &var_wrapper : output_pair.second) {
+      ret += (var_wrapper->Name() + ", ");
+    }
+  }
+  ret += ")";
+  return ret;
+}
+
 /**
  * This function prunes the graph to get the ops between `output_targets`
  * and `input_target_grads`.
@@ -218,8 +235,8 @@ static void GetGraphInfoBetweenTargets(
 
     op_deps[op];
     if (pending_op) {
-      VLOG(10) << "Pending op of " << op->Type() << " is "
-               << pending_op->Type();
+      VLOG(10) << "Pending op of " << GetOpLogString(*op) << " is:";
+      VLOG(10) << "    " << GetOpLogString(*pending_op);
 
       pending_ops[op].insert(pending_op);
       ++op_deps[pending_op];
