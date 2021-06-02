@@ -75,7 +75,7 @@ class concat(FloatFunctionalLayer):
     def __init__(self):
         super(concat, self).__init__()
 
-    def forward(self, x, axis, name=None):
+    def forward(self, x, axis=0, name=None):
         return manipulation.concat(x, axis, name)
 
 
@@ -83,5 +83,5 @@ class flatten(FloatFunctionalLayer):
     def __init__(self):
         super(flatten, self).__init__()
 
-    def forward(self, x, start_axis, stop_axis, name=None):
+    def forward(self, x, start_axis=0, stop_axis=-1, name=None):
         return manipulation.flatten(x, start_axis, stop_axis, name)
