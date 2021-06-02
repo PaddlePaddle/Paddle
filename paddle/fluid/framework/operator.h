@@ -471,7 +471,10 @@ class OperatorWithKernel : public OperatorBase {
 
   OperatorWithKernel(const std::string& type, const VariableNameMap& inputs,
                      const VariableNameMap& outputs, const AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+      : OperatorBase(type, inputs, outputs, attrs) {
+    force_prepare_data_ = HasAttr("inference_force_prepare") &&
+                          Attr<bool>("inference_force_prepare");
+  }
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -572,6 +575,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
+  mutable bool force_prepare_data_ = false;
   mutable bool enable_cache_runtime_context_ = false;
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;

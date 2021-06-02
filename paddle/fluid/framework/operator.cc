@@ -1531,7 +1531,10 @@ Scope* OperatorWithKernel::PrepareData(
   // the rest iterations to save the elapsed time.
   // We do not support skipping PrepareData in while block, because the Op's
   // input may be changed by subsequent Ops, which may cause an error.
-  if (pre_scope_ == &scope && new_scope == nullptr) {
+
+  // For inference, ops that behind conditional branch aren't supported well,
+  // so disable prepare optimization conservatively.
+  if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data_) {
     need_prepare_data_ = false;
   }
 
