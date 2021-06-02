@@ -267,9 +267,10 @@ class _ProgramHolder(object):
     def __init__(self, program_desc):
         super(_ProgramHolder, self).__init__()
 
-        # input, output, persistable var info
+        # input, output, persistable, double_grads var info
         self._input_descs = []
         self._output_descs = []
+        self._double_grad_descs = []
         self._persistable_names = []
 
         # execution scope
@@ -303,6 +304,10 @@ class _ProgramHolder(object):
     @property
     def persistable_names(self):
         return self._persistable_names
+
+    @property
+    def double_grad_descs(self):
+        return self._double_grad_descs
 
     @property
     def scope(self):
@@ -346,6 +351,12 @@ class _ProgramHolder(object):
 
         for op_idx in reversed(ops_to_remove):
             root_block._remove_op(op_idx, op_idx + 1)
+
+        for i in range(program_desc.num_blocks()):
+            block_desc = program_desc.block(i)
+            for var_desc in block_desc.all_vars():
+                if var_desc.name().endswith("@GRAD"):
+                    self._double_grad_descs.append(var_desc)
 
         # 2. Input processing, reverse feed vars
         self._input_descs.reverse()
@@ -738,6 +749,20 @@ def _run_dygraph(instance, input, program_holder):
                                  core.VarDesc.VarType.STEP_SCOPES, True)
     tmp_scope_vec.value().set_scope(program_holder.scope)
 
+    double_grad_vars = []
+    for var_desc in program_holder.double_grad_descs:
+        var = core.VarBase(var_desc.dtype(),
+                           var_desc.shape(),
+                           var_desc.name(), var_desc.type(), False)
+        double_grad_vars.append(var)
+    if len(double_grad_vars) == 0:
+        double_grad_vars = [
+            core.VarBase(
+                value=[1],
+                name='Fake_var',
+                place=framework._current_expected_place())
+        ]
+
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
     end_op_index = program_holder.infer_program.block(0).op_size()
@@ -745,8 +770,11 @@ def _run_dygraph(instance, input, program_holder):
         type='run_program',
         inputs={'X': input_vars,
                 'Params': persistable_vars},
-        outputs={'Out': output_vars,
-                 'OutScope': tmp_scope_vec},
+        outputs={
+            'Out': output_vars,
+            'OutScope': tmp_scope_vec,
+            'DOut': double_grad_vars
+        },
         attrs={
             'global_block': trace_program.block(0),
             'start_op_index': 0,
