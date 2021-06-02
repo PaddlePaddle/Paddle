@@ -46,9 +46,7 @@ _supported_promote_complex_types_ = [
     '__rsub__',
     '__mul__',
     '__rmul__',
-    '__div__',
     '__truediv__',
-    '__rdiv__',
     '__rtruediv__',
     '__matmul__',
 ]
@@ -288,12 +286,8 @@ def monkey_patch_math_varbase():
         ## a*b == b*a. Do not need to reverse explicitly
         ('__rmul__',
          _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
-        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
-                                     None)),
         ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
                                          False, None)),
-        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
-                                      None)),
         ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
                                           None)),
         ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
