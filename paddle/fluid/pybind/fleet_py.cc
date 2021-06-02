@@ -58,6 +58,8 @@ void BindDistFleetWrapper(py::module* m) {
                                                           "DistFleetWrapper")
       .def(py::init([]() { return FleetWrapper::GetInstance(); }))
       .def("load_sparse", &FleetWrapper::LoadSparseOnServer)
+      .def("load_model", &FleetWrapper::LoadModel)
+      .def("load_one_table", &FleetWrapper::LoadModelOneTable)
       .def("init_server", &FleetWrapper::InitServer)
       .def("run_server",
            (uint64_t (FleetWrapper::*)(void)) & FleetWrapper::RunServer)

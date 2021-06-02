@@ -119,12 +119,12 @@ void TransComplexToReal(const proto::VarType::Type& dst_type,
   // complex -> real
   switch (src_type) {
     case proto::VarType::COMPLEX64:
-      framework::VisitDataType(dst_type,
-                               CastDataType<platform::complex64>(in, out, ctx));
+      framework::VisitDataType(
+          dst_type, CastDataType<platform::complex<float>>(in, out, ctx));
       break;
     case proto::VarType::COMPLEX128:
       framework::VisitDataType(
-          dst_type, CastDataType<platform::complex128>(in, out, ctx));
+          dst_type, CastDataType<platform::complex<double>>(in, out, ctx));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

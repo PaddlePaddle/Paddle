@@ -1578,7 +1578,6 @@ set -x
 
     #analy h/cu to Map file
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
-
     #generate ut map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
     wait;
@@ -2075,6 +2074,34 @@ function summary_check_problems() {
     set -x
 }
 
+
+function reuse_so_cache() {
+    get_html="https://api.github.com/repos/PaddlePaddle/Paddle"
+    curl -X GET ${get_html}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    merge_commit=`grep "sha" tmp.txt| awk -F \" 'NR==1{print $(NF-1)}'| sed 's# ##g'`
+    curl -X GET ${get_html}/commits/${merge_commit} -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    merge_pr=`grep -oP -m 1 '(#[0-9]*)' tmp.txt| sed 's/#//g'`
+    curl -X GET ${get_html}/pulls/${merge_pr}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    pr_commit=`grep "sha" tmp.txt |tail -3|head -1|awk -F : '{print $NF}'|sed 's#"##g'|sed 's#,##g'| sed 's# ##g'`
+    set +e
+    wget -q https://xly-devops.bj.bcebos.com/PR/Paddle/${merge_pr}/${pr_commit}/workspace/Paddle/build/proto_so.tar.gz
+    down_proto_so=`echo $?`
+    set -e
+    if [ "${down_proto_so}" -eq 0 ];then
+        export CI_SKIP_CPP_TEST=ON
+        cd build && mv ../proto_so.tar.gz .
+        tar --use-compress-program=pigz -xpf proto_so.tar.gz
+        cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
+        cd python
+        touch stub.cc
+        alias cp=cp
+        cp -r ../../python/paddle .
+        python setup.py bdist_wheel
+    else
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    fi
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2217,6 +2244,10 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
+        ;;
+      reuse_so_cicheck_py35)
+        reuse_so_cache
+        parallel_test
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
