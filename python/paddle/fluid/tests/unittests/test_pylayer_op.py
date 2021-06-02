@@ -426,6 +426,28 @@ class TestPyLayer(unittest.TestCase):
             z = paddle.tanh(data)
             z = cus_tanh.apply(data)
 
+    def test_return_to_tensor(self):
+        class Tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x1):
+                y1 = paddle.tanh(x1)
+                ctx.save_for_backward(y1)
+                tensor_1 = paddle.to_tensor([1, 2], dtype='float32')
+                return y1, 5, None, "helloworld", tensor_1
+
+            @staticmethod
+            def backward(ctx, dy1, dy2):
+                y1, = ctx.saved_tensor()
+                re1 = dy1 * (1 - paddle.square(y1))
+                return dy1
+
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input2 = input1.detach().clone()
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+        z, number, none_item, string_item, tensor1 = Tanh.apply(x1=input1)
+        z.mean().backward()
+
 
 if __name__ == '__main__':
     unittest.main()
