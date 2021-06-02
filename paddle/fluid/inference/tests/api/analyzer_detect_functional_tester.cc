@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ Record ProcessALine(const std::string &line, const std::string &shape_line) {
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model + "/model", FLAGS_infer_model + "/params");
   cfg->DisableGpu();
-  cfg->SwitchIrDebug();
+  // cfg->SwitchIrDebug(); // Enable to have graphs dumped
   cfg->SwitchSpecifyInputNames(false);
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
 }
@@ -130,8 +130,8 @@ void validate_cache_onednn(int cache_capacity = 1) {
   // after releasing executor
   PADDLE_ENFORCE_EQ(
       cache_filling[0], cache_filling[cache_filling.size() - 1],
-      paddle::platform::errors::Fatal("Cache size before execution and after "
-                                      "releasing Executor do not match"));
+      platform::errors::Fatal("Cache size before execution and after "
+                              "releasing Executor do not match"));
 
   // Iterate to check if cache is not increasing
   // over exceeding cache capacity
@@ -139,8 +139,8 @@ void validate_cache_onednn(int cache_capacity = 1) {
     for (int i = cache_capacity + 1; i < num_samples + 1; ++i) {
       PADDLE_ENFORCE_EQ(
           cache_filling[cache_capacity], cache_filling[i],
-          paddle::platform::errors::Fatal("Cache capacity should not increase "
-                                          "after full capacity is used"));
+          platform::errors::Fatal("Cache capacity should not increase "
+                                  "after full capacity is used"));
     }
   }
 }
