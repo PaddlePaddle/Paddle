@@ -87,7 +87,7 @@ def _getitem_impl_(var, item):
     Returns:
         Sliced variable
     """
-    from .framework import default_main_program
+    from .framework import default_main_program, Variable
 
     if not isinstance(item, tuple):
         item = (item, )
@@ -125,6 +125,31 @@ def _getitem_impl_(var, item):
 
             start = 0 if start is None else start
             end = MAX_INTEGER if end is None else end
+
+        elif isinstance(slice_item, list):
+            for i in slice_item:
+                if not isinstance(i, int):
+                    raise TypeError("Only support int value in list")
+
+            if len(item) != 1:
+                raise IndexError(
+                    "When index contains a list, its length must be 1, but received {}".
+                    format(len(item)))
+
+            from .layers import assign
+            from ..tensor import index_select
+
+            idx = assign(np.array(slice_item))
+            return index_select(var, index=idx, axis=0)
+
+        elif isinstance(slice_item, Variable):
+            if len(item) != 1:
+                raise IndexError(
+                    "When index contains a Tensor, its length must be 1, but received {}".
+                    format(len(item)))
+
+            from ..tensor import index_select
+            return index_select(var, index=slice_item, axis=0)
 
         else:
             raise IndexError(

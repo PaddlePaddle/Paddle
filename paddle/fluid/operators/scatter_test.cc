@@ -54,4 +54,6 @@ TEST(scatter, ScatterUpdate) {
     EXPECT_EQ(output.data<float>()[i], static_cast<float>(i - 4));
   for (size_t i = 8; i < 16; ++i) EXPECT_EQ(p_output[i], 0.0f);
   for (size_t i = 8; i < 16; ++i) EXPECT_EQ(output.data<float>()[i], 0.0f);
+
+  delete cpu_place;
 }

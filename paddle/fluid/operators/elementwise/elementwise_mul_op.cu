@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -25,37 +25,65 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct SameDimsElemwiseMul<platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    MulRangeFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-                                                              x->numel());
-    for_range(functor);
+struct CudaMulFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return args[0] * args[1];
   }
 };
 
-template <>
-struct SameDimsElemwiseMul<platform::CUDADeviceContext, platform::float16> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    auto size = x->numel();
-    dim3 grid_size = dim3(((size + 7) / 8 + PADDLE_CUDA_THREAD_SIZE - 1) /
-                              PADDLE_CUDA_THREAD_SIZE,
-                          1);
-    dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
-    const half* x2 =
-        reinterpret_cast<const half*>(x->data<platform::float16>());
-    const half* y2 =
-        reinterpret_cast<const half*>(y->data<platform::float16>());
-    half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
-    SameDimsElemwiseMulCUDAKernel<<<
-        grid_size, block_size, 0,
-        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
-        x2, y2, z2, size);
+template <typename T>
+class ElementwiseMulKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    int axis = -1;
+    auto x_var = ctx.InputVar("X");
+    PADDLE_ENFORCE_NOT_NULL(
+        x_var, platform::errors::InvalidArgument(
+                   "Cannot get input Variable X, Variable name = %s.",
+                   ctx.InputName("X")));
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+
+    framework::Tensor x, *z;
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    const auto& cuda_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+
+    if (x_var->IsType<framework::LoDTensor>()) {
+      x = x_var->Get<framework::LoDTensor>();
+      z = ctx.Output<framework::LoDTensor>("Out");
+      axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
+    } else if (x_var->IsType<framework::SelectedRows>()) {
+      PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
+                        platform::errors::InvalidArgument(
+                            "For elementwise_op, if X is Sparse, Y must be "
+                            "scalar. But reveived the size of Y = %s.",
+                            y->dims().size()));
+      auto& x_sele = x_var->Get<framework::SelectedRows>();
+      auto out_sele = ctx.Output<framework::SelectedRows>("Out");
+      x = x_sele.value();
+      out_sele->set_rows(x_sele.rows());
+      out_sele->set_height(x_sele.height());
+      out_sele->mutable_value()->Resize(x_sele.value().dims());
+      out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x.type());
+      z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+      z->mutable_data<T>(ctx.GetPlace());
+      outs.emplace_back(z);
+      ins.emplace_back(&x);
+      ins.emplace_back(y);
+
+      axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
+      axis = axis == -1 ? std::abs(y->dims().size() - x.dims().size()) : axis;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "X's type[%s] is not supported by elementwise_op. X's type should be "
+          "LoDTensor or SelectedRows.",
+          framework::ToTypeName(x_var->Type())));
+    }
+
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+        cuda_ctx, ins, &outs, axis, CudaMulFunctor<T>());
   }
 };
 
@@ -76,31 +104,31 @@ static __global__ void SimpleElemwiseMulGradCUDAKernel(const T* x, const T* y,
 }
 
 template <>
-__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex64>(
-    const plat::complex64* x, const plat::complex64* y,
-    const plat::complex64* out, const plat::complex64* dout, int64_t size,
-    plat::complex64* dx, plat::complex64* dy) {
+__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex<float>>(
+    const plat::complex<float>* x, const plat::complex<float>* y,
+    const plat::complex<float>* out, const plat::complex<float>* dout,
+    int64_t size, plat::complex<float>* dx, plat::complex<float>* dy) {
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   while (col < size) {
-    plat::complex64 o = dout[col];
-    dx[col] = plat::complex64(y[col].real, -y[col].imag) * o;
-    dy[col] = plat::complex64(x[col].real, -x[col].imag) * o;
+    plat::complex<float> o = dout[col];
+    dx[col] = plat::complex<float>(y[col].real, -y[col].imag) * o;
+    dy[col] = plat::complex<float>(x[col].real, -x[col].imag) * o;
     col += blockDim.x * gridDim.x;
   }
 }
 
 template <>
-__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex128>(
-    const plat::complex128* x, const plat::complex128* y,
-    const plat::complex128* out, const plat::complex128* dout, int64_t size,
-    plat::complex128* dx, plat::complex128* dy) {
+__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex<double>>(
+    const plat::complex<double>* x, const plat::complex<double>* y,
+    const plat::complex<double>* out, const plat::complex<double>* dout,
+    int64_t size, plat::complex<double>* dx, plat::complex<double>* dy) {
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   while (col < size) {
-    plat::complex128 o = dout[col];
-    dx[col] = plat::complex128(y[col].real, -y[col].imag) * o;
-    dy[col] = plat::complex128(x[col].real, -x[col].imag) * o;
+    plat::complex<double> o = dout[col];
+    dx[col] = plat::complex<double>(y[col].real, -y[col].imag) * o;
+    dy[col] = plat::complex<double>(x[col].real, -x[col].imag) * o;
     col += blockDim.x * gridDim.x;
   }
 }
@@ -133,8 +161,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<float>>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, float>,
@@ -142,8 +170,10 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::complex64>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::complex128>);
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext,
+                                  plat::complex<float>>,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext,
+                                  plat::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad_grad,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, float>,
@@ -152,6 +182,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::complex64>,
+                                        plat::complex<float>>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::complex128>);
+                                        plat::complex<double>>);

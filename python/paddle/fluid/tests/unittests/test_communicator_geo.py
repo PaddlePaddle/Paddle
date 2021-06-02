@@ -167,12 +167,15 @@ half_run_server.run_ut()
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, server_file)
+
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
-        time.sleep(5)
+        outs, errs = ps_proc.communicate(timeout=15)
+
+        time.sleep(1)
 
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["http_proxy"] = ""
@@ -180,6 +183,7 @@ half_run_server.run_ut()
 
         self.run_ut()
         ps_proc.kill()
+        ps_proc.wait()
 
         if os.path.exists(server_file):
             os.remove(server_file)

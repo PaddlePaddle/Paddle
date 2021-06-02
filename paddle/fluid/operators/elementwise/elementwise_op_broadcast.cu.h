@@ -509,23 +509,15 @@ void LaunchElementwiseCudaKernel(
     const framework::ExecutionContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {
-  std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
     no_broadcast_flag = ins[0]->dims() == in->dims();
-    dims_size.emplace_back(in->dims().size());
   }
-  const auto &cuda_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
+
   if (no_broadcast_flag) {
     LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
                                                        func);
   } else {
-    int axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
-    axis = axis == -1
-               ? *std::max_element(dims_size.begin(), dims_size.end()) -
-                     *std::min_element(dims_size.begin(), dims_size.end())
-               : axis;
     LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
                                                         axis, func);
   }
