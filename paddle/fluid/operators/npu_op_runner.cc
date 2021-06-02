@@ -602,7 +602,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format
           << " storage_dims:" << tensor.npu_storage_dims()
-          << " storage_format:" << tensor.npu_storage_layout();
+          << " storage_format:" << storage_format;
 
   aclTensorDesc *desc;
   if (op_type_ == "TransData") {

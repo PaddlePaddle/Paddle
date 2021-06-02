@@ -39,10 +39,8 @@ class TransDataNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    framework::make_ddim(InferShapeNDToNZ(framework::vectorize(input_dims)))
-
-        out->ResizeNPUDims(framework::make_ddim(
-            InferShapeNDToNZ(framework::vectorize(out->dims()))));
+    out->ResizeNPUDims(framework::make_ddim(
+        InferShapeNDToNZ(framework::vectorize(out->dims()))));
     out->set_npu_storage_layout(DataLayout::kFractalNZ);
 
     auto place = GetCurrentNPUPlace();
