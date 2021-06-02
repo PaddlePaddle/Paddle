@@ -343,7 +343,6 @@ template <typename InT, typename OutT, typename BroadcastArgsWarpper,
 __global__ void ElementwiseBroadcastKernel(
     BroadcastArgsWarpper broadcast_warpper, int main_tid, int tail_tid) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
   // Vectorized calculation of major data whose length is the max multipler of
   // VecSize,
   // eg: Calcualting the front 1024-length data in total 1027 data once VecSize
@@ -501,23 +500,30 @@ void LaunchBroadcastElementwiseCudaKernel(
   }
 }
 
-template <ElementwiseType ET, typename InT, typename OutType, typename Functor>
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel(
-    const platform::CUDADeviceContext &cuda_ctx,
+    const framework::ExecutionContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+    std::vector<framework::Tensor *> *outs, Functor func) {
+  std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
     no_broadcast_flag = ins[0]->dims() == in->dims();
+    dims_size.emplace_back(in->dims().size());
   }
-
+  const auto &cuda_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
   if (no_broadcast_flag) {
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutType>(
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
         cuda_ctx, ins, outs, func);
   } else {
-    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, InT,
-                                         OutType>(cuda_ctx, ins, outs, axis,
-                                                  func);
+    int axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
+    axis = axis == -1
+               ? *std::max_element(dims_size.begin(), dims_size.end()) -
+                     *std::min_element(dims_size.begin(), dims_size.end())
+               : axis;
+    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
+                                                        axis, func);
   }
 }
 
