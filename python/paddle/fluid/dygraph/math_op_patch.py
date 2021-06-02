@@ -198,8 +198,8 @@ def monkey_patch_math_varbase():
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, * can use this method
                 # NOTE(chentianyu03): / can not use `scale` method，because the result of
-                # `elementwise_div` method do not exactly equal with the result of `scale` 
-                # method (self*(1/other_var)).
+                # `scale` method (self*(1/other_var)) do not exactly equal with the result 
+                # of `elementwise_div` method.
                 if scalar_method is not None:
                     return scalar_method(self, other_var)
             else:
