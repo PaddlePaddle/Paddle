@@ -33,6 +33,8 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
+__all__ = []
+
 
 def to_tensor(pic, data_format='CHW'):
     """Converts a ``numpy.ndarray`` to paddle.Tensor.
