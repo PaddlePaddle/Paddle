@@ -73,9 +73,9 @@ class VocabParallelEmbedding(Layer):
 
     def forward(self, x):
         if self.is_mp:
-            output_parallel = paddle.distributed.collective._c_embedding(
-                x,
+            output_parallel = paddle.distributed.collective._c_lookup_table(
                 self.weight,
+                x,
                 start_index=self.vocab_start_index,
                 name=self._name)
             output = paddle.distributed.collective._mp_allreduce(

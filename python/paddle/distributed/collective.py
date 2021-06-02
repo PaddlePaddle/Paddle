@@ -892,22 +892,22 @@ def _mp_allreduce(tensor,
         raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
 
 
-def _c_embedding(x, weight, start_index=0, name=None):
-    if in_dygraph_mode():
-        return core.ops.c_embedding(weight, x, "start_index", start_index)
-    else:
-        helper = LayerHelper('c_embedding', **locals())
-        dtype = helper.input_dtype(input_param_name='weight')
+def _c_lookup_table(table, index, start_index=0, name=None):
+    """
+    Lookup table according to index.
 
-        check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'embedding')
-        tmp = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='c_embedding',
-            inputs={'Ids': x,
-                    'W': weight},
-            outputs={'Out': tmp},
-            attrs={"start_index": start_index})
-        return tmp
+    Args:
+        table (Tensor): The input Tensor. Its data type
+            should be float16, float32, float64.
+        index (Tensor): The index to lookup table.
+        start_index (int): The initial index for table range.
+        name (string): The name of the api
+
+    Returns:
+        Tensor.
+    """
+    if in_dygraph_mode():
+        return core.ops.c_embedding(table, index, "start_index", start_index)
 
 
 class _Linear(layers.Layer):
