@@ -162,6 +162,12 @@ class TestPyLayer(unittest.TestCase):
         loss, param, grad = run_model(recompute_block=[1, 3])
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
+    def test_fc_net_without_restore_rng(self):
+        loss_ref, param_ref, grad_ref = run_model(
+            recompute_block=[2],
+            recompute_kwargs={"preserve_rng_state": False},
+            enable_autocast=True)
+
     def test_fc_net_with_amp(self):
         def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):
             self.assertEqual(loss_ref, loss)
