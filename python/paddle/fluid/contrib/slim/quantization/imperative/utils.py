@@ -15,8 +15,9 @@
 import paddle
 from paddle.fluid import dygraph
 import numpy as np
+from . import quant_nn
 
-quant_input_layers_map = {
+layer_name_map = {
     'Conv2D': paddle.nn.Conv2D,
     'Linear': paddle.nn.Linear,
     'AdaptiveAvgPool2D': paddle.nn.AdaptiveAvgPool2D,
@@ -39,12 +40,21 @@ quant_input_layers_map = {
 }
 
 # Apply fake quant for the inputs of these layers
+# TODO (jc): support paddle.nn.Conv2DTranspose
 fake_quant_input_layers = [paddle.nn.Conv2D, paddle.nn.Linear]
 
 # Apply fake quant for the output of these layers
 fake_quant_output_layers = [
-    paddle.nn.AdaptiveAvgPool2D,
-    paddle.nn.AdaptiveMaxPool2D,
+    paddle.nn.AdaptiveAvgPool2D, paddle.nn.AvgPool2D, paddle.nn.ReLU,
+    paddle.nn.LeakyReLU, paddle.nn.quant.add, paddle.nn.quant.subtract,
+    paddle.nn.quant.multiply, paddle.nn.quant.divide
+]
+
+fake_quant_leaf_layers = [
+    quant_nn.FakeQuantAbsMax,
+    quant_nn.FakeQuantChannelWiseAbsMax,
+    quant_nn.FakeQuantMovingAverageAbsMax,
+    quant_nn.MovingAverageAbsMaxScale,
 ]
 
 weight_op_types = [

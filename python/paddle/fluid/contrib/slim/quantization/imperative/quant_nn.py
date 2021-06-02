@@ -26,9 +26,15 @@ import logging
 from paddle.fluid.log_helper import get_logger
 
 __all__ = [
-    'FakeQuantMovingAverageAbsMax', 'FakeQuantAbsMax',
-    'FakeQuantChannelWiseAbsMax', 'QuantizedConv2D', 'QuantizedLinear',
-    'QuantizedNoweightLayer', 'MovingAverageAbsMaxScale'
+    'FakeQuantMovingAverageAbsMax',
+    'FakeQuantAbsMax',
+    'FakeQuantChannelWiseAbsMax',
+    'QuantizedConv2D',
+    'QuantizedLinear',
+    'QuantizedNoweightLayer',
+    'MovingAverageAbsMaxScale',
+    'MAOutputScaleLayer',
+    'FakeQuantMAOutputScaleLayer',
 ]
 
 _logger = get_logger(
@@ -598,14 +604,19 @@ class MovingAverageAbsMaxScale(layers.Layer):
         return quant_out
 
 
-class QuantizedOutputLayer(layers.Layer):
+class MAOutputScaleLayer(layers.Layer):
+    """
+    Calculate the scale (moving average abs max) for the output of the input layer.
+    Add MovingAverageMaxScale layer to the behind of the input layer.
+    """
+
     def __init__(self, layer=None, moving_rate=0.9, dtype='float32'):
         r"""
-        Add MovingAverageMaxScale layer to the behind of the input layer.
+        Construct
         """
-        super(QuantizedOutputLayer, self).__init__()
+        super(MAOutputScaleLayer, self).__init__()
         self._layer = layer
-        self._moving_average_abs_max_scale = \
+        self._ma_output_scale = \
             MovingAverageAbsMaxScale(layer.full_name(), moving_rate, dtype)
 
     def forward(self, *inputs, **kwargs):
@@ -616,4 +627,34 @@ class QuantizedOutputLayer(layers.Layer):
                          "the output threshold" % self._layer.full_name())
             return out
         else:
-            return self._moving_average_abs_max_scale(out)
+            return self._ma_output_scale(out)
+
+
+class FakeQuantMAOutputScaleLayer(layers.Layer):
+    def __init__(self,
+                 layer,
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 *args,
+                 **kwargs):
+
+        super(FakeQuantMAOutputScaleLayer, self).__init__()
+        self._layer = layer
+        self._fake_quant_output = _get_fake_quant_type(
+            'moving_average_abs_max',
+            name=layer.full_name(),
+            moving_rate=moving_rate,
+            quant_bits=activation_bits,
+            dtype=self._dtype,
+            quant_on_weight=False)
+
+    def forward(self, *inputs, **kwargs):
+        out = self._layer(*inputs, **kwargs)
+        # TODO (jc): support the ops of several outputs
+        if (isinstance(out, list) or isinstance(out, tuple)) and len(out) > 1:
+            _logger.info("%s has several outputs, so skip collecting "
+                         "the output threshold" % self._layer.full_name())
+            return out
+        else:
+            return self._fake_quant_output(out)

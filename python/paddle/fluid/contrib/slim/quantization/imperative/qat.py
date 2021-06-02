@@ -251,12 +251,12 @@ class ImperativeQuantizeInputs(object):
         super(ImperativeQuantizeInputs, self).__init__()
 
         self._quantizable_layer_type = tuple(
-            utils.quant_input_layers_map[layer]
-            if layer in utils.quant_input_layers_map else layer
+            utils.layer_name_map[layer]
+            if layer in utils.layer_name_map else layer
             for layer in quantizable_layer_type)
         for layer in self._quantizable_layer_type:
             assert not isinstance(layer, str) \
-                and layer in utils.quant_input_layers_map.values(), \
+                and layer in utils.fake_quant_input_layers, \
                 "%s is unspported to be quantized." % layer
 
         quantize_type = {
@@ -320,16 +320,14 @@ class ImperativeQuantizeInputs(object):
 
     def _get_input_quantized_layer(self, layer):
         quant_layer_name = None
-        for key, value in utils.quant_input_layers_map.items():
+
+        for key, value in utils.layer_name_map.items():
             if isinstance(layer, value):
                 quant_layer_name = 'Quantized' + key
                 break
         assert quant_layer_name is not None, \
             "The layer %s is unsupported to be quantized." \
             % layer.full_name()
-
-        if layer not in utils.fake_quant_input_layers:
-            quant_layer_name = 'QuantizedNoweightLayer'
 
         return quant_nn.__dict__[quant_layer_name](layer, **self._kwargs)
 
@@ -372,8 +370,13 @@ class ImperativeQuantizeOutputs(object):
             parent_layer, sub_name = \
                 utils.find_parent_layer_and_sub_name(model, name)
 
-            cur_quant_layer = quant_nn.__dict__["QuantizedOutputLayer"](
-                cur_layer, self._moving_rate)
+            if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
+                cur_quant_layer = quant_nn.__dict__[
+                    "FakeQuantMAOutputScaleLayer"](cur_layer, self._moving_rate)
+            else:
+                cur_quant_layer = quant_nn.__dict__["MAOutputScaleLayer"](
+                    cur_layer, self._moving_rate)
+
             setattr(parent_layer, sub_name, cur_quant_layer)
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
@@ -454,12 +457,14 @@ class ImperativeQuantizeOutputs(object):
         if isinstance(layer, dygraph.Layer):
             # exclude fake_quant ops in quant_nn file
             if utils.is_leaf_layer(layer) and \
-                'fake_quant' not in layer.full_name():
+                not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
                 flag = True
             # consider QuantizedConv2D and QuantizedLinear ops
-            if 'quantized' in layer.full_name() and \
-                'quantized_noweight' not in layer.full_name():
+            if isinstance(layer,
+                          (quant_nn.QuantizedConv2D, quant_nn.QuantizedLinear)):
                 flag = True
+        if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
+            flag = True
         return flag
 
     def _save_output_scale(self, program, scope):
