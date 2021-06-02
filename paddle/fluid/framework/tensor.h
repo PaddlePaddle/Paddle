@@ -248,6 +248,12 @@ class Tensor {
   /*! Resize the dimensions of the memory block used in NPU FRACTAL_NZ
    * data_format. */
   Tensor& ResizeNPUDims(const DDim& npu_storage_dims);
+
+/* Use this method carefully, where the data_format of the NPU Tensor is
+ * FRACTAL_NZ. */
+// Tensor& ShareDataWithNPUTensor(const Tensor& src);
+
+// void check_memory_size_of_nz_tensor() const;
 #endif
 
   void clear() {
