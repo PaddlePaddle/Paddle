@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/operators/trans_data.h"
+#include "paddle/fluid/operators/trans_data_op.h"
 
 namespace paddle {
 namespace operators {
@@ -39,25 +39,31 @@ class TransDataNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    std::string dst_format_name =
-        framework::DataLayoutToString(out->npu_storage_layout());
+    framework::make_ddim(InferShapeNDToNZ(framework::vectorize(input_dims)))
 
-    out->mutable_data<T>(ctx.GetPlace());
-    out->ResizeNPUDims(out->dims());
-    out->set_layout(DataLayout::kFractalNZ);
+        out->ResizeNPUDims(framework::make_ddim(
+            InferShapeNDToNZ(framework::vectorize(out->dims()))));
     out->set_npu_storage_layout(DataLayout::kFractalNZ);
 
-    x->set_npu_storage_layout(x->layout());
-    x->ResizeNPUDims(x->dims());
+    auto place = GetCurrentNPUPlace();
+    size_t npu_storage_size =
+        out->npu_storage_numel() * framework::SizeOfType(x->type());
+    out->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
+    Tensor trans_src_tensor(x->type());
+    trans_src_tensor.ShareDataWith(*x);
+    trans_src_tensor.set_npu_storage_layout(x->layout());
+    trans_src_tensor.ResizeNPUDims(x->dims());
 
     std::string src_format_name =
-        framework::DataLayoutToString(x->npu_storage_layout());
+        framework::DataLayoutToString(trans_src_tensor.npu_storage_layout());
     std::string dst_format_name =
         framework::DataLayoutToString(out->npu_storage_layout());
     const auto& runner_trans_data =
-        NpuOpRunner("TransData", {*x}, {*out}, {{"src_format", src_format_name},
-                                                {"dst_format", dst_format_name},
-                                                {"groups", 1}});
+        NpuOpRunner("TransData", {trans_src_tensor}, {*out},
+                    {{"src_format", src_format_name},
+                     {"dst_format", dst_format_name},
+                     {"groups", 1}});
     runner_trans_data.Run(stream);
     VLOG(4) << "Run TransData OP to cast NPU format from " << src_format_name
             << " to " << dst_format_name;

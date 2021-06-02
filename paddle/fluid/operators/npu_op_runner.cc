@@ -344,7 +344,8 @@ void RunTransDataNPUOP(const Tensor &src_tensor, Tensor *dst_tensor,
 
 Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
   auto dtype = src_tensor.type();
-  auto src_format = ConvertToNpuFormat(src_tensor.layout());
+
+  auto src_format = ConvertToNpuFormat(src_tensor.npu_storage_layout());
 
   aclFormat acl_format = static_cast<aclFormat>(acl_format_id);
 

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/trans_data.h"
+#include "paddle/fluid/operators/trans_data_op.h"
 
 namespace paddle {
 namespace operators {
@@ -25,8 +25,7 @@ class TransDataOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "trans_data");
 
     auto input_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", framework::make_ddim(InferShapeNDToNZ(
-                                 framework::vectorize(input_dims))));
+    ctx->SetOutputDim("Out", input_dims);
   }
 
  protected:
