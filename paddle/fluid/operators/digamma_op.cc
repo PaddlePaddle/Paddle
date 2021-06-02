@@ -44,7 +44,7 @@ class DigammaOpMaker : public framework::OpProtoAndCheckerMaker {
 Digamma Operator.
 
 This operator is used to perform elementwise digamma for input $X$.
-$$out = \Psi = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }$$
+$$out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }$$
 
 )DOC");
   }
