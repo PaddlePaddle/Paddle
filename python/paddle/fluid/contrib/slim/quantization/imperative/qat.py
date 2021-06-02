@@ -255,20 +255,21 @@ class ImperativeQuantizeInputs(object):
             if layer in utils.quant_input_layers_map else layer
             for layer in quantizable_layer_type)
         for layer in self._quantizable_layer_type:
-            assert not isinstance(layer, str), \
+            assert not isinstance(layer, str) \
+                and layer in utils.quant_input_layers_map.values(), \
                 "%s is unspported to be quantized." % layer
 
         quantize_type = {
             'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
         }
-        assert weight_quantize_type in quantize_type, \
+        assert weight_quantize_type != 'moving_average_abs_max' \
+            and weight_quantize_type in quantize_type, \
             "Unsupported weight_quantize_type: %s. It can only " \
-            "be abs_max or moving_average_abs_max or " \
-            "channel_wise_abs_max." % weight_quantize_type
-        assert activation_quantize_type != 'channel_wise_abs_max' \
-            and activation_quantize_type in quantize_type, \
+            "be abs_max or channel_wise_abs_max." % weight_quantize_type
+        # TODO (jc): activation_quantize_type supports range_abs_max
+        assert activation_quantize_type == 'moving_average_abs_max', \
             "Unsupported activation_quantize_type: %s. It can " \
-            "only be abs_max or moving_average_abs_max now." \
+            "only be moving_average_abs_max now." \
             % activation_quantize_type
 
         bits_check = lambda bits: isinstance(bits, int) \
@@ -305,26 +306,17 @@ class ImperativeQuantizeInputs(object):
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
-        for name, layer in model.named_sublayers():
-            if not isinstance(layer, self._quantizable_layer_type) \
-                or (hasattr(layer, "skip_quant") \
-                    and layer.skip_quant == True):
+        for name, cur_layer in model.named_sublayers():
+            if not isinstance(cur_layer, self._quantizable_layer_type) \
+                or (hasattr(cur_layer, "skip_quant") \
+                    and cur_layer.skip_quant == True):
                 continue
 
-            # TODO(jc): optimize this module
-            last_idx = 0
-            idx = 0
-            obj = model
-            while idx < len(name):
-                if (name[idx] == '.'):
-                    if hasattr(obj, name[last_idx:idx]):
-                        obj = getattr(obj, name[last_idx:idx])
-                        last_idx = idx + 1
-                idx += 1
-            target = name[last_idx:idx]
+            parent_layer, sub_name = \
+                utils.find_parent_layer_and_sub_name(model, name)
 
-            quant_layer = self._get_input_quantized_layer(layer)
-            setattr(obj, target, quant_layer)
+            cur_quant_layer = self._get_input_quantized_layer(cur_layer)
+            setattr(parent_layer, sub_name, cur_quant_layer)
 
     def _get_input_quantized_layer(self, layer):
         quant_layer_name = None
@@ -336,8 +328,7 @@ class ImperativeQuantizeInputs(object):
             "The layer %s is unsupported to be quantized." \
             % layer.full_name()
 
-        layer_with_weight = ['QuantizedConv2D', 'QuantizedLinear']
-        if quant_layer_name not in layer_with_weight:
+        if layer not in utils.fake_quant_input_layers:
             quant_layer_name = 'QuantizedNoweightLayer'
 
         return quant_nn.__dict__[quant_layer_name](layer, **self._kwargs)
@@ -374,25 +365,16 @@ class ImperativeQuantizeOutputs(object):
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
-        for name, layer in model.named_sublayers():
-            if not self._is_target_layer(layer):
+        for name, cur_layer in model.named_sublayers():
+            if not self._is_target_layer(cur_layer):
                 continue
 
-            # TODO(jc): optimize this module
-            last_idx = 0
-            idx = 0
-            obj = model
-            while idx < len(name):
-                if (name[idx] == '.'):
-                    if hasattr(obj, name[last_idx:idx]):
-                        obj = getattr(obj, name[last_idx:idx])
-                        last_idx = idx + 1
-                idx += 1
-            target = name[last_idx:idx]
+            parent_layer, sub_name = \
+                utils.find_parent_layer_and_sub_name(model, name)
 
-            quant_layer = quant_nn.__dict__["QuantizedOutputLayer"](
-                layer, self._moving_rate)
-            setattr(obj, target, quant_layer)
+            cur_quant_layer = quant_nn.__dict__["QuantizedOutputLayer"](
+                cur_layer, self._moving_rate)
+            setattr(parent_layer, sub_name, cur_quant_layer)
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
         """
@@ -468,9 +450,17 @@ class ImperativeQuantizeOutputs(object):
         """
         Whether the layer needs to calculate output scales.
         """
-        return isinstance(layer, utils.quant_output_layers) \
-            or ('quantized' in layer.full_name() and \
-                'quantized_noweight' not in layer.full_name())
+        flag = False
+        if isinstance(layer, dygraph.Layer):
+            # exclude fake_quant ops in quant_nn file
+            if utils.is_leaf_layer(layer) and \
+                'fake_quant' not in layer.full_name():
+                flag = True
+            # consider QuantizedConv2D and QuantizedLinear ops
+            if 'quantized' in layer.full_name() and \
+                'quantized_noweight' not in layer.full_name():
+                flag = True
+        return flag
 
     def _save_output_scale(self, program, scope):
         """
@@ -514,4 +504,4 @@ class ImperativeQuantizeOutputs(object):
         previous_ops = [utils.find_previous_op(block, arg_name) \
             for arg_name in in_op.input_arg_names]
         return any(op is not None and op.type not in \
-            utils.fake_quantize_dequantize_types for op in previous_ops)
+            utils.fake_quantize_dequantize_op_types for op in previous_ops)

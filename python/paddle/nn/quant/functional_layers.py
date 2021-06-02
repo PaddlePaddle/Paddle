@@ -63,32 +63,25 @@ class reshape(FloatFunctionalLayer):
         return manipulation.reshape(x, shape, name)
 
 
-class tranpose(FloatFunctionalLayer):
-    def __init__(self, name=None):
-        super(tranpose, self).__init__()
-        self._name = name
+class transpose(FloatFunctionalLayer):
+    def __init__(self):
+        super(transpose, self).__init__()
 
-    def forward(self, inputs):
-        assert len(inputs) == 2, "The inputs should be (x, perm)"
-        return manipulation.tranpose(inputs[0], inputs[1], self._name)
+    def forward(self, x, perm, name=None):
+        return manipulation.transpose(x, perm, name)
 
 
 class concat(FloatFunctionalLayer):
-    def __init__(self, name=None):
+    def __init__(self):
         super(concat, self).__init__()
-        self._name = name
 
-    def forward(self, inputs):
-        assert len(inputs) == 2, "The inputs should be (x, axis)"
-        return manipulation.concat(inputs[0], inputs[1], self._name)
+    def forward(self, x, axis, name=None):
+        return manipulation.concat(x, axis, name)
 
 
 class flatten(FloatFunctionalLayer):
-    def __init__(self, name=None):
+    def __init__(self):
         super(flatten, self).__init__()
-        self._name = name
 
-    def forward(self, inputs):
-        assert len(
-            inputs) == 3, "The inputs should be (x, start_axis, stop_axis)"
-        return manipulation.flatten(inputs[0], inputs[1], inputs[2], self._name)
+    def forward(self, x, start_axis, stop_axis, name=None):
+        return manipulation.flatten(x, start_axis, stop_axis, name)

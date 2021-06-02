@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.fluid import dygraph
 import numpy as np
 
 quant_input_layers_map = {
@@ -37,29 +38,24 @@ quant_input_layers_map = {
     'LayerNorm': paddle.nn.LayerNorm,
 }
 
-fake_quantize_dequantize_types = [
-    "fake_quantize_dequantize_abs_max",
-    "fake_channel_wise_quantize_dequantize_abs_max",
-    "fake_quantize_dequantize_moving_average_abs_max"
-]
+# Apply fake quant for the inputs of these layers
+fake_quant_input_layers = [paddle.nn.Conv2D, paddle.nn.Linear]
 
-quant_output_layers = (
-    paddle.nn.Conv2D, paddle.nn.Conv2DTranspose, paddle.nn.Linear,
-    paddle.nn.AdaptiveAvgPool2D, paddle.nn.AdaptiveMaxPool2D,
-    paddle.nn.AvgPool2D, paddle.nn.MaxPool2D, paddle.nn.BatchNorm,
-    paddle.nn.BatchNorm2D, paddle.nn.LayerNorm, paddle.nn.SyncBatchNorm,
-    paddle.nn.ELU, paddle.nn.GELU, paddle.nn.Hardshrink, paddle.nn.Hardsigmoid,
-    paddle.nn.Hardswish, paddle.nn.Hardtanh, paddle.nn.LeakyReLU,
-    paddle.nn.LogSigmoid, paddle.nn.LogSoftmax, paddle.nn.Maxout,
-    paddle.nn.PReLU, paddle.nn.ReLU, paddle.nn.ReLU6, paddle.nn.SELU,
-    paddle.nn.Sigmoid, paddle.nn.Softmax, paddle.nn.Softplus,
-    paddle.nn.Softshrink, paddle.nn.Softsign, paddle.nn.Swish, paddle.nn.Tanh,
-    paddle.nn.Tanhshrink, paddle.nn.ThresholdedReLU, paddle.nn.Upsample,
-    paddle.nn.quant.FloatFunctionalLayer)
+# Apply fake quant for the output of these layers
+fake_quant_output_layers = [
+    paddle.nn.AdaptiveAvgPool2D,
+    paddle.nn.AdaptiveMaxPool2D,
+]
 
 weight_op_types = [
     "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
     "depthwise_conv2d_transpose"
+]
+
+fake_quantize_dequantize_op_types = [
+    "fake_quantize_dequantize_abs_max",
+    "fake_channel_wise_quantize_dequantize_abs_max",
+    "fake_quantize_dequantize_moving_average_abs_max"
 ]
 
 
@@ -91,3 +87,36 @@ def find_next_ops(block, var_name):
         if var_name in op.input_arg_names:
             res_ops.append(op)
     return res_ops
+
+
+def find_parent_layer_and_sub_name(model, name):
+    """
+    Given the model and the name of a layer, find the parent layer and
+    the sub_name of the layer.
+    For example, if name is 'block_1/convbn_1/conv_1', the parent layer is
+    'block_1/convbn_1' and the sub_name is `conv_1`.
+    """
+    assert isinstance(model, dygraph.Layer), \
+            "The model must be the instance of paddle.nn.Layer."
+    assert len(name) > 0, "The input (name) should not be empty."
+
+    last_idx = 0
+    idx = 0
+    parent_layer = model
+    while idx < len(name):
+        if name[idx] == '.':
+            sub_name = name[last_idx:idx]
+            if hasattr(parent_layer, sub_name):
+                parent_layer = getattr(parent_layer, sub_name)
+                last_idx = idx + 1
+        idx += 1
+    sub_name = name[last_idx:idx]
+    return parent_layer, sub_name
+
+
+def is_leaf_layer(layer):
+    """
+    Whether the layer is leaf layer.
+    """
+    return isinstance(layer, dygraph.Layer) \
+        and len(layer.sublayers()) == 0

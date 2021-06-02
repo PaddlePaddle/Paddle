@@ -26,8 +26,8 @@ import logging
 from paddle.fluid.log_helper import get_logger
 
 __all__ = [
-    'FakeQuantMovingAverage', 'FakeQuantAbsMax',
-    'FakeChannelWiseQuantDequantAbsMax', 'QuantizedConv2D', 'QuantizedLinear',
+    'FakeQuantMovingAverageAbsMax', 'FakeQuantAbsMax',
+    'FakeQuantChannelWiseAbsMax', 'QuantizedConv2D', 'QuantizedLinear',
     'QuantizedNoweightLayer', 'MovingAverageAbsMaxScale'
 ]
 
@@ -35,9 +35,9 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-class FakeQuantMovingAverage(layers.Layer):
+class FakeQuantMovingAverageAbsMax(layers.Layer):
     r"""
-    FakeQuantMovingAverage layer does the moving_average_abs_max quant and then dequant.
+    FakeQuantMovingAverageAbsMax layer does the moving_average_abs_max quant and then dequant.
     Its computational formula is described as below:
 
     :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
@@ -50,7 +50,7 @@ class FakeQuantMovingAverage(layers.Layer):
                  moving_rate=0.9,
                  quant_bits=8,
                  dtype='float32'):
-        super(FakeQuantMovingAverage, self).__init__()
+        super(FakeQuantMovingAverageAbsMax, self).__init__()
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
 
@@ -103,7 +103,7 @@ class FakeQuantMovingAverage(layers.Layer):
             return out
 
         check_variable_and_dtype(input, 'input', ['float32'],
-                                 "FakeQuantMovingAverage")
+                                 "FakeQuantMovingAverageAbsMax")
         attrs = {
             'moving_rate': self._moving_rate,
             'bit_length': self._quant_bits,
@@ -215,7 +215,7 @@ class FakeQuantAbsMax(layers.Layer):
         return quant_out
 
 
-class FakeChannelWiseQuantDequantAbsMax(layers.Layer):
+class FakeQuantChannelWiseAbsMax(layers.Layer):
     def __init__(self,
                  name=None,
                  channel_num=None,
@@ -224,7 +224,7 @@ class FakeChannelWiseQuantDequantAbsMax(layers.Layer):
                  dtype='float32',
                  quant_on_weight=False):
         assert quant_on_weight == True, "Channel_wise only can be used on weight quantization."
-        super(FakeChannelWiseQuantDequantAbsMax, self).__init__()
+        super(FakeQuantChannelWiseAbsMax, self).__init__()
         self._quant_bits = quant_bits
         self._quant_axis = quant_axis
         self._dtype = dtype
@@ -270,7 +270,7 @@ class FakeChannelWiseQuantDequantAbsMax(layers.Layer):
             return out
 
         check_variable_and_dtype(input, 'input', ['float32'],
-                                 "FakeChannelWiseQuantDequantAbsMax")
+                                 "FakeQuantChannelWiseAbsMax")
         attrs = {'bit_length': self._quant_bits, 'quant_axis': self._quant_axis}
         inputs = {"X": [input]}
         quant_out = self._helper.create_variable(
@@ -318,8 +318,8 @@ def _get_fake_quant_type(quant_type, **kwargs):
             "when you use channel_wise_abs_max strategy.")
     fake_quant_map = {
         'abs_max': FakeQuantAbsMax,
-        'moving_average_abs_max': FakeQuantMovingAverage,
-        'channel_wise_abs_max': FakeChannelWiseQuantDequantAbsMax
+        'moving_average_abs_max': FakeQuantMovingAverageAbsMax,
+        'channel_wise_abs_max': FakeQuantChannelWiseAbsMax
     }
 
     return fake_quant_map[quant_type](**call_args)
