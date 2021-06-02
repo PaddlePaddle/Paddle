@@ -209,9 +209,6 @@ def monkey_patch_variable():
     def _scalar_mul_(var, value):
         return _scalar_op_(var, value, 0.0)
 
-    def _scalar_div_(var, value):
-        return _scalar_op_(var, 1.0 / value, 0.0)
-
     def _binary_creator_(method_name,
                          op_type,
                          reverse=False,
@@ -241,7 +238,10 @@ def monkey_patch_variable():
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
-                # but only +, -, *, / can use this method
+                # but only +, -, * can use this method
+                # NOTE(chentianyu03): / can not use `scale` method，because the result of
+                # `elementwise_div` method do not exactly equal with the result of `scale` 
+                # method (self*(1/other_var)).
                 if scalar_method is not None:
                     return scalar_method(self, other_var)
             else:
@@ -338,9 +338,9 @@ def monkey_patch_variable():
         ('__rmul__',
          _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
         ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
-                                     _scalar_div_)),
+                                     None)),
         ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
-                                         False, _scalar_div_)),
+                                         False, None)),
         ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
                                       None)),
         ('__rtruediv__', _binary_creator_('__rtruediv__', 'elementwise_div',
