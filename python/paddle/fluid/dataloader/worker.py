@@ -24,6 +24,7 @@ from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from ..multiprocess_utils import _cleanup_mmap, CleanupFuncRegistrar, MP_STATUS_CHECK_INTERVAL
 from ..framework import in_dygraph_mode
 from .flat import _flatten_batch
+from .state import _generate_states
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -180,6 +181,15 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
 
         # set signal handler
         core._set_process_signal_handler()
+
+        # set different numpy seed for each worker
+        try:
+            import numpy as np
+            import time
+        except ImportError:
+            pass
+        else:
+            np.random.seed(_generate_states(int(time.time()), worker_id))
 
         global _worker_info
         _worker_info = WorkerInfo(
