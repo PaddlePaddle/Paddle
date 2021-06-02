@@ -337,15 +337,16 @@ class CUDAContext {
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
           &miopen_major, &miopen_minor, &miopen_patch));
       auto local_miopen_version =
-          (miopen_major * 1000 + miopen_minor * 100 + miopen_patch) / 100;
-      auto compile_miopen_version = MIOPEN_VERSION / 100;
+          (miopen_major * 1000 + miopen_minor * 10 + miopen_patch) / 10;
+      auto compile_miopen_version = MIOPEN_VERSION / 10;
       if (local_miopen_version < static_cast<size_t>(compile_miopen_version)) {
         LOG_FIRST_N(WARNING, 1)
             << "WARNING: device: " << place_.device
             << ". The installed Paddle is compiled with MIOPEN "
-            << compile_miopen_version / 10 << "." << compile_miopen_version % 10
+            << compile_miopen_version / 100 << "."
+            << compile_miopen_version % 100
             << ", but MIOPEN version in your machine is "
-            << local_miopen_version / 10 << "." << local_miopen_version % 10
+            << local_miopen_version / 100 << "." << local_miopen_version % 100
             << ", which may cause serious incompatible bug. "
             << "Please recompile or reinstall Paddle with compatible MIOPEN "
                "version.";
