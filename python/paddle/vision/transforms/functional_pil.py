@@ -41,6 +41,8 @@ _pil_interp_from_str = {
     'hamming': Image.HAMMING
 }
 
+__all__ = []
+
 
 def to_tensor(pic, data_format='CHW'):
     """Converts a ``PIL.Image`` to paddle.Tensor.
