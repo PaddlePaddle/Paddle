@@ -49,7 +49,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   // Create New OpDesc
   auto gru_creater = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
                          Node* bias, Node* hidden, Node* fc_bias,
-                         const bool& use_mkldnn) {
+                         const bool use_mkldnn) {
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
 

@@ -47,7 +47,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
   // Create New OpDesc
   auto lstm_creator = [&](Node* lstm, Node* input, Node* weight_x,
                           Node* weight_h, Node* bias, Node* hidden, Node* cell,
-                          Node* xx, Node* fc_bias, const bool& use_mkldnn) {
+                          Node* xx, Node* fc_bias, const bool use_mkldnn) {
     OpDesc op_desc;
     op_desc.SetType("fusion_lstm");
 #define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
