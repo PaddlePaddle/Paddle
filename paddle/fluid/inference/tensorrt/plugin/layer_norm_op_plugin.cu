@@ -57,8 +57,18 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
     input_shape.push_back(input_dims.d[i]);
   }
   const auto input_ddim = framework::make_ddim(input_shape);
-  auto matrix_dim = framework::flatten_to_2d(input_ddim, begin_norm_axis - 1);
+  auto matrix_dim = framework::flatten_to_2d(input_ddim, begin_norm_axis);
   int feature_size = static_cast<int>(matrix_dim[1]);
+  PADDLE_ENFORCE_EQ(feature_size, scale_.size(),
+                    platform::errors::InvalidArgument(
+                        "scale's size should be equal to the feature_size,"
+                        "but got feature_size:%d, scale's size:%d.",
+                        feature_size, scale_.size()));
+  PADDLE_ENFORCE_EQ(feature_size, bias_.size(),
+                    platform::errors::InvalidArgument(
+                        "bias's size should be equal to the feature_size,"
+                        "but got feature_size:%d, bias's size:%d.",
+                        feature_size, bias_.size()));
 
   scale_t.Resize(framework::make_ddim({feature_size}));
   bias_t.Resize(framework::make_ddim({feature_size}));
@@ -79,6 +89,177 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
   paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
   layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
              variance_d, begin_norm_axis, eps);
+  return cudaGetLastError() != cudaSuccess;
+}
+
+nvinfer1::DimsExprs LayerNormPluginDynamic::getOutputDimensions(
+    int output_index, const nvinfer1::DimsExprs *inputDims, int nb_inputs,
+    nvinfer1::IExprBuilder &expr_builder) {
+  return inputDims[0];
+}
+
+bool LayerNormPluginDynamic::supportsFormatCombination(
+    int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
+    int nb_outputs) {
+  PADDLE_ENFORCE_NOT_NULL(
+      in_out, platform::errors::InvalidArgument(
+                  "The input of layernorm plugin shoule not be nullptr."));
+  PADDLE_ENFORCE_EQ(nb_inputs, 1,
+                    platform::errors::InvalidArgument(
+                        "The LayerNormPluginDynamic's input should be one"
+                        "but it's (%d) outputs.",
+                        nb_outputs));
+  PADDLE_ENFORCE_EQ(nb_outputs, 1,
+                    platform::errors::InvalidArgument(
+                        "The LayerNormPluginDynamic's output should be one"
+                        "but it's (%d) outputs.",
+                        nb_outputs));
+  PADDLE_ENFORCE_LT(
+      pos, nb_inputs + nb_outputs,
+      platform::errors::InvalidArgument("The pos(%d) should be less than the "
+                                        "num(%d) of the input and the output.",
+                                        pos, nb_inputs + nb_outputs));
+  const nvinfer1::PluginTensorDesc &in = in_out[pos];
+  if (pos == 0) {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+    return (in.type == nvinfer1::DataType::kFLOAT ||
+            in.type == nvinfer1::DataType::kHALF) &&
+           (in.format == nvinfer1::TensorFormat::kLINEAR);
+#else
+    return (in.type == nvinfer1::DataType::kFLOAT) &&
+           (in.format == nvinfer1::TensorFormat::kLINEAR);
+#endif
+  }
+  const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
+  // output
+  return in.type == prev.type && in.format == prev.format;
+}
+
+nvinfer1::DataType LayerNormPluginDynamic::getOutputDataType(
+    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+  PADDLE_ENFORCE_EQ(index, 0,
+                    platform::errors::InvalidArgument(
+                        "The LayerNormPlugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
+  return input_types[0];
+}
+
+int LayerNormPluginDynamic::enqueue(
+    const nvinfer1::PluginTensorDesc *input_desc,
+    const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
+    void *const *outputs, void *workspace, cudaStream_t stream) {
+  const auto &input_dims = input_desc[0].dims;
+  int begin_norm_axis = begin_norm_axis_;
+  float eps = eps_;
+
+  std::vector<int> input_shape;
+  for (int i = 0; i < input_dims.nbDims; i++) {
+    input_shape.push_back(input_dims.d[i]);
+  }
+  const auto input_ddim = framework::make_ddim(input_shape);
+  auto matrix_dim = framework::flatten_to_2d(input_ddim, begin_norm_axis);
+  int feature_size = static_cast<int>(matrix_dim[1]);
+  PADDLE_ENFORCE_EQ(feature_size, scale_.size(),
+                    platform::errors::InvalidArgument(
+                        "scale's size should be equal to the feature_size,"
+                        "but got feature_size:%d, scale's size:%d.",
+                        feature_size, scale_.size()));
+  PADDLE_ENFORCE_EQ(feature_size, bias_.size(),
+                    platform::errors::InvalidArgument(
+                        "bias's size should be equal to the feature_size,"
+                        "but got feature_size:%d, bias's size:%d.",
+                        feature_size, bias_.size()));
+  int device_id;
+  cudaGetDevice(&device_id);
+  auto input_type = input_desc[0].type;
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
+    const float *input = reinterpret_cast<const float *>(inputs[0]);
+    float *output = static_cast<float *>(outputs[0]);
+    scale_t.Resize(framework::make_ddim({feature_size}));
+    bias_t.Resize(framework::make_ddim({feature_size}));
+    mean_t.Resize(framework::make_ddim(mean_shape_));
+    variance_t.Resize(framework::make_ddim(variance_shape_));
+
+    float *scale_d =
+        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *variance_d =
+        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
+    cudaMemcpyAsync(scale_d, scale_.data(), sizeof(float) * feature_size,
+                    cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(bias_d, bias_.data(), sizeof(float) * feature_size,
+                    cudaMemcpyHostToDevice, stream);
+
+    paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
+    layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
+               variance_d, begin_norm_axis, eps);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+    VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
+    const half *input = reinterpret_cast<const half *>(inputs[0]);
+    half *output = static_cast<half *>(outputs[0]);
+    half *scale_d;
+    half *bias_d;
+    half *mean_d;
+    half *variance_d;
+    size_t mean_shape_product = 1;
+    for (auto s : mean_shape_) {
+      mean_shape_product *= s;
+    }
+    size_t variance_shape_product = 1;
+    for (auto s : variance_shape_) {
+      variance_shape_product *= s;
+    }
+    cudaMalloc(&scale_d, feature_size * sizeof(half));
+    cudaMalloc(&bias_d, feature_size * sizeof(half));
+    cudaMalloc(&mean_d, mean_shape_product * sizeof(half));
+    cudaMalloc(&variance_d, variance_shape_product * sizeof(half));
+
+    half *scale_cpu_half =
+        static_cast<half *>(malloc(feature_size * sizeof(half)));
+    half *bias_cpu_half =
+        static_cast<half *>(malloc(feature_size * sizeof(half)));
+    PADDLE_ENFORCE_EQ(
+        scale_cpu_half && bias_cpu_half, true,
+        platform::errors::Unavailable("Out of memory, malloc size %d.",
+                                      feature_size * sizeof(half)));
+
+    for (int i = 0; i < feature_size; i++) {
+      scale_cpu_half[i] = static_cast<half>(scale_[i]);
+      bias_cpu_half[i] = static_cast<half>(bias_[i]);
+    }
+
+    cudaMemcpyAsync(scale_d, scale_cpu_half, sizeof(half) * feature_size,
+                    cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(bias_d, bias_cpu_half, sizeof(half) * feature_size,
+                    cudaMemcpyHostToDevice, stream);
+
+    paddle::operators::LayerNormDirectCUDAFunctor<half> layer_norm;
+    layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
+               variance_d, begin_norm_axis, eps);
+
+    cudaFree(scale_d);
+    cudaFree(bias_d);
+    cudaFree(mean_d);
+    cudaFree(variance_d);
+    free(scale_cpu_half);
+    free(bias_cpu_half);
+#else
+    PADDLE_THROW(platform::errors::Fatal(
+        "The layer_norm tensorRT plugin should be "
+        "complied with CUDA version >= 10.0 when running with fp16. "
+        "Please recomplie it or try to use fp32 by set "
+        "config.SetTRTDynamicShapeInfo(min_input_shape, "
+        "max_input_shape, opt_input_shape, true"));
+#endif
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The LayerNorm TRT Plugin's input type should be float or half."));
+  }
   return cudaGetLastError() != cudaSuccess;
 }
 

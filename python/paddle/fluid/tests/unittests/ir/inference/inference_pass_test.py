@@ -160,7 +160,8 @@ class InferencePassTest(unittest.TestCase):
                                  use_gpu,
                                  atol=1e-5,
                                  flatten=False,
-                                 quant=False):
+                                 quant=False,
+                                 rtol=0):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT 
         or disable TensorRT, enable MKLDNN or disable MKLDNN 
@@ -260,7 +261,7 @@ class InferencePassTest(unittest.TestCase):
 
                 self.assertTrue(
                     np.allclose(
-                        out, tensorrt_output, atol=atol),
+                        out, tensorrt_output, atol=atol, rtol=rtol),
                     "Output has diff between GPU and TensorRT. ")
 
         # Check whether the mkldnn results and the CPU results are the same. 
