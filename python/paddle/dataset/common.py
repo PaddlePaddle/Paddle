@@ -26,7 +26,6 @@ import paddle.dataset
 import six.moves.cPickle as pickle
 import glob
 import paddle
-# from ..hapi.progressbar import ProgressBar
 
 __all__ = []
 
