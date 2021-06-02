@@ -320,11 +320,17 @@ function(version version_file)
             "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
-            "WITH_GPU: ${WITH_GPU}\n")
+            "WITH_GPU: ${WITH_GPU}\n"
+            "WITH_ROCM: ${WITH_ROCM}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
                 "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
+    endif()
+    if(WITH_ROCM)
+        file(APPEND ${version_file}
+                "HIP version: ${HIP_VERSION}\n"
+                "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)
