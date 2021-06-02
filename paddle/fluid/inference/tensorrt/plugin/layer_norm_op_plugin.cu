@@ -104,16 +104,6 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of layernorm plugin shoule not be nullptr."));
-  PADDLE_ENFORCE_EQ(nb_inputs, 1,
-                    platform::errors::InvalidArgument(
-                        "The LayerNormPluginDynamic's input should be one"
-                        "but it's (%d) outputs.",
-                        nb_outputs));
-  PADDLE_ENFORCE_EQ(nb_outputs, 1,
-                    platform::errors::InvalidArgument(
-                        "The LayerNormPluginDynamic's output should be one"
-                        "but it's (%d) outputs.",
-                        nb_outputs));
   PADDLE_ENFORCE_LT(
       pos, nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
@@ -202,10 +192,6 @@ int LayerNormPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
-    half *scale_d;
-    half *bias_d;
-    half *mean_d;
-    half *variance_d;
     size_t mean_shape_product = 1;
     for (auto s : mean_shape_) {
       mean_shape_product *= s;
@@ -214,10 +200,18 @@ int LayerNormPluginDynamic::enqueue(
     for (auto s : variance_shape_) {
       variance_shape_product *= s;
     }
-    cudaMalloc(&scale_d, feature_size * sizeof(half));
-    cudaMalloc(&bias_d, feature_size * sizeof(half));
-    cudaMalloc(&mean_d, mean_shape_product * sizeof(half));
-    cudaMalloc(&variance_d, variance_shape_product * sizeof(half));
+    if (!scale_gpu_half_d_) {
+      cudaMalloc(&scale_gpu_half_d_, feature_size * sizeof(half));
+    }
+    if (!bias_gpu_half_d_) {
+      cudaMalloc(&bias_gpu_half_d_, feature_size * sizeof(half));
+    }
+    if (!mean_gpu_half_d_) {
+      cudaMalloc(&mean_gpu_half_d_, mean_shape_product * sizeof(half));
+    }
+    if (!variance_gpu_half_d_) {
+      cudaMalloc(&variance_gpu_half_d_, variance_shape_product * sizeof(half));
+    }
 
     half *scale_cpu_half =
         static_cast<half *>(malloc(feature_size * sizeof(half)));
@@ -232,22 +226,17 @@ int LayerNormPluginDynamic::enqueue(
       scale_cpu_half[i] = static_cast<half>(scale_[i]);
       bias_cpu_half[i] = static_cast<half>(bias_[i]);
     }
-
-    cudaMemcpyAsync(scale_d, scale_cpu_half, sizeof(half) * feature_size,
+    cudaMemcpyAsync(scale_gpu_half_d_, scale_cpu_half, sizeof(half) * feature_size,
                     cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(bias_d, bias_cpu_half, sizeof(half) * feature_size,
+    cudaMemcpyAsync(bias_gpu_half_d_, bias_cpu_half, sizeof(half) * feature_size,
                     cudaMemcpyHostToDevice, stream);
-
-    paddle::operators::LayerNormDirectCUDAFunctor<half> layer_norm;
-    layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
-               variance_d, begin_norm_axis, eps);
-
-    cudaFree(scale_d);
-    cudaFree(bias_d);
-    cudaFree(mean_d);
-    cudaFree(variance_d);
     free(scale_cpu_half);
     free(bias_cpu_half);
+
+    paddle::operators::LayerNormDirectCUDAFunctor<half> layer_norm;
+    layer_norm(stream, input, input_shape, bias_gpu_half_d_, scale_gpu_half_d_,
+               output, mean_gpu_half_d_,
+               variance_gpu_half_d_, begin_norm_axis, eps);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The layer_norm tensorRT plugin should be "
