@@ -66,6 +66,7 @@ from .manipulation import cast  # noqa: F401
 from .manipulation import concat  # noqa: F401
 from .manipulation import expand  # noqa: F401
 from .manipulation import broadcast_to  # noqa: F401
+from .manipulation import broadcast_tensors  # noqa: F401
 from .manipulation import expand_as  # noqa: F401
 from .manipulation import tile  # noqa: F401
 from .manipulation import flatten  # noqa: F401
@@ -363,6 +364,7 @@ tensor_method_func  = [ #noqa
            'bitwise_or',
            'bitwise_xor',
            'bitwise_not',
+           'broadcast_tensors',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

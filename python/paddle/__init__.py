@@ -118,6 +118,7 @@ from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
 from .tensor.manipulation import concat  # noqa: F401
+from .tensor.manipulation import broadcast_tensors  # noqa: F401
 from .tensor.manipulation import expand  # noqa: F401
 from .tensor.manipulation import broadcast_to  # noqa: F401
 from .tensor.manipulation import expand_as  # noqa: F401
@@ -505,5 +506,6 @@ __all__ = [  # noqa
            'trunc',
            'digamma',
            'standard_normal',
-           'diagonal'
+           'diagonal',
+           'broadcast_tensors',
 ]
