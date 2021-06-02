@@ -88,8 +88,7 @@ void validate_cache_onednn(int cache_capacity = 1) {
   cfg.EnableMKLDNN();
   cfg.SetMkldnnCacheCapacity(cache_capacity);
 
-  // we will use two predictors (same model)
-  auto first_predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   std::vector<std::vector<PaddleTensor>> ref_outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
 
@@ -114,7 +113,7 @@ void validate_cache_onednn(int cache_capacity = 1) {
     std::getline(file, lines[i]);
     std::getline(infer_file, shape_lines[i]);
     SetInput(&input_slots_all, lines[i], shape_lines[i]);
-    first_predictor->Run(input_slots_all[i], &ref_outputs[i], FLAGS_batch_size);
+    predictor->Run(input_slots_all[i], &ref_outputs[i], FLAGS_batch_size);
     // record number of cached objects
     cache_filling.push_back(GetNumCachedObjects());
   }
@@ -122,7 +121,7 @@ void validate_cache_onednn(int cache_capacity = 1) {
   file.close();
   infer_file.close();
 
-  first_predictor.reset(nullptr);
+  predictor.reset(nullptr);
   cache_filling.push_back(GetNumCachedObjects());
 
   // Compare results
