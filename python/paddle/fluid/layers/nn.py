@@ -350,9 +350,8 @@ def fc(input,
             helper.append_op(
                 type="trans_data",
                 inputs={"X": w},
-                outputs={"Out": w_nz},
+                outputs={"Out": w},
                 attrs={"acl_format": 29})
-            w = w_nz
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type="mul",
