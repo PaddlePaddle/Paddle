@@ -232,5 +232,61 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(Exception, _test)
 
 
+class TestVariableSlice(unittest.TestCase):
+    def _test_item_none(self, place):
+        data = np.random.rand(2, 3, 4).astype("float32")
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            out0 = x[0:, None, 1:]
+            out1 = x[0:, None]
+            out2 = x[None, 1:]
+            out3 = x[None]
+
+        outs = [out0, out1, out2, out3]
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=outs)
+
+        expected = [
+            data[0:, None, 1:], data[0:, None], data[None, 1:], data[None]
+        ]
+        for i in range(len(outs)):
+            self.assertEqual(outs[i].shape, expected[i].shape)
+            self.assertTrue((result[i] == expected[i]).all())
+
+    def _test_item_none_and_decrease(self, place):
+        data = np.random.rand(2, 3, 4).astype("float32")
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            out0 = x[0, 1:, None]
+            out1 = x[0, None]
+            out2 = x[None, 1]
+            out3 = x[None]
+            out4 = x[0, 0, 0, None]
+            out5 = x[None, 0, 0, 0, None]
+
+        outs = [out0, out1, out2, out3, out4, out5]
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=outs)
+        expected = [
+            data[0, 1:, None], data[0, None], data[None, 1], data[None],
+            data[0, 0, 0, None], data[None, 0, 0, 0, None]
+        ]
+
+        for i in range(len(outs)):
+            self.assertEqual(outs[i].shape, expected[i].shape)
+            self.assertTrue((result[i] == expected[i]).all())
+
+    def test_slice(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            self._test_item_none(place)
+            self._test_item_none_and_decrease(place)
+
+
 if __name__ == '__main__':
     unittest.main()
