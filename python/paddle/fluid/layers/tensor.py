@@ -680,23 +680,27 @@ def _memcpy(input, place=None, output=None):
     dst_place_type = -1
     if place is None:
         dst_place_type = -1
-    elif place.is_cpu_place():
-        dst_place_type = 0
-    elif place.is_gpu_place():
-        dst_place_type = 1
-    elif place.is_cuda_pinned_place():
-        dst_place_type = 2
-    elif place.is_xpu_place():
-        dst_place_type = 3
-    elif place.is_npu_place():
-        dst_place_type = 4
+    else:
+        p = core.Place()
+        p.set_place(place)
+        if p.is_cpu_place():
+            dst_place_type = 0
+        elif p.is_gpu_place():
+            dst_place_type = 1
+        elif p.is_cuda_pinned_place():
+            dst_place_type = 2
+        elif p.is_xpu_place():
+            dst_place_type = 3
+        elif p.is_npu_place():
+            dst_place_type = 4
 
-    attrs["dst_place_type"] = dst_place_type
+    attrs = {'dst_place_type': dst_place_type}
     helper.append_op(
         type='memcpy',
         inputs={'X': [input]},
         outputs={'Out': [output]},
         attrs=attrs)
+    return output
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
