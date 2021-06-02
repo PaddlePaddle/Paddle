@@ -338,8 +338,8 @@ void RunTransDataNPUOP(const Tensor &src_tensor, Tensor *dst_tensor,
                    {"dst_format", dst_format_name},
                    {"groups", 1}});
   runner_trans_data.Run(stream);
-  VLOG(4) << "Run TransData OP to cast NPU format from "
-          << src_format_name " to " << dst_format_name;
+  VLOG(4) << "Run TransData OP to cast NPU format from " << src_format_name
+          << " to " << dst_format_name;
 }
 
 Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
