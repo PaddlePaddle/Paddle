@@ -34,9 +34,10 @@ class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext& ctx) const override {
     std::vector<const framework::Tensor*> ins;
     std::vector<framework::Tensor*> outs;
-    PackTensorsIntoVector<T>(ctx, &ins, &outs);
+    
+    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        ctx, ins, &outs, CudaMaxFunctor<T>());
+        ctx, ins, &outs, axis, CudaMaxFunctor<T>());
   }
 };
 
