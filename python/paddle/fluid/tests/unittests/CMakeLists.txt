@@ -576,7 +576,7 @@ endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 # Coverage pipeline use cuda 10.1 now, profiler will random hang in cuda 10.1,
 # see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in cuda 10.1 or 10.2, 
+# We guess there are some bugs in cuda 10.1 or 10.2,
 # since this unittest is stable in cuda 11 (py3 pipeline) now.
 if(NOT WITH_COVERAGE)
   py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
@@ -601,8 +601,8 @@ py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_c
 py_test_modules(test_fuse_bn_add_act_pass MODULES test_fuse_bn_add_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
 
 # NOTE: These unittests will appear NaN steadily in windows CI. After analysis,
-# it is found that windows CI will run all the training unittests with the ON_INFER option turned on, 
-# which will not appear in other CIs. The calculation behavior of some ops in inference mode is 
+# it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
+# which will not appear in other CIs. The calculation behavior of some ops in inference mode is
 # inconsistent with that in non-inference mode.
 if(NOT ON_INFER)
     py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
@@ -645,7 +645,7 @@ if (WITH_XPU)
     add_subdirectory(xpu)
 endif()
 
-# dist xpu tests: 
+# dist xpu tests:
 if (WITH_XPU_BKCL)
     py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
     py_test(test_collective_allreduce_api_xpu SRCS "test_collective_allreduce_api.py")
@@ -743,6 +743,7 @@ set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
 set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dist_fleet_raw_program_optimizer PROPERTIES TIMEOUT 120)
 if(NOT WIN32)
     set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 120)
 endif()
