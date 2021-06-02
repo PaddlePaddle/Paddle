@@ -338,6 +338,7 @@ class TestStaticReshape_(TestReshapeAPI):
         self._set_paddle_api()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
+        shape_int = -1
         with fluid.dygraph.guard():
             x = self.to_tensor(input)
             positive_five = self.fill_constant([1], "int32", 5)
@@ -349,9 +350,12 @@ class TestStaticReshape_(TestReshapeAPI):
             shape_tensor = self.to_tensor(np.array([2, 5, 5]).astype("int32"))
             out_3 = self.reshape(x, shape=shape_tensor)
 
+            out_4 = self.reshape(x, shape=shape_int)
+
         assert np.array_equal(out_1.numpy(), input.reshape(shape))
         assert np.array_equal(out_2.numpy(), input.reshape(shape))
         assert np.array_equal(out_3.numpy(), input.reshape(shape))
+        assert np.array_equal(out_4.numpy(), input.reshape(shape_int))
 
 
 # Test Input Error
