@@ -38,11 +38,13 @@ namespace operators {
 namespace detail {
 
 // Post processing function for sum, max, min, prod, any
-template <typename T>
+template <typename Tx, typename Ty = Tx>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
 
-  HOSTDEVICE inline T operator()(const T& x) const { return x; }
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(x);
+  }
 };
 
 // Post processing function for mean
@@ -81,7 +83,7 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 #ifdef __HIPCC__
 constexpr int kMaxBlock = 256;
 #else
-constexpr int kMaxBlock = 512;
+constexpr int kMaxBlock = 128;
 #endif
 
 // get blockDim for reduceLastDim and reduceAny
@@ -544,8 +546,7 @@ __global__ void ReduceKernelFunction(
 
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
           typename TransformOp, int kRank, int kReduceRank>
-static void LaunchKernel(const Tx* x_data, Ty* y_data,
-                         const platform::Place& place, const ReduceOp& reducer,
+static void LaunchKernel(const Tx* x_data, Ty* y_data, const ReduceOp& reducer,
                          const TransformOp& transformer, const Ty& init,
                          gpuStream_t stream, ReduceConfig<Ty> config) {
 #define CUB_REDUCE_TYPE_CASE(type)                                             \
@@ -589,7 +590,6 @@ static void LaunchKernel(const Tx* x_data, Ty* y_data,
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
           typename TransformOp>
 static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
-                               const platform::Place& place,
                                const ReduceOp& reducer,
                                const TransformOp& transformer, const Ty& init,
                                gpuStream_t stream, ReduceConfig<Ty> config) {
@@ -606,25 +606,8 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
   case i: {                                                                    \
     constexpr auto kReduceRank = i;                                            \
     LaunchKernel<Tx, Ty, BlockDim, ReduceOp, TransformOp, kRank, kReduceRank>( \
-        x_data, y_data, place, reducer, transformer, init, stream, config);    \
+        x_data, y_data, reducer, transformer, init, stream, config);           \
   } break
-
-  // launch CUB::Reduce
-  if (config.reduce_type == static_cast<int>(ReduceType::kReduceAll)) {
-    cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
-        x_data, transformer);
-    size_t temp_storage_bytes = 0;
-    cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
-                              config.reduce_num, reducer, init, stream);
-    framework::Tensor tmp;
-    auto* temp_storage = tmp.mutable_data<uint8_t>(
-        framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
-        place);
-    cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
-                              config.reduce_num, reducer, init, stream);
-
-    return;
-  }
 
   detail::CheckReduceRank(reduce_rank, rank);
   switch (rank) {
@@ -649,10 +632,12 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 #undef CUB_RANK_CASE
 }
 
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
+          typename CubTransformOp = TransformOp>
 void TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
                       std::vector<int> origin_reduce_dims, const Ty& init,
                       const ReduceOp& reducer, const TransformOp& transformer,
+                      const CubTransformOp& cub_transformer,
                       gpuStream_t stream) {
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
@@ -673,13 +658,28 @@ void TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
     y->Resize(out_dims);
     return;
   }
+  // launch CUB::Reduce
+  if (config.reduce_type == static_cast<int>(ReduceType::kReduceAll)) {
+    cub::TransformInputIterator<Ty, CubTransformOp, const Tx*> trans_x(
+        x_data, cub_transformer);
+    size_t temp_storage_bytes = 0;
+    cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
+                              config.reduce_num, reducer, init, stream);
+    framework::Tensor tmp;
+    auto* temp_storage = tmp.mutable_data<uint8_t>(
+        framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
+        x.place());
+    cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
+                              config.reduce_num, reducer, init, stream);
 
-#define CUB_BLOCK_DIM_CASE(block_dim)                                  \
-  case block_dim: {                                                    \
-    constexpr auto kBlockDim = block_dim;                              \
-    LaunchReduceKernel<Tx, Ty, block_dim, ReduceOp, TransformOp>(      \
-        x_data, y_data, x.place(), reducer, transformer, init, stream, \
-        config);                                                       \
+    return;
+  }
+
+#define CUB_BLOCK_DIM_CASE(block_dim)                                \
+  case block_dim: {                                                  \
+    constexpr auto kBlockDim = block_dim;                            \
+    LaunchReduceKernel<Tx, Ty, block_dim, ReduceOp, TransformOp>(    \
+        x_data, y_data, reducer, transformer, init, stream, config); \
   } break
 
   switch (detail::GetBlockDim(config.reduce_num)) {
@@ -695,6 +695,37 @@ void TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
   }
 #undef CUB_BLOCK_DIM_CASE
 }
+
+template <typename Tx, typename ReduceOp,
+          template <typename, typename> class TransformOp>
+struct TensorReduceFunctorImpl {
+  const framework::Tensor& x;
+  framework::Tensor* y;
+  std::vector<int> origin_reduce_dims;
+  const double& init;
+  const ReduceOp& reducer;
+  gpuStream_t stream;
+  TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
+                          std::vector<int> origin_reduce_dims,
+                          const double& init, const ReduceOp& reducer,
+                          gpuStream_t stream)
+      : x(x),
+        y(y),
+        origin_reduce_dims(origin_reduce_dims),
+        init(init),
+        reducer(reducer),
+        stream(stream) {}
+
+  template <typename Ty>
+
+  void apply() const {
+    const Ty& init_cast = static_cast<Ty>(init);
+    TensorReduceFunc<Tx, Ty, ReduceOp, TransformOp<Ty, Ty>,
+                     TransformOp<Tx, Ty>>(x, y, origin_reduce_dims, init_cast,
+                                          reducer, TransformOp<Ty, Ty>(),
+                                          TransformOp<Tx, Ty>(), stream);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

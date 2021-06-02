@@ -51,22 +51,15 @@ class ReduceProdKernel : public framework::OpKernel<T> {
 
     auto stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
-#define VisitDataTypeSmall_t(cpp_type, proto_type)                             \
-  do {                                                                         \
-    if (static_cast<framework::proto::VarType::Type>(out_dtype) ==             \
-        proto_type) {                                                          \
-      TensorReduceFunc<T, cpp_type, CustomMul<cpp_type>,                       \
-                       detail::IdentityFunctor<cpp_type>>(                     \
-          *input, output, reduce_dims, static_cast<cpp_type>(1.0f),            \
-          CustomMul<cpp_type>(), detail::IdentityFunctor<cpp_type>(), stream); \
-    }                                                                          \
-  } while (0)
-      _ForEachDataTypeSmall_(VisitDataTypeSmall_t);
-#undef VisitDataTypeSmall_t
+      framework::VisitDataTypeSmall(
+          static_cast<framework::proto::VarType::Type>(out_dtype),
+          TensorReduceFunctorImpl<T, cub::Sum, detail::IdentityFunctor>(
+              *input, output, reduce_dims, static_cast<double>(1.0f),
+              cub::Sum(), stream));
     } else {
       TensorReduceFunc<T, T, CustomMul<T>, detail::IdentityFunctor<T>>(
           *input, output, reduce_dims, static_cast<T>(1.0f), CustomMul<T>(),
-          detail::IdentityFunctor<T>(), stream);
+          detail::IdentityFunctor<T>(), detail::IdentityFunctor<T>(), stream);
     }
   }
 };

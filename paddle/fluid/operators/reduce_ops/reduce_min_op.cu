@@ -45,7 +45,7 @@ class ReduceMinKernel : public framework::OpKernel<T> {
     auto stream = context.cuda_device_context().stream();
     TensorReduceFunc<T, T, CustomMin<T>, detail::IdentityFunctor<T>>(
         *input, output, reduce_dims, DataBound<T>::max(), CustomMin<T>(),
-        detail::IdentityFunctor<T>(), stream);
+        detail::IdentityFunctor<T>(), detail::IdentityFunctor<T>(), stream);
   }
 };
 
