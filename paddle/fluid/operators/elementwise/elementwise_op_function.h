@@ -64,22 +64,72 @@ namespace operators {
 * To pack the input and output tnesors into vector for
 *  LaunchElementwiseCudaKernel
 */
+// template <typename OutT>
+// int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
+//                           std::vector<const framework::Tensor *> *ins,
+//                           std::vector<framework::Tensor *> *outs) {
+//   int axis = -1;
+//   auto *x = ctx.Input<framework::LoDTensor>("X");
+//   auto *y = ctx.Input<framework::LoDTensor>("Y");
+//   auto *z = ctx.Output<framework::LoDTensor>("Out");
+//   z->mutable_data<OutT>(ctx.GetPlace());
+//   outs->emplace_back(z);
+//   ins->emplace_back(x);
+
+//   if (y != nullptr) {
+//     ins->emplace_back(y);
+//     axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
+//     axis = axis == -1 ? std::abs(y->dims().size() - x->dims().size()) : axis;
+//   }
+//   return axis;
+// }
+
 template <typename OutT>
 int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
                           std::vector<const framework::Tensor *> *ins,
                           std::vector<framework::Tensor *> *outs) {
   int axis = -1;
-  auto *x = ctx.Input<framework::LoDTensor>("X");
+  auto x_var = ctx.InputVar("X");
+  PADDLE_ENFORCE_NOT_NULL(
+      x_var, platform::errors::InvalidArgument(
+                 "Cannot get input Variable X, Variable name = %s.",
+                 ctx.InputName("X")));
   auto *y = ctx.Input<framework::LoDTensor>("Y");
-  auto *z = ctx.Output<framework::LoDTensor>("Out");
+
+  framework::Tensor x, *z;
+  if (x_var->IsType<framework::LoDTensor>()) {
+    x = x_var->Get<framework::LoDTensor>();
+    z = ctx.Output<framework::LoDTensor>("Out");
+
+  } else if (x_var->IsType<framework::SelectedRows>()) {
+    PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
+                      platform::errors::InvalidArgument(
+                          "For elementwise_op, if X is Sparse, Y must be "
+                          "scalar. But reveived the size of Y = %s.",
+                          y->dims().size()));
+    auto &x_sele = x_var->Get<framework::SelectedRows>();
+    auto out_sele = ctx.Output<framework::SelectedRows>("Out");
+    x = x_sele.value();
+    out_sele->set_rows(x_sele.rows());
+    out_sele->set_height(x_sele.height());
+    out_sele->mutable_value()->Resize(x_sele.value().dims());
+    out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x.type());
+    z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "X's type[%s] is not supported by elementwise_op. X's type should be "
+        "LoDTensor or SelectedRows.",
+        framework::ToTypeName(x_var->Type())));
+  }
   z->mutable_data<OutT>(ctx.GetPlace());
   outs->emplace_back(z);
-  ins->emplace_back(x);
+  ins->emplace_back(&x);
 
   if (y != nullptr) {
     ins->emplace_back(y);
     axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
-    axis = axis == -1 ? std::abs(y->dims().size() - x->dims().size()) : axis;
+    axis = axis == -1 ? std::abs(y->dims().size() - x.dims().size()) : axis;
   }
   return axis;
 }

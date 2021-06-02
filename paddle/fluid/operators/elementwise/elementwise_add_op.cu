@@ -50,7 +50,7 @@ class ElementwiseAddKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        ctx, ins, &outs, CudaAddFunctor<T>());
+        cuda_ctx, ins, &outs, CudaAddFunctor<T>());
   }
 };
 

@@ -506,9 +506,9 @@ void LaunchBroadcastElementwiseCudaKernel(
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel(
-    const framework::ExecutionContext &ctx,
+    const platform::CUDADeviceContext &cuda_ctx,
     const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, Functor func) {
+    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
     no_broadcast_flag = ins[0]->dims() == in->dims();

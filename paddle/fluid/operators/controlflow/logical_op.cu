@@ -21,18 +21,18 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-#define LOGICAL_BINARY_FUNCTOR(op_name, op)           \
+#define LOGICAL_BINARY_FUNCTOR(func_name, op)         \
   template <typename T>                               \
-  struct op_name##Functor {                           \
+  struct func_name {                                  \
     using ELEMENT_TYPE = T;                           \
     HOSTDEVICE bool operator()(const T* args) const { \
       return args[0] op args[1];                      \
     }                                                 \
   };
 
-LOGICAL_BINARY_FUNCTOR(CudaOr, ||)
-LOGICAL_BINARY_FUNCTOR(CudaAnd, &&)
-LOGICAL_BINARY_FUNCTOR(CudaXor, ^)
+LOGICAL_BINARY_FUNCTOR(CudaOrFunctor, ||)
+LOGICAL_BINARY_FUNCTOR(CudaAndFunctor, &&)
+LOGICAL_BINARY_FUNCTOR(CudaXorFunctor, ^)
 #undef LOGICAL_BINARY_FUNCTOR
 
 template <typename T>
@@ -51,7 +51,7 @@ class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
     auto functor = Functor();
     std::vector<const framework::Tensor*> ins;
     std::vector<framework::Tensor*> outs;
-    PackTensorsIntoVector<OutT>(ctx, &ins, &outs);
+    int axis = PackTensorsIntoVector<OutT>(ctx, &ins, &outs);
 
     if (ins.size() == 1) {
       LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
@@ -66,13 +66,13 @@ class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_LOGICAL_CUDA_KERNEL(op_name, func)                \
-  REGISTER_OP_CUDA_KERNEL(                                         \
-      op_name, ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, \
-                                          ops::func##Functor<bool>>);
+#define REGISTER_LOGICAL_CUDA_KERNEL(op_name, func) \
+  REGISTER_OP_CUDA_KERNEL(                          \
+      op_name,                                      \
+      ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<bool>>);
 
-REGISTER_LOGICAL_CUDA_KERNEL(logical_or, CudaOr)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_and, CudaAnd)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, CudaXor)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_not, CudaNot)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_or, CudaOrFunctor)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_and, CudaAndFunctor)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, CudaXorFunctor)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_not, CudaNotFunctor)
 #undef REGISTER_LOGICAL_CUDA_KERNEL
