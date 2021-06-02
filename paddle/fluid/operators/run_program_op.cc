@@ -87,7 +87,9 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "(vector<LoDTensor>)"
               "The output tensors for GRAD Tensors in RunProgram forward "
               "operator, the forward operator contains GRAD Tensors when it "
-              "computes double grad.");
+              "computes double grad.")
+        .AsDuplicable()
+        .AsDispensable();
     AddAttr<BlockDesc*>("global_block",
                         "(BlockDesc *)"
                         "The global block of executed program desc.");

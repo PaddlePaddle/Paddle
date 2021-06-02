@@ -131,6 +131,9 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
+    if (var_names[i] == "Fake_var") {
+      continue;
+    }
     auto *var = scope->Var(var_names[i]);
     CheckInputVarStatus(*vars[i], var_names[i]);
     VariableShare(*vars[i], var);
@@ -141,9 +144,9 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    if (var_names[i] == framework::kEmptyVarName) {
-      VLOG(2) << "find variable name is " << framework::kEmptyVarName
-              << ", skip it!";
+    if (var_names[i] == framework::kEmptyVarName ||
+        var_names[i] == "Fake_var") {
+      VLOG(2) << "find variable name is " << var_names[i] << ", skip it!";
       continue;
     }
     // NOTE: Here skip not found var is dangerous, if a bug is caused here,
