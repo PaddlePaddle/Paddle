@@ -79,6 +79,7 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
+  Graph(const BlockDesc &block, const Graph *parent);
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -252,11 +253,22 @@ class Graph {
   std::shared_ptr<Graph> Clone();
 
  private:
-  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
-      const ProgramDesc &program);
+  std::map<std::string, std::vector<ir::Node *>> InitFromBlock(
+      const BlockDesc &block);
+
+  void ReleaseSubgraphs() { sub_graphs_.clear(); }
+
+  void AddSubgraph(std::unique_ptr<Graph> sub_graph) {
+    sub_graphs_.push_back(std::move(sub_graph));
+  }
+
+  std::unique_ptr<Graph> CloneSubgraph(const size_t idx);
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
+  const Graph *parent_;  // not owned.
+  std::vector<std::unique_ptr<Graph>> sub_graphs_;
+
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
