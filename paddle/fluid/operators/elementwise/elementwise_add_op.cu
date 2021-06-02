@@ -44,13 +44,12 @@ class ElementwiseAddKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext& ctx) const override {
     std::vector<const framework::Tensor*> ins;
     std::vector<framework::Tensor*> outs;
-
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, CudaAddFunctor<T>());
+        cuda_ctx, ins, &outs, axis, CudaAddFunctor<T>());
   }
 };
 

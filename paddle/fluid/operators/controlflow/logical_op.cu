@@ -51,14 +51,16 @@ class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
     auto functor = Functor();
     std::vector<const framework::Tensor*> ins;
     std::vector<framework::Tensor*> outs;
+    const auto& cuda_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
     int axis = PackTensorsIntoVector<OutT>(ctx, &ins, &outs);
 
     if (ins.size() == 1) {
       LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
-          ctx, ins, &outs, functor);
+          cuda_ctx, ins, &outs, axis, functor);
     } else {
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
-          ctx, ins, &outs, functor);
+          cuda_ctx, ins, &outs, axis, functor);
     }
   }
 };

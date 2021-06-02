@@ -61,60 +61,47 @@ namespace paddle {
 namespace operators {
 
 /*
-* To pack the input and output tnesors into vector for
-*  LaunchElementwiseCudaKernel
+*  Pack input and output tensors into respective vectors with
+*  consideration of varible X`s class type.
 */
-// template <typename OutT>
-// int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
-//                           std::vector<const framework::Tensor *> *ins,
-//                           std::vector<framework::Tensor *> *outs) {
-//   int axis = -1;
-//   auto *x = ctx.Input<framework::LoDTensor>("X");
-//   auto *y = ctx.Input<framework::LoDTensor>("Y");
-//   auto *z = ctx.Output<framework::LoDTensor>("Out");
-//   z->mutable_data<OutT>(ctx.GetPlace());
-//   outs->emplace_back(z);
-//   ins->emplace_back(x);
-
-//   if (y != nullptr) {
-//     ins->emplace_back(y);
-//     axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
-//     axis = axis == -1 ? std::abs(y->dims().size() - x->dims().size()) : axis;
-//   }
-//   return axis;
-// }
-
 template <typename OutT>
 int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
                           std::vector<const framework::Tensor *> *ins,
-                          std::vector<framework::Tensor *> *outs) {
+                          std::vector<framework::Tensor *> *outs,
+                          framework::Tensor *x_ptr = nullptr) {
   int axis = -1;
+  int x_dims_size = 0;
+  framework::Tensor *z;
+
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NOT_NULL(
       x_var, platform::errors::InvalidArgument(
-                 "Cannot get input Variable X, Variable name = %s.",
+                 "Unable get input Variable X, Variable name is %s.\n",
                  ctx.InputName("X")));
   auto *y = ctx.Input<framework::LoDTensor>("Y");
 
-  framework::Tensor x, *z;
-  if (x_var->IsType<framework::LoDTensor>()) {
-    x = x_var->Get<framework::LoDTensor>();
+  if (x_ptr == nullptr || x_var->IsType<framework::LoDTensor>()) {
+    auto *x = ctx.Input<framework::LoDTensor>("X");
     z = ctx.Output<framework::LoDTensor>("Out");
+    ins->emplace_back(x);
+    x_dims_size = x->dims().size();
 
   } else if (x_var->IsType<framework::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
                       platform::errors::InvalidArgument(
                           "For elementwise_op, if X is Sparse, Y must be "
-                          "scalar. But reveived the size of Y = %s.",
+                          "scalar. But reveived the size of Y = %d.",
                           y->dims().size()));
     auto &x_sele = x_var->Get<framework::SelectedRows>();
     auto out_sele = ctx.Output<framework::SelectedRows>("Out");
-    x = x_sele.value();
+    *x_ptr = x_sele.value();
     out_sele->set_rows(x_sele.rows());
     out_sele->set_height(x_sele.height());
     out_sele->mutable_value()->Resize(x_sele.value().dims());
-    out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x.type());
+    out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x_ptr->type());
     z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+    ins->emplace_back(x_ptr);
+    x_dims_size = x_ptr->dims().size();
 
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -124,12 +111,11 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   }
   z->mutable_data<OutT>(ctx.GetPlace());
   outs->emplace_back(z);
-  ins->emplace_back(&x);
 
   if (y != nullptr) {
     ins->emplace_back(y);
     axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
-    axis = axis == -1 ? std::abs(y->dims().size() - x.dims().size()) : axis;
+    axis = axis == -1 ? std::abs(y->dims().size() - x_dims_size) : axis;
   }
   return axis;
 }
