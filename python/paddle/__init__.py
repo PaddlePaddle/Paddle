@@ -258,6 +258,7 @@ from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
+from .fluid.framework import is_compiled_with_rocm  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
@@ -384,6 +385,7 @@ __all__ = [     #noqa
            'less_equal',
            'triu',
            'is_compiled_with_cuda',
+           'is_compiled_with_rocm',
            'sin',
            'dist',
            'unbind',
