@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/strided_slice_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
@@ -24,9 +23,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, float>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, double>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex64>,
+                            paddle::platform::complex<float>>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex128>);
+                            paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     strided_slice_grad,
@@ -35,6 +34,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::complex64>,
+                                paddle::platform::complex<float>>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::complex128>);
+                                paddle::platform::complex<double>>);
