@@ -270,7 +270,47 @@ bool AnalysisPredictor::CreateExecutor() {
   executor_.reset(new paddle::framework::NaiveExecutor(place_));
   return true;
 }
+
+static bool Is_PrePareDate_Opt_Target_Op(framework::OpDesc *op) {
+  // here is prepare data optimization related bad cases:
+  // let's assume an op behind conditional_block and if conditional_block
+  // chooses branch 1, the op need to call prepare data. else the op don't need
+  // to
+  // to call prepare data. In running, if predictor chooses branch 2, then
+  // optimization
+  // takes effect, later issue is followed if predictor chooses branch 1,
+  // because
+  // the op lost chance to prepare data.
+  std::vector<std::string> op_type = {"conditional_block_infer",
+                                      "select_input"};
+  for (const auto &type : op_type) {
+    if (op->Type() == type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void Disable_PrePareDate_Opt(
+    std::shared_ptr<framework::ProgramDesc> inference_program, int block) {
+  bool disable_opt = false;
+  for (auto *op : inference_program->Block(block).AllOps()) {
+    if (disable_opt) {
+      op->SetAttr("inference_force_prepare", true);
+    }
+    if (op->HasAttr("sub_block")) {
+      int blockID = op->GetBlockAttrId("sub_block");
+      Disable_PrePareDate_Opt(inference_program, blockID);
+    }
+    if (Is_PrePareDate_Opt_Target_Op(op)) {
+      disable_opt = true;
+    }
+  }
+}
+
 bool AnalysisPredictor::PrepareExecutor() {
+  Disable_PrePareDate_Opt(inference_program_, 0);
+
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops_);
 
