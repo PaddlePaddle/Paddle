@@ -63,35 +63,50 @@ _functional_dygraph_context_manager = None
 
 @signature_safe_contextmanager
 def param_guard(parameters):
+    from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
     # Note: parameters is a reference of self._parameters or self._buffers
-    if not framework.in_dygraph_mode() and parameters:
+    if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
-            if isinstance(var_base, core.VarBase):
-                # Convert ParamBase into Parameter with same attributes in dy2stat.
-                if isinstance(var_base, framework.ParamBase):
-                    new_var = var_base._to_static_var(to_parameter=True)
-                else:
-                    # Check whether has been created before.
-                    if var_base.name in var_base.block.vars:
-                        new_var = var_base.block.vars[var_base.name]
-                    # Note(Aurelius84): Convert VarBase in self._buffers into Variabe with
-                    # same attributes and set persistable=True to allow saving this var.
-                    # Because users can create a VarBase in `__init__`  like a
-                    # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
-                    # and necessary for inferring. It will be pruned if it's not necessary for inferring.
-                    else:
-                        # But if its shape is empty while created from `create_variable()`, we consider this buffer
-                        # non-persistable. See case of `drop_state` in lstm api.
-                        is_persistable = len(var_base.shape) > 0
-
-                        new_var = var_base._to_static_var(
-                            to_parameter=False, persistable=is_persistable)
-                parameters[name] = new_var
+            if isinstance(var_base, list):
+                new_var = [_convert_into_variable(var) for var in var_base]
+            else:
+                new_var = _convert_into_variable(var_base)
+            parameters[name] = new_var
         yield
         parameters.update(origin_parameters)
     else:
         yield
+
+
+def _convert_into_variable(var_base):
+    """
+    Convert Varbase into Variable.
+    """
+    if isinstance(var_base, core.VarBase):
+        # Check whether has been created before.
+        new_var = var_base.block._find_var_recursive(var_base.name)
+        if new_var is not None:
+            assert isinstance(new_var, framework.Variable)
+        # Convert ParamBase into Parameter with same attributes in dy2stat.
+        elif isinstance(var_base, framework.ParamBase):
+            new_var = var_base._to_static_var(to_parameter=True)
+        else:
+            # Note(Aurelius84): Convert VarBase in self._buffers into Variable with
+            # same attributes and set persistable=True to allow saving this var.
+            # Because users can create a VarBase in `__init__`  like a
+            # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
+            # and necessary for inferring. It will be pruned if it's not necessary for inferring.
+
+            # But if its shape is empty while created from `create_variable()`, we consider this buffer
+            # non-persistable. See case of `drop_state` in lstm api.
+            is_persistable = len(var_base.shape) > 0
+
+            new_var = var_base._to_static_var(
+                to_parameter=False, persistable=is_persistable)
+        return new_var
+    else:
+        return var_base
 
 
 def enabled():
@@ -664,7 +679,7 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
             #TODO(zhiqiu): we found two problems when enable zero_copy on CPUPlace.
-            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy. 
+            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy.
             # Details: https://eigen.tuxfamily.org/dox/group__TopicUnalignedArrayAssert.html
             # (2): when used in flask framework, it may result in hang.
             # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
