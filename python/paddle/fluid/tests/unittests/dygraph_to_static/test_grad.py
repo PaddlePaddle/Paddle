@@ -24,25 +24,85 @@ class GradLayer(paddle.nn.Layer):
         super(GradLayer, self).__init__()
 
     @paddle.jit.to_static
-    def forward(self):
-        x = paddle.ones(shape=[1], dtype='float32')
+    def forward(self, x):
         x.stop_gradient = False
         y = x * x
         dx = paddle.grad(outputs=[y], inputs=[x])[0]
         return dx
 
 
+class GradLinearLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(GradLinearLayer, self).__init__()
+        self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        x.stop_gradient = False
+        tmp = x + x
+        for i in range(10):
+            tmp = self.linear(tmp)
+        out = tmp
+        dx = paddle.grad(
+            [out], [x], None, create_graph=True, allow_unused=False)[0]
+        return dx
+
+
 class TestGrad(unittest.TestCase):
+    def setUp(self):
+        self.func = GradLayer()
+        self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
+        self.x.stop_gradient = False
+
     def _run(self, func, to_static):
         prog_trans = paddle.jit.ProgramTranslator()
         prog_trans.enable(to_static)
-        return func().numpy()
+        ret = func(self.x).numpy()
+        prog_trans.enable(True)
+        return ret
 
-    def test(self):
-        grad_layer = GradLayer()
-        static_res = self._run(grad_layer, to_static=False)
-        dygraph_res = self._run(grad_layer, to_static=True)
+    def test_forward(self):
+        dygraph_res = self._run(self.func, to_static=False)
+        static_res = self._run(self.func, to_static=True)
         self.assertTrue(np.allclose(static_res, dygraph_res))
+
+
+class TestGradLinear(TestGrad):
+    def setUp(self):
+        self.func = GradLinearLayer()
+        self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
+        self.x.stop_gradient = False
+
+    def test_save_infer_program(self):
+        path = "double_grad_infer_model"
+        input_spec = [
+            paddle.static.InputSpec(
+                shape=[10, 2, 5], dtype='float32')
+        ]
+        paddle.jit.save(self.func, path, input_spec=input_spec)
+        load_func = paddle.jit.load(path)
+
+        origin_res = self.func(self.x).numpy()
+        load_res = load_func(self.x).numpy()
+        self.assertTrue(np.allclose(origin_res, load_res))
+
+    def _test_save_train_program(self):
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                         parameters=self.func.parameters())
+        for i in range(10):
+            out = self.func(self.x)
+            avg_loss = paddle.mean(paddle.abs(out))
+            avg_loss.backward()
+            optimizer.minimize(avg_loss)
+            self.func.clear_gradients()
+
+        path = "double_grad_train_model"
+        paddle.jit.save(self.func, path)
+        load_func = paddle.jit.load(path)
+
+        origin_res = self.func(self.x).numpy()
+        load_res = load_func(self.x).numpy()
+        self.assertTrue(np.allclose(origin_res, load_res))
 
 
 if __name__ == '__main__':
