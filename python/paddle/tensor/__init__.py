@@ -227,7 +227,6 @@ tensor_method_func  = [ #noqa
            'log2',
            'log10',
            'logsumexp',
-           'mul',
            'multiplex',
            'pow',
            'prod',
