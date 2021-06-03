@@ -2075,12 +2075,6 @@ function summary_check_problems() {
 }
 
 
-function download_tar() {
-    cd ${cfs_dir}
-    tar --use-compress-program=pigz -cpPf Paddle.tar.gz ${PADDLE_ROOT} 
-}
-
-
 function reuse_so_cache() {
     get_html="https://api.github.com/repos/PaddlePaddle/Paddle"
     merge_commit=grep sha tmp.txt `curl -X GET ${get_html}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt` |awk -F \" 'NR==1{print $(NF-1)}'
@@ -2190,7 +2184,6 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
-        download_tar
         ;;
       gpu_cicheck_coverage)
         parallel_test
