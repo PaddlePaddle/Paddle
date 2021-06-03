@@ -298,7 +298,8 @@ static void DisablePrepareDataOpt(
     }
     if (op->HasAttr("sub_block")) {
       int blockID = op->GetBlockAttrId("sub_block");
-      DisablePrepareDataOpt(inference_program, blockID, disable_opt);
+      DisablePrepareDataOpt(inference_program, blockID,
+                            disable_opt || pre_disable_opt);
     }
     if (IsPrepareDataOptTargetOp(op)) {
       disable_opt = true;
