@@ -262,10 +262,12 @@ def new_group(ranks=None, backend=None):
                                          place).init_with_ring_id(ring_id)
             else:
                 assert False, ("no cuda device found")
+        else:
+            return gp
 
     # TODO(shenliang03): This is a temporary solution to solve the problem of 
     # hang caused by cross-creation of new_group
-    tmp = paddle.to_tensor([0])
+    tmp = fill_constant([0], dtype="int32", value="1")
     paddle.distributed.all_reduce(tmp, use_calc_stream=True)
     paddle.distributed.wait(tmp)
     return gp
