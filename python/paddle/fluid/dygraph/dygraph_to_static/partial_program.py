@@ -208,7 +208,7 @@ class PartialProgramLayer(layers.Layer):
         double_grads = []
         for block in program.blocks:
             for name in block.vars:
-                if name.endswith("@GRAD"):
+                if "@GRAD" in name:
                     var_desc = block.vars[name].desc
                     var_base = core.VarBase(var_desc.dtype(),
                                             var_desc.shape(),

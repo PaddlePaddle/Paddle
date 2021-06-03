@@ -401,7 +401,7 @@ class _ProgramHolder(object):
         for i in range(program_desc.num_blocks()):
             block_desc = program_desc.block(i)
             for var_desc in block_desc.all_vars():
-                if var_desc.name().endswith("@GRAD"):
+                if "@GRAD" in var_desc.name():
                     self._double_grad_descs.append(var_desc)
 
         # 2. Input processing, reverse feed vars
