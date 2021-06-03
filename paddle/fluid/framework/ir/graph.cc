@@ -24,7 +24,6 @@ namespace ir {
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   PADDLE_ENFORCE_GE(
       program_.Size(), 1,
-
       platform::errors::InvalidArgument("Can't construct a graph from this "
                                         "program, it doesn't have a block"));
   for (size_t idx = 0; idx < program_.Size(); ++idx) {

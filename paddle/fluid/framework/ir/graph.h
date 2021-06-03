@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <gflags/gflags.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -24,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
+
+DEFINE_bool(ssa_program, true, "Convert all blocks in program into SSAgraphs");
 
 namespace paddle {
 namespace framework {
