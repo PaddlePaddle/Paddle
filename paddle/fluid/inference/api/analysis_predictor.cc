@@ -271,7 +271,7 @@ bool AnalysisPredictor::CreateExecutor() {
   return true;
 }
 
-static bool Is_PrePareDate_Opt_Target_Op(framework::OpDesc *op) {
+static bool IsPrePareDataOptTargetOp(framework::OpDesc *op) {
   // here is prepare data optimization related bad cases:
   // let's assume an op behind conditional_block and if conditional_block
   // chooses branch 1, the op need to call prepare data. else the op don't need
@@ -291,7 +291,7 @@ static bool Is_PrePareDate_Opt_Target_Op(framework::OpDesc *op) {
   return false;
 }
 
-static void Disable_PrePareDate_Opt(
+static void DisablePrePareDateOpt(
     std::shared_ptr<framework::ProgramDesc> inference_program, int block) {
   bool disable_opt = false;
   for (auto *op : inference_program->Block(block).AllOps()) {
@@ -300,16 +300,16 @@ static void Disable_PrePareDate_Opt(
     }
     if (op->HasAttr("sub_block")) {
       int blockID = op->GetBlockAttrId("sub_block");
-      Disable_PrePareDate_Opt(inference_program, blockID);
+      DisablePrePareDateOpt(inference_program, blockID);
     }
-    if (Is_PrePareDate_Opt_Target_Op(op)) {
+    if (IsPrePareDataOptTargetOp(op)) {
       disable_opt = true;
     }
   }
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
-  Disable_PrePareDate_Opt(inference_program_, 0);
+  DisablePrePareDateOpt(inference_program_, 0);
 
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops_);

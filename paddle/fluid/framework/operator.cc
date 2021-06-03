@@ -1534,7 +1534,9 @@ Scope* OperatorWithKernel::PrepareData(
 
   // For inference, ops that behind conditional branch aren't supported well,
   // so disable prepare optimization conservatively.
-  if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data_) {
+  bool force_prepare_data = HasAttr("inference_force_prepare") &&
+                            Attr<bool>("inference_force_prepare");
+  if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
     need_prepare_data_ = false;
   }
 
