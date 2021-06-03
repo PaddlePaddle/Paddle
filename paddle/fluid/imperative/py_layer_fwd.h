@@ -89,34 +89,34 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
   // process args,`input_vars` only collect `imperative::VarBase`
   if (!args.empty()) {
     for (auto ptr = args.begin(); ptr != args.end(); ptr++) {
-      try {
-        // Only collect Tensor type in 'args' and pass them to backward. Ignore
-        // other types of input temporarily.
-        if (py::isinstance<imperative::VarBase>(*ptr)) {
+      // Only collect Tensor type in 'args' and pass them to backward. Ignore
+      // other types of input temporarily.
+      if (py::isinstance<imperative::VarBase>(*ptr)) {
+        try {
           auto a = ptr->cast<std::shared_ptr<VarBase>>();
           input_vars.push_back(a);
+        } catch (py::cast_error& err) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "`%s` can not be cast into `Tensor`.",
+              ptr->ptr()->ob_type->tp_name));
         }
-      } catch (py::cast_error& err) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "`%s` can not be cast into `Tensor`.",
-            ptr->ptr()->ob_type->tp_name));
       }
     }
   }
   // process kwargs, only collect `imperative::VarBase`
   if (!kwargs.empty()) {
     for (auto ptr = kwargs.begin(); ptr != kwargs.end(); ptr++) {
-      try {
-        // Only collect Tensor type in 'kwargs' and pass them to backward.
-        // Ignore other types of input temporarily.
-        if (py::isinstance<imperative::VarBase>(*ptr->second)) {
+      // Only collect Tensor type in 'kwargs' and pass them to backward.
+      // Ignore other types of input temporarily.
+      if (py::isinstance<imperative::VarBase>(*ptr->second)) {
+        try {
           auto a = ptr->second.cast<std::shared_ptr<VarBase>>();
           input_vars.push_back(a);
+        } catch (py::cast_error&) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "`%s` can not be cast into `Tensor`.",
+              ptr->second.ptr()->ob_type->tp_name));
         }
-      } catch (py::cast_error&) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "`%s` can not be cast into `Tensor`.",
-            ptr->second.ptr()->ob_type->tp_name));
       }
     }
   }

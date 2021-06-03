@@ -75,7 +75,7 @@ void RunPyObject(py::object *py_object,
           } else {
             PADDLE_THROW(platform::errors::InvalidArgument(
                 "The output of `PyLayer.backward` should be `Tensor`, but "
-                "received `%s`",
+                "received `%s`.",
                 result_tuple[i].ptr()->ob_type->tp_name));
           }
         } else {
