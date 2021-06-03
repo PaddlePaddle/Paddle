@@ -610,14 +610,16 @@ class MAOutputScaleLayer(layers.Layer):
     Add MovingAverageMaxScale layer to the behind of the input layer.
     """
 
-    def __init__(self, layer=None, moving_rate=0.9, dtype='float32'):
+    def __init__(self, layer=None, moving_rate=0.9, name=None, dtype='float32'):
         r"""
         Construct
         """
         super(MAOutputScaleLayer, self).__init__()
         self._layer = layer
+        if name is None:
+            name = layer.full_name()
         self._ma_output_scale = \
-            MovingAverageAbsMaxScale(layer.full_name(), moving_rate, dtype)
+            MovingAverageAbsMaxScale(name, moving_rate, dtype)
 
     def forward(self, *inputs, **kwargs):
         out = self._layer(*inputs, **kwargs)
@@ -636,6 +638,7 @@ class FakeQuantMAOutputScaleLayer(layers.Layer):
                  weight_bits=8,
                  activation_bits=8,
                  moving_rate=0.9,
+                 name=None,
                  *args,
                  **kwargs):
 
@@ -643,7 +646,7 @@ class FakeQuantMAOutputScaleLayer(layers.Layer):
         self._layer = layer
         self._fake_quant_output = _get_fake_quant_type(
             'moving_average_abs_max',
-            name=layer.full_name(),
+            name=layer.full_name() if name is None else name,
             moving_rate=moving_rate,
             quant_bits=activation_bits,
             dtype=self._dtype,

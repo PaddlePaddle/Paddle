@@ -57,6 +57,8 @@ fake_quant_leaf_layers = [
     quant_nn.MovingAverageAbsMaxScale,
 ]
 
+fake_quant_wrap_layers = [quant_nn.QuantizedConv2D, quant_nn.QuantizedLinear]
+
 weight_op_types = [
     "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
     "depthwise_conv2d_transpose"

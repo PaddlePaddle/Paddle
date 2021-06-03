@@ -363,19 +363,19 @@ class ImperativeQuantizeOutputs(object):
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
-        for name, cur_layer in model.named_sublayers():
+        for cur_name, cur_layer in model.named_sublayers():
             if not self._is_target_layer(cur_layer):
                 continue
 
             parent_layer, sub_name = \
-                utils.find_parent_layer_and_sub_name(model, name)
+                utils.find_parent_layer_and_sub_name(model, cur_name)
 
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
-                cur_quant_layer = quant_nn.__dict__[
-                    "FakeQuantMAOutputScaleLayer"](cur_layer, self._moving_rate)
-            else:
-                cur_quant_layer = quant_nn.__dict__["MAOutputScaleLayer"](
+                cur_quant_layer = quant_nn.FakeQuantMAOutputScaleLayer(
                     cur_layer, self._moving_rate)
+            else:
+                cur_quant_layer = quant_nn.MAOutputScaleLayer(cur_layer,
+                                                              self._moving_rate)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
@@ -460,8 +460,7 @@ class ImperativeQuantizeOutputs(object):
                 not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
                 flag = True
             # consider QuantizedConv2D and QuantizedLinear ops
-            if isinstance(layer,
-                          (quant_nn.QuantizedConv2D, quant_nn.QuantizedLinear)):
+            if isinstance(layer, tuple(utils.fake_quant_wrap_layers)):
                 flag = True
         if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
             flag = True
