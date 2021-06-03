@@ -166,7 +166,7 @@ class ColumnParallelLinear(Layer):
     def forward(self, x):
         input_parallel = identity_in_model_parallel(x)
         output_parallel = F.linear(
-            input_parallel, self.weight, self.bias, name=self.name)
+            input_parallel, self.weight, self.bias, name=self._name)
         if self.gather_output:
             output = gather_in_model_parallel(output_parallel)
 
@@ -236,7 +236,7 @@ class RowParallelLinear(Layer):
             input_parallel = x
         else:
             input_parallel = scatter_in_model_parallel(x)
-        output_parallel = F.linear(input_parallel, self.weight, name=self.name)
+        output_parallel = F.linear(input_parallel, self.weight, name=self._name)
         output_ = reduce_in_model_parallel(output_parallel)
         output = output_ + self.bias if self.bias is not None else output_
         return output
