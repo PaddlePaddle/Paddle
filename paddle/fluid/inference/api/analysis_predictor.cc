@@ -288,7 +288,7 @@ static bool IsPrePareDataOptTargetOp(framework::OpDesc *op) {
   return false;
 }
 
-static void DisablePrePareDateOpt(
+static void DisablePrePareDataOpt(
     std::shared_ptr<framework::ProgramDesc> inference_program, int block) {
   bool disable_opt = false;
   for (auto *op : inference_program->Block(block).AllOps()) {
@@ -297,7 +297,7 @@ static void DisablePrePareDateOpt(
     }
     if (op->HasAttr("sub_block")) {
       int blockID = op->GetBlockAttrId("sub_block");
-      DisablePrePareDateOpt(inference_program, blockID);
+      DisablePrePareDataOpt(inference_program, blockID);
     }
     if (IsPrePareDataOptTargetOp(op)) {
       disable_opt = true;
@@ -306,7 +306,7 @@ static void DisablePrePareDateOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
-  DisablePrePareDateOpt(inference_program_, 0);
+  DisablePrePareDataOpt(inference_program_, 0);
 
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops_);
