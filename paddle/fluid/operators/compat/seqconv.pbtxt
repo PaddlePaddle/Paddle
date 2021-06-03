@@ -6,14 +6,14 @@ def {
   inputs {
     name: "Filter"
   }
+  inputs {
+    name: "PaddingData"
+  }
   outputs {
     name: "Out"
   }
 }
 extra {
-  inputs {
-    name: "PaddingData"
-  }
   attrs {
     name: "paddingTrainable"
     type: BOOLEAN
