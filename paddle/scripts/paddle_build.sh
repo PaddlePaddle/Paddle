@@ -2182,6 +2182,17 @@ function main() {
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
+      cpu_cicheck_coverage)
+        check_approvals_of_unittest 1
+        check_diff_file_for_coverage
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        enable_unused_var_check
+        ;;
+      gpu_cicheck_coverage)
+        parallel_test
+        check_coverage
+        check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
       ci_preciseTest)
         insert_pile_to_h_cu_diff 
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
