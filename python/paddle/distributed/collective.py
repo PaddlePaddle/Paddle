@@ -263,7 +263,7 @@ def new_group(ranks=None, backend=None):
     else:
         assert False, ("no cuda device found")
     # need to barrier to construct group
-    barrier(gp)
+    barrier()
     return gp
 
 
