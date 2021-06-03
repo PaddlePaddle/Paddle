@@ -73,11 +73,10 @@ class ReduceSumKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(reduce_sum, ops::ReduceSumKernel<bool>,
-                        ops::ReduceSumKernel<float>,
-                        ops::ReduceSumKernel<double>,
-                        ops::ReduceSumKernel<paddle::platform::float16>,
-                        ops::ReduceSumKernel<int>,
-                        ops::ReduceSumKernel<int64_t>,
-                        ops::ReduceSumKernel<paddle::platform::complex<float>>,
-                        ops::ReduceSumKernel<paddle::platform::complex<double>>);
+REGISTER_OP_CUDA_KERNEL(
+    reduce_sum, ops::ReduceSumKernel<bool>, ops::ReduceSumKernel<float>,
+    ops::ReduceSumKernel<double>,
+    ops::ReduceSumKernel<paddle::platform::float16>, ops::ReduceSumKernel<int>,
+    ops::ReduceSumKernel<int64_t>,
+    ops::ReduceSumKernel<paddle::platform::complex<float>>,
+    ops::ReduceSumKernel<paddle::platform::complex<double>>);
