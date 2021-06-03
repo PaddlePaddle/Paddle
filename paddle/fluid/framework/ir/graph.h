@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 
-DEFINE_bool(ssa_program, true, "Convert all blocks in program into SSAgraphs");
+DECLARE_bool(ssa_program);
 
 namespace paddle {
 namespace framework {
@@ -82,7 +82,9 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
+#if FLAGS_ssa_program
   Graph(const BlockDesc &block, const Graph *parent);
+#endif  // FLAGS_ssa_program
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -256,6 +258,7 @@ class Graph {
   std::shared_ptr<Graph> Clone();
 
  private:
+#if FLAGS_ssa_program
   std::map<std::string, std::vector<ir::Node *>> InitFromBlock(
       const BlockDesc &block);
 
@@ -266,11 +269,17 @@ class Graph {
   }
 
   std::unique_ptr<Graph> CloneSubgraph(const size_t idx);
+#else   // FLAGS_ssa_program
+  std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
+      const ProgramDesc &program);
+#endif  // FLAGS_ssa_program
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
+#if FLAGS_ssa_program
   const Graph *parent_;  // not owned.
   std::vector<std::unique_ptr<Graph>> sub_graphs_;
+#endif  // FLAGS_ssa_program
 
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
