@@ -18,6 +18,7 @@ from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
+from .layers_help import identity_in_model_parallel, gather_in_model_parallel, reduce_in_model_parallel, scatter_in_model_parallel
 
 __all__ = []
 
@@ -163,21 +164,12 @@ class ColumnParallelLinear(Layer):
             self.bias = None
 
     def forward(self, x):
-        # use inner api to process identity
-        if self.is_mp:
-            input_parallel = paddle.distributed.collective._c_identity(
-                x, group=self.model_parallel_group)
-        else:
-            input_parallel = x
-
+        input_parallel = identity_in_model_parallel(x)
         output_parallel = F.linear(
-            input_parallel, self.weight, self.bias, name=self._name)
+            input_parallel, self.weight, self.bias, name=self.name)
+        if self.gather_output:
+            output = gather_in_model_parallel(output_parallel)
 
-        if self.gather_output and self.is_mp:
-            output = paddle.distributed.collective._c_concat(
-                output_parallel,
-                nranks=self.world_size,
-                group=self.model_parallel_group)
         else:
             output = output_parallel
         return output
@@ -240,26 +232,11 @@ class RowParallelLinear(Layer):
             self.bias = None
 
     def forward(self, x):
-        if self.input_is_parallel or (not self.is_mp):
+        if self.input_is_parallel:
             input_parallel = x
         else:
-            # split last dim
-            input_parallel = paddle.distributed.collective._c_split(
-                x,
-                rank=self.rank,
-                nranks=self.world_size,
-                group=self.model_parallel_group)
-
-        output_parallel = F.linear(input_parallel, self.weight, name=self._name)
-
-        if self.is_mp:
-            output_ = paddle.distributed.collective._mp_allreduce(
-                output_parallel,
-                group=self.model_parallel_group,
-                use_calc_stream=True,
-                use_model_parallel=True)
-        else:
-            output_ = output_parallel
-
+            input_parallel = scatter_in_model_parallel(x)
+        output_parallel = F.linear(input_parallel, self.weight, name=self.name)
+        output_ = reduce_in_model_parallel(output_parallel)
         output = output_ + self.bias if self.bias is not None else output_
         return output
