@@ -638,3 +638,8 @@ def append_naive_sync(block, sync_var, ring_id):
             'use_calc_stream': True,
             OP_ROLE_KEY: OpRole.Forward
         })
+    block.append_op(
+        type='c_sync_calc_stream',
+        inputs={'X': [sync_var]},
+        outputs={'Out': [sync_var]},
+        attrs={OP_ROLE_KEY: OpRole.Forward})
