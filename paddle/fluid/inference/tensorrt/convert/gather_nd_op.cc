@@ -47,7 +47,8 @@ class GatherNdOpConverter : public OpConverter {
           "your TRT version is no less than 6.0"));
 #endif
     } else {
-      LOG(FATAL) << "gather_nd plugin only support dynamic mode.";
+      PADDLE_THROW(platform::errors::Fatal(
+          "gather_nd plugin only support dynamic mode."));
     }
 
     std::string layer_name = "gather_nd (Output: ";
