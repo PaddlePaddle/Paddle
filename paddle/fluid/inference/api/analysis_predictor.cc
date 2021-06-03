@@ -275,12 +275,9 @@ static bool IsPrePareDataOptTargetOp(framework::OpDesc *op) {
   // here is prepare data optimization related bad cases:
   // let's assume an op behind conditional_block and if conditional_block
   // chooses branch 1, the op need to call prepare data. else the op don't need
-  // to
   // to call prepare data. In running, if predictor chooses branch 2, then
-  // optimization
-  // takes effect, later issue is followed if predictor chooses branch 1,
-  // because
-  // the op lost chance to prepare data.
+  // optimization takes effect, later issue is followed if predictor chooses
+  // branch 1, because the op lost chance to prepare data.
   std::vector<std::string> op_type = {"conditional_block_infer",
                                       "select_input"};
   for (const auto &type : op_type) {
@@ -296,7 +293,7 @@ static void DisablePrePareDateOpt(
   bool disable_opt = false;
   for (auto *op : inference_program->Block(block).AllOps()) {
     if (disable_opt) {
-      op->SetAttr("inference_force_prepare", true);
+      op->SetAttr("inference_force_prepare_data", true);
     }
     if (op->HasAttr("sub_block")) {
       int blockID = op->GetBlockAttrId("sub_block");
