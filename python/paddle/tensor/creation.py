@@ -35,7 +35,7 @@ __all__ = []
 
 
 @dygraph_only
-def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+def to_tensor(data, dtype=None, place=None, stop_gradient=None):
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
@@ -100,6 +100,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #        [[(1+1j), (2+0j)],
         #         [(3+2j), (4+0j)]])
     """
+    # NOTE(zhiqiu): If stop_gradient is not given, it should be handled on two cases:
+    # (1) data is Paddle.Tensor, keep its original stop_gradient
+    # (2) data is other type, set its stop_gradient=True
+    _stop_gradient = True if stop_gradient is None else stop_gradient
 
     place = _get_paddle_place(place)
     if place is None:
@@ -119,8 +123,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     if not isinstance(data, np.ndarray):
 
-        def _handle_diff_place_dtype(data, dtype, place, stop_gradient):
-            data.stop_gradient = stop_gradient
+        def _handle_diff_place_dtype(data, dtype, place):
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
             if dtype:
@@ -138,11 +141,14 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "this means the input data contains nested lists with different lengths. "
                 )
         elif isinstance(data, paddle.Tensor):
-            return _handle_diff_place_dtype(data, dtype, place, stop_gradient)
+            if stop_gradient is not None:
+                data.stop_gradient = stop_gradient
+            return _handle_diff_place_dtype(data, dtype, place)
         elif isinstance(data, (core.Tensor, core.LoDTensor)):
             # convert LoDTensor to VarBase first, and then process it as input VarBase
             data = paddle.Tensor(data)
-            return _handle_diff_place_dtype(data, dtype, place, stop_gradient)
+            data.stop_gradient = _stop_gradient
+            return _handle_diff_place_dtype(data, dtype, place)
         else:
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".
@@ -165,7 +171,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         place=place,
         persistable=False,
         zero_copy=False,
-        stop_gradient=stop_gradient)
+        stop_gradient=_stop_gradient)
 
 
 def full_like(x, fill_value, dtype=None, name=None):
