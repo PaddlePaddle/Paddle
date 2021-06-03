@@ -4,22 +4,54 @@ endif()
 
 INCLUDE(ExternalProject)
 SET(XPU_PROJECT                 "extern_xpu")
-SET(XPU_API_LIB_NAME            "libxpuapi.so")
-SET(XPU_RT_LIB_NAME             "libxpurt.so")
+SET(XPU_API_LIB_NAME           "libxpuapi.so")
+SET(XPU_RT_LIB_NAME            "libxpurt.so")
+SET(XPU_XCCL_LIB_NAME           "libbkcl.so")
 
-if(NOT XPU_SDK_ROOT)
-  if (WITH_AARCH64)
-      SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/aarch64/xpu_2021_01_13.tar.gz" CACHE STRING "" FORCE)
-  elseif(WITH_SUNWAY)
-      SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/sunway/xpu_2021_01_13.tar.gz" CACHE STRING "" FORCE)
-  else()
-      SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu_2021_05_19.tar.gz" CACHE STRING "" FORCE)
-  endif()
+
+IF(NOT XPU_SDK_ROOT)
+  IF(WITH_AARCH64)
+    SET(HOST_SYSTEM "kylin")
+  ELSE ()
+    IF(EXISTS "/etc/issue")
+      FILE(READ "/etc/issue" LINUX_ISSUE)
+      IF(LINUX_ISSUE MATCHES "CentOS")
+          SET(HOST_SYSTEM "centos")
+      ELSEIF(LINUX_ISSUE MATCHES "Ubuntu")
+          SET(HOST_SYSTEM "ubuntu")
+      ENDIF()
+    ENDIF(EXISTS "/etc/issue")
+
+    IF (EXISTS "/etc/redhat-release")
+      FILE(READ "/etc/redhat-release" LINUX_ISSUE)
+      IF (LINUX_ISSUE MATCHES "CentOS")
+          SET(HOST_SYSTEM "centos")
+      ENDIF()
+    ENDIF(EXISTS "/etc/redhat-release")
+  ENDIF()
+
+  IF (HOST_SYSTEM MATCHES "ubuntu")
+    SET(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
+    SET(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
+    SET(XPU_XCCL_DIR_NAME "xccl-ubuntu_x86_64")
+  ELSEIF (HOST_SYSTEM MATCHES "centos")
+    SET(XPU_XRE_DIR_NAME "xre-centos7_x86_64")
+    SET(XPU_XDNN_DIR_NAME "xdnn-centos7_x86_64")
+    SET(XPU_XCCL_DIR_NAME "xccl-centos7_x86_64")
+  ELSEIF (HOST_SYSTEM MATCHES "kylin")
+    SET(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
+    SET(XPU_XDNN_DIR_NAME "xdnn-kylin_aarch64")
+    SET(XPU_XCCL_DIR_NAME "xccl-kylin_aarch64")
+  ENDIF()
+
+  SET(XPU_XRE_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XRE_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
+  SET(XPU_XDNN_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XDNN_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
+  SET(XPU_XCCL_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XCCL_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
 
   SET(XPU_SOURCE_DIR              "${THIRD_PARTY_PATH}/xpu")
   SET(XPU_DOWNLOAD_DIR            "${XPU_SOURCE_DIR}/src/${XPU_PROJECT}")
   SET(XPU_INSTALL_DIR             "${THIRD_PARTY_PATH}/install/xpu")
-  SET(XPU_API_INC_DIR             "${THIRD_PARTY_PATH}/install/xpu/include")
+  SET(XPU_INC_DIR                 "${THIRD_PARTY_PATH}/install/xpu/include")
   SET(XPU_LIB_DIR                 "${THIRD_PARTY_PATH}/install/xpu/lib")
 
   SET(XPU_API_LIB                 "${XPU_LIB_DIR}/${XPU_API_LIB_NAME}")
@@ -38,21 +70,22 @@ if(NOT XPU_SDK_ROOT)
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${XPU_SOURCE_DIR}
       DOWNLOAD_DIR          ${XPU_DOWNLOAD_DIR}
-      DOWNLOAD_COMMAND      wget --no-check-certificate ${XPU_URL} -c -q -O xpu.tar.gz
-                            && tar xvf xpu.tar.gz
+      DOWNLOAD_COMMAND      wget "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
+                            && bash pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME}
+
       DOWNLOAD_NO_PROGRESS  1
       UPDATE_COMMAND        ""
       CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
       CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${XPU_INSTALL_ROOT}
   )
-else()
-  SET(XPU_API_INC_DIR   "${XPU_SDK_ROOT}/XTDK/include/")
-  SET(XPU_API_LIB "${XPU_SDK_ROOT}/XTDK/shlib/libxpuapi.so")
-  SET(XPU_RT_LIB "${XPU_SDK_ROOT}/XTDK/runtime/shlib/libxpurt.so")
-  SET(XPU_LIB_DIR "${XPU_SDK_ROOT}/XTDK/shlib/")
-endif()
+ELSE()
+  SET(XPU_INC_DIR                  "${XPU_SDK_ROOT}/include/")
+  SET(XPU_LIB_DIR                  "${XPU_SDK_ROOT}/so/")
+  SET(XPU_API_LIB                 "${XPU_SDK_ROOT}/so/${XPU_API_LIB_NAME}")
+  SET(XPU_RT_LIB                  "${XPU_SDK_ROOT}/so/${XPU_RT_LIB_NAME}")
+ENDIF()
 
-INCLUDE_DIRECTORIES(${XPU_API_INC_DIR})
+INCLUDE_DIRECTORIES(${XPU_INC_DIR})
 ADD_LIBRARY(shared_xpuapi SHARED IMPORTED GLOBAL)
 set_property(TARGET shared_xpuapi PROPERTY IMPORTED_LOCATION "${XPU_API_LIB}")
 
@@ -62,7 +95,7 @@ generate_dummy_static_lib(LIB_NAME "xpulib" GENERATOR "xpu.cmake")
 
 TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
 
-if (WITH_XPU_BKCL)
+IF(WITH_XPU_BKCL)
   MESSAGE(STATUS "Compile with XPU BKCL!")
   ADD_DEFINITIONS(-DPADDLE_WITH_XPU_BKCL)
 
@@ -71,9 +104,9 @@ if (WITH_XPU_BKCL)
   SET(XPU_BKCL_INC_DIR          "${THIRD_PARTY_PATH}/install/xpu/include")
   INCLUDE_DIRECTORIES(${XPU_BKCL_INC_DIR})
   TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB})
-else(WITH_XPU_BKCL)
-  TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} )
-endif(WITH_XPU_BKCL)
+ELSE(WITH_XPU_BKCL)
+  TARGET_LINK_LIBRARIES(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
+ENDIF(WITH_XPU_BKCL)
 
 if(NOT XPU_SDK_ROOT)
   ADD_DEPENDENCIES(xpulib ${XPU_PROJECT})
