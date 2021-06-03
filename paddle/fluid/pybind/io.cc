@@ -63,6 +63,7 @@ void BindIO(pybind11::module *m) {
            fout.close();
            return tellp;
          });
+
   m->def("load_selected_rows",
          [](paddle::framework::SelectedRows &selected_rows,
             const std::string &str_file_name) {
@@ -77,23 +78,27 @@ void BindIO(pybind11::module *m) {
            fin.close();
            return tellg;
          });
+
   m->def("save_lod_tensor_to_memory",
          [](const paddle::framework::LoDTensor &tensor) -> py::bytes {
            std::ostringstream ss;
            paddle::framework::SerializeToStream(ss, tensor);
            return ss.str();
          });
+
   m->def("load_lod_tensor_from_memory", [](paddle::framework::LoDTensor &tensor,
                                            const std::string &tensor_bytes) {
     std::istringstream fin(tensor_bytes, std::ios::in | std::ios::binary);
     paddle::framework::DeserializeFromStream(fin, &tensor);
   });
+
   m->def("save_selected_rows_to_memory",
          [](const paddle::framework::SelectedRows &selected_rows) -> py::bytes {
            std::ostringstream ss;
            paddle::framework::SerializeToStream(ss, selected_rows);
            return ss.str();
          });
+
   m->def("load_selected_rows_from_memory",
          [](paddle::framework::SelectedRows &selected_rows,
             const std::string &selected_rows_bytes) {
