@@ -404,8 +404,7 @@ headers = (
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
     # to `extension/incude`,
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
 
 if '${WITH_MKLDNN}' == 'ON':

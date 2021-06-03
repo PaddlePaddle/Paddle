@@ -343,7 +343,6 @@ template <typename InT, typename OutT, typename BroadcastArgsWarpper,
 __global__ void ElementwiseBroadcastKernel(
     BroadcastArgsWarpper broadcast_warpper, int main_tid, int tail_tid) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
   // Vectorized calculation of major data whose length is the max multipler of
   // VecSize,
   // eg: Calcualting the front 1024-length data in total 1027 data once VecSize
@@ -466,7 +465,11 @@ void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
-  static_assert(ET == (ElementwiseType)2, "Only Support binary calculation.");
+  PADDLE_ENFORCE_EQ(ET, ElementwiseType::kBinary,
+                    platform::errors::InvalidArgument(
+                        "Currently, only Support binary calculation, "
+                        "but received %d input tensors.\n",
+                        static_cast<int>(ET)));
   int in_vec_size = 4;
   framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {
@@ -501,7 +504,7 @@ void LaunchBroadcastElementwiseCudaKernel(
   }
 }
 
-template <ElementwiseType ET, typename InT, typename OutType, typename Functor>
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel(
     const platform::CUDADeviceContext &cuda_ctx,
     const std::vector<const framework::Tensor *> &ins,
@@ -512,12 +515,11 @@ void LaunchElementwiseCudaKernel(
   }
 
   if (no_broadcast_flag) {
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutType>(
-        cuda_ctx, ins, outs, func);
+    LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
+                                                       func);
   } else {
-    LaunchBroadcastElementwiseCudaKernel<ElementwiseType::kBinary, InT,
-                                         OutType>(cuda_ctx, ins, outs, axis,
-                                                  func);
+    LaunchBroadcastElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
+                                                        axis, func);
   }
 }
 
