@@ -4,8 +4,8 @@ endif()
 
 INCLUDE(ExternalProject)
 SET(XPU_PROJECT                 "extern_xpu")
-SET(XPU_API_LIB_NAME           "libxpuapi.so")
-SET(XPU_RT_LIB_NAME            "libxpurt.so")
+SET(XPU_API_LIB_NAME            "libxpuapi.so")
+SET(XPU_RT_LIB_NAME             "libxpurt.so")
 SET(XPU_XCCL_LIB_NAME           "libbkcl.so")
 
 
@@ -44,7 +44,7 @@ IF(NOT XPU_SDK_ROOT)
     SET(XPU_XCCL_DIR_NAME "xccl-kylin_aarch64")
   ENDIF()
 
-  SET(XPU_XRE_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XRE_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
+  SET(XPU_XRE_URL  "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XRE_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
   SET(XPU_XDNN_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XDNN_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
   SET(XPU_XCCL_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XCCL_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
 
@@ -81,8 +81,8 @@ IF(NOT XPU_SDK_ROOT)
 ELSE()
   SET(XPU_INC_DIR                  "${XPU_SDK_ROOT}/include/")
   SET(XPU_LIB_DIR                  "${XPU_SDK_ROOT}/so/")
-  SET(XPU_API_LIB                 "${XPU_SDK_ROOT}/so/${XPU_API_LIB_NAME}")
-  SET(XPU_RT_LIB                  "${XPU_SDK_ROOT}/so/${XPU_RT_LIB_NAME}")
+  SET(XPU_API_LIB                  "${XPU_SDK_ROOT}/so/${XPU_API_LIB_NAME}")
+  SET(XPU_RT_LIB                   "${XPU_SDK_ROOT}/so/${XPU_RT_LIB_NAME}")
 ENDIF()
 
 INCLUDE_DIRECTORIES(${XPU_INC_DIR})
