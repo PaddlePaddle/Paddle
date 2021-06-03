@@ -40,10 +40,9 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     auto word_emb_name = op_desc.Input("WordEmbedding").front();
     auto pos_emb_name = op_desc.Input("PosEmbedding").front();
     auto sent_emb_name = op_desc.Input("SentEmbedding").front();
-    std::vector<std::string> id_names = {word_id_name, pos_id_name,
-                                         sent_id_name};
-    std::vector<std::string> emb_names = {word_emb_name, pos_emb_name,
-                                          sent_emb_name};
+
+    std::vector<std::string> id_names = op_desc.Input("Ids");
+    std::vector<std::string> emb_names = op_desc.Input("Embs");
 
     int input_num = id_names.size();
 
