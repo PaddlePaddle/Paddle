@@ -61,6 +61,30 @@ namespace paddle {
 namespace operators {
 
 /*
+* To pack the input and output tnesors into vector for
+*  LaunchElementwiseCudaKernel
+*/
+template <typename OutT>
+int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
+                          std::vector<const framework::Tensor *> *ins,
+                          std::vector<framework::Tensor *> *outs) {
+  int axis = -1;
+  auto *x = ctx.Input<framework::LoDTensor>("X");
+  auto *y = ctx.Input<framework::LoDTensor>("Y");
+  auto *z = ctx.Output<framework::LoDTensor>("Out");
+  z->mutable_data<OutT>(ctx.GetPlace());
+  outs->emplace_back(z);
+  ins->emplace_back(x);
+
+  if (y != nullptr) {
+    ins->emplace_back(y);
+    axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
+    axis = axis == -1 ? std::abs(y->dims().size() - x->dims().size()) : axis;
+  }
+  return axis;
+}
+
+/*
  * Out = X ⊙ Y
  * If Y's shape does not match X' shape, they will be reshaped.
  * For example:

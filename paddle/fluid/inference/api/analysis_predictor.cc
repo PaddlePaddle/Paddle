@@ -650,19 +650,21 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--cudnn_deterministic=True");
       }
 
-      if (config.thread_local_stream_enabled()) {
-        gflags.push_back("--allocator_strategy=thread_local");
-        process_level_allocator_enabled = false;
-      } else {
-        process_level_allocator_enabled = true;
-      }
-
 // TODO(wilber): jetson tx2 may fail to run the model due to insufficient memory
 // under the native_best_fit strategy. Modify the default allocation strategy to
 // auto_growth. todo, find a more appropriate way to solve the problem.
 #ifdef WITH_NV_JETSON
       gflags.push_back("--allocator_strategy=auto_growth");
 #endif
+
+      // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
+      // allocator when multi-stream is enabled.
+      if (config.thread_local_stream_enabled()) {
+        gflags.push_back("--allocator_strategy=thread_local");
+        process_level_allocator_enabled = false;
+      } else {
+        process_level_allocator_enabled = true;
+      }
 
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
@@ -1195,6 +1197,7 @@ USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(nearest_interp);
+USE_TRT_CONVERTER(reshape);
 #endif
 
 namespace paddle_infer {

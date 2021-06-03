@@ -58,6 +58,8 @@ import os
 import tarfile
 import six.moves.cPickle as pickle
 
+__all__ = []
+
 
 def _check_cv2():
     if cv2 is None:

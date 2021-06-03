@@ -34,6 +34,10 @@ class PyLayerContext {
   PyLayerContext() = delete;
 
   PyObject* GetMutableCtx() { return context_; }
+  ~PyLayerContext() {
+    py::gil_scoped_acquire guard;
+    Py_XDECREF(context_);
+  }
 
  private:
   PyObject* context_;
@@ -58,8 +62,11 @@ class PyLayerOp : public framework::OperatorWithKernel {
   void SetPyLayerContext(const std::shared_ptr<PyLayerContext>& py_context) {
     py_context_ = py_context;
   }
-  const std::shared_ptr<PyLayerContext>& GetPyLayerContext() const {
-    return py_context_;
+  std::shared_ptr<PyLayerContext> ReleasePyLayerContext() {
+    auto temp = py_context_;
+    py_context_.reset();
+    VLOG(3) << "`py_context_` in the PyLayerOp is released.";
+    return temp;
   }
 
  private:

@@ -22,8 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -504,6 +503,11 @@ class AnyVisitor : public boost::static_visitor<bool> {
   }
 
   bool GetResult(const framework::Tensor& out,
+                 const platform::NPUPinnedPlace& cpu) const {
+    return *out.data<bool>();
+  }
+
+  bool GetResult(const framework::Tensor& out,
                  const platform::CPUPlace& cpu) const {
     return *out.data<bool>();
   }
@@ -722,6 +726,18 @@ struct BothFalseVisitor : public boost::static_visitor<> {
 
   void VisitorImpl(
       const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
+    int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
+    for (int i = 0; i < num; ++i) {
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
+    }
+  }
+
+  void VisitorImpl(
+      const platform::NPUPinnedPlace& cpu /* equals to cpu*/) const {
     int num = in_.numel();
     const bool* in_ptr = in_.data<bool>();
     bool* out_ptr = out_->data<bool>();
@@ -1120,9 +1136,9 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex64>(
+std::ostream& print_tensor<paddle::platform::complex<float>>(
     std::ostream& os, const framework::Tensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex64>();
+  auto inspect = tensor.data<paddle::platform::complex<float>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";
@@ -1138,9 +1154,9 @@ std::ostream& print_tensor<paddle::platform::complex64>(
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex128>(
+std::ostream& print_tensor<paddle::platform::complex<double>>(
     std::ostream& os, const framework::Tensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex128>();
+  auto inspect = tensor.data<paddle::platform::complex<double>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";

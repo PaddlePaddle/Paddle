@@ -157,9 +157,12 @@ class PyLayerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &op_ = ctx.GetOp();
-    auto pylayer_op = dynamic_cast<const PyLayerOp *>(&op_);
-    if (pylayer_op) {
-      auto py_layer_context = pylayer_op->GetPyLayerContext();
+    auto const_pylayer_op = dynamic_cast<const PyLayerOp *>(&op_);
+    if (const_pylayer_op) {
+      auto pylayer_op = const_cast<PyLayerOp *>(const_pylayer_op);
+
+      // Release contex after executing the compute
+      auto py_layer_context = pylayer_op->ReleasePyLayerContext();
       py::object bk_ctx(py::handle(py_layer_context->GetMutableCtx()), true);
       auto &input_vars = ctx.MultiInputVar("X");
       auto output_vars = ctx.MultiOutputVar("Out");
@@ -196,9 +199,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex64>,
+                         ::paddle::platform::complex<float>>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex128>);
+                         ::paddle::platform::complex<double>>);
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
     py_layer, ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, float>,
@@ -215,7 +218,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int16_t>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex64>,
+                         ::paddle::platform::complex<float>>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         ::paddle::platform::complex128>);
+                         ::paddle::platform::complex<double>>);
 #endif  // PADDLE_WITH_CUDA

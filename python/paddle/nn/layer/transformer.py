@@ -28,6 +28,8 @@ from ...fluid.dygraph import Layer, LayerList
 from ...fluid.param_attr import ParamAttr
 from ...fluid.data_feeder import convert_dtype
 
+__all__ = []
+
 
 def _convert_param_attr_to_list(param_attr, n):
     """

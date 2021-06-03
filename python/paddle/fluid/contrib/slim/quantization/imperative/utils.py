@@ -39,7 +39,7 @@ quant_input_layers_map = {
 
 fake_quantize_dequantize_types = [
     "fake_quantize_dequantize_abs_max",
-    "fake_quantize_dequantize_channel_wise_abs_max",
+    "fake_channel_wise_quantize_dequantize_abs_max",
     "fake_quantize_dequantize_moving_average_abs_max"
 ]
 

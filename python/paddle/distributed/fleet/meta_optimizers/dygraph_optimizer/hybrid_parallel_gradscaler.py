@@ -23,13 +23,15 @@ import types
 from paddle.fluid import core
 import paddle
 
+__all__ = []
+
 
 class HybridParallelGradScaler:
     def __init__(self, scaler, hcg):
         self._scaler = scaler
         self._hcg = hcg
         self._is_mp = (
-            self._hcg.get_parallel_mode() == ParallelMode.MODEL_PARALLEL)
+            self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL)
 
     def scale(self, var):
         return self._scaler.scale(var)
