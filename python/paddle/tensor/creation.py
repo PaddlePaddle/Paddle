@@ -118,7 +118,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if not isinstance(data, np.ndarray):
 
         def _handle_dtype(data, dtype):
-
             if dtype:
                 if convert_dtype(dtype) != convert_dtype(data.dtype):
                     return data.astype(convert_dtype(dtype))
@@ -135,15 +134,16 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                 )
         elif isinstance(data, paddle.Tensor):
             data = data._copy_to(place, False)
+            ata = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
-            return _handle_dtype(data, dtype)
         elif isinstance(data, core.LoDTensor):
             # convert LoDTensor to VarBase first
+            # Currenly, LoDTensor does no copy when places are same
             data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
+            data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
-            return _handle_dtype(data, dtype)
         else:
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".
