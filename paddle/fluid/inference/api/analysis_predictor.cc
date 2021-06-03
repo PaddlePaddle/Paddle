@@ -271,7 +271,7 @@ bool AnalysisPredictor::CreateExecutor() {
   return true;
 }
 
-static bool IsPrePareDataOptTargetOp(framework::OpDesc *op) {
+static bool IsPrepareDataOptTargetOp(framework::OpDesc *op) {
   // here is prepare data optimization related bad cases:
   // let's assume an op behind conditional_block and if conditional_block
   // chooses branch 1, the op need to call prepare data. else the op don't need
@@ -299,7 +299,7 @@ static void DisablePrepareDataOpt(
       int blockID = op->GetBlockAttrId("sub_block");
       DisablePrepareDataOpt(inference_program, blockID);
     }
-    if (IsPrePareDataOptTargetOp(op)) {
+    if (IsPrepareDataOptTargetOp(op)) {
       disable_opt = true;
     }
   }
