@@ -237,8 +237,8 @@ int LayerNormPluginDynamic::enqueue(
 
     paddle::operators::LayerNormDirectCUDAFunctor<half> layer_norm;
     layer_norm(stream, input, input_shape, bias_gpu_half_d_, scale_gpu_half_d_,
-               output, mean_gpu_half_d_,
-               variance_gpu_half_d_, begin_norm_axis, eps);
+               output, mean_gpu_half_d_, variance_gpu_half_d_, begin_norm_axis,
+               eps);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The layer_norm tensorRT plugin should be "
