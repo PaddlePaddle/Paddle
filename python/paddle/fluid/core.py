@@ -273,14 +273,6 @@ if avx_supported():
         from .core_avx import _load_static_dict
         from .core_avx import _save_dygraph_dict
         from .core_avx import _load_dygraph_dict
-        from .core_avx import _save_lod_tensor
-        from .core_avx import _load_lod_tensor
-        from .core_avx import _save_selected_rows
-        from .core_avx import _load_selected_rows
-        from .core_avx import _save_lod_tensor_to_memory
-        from .core_avx import _load_lod_tensor_from_memory
-        from .core_avx import _save_selected_rows_to_memory
-        from .core_avx import _load_selected_rows_from_memory
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
         from .core_avx import _promote_types_if_complex_exists
@@ -336,14 +328,6 @@ if load_noavx:
         from .core_noavx import _load_static_dict
         from .core_noavx import _save_dygraph_dict
         from .core_noavx import _load_dygraph_dict
-        from .core_noavx import _save_lod_tensor
-        from .core_noavx import _load_lod_tensor
-        from .core_noavx import _save_selected_rows
-        from .core_noavx import _load_selected_rows
-        from .core_noavx import _save_lod_tensor_to_memory
-        from .core_noavx import _load_lod_tensor_from_memory
-        from .core_noavx import _save_selected_rows_to_memory
-        from .core_noavx import _load_selected_rows_from_memory
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
         from .core_noavx import _promote_types_if_complex_exists

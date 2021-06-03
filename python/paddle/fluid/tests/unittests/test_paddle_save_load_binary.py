@@ -175,11 +175,11 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             paddle.save(temp_lod, path, use_binary_format=True)
 
         with self.assertRaises(RuntimeError):
-            fluid.core._save_lod_tensor(
+            fluid.core.save_lod_tensor(
                 temp_lod, 'test_save_load_error_not_exist_file/not_exist_file')
 
         with self.assertRaises(RuntimeError):
-            fluid.core._load_lod_tensor(
+            fluid.core.load_lod_tensor(
                 temp_lod, 'test_save_load_error_not_exist_file/not_exist_file')
 
         # save to memory
@@ -223,11 +223,11 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             np.array_equal(np.array(load_sr.get_tensor()), np_array))
 
         with self.assertRaises(RuntimeError):
-            fluid.core._save_selected_rows(
+            fluid.core.save_selected_rows(
                 selected_rows,
                 'test_paddle_save_load_selected_rows_not_exist_file/temp')
         with self.assertRaises(RuntimeError):
-            fluid.core._load_selected_rows(
+            fluid.core.load_selected_rows(
                 selected_rows,
                 'test_paddle_save_load_selected_rows_not_exist_file/temp')
 

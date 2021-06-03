@@ -452,11 +452,11 @@ def _save_lod_tensor(tensor, file_name):
     if not tensor._is_initialized():
         raise ValueError("The saved tensor is not initialized.")
     if _is_file_path(file_name):
-        _seek = core._save_lod_tensor(tensor, file_name)
+        _seek = core.save_lod_tensor(tensor, file_name)
         # '_seek' is the end position of this tensor in the file.
 
     elif _is_memory_buffer(file_name):
-        tensor_bytes = core._save_lod_tensor_to_memory(tensor)
+        tensor_bytes = core.save_lod_tensor_to_memory(tensor)
 
         with _open_file_buffer(file_name, 'wb') as f:
             f.write(tensor_bytes)
@@ -473,12 +473,12 @@ def _load_lod_tensor(file_name):
     temp_t = paddle.fluid.core.LoDTensor()
     if _is_file_path(file_name):
         # '_seek' is the end position of this tensor in the file.
-        _seek = paddle.fluid.core._load_lod_tensor(temp_t, file_name)
+        _seek = paddle.fluid.core.load_lod_tensor(temp_t, file_name)
 
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             tensor_bytes = f.read()
-            paddle.fluid.core._load_lod_tensor_from_memory(temp_t, tensor_bytes)
+            paddle.fluid.core.load_lod_tensor_from_memory(temp_t, tensor_bytes)
             _seek = f.tell()
 
     else:
@@ -494,10 +494,10 @@ def _save_selected_rows(selected_rows, file_name):
         raise ValueError("The saved tensor is not initialized.")
     if _is_file_path(file_name):
         # '_seek' is the end position of this SelectedRows in the file.
-        _seek = core._save_selected_rows(selected_rows, file_name)
+        _seek = core.save_selected_rows(selected_rows, file_name)
 
     elif _is_memory_buffer(file_name):
-        selected_rows_bytes = core._save_selected_rows_to_memory(selected_rows)
+        selected_rows_bytes = core.save_selected_rows_to_memory(selected_rows)
         with _open_file_buffer(file_name, 'wb') as f:
             f.write(selected_rows_bytes)
             _seek = f.tell()
@@ -512,12 +512,12 @@ def _load_selected_rows(file_name):
     temp_sr = core.SelectedRows()
     if _is_file_path(file_name):
         # '_seek' is the end position of this SelectedRows in the file.
-        _seek = core._load_selected_rows(temp_sr, file_name)
+        _seek = core.load_selected_rows(temp_sr, file_name)
 
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             selected_rows_bytes = f.read()
-            paddle.fluid.core._load_selected_rows_from_memory(
+            paddle.fluid.core.load_selected_rows_from_memory(
                 temp_sr, selected_rows_bytes)
         _seek = f.tell()
 
