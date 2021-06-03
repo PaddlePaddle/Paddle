@@ -226,10 +226,12 @@ int LayerNormPluginDynamic::enqueue(
       scale_cpu_half[i] = static_cast<half>(scale_[i]);
       bias_cpu_half[i] = static_cast<half>(bias_[i]);
     }
-    cudaMemcpyAsync(scale_gpu_half_d_, scale_cpu_half, sizeof(half) * feature_size,
-                    cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(bias_gpu_half_d_, bias_cpu_half, sizeof(half) * feature_size,
-                    cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(scale_gpu_half_d_, scale_cpu_half,
+                    sizeof(half) * feature_size, cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_gpu_half_d_, bias_cpu_half,
+                    sizeof(half) * feature_size, cudaMemcpyHostToDevice,
+                    stream);
     free(scale_cpu_half);
     free(bias_cpu_half);
 

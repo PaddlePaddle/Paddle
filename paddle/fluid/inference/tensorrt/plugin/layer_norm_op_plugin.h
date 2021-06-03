@@ -218,10 +218,10 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
-  half *scale_gpu_half_d_;
-  half *bias_gpu_half_d_;
-  half *mean_gpu_half_d_;
-  half *variance_gpu_half_d_;
+  half* scale_gpu_half_d_;
+  half* bias_gpu_half_d_;
+  half* mean_gpu_half_d_;
+  half* variance_gpu_half_d_;
 };
 
 class LayerNormPluginDynamicCreator : public nvinfer1::IPluginCreator {
