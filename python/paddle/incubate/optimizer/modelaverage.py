@@ -21,7 +21,7 @@ import numpy as np
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-__all__ = ["ModelAverage"]
+__all__ = []
 
 
 class ModelAverage(Optimizer):
@@ -129,7 +129,7 @@ class ModelAverage(Optimizer):
         layer = LinearNet()
         loss_fn = nn.CrossEntropyLoss()
         optimizer = opt.Momentum(learning_rate=0.2, momentum=0.1, parameters=layer.parameters())
-        model_average = paddle.incubate.optimizer.ModelAverage(0.15,
+        model_average = paddle.incubate.ModelAverage(0.15,
                                                     parameters=layer.parameters(),
                                                     min_average_window=2,
                                                     max_average_window=10)
@@ -313,7 +313,7 @@ class ModelAverage(Optimizer):
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
                 sgd.minimize(loss)
 
-                modelaverage = paddle.incubate.optimizer.ModelAverage(0.15,
+                modelaverage = paddle.incubate.ModelAverage(0.15,
                                                             parameters=linear.parameters(),
                                                             min_average_window=2,
                                                             max_average_window=4)
@@ -345,7 +345,7 @@ class ModelAverage(Optimizer):
                 out = linear(inp)
                 loss = paddle.mean(out)
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                modelaverage = paddle.incubate.optimizer.ModelAverage(0.15,
+                modelaverage = paddle.incubate.ModelAverage(0.15,
                                                             parameters=linear.parameters(),
                                                             min_average_window=2,
                                                             max_average_window=4)
@@ -395,7 +395,7 @@ class ModelAverage(Optimizer):
 
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
 
-                modelaverage = paddle.incubate.optimizer.ModelAverage(0.15,
+                modelaverage = paddle.incubate.ModelAverage(0.15,
                                                             parameters=linear.parameters(),
                                                             min_average_window=2,
                                                             max_average_window=4)
@@ -467,7 +467,7 @@ class ModelAverage(Optimizer):
 
                 sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
 
-                modelaverage = paddle.incubate.optimizer.ModelAverage(0.15,
+                modelaverage = paddle.incubate.ModelAverage(0.15,
                                                             parameters=linear.parameters(),
                                                             min_average_window=2,
                                                             max_average_window=4)

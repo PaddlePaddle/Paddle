@@ -18,25 +18,10 @@ import os
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.framework import is_compiled_with_cuda  #DEFINE_ALIAS
-from paddle.fluid.framework import is_compiled_with_rocm  #DEFINE_ALIAS
+from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
+from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 
-__all__ = [
-    'get_cudnn_version',
-    'set_device',
-    'get_device',
-    'XPUPlace',
-    'is_compiled_with_xpu'
-    #            'cpu_places',
-    #            'CPUPlace',
-    #            'cuda_pinned_places',
-    #            'cuda_places',
-    #            'CUDAPinnedPlace',
-    #            'CUDAPlace',
-    'is_compiled_with_cuda',
-    'is_compiled_with_rocm',
-    'is_compiled_with_npu'
-]
+__all__ = []
 
 _cudnn_version = None
 
@@ -68,7 +53,7 @@ def is_compiled_with_xpu():
         .. code-block:: python
 
             import paddle
-            support_xpu = paddle.device.is_compiled_with_xpu()
+            support_xpu = paddle.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
 
@@ -82,9 +67,10 @@ def XPUPlace(dev_id):
 
     Examples:
         .. code-block:: python
-
+            # required: xpu
+            
             import paddle
-            place = paddle.device.XPUPlace(0)
+            place = paddle.XPUPlace(0)
     """
     return core.XPUPlace(dev_id)
 
