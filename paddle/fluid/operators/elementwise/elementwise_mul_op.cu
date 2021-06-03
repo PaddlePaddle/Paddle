@@ -36,13 +36,13 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    framework::Tensor x;
+    framework::Tensor x_for_selectedrows;
     std::vector<const framework::Tensor*> ins;
     std::vector<framework::Tensor*> outs;
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 
-    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs, &x);
+    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         cuda_ctx, ins, &outs, axis, CudaMulFunctor<T>());
   }
