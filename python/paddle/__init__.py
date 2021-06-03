@@ -72,6 +72,7 @@ from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
+from .tensor.creation import diagflat  # noqa: F401
 from .tensor.creation import eye  # noqa: F401
 from .tensor.creation import linspace  # noqa: F401
 from .tensor.creation import ones  # noqa: F401
@@ -301,6 +302,7 @@ __all__ = [     #noqa
            'add',
            'subtract',
            'diag',
+           'diagflat',
            'isnan',
            'scatter_nd_add',
            'unstack',
