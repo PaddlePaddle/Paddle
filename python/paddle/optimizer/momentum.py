@@ -257,46 +257,13 @@ class Momentum(Optimizer):
     
         Function helper of append_regularization_ops.
         """
-        # (1) If no gradient or no regularization is specified,  then we don't need to do anything.
-        # (2) If ParamAttr is set to L2Decay, we skip doing regularization here. And then we fused
+        # If ParamAttr is set to L2Decay, we skip doing regularization here. And then we fused
         # L2Decay with momentum which can refer to _append_optimize_op below.
-        no_regularization = (not hasattr(param, 'regularizer') or (
-            hasattr(param, 'regularizer') and
-            param.regularizer is None)) and regularization is None
-        param_has_L2Decay = hasattr(param, 'regularizer') and isinstance(
-            param.regularizer, L2DecayRegularizer)
-        if grad is None or no_regularization or param_has_L2Decay:
+        if hasattr(param, 'regularizer') and isinstance(param.regularizer,
+                                                        L2DecayRegularizer):
             return grad
-        regularization_term = None
-        if hasattr(param, 'regularizer') and param.regularizer is not None:
-            # Add variable for regularization term in grad block
-            regularization_term = param.regularizer(param, grad, grad.block)
-        elif regularization is not None:
-            regularization_term = regularization(param, grad, grad.block)
-
-        assert regularization_term is not None
-
-        new_grad = grad
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
-            # the grad's type and name will be changed. But the gradient's name
-            # is used in ParallelExecutor Reduce mode, so I add a flag for
-            # the new_grad here.
-            new_grad = grad.block.create_var(
-                name=grad.name + core.kNewGradSuffix(),
-                dtype=param.dtype,
-                shape=param.shape,
-                lod_level=param.lod_level,
-                type=core.VarDesc.VarType.LOD_TENSOR)
-
-        inputs = {"X": [grad, regularization_term]}
-        outputs = {"Out": [new_grad]}
-        if framework.in_dygraph_mode():
-            new_grad = core.ops.sum([grad, regularization_term])
-        else:
-            grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
-
-        return new_grad
+        return super(Momentum, self)._create_regularization_of_grad(
+            param, grad, regularization)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
