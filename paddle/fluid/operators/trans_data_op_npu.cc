@@ -39,6 +39,13 @@ class TransDataNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    if (framework::DataLayoutToString(out->npu_storage_layout()) ==
+        "FRACTAL_NZ") {
+      VLOG(4) << "Input tensor's data_format is FRACTAL_NZ, don't need to do "
+                 "TransData.";
+      return;
+    }
+
     Tensor tmp_x(x->type());
     tmp_x.Resize(x->dims());
     tmp_x.mutable_data<T>(ctx.GetPlace());

@@ -142,7 +142,14 @@ Tensor& Tensor::Resize(const DDim& dims) {
 
 const DDim& Tensor::dims() const { return dims_; }
 
-int64_t Tensor::numel() const { return product(dims_); }
+int64_t Tensor::numel() const {
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (npu_storage_layout_ == DataLayout::kFractalNZ) {
+    return product(npu_storage_dims_);
+  }
+#endif
+  return product(dims_);
+}
 
 Tensor& Tensor::ResizeNPUDims(const DDim& npu_storage_dims) {
   npu_storage_dims_ = npu_storage_dims;

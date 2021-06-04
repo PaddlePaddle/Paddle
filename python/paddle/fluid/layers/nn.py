@@ -346,7 +346,6 @@ def fc(input,
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         if core.is_compiled_with_npu():
-            w_nz = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
                 type="trans_data",
                 inputs={"X": w},
