@@ -17,6 +17,7 @@
 #include "paddle/fluid/operators/log_softmax_op.h"
 #include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -143,43 +144,43 @@ void LaunchSoftmaxForwardForLastAxis(T *dst, const T *src, int dim_size,
   }
 }
 
-// This reduction is not Block-wise reduction, only reduce along block.x.
-// therefore the shared mem has offsets for different block.y.
-template <typename T>
-__forceinline__ __device__ T BlockDimxReduceMax(T *shared, T val) {
-  // shared mem have #inner_size position offsets
+// Returns the final item after reduce operation along block.x.
+// Firstly, get shared memory(smem) offset, find the starting position for every
+// y.
+// Secondly, initialise every smem position with value 'val' of thread itself.
+// Thirdly, apply standard reduction along x direction as below:
+//
+//   -> x direction
+// [o o o o o o o o]    time 0
+//  |     |/     /
+//  |    /|    /
+//  |  /  |  /
+//  |/    |/
+// [o o o o x x x x]    time 1
+//  | |/ /
+//  |/|/
+// [o o x x x x x x]    time 2
+//  |/
+// [o x x x x x x x]    time 3
+//
+// Finally, return the first item.
+// Imaging multiple reductions executed in paralell along y axis,
+// Note that when blockDim.x is not 1, it's a EVEN number in all cases,
+// and the size of shared memory is even as well.
+template <typename T, template <typename> class Functor>
+__forceinline__ __device__ T BlockReduceAlongDimX(T *shared, T val) {
+  Functor<T> func;
+  // This reduction is not Block-wise reduction, only reduce along block.x.
+  // therefore the shared mem has offsets for different block.y.
   shared += threadIdx.y * blockDim.x;
-  __syncthreads();
   shared[threadIdx.x] = val;
-
-  // block reduce operation
   int offset = blockDim.x / 2;
-  math::MaxFunctor<T> max;
+
   while (offset > 0) {
     __syncthreads();
     if (threadIdx.x < offset) {
       shared[threadIdx.x] =
-          max(shared[threadIdx.x], shared[threadIdx.x + offset]);
-    }
-    offset /= 2;
-  }
-  __syncthreads();
-  return shared[0];
-}
-
-template <typename T>
-__forceinline__ __device__ T BlockDimxReduceAdd(T *shared, T val) {
-  shared += threadIdx.y * blockDim.x;
-  __syncthreads();
-  shared[threadIdx.x] = val;
-  int offset = blockDim.x / 2;
-  math::AddFunctor<T> add;
-
-  while (offset > 0) {
-    __syncthreads();
-    if (threadIdx.x < offset) {
-      shared[threadIdx.x] =
-          add(shared[threadIdx.x], shared[threadIdx.x + offset]);
+          func(shared[threadIdx.x], shared[threadIdx.x + offset]);
     }
     offset /= 2;
   }
@@ -204,27 +205,38 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
       // And threadIdx.x is 0 all the time, so the for-loops below are literally
       // loops (No parallel executions).
       // Loop all elements along axis and calculate the Max, Sum and
-      // (input[id]-Max-log(Sum))
-      // to get the final log_softmax values along that axis.
+      // (input[id]-Max-log(Sum)) to get the final log_softmax values along that
+      // axis.
       // 1. reduce max
       AccT max_value = -std::numeric_limits<AccT>::infinity();
+      // For one thread, iterate all items it responsable for, and get
+      // max_value.
+      // If there are N threads, N max_value will be returned.
       for (int d = threadIdx.x; d < dim_size; d += blockDim.x) {
         const AccT value =
             static_cast<AccT>(input[data_offset + d * dim_stride]);
         max_value = math::MaxFunctor<AccT>()(max_value, value);
       }
+      // If there are more than 1 threads along block x, reduce all max_values
+      // and
+      // get the global max_value, which is the max value along "axis".
+      // If there is only one thread along block x, no need to reduce, and the
+      // max_value
+      // is the global max_value.
       if (blockDim.x > 1) {
-        max_value = BlockDimxReduceMax<AccT>(sdata, max_value);
+        max_value =
+            BlockReduceAlongDimX<AccT, math::MaxFunctor>(sdata, max_value);
       }
 
       // 2. reduce sum
       AccT sum = 0;
+      // Below is the same execution as '1. reduce max'
       for (int d = threadIdx.x; d < dim_size; d += blockDim.x) {
         sum += std::exp(static_cast<AccT>(input[data_offset + d * dim_stride]) -
                         max_value);
       }
       if (blockDim.x > 1) {
-        sum = BlockDimxReduceAdd<AccT>(sdata, sum);
+        sum = BlockReduceAlongDimX<AccT, math::AddFunctor>(sdata, sum);
       }
 
       // 3. input-max-log_sum and write to output
@@ -238,8 +250,8 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
 }
 
 // block.y covers inner_size. Threads along the x axis process dim_size
-// elements,
-// and make sure not to exceed the 1024 threads per block.
+// elements, and make sure not to exceed the 1024 threads per block.
+// Note that dim_threads namely blockDim.x is either 1 or a even number.
 inline dim3 GetBlockSize(int dim_size, int inner_size) {
   int inner_threads = inner_size;
   inner_threads = std::min(inner_threads, 1024);
@@ -267,7 +279,7 @@ inline dim3 GetGridSize(dim3 block, int max_active_blocks, int outer_size,
 
 // When designing grid size and block size, priority is given to block size,
 // and grid will be determined according to the maximum number of active blocks,
-// which will calculated by CUDA occupancy API.
+// which is set by as a experience value.
 template <typename T, typename Kernel>
 void ComputeLaunchConfigure(Kernel k, int outer_size, int dim_size,
                             int inner_size, dim3 &grid, dim3 &block,
@@ -275,15 +287,7 @@ void ComputeLaunchConfigure(Kernel k, int outer_size, int dim_size,
   block = GetBlockSize(dim_size, inner_size);
   int block_threads = block.x * block.y;
   shared_mem = block.x == 1 ? 0 : block_threads * sizeof(T);
-  int max_active_blocks;
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipOccupancyMaxActiveBlocksPerMultiprocessor(
-      &max_active_blocks, k, block_threads, shared_mem));
-#else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
-      &max_active_blocks, k, block_threads, shared_mem));
-#endif
-  max_active_blocks *= num_sm;
+  int max_active_blocks = num_sm * 2;
   grid =
       GetGridSize(block, max_active_blocks, outer_size, dim_size, inner_size);
 }
