@@ -16,6 +16,8 @@ package paddle
 
 // #include "pd_config.h"
 // #include "pd_common.h"
+// #include "pd_types.h"
+// #include "pd_utils.h"
 // #include <stdlib.h>
 // #include <string.h>
 import "C"
@@ -35,6 +37,9 @@ type Config struct {
 	c *C.PD_Config
 }
 
+///
+/// \brief Create a new config.
+///
 func NewConfig() *Config {
 	cConfig := C.PD_ConfigCreate()
 	config := &Config{c: cConfig}
@@ -156,18 +161,24 @@ func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
 }
 
 ///
-/// \brief Turn off GPU.
-///
-///
-func (config *Config) DisableGpu() {
-	C.PD_ConfigDisableGpu(config.c)
-}
-
-///
 /// \brief Turn on XPU.
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int32) {
-	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize))
+/// \param l3_workspace_size The size of the video memory allocated by the l3 cache, the maximum is 16M.
+/// \param locked Whether the allocated L3 cache can be locked. If false, it means that the L3 cache is not locked, and the allocated L3 cache can be shared by multiple models, and multiple models sharing the L3 cache will be executed sequentially on the card.
+/// \param autotune Whether to autotune the conv operator in the model. If true, when the conv operator of a certain dimension is executed for the first time, it will automatically search for a better algorithm to improve the performance of subsequent conv operators of the same dimension.
+/// \param autotune_file Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
+/// \param precision Calculation accuracy of multi_encoder
+/// \param adaptive_seqlen Is the input of multi_encoder variable length
+///
+func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool) {
+	cAutotuneFile := C.CString(autotuneFile)
+	cPrecision := C.CString(precision)
+	defer func() {
+		C.free(unsafe.Pointer(cAutotuneFile))
+		C.free(unsafe.Pointer(cPrecision))
+	}()
+	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
+		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen))
 }
 
 ///
@@ -225,22 +236,6 @@ func (config *Config) FractionOfGpuMemoryForPool() float32 {
 	return float32(C.PD_ConfigFractionOfGpuMemoryForPool(config.c))
 }
 
-// ///
-// /// \brief Turn on CUDNN.
-// ///
-// func (config *Config) EnableCudnn() {
-
-// }
-
-///
-/// \brief A boolean state telling whether to use CUDNN.
-///
-/// \return bool Whether to use CUDNN.
-///
-// func (config *Config) CudnnEnabled() bool {
-
-// }
-
 ///
 /// \brief Control whether to perform IR graph optimization.
 /// If turned off, the AnalysisConfig will act just like a NativeConfig.
@@ -261,45 +256,6 @@ func (config *Config) SwitchIrOptim(x bool) {
 func (config *Config) IrOptim() bool {
 	return cvtPDBoolToGo(C.PD_ConfigIrOptim(config.c))
 }
-
-///
-/// \brief INTERNAL Determine whether to use the feed and fetch operators.
-/// Just for internal development, not stable yet.
-/// When ZeroCopyTensor is used, this should be turned off.
-///
-/// \param x Whether to use the feed and fetch operators.
-///
-// void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
-
-///
-/// \brief A boolean state telling whether to use the feed and fetch
-/// operators.
-///
-/// \return bool Whether to use the feed and fetch operators.
-///
-// bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
-
-///
-/// \brief Control whether to specify the inputs' names.
-/// The ZeroCopyTensor type has a name member, assign it with the
-/// corresponding
-/// variable name. This is used only when the input ZeroCopyTensors passed to
-/// the
-/// AnalysisPredictor.ZeroCopyRun() cannot follow the order in the training
-/// phase.
-///
-/// \param x Whether to specify the inputs' names.
-///
-// void SwitchSpecifyInputNames(bool x = true) { specify_input_name_ = x; }
-
-///
-/// \brief A boolean state tell whether the input ZeroCopyTensor names
-/// specified should
-/// be used to reorder the inputs in AnalysisPredictor.ZeroCopyRun().
-///
-/// \return bool Whether to specify the inputs' names.
-///
-// bool specify_input_name() const { return specify_input_name_; }
 
 ///
 /// \brief Turn on the TensorRT engine.
@@ -635,16 +591,6 @@ func (config *Config) MkldnnQuantizerEnabled() bool {
 }
 
 ///
-/// \brief Get MKLDNN quantizer config.
-///
-/// \return MkldnnQuantizerConfig* MKLDNN quantizer config.
-///
-// MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
-// func (config *Config) MkldnnQuantizerConfig() *MkldnnQuantizerConfig {
-// 	// TODO(wilber)
-// }
-
-///
 /// \brief Specify the memory buffer of program and parameter.
 /// Used when model and params are loaded directly from memory.
 ///
@@ -724,15 +670,6 @@ func (config *Config) GlogInfoDisabled() bool {
 }
 
 ///
-/// \brief Set the AnalysisConfig to be invalid.
-/// This is to ensure that an AnalysisConfig can only be used in one
-/// AnalysisPredictor.
-///
-// func (config *Config) SetInValid() {
-// 	C.PD_ConfigSetInvalid(config.c)
-// }
-
-///
 /// \brief A boolean state telling whether the AnalysisConfig is valid.
 ///
 /// \return bool Whether the AnalysisConfig is valid.
@@ -740,15 +677,6 @@ func (config *Config) GlogInfoDisabled() bool {
 func (config *Config) IsValid() bool {
 	return cvtPDBoolToGo(C.PD_ConfigIsValid(config.c))
 }
-
-///
-/// \brief Get a pass builder for customize the passes in IR analysis phase.
-/// NOTE: Just for developer, not an official API, easy to be broken.
-///
-// PassStrategy* pass_builder() const;
-// func (config *Config) PassBuilder() *PassStrategy {
-// 	// TODO(wilber)
-// }
 
 ///
 /// \brief Enable the GPU multi-computing stream feature.
@@ -759,8 +687,49 @@ func (config *Config) EnableGpuMultiStream() {
 	C.PD_ConfigEnableGpuMultiStream(config.c)
 }
 
-// // void PartiallyRelease();
-// // todo
-// func (config *Config) PartiallyRelease() {
-// 	C.PD_ConfigPartiallyRelease(config.c)
-// }
+///
+/// \brief Delete all passes that has a certain type 'pass'.
+///
+/// \param[in] pass the certain pass type to be deleted.
+///
+func (config *Config) DeletePass(pass string) {
+	cPass := C.CString(pass)
+	C.PD_ConfigDeletePass(config.c, cPass)
+	C.free(unsafe.Pointer(cPass))
+}
+
+///
+/// \brief Append a pass to the end of the passes
+///
+/// \param[in] pass the new pass.
+///
+func (config *Config) AppendPass(pass string) {
+	cPass := C.CString(pass)
+	C.PD_ConfigAppendPass(config.c, cPass)
+	C.free(unsafe.Pointer(cPass))
+}
+
+///
+/// \brief  Insert a pass to a specific position
+///
+/// \param[in] idx the position to insert.
+/// \param[in] pass the new pass.
+///
+func (config *Config) InsertPass(idx uint64, pass string) {
+	cPass := C.CString(pass)
+	C.PD_ConfigInsertPass(config.c, C.size_t(idx), cPass)
+	C.free(unsafe.Pointer(cPass))
+}
+
+///
+/// \brief Get information of passes.
+///
+/// \return Return list of the passes.
+///
+func (config *Config) AllPasses() []string {
+	cPasses := C.PD_ConfigAllPasses(config.c)
+	num := int(cPasses.size)
+	passes := cvtToGoSliceString(num, cPasses.data)
+	C.PD_OneDimArrayCstrDestroy(cPasses)
+	return passes
+}

@@ -65,9 +65,6 @@ func TestNewConfig(t *testing.T) {
 	config.EnableGpuMultiStream()
 	t.Logf("ThreadLocalStreamEnabled:%+v", config.ThreadLocalStreamEnabled())
 
-	config.DisableGpu()
-	t.Logf("DisableGpu, use_gpu:%+v", config.UseGpu())
-
 	config.SwitchIrDebug(false)
 
 	config.EnableMKLDNN()
@@ -82,6 +79,12 @@ func TestNewConfig(t *testing.T) {
 	t.Logf("GlogInfoDisabled:%+v", config.GlogInfoDisabled())
 
 	t.Logf("IsValid:%+v", config.IsValid())
+
+	config.AppendPass("test_pass")
+	t.Logf("After AppendPass, AllPasses:%+v", config.AllPasses())
+
+	config.DeletePass("test_pass")
+	t.Logf("After DeletePass, AllPasses:%+v", config.AllPasses())
 }
 
 func TestLite(t *testing.T) {
