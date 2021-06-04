@@ -346,7 +346,7 @@ def fc(input,
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         if core.is_compiled_with_npu():
-            helper.append_op(
+            paddle.fluid.default_startup_program().global_block().append_op(
                 type="trans_data",
                 inputs={"X": w},
                 outputs={"Out": w},
