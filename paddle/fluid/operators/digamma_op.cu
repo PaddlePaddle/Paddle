@@ -12,10 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <unsupported/Eigen/SpecialFunctions>
 #include "paddle/fluid/operators/digamma_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 
 namespace ops = paddle::operators;
 
