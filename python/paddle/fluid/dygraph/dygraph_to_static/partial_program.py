@@ -247,7 +247,7 @@ class PartialProgramLayer(layers.Layer):
                     # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                     # into CUDAPlace when it's as input of multi Ops. so we move it in advance
                     # to avoid this problem.
-                    var =paddle.to_tensor(
+                    var = paddle.to_tensor(
                         value,
                         dtype=value.dtype,
                         place=framework._current_expected_place(),
