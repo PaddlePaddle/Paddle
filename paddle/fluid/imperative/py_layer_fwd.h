@@ -97,7 +97,8 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
           input_vars.push_back(a);
         } catch (py::cast_error& err) {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "`%s` can not be cast into `Tensor`.",
+              "The `PyLayer.forward` function contains invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
               ptr->ptr()->ob_type->tp_name));
         }
       }
@@ -114,7 +115,8 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
           input_vars.push_back(a);
         } catch (py::cast_error&) {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "`%s` can not be cast into `Tensor`.",
+              "The `PyLayer.forward` function contains invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
               ptr->second.ptr()->ob_type->tp_name));
         }
       }
@@ -136,7 +138,8 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
           output_vars.push_back(temp_out);
         } catch (py::cast_error&) {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "`%s` can not be cast into `Tensor`.",
+              "The `PyLayer.forward` function returns invalid argument, the "
+              "`%s` type argument can not be cast into `Tensor`.",
               tuple_result[i].ptr()->ob_type->tp_name));
         }
       }
@@ -151,7 +154,8 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
         output_vars.push_back(temp_out);
       } catch (py::cast_error&) {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "`%s` can not be cast into `Tensor`.",
+            "The `PyLayer.forward` function returns invalid argument, the `%s` "
+            "type argument can not be cast into `Tensor`.",
             result_forward.ptr()->ob_type->tp_name));
       }
     }

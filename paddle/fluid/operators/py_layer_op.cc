@@ -69,7 +69,8 @@ void RunPyObject(py::object *py_object,
               *(*outs)[i] = result_var->Var();
             } catch (py::cast_error &) {
               PADDLE_THROW(platform::errors::InvalidArgument(
-                  "`%s` can not be cast into `Tensor`.",
+                  "The `PyLayer.backward` function returns invalid argument, "
+                  "the `%s` type argument can not be cast into `Tensor`.",
                   result_tuple[i].ptr()->ob_type->tp_name));
             }
           } else {
@@ -109,7 +110,8 @@ void RunPyObject(py::object *py_object,
             *((*outs)[0]) = result_var->Var();
           } catch (py::cast_error &) {
             PADDLE_THROW(platform::errors::InvalidArgument(
-                "`%s` can not be cast into `Tensor`.",
+                "The `PyLayer.backward` function returns invalid argument, the "
+                "`%s` type argument can not be cast into `Tensor`.",
                 py_result.ptr()->ob_type->tp_name));
           }
         } else {
