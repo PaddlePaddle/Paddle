@@ -268,8 +268,9 @@ class TestVarBase(unittest.TestCase):
             with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
                 lod_tensor = core.LoDTensor()
                 lod_tensor.set(a_np, core.CUDAPlace(0))
-                a = paddle.to_tensor(lod_tensor)
+                a = paddle.to_tensor(lod_tensor, place=core.CPUPlace())
                 self.assertTrue(np.array_equal(a_np, a.numpy()))
+                self.assertTrue(a.place.__repr__(), "CPUPlace")
 
     def test_to_variable(self):
         with fluid.dygraph.guard():
