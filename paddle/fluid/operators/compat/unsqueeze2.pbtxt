@@ -19,6 +19,8 @@ def {
     name: "axes"
     type: INTS
   }
+}
+extra {
   attrs {
     name: "op_role"
     type: INT
@@ -38,13 +40,5 @@ def {
   attrs {
     name: "op_device"
     type: STRING
-  }
-}
-extra {
-  inputs {
-  }
-  outputs {
-  }
-  attrs {
   }
 }
