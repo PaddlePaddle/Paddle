@@ -2293,7 +2293,7 @@ def digamma(x, name=None):
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Tensor, the digamma of the input Tensor computed element-wise.
+        Tensor, the digamma of the input Tensor, the shape and data type is the same with input.
 
     Examples:
         .. code-block:: python

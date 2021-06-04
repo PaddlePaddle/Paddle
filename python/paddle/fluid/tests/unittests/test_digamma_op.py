@@ -43,7 +43,7 @@ class TestDigammaOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-7)
+        self.check_grad(['X'], 'Out')
 
 
 class TestDigammaOpFp32(TestDigammaOp):
@@ -51,7 +51,7 @@ class TestDigammaOpFp32(TestDigammaOp):
         self.dtype = np.float32
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.005)
+        self.check_grad(['X'], 'Out')
 
 
 class TestDigammaAPI(unittest.TestCase):
@@ -81,7 +81,7 @@ class TestDigammaAPI(unittest.TestCase):
                     out_value = exe.run(feed=input_dict, fetch_list=[out.name])
                     self.assertEqual(
                         np.allclose(
-                            out_value[0], sc_res, rtol=1e-04), True)
+                            out_value[0], sc_res, rtol=1e-5), True)
 
     def test_in_dynamic_mode(self):
         for dtype in self.dtypes:
@@ -92,7 +92,7 @@ class TestDigammaAPI(unittest.TestCase):
                 with fluid.dygraph.guard(place):
                     input_t = paddle.to_tensor(input)
                     res = paddle.digamma(input_t).numpy()
-                    self.assertEqual(np.allclose(res, sc_res, rtol=1e-04), True)
+                    self.assertEqual(np.allclose(res, sc_res, rtol=1e-05), True)
 
     def test_name_argument(self):
         with static.program_guard(static.Program()):
