@@ -297,5 +297,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_reduce_sum_op_xpu', 'test_reshape2_op_xpu', 'test_sgd_op_xpu',
     'test_shape_op_xpu', 'test_slice_op_xpu', 'test_generate_proposals_v2_op',
     'test_lamb_op_xpu', 'test_model_cast_to_bf16', 'test_sgd_op_bf16',
-    'test_marker_op', 'test_addequaldim_op'
+    'test_marker_op', 'test_trunc_op'
 ]

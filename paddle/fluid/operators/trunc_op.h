@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <math.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -22,56 +23,43 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-// CPU Kernel ： out = x + y
-template <typename DeviceContext,
-          typename T>  //
-class AddEqualDimKernel : public framework::OpKernel<T> {
+template <typename DeviceContext, typename T>
+class TruncKernel : public framework::OpKernel<T> {
  public:
-  // 重写OpKernel::Compute()
   void Compute(const framework::ExecutionContext& context) const override {
-    VLOG(3) << "AddEqualDim_kernel_start\n";
-    // 输入、输出
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
-    auto* out = context.Output<Tensor>("Out");
-    // 数据指针
-    const T* x_ptr = x->data<T>();
-    const T* y_ptr = y->data<T>();
-    T* o_ptr = out->mutable_data<T>(context.GetPlace());
-    // 数据个数
-    int numel = x->numel();
-    // out = x + y
+    VLOG(3) << "Trunc_kernel_start\n";
+
+    const Tensor* x = context.Input<Tensor>("X");
+    Tensor* out = context.Output<Tensor>("Out");
+
+    auto numel = x->numel();
+    const T* x_data = x->data<T>();
+    T* out_data = out->mutable_data<T>(context.GetPlace());
+
     int i = 0;
     for (i = 0; i < numel; i++) {
-      o_ptr[i] = x_ptr[i] + y_ptr[i];
+      out_data[i] = x_data[i] - fmod(x_data[i], 1.0);
     }
-    VLOG(3) << "AddEqualDim_kernel_end\n";
   }
 };
 
-// CPU GradKernel : dx = dout、 dy = dout
 template <typename DeviceContext, typename T>
-class AddEqualDimGradKernel : public framework::OpKernel<T> {
+class TruncGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    VLOG(3) << "AddEqualDimGrad_kernel_start\n";
-    // 输入
+    VLOG(3) << "Trunc_Grad_kernel_start\n";
+
     auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
-    // 输出
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = context.Output<Tensor>(framework::GradVarName("Y"));
 
-    T* dx_ptr = dx->mutable_data<T>(context.GetPlace());
-    T* dy_ptr = dy->mutable_data<T>(context.GetPlace());
-    const T* dout_ptr = dout->data<T>();
+    const T* dout_data = dout->data<T>();
+    T* dx_data = dx->mutable_data<T>(context.GetPlace());
 
-    int numel = dout->numel();
+    int numel = dx->numel();
     int i = 0;
     for (i = 0; i < numel; i++) {
-      dx_ptr[i] = dout_ptr[i];
-      dy_ptr[i] = dout_ptr[i];
+      dx_data[i] = dout_data[i] * 0.0;
     }
-    VLOG(3) << "AddEqualDimGrad_kernel_end\n";
   }
 };
 

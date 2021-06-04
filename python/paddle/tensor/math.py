@@ -854,15 +854,12 @@ def add_n(inputs, name=None):
 
     return out
 
-def addequaldim(x, y, name=None):
+def trunc(x, name=None):
     '''
-    Applies matrix addition to two tensors.
-
-    Currently, the input tensors of `x` and `y` must has the same dimension.
+    Returns a new tensor with the truncated integer values of input.
 
     Args:
         x (Tensor): The input tensor which is a Tensor.
-        y (Tensor): The input tensor which is a Tensor.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`).
     
@@ -876,41 +873,29 @@ def addequaldim(x, y, name=None):
             import numpy as np
             paddle.set_device('cpu')
             x_data = np.random.random([2,2]).astype(np.float32)
-            y_data = np.random.random([2,2]).astype(np.float32)
             x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
-            out = paddle.add_equal_dim(x, y)
+            out = paddle.trunc(x, y)
             print(out)
-            #        [[0.58614850, 1.31972134],
-            #        [0.34063432, 0.79917747]])
+            #        [[0., 1.],
+            #        [0., 0.]])
 
     '''
-    x_shape = x.shape
-    y_shape = y.shape
-    if x_shape != y_shape:
-        raise ValueError(
-                        "The dimensional values of the two matrices need to be equal. "
-                        "But received x_shape != y_shape. X's shape: %s, "
-                        "Y's shape: %s.\n" % (x_shape, y_shape))
     # dygraph mode:
     if in_dygraph_mode():
         out = _varbase_creator(dtype=x.dtype)
-        return core.ops.addequaldim(x, y)
+        return core.ops.trunc(x)
     # static mode:
     else:
-        inputs = {"X": x, "Y": y}
+        inputs = {"X": x}
         attrs = {}
 
-        helper = LayerHelper("addequaldim", **locals())
-        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'], 'addequaldim')
-        check_variable_and_dtype(y, 'Y', ['float16', 'float32', 'float64'], 'addequaldim')
+        helper = LayerHelper("trunc", **locals())
+        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'], 'trunc')
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(
-            type="addequaldim", inputs=inputs, attrs=attrs, outputs={"Out": out})
+            type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out})
         return out
-
-
 
 def mm(input, mat2, name=None):
     """

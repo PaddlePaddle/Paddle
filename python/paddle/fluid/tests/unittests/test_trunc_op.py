@@ -22,67 +22,51 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
-#paddle.enable_static()
+paddle.enable_static()
 
 
-class TestAddEqualDimOp(OpTest):
+class TestTruncOp(OpTest):
     def setUp(self):
-        self.op_type = "addequaldim"
-        self.inputs = {
-            'X': np.random.random((20, 20)).astype(np.float64),
-            'Y': np.random.random((20, 20)).astype(np.float64)
-        }
-        self.outputs = {'Out': (self.inputs['X'] + self.inputs['Y'])}
+        self.op_type = "trunc"
+        self.inputs = {'X': np.random.random((20, 20)).astype(np.float64)}
+        self.outputs = {'Out': (np.trunc(self.inputs['X']))}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X'], 'Out')
 
 
-class TestAddEqualDimAPI(unittest.TestCase):
-    #test paddle.tensor.addequaldim
-
+class TestTruncAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [20, 20]
         self.x = np.random.random((20, 20)).astype(np.float32)
-        self.y = np.random.random((20, 20)).astype(np.float32)
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', self.shape)
-            y = paddle.fluid.data('Y', self.shape)
-            out = paddle.tensor.addequaldim(x, y)
-
+            out = paddle.trunc(x)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x, 'Y': self.y}, fetch_list=[out])
-        out_ref = self.x + self.y
+            res = exe.run(feed={'X': self.x}, fetch_list=[out])
+        out_ref = np.trunc(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
+            self.assertEqual(np.allclose(out, out_ref, rtol=1e-08), True)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
-        y_tensor = paddle.to_tensor(self.y)
-        out = paddle.tensor.addequaldim(x_tensor, y_tensor)
-        out_ref = self.x + self.y
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04), True)
+        out = paddle.trunc(x_tensor)
+        out_ref = np.trunc(self.x)
+        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
         paddle.enable_static()
 
     def test_errors(self):
-        paddle.disable_static()
-        x = np.random.random((20, 20)).astype(np.float64)
-        y = np.random.random((10, 20)).astype(np.float64)
-        self.assertRaises(Exception, paddle.tensor.addequaldim, x, y)
-        paddle.enable_static()
-
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [10, 12], 'int32')
-            y = paddle.fluid.data('Y', [10, 12], 'int32')
-            self.assertRaises(TypeError, paddle.tensor.addequaldim, x, y)
+            x = paddle.fluid.data('X', [20, 20], 'int32')
+            self.assertRaises(TypeError, paddle.trunc, x)
 
 
 if __name__ == "__main__":
