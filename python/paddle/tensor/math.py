@@ -62,6 +62,7 @@ from ..fluid.layers import erf    # noqa: F401
 from ..fluid.layers import sqrt    # noqa: F401
 from ..fluid.layers import sqrt_    # noqa: F401
 from ..fluid.layers import sin    # noqa: F401
+from ..fluid.layers import lgamma    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
