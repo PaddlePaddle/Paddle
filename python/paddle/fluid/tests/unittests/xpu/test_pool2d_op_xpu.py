@@ -29,6 +29,14 @@ import paddle
 paddle.enable_static()
 
 
+def adaptive_start_index(index, input_size, output_size):
+    return int(np.floor(index * input_size / output_size))
+
+
+def adaptive_end_index(index, input_size, output_size):
+    return int(np.ceil((index + 1) * input_size / output_size))
+
+
 def max_pool2D_forward_naive(x,
                              ksize,
                              strides,
