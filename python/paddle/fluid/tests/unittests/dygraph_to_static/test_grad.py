@@ -86,12 +86,14 @@ class TestGradLinear(TestGrad):
         load_res = load_func(self.x).numpy()
         self.assertTrue(np.allclose(origin_res, load_res))
 
-    def _test_save_train_program(self):
+    def test_save_train_program(self):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
         optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                         grad_clip=grad_clip,
                                          parameters=self.func.parameters())
         for i in range(10):
             out = self.func(self.x)
-            avg_loss = paddle.mean(paddle.abs(out))
+            avg_loss = paddle.mean(paddle.abs(out - 1))
             avg_loss.backward()
             optimizer.minimize(avg_loss)
             self.func.clear_gradients()
