@@ -100,9 +100,7 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
   sum = WarpReduceSum<AccT, kernel_warp_size>(sum);
 
   // 4.store result.
-  if (sum != AccT(0)) {
-    sum = std::log(sum);
-  }
+  sum = std::log(sum);
 #pragma unroll
   for (int it = 0; it < warp_iter; ++it) {
     int element_index = thread_in_warp_idx + it * kernel_warp_size;
