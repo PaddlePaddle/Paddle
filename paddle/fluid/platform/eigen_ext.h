@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
@@ -24,7 +23,6 @@
 
 namespace Eigen {
 
-using complex128 = paddle::platform::complex128;
 using float16 = paddle::platform::float16;
 template <typename T>
 using complex = paddle::platform::complex<T>;
@@ -60,28 +58,6 @@ struct NumTraits<paddle::platform::bfloat16>
   HOSTDEVICE static inline paddle::platform::bfloat16 quiet_NaN() {
     return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
   }
-};
-
-template <>
-struct NumTraits<complex128> : GenericNumTraits<std::complex<double>> {
-  typedef double Real;
-  typedef typename NumTraits<double>::Literal Literal;
-  enum {
-    IsComplex = 1,
-    RequireInitialization = NumTraits<double>::RequireInitialization,
-    ReadCost = 2 * NumTraits<double>::ReadCost,
-    AddCost = 2 * NumTraits<Real>::AddCost,
-    MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
-  };
-
-  EIGEN_DEVICE_FUNC
-  static inline Real epsilon() { return NumTraits<Real>::epsilon(); }
-  EIGEN_DEVICE_FUNC
-  static inline Real dummy_precision() {
-    return NumTraits<Real>::dummy_precision();
-  }
-  EIGEN_DEVICE_FUNC
-  static inline int digits10() { return NumTraits<Real>::digits10(); }
 };
 
 template <>
@@ -245,71 +221,6 @@ template <>
 HOSTDEVICE inline paddle::platform::bfloat16 maxi(
     const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
   return a < b ? b : a;
-}
-
-//////////// complex128 methods /////////////
-
-template <>
-HOSTDEVICE inline bool(isnan)(const complex128& a) {
-  return (paddle::platform::isnan)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isinf)(const complex128& a) {
-  return (paddle::platform::isinf)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isfinite)(const complex128& a) {
-  return (paddle::platform::isfinite)(a);
-}
-
-template <>
-HOSTDEVICE inline complex128 exp(const complex128& a) {
-  double com = ::expf(a.real);
-  double res_real = com * ::cosf(a.imag);
-  double res_imag = com * ::sinf(a.imag);
-  return complex128(res_real, res_imag);
-}
-
-template <>
-HOSTDEVICE inline complex128 log(const complex128& a) {
-  return paddle::platform::log(a);
-}
-
-template <>
-HOSTDEVICE inline complex128 tanh(const complex128& a) {
-  return paddle::platform::tanh(a);
-}
-
-template <>
-HOSTDEVICE inline complex128 sqrt(const complex128& a) {
-  return paddle::platform::sqrt(a);
-}
-
-template <>
-HOSTDEVICE inline complex128 ceil(const complex128& a) {
-  return complex128(::ceilf(a.real), ::ceilf(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex128 floor(const complex128& a) {
-  return complex128(::floorf(a.real), ::floor(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex128 round(const complex128& a) {
-  return complex128(::roundf(a.real), ::roundf(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
-  return paddle::platform::pow(a, b);
-}
-
-template <>
-HOSTDEVICE inline double abs(const complex128& a) {
-  return paddle::platform::abs(a);
 }
 
 //////////// complex<float> methods /////////////

@@ -112,12 +112,11 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
         platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), n * box_num);
 
     dim3 thread_num = config.thread_per_block;
-    if (WITH_NV_JETSON) {
-      cudaDeviceProp prop;
-      if (cudaSuccess == cudaGetDeviceProperties(&prop, 0)) {
-        if (prop.major == 5 || prop.major == 6) thread_num = 512;
-      }
+#ifdef WITH_NV_JETSON
+    if (config.compute_capability == 53 || config.compute_capability == 62) {
+      thread_num = 512;
     }
+#endif
 
     KeYoloBoxFw<T><<<config.block_per_grid, thread_num, 0,
                      ctx.cuda_device_context().stream()>>>(
