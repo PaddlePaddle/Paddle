@@ -36,52 +36,13 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    int axis = -1;
-    auto x_var = ctx.InputVar("X");
-    PADDLE_ENFORCE_NOT_NULL(
-        x_var, platform::errors::InvalidArgument(
-                   "Cannot get input Variable X, Variable name = %s.",
-                   ctx.InputName("X")));
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-
-    framework::Tensor x, *z;
+    framework::Tensor x_for_selectedrows;
     std::vector<const framework::Tensor*> ins;
     std::vector<framework::Tensor*> outs;
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
 
-    if (x_var->IsType<framework::LoDTensor>()) {
-      x = x_var->Get<framework::LoDTensor>();
-      z = ctx.Output<framework::LoDTensor>("Out");
-      axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
-    } else if (x_var->IsType<framework::SelectedRows>()) {
-      PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
-                        platform::errors::InvalidArgument(
-                            "For elementwise_op, if X is Sparse, Y must be "
-                            "scalar. But reveived the size of Y = %s.",
-                            y->dims().size()));
-      auto& x_sele = x_var->Get<framework::SelectedRows>();
-      auto out_sele = ctx.Output<framework::SelectedRows>("Out");
-      x = x_sele.value();
-      out_sele->set_rows(x_sele.rows());
-      out_sele->set_height(x_sele.height());
-      out_sele->mutable_value()->Resize(x_sele.value().dims());
-      out_sele->mutable_value()->mutable_data(ctx.GetPlace(), x.type());
-      z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
-      z->mutable_data<T>(ctx.GetPlace());
-      outs.emplace_back(z);
-      ins.emplace_back(&x);
-      ins.emplace_back(y);
-
-      axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
-      axis = axis == -1 ? std::abs(y->dims().size() - x.dims().size()) : axis;
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "X's type[%s] is not supported by elementwise_op. X's type should be "
-          "LoDTensor or SelectedRows.",
-          framework::ToTypeName(x_var->Type())));
-    }
-
+    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         cuda_ctx, ins, &outs, axis, CudaMulFunctor<T>());
   }
