@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.contrib import sparsity
+from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
 paddle.enable_static()
@@ -48,7 +49,7 @@ class TestASPHelper(unittest.TestCase):
                     input=predict, label=self.label))
             self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
-    def test_get_vars(self):
+    def test_get_not_ASP_relevant_vars(self):
         def check_params(params, params_from_asp):
             if len(params_from_asp) != len(params):
                 return False
@@ -59,13 +60,14 @@ class TestASPHelper(unittest.TestCase):
             return True
 
         params = self.main_program.global_block().all_parameters()
-        params_from_asp = sparsity.ASPHelper.get_vars(self.main_program)
+        params_from_asp = ASPHelper._get_not_ASP_relevant_vars(
+            self.main_program)
         self.assertTrue(check_params(params, params_from_asp))
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            sparsity.ASPHelper.minimize(self.optimizer, self.loss,
-                                        self.main_program, self.startup_program)
-        params_from_asp_after_opt = sparsity.ASPHelper.get_vars(
+            ASPHelper._minimize(self.optimizer, self.loss, self.main_program,
+                                self.startup_program)
+        params_from_asp_after_opt = ASPHelper._get_not_ASP_relevant_vars(
             self.main_program)
         self.assertTrue(check_params(params, params_from_asp_after_opt))
 
@@ -83,31 +85,31 @@ class TestASPHelper(unittest.TestCase):
         ]
         for i, name in enumerate(names):
             self.assertTrue(
-                ref[i] == sparsity.ASPHelper.is_supported_layer(program, name))
+                ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        sparsity.ASPHelper.set_excluded_layers(program, ['fc_1', 'conv2d_0'])
+        sparsity.set_excluded_layers(program, ['fc_1', 'conv2d_0'])
         ref = [
             False, False, False, False, True, False, True, False, False, False,
             True, False
         ]
         for i, name in enumerate(names):
             self.assertTrue(
-                ref[i] == sparsity.ASPHelper.is_supported_layer(program, name))
+                ref[i] == ASPHelper._is_supported_layer(program, name))
 
-        sparsity.ASPHelper.reset_excluded_layers(program)
+        sparsity.reset_excluded_layers(program)
         ref = [
             False, False, True, False, True, False, True, False, True, False,
             True, False
         ]
         for i, name in enumerate(names):
             self.assertTrue(
-                ref[i] == sparsity.ASPHelper.is_supported_layer(program, name))
+                ref[i] == ASPHelper._is_supported_layer(program, name))
 
     def test_decorate(self):
         param_names = self.__get_param_names(self.main_program.global_block()
                                              .all_parameters())
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.optimizer = sparsity.ASPHelper.decorate(self.optimizer)
+            self.optimizer = sparsity.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
         param_names_after_minimize = self.__get_param_names(
             self.main_program.global_block().all_parameters())
@@ -117,8 +119,8 @@ class TestASPHelper(unittest.TestCase):
 
     def test_asp_training(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            sparsity.ASPHelper.minimize(self.optimizer, self.loss,
-                                        self.main_program, self.startup_program)
+            self.optimizer = sparsity.decorate(self.optimizer)
+            self.optimizer.minimize(self.loss, self.startup_program)
 
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
@@ -127,15 +129,14 @@ class TestASPHelper(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=[self.img, self.label], place=place)
 
         exe.run(self.startup_program)
-        sparsity.ASPHelper.prune_model(place, self.main_program)
+        sparsity.prune_model(place, self.main_program)
 
         data = (np.random.randn(64, 3, 32, 32), np.random.randint(
             10, size=(64, 1)))
         exe.run(self.main_program, feed=feeder.feed([data]))
 
         for param in self.main_program.global_block().all_parameters():
-            if sparsity.ASPHelper.is_supported_layer(self.main_program,
-                                                     param.name):
+            if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
                 self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
@@ -146,7 +147,7 @@ class TestASPHelper(unittest.TestCase):
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.optimizer = fluid.contrib.mixed_precision.decorator.decorate(
                     self.optimizer)
-                self.optimizer = sparsity.ASPHelper.decorate(self.optimizer)
+                self.optimizer = sparsity.decorate(self.optimizer)
                 self.optimizer.minimize(self.loss, self.startup_program)
 
             exe = fluid.Executor(place)
@@ -154,15 +155,14 @@ class TestASPHelper(unittest.TestCase):
                 feed_list=[self.img, self.label], place=place)
 
             exe.run(self.startup_program)
-            sparsity.ASPHelper.prune_model(place, self.main_program)
+            sparsity.prune_model(place, self.main_program)
 
             data = (np.random.randn(64, 3, 32, 32), np.random.randint(
                 10, size=(64, 1)))
             exe.run(self.main_program, feed=feeder.feed([data]))
 
             for param in self.main_program.global_block().all_parameters():
-                if sparsity.ASPHelper.is_supported_layer(self.main_program,
-                                                         param.name):
+                if ASPHelper._is_supported_layer(self.main_program, param.name):
                     mat = np.array(fluid.global_scope().find_var(param.name)
                                    .get_tensor())
                     self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
@@ -176,13 +176,13 @@ class TestASPHelper(unittest.TestCase):
     def __check_mask_variables_and_ops(self, param_names,
                                        param_names_after_minimize):
         for n in param_names:
-            self.assertFalse(sparsity.ASPHelper.is_supported_layer(self.main_program, n) and \
-               sparsity.ASPHelper.get_mask_name(n) not in param_names_after_minimize)
+            self.assertFalse(ASPHelper._is_supported_layer(self.main_program, n) and \
+               ASPHelper._get_mask_name(n) not in param_names_after_minimize)
 
         mask_names = []
         for n in param_names:
-            if sparsity.ASPHelper.is_supported_layer(self.main_program, n):
-                mask_names.append(sparsity.ASPHelper.get_mask_name(n))
+            if ASPHelper._is_supported_layer(self.main_program, n):
+                mask_names.append(ASPHelper._get_mask_name(n))
 
         masking_ops = []
         for op in self.main_program.global_block().ops:

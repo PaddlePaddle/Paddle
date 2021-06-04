@@ -17,19 +17,19 @@ from __future__ import print_function
 
 import paddle
 from paddle.fluid.contrib import sparsity
-from paddle.fluid.tests.unittests.asp_pruning_base import TestASPHelperPruningBase
+from paddle.fluid.tests.unittests.asp.asp_pruning_base import TestASPHelperPruningBase
 
 paddle.enable_static()
 
 
-class TestASPHelperPruning1D(TestASPHelperPruningBase):
-    def test_1D_inference_pruning(self):
-        self.run_inference_pruning_test(sparsity.MaskAlgo.MASK_1D,
-                                        sparsity.CheckMethod.CHECK_1D)
+class TestASPHelperPruning2DGreedy(TestASPHelperPruningBase):
+    def test_2D_greedy_inference_pruning(self):
+        self.run_inference_pruning_test(sparsity.MaskAlgo.MASK_2D_GREEDY,
+                                        sparsity.CheckMethod.CHECK_2D)
 
-    def test_1D_training_pruning(self):
-        self.run_training_pruning_test(sparsity.MaskAlgo.MASK_1D,
-                                       sparsity.CheckMethod.CHECK_1D)
+    def test_2D_greedy_training_pruning(self):
+        self.run_training_pruning_test(sparsity.MaskAlgo.MASK_2D_GREEDY,
+                                       sparsity.CheckMethod.CHECK_2D)
 
 
 if __name__ == '__main__':

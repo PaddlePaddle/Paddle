@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.contrib import sparsity
+from paddle.fluid.contrib.sparsity.asp import ASPHelper
 import numpy as np
 
 paddle.enable_static()
@@ -59,9 +60,9 @@ class TestASPHelperPruningBase(unittest.TestCase):
             loss = fluid.layers.mean(
                 fluid.layers.cross_entropy(
                     input=self.predict, label=self.label))
-            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
-            sparsity.ASPHelper.minimize(optimizer, loss, self.main_program,
-                                        self.startup_program)
+            optimizer = sparsity.decorate(
+                fluid.optimizer.SGD(learning_rate=0.01))
+            optimizer.minimize(loss, self.startup_program)
 
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
@@ -74,14 +75,13 @@ class TestASPHelperPruningBase(unittest.TestCase):
     def __pruning_and_checking(self, exe, place, mask_func_name,
                                check_func_name, with_mask):
         exe.run(self.startup_program)
-        sparsity.ASPHelper.prune_model(
+        sparsity.prune_model(
             place,
             self.main_program,
             func_name=mask_func_name,
             with_mask=with_mask)
         for param in self.main_program.global_block().all_parameters():
-            if sparsity.ASPHelper.is_supported_layer(self.main_program,
-                                                     param.name):
+            if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(param.name)
                                .get_tensor())
                 self.assertTrue(

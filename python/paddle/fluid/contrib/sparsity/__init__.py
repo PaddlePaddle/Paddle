@@ -25,10 +25,12 @@ from .utils import create_mask
 from .utils import check_sparsity
 from .utils import MaskAlgo
 from .utils import CheckMethod
-from .asp import ASPHelper
+from .asp import decorate, prune_model
+from .asp import set_excluded_layers, reset_excluded_layers
 
 __all__ = [
     'calculate_density', 'check_mask_1d', 'get_mask_1d', 'check_mask_2d',
     'get_mask_2d_greedy', 'get_mask_2d_best', 'create_mask', 'check_sparsity',
-    'MaskAlgo', 'CheckMethod', 'ASPHelper'
+    'MaskAlgo', 'CheckMethod', 'decorate', 'prune_model', 'set_excluded_layers',
+    'reset_excluded_layers'
 ]
