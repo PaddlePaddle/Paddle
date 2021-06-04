@@ -201,7 +201,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
         cur_block = program_desc.block(b_idx)
         for var_idx, var in enumerate(cur_block.all_vars()):
             name_old = var.name()
-            is_double_grad_var = "GRAD" in name_old
+            is_double_grad_var = "@GRAD" in name_old
             has_double_grad = has_double_grad or is_double_grad_var
             should_rename = (include is None or name_old in include) and (
                 exclude is None or

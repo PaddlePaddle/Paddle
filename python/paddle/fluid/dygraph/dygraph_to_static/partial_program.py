@@ -135,6 +135,7 @@ class PartialProgramLayer(layers.Layer):
         self._origin_main_program = self._verify_program(main_program)
         self._inner_scope = core.Scope()
         # Set default mode to train
+        self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
     @LazyInitialized
@@ -219,7 +220,6 @@ class PartialProgramLayer(layers.Layer):
 
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
-        double_grads = self._get_double_grads(self._origin_main_program)
         framework._dygraph_tracer().trace_op(
             type='run_program',
             inputs={
@@ -229,7 +229,7 @@ class PartialProgramLayer(layers.Layer):
             outputs={
                 'Out': valid_vars(out_vars),
                 'OutScope': tmp_scope_vec,
-                'DOut': valid_vars(double_grads)
+                'DOut': valid_vars(self._double_grads)
             },
             attrs={
                 'global_block': self.program.desc.block(0),
