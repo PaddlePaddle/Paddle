@@ -938,7 +938,7 @@ function assert_file_diff_approvals() {
 
 
 function check_coverage() {
-    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+    /bin/bash -x ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
 }
 
 
