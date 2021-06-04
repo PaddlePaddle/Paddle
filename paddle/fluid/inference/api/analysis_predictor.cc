@@ -292,7 +292,8 @@ static void DisablePrepareDataOpt(
     std::shared_ptr<framework::ProgramDesc> inference_program, int block,
     bool pre_disable_opt) {
   bool disable_opt = false;
-  for (auto *op : inference_program->Block(block).AllOps()) {
+  auto &infer_block = inference_program_->Block(block);
+  for (auto *op : infer_block.AllOps()) {
     if (disable_opt || pre_disable_opt) {
       op->SetAttr("inference_force_prepare_data", true);
     }
