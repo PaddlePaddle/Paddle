@@ -105,3 +105,11 @@ func TestFromBuffer(t *testing.T) {
 	outHandle.CopyToCpu(outData)
 	t.Log(outData)
 }
+
+func numElements(shape []int32) int32 {
+	n := int32(1)
+	for _, v := range shape {
+		n *= v
+	}
+	return n
+}
