@@ -18,13 +18,12 @@ from __future__ import division
 import sys
 sys.path.append("..")
 import unittest
-import numpy as np
-
 import paddle.fluid.core as core
 from op_test_xpu import XPUOpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import paddle
+import numpy as np
 
 paddle.enable_static()
 
