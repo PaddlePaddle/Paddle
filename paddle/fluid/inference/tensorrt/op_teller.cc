@@ -717,6 +717,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "the reduce_sum does not support static shape yet";
         return false;
       }
+
+      if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
+            desc.HasAttr("reduce_all"))) {
+        VLOG(3) << "the reduce_sum does not have attr (keep_dim or dim or "
+                   "reduce_all)";
+        return false;
+      }
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;

@@ -34,22 +34,10 @@ class GatherNdOpConverter : public OpConverter {
     inputs.emplace_back(index);
 
     nvinfer1::ILayer* layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::GatherNdPluginDynamic* plugin =
-          new plugin::GatherNdPluginDynamic(with_fp16);
-      layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "gather_nd plugin only support dynamic mode."));
-    }
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    plugin::GatherNdPluginDynamic* plugin =
+        new plugin::GatherNdPluginDynamic(with_fp16);
+    layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
 
     std::string layer_name = "gather_nd (Output: ";
     auto output_name = op_desc.Output("Out")[0];
