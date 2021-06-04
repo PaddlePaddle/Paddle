@@ -184,6 +184,17 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     return new_ins;
   } else {
     auto dst_type = GetPromoteType(ins);
+
+    if (op_type == "moving_average_abs_max_scale") {
+      for (const auto& pair : ins) {
+        if (pair.first == "X" &&
+            pair.second.front()->DataType() ==
+                framework::proto::VarType::FP16) {
+          dst_type = framework::proto::VarType::FP16;
+        }
+      }
+    }
+
     // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
     if (dst_type == framework::proto::VarType::FP16 &&
         AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
