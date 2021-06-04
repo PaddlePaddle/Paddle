@@ -329,6 +329,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const NameVarMap<VarType>& ins,
                           const NameVarMap<VarType>& outs,
                           const framework::AttributeMap& attrs,
+                          const framework::AttributeMap& attrs_default,
                           const platform::Place& place) {
   auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
@@ -336,7 +337,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                      "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs);
+    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs,
+                                                           attrs_default);
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
@@ -395,16 +397,18 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VarBase>& ins,
                  const NameVarMap<VarBase>& outs,
                  const framework::AttributeMap& attrs,
+                 const framework::AttributeMap& attrs_default,
                  const platform::Place& place) {
-  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, place);
+  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, attrs_default, place);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VariableWrapper>& ins,
                  const NameVarMap<VariableWrapper>& outs,
                  const framework::AttributeMap& attrs,
+                 const framework::AttributeMap& attrs_default,
                  const platform::Place& place) {
-  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, place);
+  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, attrs_default, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {

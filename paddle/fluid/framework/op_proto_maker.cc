@@ -93,6 +93,8 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
       .SetDefault("");
   Validate();
+
+  op_checker_->InitDefaultMap();
 }
 
 }  // namespace framework

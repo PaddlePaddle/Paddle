@@ -154,7 +154,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
-    attr_checker->Check(&attrs, true);
+    attr_checker->Check(&attrs, true, true);
   }
 
   NameVarBaseMap new_ins = ins;
@@ -181,7 +181,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 #endif
     }
 
-    OpBase::Run(*op, new_ins, outs, attrs, place);
+    OpBase::Run(*op, new_ins, outs, attrs, attr_checker->GetAttrDefaultMap(),
+                place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);
