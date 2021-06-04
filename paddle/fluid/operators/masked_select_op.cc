@@ -26,8 +26,9 @@ class MaskedSelectOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "Input", "MaskedSelect");
     OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "MaskedSelect");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Out", "MaskedSelect");
-    framework::DDim output_dims(ctx->GetInputDim("X"));
-    ctx->SetOutputDim("Y", output_dims);
+
+    // output will only be a 1-D Tensor
+    ctx->SetOutputDim("Y", framework::make_ddim({-1}));
     ctx->ShareLoD("X", /*->*/ "Y");
   }
 
