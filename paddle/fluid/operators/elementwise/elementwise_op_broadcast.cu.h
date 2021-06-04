@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 
 namespace paddle {
@@ -507,22 +506,20 @@ void LaunchBroadcastElementwiseCudaKernel(
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchElementwiseCudaKernel(
-    const framework::ExecutionContext &ctx,
+    const platform::CUDADeviceContext &cuda_ctx,
     const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, Functor func) {
+    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
   std::vector<int> dims_size;
   bool no_broadcast_flag = true;
   for (auto *in : ins) {
     no_broadcast_flag = ins[0]->dims() == in->dims();
     dims_size.emplace_back(in->dims().size());
   }
-  const auto &cuda_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
+
   if (no_broadcast_flag) {
     LaunchSameDimsElementwiseCudaKernel<ET, InT, OutT>(cuda_ctx, ins, outs,
                                                        func);
   } else {
-    int axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
     axis = axis == -1
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())

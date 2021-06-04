@@ -27,6 +27,12 @@ add_subdirectory(fleet)
 add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
+
+proto_library(op_def_proto SRCS op_def.proto)
+set(OP_DEF_FOLDER "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/")
+configure_file("op_def_api.h.in" "op_def_api.h")
+cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto)
+
 proto_library(heter_service_proto SRCS heter_service.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
