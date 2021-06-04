@@ -106,6 +106,10 @@ class ElasticManager(object):
 
         self.hosts = []
         self.stopped = False
+        '''
+        set to True when other failed, then restart self
+        '''
+        self.restart_flag = False
 
         if not server or ':' not in server or not name or not np:
             self.enable = False
@@ -139,6 +143,9 @@ class ElasticManager(object):
 
         def host_call_back(event):
             if self.etcd.get(self.host_path)[0] == None:
+                self.restart_flag = True
+                time.sleep(5)
+
                 logger.debug('register host again {}'.format(self.host))
                 self.etcd.put(self.host_path, six.b(self.host))
 
@@ -251,6 +258,11 @@ class ElasticManager(object):
                     return ElasticStatus.RESTART
                 else:
                     return ElasticStatus.ERROR
+
+            if self.restart_flag:
+                self.restart_flag = False
+                self.launcher.stop()
+                return ElasticStatus.HOLD
 
             if not self._completed() and not self._match():
                 self.launcher.stop()
