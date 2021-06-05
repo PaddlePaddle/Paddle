@@ -40,7 +40,7 @@ class LogicalNotNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("LogicalNot", {*x}, {*out}, {});
+    const auto& runner = NpuOpRunner("LogicalNot", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };
