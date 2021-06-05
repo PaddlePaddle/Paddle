@@ -17,7 +17,6 @@
 #include "paddle/fluid/operators/log_softmax_op.h"
 #include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -203,10 +202,9 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
       const int data_offset = x_id * outer_stride + y_id;
       // When blockDim.x==1, no block.x-reduction opetaions are needed.
       // And threadIdx.x is 0 all the time, so the for-loops below are literally
-      // loops (No parallel executions).
-      // Loop all elements along axis and calculate the Max, Sum and
-      // (input[id]-Max-log(Sum)) to get the final log_softmax values along that
-      // axis.
+      // loops (No parallel executions). Loop all elements along axis and
+      // calculate the Max, Sum and (input[id]-Max-log(Sum)) to get the final
+      // log_softmax values along that axis.
       // 1. reduce max
       AccT max_value = -std::numeric_limits<AccT>::infinity();
       // For one thread, iterate all items it responsable for, and get
@@ -218,11 +216,9 @@ __global__ void LogSoftmaxForwardCUDAKernelNotLastAxis(
         max_value = math::MaxFunctor<AccT>()(max_value, value);
       }
       // If there are more than 1 threads along block x, reduce all max_values
-      // and
-      // get the global max_value, which is the max value along "axis".
-      // If there is only one thread along block x, no need to reduce, and the
-      // max_value
-      // is the global max_value.
+      // and get the global max_value, which is the max value along "axis".
+      // If there is only one thread along block x, no need to reduce, as the
+      // 'max_value' is the global max_value.
       if (blockDim.x > 1) {
         max_value =
             BlockReduceAlongDimX<AccT, math::MaxFunctor>(sdata, max_value);
