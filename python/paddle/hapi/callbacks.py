@@ -395,6 +395,10 @@ class ProgBarLogger(Callback):
             values.append(
                 ('ips', "%.5f samples/sec" %
                  (samples / (timer['data_time'] + timer['batch_time']))))
+            timer['count'] = 0
+            timer['samples'] = 0
+            timer['data_time'] = 0.
+            timer['batch_time'] = 0.
 
         progbar.update(steps, values)
 

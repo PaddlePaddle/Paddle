@@ -140,6 +140,8 @@ class OpCompat {
   std::unordered_map<std::string, AttrCompat> attr_compats_;
   std::unordered_map<std::string, InputOrOutputCompat> input_compats_;
   std::unordered_map<std::string, InputOrOutputCompat> output_compats_;
+  std::unordered_set<std::string> extra_attrs_;
+  bool is_first_judge_ = true;
 };
 
 /**
@@ -203,6 +205,7 @@ class OpCompatSensiblePass : public Pass {
       if (!node_pair.second->IsOp()) continue;
       auto op_type = node_pair.second->Op()->Type();
       if (!op_compat_judgers_.count(op_type)) {
+        LOG(WARNING) << op_type << "compat not registered!";
         return false;
       }
       auto& judger = *op_compat_judgers_.at(op_type);
