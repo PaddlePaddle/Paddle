@@ -34,8 +34,8 @@ struct CudaDivFunctor<T,
                       typename std::enable_if_t<std::is_integral<T>::value>> {
   inline HOSTDEVICE T operator()(const T* args) const {
     PADDLE_ENFORCE(args[1] != 0,
-                   "InvalidArgumentError: Integer division "
-                   "by zero encountered in divide. Please check.\n");
+                   "Invalid Argument Error: Integer division by zero "
+                   "encountered in divide. Please check the input value.");
     return args[0] / args[1];
   }
 };
