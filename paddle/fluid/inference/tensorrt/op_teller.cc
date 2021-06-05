@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 
@@ -118,11 +119,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten2",
       "flatten",
       "gather",
+      "gather_nd",
       "yolo_box",
       "roi_align",
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
+      "reduce_sum",
   };
 };
 
@@ -318,6 +321,30 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "gather") {
       // current not support axis from input, use default 0
       if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
+    }
+
+    if (op_type == "gather_nd") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto index_var_name = desc.Input("Index")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* index_var_desc = block->FindVar(index_var_name);
+
+      // The index input must be int32 datatype.
+      if (index_var_desc->GetDataType() !=
+          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+        VLOG(3) << "gather_nd op Index input data type must be int32";
+        return false;
+      }
+
+      const auto index_shape = index_var_desc->GetShape();
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() != index_shape.size()) {
+        VLOG(3) << "gather_nd op Index input dims size [" << index_shape.size()
+                << " ] not equal to x dims size [" << x_shape.size() << "]";
+        return false;
+      }
+      if (!with_dynamic_shape) return false;
     }
 
     if (op_type == "yolo_box") {
@@ -650,6 +677,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "multihead_matmul") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the multihead_matmul does not support static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "reduce_sum") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the reduce_sum does not support static shape yet";
+        return false;
+      }
+
+      if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
+            desc.HasAttr("reduce_all"))) {
+        VLOG(3) << "the reduce_sum does not have attr (keep_dim or dim or "
+                   "reduce_all)";
         return false;
       }
     }
