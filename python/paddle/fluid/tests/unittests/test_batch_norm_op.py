@@ -683,14 +683,6 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
     not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
     "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
 class TestBatchNormBfloat16DataType(unittest.TestCase):
-    def assert_close(self, expect_array, actual_array, max_relative_error):
-        for a, b in zip(expect_array, actual_array):
-            abs_a = np.abs(a)
-            diff_mat = np.abs(a - b) / abs_a
-            max_diff = np.max(diff_mat)
-
-            self.assertLessEqual(max_diff, max_relative_error)
-
     def test_bfloat16_datatype(self):
         with program_guard(Program(), Program()):
             paddle.disable_static()
@@ -729,15 +721,18 @@ class TestBatchNormBfloat16DataType(unittest.TestCase):
                                              core.VarDesc.VarType.FP32)
 
             # checkout forward&backward
-            self.assert_close(
-                expect_array=forward_fp32.numpy(),
-                actual_array=forward_bf162fp32.numpy(),
-                max_relative_error=1e-1)
-            self.assert_close(
-                expect_array=backward_fp32[0].numpy(),
-                actual_array=backward_bf162fp32.numpy(),
-                max_relative_error=1e-1)
-
+            self.assertTrue(
+                np.allclose(
+                    forward_bf162fp32.numpy(),
+                    forward_fp32.numpy(),
+                    rtol=1e-2,
+                    atol=1e-2))
+            self.assertTrue(
+                np.allclose(
+                    backward_bf162fp32.numpy(),
+                    backward_fp32[0].numpy(),
+                    rtol=1e-2,
+                    atol=1e-2))
             paddle.enable_static()
 
 
