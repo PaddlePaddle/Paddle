@@ -2286,7 +2286,7 @@ def digamma(x, name=None):
     Calculates the digamma of the given input tensor, element-wise.
 
     .. math::
-        Out = = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x)
+        Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
