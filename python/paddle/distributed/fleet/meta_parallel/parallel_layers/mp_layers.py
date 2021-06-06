@@ -18,6 +18,8 @@ from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
+from paddle.autograd import PyLayer
+# from paddle.distributed import ReduceOp
 
 __all__ = []
 
@@ -243,3 +245,121 @@ class RowParallelLinear(Layer):
 
         output = output_ + self.bias if self.bias is not None else output_
         return output
+
+
+class _VocabParallelCrossEntropy(PyLayer):
+    @staticmethod
+    def forward(ctx, vocab_parallel_logits, target):
+
+        model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
+        )
+        world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size()
+        rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+
+        # Maximum value along vocab dimension across all GPUs.
+        logits_max = paddle.max(x=vocab_parallel_logits, axis=-1)[0]
+        paddle.distributed.collective.all_reduce(
+            logits_max,
+            op=paddle.distributed.ReduceOp.MAX,
+            group=model_parallel_group)
+
+        vocab_parallel_logits = vocab_parallel_logits - logits_max.unsqueeze(
+            axis=-1)
+
+        partition_vocab_size = vocab_parallel_logits.shape()[-1]
+        vocab_start_index = rank * partition_vocab_size
+        vocab_end_index = vocab_start_index + partition_vocab_size
+
+        target_mask = paddle.logical_or((target < vocab_start_index),
+                                        (target >= vocab_end_index))
+        masked_target = target.clone() - vocab_start_index
+        masked_target[target_mask] = 0
+
+        logits_2d = vocab_parallel_logits.reshape(-1, partition_vocab_size)
+        masked_target_1d = masked_target.reshape(-1)
+        arange_1d = paddle.arange(0, logits_2d.size()[0], 'int32')
+
+        predicted_logits_1d = logits_2d[arange_1d, masked_target_1d]
+        predicted_logits_1d = predicted_logits_1d.clone()
+        predicted_logits = predicted_logits_1d.view_as(target)
+        predicted_logits[target_mask] = 0.0
+
+        # All reduce is needed to get the chunks from other GPUs.
+        paddle.distributed.collective.all_reduce(
+            predicted_logits,
+            op=paddle.distributed.ReduceOp.SUM,
+            group=model_parallel_group)
+
+        # Sum of exponential of logits along vocab dimension across all GPUs.
+        # exp_logits = vocab_parallel_logits
+        exp_logits = paddle.exp(vocab_parallel_logits)
+        sum_exp_logits = exp_logits.sum(dim=-1)
+        paddle.distributed.collective.all_reduce(
+            sum_exp_logits,
+            op=paddle.distributed.ReduceOp.SUM,
+            group=model_parallel_group)
+
+        # Loss = log(sum(exp(logits))) - predicted-logit.
+        loss = paddle.log(sum_exp_logits) - predicted_logits
+
+        # Store softmax, target-mask and masked-target for backward pass.
+        exp_logits = exp_logits / (sum_exp_logits.unsqueeze(dim=-1))
+        ctx.save_for_backward(exp_logits, target_mask, masked_target_1d)
+
+        return loss
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        # Retreive tensors from the forward path.
+        softmax, target_mask, masked_target_1d = ctx.saved_tensors
+
+        # All the inputs have softmax as thier gradient.
+        grad_input = softmax
+        # For simplicity, work with the 2D gradient.
+        partition_vocab_size = softmax.shape()[-1]
+        grad_2d = grad_input.reshape(-1, partition_vocab_size)
+
+        # Add the gradient from matching classes.
+        arange_1d = paddle.arange(
+            start=0, end=grad_2d.size()[0], device=grad_2d.device)
+        grad_2d[arange_1d, masked_target_1d] -= (1.0 - target_mask.reshape(-1))
+
+        # Finally elementwise multiplication with the output gradients.
+        grad_input = paddle.mul(grad_input, grad_output.unsqueeze(dim=-1))
+
+        return grad_input, None
+
+
+class ParallelCrossEntropy(Layer):
+    def __init__(self, name=None):
+        super(ParallelCrossEntropy, self).__init__()
+        # self.weight = weight
+        # self.reduction = reduction
+        # self.ignore_index = ignore_index
+        # self.soft_label = soft_label
+        # self.axis = axis
+        # self.use_softmax = use_softmax
+        self.name = name
+        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
+        )
+        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
+        )
+        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+
+    def forward(self, input, label):
+        loss = paddle.distributed.collective._c_softmax_with_cross_entropy(
+            input, label, group=self.model_parallel_group)
+
+        # loss = _VocabParallelCrossEntropy.apply(input, label)
+        # ret = paddle.nn.functional.cross_entropy(
+        #     input,
+        #     label,
+        #     weight=self.weight,
+        #     ignore_index=self.ignore_index,
+        #     reduction=self.reduction,
+        #     soft_label=self.soft_label,
+        #     axis=self.axis,
+        #     use_softmax=self.use_softmax,
+        #     name=self.name)
+
+        return loss
