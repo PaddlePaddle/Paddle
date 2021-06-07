@@ -1167,7 +1167,7 @@ set -x
                 exit 8;
             fi
         fi
-#set +x
+set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
@@ -1369,7 +1369,9 @@ set -ex
 
 function show_ut_retry_result() {
     if [[ "$is_retry_execuate" != "0" ]];then
+        set +e
         failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        set -e
         echo "========================================="
         echo "There are more than 10 failed unit tests, so no unit test retry!!!"
         echo "========================================="
