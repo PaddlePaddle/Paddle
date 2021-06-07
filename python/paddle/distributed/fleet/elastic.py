@@ -214,11 +214,20 @@ class ElasticManager(object):
 
     def _update_hosts(self):
         assert len(self.hosts) != 0, 'hosts empty'
+
+        rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
+        idx = self.hosts.index(self.host)
+
+        # swap if self.host not in the right position
+        if rank >= 0:
+            self.hosts[idx] = self.hosts[rank]
+            self.hosts[rank] = self.host
+        else:
+            os.environ['PADDLE_TRAINER_ID'] = '{}'.format(idx)
+
         hosts = ','.join(self.hosts)
         self.args.ips = hosts
         os.environ['PADDLE_TRAINERS'] = hosts
-        os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
-            self.hosts.index(self.host))
 
     def wait(self):
         if not self.enable:
