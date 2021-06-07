@@ -425,9 +425,12 @@ stdout: %s
     return result, tfname, msg, end_time - start_time
 
 
-def get_filenames(increment=True):
+def get_filenames(full_test=False):
     '''
     this function will get the sample code files that pending for check.
+
+    Args:
+        full_test: the full apis or the increment
 
     Returns:
 
@@ -437,10 +440,10 @@ def get_filenames(increment=True):
     global whl_error
     import paddle
     whl_error = []
-    if increment:
-        get_incrementapi()
-    else:
+    if full_test:
         get_full_api()
+    else:
+        get_incrementapi()
     all_sample_code_filenames = {}
     with open(API_DIFF_SPEC_FN) as f:
         for line in f.readlines():
@@ -540,6 +543,7 @@ def parse_args():
     #                     help='Use CPU mode (overrides --gpu)')
     # parser.add_argument('--gpu', dest='gpu_mode', action="store_true")
     parser.add_argument('--debug', dest='debug', action="store_true")
+    parser.add_argument('--full-test', dest='full_test', action="store_true")
     parser.add_argument('mode', type=str, help='run on device', default='cpu')
     for item in arguments:
         parser.add_argument(
@@ -587,7 +591,7 @@ if __name__ == '__main__':
     else:
         os.mkdir(SAMPLECODE_TEMPDIR)
 
-    filenames = get_filenames()
+    filenames = get_filenames(args.full_test)
     if len(filenames) == 0 and len(whl_error) == 0:
         logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
         exit(0)

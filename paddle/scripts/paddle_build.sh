@@ -2009,12 +2009,16 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
-
-function example() {
+# origin name: example
+function exec_samplecode_test() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
     cd ${PADDLE_ROOT}/tools
-    python sampcd_processor.py cpu;example_error=$?
+    if [ "$1" = "cpu" ] ; then
+        python sampcd_processor.py cpu; example_error=$?
+    elif [ "$1" = "gpu" ] ; then
+        python sampcd_processor.py --threads=1 --full-test gpu; example_error=$?
+    fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
       exit 5
@@ -2127,7 +2131,7 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
-        example_info=$(example)
+        example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         assert_api_spec_approvals
@@ -2248,6 +2252,11 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        example_info=$(exec_samplecode_test gpu)
+        example_code=$?
+        check_style_code=0
+        check_style_info=
+        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         parallel_test
         ;;
       check_xpu)
@@ -2286,7 +2295,11 @@ function main() {
         build_document_preview
         ;;
       api_example)
-        example
+        example_info=$(exec_samplecode_test cpu)
+        example_code=$?
+        check_style_code=0
+        check_style_info=
+        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         ;;
       test_op_benchmark)
         test_op_benchmark
