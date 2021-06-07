@@ -204,7 +204,8 @@ def _wget_download(url, fullname):
     # using wget to download url
     tmp_fullname = fullname + "_tmp"
     # –user-agent
-    command = 'wget -O {} {}'.format(tmp_fullname, url)
+    command = 'wget -O {} -t {} {}'.format(tmp_fullname, DOWNLOAD_RETRY_LIMIT,
+                                           url)
     subprc = subprocess.Popen(
         command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _ = subprc.communicate()
@@ -233,7 +234,8 @@ def _download(url, path, md5sum=None, method='get'):
     url (str): download url
     path (str): download to given path
     """
-    assert method in _download_methods, 'make sure `method` implemented'
+    assert method in _download_methods, 'make sure `{}` implemented'.format(
+        method)
 
     if not osp.exists(path):
         os.makedirs(path)
