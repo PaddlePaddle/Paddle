@@ -19,7 +19,6 @@ from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
 from paddle.autograd import PyLayer
-# from paddle.distributed import ReduceOp
 
 __all__ = []
 
