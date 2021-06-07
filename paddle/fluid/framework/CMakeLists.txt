@@ -394,7 +394,7 @@ cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framewo
 cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
 
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
-cc_binary(new_executor SRCS new_exec.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
+#cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 

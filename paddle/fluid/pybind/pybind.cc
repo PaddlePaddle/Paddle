@@ -53,6 +53,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/framework/new_exec.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
@@ -87,6 +88,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
+
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -1975,6 +1977,40 @@ All parameter, weight, gradient are variables in Paddle.
         pybind11::gil_scoped_release release;
         self.Run(prog, scope, block_id, create_local_scope, create_vars,
                  fetch_vars);
+      });
+
+  py::class_<framework::InterpreterCore>(m, "InterpreterCore")
+      .def(py::init<const platform::Place &, const ProgramDesc &>())
+      .def("run", [](InterpreterCore &self, const std::unordered_map<std::string, py::array>& input_dict, std::vector<std::string> vec_fetch_name) {
+        pybind11::gil_scoped_release release;
+        std::vector<framework::Tensor> vec_tensor;
+        std::vector<std::string> vec_name;
+        //vec_tensor.reserve( feed.size() );
+        //vec_tensor.reserve( feed.size ()) ;
+        
+        //auto new_res = input_dict.cast<py::array>();
+
+        for ( auto & item : input_dict )
+        {
+          //cerr << "test flag  " << test_flag << endl;
+          cerr << item.first << endl;
+          framework::LoDTensor t;
+          SetTensorFromPyArray<platform::CPUPlace>(&t, item.second,
+                                                    platform::CPUPlace(), false);
+                                                
+          cerr << t.dims() << endl;
+          cerr << t.data<float>()[0] << endl;
+
+          vec_name.push_back( item.first );
+          vec_tensor.push_back( t );
+        }
+      
+        
+        
+        std::cerr << "11" << std::endl;
+        self.run(vec_name, vec_tensor, vec_fetch_name);
+        //self.Run(prog, scope, block_id, create_local_scope, create_vars,
+        //         fetch_vars);
       });
 
   m.def("init_gflags", framework::InitGflags);
