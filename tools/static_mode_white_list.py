@@ -710,4 +710,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_lamb_op_xpu',
     'test_model_cast_to_bf16',
     'test_sgd_op_bf16',
+    'test_marker_op',
+    'test_c_embedding_op',
 ]

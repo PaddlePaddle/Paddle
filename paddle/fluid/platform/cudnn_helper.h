@@ -34,35 +34,6 @@ DECLARE_bool(cudnn_deterministic);
 namespace paddle {
 namespace platform {
 
-inline const char* cudnnGetErrorString(cudnnStatus_t status) {
-  switch (status) {
-    case CUDNN_STATUS_SUCCESS:
-      return "CUDNN_STATUS_SUCCESS";
-    case CUDNN_STATUS_NOT_INITIALIZED:
-      return "CUDNN_STATUS_NOT_INITIALIZED";
-    case CUDNN_STATUS_ALLOC_FAILED:
-      return "CUDNN_STATUS_ALLOC_FAILED";
-    case CUDNN_STATUS_BAD_PARAM:
-      return "CUDNN_STATUS_BAD_PARAM";
-    case CUDNN_STATUS_INTERNAL_ERROR:
-      return "CUDNN_STATUS_INTERNAL_ERROR";
-    case CUDNN_STATUS_INVALID_VALUE:
-      return "CUDNN_STATUS_INVALID_VALUE";
-    case CUDNN_STATUS_ARCH_MISMATCH:
-      return "CUDNN_STATUS_ARCH_MISMATCH";
-    case CUDNN_STATUS_MAPPING_ERROR:
-      return "CUDNN_STATUS_MAPPING_ERROR";
-    case CUDNN_STATUS_EXECUTION_FAILED:
-      return "CUDNN_STATUS_EXECUTION_FAILED";
-    case CUDNN_STATUS_NOT_SUPPORTED:
-      return "CUDNN_STATUS_NOT_SUPPORTED";
-    case CUDNN_STATUS_LICENSE_ERROR:
-      return "CUDNN_STATUS_LICENSE_ERROR";
-    default:
-      return "Unknown cudnn error number";
-  }
-}
-
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
@@ -130,6 +101,25 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
 
 template <typename T>
 class CudnnDataType;
+
+// CUDNN_DATA_BFLOAT16 is not valid before cudnn8.1
+#if CUDNN_VERSION_MIN(8, 1, 0)
+template <>
+class CudnnDataType<bfloat16> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_BFLOAT16;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+#endif
 
 template <>
 class CudnnDataType<float16> {
