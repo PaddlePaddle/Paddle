@@ -1316,8 +1316,8 @@ class ActivationCudaKernel
     for (auto& attr : attrs) {
       *attr.second = ctx.Attr<float>(attr.first);
     }
-    LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(dev_ctx, ins,
-                                                               &outs, functor);
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+        dev_ctx, ins, &outs, functor);
   }
 };
 
@@ -1346,16 +1346,16 @@ class ActivationGradCudaKernel
     if (static_cast<int>(Functor::FwdDeps()) == static_cast<int>(kDepOut)) {
       // Only need forward output Out
       ins.push_back(out);
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
           dev_ctx, ins, &outs, functor);
     } else if (static_cast<int>(Functor::FwdDeps()) ==
                static_cast<int>(kDepX)) {
       // Only need forward input X
       ins.push_back(x);
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
           dev_ctx, ins, &outs, functor);
     } else {
-      LaunchElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
           dev_ctx, ins, &outs, functor);
     }
   }
@@ -1481,6 +1481,21 @@ REGISTER_OP_CUDA_KERNEL(
 #endif
 /* ========================================================================== */
 
+/* ===========================    sigmoid register  ============================
+ */
+REGISTER_ACTIVATION_CUDA_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
+                                CudaSigmoidGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    sigmoid_grad_grad,
+    ops::SigmoidDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                 ops::SigmoidGradGradFunctor<float>>,
+    ops::SigmoidDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                 ops::SigmoidGradGradFunctor<double>>,
+    ops::SigmoidDoubleGradKernel<plat::CUDADeviceContext,
+                                 ops::SigmoidGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
 /* ===========================    tanh register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(tanh, Tanh, CudaTanhFunctor,
                                 CudaTanhGradFunctor);
@@ -1595,7 +1610,6 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 #define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \
-  __macro(sigmoid, Sigmoid, CudaSigmoidFunctor, CudaSigmoidGradFunctor);      \
   __macro(silu, Silu, CudaSiluFunctor, CudaSiluGradFunctor);                  \
   __macro(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,                      \
           CudaLogSigmoidGradFunctor);                                         \

@@ -92,7 +92,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # including io directory for inference lib paddle_api.h
 include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 
-if(NOT APPLE)
+if(NOT APPLE AND NOT WIN32)
   find_package(Threads REQUIRED)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
   if(WITH_PSLIB OR WITH_DISTRIBUTE)
@@ -100,7 +100,7 @@ if(NOT APPLE)
   else()
     set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
   endif()
-endif(NOT APPLE)
+endif()
 
 set_property(GLOBAL PROPERTY FLUID_MODULES "")
 # find all fluid modules is used for paddle fluid static library
@@ -391,7 +391,7 @@ function(cc_binary TARGET_NAME)
 endfunction(cc_binary)
 
 function(cc_test_build TARGET_NAME)
-  if(WITH_TESTING)
+  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -409,14 +409,12 @@ function(cc_test_build TARGET_NAME)
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
     endif()
+    check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
   endif()
-
-  check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
-
 endfunction()
 
 function(cc_test_run TARGET_NAME)
-  if(WITH_TESTING)
+  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})

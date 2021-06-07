@@ -40,9 +40,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     Constructs a ``paddle.Tensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
 
-    If the ``data`` is already a tensor, and ``dtype`` or ``place`` does't change, no copy 
-    will be performed and return origin tensor, otherwise a new tensor will be constructed
-    and returned. 
+    If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
+    If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
 
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
@@ -75,32 +74,31 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
         #        [1])
 
-        x = paddle.to_tensor(1)
-        paddle.to_tensor(x, dtype='int32', place=paddle.CPUPlace()) # A new tensor will be constructed due to different dtype or place
-        # Tensor(shape=[1], dtype=int32, place=CPUPlace, stop_gradient=True,
+        x = paddle.to_tensor(1, stop_gradient=False)
+        print(x)
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
         #        [1])
 
-        paddle.to_tensor((1.1, 2.2), place=paddle.CUDAPinnedPlace())
-        # Tensor(shape=[1], dtype=float32, place=CUDAPinnedPlace, stop_gradient=True,
-        #        [1])
+        paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        [1])        
 
-        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CUDAPlace(0), stop_gradient=False)
-        # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
+        # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
         #        [[0.10000000, 0.20000000],
         #         [0.30000001, 0.40000001]])
 
         type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
-        # <class 'paddle.VarBase'>
+        # <class 'paddle.Tensor'>
 
         paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
-        # Tensor(shape=[2, 2], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+        # Tensor(shape=[2, 2], dtype=complex64, place=CPUPlace, stop_gradient=True,
         #        [[(1+1j), (2+0j)],
         #         [(3+2j), (4+0j)]])
     """
-
     place = _get_paddle_place(place)
     if place is None:
         place = _current_expected_place()
@@ -118,6 +116,13 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         place = _current_expected_place()
 
     if not isinstance(data, np.ndarray):
+
+        def _handle_dtype(data, dtype):
+            if dtype:
+                if convert_dtype(dtype) != convert_dtype(data.dtype):
+                    return data.astype(convert_dtype(dtype))
+            return data
+
         if np.isscalar(data) and not isinstance(data, str):
             data = np.array([data])
         elif isinstance(data, (list, tuple)):
@@ -128,13 +133,17 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "this means the input data contains nested lists with different lengths. "
                 )
         elif isinstance(data, paddle.Tensor):
+            data = data._copy_to(place, False)
+            ata = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
+        elif isinstance(data, core.LoDTensor):
+            # convert LoDTensor to VarBase first
+            # Currenly, LoDTensor does no copy when places are same
+            data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
-            if dtype:
-                if convert_dtype(dtype) != convert_dtype(data.dtype):
-                    return data.astype(convert_dtype(dtype))
-            return data
+            data = _handle_dtype(data, dtype)
+            data.stop_gradient = stop_gradient
         else:
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".
