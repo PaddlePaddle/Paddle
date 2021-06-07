@@ -1303,14 +1303,10 @@ class BatchNormDoubleGradKernel<platform::CUDADeviceContext, T>
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-#define REGISTER_BN_FP32(op_name, grad, ...) \
-  REGISTER_OP_CUDA_KERNEL(                   \
-      op_name, ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, float>);
-
 #define REGISTER_BN_FP32_EX(op_name, grad, ...)                              \
   REGISTER_OP_CUDA_KERNEL(                                                   \
       op_name, ops::BatchNorm##grad##Kernel<plat::CUDADeviceContext, float>, \
-      __VA_ARGS__);
+      ##__VA_ARGS__);
 
 #define REGISTER_BN_FP32_FP16(op_name, grad) \
   REGISTER_BN_FP32_EX(                       \
@@ -1338,7 +1334,7 @@ namespace plat = paddle::platform;
 #ifdef PADDLE_WITH_HIP
 REGISTER_BN_FP32_FP16(batch_norm, )
 REGISTER_BN_FP32_FP16(batch_norm_grad, Grad)
-REGISTER_BN_FP32(batch_norm_grad_grad, DoubleGrad)
+REGISTER_BN_FP32_EX(batch_norm_grad_grad, DoubleGrad)
 #else
 #if CUDNN_VERSION >= 8100
 REGISTER_BN_FP32_FP64_FP16_BF16(batch_norm, )
