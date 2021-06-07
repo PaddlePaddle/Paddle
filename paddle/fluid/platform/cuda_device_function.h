@@ -16,8 +16,7 @@ limitations under the License. */
 
 // NOTE(): support float16 to half in header file.
 #define PADDLE_CUDA_FP16
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -32,6 +31,7 @@ namespace platform {
 #endif
 
 inline static int RoundToPowerOfTwo(int dim) {
+#ifdef PADDLE_WITH_CUDA
   if (dim > 512) {
     return 1024;
   } else if (dim > 256) {
@@ -45,6 +45,17 @@ inline static int RoundToPowerOfTwo(int dim) {
   } else {
     return 32;
   }
+#else  // HIP results in error or nan if > 256
+  if (dim > 128) {
+    return 256;
+  } else if (dim > 64) {
+    return 128;
+  } else if (dim > 32) {
+    return 64;
+  } else {
+    return 32;
+  }
+#endif
 }
 
 #define CUDA_LAUNCH_KERNEL_BASE(dim, ...)  \
@@ -82,28 +93,52 @@ __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
 #endif
 }
 
-// CUDA 9.0 have native compatible float16 shfl_down
 #if defined(PADDLE_WITH_HIP)
 template <>
 __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                                        float16 val, int delta,
                                                        int width) {
-#ifdef PADDLE_WITH_HIP
   return float16(__shfl_down(static_cast<float>(val),
                              static_cast<unsigned>(delta), width));
-#else
-  return float16(
-      __shfl_down(static_cast<half>(val), static_cast<unsigned>(delta), width));
-#endif
 }
+
+template <>
+__forceinline__ __device__ paddle::platform::complex<float> CudaShuffleDownSync(
+    unsigned mask, paddle::platform::complex<float> val, int delta, int width) {
+  float real = __shfl_down(val.real, delta, width);
+  float imag = __shfl_down(val.imag, delta, width);
+  return paddle::platform::complex<float>(real, imag);
+}
+
+template <>
+__forceinline__ __device__ paddle::platform::complex<double>
+CudaShuffleDownSync(unsigned mask, paddle::platform::complex<double> val,
+                    int delta, int width) {
+  double real = __shfl_down(val.real, delta, width);
+  double imag = __shfl_down(val.imag, delta, width);
+  return paddle::platform::complex<double>(real, imag);
+}
+
 template <>
 __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
                                                       float16 val, int width) {
-#ifdef PADDLE_WITH_HIP
   return float16(__shfl_xor(static_cast<float>(val), width));
-#else
-  return float16(__shfl_xor(static_cast<half>(val), width));
-#endif
+}
+
+template <>
+__forceinline__ __device__ paddle::platform::complex<float> CudaShuffleXorSync(
+    unsigned mask, paddle::platform::complex<float> val, int width) {
+  float real = __shfl_xor(val.real, width);
+  float imag = __shfl_xor(val.imag, width);
+  return paddle::platform::complex<float>(real, imag);
+}
+
+template <>
+__forceinline__ __device__ paddle::platform::complex<double> CudaShuffleXorSync(
+    unsigned mask, paddle::platform::complex<double> val, int width) {
+  double real = __shfl_xor(val.real, width);
+  double imag = __shfl_xor(val.imag, width);
+  return paddle::platform::complex<double>(real, imag);
 }
 #else
 template <>
@@ -115,25 +150,26 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
 }
 
 template <>
-__forceinline__ __device__ paddle::platform::complex64 CudaShuffleDownSync(
-    unsigned mask, paddle::platform::complex64 val, int delta, int width) {
+__forceinline__ __device__ paddle::platform::complex<float> CudaShuffleDownSync(
+    unsigned mask, paddle::platform::complex<float> val, int delta, int width) {
   float real = static_cast<float>(__shfl_down_sync(
       mask, static_cast<float>(val.real), static_cast<unsigned>(delta), width));
   float imag = static_cast<float>(__shfl_down_sync(
       mask, static_cast<float>(val.imag), static_cast<unsigned>(delta), width));
-  return paddle::platform::complex64(real, imag);
+  return paddle::platform::complex<float>(real, imag);
 }
 
 template <>
-__forceinline__ __device__ paddle::platform::complex128 CudaShuffleDownSync(
-    unsigned mask, paddle::platform::complex128 val, int delta, int width) {
+__forceinline__ __device__ paddle::platform::complex<double>
+CudaShuffleDownSync(unsigned mask, paddle::platform::complex<double> val,
+                    int delta, int width) {
   double real = static_cast<double>(
       __shfl_down_sync(mask, static_cast<double>(val.real),
                        static_cast<unsigned>(delta), width));
   double imag = static_cast<double>(
       __shfl_down_sync(mask, static_cast<double>(val.imag),
                        static_cast<unsigned>(delta), width));
-  return paddle::platform::complex128(real, imag);
+  return paddle::platform::complex<double>(real, imag);
 }
 
 template <>
@@ -143,23 +179,23 @@ __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
 }
 
 template <>
-__forceinline__ __device__ paddle::platform::complex64 CudaShuffleXorSync(
-    unsigned mask, paddle::platform::complex64 val, int width) {
+__forceinline__ __device__ paddle::platform::complex<float> CudaShuffleXorSync(
+    unsigned mask, paddle::platform::complex<float> val, int width) {
   float real = static_cast<float>(
       __shfl_xor_sync(mask, static_cast<float>(val.real), width));
   float imag = static_cast<float>(
       __shfl_xor_sync(mask, static_cast<float>(val.imag), width));
-  return paddle::platform::complex64(real, imag);
+  return paddle::platform::complex<float>(real, imag);
 }
 
 template <>
-__forceinline__ __device__ paddle::platform::complex128 CudaShuffleXorSync(
-    unsigned mask, paddle::platform::complex128 val, int width) {
+__forceinline__ __device__ paddle::platform::complex<double> CudaShuffleXorSync(
+    unsigned mask, paddle::platform::complex<double> val, int width) {
   double real = static_cast<double>(
       __shfl_xor_sync(mask, static_cast<double>(val.real), width));
   double imag = static_cast<double>(
       __shfl_xor_sync(mask, static_cast<double>(val.imag), width));
-  return paddle::platform::complex128(real, imag);
+  return paddle::platform::complex<double>(real, imag);
 }
 #endif
 

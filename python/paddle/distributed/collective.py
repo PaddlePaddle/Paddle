@@ -239,31 +239,37 @@ def new_group(ranks=None, backend=None):
     if global_rank not in ranks:
         gp = Group(-1, -1, ring_id, ranks)
         _group_map[ring_id] = gp
-        return gp
-
-    ranks = sorted(ranks)
-    group_rank = ranks.index(global_rank)
-    group_size = len(ranks)
-    gp = Group(group_rank, group_size, ring_id, ranks)
-    _group_map[ring_id] = gp
-
-    if group_size < 2:
-        return gp
-
-    strategy = core.ParallelStrategy()
-    strategy.nranks = group_size
-    strategy.local_rank = group_rank
-    strategy.trainer_endpoints = [genv.trainer_endpoints[i] for i in ranks]
-    strategy.current_endpoint = genv.current_endpoint
-    strategy.nrings = 1
-
-    if core.is_compiled_with_cuda():
-        place = core.CUDAPlace(genv.device_id)
-        core.NCCLParallelContext(strategy, place).init_with_ring_id(ring_id)
     else:
-        assert False, ("no cuda device found")
-    # need to barrier to construct group
-    barrier(gp)
+        ranks = sorted(ranks)
+        group_rank = ranks.index(global_rank)
+        group_size = len(ranks)
+        gp = Group(group_rank, group_size, ring_id, ranks)
+        _group_map[ring_id] = gp
+
+        if group_size >= 2:
+            strategy = core.ParallelStrategy()
+            strategy.nranks = group_size
+            strategy.local_rank = group_rank
+            strategy.trainer_endpoints = [
+                genv.trainer_endpoints[i] for i in ranks
+            ]
+            strategy.current_endpoint = genv.current_endpoint
+            strategy.nrings = 1
+
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(genv.device_id)
+                core.NCCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
+            else:
+                assert False, ("no cuda device found")
+        else:
+            return gp
+
+    # TODO(shenliang03): This is a temporary solution to solve the problem of 
+    # hang caused by cross-creation of new_group
+    tmp = fill_constant([0], dtype="int32", value="1")
+    paddle.distributed.all_reduce(tmp, use_calc_stream=True)
+    paddle.distributed.wait(tmp)
     return gp
 
 
@@ -775,7 +781,7 @@ def _c_identity(tensor, group=None):
     return out
 
 
-def _c_concat(tensor, nranks, group=None):
+def _c_concat(tensor, group=None):
     """
     Return allgather of the tensor, mainly used with model parallel.
 
@@ -791,10 +797,14 @@ def _c_concat(tensor, nranks, group=None):
         return
     ring_id = 0 if group is None else group.id
 
+    global_rank = _get_global_env().rank
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
+
     if in_dygraph_mode():
         return core.ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
-                                 True, 'nranks', nranks, 'use_model_parallel',
-                                 True)
+                                 True, 'rank', rank, 'nranks', nranks,
+                                 'use_model_parallel', True)
 
     op_type = 'c_concat'
     helper = LayerHelper(op_type, **locals())
@@ -812,12 +822,13 @@ def _c_concat(tensor, nranks, group=None):
             'ring_id': ring_id,
             'use_calc_stream': True,
             'use_model_parallel': True,
-            'nranks': nranks
+            'nranks': nranks,
+            'rank': rank
         })
     return out
 
 
-def _c_split(tensor, rank, nranks, group=None):
+def _c_split(tensor, group=None):
     """
     Split tensor evenly among all members, mainly used with model parallel.
 
@@ -833,6 +844,10 @@ def _c_split(tensor, rank, nranks, group=None):
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
+
+    global_rank = _get_global_env().rank
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
 
     if in_dygraph_mode():
         return core.ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
@@ -881,6 +896,24 @@ def _mp_allreduce(tensor,
             raise ValueError("Unknown parameter: {}.".format(op))
     else:
         raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
+
+
+def _c_lookup_table(table, index, start_index=0, name=None):
+    """
+    Lookup table according to index.
+
+    Args:
+        table (Tensor): The input Tensor. Its data type
+            should be float16, float32, float64.
+        index (Tensor): The index to lookup table.
+        start_index (int): The initial index for table range.
+        name (string): The name of the api
+
+    Returns:
+        Tensor.
+    """
+    if in_dygraph_mode():
+        return core.ops.c_embedding(table, index, "start_index", start_index)
 
 
 class _Linear(layers.Layer):
@@ -977,6 +1010,11 @@ def _parallel_linear(x,
                      group=None):
     """
     Parallel Linear
+
+    axis the dimension of the parameter of linear layer. 
+    axis = 0: the row dimension
+    axid = 1: the col dimension
+    
     """
     if group is not None and not group.is_member():
         return
@@ -984,7 +1022,7 @@ def _parallel_linear(x,
 
     if axis == 0:
         if split_tensor:
-            x = _c_split(x, inner_rank, nranks, group=group)
+            x = _c_split(x, group=group)
     else:
         x = _c_identity(x, group=group)
 
@@ -1004,10 +1042,18 @@ def _parallel_linear(x,
             name=name)
 
     linear_out = linear(x)
-    startup_block = paddle.static.default_startup_program().global_block()
-    main_block = paddle.static.default_main_program().global_block()
-    startup_block.vars[linear.weight.name].is_distributed = True
-    main_block.vars[linear.weight.name].is_distributed = True
+    startup_block = paddle.static.default_startup_program().current_block()
+    main_block = paddle.static.default_main_program().current_block()
+    startup_block._find_var_recursive(linear.weight.name).is_distributed = True
+    main_block._find_var_recursive(linear.weight.name).is_distributed = True
+
+    # set is_distributed for splited bias
+    # if a linear layer is splited by row, each rank would hold a complete bias and they should be the same in each rank.
+    # if a linear layer is splited by col, the bias would also be split into each rank as its weight
+    if axis == 1 and linear._bias_attr != False:
+        startup_block._find_var_recursive(
+            linear.bias.name).is_distributed = True
+        main_block._find_var_recursive(linear.bias.name).is_distributed = True
 
     if not gather_out: return linear_out
 
