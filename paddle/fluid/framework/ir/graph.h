@@ -82,9 +82,7 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
-#if FLAGS_convert_all_blocks
   Graph(const BlockDesc &block, const Graph *parent);
-#endif  // FLAGS_convert_all_blocks
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -257,8 +255,16 @@ class Graph {
   // WARN: The method only clones the graph structure, not its attributes.
   std::shared_ptr<Graph> Clone();
 
+  bool IsMainGraph() const { return main_graph_ == nullptr; }
+
+  Graph *GetSubGraph(const size_t idx) const {
+    PADDLE_ENFORCE_LT(
+        idx, sub_graphs_.size(),
+        platform::errors::InvalidArgument("Invalid sub_graph index"));
+    return sub_graphs_.at(idx).get();
+  }
+
  private:
-#if FLAGS_convert_all_blocks
   std::map<std::string, std::vector<ir::Node *>> InitFromBlock(
       const BlockDesc &block);
 
@@ -269,20 +275,18 @@ class Graph {
   }
 
   std::unique_ptr<Graph> CloneSubgraph(const size_t idx);
-#else   // FLAGS_convert_all_blocks
+
+  // TODO(levi): delete this interface after when we can convert all
+  // blocks into sub_graphs.
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
       const ProgramDesc &program);
-#endif  // FLAGS_convert_all_blocks
 
+  // NOTE: main_graph_ doesn't hold any node. It's used as a container of
+  // sub_graphs, and the sub_graph holds the nodes.
+  const Graph *main_graph_;  // not owned.
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
-#if FLAGS_convert_all_blocks
-  // NOTE: main_graph_ doesn't hold any node. It's used as a container of
-  // sub_graphs,
-  // and the sub_graph holds the nodes.
-  const Graph *main_graph_;  // not owned.
   std::vector<std::unique_ptr<Graph>> sub_graphs_;
-#endif  // FLAGS_convert_all_blocks
 
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
