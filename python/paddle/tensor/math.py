@@ -855,6 +855,45 @@ def add_n(inputs, name=None):
     return out
 
 
+def trunc(x, name=None):
+    '''
+    Returns a new tensor with the truncated integer values of input.
+    Args:
+        x (Tensor): The input tensor, it's data type should be int, float, double.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: The product Tensor.
+    
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            paddle.set_device('cpu')
+            x_data = np.random.random([2,2]).astype(np.float32)
+            x = paddle.to_tensor(x_data)
+            out = paddle.trunc(x, y)
+            print(out)
+            #        [[0., 1.],
+            #        [0., 0.]])
+    '''
+    if in_dygraph_mode():
+        out = _varbase_creator(dtype=x.dtype)
+        return core.ops.trunc(x)
+    else:
+        inputs = {"X": x}
+        attrs = {}
+
+        helper = LayerHelper("trunc", **locals())
+        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'], 'trunc')
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out})
+        return out
+
+
+
 def mm(input, mat2, name=None):
     """
 
