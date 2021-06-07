@@ -228,11 +228,11 @@ class SingleGradOpMaker<imperative::OpBase>
     {
       imperative::TracedGradOp traced_grad_op(node);
       try {
-        this->Apply(&traced_grad_op);
         traced_grad_op.SetAttrDefaultMap(
             paddle::framework::OpInfoMap::Instance()
                 .Get(this->ForwardOpType())
                 .checker_->GetAttrDefaultMap());
+        this->Apply(&traced_grad_op);
       } catch (platform::EnforceNotMet& exception) {
         framework::AppendErrorOpHint(traced_grad_op.Type(), &exception);
         throw std::move(exception);
