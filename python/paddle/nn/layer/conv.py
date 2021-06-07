@@ -508,7 +508,7 @@ class Conv1DTranspose(_ConvNd):
             self.weight,
             bias=self.bias,
             output_size=output_size,
-            output_padding=self.output_padding,
+            output_padding=self._output_padding,
             padding=self._padding,
             stride=self._stride,
             dilation=self._dilation,
@@ -824,7 +824,7 @@ class Conv2DTranspose(_ConvNd):
 
     def forward(self, x, output_size=None):
         if output_size is None:
-            output_padding = self.output_padding
+            output_padding = self._output_padding
         else:
             output_padding = 0
 
@@ -1161,7 +1161,7 @@ class Conv3DTranspose(_ConvNd):
 
     def forward(self, x, output_size=None):
         if output_size is None:
-            output_padding = self.output_padding
+            output_padding = self._output_padding
         else:
             output_padding = 0
 
