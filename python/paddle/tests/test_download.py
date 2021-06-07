@@ -77,6 +77,11 @@ class TestDownload(unittest.TestCase):
                 'www.baidu.com',
                 './test', )
 
+    def test_wget_download_error(self, ):
+        with self.assertRaises(RuntimeError):
+            from paddle.utils.download import _download
+            _download('www.baidu', './test', method='wget')
+
     def test_download_methods(self, ):
         urls = [
             "https://paddle-hapi.bj.bcebos.com/unittest/files.tar",

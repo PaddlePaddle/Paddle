@@ -211,8 +211,9 @@ def _wget_download(url, fullname):
 
     # if r != 0:
     if subprc.returncode != 0:
-        raise RuntimeError('{} failed. Please make sure `wget` exist'.format(
-            command))
+        raise RuntimeError(
+            '{} failed. Please make sure `wget` is installed or {} exists'.
+            format(command, url))
 
     shutil.move(tmp_fullname, fullname)
 
