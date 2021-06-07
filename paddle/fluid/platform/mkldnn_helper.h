@@ -427,6 +427,10 @@ inline void AppendKey(std::string* key, const std::string& str) {
   key->append(str);
 }
 
+inline void AppendKey(std::string* key, std::string&& str) {
+  key->append(str);
+}
+
 inline void AppendKey(std::string* key, const char* str) { key->append(str); }
 
 template <typename T>
