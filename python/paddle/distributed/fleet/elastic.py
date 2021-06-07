@@ -22,7 +22,7 @@ import signal
 logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
 logger = logging.getLogger("ELASTIC")
 
-ELASTIC_EXIT_CODE = 10001
+ELASTIC_EXIT_CODE = 101
 
 
 class ElasticStatus:
