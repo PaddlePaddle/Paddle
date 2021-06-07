@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 
-DECLARE_bool(ssa_program);
+DECLARE_bool(convert_all_blocks);
 
 namespace paddle {
 namespace framework {
@@ -82,9 +82,9 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
-#if FLAGS_ssa_program
+#if FLAGS_convert_all_blocks
   Graph(const BlockDesc &block, const Graph *parent);
-#endif  // FLAGS_ssa_program
+#endif  // FLAGS_convert_all_blocks
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -258,7 +258,7 @@ class Graph {
   std::shared_ptr<Graph> Clone();
 
  private:
-#if FLAGS_ssa_program
+#if FLAGS_convert_all_blocks
   std::map<std::string, std::vector<ir::Node *>> InitFromBlock(
       const BlockDesc &block);
 
@@ -269,17 +269,20 @@ class Graph {
   }
 
   std::unique_ptr<Graph> CloneSubgraph(const size_t idx);
-#else   // FLAGS_ssa_program
+#else   // FLAGS_convert_all_blocks
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
       const ProgramDesc &program);
-#endif  // FLAGS_ssa_program
+#endif  // FLAGS_convert_all_blocks
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
-#if FLAGS_ssa_program
-  const Graph *parent_;  // not owned.
+#if FLAGS_convert_all_blocks
+  // NOTE: main_graph_ doesn't hold any node. It's used as a container of
+  // sub_graphs,
+  // and the sub_graph holds the nodes.
+  const Graph *main_graph_;  // not owned.
   std::vector<std::unique_ptr<Graph>> sub_graphs_;
-#endif  // FLAGS_ssa_program
+#endif  // FLAGS_convert_all_blocks
 
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;

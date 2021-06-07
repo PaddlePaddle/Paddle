@@ -17,13 +17,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/operator.h"
 
-DEFINE_bool(ssa_program, false, "Convert all blocks in program into SSAgraphs");
+DEFINE_bool(convert_all_blocks, false,
+            "Convert all blocks in program into SSAgraphs");
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-#if FLAGS_ssa_program
+#if FLAGS_convert_all_blocks
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   PADDLE_ENFORCE_GE(
       program_.Size(), 1,
@@ -41,7 +42,8 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
   }
 }
 
-Graph::Graph(const BlockDesc &block, const Graph *parent) : parent_(parent) {
+Graph::Graph(const BlockDesc &block, const Graph *main_graph)
+    : main_graph_(main_graph) {
   auto var_nodes = InitFromBlock(block);
   ResolveHazard(var_nodes);
 }
@@ -120,7 +122,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
                                    new std::vector<OpDesc *>(block.AllOps()));
   return var_nodes;
 }
-#else   // FLAGS_ssa_program
+#else   // FLAGS_convert_all_blocks
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   auto var_nodes = InitFromProgram(program_);
   ResolveHazard(var_nodes);
@@ -202,7 +204,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       new std::vector<OpDesc *>(program.Block(0).AllOps()));
   return var_nodes;
 }
-#endif  // FLAGS_ssa_program
+#endif  // FLAGS_convert_all_blocks
 
 void Graph::ResolveHazard(
     const std::map<std::string, std::vector<ir::Node *>> &var_nodes) {
@@ -276,10 +278,10 @@ void Graph::ResolveHazard(
   }
 }
 
-#if FLAGS_ssa_program
+#if FLAGS_convert_all_blocks
 std::shared_ptr<Graph> Graph::Clone() {
   PADDLE_ENFORCE_EQ(
-      this->parent_, nullptr,
+      this->main_graph_, nullptr,
       platform::errors::InvalidArgument(
           "This graph is a subgraph, and can't be cloned individually"));
   auto cloned_graph = std::make_shared<Graph>(this->program_);
@@ -325,7 +327,7 @@ std::unique_ptr<Graph> Graph::CloneSubgraph(const size_t idx) {
   }
   return cloned_sub_graph;
 }
-#else   // FLAGS_ssa_program
+#else   // FLAGS_convert_all_blocks
 std::shared_ptr<Graph> Graph::Clone() {
   auto cloned_graph = std::make_shared<Graph>(this->program_);
   cloned_graph->ReleaseNodes();
@@ -360,7 +362,7 @@ std::shared_ptr<Graph> Graph::Clone() {
   }
   return cloned_graph;
 }
-#endif  // FLAGS_ssa_program
+#endif  // FLAGS_convert_all_blocks
 
 bool IsControlDepVar(const ir::Node &var) {
   return var.Name().find(ir::Node::kControlDepVarName) != std::string::npos;
