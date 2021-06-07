@@ -67,8 +67,6 @@ class ConditionalBlockOp : public ConditionalOp {
       auto &cur_scope = *scopes->front();
       framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-      VLOG(3) << "Conditional block.idx = " << block->ID()
-              << ", scope = " << &cur_scope;
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
       exec.Run(*block->Program(), &cur_scope, block->ID(), false, true,
