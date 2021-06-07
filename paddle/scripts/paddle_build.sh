@@ -2190,6 +2190,7 @@ function main() {
         ;;
       gpu_cicheck_coverage)
         parallel_test
+        echo "111111,$?"
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
