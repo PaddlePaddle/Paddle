@@ -195,7 +195,7 @@ class Pod(object):
                 self.id != pod.id or \
                 self.addr != pod.addr or \
                 self.port != pod.port:
-            logger.debug("pod {} != pod".format(self, pod))
+            logger.debug("pod {} != {}".format(self, pod))
             return False
 
         if len(self.trainers) != len(pod.trainers):
