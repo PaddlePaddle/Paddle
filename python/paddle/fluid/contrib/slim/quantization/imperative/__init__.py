@@ -20,6 +20,10 @@ from .quant_nn import *
 from . import qat
 from .qat import *
 
+from . import ptq
+from .ptq import *
+
 __all__ = []
 __all__ += quant_nn.__all__
 __all__ += qat.__all__
+__all__ += ptq.__all__

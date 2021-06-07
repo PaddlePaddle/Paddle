@@ -281,6 +281,7 @@ if(WIN32)
         test_imperative_qat_channelwise
         test_imperative_qat
         test_imperative_out_scale
+		test_imperative_ptq
         test_graph)
     LIST(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
     foreach(src ${SINGLE_CARD_TEST_OPS})
