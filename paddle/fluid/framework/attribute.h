@@ -217,15 +217,17 @@ class AttrReader {
   template <typename T>
   inline const T& Get(const std::string& name) const {
     auto it = attrs_.find(name);
-    if (it == attrs_.end() && attrs_default_ != nullptr) {
-      it = attrs_default_->find(name);
-      if (it == attrs_default_->end()) {
+    if (it == attrs_.end()) {
+      if (attrs_default_ != nullptr) {
+        it = attrs_default_->find(name);
+        if (it == attrs_default_->end()) {
+          PADDLE_THROW(platform::errors::NotFound(
+              "Attribute (%s) should be in AttributeMap.", name));
+        }
+      } else {
         PADDLE_THROW(platform::errors::NotFound(
             "Attribute (%s) should be in AttributeMap.", name));
       }
-    } else {
-      PADDLE_THROW(platform::errors::NotFound(
-          "Attribute (%s) should be in AttributeMap.", name));
     }
 
     Attribute& attr = const_cast<Attribute&>(it->second);
