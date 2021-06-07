@@ -91,6 +91,18 @@ TEST(OpCompatSensiblePass, compatOpAttribute) {
   delete info.checker_;
 }
 
+TEST(OpCompatSensiblePass, opDefNotFound) {
+  OpCompat compat("fc_1");
+
+  OpDesc fc_op;
+
+  compat.Judge(fc_op);
+
+  OpCompat compat_1("");
+
+  compat_1.Judge(fc_op);
+}
+
 TEST(OpCompatSensiblePass, compatOpAttributeOptional) {
   OpCompat compat("fc");
   compat.AddAttr("activation_type")
