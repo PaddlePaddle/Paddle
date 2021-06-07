@@ -111,7 +111,7 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
                                         pos, nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-    //TODO(Shangzhizhou) FP16 support
+    // TODO(Shangzhizhou) FP16 support
     return (in.type == nvinfer1::DataType::kFLOAT) &&
            (in.format == nvinfer1::TensorFormat::kLINEAR);
   }
