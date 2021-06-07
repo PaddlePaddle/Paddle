@@ -148,7 +148,7 @@ PADDLE_CAPI_EXPORT extern void PD_PredictorDestroy(
 ///
 /// \return version
 ///
-PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr* PD_GetVersion();
+PADDLE_CAPI_EXPORT extern const char* PD_GetVersion();
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -22,8 +22,5 @@ import "C"
 
 func Version() string {
 	cVersion := C.PD_GetVersion()
-	size := int(cVersion.size)
-	version := cvtToGoSliceString(size, cVersion.data)
-	C.PD_OneDimArrayCstrDestroy(cVersion)
-	return version[0]
+	return C.GoString(cVersion)
 }

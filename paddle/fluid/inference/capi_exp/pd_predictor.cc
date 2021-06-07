@@ -106,9 +106,9 @@ void PD_PredictorDestroy(__pd_take PD_Predictor* pd_predictor) {
   delete pd_predictor;
 }
 
-PD_OneDimArrayCstr* PD_GetVersion() {
-  std::vector<std::string> version{paddle_infer::GetVersion()};
-  return paddle_infer::CvtVecToOneDimArrayCstr(version);
+const char* PD_GetVersion() {
+  static std::string version = paddle_infer::GetVersion();
+  return version.c_str();
 }
 
 }  // extern "C"
