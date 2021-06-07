@@ -210,7 +210,6 @@ def _wget_download(url, fullname):
         command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _ = subprc.communicate()
 
-    # if r != 0:
     if subprc.returncode != 0:
         raise RuntimeError(
             '{} failed. Please make sure `wget` is installed or {} exists'.
