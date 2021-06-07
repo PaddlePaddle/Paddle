@@ -46,7 +46,6 @@ console.setFormatter(logging.Formatter("%(message)s"))
 RUN_ON_DEVICE = 'cpu'
 SAMPLE_CODE_TEST_CAPACITY = set()
 GPU_ID = 0
-methods = []
 whl_error = []
 API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
 API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
@@ -426,7 +425,7 @@ stdout: %s
     return result, tfname, msg, end_time - start_time
 
 
-def get_filenames():
+def get_filenames(increment=True):
     '''
     this function will get the sample code files that pending for check.
 
@@ -435,11 +434,13 @@ def get_filenames():
         dict: the sample code files pending for check .
 
     '''
-    global methods  # write
     global whl_error
     import paddle
     whl_error = []
-    get_incrementapi()
+    if increment:
+        get_incrementapi()
+    else:
+        get_full_api()
     all_sample_code_filenames = {}
     with open(API_DIFF_SPEC_FN) as f:
         for line in f.readlines():
@@ -472,8 +473,9 @@ def get_api_md5(path):
         api_md5(dict): key is the api's real fullname, value is the md5sum.
     """
     api_md5 = {}
-    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
-                          path)
+    API_spec = os.path.abspath(os.path.join(os.getcwd(), "..", path))
+    if not os.path.isfile(API_spec):
+        return api_md5
     pat = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
     patArgSpec = re.compile(
         r'^(paddle[^,]+)\s+\(ArgSpec.*document\W*([0-9a-z]{32})')
@@ -485,6 +487,18 @@ def get_api_md5(path):
             if mo:
                 api_md5[mo.group(1)] = mo.group(2)
     return api_md5
+
+
+def get_full_api():
+    """
+    get all the apis
+    """
+    global API_DIFF_SPEC_FN  ## readonly
+    from .print_signatures import visit_all_module
+    import paddle
+    member_dict = visit_all_module(paddle)
+    with open(API_DIFF_SPEC_FN, 'w') as f:
+        f.write("\n".join(member_dict.keys()))
 
 
 def get_incrementapi():

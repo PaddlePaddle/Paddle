@@ -197,6 +197,7 @@ def visit_all_module(mod):
                 visit_member(mod.__name__, instance, member_name)
             else:
                 visit_member(mod.__name__, instance)
+    return member_dict
 
 
 if __name__ == '__main__':
