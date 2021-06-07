@@ -149,7 +149,14 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     GET_IR_NODE_FROM_SUBGRAPH(Cell, Cell, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
-    const bool use_mkldnn = mul->Op()->GetAttrIfExists<bool>("use_mkldnn");
+    const bool use_mkldnn =
+        mul->Op()->GetAttrIfExists<bool>("use_mkldnn") &&
+        lstm->Op()->GetAttrIfExists<std::string>("gate_activation") ==
+            "sigmoid" &&
+        lstm->Op()->GetAttrIfExists<std::string>("cell_activation") == "tahn" &&
+        lstm->Op()->GetAttrIfExists<std::string>("candidate_activation") ==
+            "tahn";
+
     if (with_fc_bias) {
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
