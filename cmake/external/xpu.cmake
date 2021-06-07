@@ -47,6 +47,7 @@ IF(NOT XPU_SDK_ROOT)
   SET(XPU_XRE_URL  "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XRE_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
   SET(XPU_XDNN_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XDNN_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
   SET(XPU_XCCL_URL "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev/20210529_${XPU_XCCL_DIR_NAME}.tar.gz" CACHE STRING "" FORCE)
+  SET(XPU_PACK_DEPENCE_URL "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh" CACHE STRING "" FORCE)
 
   SET(XPU_SOURCE_DIR              "${THIRD_PARTY_PATH}/xpu")
   SET(XPU_DOWNLOAD_DIR            "${XPU_SOURCE_DIR}/src/${XPU_PROJECT}")
@@ -70,7 +71,7 @@ IF(NOT XPU_SDK_ROOT)
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${XPU_SOURCE_DIR}
       DOWNLOAD_DIR          ${XPU_DOWNLOAD_DIR}
-      DOWNLOAD_COMMAND      wget "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
+      DOWNLOAD_COMMAND      wget ${XPU_PACK_DEPENCE_URL}
                             && bash pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME}
 
       DOWNLOAD_NO_PROGRESS  1
