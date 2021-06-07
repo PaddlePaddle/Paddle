@@ -37,10 +37,6 @@ class CSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     auto labels_dims = ctx->GetInputDim("Label");
 
     auto logits_rank = logits_dims.size();
-
-    // VLOG(0) << "logits_dims " << logits_dims << ", labels_dims " <<
-    // labels_dims;
-
     auto axis = logits_rank - 1;
     for (int i = 0; i < logits_rank; i++) {
       if (i != axis) {

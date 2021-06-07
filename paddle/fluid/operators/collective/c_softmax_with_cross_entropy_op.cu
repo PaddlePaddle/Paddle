@@ -60,24 +60,11 @@ __global__ void MaskLabelByIndexGrad(T* logits_grad, const T* loss_grad,
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;
     auto col = i % D;
-
-    // auto real_label = labels[row];
     if ((col + start_index) == labels[row]) {
       logits_grad[i] = (logits_grad[i] - static_cast<T>(1.0)) * loss_grad[row];
     } else {
       logits_grad[i] *= loss_grad[row];
     }
-
-    // if (real_label >= start_index && real_label < end_index) {
-    //   if ((col + start_index) == real_label) {
-    //     logits_grad[i] =
-    //         (logits_grad[i] - static_cast<T>(1.0)) * loss_grad[row];
-    //   } else{
-    //     logits_grad[i] *= loss_grad[row];
-    //   }
-    // } else {
-    //   logits_grad[i] *= loss_grad[row];
-    // }
   }
 }
 
@@ -85,8 +72,6 @@ template <typename T>
 class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // return;
-
     const Tensor* logits = ctx.Input<Tensor>("Logits");
     const Tensor* labels = ctx.Input<Tensor>("Label");
     Tensor* softmax = ctx.Output<Tensor>("Softmax");
@@ -115,7 +100,6 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     const int axis = logits_dims.size() - 1;
     const int N = SizeToAxis(axis, logits_dims);
     const int D = SizeFromAxis(axis, logits_dims);
-    // VLOG(0) << "N : " << N << " D: " << D;
 
     Tensor logits_2d, softmax_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
@@ -140,11 +124,6 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
         platform::ToNCCLDataType(logits_max.type()), ncclMax, comm->comm(),
         stream));
 
-    // just for test
-    // std::vector<T> test_vec;
-    // framework::TensorToVector<T>(logits_max, dev_ctx, &test_vec);
-    // VLOG(0) << "Logit_max :" << string::join_strings(test_vec, ',');
-
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
     Eigen::DSizes<int, 2> one_by_class(1, D);
@@ -158,7 +137,6 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     Tensor predicted_logits;
     predicted_logits =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({N, 1}, dev_ctx);
-    // predicted_logits.Resize(labels->dims());
     predicted_logits.mutable_data<T>(place);
 
     auto t = framework::EigenVector<T>::Flatten(predicted_logits);
@@ -170,7 +148,6 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     int blocks = NumBlocks(N);
     int threads = kNumCUDAThreads;
     const auto& label_type = labels->type();
-    // VLOG(0) << "start_index " << start_index << " end_index " << end_index;
 
     if (label_type == framework::proto::VarType::INT32) {
       MaskLabelByIndex<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
@@ -206,15 +183,6 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
         platform::ToNCCLDataType(sum_exp_logits.type()), ncclSum, comm->comm(),
         stream));
 
-    // just for test
-    // std::vector<T> test_vec2;
-    // framework::TensorToVector<T>(*softmax, dev_ctx, &test_vec2);
-    // VLOG(0) << "before softmax :" << string::join_strings(test_vec2, ',');
-
-    // std::vector<T> test_vec3;
-    // framework::TensorToVector<T>(sum_exp_logits, dev_ctx, &test_vec3);
-    // VLOG(0) << "sum_exp_logits :" << string::join_strings(test_vec3, ',');
-
     auto eigen_loss = math::EigenMatrix<T>::From(loss_2d);
     auto eigen_predicted_logits = math::EigenMatrix<T>::From(predicted_logits);
 
@@ -226,10 +194,6 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
          eigen_sum_exp_logits.inverse().broadcast(one_by_class));
-
-    // std::vector<T> test_vec4;
-    // framework::TensorToVector<T>(*softmax, dev_ctx, &test_vec4);
-    // VLOG(0) << "after softmax : " << string::join_strings(test_vec4, ',');
   }
 };
 
