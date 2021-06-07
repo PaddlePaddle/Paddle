@@ -32,6 +32,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#define BOUND 512
 
 namespace paddle {
 namespace operators {
@@ -81,15 +82,16 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 }
 
 #ifdef __HIPCC__
-constexpr int kMaxBlock = 256;
+constexpr int kMaxThread = 256;
 #else
-constexpr int kMaxBlock = 128;
+constexpr int kMaxThread = 128;
 #endif
 
 // get blockDim for reduceLastDim and reduceAny
 static inline int GetBlockDim(int block_dim) {
-  return block_dim >= kMaxBlock ? kMaxBlock
-                                : (1 << static_cast<int>(std::log2(block_dim)));
+  return block_dim >= kMaxThread
+             ? kMaxThread
+             : (1 << static_cast<int>(std::log2(block_dim)));
 }
 
 // check reduce rand is valid
@@ -287,13 +289,15 @@ struct ReduceConfig {
   void SetReduceType() {
     int rank = x_dim.size();
     int reduce_rank = reduce_dim.size();
-
+    bool is_large_enough = reduce_num > BOUND / 2 && left_num > BOUND;
     if (rank == reduce_rank) {
       reduce_type = static_cast<int>(ReduceType::kReduceAll);
 
     } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
-    } else if (reduce_rank == 1) {
+
+    } else if (reduce_rank == 1 &&
+               (rank == 2 && is_large_enough || rank != 2)) {
       // ReduceFirstDim and reduceSecondDim
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
 
@@ -333,7 +337,7 @@ struct ReduceConfig {
       // init
       int num_block = (max_threads / left_num);
 
-      if (num_block > 1 && reduce_num >= 512) {
+      if (num_block > 1 && reduce_num >= BOUND) {
         blocking_size = detail::GetLastPow2(reduce_num / num_block);
 
         if (blocking_size <= 1) {
@@ -683,7 +687,6 @@ void TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
   } break
 
   switch (detail::GetBlockDim(config.reduce_num)) {
-    CUB_BLOCK_DIM_CASE(512);
     CUB_BLOCK_DIM_CASE(256);
     CUB_BLOCK_DIM_CASE(128);
     CUB_BLOCK_DIM_CASE(64);
@@ -696,33 +699,30 @@ void TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
 #undef CUB_BLOCK_DIM_CASE
 }
 
-template <typename Tx, typename ReduceOp,
+template <typename Tx, template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
 struct TensorReduceFunctorImpl {
   const framework::Tensor& x;
   framework::Tensor* y;
   std::vector<int> origin_reduce_dims;
   const double& init;
-  const ReduceOp& reducer;
   gpuStream_t stream;
   TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
                           std::vector<int> origin_reduce_dims,
-                          const double& init, const ReduceOp& reducer,
-                          gpuStream_t stream)
+                          const double& init, gpuStream_t stream)
       : x(x),
         y(y),
         origin_reduce_dims(origin_reduce_dims),
         init(init),
-        reducer(reducer),
         stream(stream) {}
 
   template <typename Ty>
 
   void apply() const {
     const Ty& init_cast = static_cast<Ty>(init);
-    TensorReduceFunc<Tx, Ty, ReduceOp, TransformOp<Ty, Ty>,
+    TensorReduceFunc<Tx, Ty, ReduceOp<Ty>, TransformOp<Ty, Ty>,
                      TransformOp<Tx, Ty>>(x, y, origin_reduce_dims, init_cast,
-                                          reducer, TransformOp<Ty, Ty>(),
+                                          ReduceOp<Ty>(), TransformOp<Ty, Ty>(),
                                           TransformOp<Tx, Ty>(), stream);
   }
 };

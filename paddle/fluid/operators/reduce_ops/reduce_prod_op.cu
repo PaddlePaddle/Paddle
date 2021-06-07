@@ -53,9 +53,8 @@ class ReduceProdKernel : public framework::OpKernel<T> {
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunctorImpl<T, cub::Sum, detail::IdentityFunctor>(
-              *input, output, reduce_dims, static_cast<double>(1.0f),
-              cub::Sum(), stream));
+          TensorReduceFunctorImpl<T, CustomMul, detail::IdentityFunctor>(
+              *input, output, reduce_dims, static_cast<double>(1.0f), stream));
     } else {
       TensorReduceFunc<T, T, CustomMul<T>, detail::IdentityFunctor<T>>(
           *input, output, reduce_dims, static_cast<T>(1.0f), CustomMul<T>(),
