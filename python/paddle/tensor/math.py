@@ -870,22 +870,20 @@ def trunc(x, name=None):
             import paddle
             import numpy as np
             paddle.set_device('cpu')
-            x_data = np.random.random([2,2]).astype(np.float32)
-            x = paddle.to_tensor(x_data)
-            out = paddle.trunc(x, y)
+            x = paddle.rand([2,2],'float32')
+            out = paddle.trunc(x)
             print(out)
             #        [[0., 1.],
             #        [0., 0.]])
     '''
     if in_dygraph_mode():
-        out = _varbase_creator(dtype=x.dtype)
         return core.ops.trunc(x)
     else:
         inputs = {"X": x}
         attrs = {}
 
         helper = LayerHelper("trunc", **locals())
-        check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'], 'trunc')
+        check_variable_and_dtype(x, 'X', ['int32', 'float32', 'float64'], 'trunc')
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(

@@ -3,7 +3,9 @@
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,6 +56,14 @@ class TruncGradOp : public framework::OperatorWithKernel {
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    // Note: don't get data type from ctx.Input<framework::Tensor>("Input");
+    auto dtype =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type();
+    return framework::OpKernelType(dtype, ctx.GetPlace());
+  }
 };
 
 template <typename T>
@@ -69,6 +79,8 @@ class TruncGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -77,11 +89,11 @@ REGISTER_OPERATOR(trunc, ops::TruncOp, ops::TruncOpMaker,
                   ops::TruncGradOpMaker<paddle::framework::OpDesc>,
                   ops::TruncGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(trunc_grad, ops::TruncGradOp);
+REGISTER_OPERATOR(trunc_grad, ops::TruncGradOp,
+                  ops::SliceOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(trunc, ops::TruncKernel<float>, ops::TruncKernel<double>,
                        ops::TruncKernel<int>);
 
 REGISTER_OP_CPU_KERNEL(trunc_grad, ops::TruncGradKernel<float>,
                        ops::TruncGradKernel<double>, ops::TruncGradKernel<int>);
-

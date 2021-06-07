@@ -24,6 +24,7 @@ from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
+
 class TestTruncOp(OpTest):
     def setUp(self):
         self.op_type = "trunc"
@@ -33,7 +34,7 @@ class TestTruncOp(OpTest):
         self.outputs = {'Out': (np.trunc(self.inputs['X']))}
 
     def init_dtype_type(self):
-        pass
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -43,13 +44,16 @@ class TestTruncOp(OpTest):
 
         self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5)
 
+
 class TestFloatTruncOp(TestTruncOp):
     def init_dtype_type(self):
         self.dtype = np.float32
 
+
 class TestIntTruncOp(TestTruncOp):
     def init_dtype_type(self):
         self.dtype = np.int32
+
 
 class TestTruncAPI(unittest.TestCase):
     def setUp(self):
@@ -81,6 +85,6 @@ class TestTruncAPI(unittest.TestCase):
             x = paddle.fluid.data('X', [20, 20], 'bool')
             self.assertRaises(TypeError, paddle.trunc, x)
 
+
 if __name__ == "__main__":
     unittest.main()
-
