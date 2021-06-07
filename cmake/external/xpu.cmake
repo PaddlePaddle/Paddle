@@ -8,7 +8,6 @@ SET(XPU_API_LIB_NAME            "libxpuapi.so")
 SET(XPU_RT_LIB_NAME             "libxpurt.so")
 SET(XPU_XCCL_LIB_NAME           "libbkcl.so")
 
-
 IF(NOT XPU_SDK_ROOT)
   IF(WITH_AARCH64)
     SET(HOST_SYSTEM "kylin")
