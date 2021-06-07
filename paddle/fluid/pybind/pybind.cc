@@ -498,46 +498,11 @@ PYBIND11_MODULE(core_noavx, m) {
     return tensor;
   });
 
-  m.def("_save_static_dict",
-        [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope) {
-          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
-          SaveStaticNameListToDisk(str_file_name, vec_name_list, scope);
-        });
-
-  m.def("_load_static_dict",
-        [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope, const Executor *executor) {
-          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
-          CreateVariableIfNotExit(vec_var_list, scope, executor);
-          LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
-        });
-
   m.def("_create_loaded_parameter",
         [](const py::handle &vec_var_list, const Scope &scope,
            const Executor *executor) {
           CreateVariableIfNotExit(vec_var_list, scope, executor);
         });
-
-  m.def("_save_dygraph_dict", [](const std::string &str_file_name,
-                                 const PyNameVarBaseMap &state_dict) {
-    auto vec_var_base_list = GetVarBaseList(state_dict);
-
-    SaveDygraphVarBaseListToDisk(str_file_name, vec_var_base_list);
-  });
-
-  m.def("_load_dygraph_dict", [](const std::string &str_file_name) {
-    auto load_tensor = LoadDygraphVarBaseListFromDisk(str_file_name);
-
-    std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
-        map_output;
-
-    for (size_t i = 0; i < load_tensor.size(); ++i) {
-      map_output.emplace(load_tensor[i]->Name(), load_tensor[i]);
-    }
-
-    return map_output;
-  });
 
   m.def("save_op_version_info", [](framework::ProgramDesc &desc) {
     framework::compatible::pb::OpVersionMap pb_vmap{desc.OpVersionMap()};
