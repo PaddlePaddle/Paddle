@@ -95,5 +95,6 @@ for _ in range(3):
     print("data ", data)
     print("label ", label)
     loss = model(data, label)
+    loss.backward()
 
     print("loss: ", loss)

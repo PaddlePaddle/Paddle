@@ -38,7 +38,8 @@ class CSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
 
     auto logits_rank = logits_dims.size();
 
-    VLOG(0) << "logits_dims " << logits_dims << ", labels_dims " << labels_dims;
+    // VLOG(0) << "logits_dims " << logits_dims << ", labels_dims " <<
+    // labels_dims;
 
     auto axis = logits_rank - 1;
     for (int i = 0; i < logits_rank; i++) {
@@ -119,15 +120,78 @@ CSoftmaxWithCrossEntropy Operator
   }
 };
 
+class CSoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Loss")), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Loss@Grad) should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Softmax"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Softmax) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Label"), true,
+        platform::errors::InvalidArgument("Input(Label) should be not null."));
+
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Logits")), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Logits@Grad) should be not null."));
+
+    ctx->SetOutputDim(framework::GradVarName("Logits"),
+                      ctx->GetInputDim("Softmax"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.device_context());
+  }
+};
+
+template <typename T>
+class CSoftmaxWithCrossEntropyOpGradMaker
+    : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("c_softmax_with_cross_entropy_grad");
+
+    op->SetInput("Softmax", this->Output("Softmax"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("Logits"), this->InputGrad("Logits"));
+  }
+};
+
+DECLARE_INPLACE_OP_INFERER(CSoftmaxWithCrossEntropyInplaceInferer,
+                           {"Logits", "Softmax"});
+
+DECLARE_INPLACE_OP_INFERER(CSoftmaxWithCrossEntropyGradInplaceInferer,
+                           {"Softmax", framework::GradVarName("Logits")});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_softmax_with_cross_entropy,
-                             ops::CSoftmaxWithCrossEntropyOp,
-                             ops::CSoftmaxWithCrossEntropyOpMaker);
+REGISTER_OPERATOR(
+    c_softmax_with_cross_entropy, ops::CSoftmaxWithCrossEntropyOp,
+    ops::CSoftmaxWithCrossEntropyOpMaker,
+    ops::CSoftmaxWithCrossEntropyOpGradMaker<paddle::framework::OpDesc>,
+    ops::CSoftmaxWithCrossEntropyOpGradMaker<paddle::imperative::OpBase>,
+    ops::CSoftmaxWithCrossEntropyInplaceInferer);
+
+REGISTER_OPERATOR(c_softmax_with_cross_entropy_grad,
+                  ops::CSoftmaxWithCrossEntropyOpGrad,
+                  ops::CSoftmaxWithCrossEntropyGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(c_softmax_with_cross_entropy,
                        ops::CSoftmaxWithCrossEntropyOpCPUKernel<float>,

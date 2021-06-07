@@ -38,10 +38,7 @@ __global__ void MaskLabelByIndex(T* predicted_logits, const T* logit,
                                  const int end_index, const int64_t N,
                                  const int64_t D, const int nranks) {
   CUDA_KERNEL_LOOP(i, N) {
-    // return;
     auto real_label = label[i];
-    printf("real_label %d \n", real_label);
-
     PADDLE_ENFORCE((real_label < D * nranks) && (real_label >= 0),
                    "The index is out of bounds, "
                    "please check whether the value of label and "
@@ -51,6 +48,27 @@ __global__ void MaskLabelByIndex(T* predicted_logits, const T* logit,
 
     if (real_label >= start_index && real_label < end_index) {
       predicted_logits[i] = logit[i * D + real_label - start_index];
+    }
+  }
+}
+
+template <typename T, typename IndexT>
+__global__ void MaskLabelByIndexGrad(T* logits_grad, const T* loss_grad,
+                                     const IndexT* labels,
+                                     const int start_index, const int end_index,
+                                     const int64_t N, const int64_t D) {
+  CUDA_KERNEL_LOOP(i, N * D) {
+    auto row = i / D;
+    auto col = i % D;
+
+    auto real_label = labels[row];
+    if (real_label >= start_index && real_label < end_index) {
+      if ((col + start_index) == real_label) {
+        logits_grad[i] =
+            (logits_grad[i] - static_cast<T>(1.0)) * loss_grad[row];
+      }
+    } else {
+      logits_grad[i] *= loss_grad[row];
     }
   }
 }
@@ -89,7 +107,7 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     const int axis = logits_dims.size() - 1;
     const int N = SizeToAxis(axis, logits_dims);
     const int D = SizeFromAxis(axis, logits_dims);
-    VLOG(0) << "N : " << N << " D: " << D;
+    // VLOG(0) << "N : " << N << " D: " << D;
 
     Tensor logits_2d, softmax_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({N, D});
@@ -115,9 +133,9 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
         stream));
 
     // just for test
-    std::vector<T> test_vec;
-    framework::TensorToVector<T>(logits_max, dev_ctx, &test_vec);
-    VLOG(0) << "Logit_max :" << string::join_strings(test_vec, ',');
+    // std::vector<T> test_vec;
+    // framework::TensorToVector<T>(logits_max, dev_ctx, &test_vec);
+    // VLOG(0) << "Logit_max :" << string::join_strings(test_vec, ',');
 
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
@@ -144,7 +162,7 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     int blocks = NumBlocks(N);
     int threads = kNumCUDAThreads;
     const auto& label_type = labels->type();
-    VLOG(0) << "start_index " << start_index << " end_index " << end_index;
+    // VLOG(0) << "start_index " << start_index << " end_index " << end_index;
 
     if (label_type == framework::proto::VarType::INT32) {
       MaskLabelByIndex<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
@@ -181,13 +199,13 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
         stream));
 
     // just for test
-    std::vector<T> test_vec2;
-    framework::TensorToVector<T>(*softmax, dev_ctx, &test_vec2);
-    VLOG(0) << "softmax :" << string::join_strings(test_vec2, ',');
+    // std::vector<T> test_vec2;
+    // framework::TensorToVector<T>(*softmax, dev_ctx, &test_vec2);
+    // VLOG(0) << "softmax :" << string::join_strings(test_vec2, ',');
 
-    std::vector<T> test_vec3;
-    framework::TensorToVector<T>(sum_exp_logits, dev_ctx, &test_vec3);
-    VLOG(0) << "sum_exp_logits :" << string::join_strings(test_vec3, ',');
+    // std::vector<T> test_vec3;
+    // framework::TensorToVector<T>(sum_exp_logits, dev_ctx, &test_vec3);
+    // VLOG(0) << "sum_exp_logits :" << string::join_strings(test_vec3, ',');
 
     auto eigen_loss = math::EigenMatrix<T>::From(loss_2d);
     auto eigen_predicted_logits = math::EigenMatrix<T>::From(predicted_logits);
@@ -203,6 +221,52 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* labels = context.Input<Tensor>("Label");
+    const Tensor* loss_grad =
+        context.Input<Tensor>(framework::GradVarName("Loss"));
+    Tensor* logit_grad =
+        context.Output<Tensor>(framework::GradVarName("Logits"));
+    const Tensor* softmax = context.Input<Tensor>("Softmax");
+    const int rank = context.Attr<int>("rank");
+    auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+
+    if (logit_grad != softmax) {
+      framework::TensorCopy(*softmax, context.GetPlace(),
+                            context.device_context(), logit_grad);
+    }
+    const auto sofrmax_dims = softmax->dims();
+    const int axis = sofrmax_dims.size() - 1;
+    const int N = SizeToAxis(axis, sofrmax_dims);
+    const int D = SizeFromAxis(axis, sofrmax_dims);
+
+    Tensor logit_grad_2d;
+    logit_grad_2d.ShareDataWith(*logit_grad).Resize({N, D});
+
+    int blocks = NumBlocks(N * D);
+    int threads = kNumCUDAThreads;
+    const auto& label_type = labels->type();
+    const int start_index = rank * D;
+    const int end_index = start_index + D;
+
+    if (label_type == framework::proto::VarType::INT32) {
+      MaskLabelByIndexGrad<T,
+                           int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          logit_grad_2d.data<T>(), loss_grad->data<T>(),
+          labels->data<int32_t>(), start_index, end_index, N, D);
+    } else if (label_type == framework::proto::VarType::INT64) {
+      MaskLabelByIndexGrad<T,
+                           int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          logit_grad_2d.data<T>(), loss_grad->data<T>(),
+          labels->data<int64_t>(), start_index, end_index, N, D);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -214,3 +278,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CSoftmaxWithCrossEntropyOpCUDAKernel<float>,
     ops::CSoftmaxWithCrossEntropyOpCUDAKernel<double>,
     ops::CSoftmaxWithCrossEntropyOpCUDAKernel<plat::float16>);
+
+REGISTER_OP_CUDA_KERNEL(
+    c_softmax_with_cross_entropy_grad,
+    ops::CSoftmaxWithCrossEntropyGradCUDAKernel<float>,
+    ops::CSoftmaxWithCrossEntropyGradCUDAKernel<paddle::platform::float16>,
+    ops::CSoftmaxWithCrossEntropyGradCUDAKernel<double>);
