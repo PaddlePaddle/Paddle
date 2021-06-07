@@ -231,13 +231,13 @@ def cast(x, dtype):
         out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return out
 
-    check_variable_and_dtype(
-        x, 'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
-        'cast')
+    check_variable_and_dtype(x, 'x', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'uint16'
+    ], 'cast')
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64',
-        'uint8'
+        'uint8', 'uint16'
     ], 'cast')
 
     helper = LayerHelper('cast', **locals())
@@ -580,10 +580,15 @@ def assign(input, output=None):
         input = numpy.array([input])
     elif isinstance(input, (list, tuple)):
         input = numpy.array(input)
-
-    if isinstance(input, Variable):
+    # NOTE(Aurelius84): Why we judge core.VarBase?
+    # In case of @to_static, a VarBase can be as input of `assign`,
+    # but in_dygraph_mode()==False under @to_static, which means
+    # isinstance(VarBase, Variable) == False. It will cause return None
+    # after this api.
+    if isinstance(input, (Variable, core.VarBase)):
         check_dtype(input.dtype, 'input', [
-            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'
+            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+            'uint8', 'bool'
         ], 'assign', '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(

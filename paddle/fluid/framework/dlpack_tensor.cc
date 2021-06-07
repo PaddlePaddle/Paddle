@@ -28,9 +28,17 @@ namespace internal {
 template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
-  if (std::is_same<T, platform::float16>::value ||
-      std::is_same<T, platform::bfloat16>::value ||
-      std::is_floating_point<T>::value) {
+  if (std::is_same<T, platform::complex<float>>::value ||
+      std::is_same<T, platform::complex<double>>::value) {
+    // The current dlpack library version is v0.2, and does not define
+    // kDLComplex value. But kDLComplex is defined by 5U in v0.4, so we set
+    // dtype.code to 5U directly here. After the dlpack library version being
+    // upgraded to v0.4, it should be written as follow.
+    // dtype.code = kDLComplex;
+    dtype.code = 5U;
+  } else if (std::is_same<T, platform::float16>::value ||
+             std::is_same<T, platform::bfloat16>::value ||
+             std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
     dtype.code = kDLUInt;
@@ -85,6 +93,11 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
   inline ::DLContext operator()(const platform::NPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::NPUPlace is not supported"));
+  }
+
+  inline ::DLContext operator()(const platform::NPUPinnedPlace &place) const {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "platform::NPUPinnedPlace is not supported"));
   }
 
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {

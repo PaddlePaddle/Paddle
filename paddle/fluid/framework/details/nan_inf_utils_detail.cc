@@ -159,10 +159,11 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
 #pragma omp declare reduction(+ : paddle::platform::float16 : omp_out += omp_in)
 #pragma omp declare reduction(+ : paddle::platform::bfloat16 : omp_out += \
                               omp_in)
-#pragma omp declare reduction(+ : paddle::platform::complex64 : omp_out += \
-                              omp_in)
-#pragma omp declare reduction(+ : paddle::platform::complex128 : omp_out += \
-                              omp_in)
+#pragma omp declare reduction(+ : paddle::platform::complex < \
+                                  float > : omp_out += omp_in)
+#pragma omp declare reduction(+ : paddle::platform::complex < \
+                                  double > : omp_out += omp_in)
+
 #endif
 
 template <typename T>
@@ -218,9 +219,9 @@ void CheckNanInf<paddle::platform::bfloat16>(
 }
 
 template <>
-void CheckNanInf<paddle::platform::complex64>(
-    const paddle::platform::complex64* value, const size_t numel, int print_num,
-    const std::string& op_type, const std::string& var_name) {
+void CheckNanInf<paddle::platform::complex<float>>(
+    const paddle::platform::complex<float>* value, const size_t numel,
+    int print_num, const std::string& op_type, const std::string& var_name) {
   float real_sum = 0.0f;
 #pragma omp parallel for reduction(+ : real_sum)
   for (size_t i = 0; i < numel; ++i) {
@@ -244,9 +245,9 @@ void CheckNanInf<paddle::platform::complex64>(
 }
 
 template <>
-void CheckNanInf<paddle::platform::complex128>(
-    const paddle::platform::complex128* value, const size_t numel,
-    int print_num, const std::string& op_type, const std::string& var_name) {
+    void CheckNanInf<paddle::platform::complex<double>>>
+    (const paddle::platform::complex<double>* value, const size_t numel,
+     int print_num, const std::string& op_type, const std::string& var_name) {
   double real_sum = 0.0;
 #pragma omp parallel for reduction(+ : real_sum)
   for (size_t i = 0; i < numel; ++i) {
@@ -268,12 +269,17 @@ void CheckNanInf<paddle::platform::complex128>(
         op_type));
   }
 }
+
 #endif
 
 template <>
 template <typename T>
 void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
-    typename std::enable_if<std::is_floating_point<T>::value>::type*) const {
+    typename std::enable_if<
+        std::is_floating_point<T>::value ||
+        std::is_same<T, ::paddle::platform::complex<float>>::value ||
+        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
+    const {
   // use env strategy control in future, -1=print_all.
   int print_num = 3;
   CheckNanInf(tensor_.data<T>(), tensor_.numel(), print_num, op_type_,

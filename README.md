@@ -1,5 +1,4 @@
-﻿
-<p align="center">
+﻿<p align="center">
 <img align="center" src="doc/imgs/logo.png", width=1600>
 <p>
     
@@ -87,7 +86,7 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 ## Communication
 
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
-- QQ discussion group: 778260830 (PaddlePaddle).
+- QQ discussion group: 793866180 (PaddlePaddle).
 - [Forums](https://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
 
 ## Copyright and License

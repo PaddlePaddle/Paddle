@@ -15,32 +15,24 @@
 import numpy as np
 import os
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.framework import Variable
+from ..fluid.framework import OpProtoHolder
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import convert_np_dtype_to_dtype_
+from ..fluid.data_feeder import convert_dtype
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.data_feeder import check_type
+from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
+from ..fluid.dygraph import layers
 from ..fluid.dygraph.parallel import prepare_context
 import paddle
 from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-__all__ = [
-    'wait',
-    'new_group',
-    'get_group',
-    'broadcast',
-    'all_reduce',
-    'reduce',
-    'all_gather',
-    'scatter',
-    'barrier',
-    'split',
-    'alltoall',
-    'ReduceOp',
-    'send',
-    'recv',
-]
+__all__ = []
 
 
 class ReduceOp:
@@ -106,6 +98,13 @@ class Group():
             return self.ranks.index(rank)
         else:
             return -1
+
+    def __repr__(self):
+        debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
+            self.rank, self.nranks, self.id)
+        debug_str += ", ".join(map(str, self.ranks))
+        debug_str += ". "
+        return debug_str
 
 
 _global_env = None
@@ -240,31 +239,37 @@ def new_group(ranks=None, backend=None):
     if global_rank not in ranks:
         gp = Group(-1, -1, ring_id, ranks)
         _group_map[ring_id] = gp
-        return gp
-
-    ranks = sorted(ranks)
-    group_rank = ranks.index(global_rank)
-    group_size = len(ranks)
-    gp = Group(group_rank, group_size, ring_id, ranks)
-    _group_map[ring_id] = gp
-
-    if group_size < 2:
-        return gp
-
-    strategy = core.ParallelStrategy()
-    strategy.nranks = group_size
-    strategy.local_rank = group_rank
-    strategy.trainer_endpoints = [genv.trainer_endpoints[i] for i in ranks]
-    strategy.current_endpoint = genv.current_endpoint
-    strategy.nrings = 1
-
-    if core.is_compiled_with_cuda():
-        place = core.CUDAPlace(genv.device_id)
-        core.NCCLParallelContext(strategy, place).init_with_ring_id(ring_id)
     else:
-        assert False, ("no cuda device found")
-    # need to barrier to construct group
-    barrier(gp)
+        ranks = sorted(ranks)
+        group_rank = ranks.index(global_rank)
+        group_size = len(ranks)
+        gp = Group(group_rank, group_size, ring_id, ranks)
+        _group_map[ring_id] = gp
+
+        if group_size >= 2:
+            strategy = core.ParallelStrategy()
+            strategy.nranks = group_size
+            strategy.local_rank = group_rank
+            strategy.trainer_endpoints = [
+                genv.trainer_endpoints[i] for i in ranks
+            ]
+            strategy.current_endpoint = genv.current_endpoint
+            strategy.nrings = 1
+
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(genv.device_id)
+                core.NCCLParallelContext(strategy,
+                                         place).init_with_ring_id(ring_id)
+            else:
+                assert False, ("no cuda device found")
+        else:
+            return gp
+
+    # TODO(shenliang03): This is a temporary solution to solve the problem of 
+    # hang caused by cross-creation of new_group
+    tmp = fill_constant([0], dtype="int32", value="1")
+    paddle.distributed.all_reduce(tmp, use_calc_stream=True)
+    paddle.distributed.wait(tmp)
     return gp
 
 
@@ -884,6 +889,86 @@ def _mp_allreduce(tensor,
         raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
 
 
+class _Linear(layers.Layer):
+    """
+    Linear
+    """
+
+    def __init__(self,
+                 in_features,
+                 out_features,
+                 weight_attr=None,
+                 bias_attr=None,
+                 name=None):
+        super(_Linear, self).__init__()
+        self._dtype = self._helper.get_default_dtype()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self.weight = self.create_parameter(
+            shape=[in_features, out_features],
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+        self.bias = self.create_parameter(
+            shape=[out_features],
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            is_bias=True)
+        self.name = name
+
+    def forward(self, input):
+        out = _linear(
+            x=input, weight=self.weight, bias=self.bias, name=self.name)
+        return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'in_features={}, out_features={}, dtype={}{}'.format(
+            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
+
+
+def _linear(x, weight, bias=None, name=None):
+    """
+    Fuction Linear
+    """
+    if in_dygraph_mode():
+        pre_bias = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
+                        'transpose_Y', False, "alpha", 1)
+        return dygraph_utils._append_bias_in_dygraph(
+            pre_bias, bias, axis=len(x.shape) - 1)
+    else:
+        helper = LayerHelper('linear', **locals())
+        dtype = x.dtype
+        assert len(
+            x.shape) < 4, "X latitude is not supported greater than 3 now."
+
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'linear')
+        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+
+        inputs = {'X': [x], 'Y': [weight]}
+        attrs = {
+            'transpose_X': False,
+            'transpose_Y': False,
+            'alpha': 1,
+        }
+        tmp = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+        if bias is not None:
+            res = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [tmp],
+                        'Y': [bias]},
+                outputs={'Out': [res]},
+                attrs={'axis': len(x.shape) - 1})
+        else:
+            res = tmp
+        return res
+
+
 def _parallel_linear(x,
                      num_rows,
                      num_cols,
@@ -898,6 +983,11 @@ def _parallel_linear(x,
                      group=None):
     """
     Parallel Linear
+
+    axis the dimension of the parameter of linear layer. 
+    axis = 0: the row dimension
+    axid = 1: the col dimension
+    
     """
     if group is not None and not group.is_member():
         return
@@ -909,18 +999,34 @@ def _parallel_linear(x,
     else:
         x = _c_identity(x, group=group)
 
-    linear = paddle.nn.Linear(
-        num_rows,
-        num_cols,
-        weight_attr=param_attr,
-        bias_attr=bias_attr,
-        name=name)
+    if core.is_compiled_with_npu():
+        linear = _Linear(
+            num_rows,
+            num_cols,
+            weight_attr=param_attr,
+            bias_attr=bias_attr,
+            name=name)
+    else:
+        linear = paddle.nn.Linear(
+            num_rows,
+            num_cols,
+            weight_attr=param_attr,
+            bias_attr=bias_attr,
+            name=name)
 
     linear_out = linear(x)
-    startup_block = paddle.static.default_startup_program().global_block()
-    main_block = paddle.static.default_main_program().global_block()
-    startup_block.vars[linear.weight.name].is_distributed = True
-    main_block.vars[linear.weight.name].is_distributed = True
+    startup_block = paddle.static.default_startup_program().current_block()
+    main_block = paddle.static.default_main_program().current_block()
+    startup_block._find_var_recursive(linear.weight.name).is_distributed = True
+    main_block._find_var_recursive(linear.weight.name).is_distributed = True
+
+    # set is_distributed for splited bias
+    # if a linear layer is splited by row, each rank would hold a complete bias and they should be the same in each rank.
+    # if a linear layer is splited by col, the bias would also be split into each rank as its weight
+    if axis == 1 and linear._bias_attr != False:
+        startup_block._find_var_recursive(
+            linear.bias.name).is_distributed = True
+        main_block._find_var_recursive(linear.bias.name).is_distributed = True
 
     if not gather_out: return linear_out
 
@@ -1258,23 +1364,24 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32 or int64.
         dst (int): The destination rank id.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Whether to use calculate stream or communication stream.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+            # required: distributed
             import paddle
-            #from paddle.distributed import init_parallel_env
-            #init_parallel_env()
-            #if paddle.distributed.ParallelEnv().rank == 0:
-            #    data = paddle.to_tensor([7, 8, 9])
-            #    paddle.distributed.send(data, dst=1)
-            #else:
-            #    data = paddle.to_tensor([1,2,3])
-            #    paddle.distributed.recv(data, src=0)
-            #out = data.numpy()
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
+                paddle.distributed.send(data, dst=1)
+            else:
+                data = paddle.to_tensor([1,2,3])
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
     """
     if group is not None and not group.is_member():
         return
@@ -1307,23 +1414,24 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         tensor (Tensor): The Tensor to receive. Its data type
             should be float16, float32, float64, int32 or int64.
         src (int): The source rank id.
-        group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Whether to use calculate stream or communication stream.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+            # required: distributed
             import paddle
-            #from paddle.distributed import init_parallel_env
-            #init_parallel_env()
-            #if paddle.distributed.ParallelEnv().rank == 0:
-            #    data = paddle.to_tensor([7, 8, 9])
-            #    paddle.distributed.send(data, dst=1)
-            #else:
-            #    data = paddle.to_tensor([1,2,3])
-            #    paddle.distributed.recv(data, src=0)
-            #out = data.numpy()
+            from paddle.distributed import init_parallel_env
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().rank == 0:
+                data = paddle.to_tensor([7, 8, 9])
+                paddle.distributed.send(data, dst=1)
+            else:
+                data = paddle.to_tensor([1,2,3])
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
     """
     if group is not None and not group.is_member():
         return
