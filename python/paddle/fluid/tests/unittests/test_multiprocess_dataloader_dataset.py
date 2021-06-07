@@ -338,7 +338,7 @@ class TestDataLoaderGenerateStates(unittest.TestCase):
                         [457190280, 2660306227, 859341110, 354512857]]
 
     def test_main(self):
-        from paddle.fluid.dataloader.state import _generate_states
+        from paddle.fluid.dataloader.worker import _generate_states
         for inp, outp in zip(self.inputs, self.outputs):
             out = _generate_states(*inp)
             assert out == outp
