@@ -127,11 +127,13 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 weight_attr=fc_w3_attr,
                 bias_attr=fc_b3_attr),
             Softmax())
+        self.add = paddle.nn.quant.add()
 
     def forward(self, inputs):
         x = self.features(inputs)
 
         x = fluid.layers.flatten(x, 1)
+        x = self.add(x, paddle.to_tensor(0.0))  # For CI
         x = self.fc(x)
         return x
 

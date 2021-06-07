@@ -509,15 +509,7 @@ class QuantizedNoweightLayer(layers.Layer):
             quant_on_weight=False)
 
     def forward(self, input):
-        # TODO (jc): support ops that have several inputs
-        if (isinstance(input, list) or isinstance(input, tuple)) \
-            and len(input) > 1:
-            _logger.info("%s has several inputs, so skip collecting "
-                         "the input scales" % self._layer.full_name())
-            return self._layer.forward(input)
-        else:
-            quant_input = self._fake_quant_input(input)
-            return self._layer.forward(quant_input)
+        return self._layer.forward(self._fake_quant_input(input))
 
 
 class MovingAverageAbsMaxScale(layers.Layer):
@@ -625,8 +617,6 @@ class MAOutputScaleLayer(layers.Layer):
         out = self._layer(*inputs, **kwargs)
         # TODO (jc): support the ops of several outputs
         if (isinstance(out, list) or isinstance(out, tuple)) and len(out) > 1:
-            _logger.info("%s has several outputs, so skip collecting "
-                         "the output threshold" % self._layer.full_name())
             return out
         else:
             return self._ma_output_scale(out)
@@ -656,8 +646,6 @@ class FakeQuantMAOutputScaleLayer(layers.Layer):
         out = self._layer(*inputs, **kwargs)
         # TODO (jc): support the ops of several outputs
         if (isinstance(out, list) or isinstance(out, tuple)) and len(out) > 1:
-            _logger.info("%s has several outputs, so skip collecting "
-                         "the output threshold" % self._layer.full_name())
             return out
         else:
             return self._fake_quant_output(out)

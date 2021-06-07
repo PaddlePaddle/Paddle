@@ -38,7 +38,7 @@ _logger = get_logger(
 
 
 class TestImperativeQatChannelWise(TestImperativeQat):
-    def set_quant_type(self):
+    def set_vars(self):
         self.weight_quantize_type = 'channel_wise_abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'
         print('weight_quantize_type', self.weight_quantize_type)

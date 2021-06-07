@@ -63,13 +63,13 @@ class TestImperativeQat(unittest.TestCase):
         except Exception as e:
             print("Failed to delete {} due to {}".format(cls.root_path, str(e)))
 
-    def set_quant_type(self):
+    def set_vars(self):
         self.weight_quantize_type = None
         self.activation_quantize_type = None
         print('weight_quantize_type', self.weight_quantize_type)
 
     def run_qat_save(self):
-        self.set_quant_type()
+        self.set_vars()
 
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type=self.weight_quantize_type,
@@ -201,7 +201,7 @@ class TestImperativeQat(unittest.TestCase):
 
 
 class TestImperativeQatAbsMax(TestImperativeQat):
-    def set_quant_type(self):
+    def set_vars(self):
         self.weight_quantize_type = 'abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'
         print('weight_quantize_type', self.weight_quantize_type)

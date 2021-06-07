@@ -44,10 +44,11 @@ layer_name_map = {
 fake_quant_input_layers = [paddle.nn.Conv2D, paddle.nn.Linear]
 
 # Apply fake quant for the output of these layers
+# TODO(jc): fix the problem of adding duplicate fake_quant ops
+# paddle.nn.AdaptiveAvgPool2D, paddle.nn.AvgPool2D, paddle.nn.ReLU,paddle.nn.LeakyReLU
 fake_quant_output_layers = [
-    paddle.nn.AdaptiveAvgPool2D, paddle.nn.AvgPool2D, paddle.nn.ReLU,
-    paddle.nn.LeakyReLU, paddle.nn.quant.add, paddle.nn.quant.subtract,
-    paddle.nn.quant.multiply, paddle.nn.quant.divide
+    paddle.nn.quant.add, paddle.nn.quant.subtract, paddle.nn.quant.multiply,
+    paddle.nn.quant.divide
 ]
 
 fake_quant_leaf_layers = [
