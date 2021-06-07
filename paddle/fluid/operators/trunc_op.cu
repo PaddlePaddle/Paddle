@@ -71,4 +71,3 @@ REGISTER_OP_CUDA_KERNEL(trunc, ops::TruncCUDAKernel<float>,
 REGISTER_OP_CUDA_KERNEL(trunc_grad, ops::TruncCUDAGradKernel<float>,
                         ops::TruncCUDAGradKernel<double>,
                         ops::TruncCUDAGradKernel<int>);
-
