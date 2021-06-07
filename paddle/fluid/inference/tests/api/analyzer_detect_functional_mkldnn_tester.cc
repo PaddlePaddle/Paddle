@@ -33,7 +33,6 @@ struct Record {
 
 Record ProcessALine(const std::string &line, const std::string &shape_line) {
   VLOG(3) << "process a line";
-  std::vector<std::string> columns;
 
   Record record;
   std::vector<std::string> data_strs;
@@ -103,12 +102,12 @@ void validate_cache_onednn(int cache_capacity = 1) {
   lines.resize(num_samples);
   shape_lines.resize(num_samples);
 
-  // Let's remeber number of cached objects before
-  // exection and after every single execution
+  // Let's remember number of cached objects before
+  // execution and after every single execution
   std::vector<int> cache_filling;
   cache_filling.push_back(GetNumCachedObjects());
 
-  // compute sequenctilly prediction
+  // compute sequentially prediction
   for (int i = 0; i < num_samples; ++i) {
     std::getline(file, lines[i]);
     std::getline(infer_file, shape_lines[i]);

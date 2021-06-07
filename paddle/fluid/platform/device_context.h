@@ -748,8 +748,13 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   using ShapeBlob = umap_key_string_t<KeyBlob>;
   using BlobMap = umap_value_smart_t<int, ShapeBlob>;
 
-  using ExecMap = std::unordered_map<
-      void*, std::vector<std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>>>;
+  // Auxillary two-level structure (shape, executor) to easier control
+  // clearing cache objects related to specific executor
+
+  using ExecKey = void*;
+  using ExecMapCacheIterPair = std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>;
+  using ExecMap =
+      std::unordered_map<ExecKey, std::vector<ExecMapCacheIterPair>>;
   using ExecShape = std::unordered_map<std::string, std::shared_ptr<ExecMap>>;
 
   explicit MKLDNNDeviceContext(CPUPlace place);
