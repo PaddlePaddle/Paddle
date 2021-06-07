@@ -35,9 +35,9 @@ def set_random_seed(seed):
     fleet.meta_parallel.model_parallel_random_seed(seed)
 
 
-batch_size = 2
-sequence_length = 2
-class_num = 4
+batch_size = 1
+sequence_length = 1
+class_num = 2
 
 
 class CrossEntropyNet(fluid.dygraph.Layer):
@@ -92,9 +92,11 @@ for _ in range(3):
     data = paddle.randn(
         shape=[batch_size, sequence_length, class_num], dtype='float32')
 
+    data.stop_gradient = False
     print("data ", data)
     print("label ", label)
     loss = model(data, label)
     loss.backward()
 
+    print("grad: ", data.grad)
     print("loss: ", loss)

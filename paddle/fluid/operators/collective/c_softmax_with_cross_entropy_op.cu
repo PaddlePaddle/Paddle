@@ -61,15 +61,23 @@ __global__ void MaskLabelByIndexGrad(T* logits_grad, const T* loss_grad,
     auto row = i / D;
     auto col = i % D;
 
-    auto real_label = labels[row];
-    if (real_label >= start_index && real_label < end_index) {
-      if ((col + start_index) == real_label) {
-        logits_grad[i] =
-            (logits_grad[i] - static_cast<T>(1.0)) * loss_grad[row];
-      }
+    // auto real_label = labels[row];
+    if ((col + start_index) == labels[row]) {
+      logits_grad[i] = (logits_grad[i] - static_cast<T>(1.0)) * loss_grad[row];
     } else {
       logits_grad[i] *= loss_grad[row];
     }
+
+    // if (real_label >= start_index && real_label < end_index) {
+    //   if ((col + start_index) == real_label) {
+    //     logits_grad[i] =
+    //         (logits_grad[i] - static_cast<T>(1.0)) * loss_grad[row];
+    //   } else{
+    //     logits_grad[i] *= loss_grad[row];
+    //   }
+    // } else {
+    //   logits_grad[i] *= loss_grad[row];
+    // }
   }
 }
 
@@ -201,7 +209,7 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     // just for test
     // std::vector<T> test_vec2;
     // framework::TensorToVector<T>(*softmax, dev_ctx, &test_vec2);
-    // VLOG(0) << "softmax :" << string::join_strings(test_vec2, ',');
+    // VLOG(0) << "before softmax :" << string::join_strings(test_vec2, ',');
 
     // std::vector<T> test_vec3;
     // framework::TensorToVector<T>(sum_exp_logits, dev_ctx, &test_vec3);
@@ -218,6 +226,10 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
          eigen_sum_exp_logits.inverse().broadcast(one_by_class));
+
+    // std::vector<T> test_vec4;
+    // framework::TensorToVector<T>(*softmax, dev_ctx, &test_vec4);
+    // VLOG(0) << "after softmax : " << string::join_strings(test_vec4, ',');
   }
 };
 
