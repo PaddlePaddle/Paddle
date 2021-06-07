@@ -645,6 +645,20 @@ def save(obj, path, protocol=4, **configs):
             main_program = paddle.static.default_main_program()
             path = "example/main_program.pdmodel"
             paddle.save(main_program, path)
+
+
+            # example 5: save object to memory
+            from io import BytesIO
+            import paddle
+            from paddle.nn import Linear
+
+            linear = Linear(5, 10)
+            state_dict = linear.state_dict()
+            byio = BytesIO()
+            paddle.save(state_dict, byio)
+            tensor = paddle.randn([2, 3], dtype='float32')
+            paddle.save(tensor, byio)
+    
     '''
     if _is_file_path(path):
         # 1. input check
@@ -775,7 +789,7 @@ def load(path, **configs):
         ``Layer.set_state_dict`` later.
 
     Args:
-        path(str) : The path to load the target object. Generally, the path is the target 
+        path(str|BytesIO) : The path/buffer to load the target object. Generally, the path is the target 
             file path. When loading state_dict from the saved result of the API used to save 
             the inference model, the path may be a file prefix or directory.
         **configs (dict, optional): other load configuration options for compatibility. We do not 
@@ -880,6 +894,21 @@ def load(path, **configs):
             load_main = paddle.load(path)
             print(load_main)
 
+
+            # example 5: save object to memory
+            from io import BytesIO
+            import paddle
+            from paddle.nn import Linear
+
+            linear = Linear(5, 10)
+            state_dict = linear.state_dict()
+            byio = BytesIO()
+            paddle.save(state_dict, byio)
+            tensor = paddle.randn([2, 3], dtype='float32')
+            paddle.save(tensor, byio)
+            byio.seek(0)
+            # load state_dict
+            dict_load = paddle.load(byio, return_numpy=True)
 
     '''
 

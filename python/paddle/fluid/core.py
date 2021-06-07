@@ -271,8 +271,6 @@ if avx_supported():
         from .core_avx import _set_paddle_lib_path
         from .core_avx import _save_static_dict
         from .core_avx import _load_static_dict
-        from .core_avx import _save_dygraph_dict
-        from .core_avx import _load_dygraph_dict
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
         from .core_avx import _promote_types_if_complex_exists
