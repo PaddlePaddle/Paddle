@@ -98,7 +98,7 @@ class _ConvNd(layers.Layer):
                                                   'kernel_size')
         self._padding = padding
         self._padding_mode = padding_mode
-        self.output_padding = output_padding
+        self._output_padding = output_padding
         if dims != 1:
             self._updated_padding, self._padding_algorithm = _update_padding_nd(
                 padding, channel_last, dims)
@@ -163,7 +163,7 @@ class _ConvNd(layers.Layer):
             main_str += ', padding={_padding}'
         if self._padding_mode is not 'zeros':
             main_str += ', padding_mode={_padding_mode}'
-        if self.output_padding != 0:
+        if self._output_padding != 0:
             main_str += ', output_padding={_output_padding}'
         if self._dilation != [1] * len(self._dilation):
             main_str += ', dilation={_dilation}'
