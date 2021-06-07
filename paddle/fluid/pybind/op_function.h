@@ -14,13 +14,6 @@
 
 #pragma once
 
-// disable numpy compile error
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#define PY_ARRAY_UNIQUE_SYMBOL MY_PyArray_API
-#define INIT_NUMPY_ARRAY_CPP
-
-#include <numpy/arrayobject.h>
-#include <numpy/arrayscalars.h>
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -233,21 +226,34 @@ bool Numpy_CheckAvailable() {
   return ret;
 }
 
-inline bool PyObject_CheckBool(PyObject* obj) { return PyBool_Check(obj); }
+inline bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 
-inline bool PyObject_CheckLong(PyObject* obj) {
-  return (PyLong_Check(obj) && !PyBool_Check(obj)) ||
-         PyObject_IsInstance(obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
-         (Numpy_CheckAvailable() && PyArray_IsScalar((obj), Integer)) ||
-         PyObject_IsInstance(obj, (PyObject*)g_varbase_pytype);  // NOLINT
+inline bool PyObject_CheckLongOrToLong(PyObject** obj) {
+  if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
+      PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype)) {  // NOLINT
+    return true;
+  }
+  auto to = PyNumber_Long(*obj);
+  if (to) {
+    *obj = to;
+    return true;
+  }
+  return false;
 }
 
-inline bool PyObject_CheckFloat(PyObject* obj) {
+inline bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
-  return PyFloat_Check(obj) || PyLong_Check(obj) ||
-         (Numpy_CheckAvailable() && PyArray_IsScalar(obj, Floating)) ||
-         (Numpy_CheckAvailable() && PyArray_IsScalar(obj, Integer)) ||
-         PyObject_IsInstance(obj, (PyObject*)g_varbase_pytype);  // NOLINT
+  if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
+      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype)) {  // NOLINT
+    return true;
+  }
+  auto to = PyNumber_Float(*obj);
+  if (to) {
+    *obj = to;
+    return true;
+  }
+  return false;
 }
 
 inline bool PyObject_CheckString(PyObject* obj) { return PyUnicode_Check(obj); }
@@ -276,7 +282,7 @@ static inline void CastPyArg2AttrInt(
     PyObject* obj,
     paddle::framework::AttributeMap& attrs,  // NOLINT
     const std::string& key, const std::string& op_type, ssize_t arg_pos) {
-  if (PyObject_CheckLong(obj)) {
+  if (PyObject_CheckLongOrToLong(&obj)) {
     attrs[key] = (int)PyLong_AsLong(obj);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -291,7 +297,7 @@ static inline void CastPyArg2AttrLong(
     PyObject* obj,
     paddle::framework::AttributeMap& attrs,  // NOLINT
     const std::string& key, const std::string& op_type, ssize_t arg_pos) {
-  if (PyObject_CheckLong(obj)) {
+  if (PyObject_CheckLongOrToLong(&obj)) {
     attrs[key] = (int64_t)PyLong_AsLong(obj);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -306,7 +312,7 @@ static inline void CastPyArg2AttrFloat(
     PyObject* obj,
     paddle::framework::AttributeMap& attrs,  // NOLINT
     const std::string& key, const std::string& op_type, ssize_t arg_pos) {
-  if (PyObject_CheckFloat(obj)) {
+  if (PyObject_CheckFloatOrToFloat(&obj)) {
     attrs[key] = (float)PyFloat_AsDouble(obj);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -344,7 +350,7 @@ static inline void CastPyArg2AttrBooleans(
     std::vector<bool> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_CheckBool(item)) {
+      if (PyObject_CheckBool(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -361,7 +367,7 @@ static inline void CastPyArg2AttrBooleans(
     std::vector<bool> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_CheckBool(item)) {
+      if (PyObject_CheckBool(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -391,7 +397,7 @@ static inline void CastPyArg2AttrInts(
     std::vector<int> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_CheckLong(item)) {
+      if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -408,7 +414,7 @@ static inline void CastPyArg2AttrInts(
     std::vector<int> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_CheckLong(item)) {
+      if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -425,7 +431,7 @@ static inline void CastPyArg2AttrInts(
     std::vector<int> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PySequence_GetItem(obj, i);
-      if (PyObject_CheckLong(item)) {
+      if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -455,7 +461,7 @@ static inline void CastPyArg2AttrLongs(
     std::vector<int64_t> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_CheckLong(item)) {
+      if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -472,7 +478,7 @@ static inline void CastPyArg2AttrLongs(
     std::vector<int64_t> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_CheckLong(item)) {
+      if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -489,7 +495,7 @@ static inline void CastPyArg2AttrLongs(
     std::vector<int64_t> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PySequence_GetItem(obj, i);
-      if (PyObject_CheckLong(item)) {
+      if (PyObject_CheckLongOrToLong(&item)) {
         value.emplace_back(PyLong_AsLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -519,7 +525,7 @@ static inline void CastPyArg2AttrFloats(
     std::vector<float> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_CheckFloat(item)) {
+      if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -536,7 +542,7 @@ static inline void CastPyArg2AttrFloats(
     std::vector<float> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_CheckFloat(item)) {
+      if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -553,7 +559,7 @@ static inline void CastPyArg2AttrFloats(
     std::vector<float> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PySequence_GetItem(obj, i);
-      if (PyObject_CheckFloat(item)) {
+      if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -582,7 +588,7 @@ static inline void CastPyArg2AttrFloat64s(
     std::vector<double> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_CheckFloat(item)) {
+      if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -599,7 +605,7 @@ static inline void CastPyArg2AttrFloat64s(
     std::vector<double> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_CheckFloat(item)) {
+      if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -616,7 +622,7 @@ static inline void CastPyArg2AttrFloat64s(
     std::vector<double> value;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PySequence_GetItem(obj, i);
-      if (PyObject_CheckFloat(item)) {
+      if (PyObject_CheckFloatOrToFloat(&item)) {
         value.emplace_back(PyFloat_AsDouble(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -889,7 +895,7 @@ static inline unsigned long GetUnsignedLongFromArgs(  // NOLINT
     return 0;
   }
 
-  if (PyObject_CheckLong(item)) {
+  if (PyObject_CheckLongOrToLong(&item)) {
     return PyLong_AsUnsignedLong(item);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
