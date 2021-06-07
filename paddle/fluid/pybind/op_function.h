@@ -200,32 +200,6 @@ static inline void HandleViewBetweenInputAndOutput(
 extern PyTypeObject* g_varbase_pytype;
 extern PyTypeObject* g_vartype_pytype;
 
-bool Numpy_CheckAvailable() {
-  static bool ret = []() {
-    if (_import_array() >= 0) {
-      return true;
-    }
-
-    std::string message = "Failed to initialize NumPy";
-    PyObject *type, *value, *traceback;
-    PyErr_Fetch(&type, &value, &traceback);
-    if (value) {
-      PyObject* err_msg = PyObject_Str(value);
-      PyObject* err_msg2 =
-          PyUnicode_AsEncodedString(err_msg, "utf-8", "strict");
-      if (err_msg2) {
-        LOG(WARNING) << "Numpy Error: '" << PyBytes_AS_STRING(err_msg2)
-                     << "'. You can try upgrading numpy.";
-        Py_XDECREF(err_msg2);
-      }
-      Py_XDECREF(err_msg);
-    }
-    PyErr_Clear();
-    return false;
-  }();
-  return ret;
-}
-
 inline bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 
 inline bool PyObject_CheckLongOrToLong(PyObject** obj) {
