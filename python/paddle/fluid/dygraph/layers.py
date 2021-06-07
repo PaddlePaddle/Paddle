@@ -534,8 +534,9 @@ class Layer(core.Layer):
 
         """
         ret = [
-            param for _, param in
-            self.named_parameters(include_sublayers=include_sublayers)
+            param
+            for _, param in self.named_parameters(
+                include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -790,8 +791,9 @@ class Layer(core.Layer):
 
         """
         ret = [
-            buffer for _, buffer in
-            self.named_buffers(include_sublayers=include_sublayers)
+            buffer
+            for _, buffer in self.named_buffers(
+                include_sublayers=include_sublayers)
         ]
         return ret
 
