@@ -52,61 +52,6 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
     } else if (index_type == framework::proto::VarType::INT64) {
       GatherV2CUDAFunction<T, int64_t>(x, index, axis, output, place, ctx);
     }
-
-    // if (ctx.HasInput("Axis")) {
-    //   const Tensor *axis = ctx.Input<Tensor>("Axis");
-    //   const auto &index_type = index->type();
-    //   const auto &axis_type = axis->type();
-    //   auto place = ctx.GetPlace();
-    //   if (index_type == framework::proto::VarType::INT32 &&
-    //       axis_type == framework::proto::VarType::INT32) {
-    //     int axis = cpu_axis.data<int32_t>()[0];
-    //     GatherV2CUDAFunction<T, int32_t, int32_t>(x, index, axis, output,
-    //     place,
-    //                                               ctx);
-    //   }
-    // if (index_type == framework::proto::VarType::INT32 &&
-    //     axis_type == framework::proto::VarType::INT64) {
-    //   int axis = cpu_axis.data<int64_t>()[0];
-    //   GatherV2CUDAFunction<T, int32_t, int64_t>(x, index, axis, output,
-    //   place,
-    //                                               ctx);
-    //   }
-    //   if (index_type == framework::proto::VarType::INT64 &&
-    //       axis_type == framework::proto::VarType::INT32) {
-    //     int axis = cpu_axis.data<int32_t>()[0];
-    //     GatherV2CUDAFunction<T, int64_t, int32_t>(x, index, axis, output,
-    //     place,
-    //                                               ctx);
-    //   }
-    //   if (index_type == framework::proto::VarType::INT64 &&
-    //       axis_type == framework::proto::VarType::INT64) {
-    //     int axis = cpu_axis.data<int64_t>()[0];
-    //     GatherV2CUDAFunction<T, int64_t, int64_t>(x, index, axis, output,
-    //     place,
-    //                                               ctx);
-    //   }
-    //   return;
-    // }
-    // output->mutable_data<T>(ctx.GetPlace());
-    // if (x->numel() == 0) return;
-    // const auto &index_type = index->type();
-    // bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-    //                           index_type == framework::proto::VarType::INT64;
-    //   PADDLE_ENFORCE_EQ(index_type_match, true,
-    //                     platform::errors::InvalidArgument(
-    //                         "Index holds the wrong type, it holds [%s],"
-    //                         "but desires to be [%s] or [%s].",
-    //                         paddle::framework::DataTypeToString(index_type),
-    //                         paddle::framework::DataTypeToString(
-    //                             framework::proto::VarType::INT32),
-    //                         paddle::framework::DataTypeToString(
-    //                             framework::proto::VarType::INT64)));
-    //   if (index_type == framework::proto::VarType::INT32) {
-    //     GPUGather<T, int>(ctx.device_context(), *x, *index, output);
-    //   } else if (index_type == framework::proto::VarType::INT64) {
-    //     GPUGather<T, int64_t>(ctx.device_context(), *x, *index, output);
-    //   }
   }
 };
 
@@ -141,61 +86,6 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
     } else if (index_type == framework::proto::VarType::INT64) {
       GatherV2GradCUDAFunction<T, int64_t>(dO, index, axis, dX, place, ctx);
     }
-
-    // if (ctx.HasInput("Axis")) {
-    //   const Tensor *axis = ctx.Input<Tensor>("Axis");
-    //   const auto &index_type = index->type();
-    //   const auto &axis_type = axis->type();
-    //   auto place = ctx.GetPlace();
-    //   if (index_type == framework::proto::VarType::INT32 &&
-    //       axis_type == framework::proto::VarType::INT32) {
-    //     GatherV2GradCUDAFunction<T, int32_t, int32_t>(dO, index, axis, dX,
-    //                                                   place, ctx);
-    //   }
-    //   if (index_type == framework::proto::VarType::INT32 &&
-    //       axis_type == framework::proto::VarType::INT64) {
-    //     GatherV2GradCUDAFunction<T, int32_t, int64_t>(dO, index, axis, dX,
-    //                                                   place, ctx);
-    //   }
-    //   if (index_type == framework::proto::VarType::INT64 &&
-    //       axis_type == framework::proto::VarType::INT32) {
-    //     GatherV2GradCUDAFunction<T, int64_t, int32_t>(dO, index, axis, dX,
-    //                                                   place, ctx);
-    //   }
-    //   if (index_type == framework::proto::VarType::INT64 &&
-    //       axis_type == framework::proto::VarType::INT64) {
-    //     GatherV2GradCUDAFunction<T, int64_t, int64_t>(dO, index, axis, dX,
-    //                                                   place, ctx);
-    //   }
-    //   return;
-    // }
-
-    // dX->mutable_data<T>(ctx.GetPlace());
-    // auto dxt = framework::EigenVector<T>::Flatten(*dX);
-    // auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
-    //                    .eigen_device();
-    // dxt.device(place) = dxt.constant(static_cast<T>(0));
-    // if (dO->numel() == 0) return;
-
-    // const auto &index_type = index->type();
-    // bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-    //                         index_type == framework::proto::VarType::INT64;
-    // PADDLE_ENFORCE_EQ(index_type_match, true,
-    //                   platform::errors::InvalidArgument(
-    //                       "Index holds the wrong type, it holds [%s],"
-    //                       "but desires to be [%s] or [%s].",
-    //                       paddle::framework::DataTypeToString(index_type),
-    //                       paddle::framework::DataTypeToString(
-    //                           framework::proto::VarType::INT32),
-    //                       paddle::framework::DataTypeToString(
-    //                           framework::proto::VarType::INT64)));
-    // if (index_type == framework::proto::VarType::INT32) {
-    //   GPUScatterAssign<T, int>(ctx, *dO, *index, dX,
-    //                            ctx.Attr<bool>("overwrite"));
-    // } else if (index_type == framework::proto::VarType::INT64) {
-    //   GPUScatterAssign<T, int64_t>(ctx, *dO, *index, dX,
-    //                                ctx.Attr<bool>("overwrite"));
-    // }
   }
 };
 
