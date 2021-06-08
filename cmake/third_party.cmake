@@ -108,13 +108,18 @@ ENDMACRO()
 # 2. NAME:          The name of file, that determin the dirname
 #
 FUNCTION(file_download_and_uncompress URL NAME)
-  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}")
+  set(options "")
+  set(oneValueArgs MD5)
+  set(multiValueArgs "")
+  cmake_parse_arguments(URL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}, MD5: ${URL_MD5}")
   SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME}/data PARENT_SCOPE)
   ExternalProject_Add(
       download_${NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${THIRD_PARTY_PATH}/${NAME}
       URL                   ${URL}
+      URL_MD5               ${URL_MD5}
       TIMEOUT               120
       DOWNLOAD_DIR          ${THIRD_PARTY_PATH}/${NAME}/data/
       SOURCE_DIR            ${THIRD_PARTY_PATH}/${NAME}/data/
@@ -244,7 +249,7 @@ if(WITH_GPU)
         list(APPEND third_party_deps extern_cub)
     endif()
     set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg.tar.gz" CACHE STRING "" FORCE)
-    file_download_and_uncompress(${URL} "externalError")   # download file externalErrorMsg.tar.gz
+    file_download_and_uncompress(${URL} "externalError" MD5 c0749523ebb536eb7382487d645d9cd4)   # download file externalErrorMsg.tar.gz
     if(WITH_TESTING)
         # copy externalErrorMsg.pb for unittest 'enforce_test'
         set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)

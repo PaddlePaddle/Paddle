@@ -72,7 +72,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                     self.layer, 3)
             self.assertEqual(
                 "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'int'>.".
-                format(self.type_str, self.type_str), str(e.exception))
+                format(self.type_str), str(e.exception))
             with self.assertRaises(TypeError) as e:
                 dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                     self.layer, [True, 1])
