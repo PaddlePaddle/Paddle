@@ -45,14 +45,13 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   framework::Attribute GetAttr(const std::string& name) const override {
     auto it = attrs_.find(name);
 
-    bool find = (it != attrs_.end());
     if (it == attrs_.end()) {
       it = attrs_default_.find(name);
-      find = (it != attrs_default_.end());
+      if (it == attrs_default_.end()) {
+        PADDLE_THROW(
+            platform::errors::NotFound("Can not find [%s] in attrs", name));
+      }
     }
-
-    PADDLE_ENFORCE_NE(find, false, platform::errors::NotFound(
-                                       "Can not find [%s] in attrs", name));
 
     return it->second;
   }
