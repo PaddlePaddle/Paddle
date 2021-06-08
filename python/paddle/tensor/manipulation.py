@@ -865,7 +865,7 @@ def gather(x, index, axis=None, name=None):
 
     if in_dygraph_mode():
         if not isinstance(axis, Variable):
-            return core.ops.gather(x, index, "axis", axis)
+            return core.ops.gather(x, index, None, "axis", axis)
         else:
             return core.ops.gather(x, index, axis)
 

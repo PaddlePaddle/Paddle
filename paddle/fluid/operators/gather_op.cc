@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -61,17 +62,13 @@ class GatherOp : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", /*->*/ "Out");
     } else {
       auto axis = ctx->Attrs().Get<int>("axis");
-      int index_size = framework::product(index_dims);
-      int inner_dim_size = 1;
-      int outer_dim_size = 1;
+      int index_size = index_dims[0];
       std::vector<int> out_dim_vec;
       for (int i = 0; i < axis; i++) {
-        inner_dim_size *= input_dim[i];
         out_dim_vec.push_back(input_dim[i]);
       }
       out_dim_vec.push_back(index_size);
       for (int i = axis + 1; i < input_dim.size(); i++) {
-        outer_dim_size *= input_dim[i];
         out_dim_vec.push_back(input_dim[i]);
       }
       auto output_dims = framework::make_ddim(out_dim_vec);
