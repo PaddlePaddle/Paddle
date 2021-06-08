@@ -252,5 +252,21 @@ class TestYoloBoxStatic(unittest.TestCase):
         assert boxes is not None and scores is not None
 
 
+class TestYoloBoxOpHW(TestYoloBoxOp):
+    def initTestCase(self):
+        self.anchors = [10, 13, 16, 30, 33, 23]
+        an_num = int(len(self.anchors) // 2)
+        self.batch_size = 32
+        self.class_num = 2
+        self.conf_thresh = 0.5
+        self.downsample = 32
+        self.clip_bbox = False
+        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 9)
+        self.imgsize_shape = (self.batch_size, 2)
+        self.scale_x_y = 1.
+        self.iou_aware = False
+        self.iou_aware_factor = 0.5
+
+
 if __name__ == "__main__":
     unittest.main()
