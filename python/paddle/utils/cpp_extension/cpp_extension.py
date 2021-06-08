@@ -434,7 +434,7 @@ class BuildExtension(build_ext, object):
                 add_compile_flag(['-D_GLIBCXX_USE_CXX11_ABI=1'], cflags)
 
                 add_std_without_repeat(
-                    cflags, self.compiler.compiler_type, use_std14=False)
+                    cflags, self.compiler.compiler_type, use_std14=True)
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
                 # restore original_compiler
