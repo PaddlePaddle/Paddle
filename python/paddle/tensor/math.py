@@ -883,7 +883,7 @@ def trunc(x, name=None):
         attrs = {}
 
         helper = LayerHelper("trunc", **locals())
-        check_variable_and_dtype(x, 'X', ['int32', 'float32', 'float64'], 'trunc')
+        check_variable_and_dtype(x, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc')
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(

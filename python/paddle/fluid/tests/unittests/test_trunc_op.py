@@ -40,8 +40,6 @@ class TestTruncOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        print(self.inputs)
-
         self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5)
 
 

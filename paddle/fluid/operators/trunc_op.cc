@@ -56,14 +56,6 @@ class TruncGradOp : public framework::OperatorWithKernel {
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
   }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    // Note: don't get data type from ctx.Input<framework::Tensor>("Input");
-    auto dtype =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type();
-    return framework::OpKernelType(dtype, ctx.GetPlace());
-  }
 };
 
 template <typename T>
@@ -79,8 +71,6 @@ class TruncGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInference, "X");
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -89,11 +79,11 @@ REGISTER_OPERATOR(trunc, ops::TruncOp, ops::TruncOpMaker,
                   ops::TruncGradOpMaker<paddle::framework::OpDesc>,
                   ops::TruncGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(trunc_grad, ops::TruncGradOp,
-                  ops::SliceOpGradNoNeedBufferVarsInference);
+REGISTER_OPERATOR(trunc_grad, ops::TruncGradOp);
 
 REGISTER_OP_CPU_KERNEL(trunc, ops::TruncKernel<float>, ops::TruncKernel<double>,
-                       ops::TruncKernel<int>);
+                       ops::TruncKernel<int>, ops::TruncKernel<int64_t>);
 
 REGISTER_OP_CPU_KERNEL(trunc_grad, ops::TruncGradKernel<float>,
-                       ops::TruncGradKernel<double>, ops::TruncGradKernel<int>);
+                       ops::TruncGradKernel<double>, ops::TruncGradKernel<int>,
+                       ops::TruncGradKernel<int64_t>);

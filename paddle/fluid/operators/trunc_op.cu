@@ -15,12 +15,39 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void Trunc(const T* x, T* out, int N) {
-  CUDA_KERNEL_LOOP(index, N) { out[index] = trunc(x[index]); }
+class truncFunctor {
+ public:
+  __device__ truncFunctor(const T x) : _x(x) {}
+  __device__ T operator()() { return trunc(_x); }
+  const T _x;
+};
+
+template <>
+class truncFunctor<int> {
+ public:
+  __device__ truncFunctor(const int x) : _x(x) {}
+  __device__ int operator()() { return _x; }
+  const int _x;
+};
+
+template <>
+class truncFunctor<int64_t> {
+ public:
+  __device__ truncFunctor(const int64_t x) : _x(x) {}
+  __device__ int64_t operator()() { return _x; }
+  const int64_t _x;
+};
+
+template <typename T>
+__global__ void Trunc(const T* x, T* out, int64_t N) {
+  CUDA_KERNEL_LOOP(index, N) {
+    truncFunctor<T> functor(x[index]);
+    out[index] = functor();
+  }
 }
 
 template <typename T>
-__global__ void TruncGrad(const T* dout, T* dx, int N) {
+__global__ void TruncGrad(T* dx, int64_t N) {
   CUDA_KERNEL_LOOP(index, N) { dx[index] = 0.0; }
 }
 
@@ -31,10 +58,10 @@ class TruncCUDAKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
 
-    const T* x_data = x->data<T>();
-    T* out_data = out->mutable_data<T>(context.GetPlace());
+    const auto* x_data = x->data<T>();
+    auto* out_data = out->mutable_data<T>(context.GetPlace());
 
-    int numel = x->numel();
+    int64_t numel = x->numel();
 
     dim3 blockSize(256);
     dim3 gridSize((numel + blockSize.x - 1) / blockSize.x);
@@ -49,14 +76,14 @@ class TruncCUDAGradKernel : public framework::OpKernel<T> {
     auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
 
-    const T* dout_data = dout->data<T>();
-    T* dx_data = dx->mutable_data<T>(context.GetPlace());
+    const auto* dout_data = dout->data<T>();
+    auto* dx_data = dx->mutable_data<T>(context.GetPlace());
 
-    int numel = dout->numel();
+    int64_t numel = dout->numel();
 
     dim3 blockSize(256);
     dim3 gridSize((numel + blockSize.x - 1) / blockSize.x);
-    TruncGrad<<<gridSize, blockSize>>>(dout_data, dx_data, numel);
+    TruncGrad<<<gridSize, blockSize>>>(dx_data, numel);
   }
 };
 
@@ -65,9 +92,10 @@ class TruncCUDAGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(trunc, ops::TruncCUDAKernel<float>,
-                        ops::TruncCUDAKernel<double>,
-                        ops::TruncCUDAKernel<int>);
+                        ops::TruncCUDAKernel<double>, ops::TruncCUDAKernel<int>,
+                        ops::TruncCUDAKernel<int64_t>);
 
 REGISTER_OP_CUDA_KERNEL(trunc_grad, ops::TruncCUDAGradKernel<float>,
                         ops::TruncCUDAGradKernel<double>,
-                        ops::TruncCUDAGradKernel<int>);
+                        ops::TruncCUDAGradKernel<int>,
+                        ops::TruncCUDAGradKernel<int64_t>);
