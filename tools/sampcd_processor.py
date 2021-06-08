@@ -39,7 +39,7 @@ if logger.handlers:
     console = logger.handlers[
         0]  # we assume the first handler is the one we want to configure
 else:
-    console = logging.StreamHandler()
+    console = logging.StreamHandler(stream=sys.stderr)
     logger.addHandler(console)
 console.setFormatter(logging.Formatter("%(message)s"))
 
@@ -611,6 +611,8 @@ if __name__ == '__main__':
     if not args.debug:
         shutil.rmtree(SAMPLECODE_TEMPDIR)
 
+    stdout_handler = logging.StreamHandler(stream=sys.stdout)
+    logger.addHandler(stdout_handler)
     logger.info("----------------End of the Check--------------------")
     if len(whl_error) != 0:
         logger.info("%s is not in whl.", whl_error)
