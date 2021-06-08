@@ -321,12 +321,12 @@ def _set_expected_place(place):
 
 # TODO(zhiqiu): remove this function.
 def _var_base_to_np(var_base):
-    """	
-    convert VarBase tp numpy	
+    """
+    convert VarBase tp numpy
 
-    Args:	
-        var_base(VarBase) : the VarBase to convert	
-    Returns (np.ndarray): the np.ndarray contain the value of VarBase	
+    Args:
+        var_base(VarBase) : the VarBase to convert
+    Returns (np.ndarray): the np.ndarray contain the value of VarBase
     """
 
     warnings.warn(
@@ -431,7 +431,7 @@ def cuda_places(device_ids=None):
 
     If :code:`device_ids` is not None, it should be the device
     ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be 
+    the returned list would be
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
 
     Parameters:
@@ -447,7 +447,7 @@ def cuda_places(device_ids=None):
             import paddle.static as static
 
             # required: gpu
-            
+
             paddle.enable_static()
 
             cuda_places = static.cuda_places()
@@ -475,19 +475,19 @@ def xpu_places(device_ids=None):
     xpu places would be returned.
     If :code:`device_ids` is not None, it should be the device
     ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be 
+    the returned list would be
     [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
-    
+
     Parameters:
         device_ids (list or tuple of int, optional): list of XPU device ids.
     Returns:
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.static as static
-            
+
             paddle.enable_static()
             xpu_places = static.xpu_places()
     """
@@ -505,7 +505,7 @@ def cpu_places(device_count=None):
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
 
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
+    be determined by environment variable :code:`CPU_NUM`.
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
     :code:`CPU_NUM` indicates the number of devices used in the current task.
@@ -538,7 +538,7 @@ def cuda_pinned_places(device_count=None):
     This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
+    be determined by environment variable :code:`CPU_NUM`.
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
     :code:`CPU_NUM` indicates the number of devices used in the current task.
@@ -599,7 +599,7 @@ def name_scope(prefix=None):
 
     Generate hierarchical name prefix for the operators in Static Graph.
 
-    Note: 
+    Note:
         This should only used for debugging and visualization purpose.
         Don't use it for serious analysis such as graph/program transformations.
         Don't use it in dygraph, since it will cause memory leak.
@@ -624,7 +624,7 @@ def name_scope(prefix=None):
           with paddle.static.name_scope("s4"):
                 g = f - 1
 
-          # Op are created in the default main program.  
+          # Op are created in the default main program.
           for op in paddle.static.default_main_program().block(0).ops:
               # elementwise_add is created in /s1/
               if op.type == 'elementwise_add':
@@ -942,35 +942,39 @@ class Variable(object):
         self._stop_gradient = stop_gradient
         self.is_data = is_data
 
-    @fake_interface_only
     def detach(self):
         """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
         Returns a new Variable, detached from the current graph.
+        It will share data with origin Variable and always doesn't have a Tensor copy.
+        In addition, the detached Variable doesn't provide gradient propagation.
 
         Returns:
              ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
 
-
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
+                import paddle
+                paddle.enable_static()
 
-                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    y = x.detach()
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # create a detached Variable
+                y = x.detach()
 
         """
-        pass
+        output = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key("detach_" + self.name),
+            dtype=self.dtype,
+            type=self.type,
+            persistable=self.persistable,
+            stop_gradient=True)
+
+        self.block.append_op(
+            type='share_data',
+            inputs={'Input': [self]},
+            outputs={'Out': [output]})
+        return output
 
     @fake_interface_only
     def numpy(self):
@@ -1428,7 +1432,7 @@ class Variable(object):
     def clone(self):
         """
         Returns a new static Variable, which is the clone of the original static
-        Variable. It remains in the current graph, that is, the cloned Variable 
+        Variable. It remains in the current graph, that is, the cloned Variable
         provides gradient propagation. Calling ``out = tensor.clone()`` is same
         as ``out = assign(tensor)`` .
 
@@ -1479,7 +1483,7 @@ class Variable(object):
             key(str): Key for this information.
             value(object): The value associated to the key.
 
-        Returns: 
+        Returns:
             None
         """
         if not hasattr(self, "_info"):
@@ -1493,7 +1497,7 @@ class Variable(object):
         Args:
             key(str): Key for this information.
 
-        Returns: 
+        Returns:
             object
         """
         if hasattr(self, "_info") and key in self._info:
@@ -1654,10 +1658,10 @@ class Variable(object):
 
     def get_value(self, scope=None):
         """
-        Get the value of variable in given scope. 
+        Get the value of variable in given scope.
 
         Args:
-            scope(Scope, optional) : If `scope` is None, it will be set to global scope 
+            scope(Scope, optional) : If `scope` is None, it will be set to global scope
                 obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
                 Default: None
 
@@ -1668,7 +1672,7 @@ class Variable(object):
             .. code-block:: python
 
                 import paddle
-                import paddle.static as static 
+                import paddle.static as static
                 import numpy as np
 
                 paddle.enable_static()
@@ -1693,8 +1697,8 @@ class Variable(object):
                         t_load = paddle.load(path+var.name+'.pdtensor')
                         var.set_value(t_load)
         """
-        # The 'framework' is a low-level module, and 'executor' 
-        # can not be imported at the begainning of this file. 
+        # The 'framework' is a low-level module, and 'executor'
+        # can not be imported at the begainning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
         if scope is not None and not isinstance(scope, core._Scope):
@@ -1713,22 +1717,22 @@ class Variable(object):
 
     def set_value(self, value, scope=None):
         '''
-        Set the value to the tensor in given scope. 
+        Set the value to the tensor in given scope.
 
         Args:
             value(Tensor/ndarray) : The value to be set.
-            scope(Scope, optional) : If `scope` is None, it will be set to global scope 
+            scope(Scope, optional) : If `scope` is None, it will be set to global scope
                 obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
                 Default: None
 
         Returns:
             None
-        
+
         Examples:
             .. code-block:: python
 
                 import paddle
-                import paddle.static as static 
+                import paddle.static as static
                 import numpy as np
 
                 paddle.enable_static()
@@ -1755,7 +1759,7 @@ class Variable(object):
         '''
 
         # The 'framework' is a low-level module, and 'executor'
-        # can not be imported at the begainning of this file. 
+        # can not be imported at the begainning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
 
@@ -1804,6 +1808,33 @@ class Variable(object):
             place = core.CUDAPlace(p.gpu_device_id())
 
         t.set(value, place)
+
+    def size(self):
+        """
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+
+        Returns:
+            Variable: the number of elements for current Variable
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # get the number of elements of the Variable
+                y = x.size()
+
+        """
+        output = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key(self.name + "_size"),
+            dtype=core.VarDesc.VarType.INT64)
+
+        self.block.append_op(
+            type='size', inputs={'Input': [self]}, outputs={'Out': [output]})
+        return output
 
 
 def get_all_op_protos():
@@ -2142,7 +2173,7 @@ class Operator(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
             type(skip_op_callstack))
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
@@ -2550,7 +2581,7 @@ class Block(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
             type(skip_op_callstack))
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
@@ -2923,7 +2954,7 @@ class Block(object):
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
-        Insert an Operator according to the giving arguments, 
+        Insert an Operator according to the giving arguments,
         without sync_with_cpp to meke the compilation faster.
 
         Args:
@@ -4259,7 +4290,7 @@ class Program(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
             type(skip_op_callstack))
         program_str = ""
         for block in self.blocks:
@@ -4335,8 +4366,8 @@ class Program(object):
     def clone(self, for_test=False):
         """
         .. note:::
-            1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` . 
-            2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` . 
+            1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` .
+            2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` .
             3. This API has no effect in Dygraph Mode.
 
         Create a new Program with forward content of original one when ``for_test=True``.
@@ -4564,8 +4595,8 @@ class Program(object):
     def _prune_with_input(self, feeded_var_names, targets):
         """
         Prune operators and variables which are not needed to generate
-        :code:`targets`. Prune operators and variables which are needed 
-        to generate feeded_var 
+        :code:`targets`. Prune operators and variables which are needed
+        to generate feeded_var
 
         Notes: This is a very low level API. Users should not use this API
         directly. This API is in flux and not stable.
@@ -4713,7 +4744,7 @@ class Program(object):
     def parse_from_string(binary_str):
         """
         .. note::
-            1. All information about parameters will be lost after serialization; 
+            1. All information about parameters will be lost after serialization;
             2. This API has no effect in Dygraph mode.
 
         Deserialize a Program from  `protobuf <https://en.wikipedia.org/wiki/Protocol_Buffers>`_  binary string.
@@ -4778,7 +4809,7 @@ class Program(object):
         The default random seed for random operators in Program. ``0`` means get
         the random seed from random device.
 
-        .. note:: 
+        .. note::
             It must be set before the operators have been added.
 
         Returns:
@@ -4816,7 +4847,7 @@ class Program(object):
         """
         The number of :ref:`api_guide_Block_en`  in this Program.
 
-        .. note:: 
+        .. note::
             This API has no effect in Dygraph mode.
 
         Returns:
@@ -5024,8 +5055,8 @@ class Program(object):
         Args:
             other(Program): Other program
             pruned_origin_block_id_map(dict{int:int}): A dict which maps the block id in program
-            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
-            cloned from block 0 in other, etc. Default is None, which means default mapped, 
+            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is
+            cloned from block 0 in other, etc. Default is None, which means default mapped,
             {0:0, 1:1,..., n:n}.
 
         Returns:
@@ -5131,12 +5162,12 @@ class Program(object):
             This function MUST called after run start_up_program
 
         Args:
-            mode(str, optional): Source of the obtained parameters and buffers. 
-                    'opt' :  The return value only contains the variable in the optimizer. 
-                    'param' : The return value only contains the variable in the network, not the variable in the optimizer.  
+            mode(str, optional): Source of the obtained parameters and buffers.
+                    'opt' :  The return value only contains the variable in the optimizer.
+                    'param' : The return value only contains the variable in the network, not the variable in the optimizer.
                     'all' : The return value contains the variable in the network and optimizer.
                     Default: 'all'
-            scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
+            scope(Scope, optional) : If scope is None, state_dict will be set to global scope
                 obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
                 Default: None
 
@@ -5164,7 +5195,7 @@ class Program(object):
                 paddle.save(prog.state_dict(), path)
         """
         # The 'framework' is a low-level module, and 'executor'
-        # can not be imported at the begainning of this file. 
+        # can not be imported at the begainning of this file.
         # Therefore, the above two modules are dynamically imported.
         from .executor import global_scope
         if scope is not None and not isinstance(scope, core._Scope):
@@ -5222,20 +5253,20 @@ class Program(object):
 
     def set_state_dict(self, state_dict, scope=None):
         """
-        Set parameters and persistable buffers in state_dict to program. 
+        Set parameters and persistable buffers in state_dict to program.
         An exception will throw if shape or dtype of the parameters is not match.
-        
+
         .. note::
             This function MUST called after run start_up_program
 
         Args:
-            state_dict(dict): the dict store parameters and persistable buffers. 
+            state_dict(dict): the dict store parameters and persistable buffers.
                 The key is the name of the parameter or the name of the buffer.
                 The value is the tensor of this variable in the given scope.
-            scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
+            scope(Scope, optional) : If scope is None, state_dict will be set to global scope
                 obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
                 Default: None
-        
+
         Returns:
             None
 
@@ -5311,7 +5342,7 @@ class Parameter(Variable):
             be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
-        need_clip (bool): Whether the parameter gradient need to be cliped 
+        need_clip (bool): Whether the parameter gradient need to be cliped
             in optimizer. Default is True.
     """
 
@@ -5399,8 +5430,8 @@ class Parameter(Variable):
 
 class ParamBase(core.VarBase):
     """
-    ParamBase is derived from Tensor( Which is the concept in Dygraph Mode). 
-    A ParamBase is a persistable Tensor, and will be updated by optimizers 
+    ParamBase is derived from Tensor( Which is the concept in Dygraph Mode).
+    A ParamBase is a persistable Tensor, and will be updated by optimizers
     after each iteration.
     The training of a neural network is essentially the updating of
     its ParamBase.
@@ -5418,7 +5449,7 @@ class ParamBase(core.VarBase):
             be applied on the ParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this ParamBase.
-        need_clip (bool): Whether the parameter gradient need to be cliped 
+        need_clip (bool): Whether the parameter gradient need to be cliped
             in optimizer. Default is True.
     """
 
@@ -5548,7 +5579,7 @@ def default_startup_program():
     Get default/global startup program.
 
     The :code:`paddle.nn` function will append the initialization operators into startup program.
-    The :code:`startup_program` will initialize the parameters by the OPs. 
+    The :code:`startup_program` will initialize the parameters by the OPs.
 
     This method will return the default or the current startup program. Users can use
     :ref:`api_paddle_fluid_framework_program_guard`  to switch :ref:`api_paddle_fluid_framework_Program` .
@@ -5556,7 +5587,7 @@ def default_startup_program():
     Returns:
         Program: current default startup program.
 
-    Returns type: 
+    Returns type:
 
     Examples:
         .. code-block:: python
@@ -5574,13 +5605,13 @@ def default_startup_program():
 
 def default_main_program():
     """
-    This API can be used to get ``default main program`` which store the 
+    This API can be used to get ``default main program`` which store the
     descriptions of Ops and tensors.
 
-    For example ``z = paddle.add(x, y)`` will create a new ``add`` 
-    Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
+    For example ``z = paddle.add(x, y)`` will create a new ``add``
+    Op and a new ``z`` tensor, and they will be recorded in ``default main program`` .
 
-    The ``default main program`` is the default value for ``Program`` parameter in 
+    The ``default main program`` is the default value for ``Program`` parameter in
     a lot of APIs. For example, the :code:`Executor.run()` will execute the
     :code:`default_main_program` when the program is not specified.
 
@@ -5650,8 +5681,8 @@ def program_guard(main_program, startup_program=None):
 
     Args:
         main_program(Program): New main program inside ``with`` statement.
-        startup_program(Program, optional): New startup program inside ``with`` 
-            statement. :code:`None` means not changing startup program, 
+        startup_program(Program, optional): New startup program inside ``with``
+            statement. :code:`None` means not changing startup program,
             default_startup_program is still used.
             Default: None.
 
@@ -5764,7 +5795,7 @@ def device_guard(device=None):
 
     Args:
         device(str|None): Specify the device to use in the context. It should be ``cpu``,
-            ``gpu`` or ``gpu:x``, where ``x`` is the index of the GPUs. 
+            ``gpu`` or ``gpu:x``, where ``x`` is the index of the GPUs.
             When it is set to 'cpu' or 'gpu', all OPs created in the context will be
             placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
             single-card, the device index will be the same as the device on which the
