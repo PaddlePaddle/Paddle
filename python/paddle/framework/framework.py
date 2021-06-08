@@ -95,7 +95,6 @@ def set_grad_enabled(mode):
     Examples:
         .. code-block:: python
             
-            import paddle
             x = paddle.ones([3, 2])
             x.stop_gradient = False
             with paddle.set_grad_enabled(False):
