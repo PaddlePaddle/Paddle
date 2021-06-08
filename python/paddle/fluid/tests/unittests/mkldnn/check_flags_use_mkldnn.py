@@ -23,8 +23,8 @@ from paddle.fluid.framework import _global_flags
 
 
 def check():
-    print("check: fluid._global_flags()['FLAGS_use_mkldnn']=",
-          fluid._global_flags()["FLAGS_use_mkldnn"])
+    print("check: _global_flags()['FLAGS_use_mkldnn']=",
+          _global_flags()["FLAGS_use_mkldnn"])
     print("check: fluid.get_flags('FLAGS_use_mkldnn')=",
           fluid.get_flags(['FLAGS_use_mkldnn']))
     print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
