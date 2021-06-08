@@ -52,11 +52,32 @@ class GatherOp : public framework::OperatorWithKernel {
               index_dims.size()));
     }
 
-    int batch_size = ctx->GetInputDim("Index")[0];
-    framework::DDim output_dims(ctx->GetInputDim("X"));
-    output_dims[0] = batch_size;
-    ctx->SetOutputDim("Out", output_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
+    auto input_dim = ctx->GetInputDim("X");
+    if (ctx->HasInput("Axis")) {
+      int batch_size = index_dims[0];
+      framework::DDim output_dims(input_dim);
+      output_dims[0] = batch_size;
+      ctx->SetOutputDim("Out", output_dims);
+      ctx->ShareLoD("X", /*->*/ "Out");
+    } else {
+      auto axis = ctx->Attrs().Get<int>("axis");
+      int index_size = framework::product(index_dims);
+      int inner_dim_size = 1;
+      int outer_dim_size = 1;
+      std::vector<int> out_dim_vec;
+      for (int i = 0; i < axis; i++) {
+        inner_dim_size *= input_dim[i];
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      out_dim_vec.push_back(index_size);
+      for (int i = axis + 1; i < input_dim.size(); i++) {
+        outer_dim_size *= input_dim[i];
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      auto output_dims = framework::make_ddim(out_dim_vec);
+      ctx->SetOutputDim("Out", output_dims);
+      ctx->ShareLoD("X", /*->*/ "Out");
+    }
   }
 
  protected:
@@ -120,6 +141,10 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
         "If true, update the grad using the overwrite mode in same index,"
         "If false, using the accumulate mode in same index.")
         .SetDefault(true);
+    AddAttr<int>(
+        "axis",
+        "The Tensor which contains the axis that we do gather operation.")
+        .SetDefault(0);
     AddComment(R"DOC(
 Gather Operator.
 
