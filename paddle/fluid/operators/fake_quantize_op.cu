@@ -222,9 +222,9 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
     T x = in[i];
     x = x > s ? s : x;
     x = x < -s ? -s : x;
-    x = (x / s) * range;
+    x = (range / s)* x
 
-    x = round(static_cast<float>(x));
+        x = round(static_cast<float>(x));
     out[i] = (x * s) / range;
   }
 }
