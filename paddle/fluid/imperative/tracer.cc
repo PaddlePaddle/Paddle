@@ -205,7 +205,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, place, inplace_map);
+    CreateGradOpNode(*op, new_ins, outs, attrs,
+                     attr_checker->GetAttrDefaultMap(), place, inplace_map);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

@@ -113,9 +113,18 @@ class GradOpBaseMakerBase {
     return vec_temp;
   }
 
+  // Only for dygraph
+  void SetDygraphAttrsDefaultMap(const framework::AttributeMap& attrs_default) {
+    attrs_default_ = &attrs_default;
+  }
+
+  const framework::AttributeMap& AttrsDefault() const {
+    return *attrs_default_;
+  }
+
   const framework::AttributeMap& Attrs() const { return attrs_; }
 
-  const framework::Attribute& GetAttr(const std::string& name) const {
+  virtual const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
     PADDLE_ENFORCE_EQ(
         it != attrs_.end(), true,
@@ -199,6 +208,7 @@ class GradOpBaseMakerBase {
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
   const framework::AttributeMap& attrs_;
+  const framework::AttributeMap* attrs_default_;
   const std::map<std::string, std::string>& inplace_map_;
 };
 

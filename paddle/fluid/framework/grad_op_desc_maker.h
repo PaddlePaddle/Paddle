@@ -219,6 +219,19 @@ class SingleGradOpMaker<imperative::OpBase>
  public:
   using GradOpBaseMakerBase::GradOpBaseMakerBase;
 
+  virtual const framework::Attribute& GetAttr(const std::string& name) const {
+    auto it = Attrs().find(name);
+    if (it == Attrs().end()) {
+      it = this->AttrsDefault().find(name);
+      PADDLE_ENFORCE_EQ(it != this->AttrsDefault().end(), true,
+                        platform::errors::NotFound(
+                            "Cannot find attribute [%s] in operator [%s]", name,
+                            this->ForwardOpType()));
+    }
+
+    return it->second;
+  }
+
   std::shared_ptr<imperative::GradOpNode> operator()() const final {
     auto node = this->NewGradNode();
     auto& inplace_map = this->GetInplaceMap();
@@ -228,10 +241,7 @@ class SingleGradOpMaker<imperative::OpBase>
     {
       imperative::TracedGradOp traced_grad_op(node);
       try {
-        traced_grad_op.SetAttrDefaultMap(
-            paddle::framework::OpInfoMap::Instance()
-                .Get(this->ForwardOpType())
-                .checker_->GetAttrDefaultMap());
+        traced_grad_op.SetAttrDefaultMap(this->AttrsDefault());
         this->Apply(&traced_grad_op);
       } catch (platform::EnforceNotMet& exception) {
         framework::AppendErrorOpHint(traced_grad_op.Type(), &exception);
