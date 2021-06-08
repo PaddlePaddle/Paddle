@@ -28,19 +28,29 @@ namespace operators {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2 };
 
+/*
+* Only the address of input data is the multiplier of 1,2,4, vectorized load
+* with corresponding multiplier-value is possible. Moreover, the maximum length
+* of vectorized load is 128 bytes once. Hence, valid length of vectorized load
+* shall be determined under both former constraints.
+*/
 template <typename T>
 int GetVectorizedSizeImpl(const T *pointer) {
+  constexpr int max_load_length = 128;
+  int valid_vec_size = max_load_length / sizeof(T) / CHAR_BIT;
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
   constexpr int vec4 =
       std::alignment_of<CudaAlignedVector<T, 4>>::value;  // NOLINT
   constexpr int vec2 =
       std::alignment_of<CudaAlignedVector<T, 2>>::value;  // NOLINT
+
   if (address % vec4 == 0) {
-    return 4;
+    return std::min(vec4, valid_vec_size);
   } else if (address % vec2 == 0) {
-    return 2;
+    return std::min(vec2, valid_vec_size);
+  } else {
+    return 1;
   }
-  return 1;
 }
 
 template <typename InT, typename OutT>
