@@ -45,12 +45,43 @@ using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 inline static int GetDesiredBlockDim(int block_dim) {
 #ifdef __HIPCC__
   const int kMaxBlockDim = 256;
+  const int lwarpSize = 64;
 #else
   const int kMaxBlockDim = 512;
+  const int lwarpSize = 32;
 #endif
-  return block_dim >= kMaxBlockDim
-             ? kMaxBlockDim
-             : (1 << (static_cast<int>(std::log2f(block_dim))));
+  return block_dim >= kMaxBlockDim ? kMaxBlockDim : lwarpSize;
+}
+
+template <typename U>
+static __forceinline__ __device__ U WarpReduceSum(U val) {
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, true);
+  for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
+  }
+  return val;
+}
+
+template <typename U>
+__forceinline__ __device__ U BlockReduceSum(U val) {
+  static __shared__ U shared[32];
+  int lane = threadIdx.x % warpSize;
+  int wid = threadIdx.x / warpSize;
+
+  val = WarpReduceSum(val);  // Each warp performs partial reduction
+
+  if (lane == 0) shared[wid] = val;  // Write reduced value to shared memory
+
+  __syncthreads();  // Wait for all partial reductions
+
+  // read from shared memory only if that warp existed
+  val =
+      (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : static_cast<U>(0);
+
+  if (wid == 0) val = WarpReduceSum(val);  // Final reduce within first warp
+
+  return val;
 }
 
 #define FIXED_BLOCK_DIM_CASE_BASE(log2_block_dim, ...)  \
@@ -148,8 +179,6 @@ template <typename T, typename U, int BlockDim>
 __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
                                  T *y, U *mean, U *var, float epsilon,
                                  int feature_size) {
-  using BlockReduce = cub::BlockReduce<PairForLayerNorm<U>, BlockDim>;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ U mean_share;
   __shared__ U var_share;
 
@@ -164,14 +193,17 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
     mean_val += tmp;
     var_val += (tmp * tmp);
   }
-  auto pair = BlockReduce(temp_storage)
-                  .Reduce(PairForLayerNorm<U>(mean_val, var_val),
-                          PairForLayerNormAddFunctor<U>());
+
+  mean_val = BlockReduceSum<U>(mean_val);
+  var_val = BlockReduceSum<U>(var_val);
+
   if (threadIdx.x == 0) {
-    auto tmp = pair.first_ / feature_size;
+    auto scale = static_cast<float>(1.) / static_cast<float>(feature_size);
+    auto tmp = mean_val * scale;
     mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
-    var[blockIdx.x] = var_share =
-        static_cast<U>(pair.second_ / feature_size - tmp * tmp);
+    var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
+    var_share = var_share > U(0) ? var_share : U(0);
+    var[blockIdx.x] = var_share;
   }
   __syncthreads();
 
@@ -491,9 +523,6 @@ __global__ void LayerNormBackwardGradientAll(const T *x, const T *d_y,
                                              const U *scale, float epsilon,
                                              int batch_size, int feature_size,
                                              int col_offset) {
-  using BlockReduce = cub::BlockReduce<PairForLayerNorm<U>, BlockDim>;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-
   int beg_idx = threadIdx.x * feature_size + (blockIdx.x + col_offset);
   int end_idx = batch_size * feature_size + (blockIdx.x + col_offset);
   int stride = BlockDim * feature_size;
@@ -512,13 +541,12 @@ __global__ void LayerNormBackwardGradientAll(const T *x, const T *d_y,
     }
   }
 
-  auto pair = BlockReduce(temp_storage)
-                  .Reduce(PairForLayerNorm<U>(d_scale_partial, d_bias_partial),
-                          PairForLayerNormAddFunctor<U>());
+  d_scale_partial = BlockReduceSum<U>(d_scale_partial);
+  d_bias_partial = BlockReduceSum<U>(d_bias_partial);
 
   if (threadIdx.x == 0) {
-    d_scale[blockIdx.x + col_offset] = pair.first_;
-    d_bias[blockIdx.x + col_offset] = pair.second_;
+    d_scale[blockIdx.x + col_offset] = d_scale_partial;
+    d_bias[blockIdx.x + col_offset] = d_bias_partial;
   }
 }
 
