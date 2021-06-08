@@ -148,8 +148,8 @@ class YoloBoxKernel : public framework::OpKernel<T> {
               int iou_idx =
                   GetIoUIndex(i, j, k * w + l, an_num, an_stride, stride);
               T iou = sigmoid<T>(input_data[iou_idx]);
-              conf =
-                  pow(conf, 1. - iou_aware_factor) * pow(iou, iou_aware_factor);
+              conf = pow(conf, static_cast<T>(1. - iou_aware_factor)) *
+                     pow(iou, static_cast<T>(iou_aware_factor));
             }
             if (conf < conf_thresh) {
               continue;
