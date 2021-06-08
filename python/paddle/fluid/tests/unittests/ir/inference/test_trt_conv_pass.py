@@ -36,6 +36,7 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
                 groups=self.conv_groups,
                 padding=self.conv_padding,
                 bias_attr=False,
+                use_cudnn=self.use_cudnn,
                 act=None)
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
@@ -50,6 +51,7 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
         self.conv_filter_size = 6
         self.conv_groups = 3
         self.conv_padding = [1, 1]
+        self.use_cudnn = True
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -65,6 +67,7 @@ class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
         self.conv_filter_size = 6
         self.conv_groups = 3
         self.conv_padding = 'VALID'
+        self.use_cudnn = True
 
 
 class TensorRTSubgraphPassConvSamePaddingTest(InferencePassTest):
@@ -73,6 +76,7 @@ class TensorRTSubgraphPassConvSamePaddingTest(InferencePassTest):
         self.conv_filter_size = 6
         self.conv_groups = 3
         self.conv_padding = 'SAME'
+        self.use_cudnn = True
 
 
 class TensorRTSubgraphPassDepthwiseConvTest(TensorRTSubgraphPassConvTest):
@@ -81,6 +85,16 @@ class TensorRTSubgraphPassDepthwiseConvTest(TensorRTSubgraphPassConvTest):
         self.conv_filter_size = 6
         self.conv_groups = 6
         self.conv_padding = [1, 1]
+        self.use_cudnn = False
+
+
+class TensorRTSubgraphPassDepthwiseConv2Test(TensorRTSubgraphPassConvTest):
+    def set_params(self):
+        self.conv_num_filters = 12
+        self.conv_filter_size = 6
+        self.conv_groups = 6
+        self.conv_padding = [1, 1]
+        self.use_cudnn = False
 
 
 class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
@@ -149,6 +163,16 @@ class TensorRTSubgraphPassConvTransposeMultiGroupTest(
         self.conv_groups = 2
         self.conv_padding = [1, 1]
         self.use_cudnn = True
+
+
+class TensorRTSubgraphPassConvTranspose2Test(
+        TensorRTSubgraphPassConvTransposeTest):
+    def set_params(self):
+        self.conv_num_filters = 12
+        self.conv_filter_size = 4
+        self.conv_groups = 6
+        self.conv_padding = [1, 1]
+        self.use_cudnn = False
 
 
 class TensorRTSubgraphPassDepthwiseConvTransposeTest(
