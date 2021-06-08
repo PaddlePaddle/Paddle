@@ -29,7 +29,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/heter_service.h"
+#include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -195,6 +195,9 @@ class DeviceWorker {
   virtual void SetReaderPlace(const paddle::platform::Place& place) {
     device_reader_->SetPlace(place);
   }
+  virtual void SetDeviceContext(platform::DeviceContext* dev_ctx) {
+    dev_ctx_ = dev_ctx;
+  }
   virtual Scope* GetThreadScope() { return thread_scope_; }
   DataFeed* device_reader_ = nullptr;
 
@@ -221,6 +224,7 @@ class DeviceWorker {
   int dump_mode_ = 0;
   int dump_interval_ = 10000;
   ChannelWriter<std::string> writer_;
+  platform::DeviceContext* dev_ctx_ = nullptr;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -619,7 +623,6 @@ class PSGPUWorker : public HogwildWorker {
   gpuStream_t copy_stream_;
   int batch_cnt_{0};
   std::atomic<int> done_cnt_{0};
-  platform::DeviceContext* dev_ctx_ = nullptr;
 
   double total_time_;
   double read_time_;

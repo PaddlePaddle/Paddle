@@ -20,6 +20,7 @@ import numpy as np
 import unittest
 from test_softmax_op import stable_softmax
 from test_softmax_with_cross_entropy_op import cross_entropy
+from paddle.fluid import Program, program_guard
 
 
 def stable_softmax(x):
@@ -1361,6 +1362,39 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
+
+
+class TestCrossEntropyFAPIError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_LabelValue():
+                input_data = paddle.rand(shape=[20, 100])
+                label_data = paddle.randint(
+                    0, 100, shape=[20, 1], dtype="int64")
+                label_data[0] = 255
+                weight_data = paddle.rand([100])
+                paddle.nn.functional.cross_entropy(
+                    input=input_data,
+                    label=label_data,
+                    weight=weight_data,
+                    ignore_index=255)
+
+            self.assertRaises(ValueError, test_LabelValue)
+
+            def test_LabelValueNeg():
+                input_data = paddle.rand(shape=[20, 100])
+                label_data = paddle.randint(
+                    0, 100, shape=[20, 1], dtype="int64")
+                label_data[0] = -1
+                weight_data = paddle.rand([100])
+                paddle.nn.functional.cross_entropy(
+                    input=input_data,
+                    label=label_data,
+                    weight=weight_data,
+                    ignore_index=-1)
+
+            self.assertRaises(ValueError, test_LabelValueNeg)
 
 
 if __name__ == "__main__":

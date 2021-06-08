@@ -368,7 +368,8 @@ def insert_reduce_ops(block,
     for var in reduce_vars:
 
         root_id = get_grad_device(var, shard)
-        assert root_id >= 0, "root id should be a positive int".format(var)
+        assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
+            root_id)
         block._insert_op_without_sync(
             insert_idx,
             type='c_reduce_sum',
@@ -402,13 +403,18 @@ def get_grad_device(grad_name, shard):
     return shard.global_param2device[base_name]
 
 
-def get_first_check_finite_and_unscale_op_idx(block):
+def get_first_check_finite_and_unscale_op_idx(block, raise_error=True):
 
     for idx, op in enumerate(block.ops):
         if op.type == "check_finite_and_unscale":
             return idx
 
-    raise ValueError("check_finite_and_unscale does not exist in block")
+    if raise_error:
+        raise ValueError(
+            "amp is turned on but check_finite_and_unscale op does not exist in main block"
+        )
+
+    return -1
 
 
 def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
@@ -633,3 +639,8 @@ def append_naive_sync(block, sync_var, ring_id):
             'use_calc_stream': True,
             OP_ROLE_KEY: OpRole.Forward
         })
+    block.append_op(
+        type='c_sync_calc_stream',
+        inputs={'X': [sync_var]},
+        outputs={'Out': [sync_var]},
+        attrs={OP_ROLE_KEY: OpRole.Forward})

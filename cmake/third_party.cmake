@@ -108,13 +108,19 @@ ENDMACRO()
 # 2. NAME:          The name of file, that determin the dirname
 #
 FUNCTION(file_download_and_uncompress URL NAME)
-  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}")
+  set(options "")
+  set(oneValueArgs MD5)
+  set(multiValueArgs "")
+  cmake_parse_arguments(URL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}, MD5: ${URL_MD5}")
   SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME}/data PARENT_SCOPE)
   ExternalProject_Add(
-      extern_download_${NAME}
+      download_${NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${THIRD_PARTY_PATH}/${NAME}
       URL                   ${URL}
+      URL_MD5               ${URL_MD5}
+      TIMEOUT               120
       DOWNLOAD_DIR          ${THIRD_PARTY_PATH}/${NAME}/data/
       SOURCE_DIR            ${THIRD_PARTY_PATH}/${NAME}/data/
       DOWNLOAD_NO_PROGRESS  1
@@ -123,7 +129,7 @@ FUNCTION(file_download_and_uncompress URL NAME)
       UPDATE_COMMAND        ""
       INSTALL_COMMAND       ""
     )
-  set(third_party_deps ${third_party_deps} extern_download_${NAME} PARENT_SCOPE)
+  set(third_party_deps ${third_party_deps} download_${NAME} PARENT_SCOPE)
 ENDFUNCTION()
 
 
@@ -242,8 +248,20 @@ if(WITH_GPU)
         include(external/cub)       # download cub
         list(APPEND third_party_deps extern_cub)
     endif()
-    set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
-    file_download_and_uncompress(${CUDAERROR_URL} "cudaerror") # download file cudaErrorMessage
+    set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg.tar.gz" CACHE STRING "" FORCE)
+    file_download_and_uncompress(${URL} "externalError" MD5 c0749523ebb536eb7382487d645d9cd4)   # download file externalErrorMsg.tar.gz
+    if(WITH_TESTING)
+        # copy externalErrorMsg.pb for unittest 'enforce_test'
+        set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)
+        if(WIN32 AND (NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja"))
+            set(DST_DIR ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
+        else()
+            set(DST_DIR ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
+        endif()
+        add_custom_command(TARGET download_externalError POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR}
+            COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
+    endif()
 endif(WITH_GPU)
 
 if(WITH_XPU)
@@ -261,6 +279,14 @@ if(WITH_PSLIB)
     if(WITH_PSLIB_BRPC)
         include(external/pslib_brpc) # download, build, install pslib_brpc
         list(APPEND third_party_deps extern_pslib_brpc)
+    else()    
+        include(external/snappy)
+        list(APPEND third_party_deps extern_snappy)
+
+        include(external/leveldb)
+        list(APPEND third_party_deps extern_leveldb)
+        include(external/brpc)
+        list(APPEND third_party_deps extern_brpc)
     endif()
 endif(WITH_PSLIB)
 
@@ -296,6 +322,11 @@ if (WITH_PSCORE)
 
     include(external/libmct)     # download, build, install libmct
     list(APPEND third_party_deps extern_libmct)
+    
+    if (WITH_HETERPS)
+        include(external/rocksdb)     # download, build, install libmct
+        list(APPEND third_party_deps extern_rocksdb)
+    endif()
 endif()
 
 if(WITH_XBYAK)
