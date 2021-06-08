@@ -102,6 +102,25 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
 template <typename T>
 class CudnnDataType;
 
+// CUDNN_DATA_BFLOAT16 is not valid before cudnn8.1
+#if CUDNN_VERSION_MIN(8, 1, 0)
+template <>
+class CudnnDataType<bfloat16> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_BFLOAT16;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+#endif
+
 template <>
 class CudnnDataType<float16> {
  public:
