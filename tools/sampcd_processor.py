@@ -284,8 +284,8 @@ def insert_codes_into_codeblock(codeblock, apiname='not-specified'):
         cpu_str = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = ""\n'
         gpu_str = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = "{}"\n'.format(
             GPU_ID)
-        if 'required' in codeblock:
-            if codeblock['required'] is None or codeblock['required'] == 'cpu':
+        if 'required' in codeblock and codeblock['required']:
+            if codeblock['required'] == 'cpu':
                 inserted_codes_f = cpu_str
             elif codeblock['required'] == 'gpu':
                 inserted_codes_f = gpu_str
