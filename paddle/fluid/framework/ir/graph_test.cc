@@ -104,7 +104,13 @@ TEST(GraphTest, Basic) {
   ASSERT_EQ(proto::VarType::LOD_TENSOR,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
-  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  std::unique_ptr<ir::Graph> _g(new ir::Graph(prog));
+  const ir::Graph *g;
+  if (FLAGS_convert_all_blocks) {
+    g = _g->GetSubGraph(0);
+  } else {
+    g = _g.get();
+  }
   std::vector<ir::Node *> nodes(g->Nodes().begin(), g->Nodes().end());
   for (ir::Node *n : nodes) {
     if (n->Name() == "sum") {
@@ -141,7 +147,13 @@ TEST(GraphTest, WriteAfterRead) {
   prog.MutableBlock(0)->Var("b")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("c")->SetType(proto::VarType::LOD_TENSOR);
 
-  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  std::unique_ptr<ir::Graph> _g(new ir::Graph(prog));
+  const ir::Graph *g;
+  if (FLAGS_convert_all_blocks) {
+    g = _g->GetSubGraph(0);
+  } else {
+    g = _g.get();
+  }
   ir::Node *control_dep1 = nullptr;
   ir::Node *control_dep2 = nullptr;
   for (ir::Node *n : g->Nodes()) {
@@ -180,7 +192,13 @@ TEST(GraphTest, WriteAfterWrite) {
   prog.MutableBlock(0)->Var("b")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("c")->SetType(proto::VarType::LOD_TENSOR);
 
-  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  std::unique_ptr<ir::Graph> _g(new ir::Graph(prog));
+  const ir::Graph *g;
+  if (FLAGS_convert_all_blocks) {
+    g = _g->GetSubGraph(0);
+  } else {
+    g = _g.get();
+  }
   ir::Node *control_dep1 = nullptr;
   ir::Node *control_dep2 = nullptr;
   for (ir::Node *n : g->Nodes()) {
@@ -204,7 +222,13 @@ TEST(GraphTest, WriteAfterWrite) {
 
 TEST(GraphTest, TestException) {
   ProgramDesc prog;
-  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+  std::unique_ptr<ir::Graph> _g(new ir::Graph(prog));
+  ir::Graph *g;
+  if (FLAGS_convert_all_blocks) {
+    g = _g->GetSubGraph(0);
+  } else {
+    g = _g.get();
+  }
 
   bool not_met_exception = false;
   try {
@@ -250,18 +274,162 @@ TEST(GraphTest, TestException) {
 
 TEST(GraphTest, TestAttrCopy) {
   ProgramDesc prog;
-  ir::Graph src_g(prog);
-  ir::Graph dst_g(prog);
+  std::unique_ptr<ir::Graph> _src_g(new ir::Graph(prog));
+  std::unique_ptr<ir::Graph> _dst_g(new ir::Graph(prog));
+  ir::Graph *src_g;
+  ir::Graph *dst_g;
+  if (FLAGS_convert_all_blocks) {
+    src_g = _src_g->GetSubGraph(0);
+    dst_g = _dst_g->GetSubGraph(0);
+  } else {
+    src_g = _src_g.get();
+    dst_g = _dst_g.get();
+  }
   const std::string kIntValue = "int_value";
   const std::string kFloatValue = "float_value";
   const int INT_VALUE = 3;
-  src_g.Set<int>(kIntValue, new int(INT_VALUE));
-  details::CopyGraphAttrIfExists<int>(src_g, &dst_g, kIntValue);
-  details::CopyGraphAttrIfExists<float>(src_g, &dst_g, kFloatValue);
+  src_g->Set<int>(kIntValue, new int(INT_VALUE));
+  details::CopyGraphAttrIfExists<int>(*src_g, dst_g, kIntValue);
+  details::CopyGraphAttrIfExists<float>(*src_g, dst_g, kFloatValue);
 
-  ASSERT_TRUE(dst_g.Has(kIntValue));
-  ASSERT_EQ(dst_g.Get<int>(kIntValue), INT_VALUE);
-  ASSERT_FALSE(dst_g.Has(kFloatValue));
+  ASSERT_TRUE(dst_g->Has(kIntValue));
+  ASSERT_EQ(dst_g->Get<int>(kIntValue), INT_VALUE);
+  ASSERT_FALSE(dst_g->Has(kFloatValue));
+}
+
+TEST(GraphTest, TestMultiBlock) {
+  if (FLAGS_convert_all_blocks) {
+    // Step1: Build a program with 3 blocks.
+    ProgramDesc prog;
+    ASSERT_EQ(prog.Size(), 1UL);
+    prog.AppendBlock(prog.Block(0));
+    prog.AppendBlock(prog.Block(0));
+    ASSERT_EQ(prog.Size(), 3UL);
+
+    // Set contents in block_0.
+    auto *op = prog.MutableBlock(0)->AppendOp();
+    op->SetType("sum");
+    op->SetInput("X", {"test_a", "test_b", "test_c"});
+    op->SetOutput("Out", {"test_out"});
+    op->SetAttr("op_role", 1);
+
+    prog.MutableBlock(0)->Var("test_a")->SetType(proto::VarType::SELECTED_ROWS);
+    prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::SELECTED_ROWS);
+    prog.MutableBlock(0)->Var("test_c")->SetType(proto::VarType::SELECTED_ROWS);
+    prog.MutableBlock(0)->Var("test_out");
+
+    op->InferVarType(prog.MutableBlock(0));
+
+    ASSERT_EQ(proto::VarType::SELECTED_ROWS,
+              prog.MutableBlock(0)->Var("test_out")->GetType());
+
+    prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::LOD_TENSOR);
+    op->InferVarType(prog.MutableBlock(0));
+    ASSERT_EQ(proto::VarType::LOD_TENSOR,
+              prog.MutableBlock(0)->Var("test_out")->GetType());
+
+    // Set contents in block_1.
+    op = prog.MutableBlock(1)->AppendOp();
+    op->SetType("sum");
+    op->SetInput("X", {"a"});
+    op->SetOutput("Out", {"b"});
+    op->SetAttr("op_role", 1);
+
+    op = prog.MutableBlock(1)->AppendOp();
+    op->SetType("dummy");
+    op->SetInput("X", {"c"});
+    op->SetOutput("Out", {"a"});
+    op->SetAttr("op_role", 1);
+
+    prog.MutableBlock(1)->Var("a")->SetType(proto::VarType::LOD_TENSOR);
+    prog.MutableBlock(1)->Var("b")->SetType(proto::VarType::LOD_TENSOR);
+    prog.MutableBlock(1)->Var("c")->SetType(proto::VarType::LOD_TENSOR);
+
+    // Set contents in block_2.
+    op = prog.MutableBlock(2)->AppendOp();
+    op->SetType("sum");
+    op->SetInput("X", {"a"});
+    op->SetOutput("Out", {"b"});
+    op->SetAttr("op_role", 1);
+
+    op = prog.MutableBlock(2)->AppendOp();
+    op->SetType("dummy");
+    op->SetInput("X", {"c"});
+    op->SetOutput("Out", {"b"});
+    op->SetAttr("op_role", 1);
+
+    prog.MutableBlock(2)->Var("a")->SetType(proto::VarType::LOD_TENSOR);
+    prog.MutableBlock(2)->Var("b")->SetType(proto::VarType::LOD_TENSOR);
+    prog.MutableBlock(2)->Var("c")->SetType(proto::VarType::LOD_TENSOR);
+
+    // Step2: Convert program into graph, 3 blocks corresponding 3 sub_graphs.
+    std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+    ASSERT_EQ(g->IsMainGraph(), true);
+
+    // Check contents in sub_graph_0.
+    const ir::Graph *g0 = g->GetSubGraph(0);
+    std::vector<ir::Node *> nodes(g0->Nodes().begin(), g0->Nodes().end());
+    for (ir::Node *n : nodes) {
+      if (n->Name() == "sum") {
+        ASSERT_EQ(n->inputs.size(), 3UL);
+        ASSERT_EQ(n->outputs.size(), 1UL);
+      } else if (n->Name() == "test_a" || n->Name() == "test_b" ||
+                 n->Name() == "test_c") {
+        ASSERT_EQ(n->inputs.size(), 0UL);
+        ASSERT_EQ(n->outputs.size(), 1UL);
+      } else if (n->Name() == "test_out") {
+        ASSERT_EQ(n->inputs.size(), 1UL);
+        ASSERT_EQ(n->outputs.size(), 0UL);
+      }
+    }
+    ASSERT_EQ(nodes.size(), 5UL);
+
+    // Check contents in sub_graph_1.
+    const ir::Graph *g1 = g->GetSubGraph(1);
+    ir::Node *control_dep1 = nullptr;
+    ir::Node *control_dep2 = nullptr;
+    for (ir::Node *n : g1->Nodes()) {
+      if (n->Name() == "sum") {
+        ASSERT_EQ(n->outputs[0]->Name(), "b");
+        ASSERT_TRUE(ir::IsControlDepVar(*n->outputs[1]));
+        control_dep1 = n->outputs[1];
+        ASSERT_EQ(n->outputs.size(), 2UL);
+      }
+      if (n->Name() == "dummy") {
+        ASSERT_EQ(n->inputs[0]->Name(), "c");
+        ASSERT_TRUE(ir::IsControlDepVar(*n->inputs[1]));
+        control_dep2 = n->inputs[1];
+        ASSERT_EQ(n->inputs.size(), 2UL);
+      }
+    }
+    ASSERT_EQ(control_dep1, control_dep2);
+
+    // Check contents in sub_graph_2.
+    const ir::Graph *g2 = g->GetSubGraph(2);
+    control_dep1 = nullptr;
+    control_dep2 = nullptr;
+    for (ir::Node *n : g2->Nodes()) {
+      if (n->Name() == "sum") {
+        ASSERT_EQ(n->outputs[0]->Name(), "b");
+        ASSERT_TRUE(ir::IsControlDepVar(*n->outputs[1]));
+        ASSERT_EQ(n->outputs.size(), 2UL);
+        control_dep1 = n->outputs[1];
+      }
+      if (n->Name() == "dummy") {
+        ASSERT_EQ(n->inputs[0]->Name(), "c");
+        ASSERT_TRUE(ir::IsControlDepVar(*n->inputs[1]));
+        control_dep2 = n->inputs[1];
+        ASSERT_EQ(n->inputs.size(), 2UL);
+      }
+    }
+    ASSERT_NE(control_dep1, nullptr);
+    ASSERT_NE(control_dep2, nullptr);
+    ASSERT_EQ(control_dep1, control_dep2);
+
+    // Step3: Colne graph.
+    std::shared_ptr<ir::Graph> clone_g = g->Clone();
+    ASSERT_EQ(clone_g->IsMainGraph(), true);
+  }
 }
 
 }  // namespace framework

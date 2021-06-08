@@ -24,7 +24,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-Graph::Graph(const ProgramDesc &program) : program_(program) {
+Graph::Graph(const ProgramDesc &program)
+    : program_(program), main_graph_(nullptr) {
   if (FLAGS_convert_all_blocks) {
     PADDLE_ENFORCE_GE(
         program_.Size(), 1,
@@ -33,12 +34,6 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
     for (size_t idx = 0; idx < program_.Size(); ++idx) {
       std::unique_ptr<Graph> sub_graph =
           std::make_unique<Graph>(program_.Block(idx), this);
-      PADDLE_ENFORCE_EQ(
-          sub_graph->OriginProgram().Size(), 0,
-          platform::errors::InvalidArgument(
-              "The sub_graph should has an empty program, but has "
-              "a program with %d blocks",
-              sub_graph->OriginProgram().Size()));
       sub_graphs_.push_back(std::move(sub_graph));
     }
   } else {
@@ -286,9 +281,9 @@ std::shared_ptr<Graph> Graph::Clone() {
         platform::errors::InvalidArgument(
             "This graph is a subgraph, and can't be cloned individually"));
     auto cloned_graph = std::make_shared<Graph>(this->program_);
-    cloned_graph->ReleaseSubgraphs();
+    cloned_graph->ReleaseSubGraphs();
     for (size_t idx = 0; idx < this->program_.Size(); ++idx) {
-      cloned_graph->AddSubgraph(this->CloneSubgraph(idx));
+      cloned_graph->AddSubGraph(this->CloneSubGraph(idx));
     }
     return cloned_graph;
   } else {
@@ -327,7 +322,10 @@ std::shared_ptr<Graph> Graph::Clone() {
   }
 }
 
-std::unique_ptr<Graph> Graph::CloneSubgraph(const size_t idx) {
+std::unique_ptr<Graph> Graph::CloneSubGraph(const size_t idx) {
+  PADDLE_ENFORCE_EQ(
+      this->IsMainGraph(), true,
+      platform::errors::InvalidArgument("This graph is not main_graph"));
   PADDLE_ENFORCE_LT(
       idx, this->sub_graphs_.size(),
       platform::errors::InvalidArgument("Invalid sub_graph index"));
