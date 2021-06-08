@@ -378,7 +378,7 @@ MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:
 
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
-    if %build_times% GTR %retry_times% (
+    if %build_times% GEQ %retry_times% (
         exit /b 7
     ) else (
         echo Build third_party failed, will retry!
@@ -431,7 +431,7 @@ if %GENERATOR% == "Ninja" (
 
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
-    if %build_times% GTR %retry_times% (
+    if %build_times% GEQ %retry_times% (
         exit /b 7
     ) else (
         echo Build Paddle failed, will retry!
