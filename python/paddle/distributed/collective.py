@@ -894,8 +894,25 @@ def _mp_allreduce(tensor,
                 "use_model_parallel", use_model_parallel)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
-    else:
-        raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
+
+    op_type = 'c_allreduce_sum'
+    helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        op_type)
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': tensor},
+        outputs={'Out': out},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': use_calc_stream,
+            'use_model_parallel': use_model_parallel,
+        })
+    return out
 
 
 def _c_lookup_table(table, index, start_index=0, name=None):
@@ -914,6 +931,19 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     """
     if in_dygraph_mode():
         return core.ops.c_embedding(table, index, "start_index", start_index)
+
+    op_type = 'c_embedding'
+    helper = LayerHelper(op_type, **locals())
+    dtype = helper.input_dtype(input_param_name='table')
+    check_variable_and_dtype(index, 'input', ['int32', 'int64'], op_type)
+    tmp = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='c_embedding',
+        inputs={'Ids': index,
+                'W': table},
+        outputs={'Out': tmp},
+        attrs={"start_index": start_index})
+    return tmp
 
 
 class _Linear(layers.Layer):
