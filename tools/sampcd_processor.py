@@ -246,13 +246,15 @@ def is_required_match(requirestr, cbtitle='not-specified'):
         False - not match
         None - skipped  # trick
     """
-    global SAMPLE_CODE_TEST_CAPACITY  # readonly
+    global SAMPLE_CODE_TEST_CAPACITY, RUN_ON_DEVICE  # readonly
     requires = set(['cpu'])
     if requirestr:
         for r in requirestr.split(','):
             rr = r.strip().lower()
             if rr:
                 requires.add(rr)
+    else:
+        requires.add(RUN_ON_DEVICE)
     if 'skip' in requires or 'skiptest' in requires:
         logger.info('%s: skipped', cbtitle)
         return None
