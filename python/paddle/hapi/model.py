@@ -1855,7 +1855,7 @@ class Model(object):
             verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
                 1 = progress bar, 2 = one line per epoch. Default: 2.
             callbacks(Callback): A Callback instance, default None.
-            
+
         Returns:
             list: output of models.
 
@@ -1915,7 +1915,7 @@ class Model(object):
 
         self._test_dataloader = test_loader
 
-        cbks = config_callbacks(callbacks, model=self, verbose=1)
+        cbks = config_callbacks(callbacks, model=self, verbose=verbose)
 
         test_steps = self._len_data_loader(test_loader)
         logs = {'steps': test_steps}
