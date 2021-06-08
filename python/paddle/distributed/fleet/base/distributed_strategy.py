@@ -286,7 +286,7 @@ class DistributedStrategy(object):
             self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received %s".
+                "The type of `flag` is invalid, expected type is bool, but received {}".
                 format(type(flag)))
 
     @property
@@ -814,7 +814,7 @@ class DistributedStrategy(object):
                 "sharding_segment_strategy": "segment_broadcast_MB",
                 "segment_broadcast_MB": 32,
                 "sharding_degree": 8,
-                "sharding_degree": 2,
+                "dp_degree": 2,
                 "gradient_merge_acc_step": 4,
                 }
         """

@@ -213,13 +213,13 @@ struct CUBlas<platform::float16> {
 };
 
 template <>
-struct CUBlas<platform::complex64> {
-  using complex64 = platform::complex64;
-
+struct CUBlas<platform::complex<float>> {
   static void GEMV(rocblas_handle handle, rocblas_operation transa, int m,
-                   int n, const complex64 *alpha, const complex64 *A, int lda,
-                   const complex64 *B, int ldb, const complex64 *beta,
-                   complex64 *C, int ldc) {
+                   int n, const platform::complex<float> *alpha,
+                   const platform::complex<float> *A, int lda,
+                   const platform::complex<float> *B, int ldb,
+                   const platform::complex<float> *beta,
+                   platform::complex<float> *C, int ldc) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_cgemv(
         handle, transa, m, n,
         reinterpret_cast<const rocblas_float_complex *>(alpha),
@@ -229,9 +229,10 @@ struct CUBlas<platform::complex64> {
         reinterpret_cast<rocblas_float_complex *>(C), ldc));
   }
 
-  static void AXPY(rocblas_handle handle, int n, const complex64 *alpha,
-                   const complex64 *X, const int incX, complex64 *Y,
-                   const int incY) {
+  static void AXPY(rocblas_handle handle, int n,
+                   const platform::complex<float> *alpha,
+                   const platform::complex<float> *X, const int incX,
+                   platform::complex<float> *Y, const int incY) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_caxpy(
         handle, n, reinterpret_cast<const rocblas_float_complex *>(alpha),
         reinterpret_cast<const rocblas_float_complex *>(X), incX,
@@ -241,11 +242,13 @@ struct CUBlas<platform::complex64> {
   static void GEMM_STRIDED_BATCH(rocblas_handle handle,
                                  rocblas_operation transa,
                                  rocblas_operation transb, int m, int n, int k,
-                                 const complex64 *alpha, const complex64 *A,
-                                 int lda, long long int strideA,  // NOLINT
-                                 const complex64 *B,              // NOLINT
-                                 int ldb, long long int strideB,  // NOLINT
-                                 const complex64 *beta, complex64 *C, int ldc,
+                                 const platform::complex<float> *alpha,
+                                 const platform::complex<float> *A, int lda,
+                                 long long int strideA,              // NOLINT
+                                 const platform::complex<float> *B,  // NOLINT
+                                 int ldb, long long int strideB,     // NOLINT
+                                 const platform::complex<float> *beta,
+                                 platform::complex<float> *C, int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -261,9 +264,11 @@ struct CUBlas<platform::complex64> {
 
   static void GEMM(rocblas_handle handle, rocblas_operation transa,
                    rocblas_operation transb, int m, int n, int k,
-                   const complex64 *alpha, const complex64 *A, int lda,
-                   const complex64 *B, int ldb, const complex64 *beta,
-                   complex64 *C, int ldc) {
+                   const platform::complex<float> *alpha,
+                   const platform::complex<float> *A, int lda,
+                   const platform::complex<float> *B, int ldb,
+                   const platform::complex<float> *beta,
+                   platform::complex<float> *C, int ldc) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_cgemm(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const rocblas_float_complex *>(alpha),
@@ -293,13 +298,13 @@ struct CUBlas<platform::complex64> {
 };
 
 template <>
-struct CUBlas<platform::complex128> {
-  using complex128 = platform::complex128;
-
+struct CUBlas<platform::complex<double>> {
   static void GEMV(rocblas_handle handle, rocblas_operation transa, int m,
-                   int n, const complex128 *alpha, const complex128 *A, int lda,
-                   const complex128 *B, int ldb, const complex128 *beta,
-                   complex128 *C, int ldc) {
+                   int n, const platform::complex<double> *alpha,
+                   const platform::complex<double> *A, int lda,
+                   const platform::complex<double> *B, int ldb,
+                   const platform::complex<double> *beta,
+                   platform::complex<double> *C, int ldc) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_zgemv(
         handle, transa, m, n,
         reinterpret_cast<const rocblas_double_complex *>(alpha),
@@ -309,9 +314,10 @@ struct CUBlas<platform::complex128> {
         reinterpret_cast<rocblas_double_complex *>(C), ldc));
   }
 
-  static void AXPY(rocblas_handle handle, int n, const complex128 *alpha,
-                   const complex128 *X, const int incX, complex128 *Y,
-                   const int incY) {
+  static void AXPY(rocblas_handle handle, int n,
+                   const platform::complex<double> *alpha,
+                   const platform::complex<double> *X, const int incX,
+                   platform::complex<double> *Y, const int incY) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_zaxpy(
         handle, n, reinterpret_cast<const rocblas_double_complex *>(alpha),
         reinterpret_cast<const rocblas_double_complex *>(X), incX,
@@ -321,11 +327,13 @@ struct CUBlas<platform::complex128> {
   static void GEMM_STRIDED_BATCH(rocblas_handle handle,
                                  rocblas_operation transa,
                                  rocblas_operation transb, int m, int n, int k,
-                                 const complex128 *alpha, const complex128 *A,
-                                 int lda, long long int strideA,  // NOLINT
-                                 const complex128 *B,             // NOLINT
-                                 int ldb, long long int strideB,  // NOLINT
-                                 const complex128 *beta, complex128 *C, int ldc,
+                                 const platform::complex<double> *alpha,
+                                 const platform::complex<double> *A, int lda,
+                                 long long int strideA,               // NOLINT
+                                 const platform::complex<double> *B,  // NOLINT
+                                 int ldb, long long int strideB,      // NOLINT
+                                 const platform::complex<double> *beta,
+                                 platform::complex<double> *C, int ldc,
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -341,9 +349,11 @@ struct CUBlas<platform::complex128> {
 
   static void GEMM(rocblas_handle handle, rocblas_operation transa,
                    rocblas_operation transb, int m, int n, int k,
-                   const complex128 *alpha, const complex128 *A, int lda,
-                   const complex128 *B, int ldb, const complex128 *beta,
-                   complex128 *C, int ldc) {
+                   const platform::complex<double> *alpha,
+                   const platform::complex<double> *A, int lda,
+                   const platform::complex<double> *B, int ldb,
+                   const platform::complex<double> *beta,
+                   platform::complex<double> *C, int ldc) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::rocblas_zgemm(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const rocblas_double_complex *>(alpha),
@@ -434,9 +444,9 @@ template <>
 template <>
 inline void Blas<platform::CUDADeviceContext>::GEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-    platform::complex64 alpha, const platform::complex64 *A,
-    const platform::complex64 *B, platform::complex64 beta,
-    platform::complex64 *C) const {
+    platform::complex<float> alpha, const platform::complex<float> *A,
+    const platform::complex<float> *B, platform::complex<float> beta,
+    platform::complex<float> *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -461,7 +471,7 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
 
   auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-  CUBlas<platform::complex64>::GEMM_EX(
+  CUBlas<platform::complex<float>>::GEMM_EX(
       &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B,
       rocblas_datatype_f32_c, ldb, A, rocblas_datatype_f32_c, lda, &c_beta, C,
       rocblas_datatype_f32_c, N, rocblas_datatype_f32_c);
@@ -471,9 +481,9 @@ template <>
 template <>
 inline void Blas<platform::CUDADeviceContext>::GEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
-    platform::complex128 alpha, const platform::complex128 *A,
-    const platform::complex128 *B, platform::complex128 beta,
-    platform::complex128 *C) const {
+    platform::complex<double> alpha, const platform::complex<double> *A,
+    const platform::complex<double> *B, platform::complex<double> beta,
+    platform::complex<double> *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -499,7 +509,7 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
       thrust::complex<double>(beta.real, beta.imag);
 
   auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
-  CUBlas<platform::complex128>::GEMM_EX(
+  CUBlas<platform::complex<double>>::GEMM_EX(
       &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B,
       rocblas_datatype_f64_c, ldb, A, rocblas_datatype_f64_c, lda, &c_beta, C,
       rocblas_datatype_f64_c, N, rocblas_datatype_f64_c);

@@ -53,6 +53,7 @@ __all__ = [
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
+    'is_compiled_with_rocm',
     'is_compiled_with_xpu',
     'Variable',
     'require_version',
@@ -396,6 +397,21 @@ def is_compiled_with_cuda():
             support_gpu = paddle.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
+
+
+def is_compiled_with_rocm():
+    """
+    Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
+
+    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_gpu = paddle.is_compiled_with_rocm()
+    """
+    return core.is_compiled_with_rocm()
 
 
 def cuda_places(device_ids=None):
@@ -2126,7 +2142,7 @@ class Operator(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
@@ -2534,7 +2550,7 @@ class Block(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
@@ -4243,7 +4259,7 @@ class Program(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         program_str = ""
         for block in self.blocks:
