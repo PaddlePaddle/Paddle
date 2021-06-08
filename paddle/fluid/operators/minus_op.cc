@@ -146,3 +146,6 @@ REGISTER_OPERATOR(minus, ops::MinusOp, ops::MinusOpMaker,
                   ops::MinusGradDescMaker, ops::MinusGradMaker);
 REGISTER_OP_CPU_KERNEL(
     minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(
+    minus, ops::MinusKernel<paddle::platform::CUDADeviceContext, float>);

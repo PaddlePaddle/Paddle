@@ -145,4 +145,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::ReverseKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ReverseKernel<paddle::platform::CPUDeviceContext, double>)
+    ops::ReverseKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    reverse, ops::ReverseKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, uint8_t>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ReverseKernel<paddle::platform::CUDADeviceContext, double>);

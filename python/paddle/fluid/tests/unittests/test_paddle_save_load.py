@@ -413,11 +413,10 @@ class TestSaveLoadAny(unittest.TestCase):
         ]
         obj2 = {'k1': obj1, 'k2': state_dict, 'epoch': 123}
         obj3 = (paddle.randn(
-            [5, 4], dtype='float32'), np.ndarray(
-                [3, 4], dtype="float32"), {
-                    "state_dict": state_dict,
-                    "opt": state_dict
-                })
+            [5, 4], dtype='float32'), np.random.randn(3, 4).astype("float32"), {
+                "state_dict": state_dict,
+                "opt": state_dict
+            })
         obj4 = (np.random.randn(5, 6), (123, ))
 
         path1 = "test_save_load_any_complex_object_dygraph/obj1"

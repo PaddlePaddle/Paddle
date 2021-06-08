@@ -15,11 +15,14 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import numpy as np
+
+paddle.enable_static()
 
 
 class TestVariable(unittest.TestCase):
@@ -161,12 +164,75 @@ class TestVariable(unittest.TestCase):
             self.assertTrue(
                 np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
 
-    def test_slice(self):
-        place = fluid.CPUPlace()
-        self._test_slice(place)
+    def _test_slice_index_tensor(self, place):
+        data = np.random.rand(2, 3).astype("float32")
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            idx0 = [1, 0]
+            idx1 = [0, 1]
+            idx2 = [0, 0]
+            idx3 = [1, 1]
 
+            out0 = x[paddle.assign(np.array(idx0))]
+            out1 = x[paddle.assign(np.array(idx1))]
+            out2 = x[paddle.assign(np.array(idx2))]
+            out3 = x[paddle.assign(np.array(idx3))]
+
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=[out0, out1, out2, out3])
+
+        expected = [data[idx0], data[idx1], data[idx2], data[idx3]]
+
+        self.assertTrue((result[0] == expected[0]).all())
+        self.assertTrue((result[1] == expected[1]).all())
+        self.assertTrue((result[2] == expected[2]).all())
+        self.assertTrue((result[3] == expected[3]).all())
+
+        with self.assertRaises(IndexError):
+            one = paddle.ones(shape=[1])
+            res = x[one, [0, 0]]
+
+    def _test_slice_index_list(self, place):
+        data = np.random.rand(2, 3).astype("float32")
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            idx0 = [1, 0]
+            idx1 = [0, 1]
+            idx2 = [0, 0]
+            idx3 = [1, 1]
+
+            out0 = x[idx0]
+            out1 = x[idx1]
+            out2 = x[idx2]
+            out3 = x[idx3]
+
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=[out0, out1, out2, out3])
+
+        expected = [data[idx0], data[idx1], data[idx2], data[idx3]]
+
+        self.assertTrue((result[0] == expected[0]).all())
+        self.assertTrue((result[1] == expected[1]).all())
+        self.assertTrue((result[2] == expected[2]).all())
+        self.assertTrue((result[3] == expected[3]).all())
+
+        with self.assertRaises(IndexError):
+            res = x[[1, 0], [0, 0]]
+
+        with self.assertRaises(TypeError):
+            res = x[[1.2, 0]]
+
+    def test_slice(self):
+        places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self._test_slice(core.CUDAPlace(0))
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            self._test_slice(place)
+            self._test_slice_index_tensor(place)
+            self._test_slice_index_list(place)
 
     def _tostring(self):
         b = default_main_program().current_block()
@@ -227,6 +293,62 @@ class TestVariable(unittest.TestCase):
             var.lod_level()
 
         self.assertRaises(Exception, _test)
+
+
+class TestVariableSlice(unittest.TestCase):
+    def _test_item_none(self, place):
+        data = np.random.rand(2, 3, 4).astype("float32")
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            out0 = x[0:, None, 1:]
+            out1 = x[0:, None]
+            out2 = x[None, 1:]
+            out3 = x[None]
+
+        outs = [out0, out1, out2, out3]
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=outs)
+
+        expected = [
+            data[0:, None, 1:], data[0:, None], data[None, 1:], data[None]
+        ]
+        for i in range(len(outs)):
+            self.assertEqual(outs[i].shape, expected[i].shape)
+            self.assertTrue((result[i] == expected[i]).all())
+
+    def _test_item_none_and_decrease(self, place):
+        data = np.random.rand(2, 3, 4).astype("float32")
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            out0 = x[0, 1:, None]
+            out1 = x[0, None]
+            out2 = x[None, 1]
+            out3 = x[None]
+            out4 = x[0, 0, 0, None]
+            out5 = x[None, 0, 0, 0, None]
+
+        outs = [out0, out1, out2, out3, out4, out5]
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=outs)
+        expected = [
+            data[0, 1:, None], data[0, None], data[None, 1], data[None],
+            data[0, 0, 0, None], data[None, 0, 0, 0, None]
+        ]
+
+        for i in range(len(outs)):
+            self.assertEqual(outs[i].shape, expected[i].shape)
+            self.assertTrue((result[i] == expected[i]).all())
+
+    def test_slice(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            self._test_item_none(place)
+            self._test_item_none_and_decrease(place)
 
 
 if __name__ == '__main__':
