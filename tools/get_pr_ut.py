@@ -112,7 +112,7 @@ class PRChecker(object):
                 print(e)
                 print(
                     'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
-                    format(url, ix, ix * 10, proxy))
+                    format(url, ix, ix * 10, cur_proxy))
                 continue
             else:
                 return True
