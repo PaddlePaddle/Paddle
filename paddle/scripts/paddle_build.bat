@@ -22,11 +22,12 @@ setlocal enabledelayedexpansion
 
 rem -------clean up environment-----------
 set work_dir=%cd%
-set cache_dir=%work_dir:Paddle=cache%
+if not defined cache_dir set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
 taskkill /f /im cmake.exe  2>NUL
+taskkill /f /im ninja.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL
 taskkill /f /im lib.exe 2>NUL
@@ -763,6 +764,7 @@ echo    ========================================
 echo    Clean up environment  at the end ...
 echo    ========================================
 taskkill /f /im cmake.exe  2>NUL
+taskkill /f /im ninja.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im git.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL
