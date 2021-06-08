@@ -37,7 +37,8 @@ def record_program_ops_pre_hook(layer, inputs):
     """
     if not in_dygraph_mode():
         if layer._op_recorder.start < 0:
-            layer._op_recorder.start = len(default_main_program().block(0).ops)
+            layer._op_recorder.start = len(default_main_program().current_block(
+            ).ops)
             layer._op_recorder.is_valid = True
         else:
             layer._op_recorder.is_valid = False
@@ -55,7 +56,7 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     if not in_dygraph_mode() and layer._op_recorder.is_valid:
 
         start = layer._op_recorder.start
-        end = len(default_main_program().block(0).ops)
+        end = len(default_main_program().current_block().ops)
         assert (start >= 0 and end >= start)
         ops = default_main_program().block(0).ops[start:end]
 

@@ -1043,6 +1043,18 @@ class Layer(core.Layer):
 
         NOTE: The interface is only exposed to developers.
         """
+
+        def is_already_registered(is_pre_hook):
+            layers_hooks = self._forward_pre_hooks if is_pre_hook else self._forward_post_hooks
+            candidate_hook = record_program_ops_pre_hook if is_pre_hook else set_op_customized_attrs_post_hook
+
+            already_registed = False
+            if layers_hooks:
+                last_key = next(reversed(layers_hooks))
+                already_registed = (layers_hooks[last_key] == candidate_hook)
+
+            return already_registed
+
         if not isinstance(attrs, dict):
             raise TypeError("attrs should be type(dict), but received {}".
                             format(type(attrs).__name__))
@@ -1050,17 +1062,27 @@ class Layer(core.Layer):
         if len(self._customized_attrs) != 0:
             raise RuntimeError("Unsupported to call self._set_op_attrs twice!")
 
-        self._customized_attrs = attrs
-        pre_hook_helper = self.register_forward_pre_hook(
-            record_program_ops_pre_hook)
+        # NOTE: Overwrite behavior for same key.
+        self._customized_attrs.update(attrs)
+
+        if not is_already_registered(is_pre_hook=True):
+            pre_hook_helper = self.register_forward_pre_hook(
+                record_program_ops_pre_hook)
+            assert len(self._op_recorder.hooks) == 0
+            self._op_recorder.hooks = [pre_hook_helper]
+
         # manually register post_hook to ensure it is inserted into the head.
-        post_hook_helper = self.register_forward_post_hook(
-            set_op_customized_attrs_post_hook)
-        if len(self._forward_post_hooks) > 1:
-            self._forward_post_hooks.move_to_end(
-                post_hook_helper._hook_id, last=False)
-        # hooks that need to be removed once we finish executing them.
-        self._op_recorder.hooks = [pre_hook_helper, post_hook_helper]
+        if not is_already_registered(is_pre_hook=False):
+            post_hook_helper = self.register_forward_post_hook(
+                set_op_customized_attrs_post_hook)
+            if len(self._forward_post_hooks) > 1:
+                self._forward_post_hooks.move_to_end(
+                    post_hook_helper._hook_id, last=False)
+
+            assert len(self._op_recorder.hooks) == 1
+
+            # hooks that need to be removed once we finish executing them.
+            self._op_recorder.hooks.append(post_hook_helper)
 
     def __getstate__(self):
         return self.__dict__
