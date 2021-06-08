@@ -258,6 +258,7 @@ from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
+from .fluid.framework import is_compiled_with_rocm  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
@@ -269,10 +270,10 @@ from .fluid.layers import crop_tensor as crop  # noqa: F401
 
 # high-level api
 from .hapi import Model  # noqa: F401
-from .hapi import callbacks  # noqa: F401
+from . import callbacks  # noqa: F401
 from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
-from .hapi import hub  # noqa: F401
+from . import hub  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -335,10 +336,8 @@ __all__ = [     #noqa
            'unsqueeze_',
            'argmax',
            'Model',
-           'callbacks',
            'summary',
            'flops',
-           'hub',
            'sort',
            'split',
            'logical_and',
@@ -386,6 +385,7 @@ __all__ = [     #noqa
            'less_equal',
            'triu',
            'is_compiled_with_cuda',
+           'is_compiled_with_rocm',
            'sin',
            'dist',
            'unbind',

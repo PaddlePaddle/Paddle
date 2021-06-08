@@ -74,8 +74,8 @@ class TestDistTraning(unittest.TestCase):
         state_dict = model_a.state_dict()
         model_b.set_state_dict(state_dict)
 
-        model_a = paddle.DataParallel(model_a)
-        model_b = paddle.DataParallel(model_b)
+        model_a = paddle.DataParallel(model_a, find_unused_parameters=True)
+        model_b = paddle.DataParallel(model_b, find_unused_parameters=True)
 
         ones_input = paddle.ones(shape=(batch, in_dim))
         ones_input.stop_gradient = True

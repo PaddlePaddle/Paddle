@@ -15,8 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
@@ -24,9 +23,9 @@
 
 namespace Eigen {
 
-using complex64 = paddle::platform::complex64;
-using complex128 = paddle::platform::complex128;
 using float16 = paddle::platform::float16;
+template <typename T>
+using complex = paddle::platform::complex<T>;
 
 template <typename T>
 struct NumTraits;
@@ -62,7 +61,7 @@ struct NumTraits<paddle::platform::bfloat16>
 };
 
 template <>
-struct NumTraits<complex64> : GenericNumTraits<std::complex<float>> {
+struct NumTraits<complex<float>> : GenericNumTraits<std::complex<float>> {
   typedef float Real;
   typedef typename NumTraits<float>::Literal Literal;
   enum {
@@ -84,7 +83,7 @@ struct NumTraits<complex64> : GenericNumTraits<std::complex<float>> {
 };
 
 template <>
-struct NumTraits<complex128> : GenericNumTraits<std::complex<double>> {
+struct NumTraits<complex<double>> : GenericNumTraits<std::complex<double>> {
   typedef double Real;
   typedef typename NumTraits<double>::Literal Literal;
   enum {
@@ -224,133 +223,135 @@ HOSTDEVICE inline paddle::platform::bfloat16 maxi(
   return a < b ? b : a;
 }
 
-//////////// complex64 methods /////////////
+//////////// complex<float> methods /////////////
 
 template <>
-HOSTDEVICE inline bool(isnan)(const complex64& a) {
+HOSTDEVICE inline bool(isnan)(const complex<float>& a) {
   return (paddle::platform::isnan)(a);
 }
 
 template <>
-HOSTDEVICE inline bool(isinf)(const complex64& a) {
+HOSTDEVICE inline bool(isinf)(const complex<float>& a) {
   return (paddle::platform::isinf)(a);
 }
 
 template <>
-HOSTDEVICE inline bool(isfinite)(const complex64& a) {
+HOSTDEVICE inline bool(isfinite)(const complex<float>& a) {
   return (paddle::platform::isfinite)(a);
 }
 
 template <>
-HOSTDEVICE inline complex64 exp(const complex64& a) {
+HOSTDEVICE inline complex<float> exp(const complex<float>& a) {
   float com = ::expf(a.real);
   float res_real = com * ::cosf(a.imag);
   float res_imag = com * ::sinf(a.imag);
-  return complex64(res_real, res_imag);
+  return complex<float>(res_real, res_imag);
 }
 
 template <>
-HOSTDEVICE inline complex64 log(const complex64& a) {
+HOSTDEVICE inline complex<float> log(const complex<float>& a) {
   return paddle::platform::log(a);
 }
 
 template <>
-HOSTDEVICE inline complex64 tanh(const complex64& a) {
+HOSTDEVICE inline complex<float> tanh(const complex<float>& a) {
   return paddle::platform::tanh(a);
 }
 
 template <>
-HOSTDEVICE inline complex64 sqrt(const complex64& a) {
+HOSTDEVICE inline complex<float> sqrt(const complex<float>& a) {
   return paddle::platform::sqrt(a);
 }
 
 template <>
-HOSTDEVICE inline complex64 ceil(const complex64& a) {
-  return complex64(::ceilf(a.real), ::ceilf(a.imag));
+HOSTDEVICE inline complex<float> ceil(const complex<float>& a) {
+  return complex<float>(::ceilf(a.real), ::ceilf(a.imag));
 }
 
 template <>
-HOSTDEVICE inline complex64 floor(const complex64& a) {
-  return complex64(::floorf(a.real), ::floor(a.imag));
+HOSTDEVICE inline complex<float> floor(const complex<float>& a) {
+  return complex<float>(::floorf(a.real), ::floor(a.imag));
 }
 
 template <>
-HOSTDEVICE inline complex64 round(const complex64& a) {
-  return complex64(::roundf(a.real), ::roundf(a.imag));
+HOSTDEVICE inline complex<float> round(const complex<float>& a) {
+  return complex<float>(::roundf(a.real), ::roundf(a.imag));
 }
 
 template <>
-HOSTDEVICE inline complex64 pow(const complex64& a, const complex64& b) {
+HOSTDEVICE inline complex<float> pow(const complex<float>& a,
+                                     const complex<float>& b) {
   return paddle::platform::pow(a, b);
 }
 
 template <>
-HOSTDEVICE inline float abs(const complex64& a) {
+HOSTDEVICE inline float abs(const complex<float>& a) {
   return paddle::platform::abs(a);
 }
 
-//////////// complex128 methods /////////////
+//////////// complex<double> methods /////////////
 
 template <>
-HOSTDEVICE inline bool(isnan)(const complex128& a) {
+HOSTDEVICE inline bool(isnan)(const complex<double>& a) {
   return (paddle::platform::isnan)(a);
 }
 
 template <>
-HOSTDEVICE inline bool(isinf)(const complex128& a) {
+HOSTDEVICE inline bool(isinf)(const complex<double>& a) {
   return (paddle::platform::isinf)(a);
 }
 
 template <>
-HOSTDEVICE inline bool(isfinite)(const complex128& a) {
+HOSTDEVICE inline bool(isfinite)(const complex<double>& a) {
   return (paddle::platform::isfinite)(a);
 }
 
 template <>
-HOSTDEVICE inline complex128 exp(const complex128& a) {
+HOSTDEVICE inline complex<double> exp(const complex<double>& a) {
   double com = ::expf(a.real);
   double res_real = com * ::cosf(a.imag);
   double res_imag = com * ::sinf(a.imag);
-  return complex128(res_real, res_imag);
+  return complex<double>(res_real, res_imag);
 }
 
 template <>
-HOSTDEVICE inline complex128 log(const complex128& a) {
+HOSTDEVICE inline complex<double> log(const complex<double>& a) {
   return paddle::platform::log(a);
 }
 
 template <>
-HOSTDEVICE inline complex128 tanh(const complex128& a) {
+HOSTDEVICE inline complex<double> tanh(const complex<double>& a) {
   return paddle::platform::tanh(a);
 }
 
 template <>
-HOSTDEVICE inline complex128 sqrt(const complex128& a) {
+HOSTDEVICE inline complex<double> sqrt(const complex<double>& a) {
   return paddle::platform::sqrt(a);
 }
 
 template <>
-HOSTDEVICE inline complex128 ceil(const complex128& a) {
-  return complex128(::ceilf(a.real), ::ceilf(a.imag));
+HOSTDEVICE inline complex<double> ceil(const complex<double>& a) {
+  return complex<double>(::ceilf(a.real), ::ceilf(a.imag));
 }
 
 template <>
-HOSTDEVICE inline complex128 floor(const complex128& a) {
-  return complex128(::floorf(a.real), ::floor(a.imag));
+HOSTDEVICE inline complex<double> floor(const complex<double>& a) {
+  return complex<double>(::floorf(a.real), ::floor(a.imag));
 }
 
 template <>
-HOSTDEVICE inline complex128 round(const complex128& a) {
-  return complex128(::roundf(a.real), ::roundf(a.imag));
+HOSTDEVICE inline complex<double> round(const complex<double>& a) {
+  return complex<double>(::roundf(a.real), ::roundf(a.imag));
 }
 
 template <>
-HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
+HOSTDEVICE inline complex<double> pow(const complex<double>& a,
+                                      const complex<double>& b) {
   return paddle::platform::pow(a, b);
 }
 
 template <>
-HOSTDEVICE inline double abs(const complex128& a) {
+HOSTDEVICE inline double abs(const complex<double>& a) {
   return paddle::platform::abs(a);
 }
 

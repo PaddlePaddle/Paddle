@@ -191,22 +191,8 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
-    scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
-      delete scope;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
-           ++dev_id) {
-        memory::Release(platform::CUDAPlace(dev_id));
-      }
-#endif
-#ifdef PADDLE_WITH_XPU
-      for (int dev_id = 0; dev_id < paddle::platform::GetXPUDeviceCount();
-           ++dev_id) {
-        memory::Release(platform::XPUPlace(dev_id));
-      }
-#endif
-      memory::Release(platform::CPUPlace());
-    });
+    // TODO(wilber): we need to release memory occupied by weights.
+    scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();
@@ -284,7 +270,46 @@ bool AnalysisPredictor::CreateExecutor() {
   executor_.reset(new paddle::framework::NaiveExecutor(place_));
   return true;
 }
+
+static bool IsPrepareDataOptTargetOp(framework::OpDesc *op) {
+  // here is prepare data optimization related bad cases:
+  // let's assume an op behind conditional_block and if conditional_block
+  // chooses branch 1, the op need to call prepare data. else the op don't need
+  // to call prepare data. In running, if predictor chooses branch 2, then
+  // optimization takes effect, later issue is followed if predictor chooses
+  // branch 1, because the op lost chance to prepare data.
+  std::vector<std::string> op_type = {"conditional_block_infer",
+                                      "select_input"};
+  for (const auto &type : op_type) {
+    if (op->Type() == type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void DisablePrepareDataOpt(
+    std::shared_ptr<framework::ProgramDesc> inference_program, int block,
+    bool pre_disable_opt) {
+  bool disable_opt = false;
+  auto &infer_block = inference_program->Block(block);
+  for (auto *op : infer_block.AllOps()) {
+    if (disable_opt || pre_disable_opt) {
+      op->SetAttr("inference_force_prepare_data", true);
+    }
+    if (op->HasAttr("sub_block")) {
+      int blockID = op->GetBlockAttrId("sub_block");
+      DisablePrepareDataOpt(inference_program, blockID,
+                            disable_opt || pre_disable_opt);
+    }
+    // disable prepare data if unfriendly op is found
+    disable_opt = IsPrepareDataOptTargetOp(op);
+  }
+}
+
 bool AnalysisPredictor::PrepareExecutor() {
+  DisablePrepareDataOpt(inference_program_, 0, false);
+
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops_);
 
@@ -664,19 +689,21 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--cudnn_deterministic=True");
       }
 
-      if (config.thread_local_stream_enabled()) {
-        gflags.push_back("--allocator_strategy=thread_local");
-        process_level_allocator_enabled = false;
-      } else {
-        process_level_allocator_enabled = true;
-      }
-
 // TODO(wilber): jetson tx2 may fail to run the model due to insufficient memory
 // under the native_best_fit strategy. Modify the default allocation strategy to
 // auto_growth. todo, find a more appropriate way to solve the problem.
 #ifdef WITH_NV_JETSON
       gflags.push_back("--allocator_strategy=auto_growth");
 #endif
+
+      // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
+      // allocator when multi-stream is enabled.
+      if (config.thread_local_stream_enabled()) {
+        gflags.push_back("--allocator_strategy=thread_local");
+        process_level_allocator_enabled = false;
+      } else {
+        process_level_allocator_enabled = true;
+      }
 
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
@@ -1209,6 +1236,9 @@ USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(nearest_interp);
+USE_TRT_CONVERTER(reshape);
+USE_TRT_CONVERTER(reduce_sum);
+USE_TRT_CONVERTER(gather_nd);
 #endif
 
 namespace paddle_infer {

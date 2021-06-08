@@ -26,7 +26,7 @@ from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension
 from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
 from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
 from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
-from .extension_utils import clean_object_if_change_cflags, _reset_so_rpath
+from .extension_utils import clean_object_if_change_cflags, _reset_so_rpath, _get_fluid_path
 from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
 
 from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
@@ -42,10 +42,10 @@ if IS_WINDOWS and six.PY3:
     from unittest.mock import Mock
     _du_build_ext.get_export_symbols = Mock(return_value=None)
 
+CUDA_HOME = find_cuda_home()
 if core.is_compiled_with_rocm():
     ROCM_HOME = find_rocm_home()
-else:
-    CUDA_HOME = find_cuda_home()
+    CUDA_HOME = ROCM_HOME
 
 
 def setup(**attr):
@@ -69,7 +69,7 @@ def setup(**attr):
     For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
     then the version of user's local machine should satisfy GCC >= 8.2. 
     For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of 
-    PaddlePaddle (Visual Studio 2015 update3). 
+    PaddlePaddle (Visual Studio 2017). 
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
     occur because of ABI compatibility.
 
@@ -79,7 +79,7 @@ def setup(**attr):
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
            GCC version.
-        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2015 update3).
+        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
 
 
     Compared with Just-In-Time ``load`` interface, it only compiles once by executing
@@ -427,8 +427,14 @@ class BuildExtension(build_ext, object):
                 elif isinstance(cflags, dict):
                     cflags = cflags['cxx']
 
+                # NOTE(Aurelius84): Since Paddle 2.0, we require gcc version > 5.x,
+                # so we add this flag to ensure the symbol names from user compiled
+                # shared library have same ABI suffix with core_(no)avx.so.
+                # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
+                add_compile_flag(['-D_GLIBCXX_USE_CXX11_ABI=1'], cflags)
+
                 add_std_without_repeat(
-                    cflags, self.compiler.compiler_type, use_std14=False)
+                    cflags, self.compiler.compiler_type, use_std14=True)
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
                 # restore original_compiler
@@ -611,7 +617,7 @@ class BuildExtension(build_ext, object):
             msg = (
                 'It seems that the VC environment is activated but DISTUTILS_USE_SDK is not set.'
                 'This may lead to multiple activations of the VC env.'
-                'Please set `DISTUTILS_USE_SDK=1` and try again.')
+                'Please run `set DISTUTILS_USE_SDK=1` and try again.')
             raise UserWarning(msg)
 
     def _record_op_info(self):
@@ -724,7 +730,7 @@ def load(name,
     processes under a individual subprocess. It does not require CMake or Ninja 
     environment. On Linux platform, it requires GCC compiler whose version is 
     greater than 5.4 and it should be soft linked to ``/usr/bin/cc`` . On Windows 
-    platform, it requires Visual Studio whose version is greater than 2015 update3.
+    platform, it requires Visual Studio whose version is greater than 2017.
     On MacOS, clang++ is requited. In addition, if compiling Operators supporting 
     GPU device, please make sure ``nvcc`` compiler is installed in local environment.
     
@@ -735,7 +741,7 @@ def load(name,
     For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
     then the version of user's local machine should satisfy GCC >= 8.2. 
     For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of 
-    PaddlePaddle (Visual Studio 2015 update3). 
+    PaddlePaddle (Visual Studio 2017). 
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
     occur because of ABI compatibility.
 
@@ -749,7 +755,7 @@ def load(name,
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
            GCC version.
-        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2015 update3).
+        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
 
 
     **A simple example:**
@@ -802,9 +808,6 @@ def load(name,
 
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
-    # Will load shared library from 'path' on windows
-    if IS_WINDOWS:
-        os.environ['path'] = build_directory + ';' + os.environ['path']
 
     log_v("build_directory: {}".format(build_directory), verbose)
 
@@ -827,6 +830,7 @@ def load(name,
 
     # write setup.py file and compile it
     build_base_dir = os.path.join(build_directory, name)
+
     _write_setup_file(name, sources, file_path, build_base_dir,
                       extra_include_paths, extra_cxx_cflags, extra_cuda_cflags,
                       extra_ldflags, verbose)

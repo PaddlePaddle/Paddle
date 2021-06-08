@@ -332,7 +332,8 @@ def fc(input,
         for i, input_x in enumerate(input):
             check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
     dtype = helper.input_dtype()
-    check_dtype(dtype, 'input', ['float16', 'float32', 'float64'], 'fc')
+    check_dtype(dtype, 'input', ['float16', 'uint16', 'float32', 'float64'],
+                'fc')
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
@@ -1501,6 +1502,9 @@ def conv2d(input,
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'conv2d')
+    if len(input.shape) != 4:
+        raise ValueError("Input size should be 4, "
+                         "but received {}".format(len(input.shape)))
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
         raise ValueError("Attr(use_cudnn) should be True or False. Received "
@@ -1519,6 +1523,20 @@ def conv2d(input,
             "Received: %s." % (str(input.shape), str(num_channels)))
     assert param_attr is not False, "param_attr should not be False here."
 
+    if groups is None:
+        num_filter_channels = num_channels
+    elif groups <= 0:
+        raise ValueError("the groups of input must be greater than 0, "
+                         "but received the groups of input is {}".format(
+                             groups))
+    else:
+        if num_channels % groups != 0:
+            raise ValueError(
+                "the channel of input must be divisible by groups,"
+                "received: the channel of input is {}, the shape of input is {}"
+                ", the groups is {}".format(num_channels, input.shape, groups))
+        num_filter_channels = num_channels // groups
+
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
@@ -1530,16 +1548,6 @@ def conv2d(input,
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
-
-    if groups is None:
-        num_filter_channels = num_channels
-    else:
-        if num_channels % groups != 0:
-            raise ValueError(
-                "the channel of input must be divisible by groups,"
-                "received: the channel of input is {}, the shape of input is {}"
-                ", the groups is {}".format(num_channels, input.shape, groups))
-        num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
@@ -1596,6 +1604,11 @@ def conv2d(input,
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
@@ -1877,6 +1890,12 @@ def conv3d(input,
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * filter_size[
             2] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
+
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
@@ -10523,10 +10542,10 @@ def uniform_random_batch_size_like(input,
 
 
     """
-    check_variable_and_dtype(input, 'Input', ("float32", 'float64'),
+    check_variable_and_dtype(input, 'Input', ("float32", 'float64', "uint16"),
                              'uniform_random_batch_size_like')
     check_type(shape, 'shape', (list, tuple), 'uniform_random_batch_size_like')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'),
+    check_dtype(dtype, 'dtype', ('float32', 'float64', "uint16"),
                 'uniform_random_batch_size_like')
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -11074,7 +11093,7 @@ def strided_slice(input, axes, starts, ends, strides):
             Then:
                 result = [ [2], ]
     Args:
-        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
@@ -11125,7 +11144,7 @@ def strided_slice(input, axes, starts, ends, strides):
     helper = LayerHelper('strided_slice', **locals())
 
     check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int32', 'int64'],
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
                              'strided_slice')
     check_type(axes, 'axes', (list, tuple), 'strided_slice')
     check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
@@ -13028,7 +13047,10 @@ def grid_sampler(x, grid, name=None):
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x, 'Grid': grid}
 
-    helper.append_op(type='grid_sampler', inputs=ipts, outputs={'Output': out})
+    attrs = {'use_cudnn': False} if core.is_compiled_with_rocm() else {}
+
+    helper.append_op(
+        type='grid_sampler', inputs=ipts, outputs={'Output': out}, attrs=attrs)
     return out
 
 
@@ -14408,6 +14430,11 @@ def deformable_conv(input,
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
+        if filter_elem_num <= 0:
+            raise ValueError(
+                "Invalid filter number, excepted number is larger than 0, but"
+                " received {}, please check the input shape and "
+                "filter size.".format(filter_elem_num))
         std = (2.0 / filter_elem_num)**0.5
         return Normal(0.0, std, 0)
 
@@ -14768,7 +14795,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     the size of the last shard will be less than the calculated `shard_size`
 
     Args:
-        input (Tensor): Input indices with data type int64. It's last dimension must be 1.
+        input (Tensor): Input indices with data type int64 or int32. It's last dimension must be 1.
         index_num (int): An integer defining the range of the index.
         nshards (int): The number of shards.
         shard_id (int): The index of the current shard.
@@ -14789,7 +14816,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             print(shard_label)
             # [[-1], [1]]
     """
-    check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
+    check_variable_and_dtype(input, 'input', ['int64', 'int32'], 'shard_index')
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
     if shard_id < 0 or shard_id >= nshards:
@@ -15120,7 +15147,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                                        float(max), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64', 'uint16'),
+                'uniform_random/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}

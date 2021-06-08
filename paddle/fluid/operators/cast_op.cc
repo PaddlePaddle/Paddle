@@ -27,6 +27,9 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor of cast op");
     AddAttr<int>("out_dtype", "output data type");
     AddAttr<int>("in_dtype", "input data type");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Cast Operator.
 
@@ -50,6 +53,7 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
     grad->SetOutput("Out", this->InputGrad("X"));
     grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
+    grad->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
   }
 };
 
@@ -77,6 +81,28 @@ class CastOp : public framework::OperatorWithKernel {
     if (platform::is_cuda_pinned_place(tensor_place)) {
       return framework::OpKernelType(tensor->type(), ctx.device_context());
     }
+
+#ifdef PADDLE_WITH_MKLDNN
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    int out_dtype = ctx.Attr<int>("out_dtype");
+
+    auto MKLDNNSupportsCast = [&]() -> bool {
+      int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
+      int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
+
+      if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
+          (out_dtype != dtype_fp32 && out_dtype != dtype_bf16))
+        return false;
+
+      return true;
+    };
+
+    if (this->CanMKLDNNBeUsed(ctx, tensor->type()) && MKLDNNSupportsCast()) {
+      return framework::OpKernelType(tensor->type(), ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
     return framework::OpKernelType(tensor->type(), tensor_place);
   }
 };
@@ -90,13 +116,11 @@ REGISTER_OPERATOR(cast, ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastOpProtoMaker);
-REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
-                       ops::CastOpKernel<CPU, double>,
-                       ops::CastOpKernel<CPU, int>,
-                       ops::CastOpKernel<CPU, int64_t>,
-                       ops::CastOpKernel<CPU, bool>,
-                       ops::CastOpKernel<CPU, uint8_t>,
-                       ops::CastOpKernel<CPU, paddle::platform::float16>,
-                       ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
-                       ops::CastOpKernel<CPU, paddle::platform::complex64>,
-                       ops::CastOpKernel<CPU, paddle::platform::complex128>);
+REGISTER_OP_CPU_KERNEL(
+    cast, ops::CastOpKernel<CPU, float>, ops::CastOpKernel<CPU, double>,
+    ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int64_t>,
+    ops::CastOpKernel<CPU, bool>, ops::CastOpKernel<CPU, uint8_t>,
+    ops::CastOpKernel<CPU, paddle::platform::float16>,
+    ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
+    ops::CastOpKernel<CPU, paddle::platform::complex<float>>,
+    ops::CastOpKernel<CPU, paddle::platform::complex<double>>);

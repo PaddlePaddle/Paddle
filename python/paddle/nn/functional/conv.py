@@ -22,6 +22,8 @@ from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
 from ...fluid.layer_helper import LayerHelper
 
+__all__ = []
+
 
 def _is_list_or_tuple(input):
     return isinstance(input, (list, tuple))
@@ -83,6 +85,10 @@ def _update_padding_nd(padding, channel_last, num_dims):
     else:
         padding_algorithm = "EXPLICIT"
         padding = utils.convert_to_list(padding, num_dims, 'padding')
+    if not all([p >= 0 for p in padding]):
+        raise ValueError(
+            "Invalid padding, all value should be larger than or equal to 0, but received: {}".
+            format(padding))
     return padding, padding_algorithm
 
 

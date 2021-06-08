@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import logging
-import socket
 import time
 import os
 import signal
@@ -27,6 +25,7 @@ from contextlib import closing
 import socket
 import warnings
 import six
+import struct
 
 import paddle
 import paddle.fluid as fluid
@@ -196,7 +195,7 @@ class Pod(object):
                 self.id != pod.id or \
                 self.addr != pod.addr or \
                 self.port != pod.port:
-            logger.debug("pod {} != pod".format(self, pod))
+            logger.debug("pod {} != {}".format(self, pod))
             return False
 
         if len(self.trainers) != len(pod.trainers):
@@ -362,6 +361,10 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
 def find_free_ports(num):
     def __free_port():
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            # Note(wangxi): Close the connection with a TCP RST instead
+            # of a TCP FIN, to avoid time_wait state.
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                         struct.pack('ii', 1, 0))
             s.bind(('', 0))
             return s.getsockname()[1]
 
@@ -376,7 +379,7 @@ def find_free_ports(num):
             return port_set
 
         step += 1
-        if step > 100:
+        if step > 400:
             print(
                 "can't find avilable port and use the specified static port now!"
             )
