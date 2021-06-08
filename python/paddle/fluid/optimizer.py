@@ -69,7 +69,14 @@ class Optimizer(object):
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
+                 flatten_param_grads=False,
                  name=None):
+        """
+        Args:
+            flatten_param_grads (bool, optional): Whether to flatten all the parameters and grads. 
+                If true, the parameters and gradients will be coalesce to continue mempry, 
+                and the grad_clip ops / optimizer ops will be fuse to one operator.
+        """
         # Because of the loop import, so place it in the function body
         from paddle.optimizer.lr import LRScheduler
         self._parameter_list = list(
@@ -108,6 +115,7 @@ class Optimizer(object):
         self.regularization = regularization
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
+        self._flatten_param_grads = flatten_param_grads
 
         self._dtype = None
         # Infer the dtype form parameter
@@ -884,6 +892,68 @@ class Optimizer(object):
                                                act_no_grad_set, callbacks)
         return params_grads
 
+    def flatten_param_grads(self, params_grads):
+
+        need_flatten_params_grads = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            if getattr(p, 'need_clip', True) is False:
+                warnings.warn(
+                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip if False".
+                    format(p.name))
+                self._flatten_param_grads = False
+                return
+
+            need_flatten_params.append(p)
+            need_flatten_grads.append(g)
+
+        shape = [np.prod(p.shape) for p in need_flatten_params]
+        block = need_flatten_params[0].block
+
+        flatten_param = block.create_var(
+            name='flatten_param',
+            shape=[np.sum(shape)],
+            dtype=need_flatten_params[0].dtype,
+            initializer=Constant(0.0),
+            persistable=True)
+
+        flatten_grad = block.create_var(
+            name='flatten_grad',
+            shape=[np.sum(shape)],
+            dtype=need_flatten_grads[0].dtype,
+            initializer=Constant(0.0),
+            persistable=True)
+
+        with fluid.program_guard(fluid.default_startup_program(),
+                                 fluid.default_startup_program()):
+            self._helper.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_params},
+                outputs={
+                    "Output": need_flatten_params,
+                    "FusedOutput": self.flatten_param
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "dtype": need_flatten_params[0].dtype
+                })
+            self._helper.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": self.need_flatten_grads},
+                outputs={
+                    "Output": self.need_flatten_grads,
+                    "FusedOutput": self.flatten_grad
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": False,
+                    "dtype": need_flatten_grads[0].dtype
+                })
+
+        return
+
     def apply_gradients(self, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
@@ -906,7 +976,6 @@ class Optimizer(object):
                 # ...
                 optimizer.apply_gradients(params_grads)
         """
-
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'

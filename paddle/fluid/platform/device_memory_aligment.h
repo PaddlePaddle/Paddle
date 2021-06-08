@@ -20,6 +20,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/npu_info.h"
+#endif
 
 namespace paddle {
 namespace platform {
