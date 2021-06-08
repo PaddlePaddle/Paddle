@@ -1831,7 +1831,7 @@ class Model(object):
                 batch_size=1,
                 num_workers=0,
                 stack_outputs=False,
-                verbose=2,
+                verbose=1,
                 callbacks=None):
         """
         Compute the output predictions on testing data.
@@ -1853,7 +1853,7 @@ class Model(object):
                 is False. stack_outputs as False is used for LoDTensor output situation,
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
             verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
-                1 = progress bar, 2 = one line per epoch. Default: 2.
+                1 = progress bar, 2 = one line per batch. Default: 1.
             callbacks(Callback): A Callback instance, default None.
 
         Returns:
