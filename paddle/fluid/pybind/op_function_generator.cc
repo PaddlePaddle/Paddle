@@ -149,7 +149,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"rnn", {"DropoutState"}},
-    {"run_program", {"Out", "DDOut", "OutScope"}},
+    {"run_program", {"Out", "DOut", "OutScope"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
