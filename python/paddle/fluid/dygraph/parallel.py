@@ -417,14 +417,15 @@ class DataParallel(layers.Layer):
                                                 Note that setting the find_unused_parameters to True 
                                                 will affect computing performance. Therefore, if all parameters
                                                 are sure to participate in the loss calculation and the 
-                                                autograd graph construction, please set it False. Default: True.
+                                                autograd graph construction, please set it False. Default: False.
             
     Returns:
         Layer: The data paralleled module.
 
     Examples:
         .. code-block:: python
-
+        
+            # required: distributed
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
@@ -474,7 +475,7 @@ class DataParallel(layers.Layer):
                  strategy=None,
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
-                 find_unused_parameters=True):
+                 find_unused_parameters=False):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -576,12 +577,8 @@ class DataParallel(layers.Layer):
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
         if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
-            if self.find_unused_parameters:
-                self._reducer.prepare_for_backward(
-                    list(self._find_varbase(outputs)))
-            else:
-                self._reducer.prepare_for_backward(list(self._find_varbase([])))
-
+            self._reducer.prepare_for_backward(
+                list(self._find_varbase(outputs)))
         return outputs
 
     @deprecated(

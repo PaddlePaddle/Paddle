@@ -626,7 +626,7 @@ class DistributedStrategy(object):
         Indicating whether we are using find_unused_parameters to 
         find unused parameters in DataParallel.
 
-        Default value: True
+        Default value: False
 
         Examples:
 
@@ -828,6 +828,32 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.sharding_configs, configs)
 
     @property
+    def without_graph_optimization(self):
+        """
+        Run program using Executor other than ParallelExecutor.
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.without_graph_optimization = True
+
+        """
+        return self.strategy.without_graph_optimization
+
+    @without_graph_optimization.setter
+    @is_strict_auto
+    def without_graph_optimization(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.without_graph_optimization = flag
+        else:
+            print(
+                "WARNING: without_graph_optimization should have value of bool type"
+            )
+
+    @property
     def pipeline(self):
         """
         Indicating whether we are using pipeline parallelism for distributed training.
@@ -923,6 +949,8 @@ class DistributedStrategy(object):
         **Notes**:
             **Detailed arguments for tensor_parallel_configs**
             **tensor_parallel_degree**: degree of tensor parallel
+            **tensor_init_seed**: parameter initialization random seed
+
 
         Examples:
 
@@ -931,7 +959,8 @@ class DistributedStrategy(object):
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.tensor_parallel = True
-            strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4}
+            strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4,
+                                                "tensor_init_seed": 123}
 
         """
         return get_msg_dict(self.strategy.tensor_parallel_configs)

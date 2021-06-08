@@ -26,11 +26,10 @@ set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
-taskkill /f /im op_function_generator.exe  2>NUL
 taskkill /f /im cmake.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im CL.exe 2>NUL
-taskkill /f /im Lib.exe 2>NUL
+taskkill /f /im cl.exe 2>NUL
+taskkill /f /im lib.exe 2>NUL
 taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
@@ -47,21 +46,21 @@ wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined BRANCH set BRANCH=develop
-if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
+if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
 if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 if not defined WITH_GPU set WITH_GPU=ON
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_TESTING set WITH_TESTING=ON
-if not defined MSVC_STATIC_CRT set MSVC_STATIC_CRT=OFF
+if not defined MSVC_STATIC_CRT set MSVC_STATIC_CRT=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
@@ -75,16 +74,15 @@ if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=2
+if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
+rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
 del build\CMakeCache.txt
-
-: set CI_SKIP_CPP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 if "%WITH_CACHE%"=="OFF" (
     rmdir build /s/q
@@ -114,6 +112,17 @@ if %ERRORLEVEL% EQU 0 (
     git branch last_pr
 )
 
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day.txt
+    type %cache_dir%\day.txt
+    rmdir build /s/q
+    goto :mkbuild
+)
+
 :: git diff HEAD origin/develop --stat --name-only
 :: git diff HEAD origin/develop --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
 :: if %ERRORLEVEL% EQU 0 (
@@ -135,66 +144,15 @@ dir .
 dir %cache_dir%
 dir paddle\fluid\pybind\Release
 
-rem ------initialize the python environment------
-if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
-
-rem ToDo: virtual environment can't be deleted safely, some process not exit when task is canceled
-rem Now use system python environment temporarily
-rem %PYTHON_EXECUTABLE% -m pip install virtualenv
-rem %PYTHON_EXECUTABLE% -m virtualenv paddle_winci
-rem call paddle_winci\Scripts\activate.bat
-
-rem ------pre install python requirement----------
-where python
-where pip
-pip install wheel --user
-pip install -r %work_dir%\python\requirements.txt --user
-
-if %ERRORLEVEL% NEQ 0 (
-    echo pip install requirements.txt failed!
-    exit /b 7
-)
-
-rem ------pre install clcache and init config----------
-rem pip install clcache --user
-pip uninstall -y clcache
-:: set USE_CLCACHE to enable clcache
-rem set USE_CLCACHE=1
-:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
-rem set CLCACHE_HARDLINK=1
-:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
-rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
-:: set maximum cache size to 20G
-rem clcache.exe -M 21474836480
-
-:: install ninja if GENERATOR is Ninja
-if %GENERATOR% == "Ninja" (
-    pip install ninja
-    if %errorlevel% NEQ 0 (
-        echo pip install ninja failed!
-        exit /b 7
-    )
-)
-
-rem ------show summary of current environment----------
-cmake --version
-if "%WITH_GPU%"=="ON" (
-    nvcc --version
-    nvidia-smi
-)
-::python %work_dir%\tools\summary_env.py
-::%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
-
 goto :CASE_%1
 
 echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
-echo "wincheck_mkl: run Windows MKL/GPU/UnitTest CI tasks on Windows"
-echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
+echo "wincheck_mkl: run Windows MKL/GPU PR CI tasks on Windows"
+echo "wincheck_openbals: run Windows OPENBLAS/CPU PR CI tasks on Windows"
 echo "build_avx_whl: build Windows avx whl package on Windows"
 echo "build_no_avx_whl: build Windows no avx whl package on Windows"
+echo "build_inference_lib: build Windows inference library on Windows"
 exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
@@ -254,6 +212,7 @@ goto:success
 
 rem ------Build windows inference library------
 :CASE_build_inference_lib
+set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
 
@@ -266,8 +225,10 @@ rem "Other configurations are added here"
 rem :CASE_wincheck_others
 rem call ...
 
+
 rem ---------------------------------------------------------------------------------------------
 :cmake
+@ECHO OFF
 echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
@@ -281,12 +242,53 @@ set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
-@ECHO ON
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2
 set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
 
-rem ------set third_party cache dir------
+rem install ninja if GENERATOR is Ninja
+if %GENERATOR% == "Ninja" (
+    pip install ninja
+    if %errorlevel% NEQ 0 (
+        echo pip install ninja failed!
+        exit /b 7
+    )
+)
 
+rem ------show summary of current GPU environment----------
+cmake --version
+if "%WITH_GPU%"=="ON" (
+    nvcc --version
+    nvidia-smi
+)
+
+rem ------initialize the python environment------
+@ECHO ON
+set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
+if %WITH_PYTHON% == "ON" (
+    where python
+    where pip
+    pip install wheel --user
+    pip install -r %work_dir%\python\requirements.txt --user
+    if %ERRORLEVEL% NEQ 0 (
+        echo pip install requirements.txt failed!
+        exit /b 7
+    )
+)
+
+rem ------pre install clcache and init config----------
+rem pip install clcache --user
+pip uninstall -y clcache
+:: set USE_CLCACHE to enable clcache
+rem set USE_CLCACHE=1
+:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
+rem set CLCACHE_HARDLINK=1
+:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
+rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+:: set maximum cache size to 20G
+rem clcache.exe -M 21474836480
+
+rem ------set third_party cache dir------
 : clear third party cache every once in a while
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 set day_now=%datetime:~6,2%
@@ -385,6 +387,7 @@ set build_times=1
 rem clcache.exe -z
 
 rem -------clean up environment again-----------
+taskkill /f /im cmake.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL
 taskkill /f /im lib.exe 2>NUL
@@ -399,12 +402,13 @@ taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
 taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
+wmic process where name="cmake.exe" call terminate 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
@@ -499,6 +503,10 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
+
+
+: set CI_SKIP_CPP_TEST if only *.py changed
+git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
@@ -774,8 +782,8 @@ wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 echo Windows CI run successfully!
 exit /b 0
