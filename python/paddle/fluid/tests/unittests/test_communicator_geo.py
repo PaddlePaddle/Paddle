@@ -173,7 +173,7 @@ half_run_server.run_ut()
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
-        outs, errs = ps_proc.communicate(timeout=15)
+        #outs, errs = ps_proc.communicate(timeout=15)
 
         time.sleep(1)
 
