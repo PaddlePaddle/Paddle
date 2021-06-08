@@ -20,7 +20,7 @@ import paddle
 class TestNegOp(unittest.TestCase):
     def setUp(self):
         self.init_dtype_type()
-        self.input = np.random.random((32, 8)).astype(self.dtype)
+        self.input = (np.random.random((32, 8)) * 100).astype(self.dtype)
 
     def init_dtype_type(self):
         self.dtype = np.float64

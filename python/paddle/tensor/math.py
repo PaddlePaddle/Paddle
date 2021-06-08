@@ -2291,7 +2291,7 @@ def neg(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The negative of input. The shape and data type are the same with input.
+        out (Tensor): The negative of input Tensor. The shape and data type are the same with input Tensor.
 
     Examples:
         .. code-block:: python
