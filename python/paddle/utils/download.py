@@ -173,7 +173,6 @@ def _get_download(url, fullname):
     except Exception as e:  # requests.exceptions.ConnectionError
         logger.info("Downloading {} from {} failed with exception {}".format(
             fname, url, str(e)))
-        time.sleep(1)
         return False
 
     if req.status_code != 200:
@@ -252,6 +251,7 @@ def _download(url, path, md5sum=None, method='get'):
                                "Retry limit reached".format(url))
 
         if not _download_methods[method](url, fullname):
+            time.sleep(1)
             continue
 
     return fullname
