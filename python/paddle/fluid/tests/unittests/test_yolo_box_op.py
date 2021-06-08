@@ -265,6 +265,8 @@ class TestYoloBoxOpHW(TestYoloBoxOp):
         self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 9)
         self.imgsize_shape = (self.batch_size, 2)
         self.scale_x_y = 1.
+        self.iou_aware = False
+        self.iou_aware_factor = 0.5
 
 
 if __name__ == "__main__":
