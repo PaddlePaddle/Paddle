@@ -16,9 +16,37 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_split_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
+
+static constexpr int kNumCUDAThreads = 512;
+static constexpr int kNumMaxinumNumBlocks = 4096;
+
+static inline int NumBlocks(const int N) {
+  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
+                  kNumMaxinumNumBlocks);
+}
+
+template <typename T>
+__global__ void SplitFromRank(const T* input, T* output, const int rows,
+                              const int columns, const int rank,
+                              const int nranks, const int limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
+    int row = i / columns;
+    int col = i % columns;
+
+    int block = columns / nranks;
+    int start = block * rank;
+    int end = start + block;
+
+    if (col >= start && col < end) {
+      int idx = block * row + col % block;
+      output[idx] = input[i];
+    }
+  }
+}
 
 template <typename T>
 class CSplitOpCUDAKernel : public framework::OpKernel<T> {
@@ -47,24 +75,25 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
                           rank, nranks));
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    std::vector<const framework::Tensor*> shape_refer;
-    std::vector<framework::Tensor*> results;
-    size_t numel = x->numel();
     auto dims = x->dims();
-    numel /= nranks;
-    int axis = dims.size() - 1;
-    dims[dims.size() - 1] /= nranks;
-    for (int i = 0; i < nranks; i++) {
-      framework::Tensor* out = new framework::Tensor();
-      out->mutable_data<T>(dims, place);
-      shape_refer.emplace_back(out);
-      results.emplace_back(out);
-    }
+    auto dims_size = dims.size();
+    // final dim
+    int64_t end_size = dims[dims_size - 1];
 
-    math::SplitFunctor<platform::CUDADeviceContext, T> functor;
-    functor(dev_ctx, *x, shape_refer, axis, &results);
+    // remain dim
+    auto remain_ddim = framework::slice_ddim(dims, 0, dims_size - 1);
+    int64_t remain_numel = framework::product(remain_ddim);
+
+    int limit = x->numel();
+    int blocks = NumBlocks(limit);
+    int threads = kNumCUDAThreads;
+
+    dims[dims_size - 1] /= nranks;
     out->mutable_data<T>(dims, place);
-    paddle::framework::TensorCopySync(*results[rank], out->place(), out);
+
+    SplitFromRank<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        x->data<T>(), out->data<T>(), remain_numel, end_size, rank, nranks,
+        limit);
   }
 };
 }  // namespace operators
