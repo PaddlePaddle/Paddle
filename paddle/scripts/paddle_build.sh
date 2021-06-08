@@ -1772,6 +1772,7 @@ EOF
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     build_size "paddle_inference"
+    build_size "paddle_inference_c"
 }
 
 function tar_fluid_lib() {
