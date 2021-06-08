@@ -724,12 +724,12 @@ class MishOpMaker : public framework::OpProtoAndCheckerMaker {
 Mish Activation Operator.
 
 ..  math::
-    softplus = \begin{cases}
+    softplus(x) = \begin{cases}
             x, \text{if } x > \text{threshold} \\
             \ln(1 + e^{x}),  \text{otherwise}
           \end{cases}
 
-    out = x * \tanh(softplus)
+    out = x * \tanh(softplus(x))
 
 )DOC");
   }

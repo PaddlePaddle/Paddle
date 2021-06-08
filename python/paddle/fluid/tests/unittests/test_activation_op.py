@@ -2903,7 +2903,7 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish, grad_atol=0.85)
 create_test_act_fp16_class(TestHardSwish)
-create_test_act_fp16_class(TestMish)
+create_test_act_fp16_class(TestMish, grad_atol=0.9)
 
 
 def create_test_act_bf16_class(parent,
