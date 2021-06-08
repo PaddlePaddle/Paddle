@@ -323,7 +323,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
   if (platform::is_gpu_place(tensor->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     tensor_check<platform::CUDADeviceContext>(op_type, var_name, *tensor,
                                               place);
 #else
@@ -359,8 +359,36 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         var_name));
 #endif
     return;
-  }
+  } else if (platform::is_npu_place(tensor->place())) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    if (tensor->type() != proto::VarType::FP32) {
+      return;
+    }
 
+    framework::LoDTensor cpu_tensor;
+    cpu_tensor.Resize(tensor->dims());
+    float* cpu_data = static_cast<float*>(
+        cpu_tensor.mutable_data(platform::CPUPlace(), tensor->type()));
+
+    framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    bool flag = false;
+    for (int i = 0; i < cpu_tensor.numel(); i++) {
+      if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {
+        flag = true;
+        break;
+      }
+    }
+    PADDLE_ENFORCE_NE(
+        flag, true,
+        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
+                                op_type, var_name));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Tensor[%s] use npu place. PaddlePaddle must compile with NPU.",
+        var_name));
+#endif
+    return;
+  }
   tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
 }
 
