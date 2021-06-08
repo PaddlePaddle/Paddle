@@ -341,8 +341,6 @@ void AnalysisPredictor::MkldnnPreSet(
     platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
         platform::MKLDNNDeviceContextThreadLocals::
             kMKLDNNSessionID_CacheClearing);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
-        config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (size_t i = 0; i < inputs_shape.size(); ++i) {
@@ -353,6 +351,9 @@ void AnalysisPredictor::MkldnnPreSet(
     VLOG(2) << "Set input shape=" << ss.str();
     platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str(ss.str());
   }
+  platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
+      config_.mkldnn_cache_capacity_);
+
 #endif
 }
 
@@ -368,10 +369,9 @@ void AnalysisPredictor::MkldnnPostReset() {
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
     }
-    paddle::platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(0);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str("");
+    // We cannot reset to the default cache settings
+    // as there maybe CopyToCPU method used and oneDNN
+    // primitives are used there so cache would grow
   }
 #endif
 }
