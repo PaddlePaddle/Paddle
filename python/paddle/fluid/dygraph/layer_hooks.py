@@ -58,7 +58,7 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         start = layer._op_recorder.start
         end = len(default_main_program().current_block().ops)
         assert (start >= 0 and end >= start)
-        ops = default_main_program().block(0).ops[start:end]
+        ops = default_main_program().current_block().ops[start:end]
 
         layer._op_recorder.end = end
         layer._op_recorder.ops = ops

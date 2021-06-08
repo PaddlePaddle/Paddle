@@ -1059,9 +1059,6 @@ class Layer(core.Layer):
             raise TypeError("attrs should be type(dict), but received {}".
                             format(type(attrs).__name__))
 
-        if len(self._customized_attrs) != 0:
-            raise RuntimeError("Unsupported to call self._set_op_attrs twice!")
-
         # NOTE: Overwrite behavior for same key.
         self._customized_attrs.update(attrs)
 
