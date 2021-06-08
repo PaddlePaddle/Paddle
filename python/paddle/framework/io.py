@@ -651,6 +651,7 @@ def save(obj, path, protocol=4, **configs):
             from io import BytesIO
             import paddle
             from paddle.nn import Linear
+            paddle.disable_static()
 
             linear = Linear(5, 10)
             state_dict = linear.state_dict()
@@ -899,6 +900,7 @@ def load(path, **configs):
             from io import BytesIO
             import paddle
             from paddle.nn import Linear
+            paddle.disable_static()
 
             linear = Linear(5, 10)
             state_dict = linear.state_dict()
@@ -908,7 +910,7 @@ def load(path, **configs):
             paddle.save(tensor, byio)
             byio.seek(0)
             # load state_dict
-            dict_load = paddle.load(byio, return_numpy=True)
+            dict_load = paddle.load(byio)
 
     '''
 
