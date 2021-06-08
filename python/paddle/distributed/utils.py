@@ -166,7 +166,7 @@ class Cluster(object):
     def __ne__(self, cluster):
         return not self.__eq__(cluster)
 
-    def update_pods(cluster):
+    def update_pods(self, cluster):
         self.pods = copy.copy(cluster.pods)
 
     def trainers_nranks(self):
@@ -264,7 +264,7 @@ class Pod(object):
                 self.id != pod.id or \
                 self.addr != pod.addr or \
                 self.port != pod.port:
-            logger.debug("pod {} != pod".format(self, pod))
+            logger.debug("pod {} != {}".format(self, pod))
             return False
 
         if len(self.trainers) != len(pod.trainers):
