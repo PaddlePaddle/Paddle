@@ -14,6 +14,16 @@ def {
     type: FLOAT
   }
   attrs {
+    name: "transpose_X"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "transpose_Y"
+    type: BOOLEAN
+  }
+}
+extra {
+  attrs {
     name: "Scale_out"
     type: FLOAT
   }
@@ -25,16 +35,6 @@ def {
     name: "Scale_y"
     type: FLOAT
   }
-  attrs {
-    name: "transpose_X"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "transpose_Y"
-    type: BOOLEAN
-  }
-}
-extra {
   attrs {
     name: "use_mkldnn"
     type: BOOLEAN
