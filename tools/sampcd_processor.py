@@ -565,6 +565,8 @@ if __name__ == '__main__':
     args = parse_args()
     if args.debug:
         logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
     if args.logf:
         logfHandler = logging.FileHandler(args.logf)
         logfHandler.setFormatter(
