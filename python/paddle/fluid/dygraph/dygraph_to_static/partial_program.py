@@ -135,6 +135,7 @@ class PartialProgramLayer(layers.Layer):
         self._origin_main_program = self._verify_program(main_program)
         self._inner_scope = core.Scope()
         # Set default mode to train
+        self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
     @LazyInitialized
@@ -192,12 +193,30 @@ class PartialProgramLayer(layers.Layer):
         """
         required_params = []
         for param in self._params:
+            found_param = False
             for block in program.blocks:
-                if param.name in block.vars:
-                    required_params.append(param)
+                for op in block.ops:
+                    if param.name in op.input_arg_names or param.name in op.output_arg_names:
+                        required_params.append(param)
+                        found_param = True
+                        break
+                if found_param:
                     break
 
         self._params = required_params
+
+    def _get_double_grads(self, program):
+        double_grads = []
+        for block in program.blocks:
+            for name in block.vars:
+                if "@GRAD" in name:
+                    var_desc = block.vars[name].desc
+                    var_base = core.VarBase(var_desc.dtype(),
+                                            var_desc.shape(),
+                                            var_desc.name(),
+                                            var_desc.type(), False)
+                    double_grads.append(var_base)
+        return double_grads
 
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
@@ -208,7 +227,8 @@ class PartialProgramLayer(layers.Layer):
         core.ops.run_program(
             valid_vars(in_vars),
             valid_vars(self._params),
-            valid_vars(out_vars), tmp_scope_vec, *attrs)
+            valid_vars(out_vars),
+            valid_vars(self._double_grads), tmp_scope_vec, *attrs)
 
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
