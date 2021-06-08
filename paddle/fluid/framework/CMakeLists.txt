@@ -27,6 +27,22 @@ add_subdirectory(fleet)
 add_subdirectory(io)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
+
+proto_library(op_def_proto SRCS op_def.proto)
+cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto)
+
+FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
+FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt 
+     "namespace { \n"
+     "const std::unordered_map<std::string, std::string> op_def_map =  { \n")
+foreach(OP_DEF_FILE ${OP_DEF_FILES})
+    FILE(READ ${OP_DEF_FILE}  OP_DEF_CONTENT)
+    get_filename_component(OP_NAME ${OP_DEF_FILE} NAME_WE)
+    FILE(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt
+    "{\"${OP_NAME}\",R\"(${OP_DEF_CONTENT})\"},\n")
+endforeach(OP_DEF_FILE)
+FILE(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt "{\"\",\"\"}};\n}")
+
 proto_library(heter_service_proto SRCS heter_service.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
@@ -287,6 +303,15 @@ if(WITH_DISTRIBUTE)
             graph_to_program_pass variable_helper timer monitor)
   endif()
 elseif(WITH_PSLIB)
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS
+              "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(device_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(hetercpu_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  set_source_files_properties(heterxpu_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc

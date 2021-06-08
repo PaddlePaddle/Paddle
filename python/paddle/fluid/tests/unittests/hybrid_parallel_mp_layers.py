@@ -212,7 +212,7 @@ class TestDistTraning(unittest.TestCase):
             optimizer_b.step()
 
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
+                loss_a.numpy(), loss_b.numpy(), rtol=5e-6)
 
     def test_parallel_embedding(self):
         batch_size = 17
@@ -231,7 +231,7 @@ class TestDistTraning(unittest.TestCase):
         # model_b
         check_group = dist.new_group(list(range(self.model_parallel_size)))
         integral_w = []
-        partial_w = model_a.embedding.embedding.weight.clone().detach()
+        partial_w = model_a.embedding.weight.clone().detach()
         paddle.distributed.all_gather(integral_w, partial_w, group=check_group)
         result_w = []
         for idx in range(len(integral_w)):
@@ -265,8 +265,9 @@ class TestDistTraning(unittest.TestCase):
 
             optimizer_a.step()
             optimizer_b.step()
-            np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-6)
+            print(loss_a.numpy(), loss_b.numpy())
+
+            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
 
 
 if __name__ == '__main__':

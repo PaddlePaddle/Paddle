@@ -20,11 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef __NVCC__
 #include <cuda.h>
 #include <cuda_fp16.h>
 #include "cub/cub.cuh"
+
 #endif
 #ifdef __HIPCC__
 #include <hip/hip_fp16.h>
@@ -38,9 +40,10 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-void default_elementwise_add(const framework::ExecutionContext &ctx,
-                             const framework::Tensor *x,
-                             const framework::Tensor *y, framework::Tensor *z) {
+void LaunchBroadcastElementwiseCpuKernel(const framework::ExecutionContext &ctx,
+                                         const framework::Tensor *x,
+                                         const framework::Tensor *y,
+                                         framework::Tensor *z) {
   int axis = ctx.Attr<int>("axis");
   auto x_dims = x->dims();
   auto y_dims = y->dims();
@@ -68,12 +71,11 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-    auto dims_equal = x->dims() == y->dims();
-    if (dims_equal) {
-      SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
-      same_dims_add(ctx, x, y, z);
+    if (x->dims() == y->dims()) {
+      SameDimsElemwiseAdd<DeviceContext, T> LaunchElementwiseCpuKernel;
+      LaunchElementwiseCpuKernel(ctx, x, y, z);
     } else {
-      default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
+      LaunchBroadcastElementwiseCpuKernel<DeviceContext, T>(ctx, x, y, z);
     }
   }
 };
@@ -459,8 +461,8 @@ class ElementwiseAddDoubleGradKernel : public framework::OpKernel<T> {
       GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
 
       ddout->mutable_data<T>(ctx.GetPlace());
-      default_elementwise_add<DeviceContext, T>(ctx, &ddx_safe, &ddy_safe,
-                                                ddout);
+      LaunchBroadcastElementwiseCpuKernel<DeviceContext, T>(ctx, &ddx_safe,
+                                                            &ddy_safe, ddout);
     }
   }
 };

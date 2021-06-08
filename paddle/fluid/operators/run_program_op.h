@@ -131,6 +131,9 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
+    if (var_names[i] == "Fake_var") {
+      continue;
+    }
     auto *var = scope->Var(var_names[i]);
     CheckInputVarStatus(*vars[i], var_names[i]);
     VariableShare(*vars[i], var);
@@ -141,9 +144,9 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    if (var_names[i] == framework::kEmptyVarName) {
-      VLOG(2) << "find variable name is " << framework::kEmptyVarName
-              << ", skip it!";
+    if (var_names[i] == framework::kEmptyVarName ||
+        var_names[i] == "Fake_var") {
+      VLOG(2) << "find variable name is " << var_names[i] << ", skip it!";
       continue;
     }
     // NOTE: Here skip not found var is dangerous, if a bug is caused here,
@@ -170,9 +173,11 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto &input_vars = ctx.MultiInputVar("X");
     auto &param_vars = ctx.MultiInputVar("Params");
     auto output_vars = ctx.MultiOutputVar("Out");
+    auto dout_vars = ctx.MultiOutputVar("DOut");
 
     auto input_var_names = ctx.InputNames("X");
     auto output_var_names = ctx.OutputNames("Out");
+    auto dout_var_names = ctx.OutputNames("DOut");
 
     // current program may not hold parameters
     std::vector<std::string> param_names;
@@ -222,12 +227,16 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       // Step 3. run ops
       // all out_vars are skip_eager_var
       std::vector<std::string> skip_eager_delete_vars(output_var_names);
+      skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
+                                    dout_var_names.begin(),
+                                    dout_var_names.end());
       framework::details::ParseSafeEagerDeletionSkipVars(
           *program, end_op_index, output_var_names, &skip_eager_delete_vars);
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
+    details::ShareVarsFromScope(dout_vars, dout_var_names, &scope);
 
     // Debug info: scope info when run end
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());

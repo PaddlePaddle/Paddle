@@ -36,11 +36,32 @@ from paddle.utils import deprecated
 from .utils import check_shape
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'create_global_var', 'cast',
-    'tensor_array_to_tensor', 'concat', 'sums', 'assign',
-    'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
-    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'triu'
+    'create_tensor',
+    'create_parameter',
+    'create_global_var',
+    'cast',
+    'tensor_array_to_tensor',
+    'concat',
+    'sums',
+    'assign',
+    'fill_constant_batch_size_like',
+    'fill_constant',
+    'argmin',
+    'argmax',
+    'argsort',
+    'ones',
+    'zeros',
+    'reverse',
+    'has_inf',
+    'has_nan',
+    'isfinite',
+    'range',
+    'linspace',
+    'zeros_like',
+    'ones_like',
+    'diag',
+    'eye',
+    'triu',
 ]
 
 
@@ -580,10 +601,15 @@ def assign(input, output=None):
         input = numpy.array([input])
     elif isinstance(input, (list, tuple)):
         input = numpy.array(input)
-
-    if isinstance(input, Variable):
+    # NOTE(Aurelius84): Why we judge core.VarBase?
+    # In case of @to_static, a VarBase can be as input of `assign`,
+    # but in_dygraph_mode()==False under @to_static, which means
+    # isinstance(VarBase, Variable) == False. It will cause return None
+    # after this api.
+    if isinstance(input, (Variable, core.VarBase)):
         check_dtype(input.dtype, 'input', [
-            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'
+            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+            'uint8', 'bool'
         ], 'assign', '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(

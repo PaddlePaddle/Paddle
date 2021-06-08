@@ -69,6 +69,7 @@ disable_wingpu_test="^test_model$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
 ^test_reader_reset$|\
+^test_imperative_se_resnext$|\
 ^test_sync_batch_norm_op$|\
 ^test_imperative_static_runner_while$|\
 ^test_dataloader_keep_order$|\
@@ -344,6 +345,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     if [ -f "$PADDLE_ROOT/added_ut" ];then
         added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
         ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+        rm -f $PADDLE_ROOT/added_ut
         if [ "$added_ut_error" != 0 ];then
             echo "========================================"
             echo "Added UT should pass three additional executions"
