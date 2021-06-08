@@ -16,6 +16,7 @@ from __future__ import print_function
 import numpy as np
 import six
 
+import paddle
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
@@ -263,7 +264,17 @@ class PartialProgramLayer(layers.Layer):
                     place=framework._current_expected_place(),
                     zero_copy=True)
             elif isinstance(value, core.VarBase):
-                var = value
+                if value.stop_gradient:
+                    # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
+                    # into CUDAPlace when it's as input of multi Ops. so we move it in advance
+                    # to avoid this problem.
+                    var = paddle.to_tensor(
+                        value,
+                        dtype=value.dtype,
+                        place=framework._current_expected_place(),
+                        stop_gradient=True)
+                else:
+                    var = value
                 var.name = self._inputs[i].desc.name()
             else:
                 continue
