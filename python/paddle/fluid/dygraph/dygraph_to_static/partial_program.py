@@ -227,8 +227,8 @@ class PartialProgramLayer(layers.Layer):
         core.ops.run_program(
             valid_vars(in_vars),
             valid_vars(self._params),
-            valid_vars(out_vars),
-            valid_vars(self._double_grads), tmp_scope_vec, *attrs)
+            valid_vars(out_vars), tmp_scope_vec,
+            valid_vars(self._double_grads), *attrs)
 
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
