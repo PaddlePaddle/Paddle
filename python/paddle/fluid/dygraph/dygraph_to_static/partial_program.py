@@ -256,6 +256,7 @@ class PartialProgramLayer(layers.Layer):
                     place=framework._current_expected_place(),
                     zero_copy=True)
             elif isinstance(value, core.VarBase):
+                value.name = self._inputs[i].desc.name()
                 if value.stop_gradient:
                     # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                     # into CUDAPlace when it's as input of multi Ops. so we move it in advance
@@ -265,9 +266,9 @@ class PartialProgramLayer(layers.Layer):
                         dtype=value.dtype,
                         place=framework._current_expected_place(),
                         stop_gradient=True)
+                    var.name = value.name
                 else:
                     var = value
-                var.name = self._inputs[i].desc.name()
             else:
                 continue
             input_vars.append(var)
