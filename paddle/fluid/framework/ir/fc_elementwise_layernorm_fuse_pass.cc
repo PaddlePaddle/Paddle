@@ -191,11 +191,11 @@ FCElementwiseLayerNormFusePass::FCElementwiseLayerNormFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput("Out")
+      .AddOutput("Out")
       .IsTensor()
       .End();
 
-  AddOpCompat(OpCompat("fc_elementwise_layernorm"))
+  AddOpCompat(OpCompat("fused_fc_elementwise_layernorm"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -341,7 +341,8 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetAttr("activation_type", fc->Op()->GetAttr("activation_type"));
 
     if (!IsCompat(new_desc)) {
-      LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+      LOG(WARNING)
+          << "fc_elementwise_layernorm fuse pass in out fc op compat failed.";
       return;
     }
 
