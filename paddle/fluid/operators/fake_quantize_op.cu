@@ -216,16 +216,16 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
   int tid = threadIdx.x;
 
   T s = scale[0];
-  T range = static_cast<T>(bin_cnt);
+  T bin_cnt_t = static_cast<T>(bin_cnt);
 
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
     x = x > s ? s : x;
     x = x < -s ? -s : x;
-    x = (range / s)* x
+    x = (bin_cnt_t / s) * x;
 
-        x = round(static_cast<float>(x));
-    out[i] = (x * s) / range;
+    x = static_cast<T>(round(static_cast<float>(x)));
+    out[i] = (x * s) / bin_cnt_t;
   }
 }
 
