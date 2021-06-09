@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/seqconv_eltadd_relu_fuse_pass.h"
 #include <string>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -26,6 +27,43 @@ class Scope;
 namespace paddle {
 namespace framework {
 namespace ir {
+
+seqconv_eltadd_relu_fuse_pass::seqconv_eltadd_relu_fuse_pass() {
+  AddOpCompat(OPCompat("sequence_conv"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("PaddingData")
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
 
 class Node;
 
@@ -70,6 +108,10 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     VLOG(4) << "handle SeqConv EltAdd Relu fuse";
     GET_IR_NODE_FROM_SUBGRAPH(seqconv, seqconv, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(seqconv_weight, seqconv_weight, fuse_pattern);
