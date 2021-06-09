@@ -134,7 +134,9 @@ def get_path_from_url(url,
         root_dir (str): root dir for downloading, it should be
                         WEIGHTS_HOME or DATASET_HOME
         md5sum (str): md5 sum of download package
-    
+        decompress (bool): decompress zip or tar file. Default is `True`
+        method (str): which download method to use. Support `wget` and `get`. Default is `get`.
+
     Returns:
         str: a local path to save downloaded models & weights & datasets.
     """
@@ -231,6 +233,9 @@ def _download(url, path, md5sum=None, method='get'):
 
     url (str): download url
     path (str): download to given path
+    md5sum (str): md5 sum of download package
+    method (str): which download method to use. Support `wget` and `get`. Default is `get`.
+
     """
     assert method in _download_methods, 'make sure `{}` implemented'.format(
         method)
