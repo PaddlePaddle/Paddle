@@ -14,7 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
 #ifdef __HIPCC__
@@ -27,6 +27,23 @@ namespace paddle {
 namespace operators {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2 };
+
+/*
+* According to NVIDIA, the number of blocks should be greater (at least 2x~4x)
+* than number of SMs. Hence, SMs is took into consideration within this
+* function to determine the right number of threads per block,
+*/
+template <typename Enable = void>
+int GetThreadsConfig(const platform::CUDADeviceContext &ctx, int64_t numel) {
+  int threads = ELEMENTWISE_BLOCK_SIZE;
+  int sm_nums = ctx.GetSMCount();
+  if (numel / (sm_nums << 1) < ELEMENTWISE_BLOCK_SIZE) {
+    threads = platform::RoundToPowerOfTwo(numel / (sm_nums << 1));
+  } else if (numel / (sm_nums << 2) < ELEMENTWISE_BLOCK_SIZE) {
+    threads = platform::RoundToPowerOfTwo(numel / (sm_nums << 1));
+  }
+  return threads;
+}
 
 /*
 * Only the address of input data is the multiplier of 1,2,4, vectorized load
@@ -106,7 +123,7 @@ struct ElementwiseDataWrapper {
 
 template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
           typename Functor>
-__device__ void VectorizedKernelImpl(
+__device__ inline void VectorizedKernelImpl(
     ElementwiseDataWrapper<ET, VecSize, InT, OutT> data, Functor func,
     int tid) {
   using InVecType = CudaAlignedVector<InT, VecSize>;
@@ -114,34 +131,30 @@ __device__ void VectorizedKernelImpl(
   InVecType ins_vec[ET];
   OutVecType out_vec;
   InT *ins_ptr[ET];
-  OutT *out_ptr;
+  InT ins[ET];
 #pragma unroll
   for (int i = 0; i < ET; ++i) {
     ins_ptr[i] = reinterpret_cast<InT *>(&(ins_vec[i]));
   }
-  out_ptr = reinterpret_cast<OutT *>(&out_vec);
-
   // load
   data.load_vector(ins_vec, tid);
 
 // compute
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
-    InT ins[ET];
 #pragma unroll
     for (int j = 0; j < ET; ++j) {
       ins[j] = ins_ptr[j][i];
     }
-    out_ptr[i] = func(ins);
+    out_vec.val[i] = func(ins);
   }
-
   // store
   data.store_vector(out_vec, tid);
 }
 
 template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
           typename Functor>
-__device__ void ScalarKernelImpl(
+__device__ inline void ScalarKernelImpl(
     ElementwiseDataWrapper<ET, VecSize, InT, OutT> data, Functor func,
     int start, int remain) {
   InT ins[ET];
@@ -192,7 +205,7 @@ void LaunchSameDimsElementwiseCudaKernel(
   // calculate the max vec_size for all ins and outs
   auto size = ins[0]->numel();
   int vec_size = GetVectorizedSize<InT, OutT>(ins, *outs);
-  int block_size = ELEMENTWISE_BLOCK_SIZE;
+  int block_size = GetThreadsConfig(ctx, size);
   int grid_size =
       ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
   const InT *in0 = ins[0]->data<InT>();
