@@ -29,6 +29,7 @@ _logger = get_logger(
 
 class QuantConfig:
     """
+    The quant config saved in layers.
     """
 
     def __init__(self, forward_post_hook=None):
@@ -115,15 +116,12 @@ class ImperativePTQ(object):
                 # get the threshold of weight for conv2d and linear
                 # add fake_quant_ops
                 # save thresholds
-                '''
-                sub_layer._set_op_attrs({'input_thresholds':quant_config.input_thresholds,
-                    'output_thresholds': quant_config.output_thresholds})
-                '''
                 quant_config = sub_layer._quant_config
                 quant_config.forward_post_hook.remove()
 
     def _post_process_kl(self, layer):
         """
+        Post process for using kl algorithm.
         """
         _logger.info("Post process for %s" % layer.full_name())
 
@@ -148,6 +146,7 @@ class ImperativePTQ(object):
 
     def _post_process_hist(self, layer):
         """
+        Post process for using kl algorithm.
         """
 
         def _helper(abs_max, hist, percent):

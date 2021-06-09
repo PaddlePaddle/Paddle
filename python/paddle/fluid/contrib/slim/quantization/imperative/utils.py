@@ -16,7 +16,6 @@ import math
 import numpy as np
 
 import paddle
-from paddle.fluid import dygraph
 
 from . import quant_nn
 
@@ -112,7 +111,7 @@ def find_parent_layer_and_sub_name(model, name):
     For example, if name is 'block_1/convbn_1/conv_1', the parent layer is
     'block_1/convbn_1' and the sub_name is `conv_1`.
     """
-    assert isinstance(model, dygraph.Layer), \
+    assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
     assert len(name) > 0, "The input (name) should not be empty."
 
@@ -134,13 +133,13 @@ def is_leaf_layer(layer):
     """
     Whether the layer is leaf layer.
     """
-    return isinstance(layer, dygraph.Layer) \
+    return isinstance(layer, paddle.nn.Layer) \
         and len(layer.sublayers()) == 0
 
 
 def expand_quantized_bins(quantized_bins, reference_bins):
-    '''
-    '''
+    """
+    """
     expanded_quantized_bins = [0] * len(reference_bins)
     num_merged_bins = int(len(reference_bins) / len(quantized_bins))
     j_start = 0
