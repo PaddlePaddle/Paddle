@@ -101,12 +101,12 @@ struct CBlas<int8_t> {
 
 template <>
 struct CBlas<platform::bfloat16> {
-#ifdef PADDLE_WITH_MKLDNN
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
+#ifdef PADDLE_WITH_MKLDNN
     detail::onednn_handler_axpy(args...);
 #else
-  detail::axpy(args...);
+    detail::axpy(args...);
 #endif
   }
   template <typename... ARGS>
