@@ -113,7 +113,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
-
+        if self.nranks == 1:
+            return optimize_ops, params_grads
         self._init_process_group()
 
         self.main_program = program

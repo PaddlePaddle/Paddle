@@ -83,7 +83,7 @@ class Cluster(object):
     def __ne__(self, cluster):
         return not self.__eq__(cluster)
 
-    def update_pods(cluster):
+    def update_pods(self, cluster):
         self.pods = copy.copy(cluster.pods)
 
     def trainers_nranks(self):
