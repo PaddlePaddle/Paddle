@@ -945,7 +945,7 @@ function assert_file_diff_approvals() {
 
 
 function check_coverage() {
-    /bin/bash -x ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
 }
 
 
@@ -1174,7 +1174,7 @@ set -x
                 exit 8;
             fi
         fi
-#set +x
+set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
