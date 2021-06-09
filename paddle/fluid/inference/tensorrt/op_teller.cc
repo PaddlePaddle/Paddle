@@ -700,7 +700,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
-      if (!desc.HasAttr("shape") || with_dynamic_shape) {
+      if (!desc.HasAttr("shape")) {
         return false;
         // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
       } else if (desc.Input("Shape").size() >= 1 ||
