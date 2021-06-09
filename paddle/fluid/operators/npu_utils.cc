@@ -8,7 +8,7 @@ namespace operators {
 
 void alloc_float_status(const paddle::platform::NPUDeviceContext& ctx,
         paddle::framework::Tensor* float_status){
-    auto runner = NpuOpRunner("NPUAllocFloatStatus", {}, {*float_status});
+    auto& runner = NpuOpRunner("NPUAllocFloatStatus", {}, {*float_status});
     auto stream = ctx.stream();
     runner.Run(stream);
 }
@@ -16,14 +16,14 @@ void alloc_float_status(const paddle::platform::NPUDeviceContext& ctx,
 
 bool FoundNanOrInf(const paddle::platform::NPUDeviceContext& ctx, aclrtStream stream, 
         const paddle::framework::Tensor* float_status, Tensor* tmp){
-    auto runner_float_status =
+    auto& runner_float_status =
         NpuOpRunner("NPUGetFloatStatus", {*float_status}, {*tmp},
                     {{"message", std::string("check_nan_and_inf")}});
     runner_float_status.Run(stream);
 
     paddle::framework::Tensor sum;
     sum.mutable_data<float>({1}, ctx.GetPlace());
-    auto runner_reduce_sum =
+    auto& runner_reduce_sum =
         NpuOpRunner("ReduceSumD", {*float_status}, {sum},
                     {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
     runner_reduce_sum.Run(stream);
@@ -39,7 +39,7 @@ bool FoundNanOrInf(const paddle::platform::NPUDeviceContext& ctx, aclrtStream st
 
 void clear_float_status(const platform::NPUDeviceContext& ctx, 
         Tensor* float_status, Tensor* tmp){
-    auto runner_clear_status =
+    auto& runner_clear_status =
         paddle::operators::NpuOpRunner("NPUClearFloatStatus", {*float_status}, {*tmp});
     runner_clear_status.Run(ctx.stream());
 }

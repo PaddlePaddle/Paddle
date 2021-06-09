@@ -228,83 +228,28 @@ TEST(c_allreduce_sum, NPU) {
   // only support one device, if more than one device, use first default
   PrepareUniqueId(&scope, ctx, &hccl_id);
   Prepare(&scope, ctx, &hccl_id);
-  //auto inf_all = std::numeric_limits<float>::infinity();
 
-  f::Tensor tmp;
-  tmp.mutable_data<float>({8}, ctx.GetPlace()); 
+  {
+      f::Tensor tmp;
+      tmp.mutable_data<float>({8}, ctx.GetPlace()); 
 
-  auto float_status_var = scope.Var("FloatStatus");
-  auto float_status = float_status_var->GetMutable<f::LoDTensor>();
-  float_status->Resize({8});
-  float_status->mutable_data<float>(ctx.GetPlace());
+      auto float_status_var = scope.Var("FloatStatus");
+      auto float_status = float_status_var->GetMutable<f::LoDTensor>();
+      float_status->Resize({8});
+      float_status->mutable_data<float>(ctx.GetPlace());
+      o::alloc_float_status(ctx, float_status);
+  }
 
-  o::alloc_float_status(ctx, float_status);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num: " << i << " float";
     TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
-    VLOG(2) << "iter num: " << i << " float16";
-    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(3.0));
   }
 
   touch_inf(&scope, ctx);
 
-  /*
-  o::alloc_float_status(ctx, float_status);
-  for (int i = 0; i < 1; i++) {
-    VLOG(2) << "iter num 2: " << i << " float";
-    TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
-    VLOG(2) << "iter num 2: " << i << " float16";
-    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(3.0));
-  }
-
-  for (int i = 0; i < 1; i++) {
-    VLOG(2) << "iter num 3: " << i << " float inf";
-    TestHCCLAllReduceOp<float>(&scope, ctx, i, inf_all, inf_all);
-
-    VLOG(2) << "iter num 3: " << i << " float16 inf";
-    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(inf_all), static_cast<float16>(inf_all));
-  }
-
-  */
-  o::clear_float_status(ctx, float_status, &tmp);
-  ctx.Wait();
-
-  o::alloc_float_status(ctx, float_status);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num 4: " << i << " float";
     TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
-    VLOG(2) << "iter num 4: " << i << " float16";
-    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(3.0));
   }
-  o::clear_float_status(ctx, float_status, &tmp);
   ctx.Wait();
 }
-
-/*
-TEST(nan_or_inf, NPU) {
-  f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
-
-  f::Tensor tmp, float_status;
-  tmp.mutable_data<float>({8}, ctx.GetPlace()); 
-  float_status.mutable_data<float>({8}, ctx.GetPlace()); 
-
-  // first
-  o::alloc_float_status(ctx, &float_status);
-  bool nan_or_inf=false;
-
-  touch_inf(&scope, ctx);
-  nan_or_inf= o::FoundNanOrInf(ctx, ctx.stream(), &float_status, &tmp);
-  EXPECT_TRUE(nan_or_inf);
-  ctx.Wait();
-
-  o::clear_float_status(ctx, &float_status, &tmp);
-
-  // second
-  o::alloc_float_status(ctx, &float_status);
-  nan_or_inf= o::FoundNanOrInf(ctx, ctx.stream(), &float_status, &tmp);
-  EXPECT_TRUE(!nan_or_inf);
-}
-*/
-
-
