@@ -17,6 +17,8 @@ from __future__ import division
 import unittest
 import numpy as np
 
+import paddle
+import paddle.vision.transforms as transforms
 import paddle.fluid as fluid
 from paddle.io import *
 
@@ -35,6 +37,31 @@ class TestDatasetAbstract(unittest.TestCase):
             self.assertTrue(False)
         except NotImplementedError:
             pass
+
+
+class TestDatasetWithDiffOutputPlace(unittest.TestCase):
+    def get_dataloader(self, num_workers):
+        dataset = paddle.vision.datasets.MNIST(
+            mode='test', transform=transforms.ToTensor())
+        loader = paddle.io.DataLoader(
+            dataset, batch_size=32, num_workers=num_workers, shuffle=True)
+        return loader
+
+    def test_single_process(self):
+        # Get (image, label) tuple from MNIST dataset
+        # - the image is on CUDAPlace, label is on CPUPlace
+        loader = self.get_dataloader(0)
+        for image, label in loader:
+            self.assertTrue(image.place.is_gpu_place())
+            self.assertTrue(label.place.is_cuda_pinned_place())
+
+    def test_multi_process(self):
+        # Get (image, label) tuple from MNIST dataset
+        # - the image and label are on CPUPlace
+        loader = self.get_dataloader(1)
+        for image, label in loader:
+            self.assertTrue(image.place.is_cuda_pinned_place())
+            self.assertTrue(label.place.is_cuda_pinned_place())
 
 
 if __name__ == '__main__':
