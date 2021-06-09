@@ -18,6 +18,7 @@ from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
+from .creation import diagflat  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
 from .creation import ones  # noqa: F401
