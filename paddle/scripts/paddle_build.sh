@@ -1167,7 +1167,6 @@ set -x
                 exit 8;
             fi
         fi
-
 #set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
