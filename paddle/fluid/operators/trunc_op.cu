@@ -2,7 +2,9 @@
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,40 +17,46 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class truncFunctor {
+class TruncFunctor {
  public:
-  __device__ truncFunctor(const T x) : _x(x) {}
-  __device__ T operator()() { return trunc(_x); }
-  const T _x;
+  __device__ TruncFunctor(const T x) : x_(x) {}
+  __device__ T operator()() { return trunc(x_); }
+
+ public:
+  const T x_;
 };
 
 template <>
-class truncFunctor<int> {
+class TruncFunctor<int> {
  public:
-  __device__ truncFunctor(const int x) : _x(x) {}
-  __device__ int operator()() { return _x; }
-  const int _x;
+  __device__ TruncFunctor(const int x) : x_(x) {}
+  __device__ int operator()() { return x_; }
+
+ public:
+  const int x_;
 };
 
 template <>
-class truncFunctor<int64_t> {
+class TruncFunctor<int64_t> {
  public:
-  __device__ truncFunctor(const int64_t x) : _x(x) {}
-  __device__ int64_t operator()() { return _x; }
-  const int64_t _x;
+  __device__ TruncFunctor(const int64_t x) : x_(x) {}
+  __device__ int64_t operator()() { return x_; }
+
+ public:
+  const int64_t x_;
 };
 
 template <typename T>
 __global__ void Trunc(const T* x, T* out, int64_t N) {
   CUDA_KERNEL_LOOP(index, N) {
-    truncFunctor<T> functor(x[index]);
+    TruncFunctor<T> functor(x[index]);
     out[index] = functor();
   }
 }
 
 template <typename T>
 __global__ void TruncGrad(T* dx, int64_t N) {
-  CUDA_KERNEL_LOOP(index, N) { dx[index] = 0.0; }
+  CUDA_KERNEL_LOOP(index, N) { dx[index] = static_cast<T>(0.0); }
 }
 
 template <typename T>
@@ -63,9 +71,10 @@ class TruncCUDAKernel : public framework::OpKernel<T> {
 
     int64_t numel = x->numel();
 
-    dim3 blockSize(256);
-    dim3 gridSize((numel + blockSize.x - 1) / blockSize.x);
-    Trunc<<<gridSize, blockSize>>>(x_data, out_data, numel);
+    int theads = platform::PADDLE_CUDA_NUM_THREADS;
+    int blocks = (numel + theads - 1) / theads;
+
+    Trunc<<<blocks, theads>>>(x_data, out_data, numel);
   }
 };
 
