@@ -71,7 +71,7 @@ class TestClassCenterSampleOp(OpTest):
         common_setup(self, label, num_class, ratio, ignore_label)
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 if __name__ == '__main__':

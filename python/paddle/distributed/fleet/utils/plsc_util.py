@@ -13,6 +13,7 @@
 # limitations under the License.
 """PLSC: PaddlePaddle Large Scale Classification utils"""
 
+from paddle.fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
 
@@ -60,6 +61,16 @@ def class_center_sample(label, num_class, ratio=0.1, ignore_label=-1):
     	remaped_label == [0, -1, 1, 0]
     	sampled_class == [0, 3]
     """
+    if ratio <= 0.0 or ratio > 1.0:
+        raise ValueError(
+            'Expected ratio value in (0.0, 1.0], got ratio {}'.format(ratio))
+
+    seed = default_main_program().random_seed
+    if in_dygraph_mode():
+        out, sampled_class = core.ops.class_center_sample(
+            label, 'num_class', num_class, 'ratio', ratio, 'ignore_label',
+            ignore_label, 'seed', seed)
+        return out, sampled_class
 
     check_variable_and_dtype(label, 'label', ['int64', 'int'],
                              'class_center_sample')
@@ -67,7 +78,6 @@ def class_center_sample(label, num_class, ratio=0.1, ignore_label=-1):
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=label.dtype)
     sampled_class = helper.create_variable_for_type_inference(dtype=label.dtype)
-    seed = helper.main_program.random_seed
     helper.append_op(
         type=op_type,
         inputs={'X': label},
