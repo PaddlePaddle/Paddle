@@ -157,6 +157,10 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         self.x_spec = paddle.static.InputSpec([-1, 16], name='x')
         self.x = paddle.randn([4, 16])
 
+    @classmethod
+    def setUpClass(cls):
+        paddle.disable_static()
+
     def test_non_tensor_bool(self):
         specs = [self.x_spec, False]
         self.check_result(specs, 'bool')
@@ -203,8 +207,6 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         load_out = load_net(self.x)
 
         self.assertTrue(np.allclose(st_out, load_out))
-
-        print(pred_out, st_out, dy_out, load_out)
 
     def test_spec_compatible(self):
         net = NetWithNonTensorSpec(self.in_num, self.out_num)

@@ -480,9 +480,10 @@ class StaticFunction(object):
                 # NOTE(chenweihang): we should always translated program based on the `input_spec`
                 # decorated on forward if it is valid
                 desired_input_spec = self._function_spec.input_spec
-                logging_utils.warn(
-                    "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".
-                    format(desired_input_spec, input_spec))
+                if input_spec is not None:
+                    logging_utils.warn(
+                        "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".
+                        format(desired_input_spec, input_spec))
 
             has_input_spec = (desired_input_spec is not None)
             if has_input_spec:
