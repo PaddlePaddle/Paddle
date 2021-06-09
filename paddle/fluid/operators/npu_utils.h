@@ -25,6 +25,8 @@ bool FoundNanOrInf(const paddle::platform::NPUDeviceContext& ctx, aclrtStream st
 
 void clear_float_status(const paddle::platform::NPUDeviceContext& ctx,
         Tensor* float_status, Tensor* tmp);
+
+int hlt_hccl_aclop_compile_and_exec_test(int deviceId, aclrtStream stream);
 };
 };
 
