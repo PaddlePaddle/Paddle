@@ -33,7 +33,7 @@ std::string PDNodeName(const proto::PassDesc::Op& op,
   return string::Sprintf("%s:%s", op.type(), var.name());
 }
 
-GeneratePass::GeneratePass(proto::PassDesc pass_desc) {
+GeneratePass::GeneratePass(const proto::PassDesc& pass_desc) {
   multi_pass_desc_.add_pass_desc()->CopyFrom(pass_desc);
 }
 
