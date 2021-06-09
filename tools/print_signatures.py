@@ -213,7 +213,8 @@ def visit_all_module(mod):
                 visit_member(mod.__name__, instance)
 
 
-api_info_dict = {}
+# all from gen_doc.py
+api_info_dict = {}  # used by get_all_api
 
 
 # step 1: walkthrough the paddle package to collect all the apis in api_set
@@ -305,10 +306,29 @@ def process_module(m, attr="__all__"):
     return api_counter
 
 
+def get_all_api_from_modulelist():
+    modulelist = [
+        paddle, paddle.amp, paddle.nn, paddle.nn.functional,
+        paddle.nn.initializer, paddle.nn.utils, paddle.tensor, paddle.static,
+        paddle.static.nn, paddle.io, paddle.jit, paddle.metric,
+        paddle.distribution, paddle.optimizer, paddle.optimizer.lr,
+        paddle.regularizer, paddle.text, paddle.utils, paddle.utils.download,
+        paddle.utils.profiler, paddle.sysconfig, paddle.vision,
+        paddle.distributed, paddle.distributed.fleet,
+        paddle.distributed.fleet.utils, paddle.distributed.parallel,
+        paddle.distributed.utils, paddle.callbacks, paddle.hub
+    ]
+    for m in modulelist:
+        visit_all_module(m)
+
+    return member_dict
+
+
 if __name__ == '__main__':
-    modules = sys.argv[1].split(",")
-    for m in modules:
-        visit_all_module(importlib.import_module(m))
+    # modules = sys.argv[1].split(",")
+    # for m in modules:
+    #    visit_all_module(importlib.import_module(m))
+    get_all_api_from_modulelist()
 
     for name in member_dict:
         print(name, member_dict[name])

@@ -499,9 +499,8 @@ def get_full_api():
     get all the apis
     """
     global API_DIFF_SPEC_FN  ## readonly
-    from print_signatures import visit_all_module
-    import paddle
-    member_dict = visit_all_module(paddle)
+    from print_signatures import get_all_api_from_modulelist
+    member_dict = get_all_api_from_modulelist()
     with open(API_DIFF_SPEC_FN, 'w') as f:
         f.write("\n".join(member_dict.keys()))
 
