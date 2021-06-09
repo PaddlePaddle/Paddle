@@ -7,7 +7,7 @@ SET(XPU_PROJECT                 "extern_xpu")
 SET(XPU_API_LIB_NAME            "libxpuapi.so")
 SET(XPU_RT_LIB_NAME             "libxpurt.so")
 
-IF(WITH_AARCH64)
+IF(WITH_AARCH64 OR WITH_ARM)
   SET(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
   SET(XPU_XDNN_DIR_NAME "xdnn-kylin_aarch64")
   SET(XPU_XCCL_DIR_NAME "xccl-kylin_aarch64")
