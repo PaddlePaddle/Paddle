@@ -60,7 +60,6 @@ int GetVectorizedSizeImpl(const T *pointer) {
       std::alignment_of<CudaAlignedVector<T, 4>>::value;  // NOLINT
   constexpr int vec2 =
       std::alignment_of<CudaAlignedVector<T, 2>>::value;  // NOLINT
-
   if (address % vec4 == 0) {
     return std::min(vec4, valid_vec_size);
   } else if (address % vec2 == 0) {
