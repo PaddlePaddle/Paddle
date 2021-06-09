@@ -48,10 +48,21 @@ class GatherOpKernel : public framework::OpKernel<T> {
     }
     const auto &place = ctx.GetPlace();
     const auto &index_type = index->type();
+    if (axis != 0) {
+      if (index_type == framework::proto::VarType::INT32) {
+        GatherV2Function<T, int32_t>(x, index, axis, output, place);
+      } else if (index_type == framework::proto::VarType::INT64) {
+        GatherV2Function<T, int64_t>(x, index, axis, output, place);
+      }
+      return;
+    }
+
+    output->mutable_data<T>(ctx.GetPlace());
+    if (x->numel() == 0) return;
     if (index_type == framework::proto::VarType::INT32) {
-      GatherV2Function<T, int32_t>(x, index, axis, output, place);
+      CPUGather<T, int>(ctx.device_context(), *x, *index, output);
     } else if (index_type == framework::proto::VarType::INT64) {
-      GatherV2Function<T, int64_t>(x, index, axis, output, place);
+      CPUGather<T, int64_t>(ctx.device_context(), *x, *index, output);
     }
   }
 };
@@ -78,12 +89,37 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
         axis = static_cast<int>(axis_tensor->data<int64_t>()[0]);
       }
     }
-    const auto &place = ctx.GetPlace();
     const auto &index_type = index->type();
+
+    if (axis != 0) {
+      if (index_type == framework::proto::VarType::INT32) {
+        GatherV2GradFunction<T, int32_t>(dO, index, axis, dX, ctx.GetPlace());
+      } else if (index_type == framework::proto::VarType::INT64) {
+        GatherV2GradFunction<T, int64_t>(dO, index, axis, dX, ctx.GetPlace());
+      }
+      return;
+    }
+
+    dX->mutable_data<T>(ctx.GetPlace());
+    auto dxt = framework::EigenVector<T>::Flatten(*dX);
+    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    dxt.device(place) = dxt.constant(static_cast<T>(0));
+    if (dO->numel() == 0) return;
+    bool overwrite = ctx.Attr<bool>("overwrite");
+
     if (index_type == framework::proto::VarType::INT32) {
-      GatherV2GradFunction<T, int32_t>(dO, index, axis, dX, place);
+      if (overwrite) {
+        ScatterAssign<T, int32_t>(ctx.device_context(), *dO, *index, dX);
+      } else {
+        ScatterAssignAdd<T, int32_t>(ctx, *dO, *index, dX);
+      }
     } else if (index_type == framework::proto::VarType::INT64) {
-      GatherV2GradFunction<T, int64_t>(dO, index, axis, dX, place);
+      if (overwrite) {
+        ScatterAssign<T, int64_t>(ctx.device_context(), *dO, *index, dX);
+      } else {
+        ScatterAssignAdd<T, int64_t>(ctx, *dO, *index, dX);
+      }
     }
   }
 };

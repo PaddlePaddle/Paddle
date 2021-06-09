@@ -865,9 +865,10 @@ def gather(x, index, axis=None, name=None):
 
     if in_dygraph_mode():
         if not isinstance(axis, Variable):
-            return core.ops.gather(x, index, None, "axis", axis)
+            return core.ops.gather(x, index, None, "axis", axis, "overwrite",
+                                   False)
         else:
-            return core.ops.gather(x, index, axis)
+            return core.ops.gather(x, index, axis, "overwrite", False)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
@@ -885,7 +886,8 @@ def gather(x, index, axis=None, name=None):
             type="gather",
             inputs={"X": x,
                     "Index": index},
-            attrs={'axis': axis},
+            attrs={'axis': axis,
+                   'overwrite': False},
             outputs={"Out": out})
     else:
         helper.append_op(
@@ -893,6 +895,7 @@ def gather(x, index, axis=None, name=None):
             inputs={"X": x,
                     "Index": index,
                     "Axis": axis},
+            attrs={"overwrite": False},
             outputs={"Out": out})
 
     return out
