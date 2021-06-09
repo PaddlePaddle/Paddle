@@ -54,6 +54,39 @@ template struct EigenRankLoss<Eigen::GpuDevice, float>;
 template struct EigenRankLossGrad<Eigen::GpuDevice, float>;
 
 template <typename T>
+struct EigenLogLoss<Eigen::GpuDevice, T> {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const Eigen::GpuDevice& dev, OutType out, const InType& pred,
+                   const InType& label, const T& epsilon) {
+    out.device(dev) = (-(label * (pred + epsilon).log()) -
+                       ((static_cast<T>(1) - label) *
+                        (static_cast<T>(1) - pred + epsilon).log()));
+  }
+};
+
+template <typename T>
+struct EigenLogLossGrad<Eigen::GpuDevice, T> {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const Eigen::GpuDevice& dev, OutType dpred,
+                   const InType& dloss, const InType& pred, const InType& label,
+                   const T& epsilon) {
+    dpred.device(dev) =
+        dloss *
+        (-(label / (pred + epsilon)) +
+         ((static_cast<T>(1) - label) / (static_cast<T>(1) - pred + epsilon)));
+  }
+};
+
+template struct EigenLogLoss<Eigen::GpuDevice, float>;
+template struct EigenLogLossGrad<Eigen::GpuDevice, float>;
+
+template <typename T>
 struct EigenHingeLoss<Eigen::GpuDevice, T> {
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
