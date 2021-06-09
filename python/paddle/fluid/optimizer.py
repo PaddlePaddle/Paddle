@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import warnings
 import numpy as np
 import six
 import os
@@ -21,6 +22,7 @@ import logging
 from collections import defaultdict
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
 
