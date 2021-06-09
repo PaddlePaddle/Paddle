@@ -27,7 +27,6 @@ TEST(OpCompatSensiblePass, compatOp) {
   compat.AddAttr("in_num_col_dims")
       .IsIntIn({1, 2})
       .IsNumLE(1)
-      .IsLeftDefault()
       .End()
       .AddAttr("activation_type")
       .IsStringIn({"tanh", "sigmoid"})
@@ -68,7 +67,7 @@ TEST(OpCompatSensiblePass, compatOp) {
   fc_op.SetOutput("Out", std::vector<std::string>{"test_output"});
 
   EXPECT_STREQ(compat.Name().c_str(), "fc");
-  EXPECT_FALSE(compat.Judge(fc_op));
+  EXPECT_TRUE(compat.Judge(fc_op));
 }
 
 TEST(OpCompatSensiblePass, compatOpAttribute) {
@@ -90,6 +89,18 @@ TEST(OpCompatSensiblePass, compatOpAttribute) {
 
   EXPECT_TRUE(compat.Judge(fc_op));
   delete info.checker_;
+}
+
+TEST(OpCompatSensiblePass, opDefNotFound) {
+  OpCompat compat("fc_1");
+
+  OpDesc fc_op;
+
+  compat.Judge(fc_op);
+
+  OpCompat compat_1("");
+
+  compat_1.Judge(fc_op);
 }
 
 TEST(OpCompatSensiblePass, compatOpAttributeOptional) {
