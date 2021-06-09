@@ -106,7 +106,7 @@ struct ElementwiseDataWrapper {
 
 template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
           typename Functor>
-__device__ void VectorizedKernelImpl(
+__device__ inline void VectorizedKernelImpl(
     ElementwiseDataWrapper<ET, VecSize, InT, OutT> data, Functor func,
     int tid) {
   using InVecType = CudaAlignedVector<InT, VecSize>;
@@ -114,34 +114,30 @@ __device__ void VectorizedKernelImpl(
   InVecType ins_vec[ET];
   OutVecType out_vec;
   InT *ins_ptr[ET];
-  OutT *out_ptr;
+  InT ins[ET];
 #pragma unroll
   for (int i = 0; i < ET; ++i) {
     ins_ptr[i] = reinterpret_cast<InT *>(&(ins_vec[i]));
   }
-  out_ptr = reinterpret_cast<OutT *>(&out_vec);
-
   // load
   data.load_vector(ins_vec, tid);
 
 // compute
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
-    InT ins[ET];
 #pragma unroll
     for (int j = 0; j < ET; ++j) {
       ins[j] = ins_ptr[j][i];
     }
-    out_ptr[i] = func(ins);
+    out_vec.val[i] = func(ins);
   }
-
   // store
   data.store_vector(out_vec, tid);
 }
 
 template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
           typename Functor>
-__device__ void ScalarKernelImpl(
+__device__ inline void ScalarKernelImpl(
     ElementwiseDataWrapper<ET, VecSize, InT, OutT> data, Functor func,
     int start, int remain) {
   InT ins[ET];
