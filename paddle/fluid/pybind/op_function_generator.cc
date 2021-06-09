@@ -65,6 +65,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
+    {"run_program", {"X", "Params"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -98,6 +99,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
+    {"run_program", {"DOut"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -148,6 +150,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"rnn", {"DropoutState"}},
+    {"run_program", {"Out", "DOut", "OutScope"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
@@ -173,7 +176,7 @@ std::set<std::string> inplace_op_duplicable_ins_set = {
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
-    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
+    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase("auto_"+std::to_string(VarBaseUniqueNameID++)+"_"))}})";
 const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE = R"({"%s", ConstructDuplicableOutput(%s)})";
 
 const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
@@ -255,12 +258,11 @@ R"(
   ConstructAttrMapFromPyArgs("%s", %d, &attrs, args);
   {
     py::gil_scoped_release release;
-    auto tracer = imperative::GetCurrentTracer();
     %s
     imperative::NameVarBaseMap outs = %s;
     imperative::NameVarBaseMap ins = %s;
     %s
-    tracer->TraceOp("%s", ins, outs, attrs, {%s});
+    imperative::GetCurrentTracer()->TraceOp("%s", ins, outs, attrs, {%s});
     return %s;
   }
 })";
@@ -585,7 +587,8 @@ int main(int argc, char* argv[]) {
   out << "namespace py = pybind11;"
       << "\n";
   out << "namespace paddle {\n"
-      << "namespace pybind {\n";
+      << "namespace pybind {\n\n";
+  out << "std::atomic<int> VarBaseUniqueNameID{0};\n";
   out << paddle::string::join_strings(std::get<0>(op_funcs), '\n');
   out << "\n\n";
 
