@@ -34,6 +34,7 @@ class DatasetBase(object):
         self.thread_num = 1
         self.filelist = []
         self.use_ps_gpu = False
+        self.psgpu = None
 
     def init(self,
              batch_size=1,
@@ -223,6 +224,8 @@ class DatasetBase(object):
             use_ps_gpu: bool
         """
         self.use_ps_gpu = use_ps_gpu
+        if self.use_ps_gpu:
+            self.psgpu = core.PSGPU()
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
@@ -707,7 +710,10 @@ class InMemoryDataset(DatasetBase):
                 dataset.load_into_memory()
         """
         self._prepare_to_run()
-        self.dataset.load_into_memory()
+        if not self.use_ps_gpu:
+            self.dataset.load_into_memory()
+        else:
+            self.psgpu.load_into_memory()
 
     def preload_into_memory(self, thread_num=None):
         """

@@ -82,11 +82,34 @@ class PSGPUWrapper {
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
 
-  void PreBuild(const uint64_t table_id, int feature_dim);
-  void BuildGPUTask();
+  void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void BuildGPUPS(const uint64_t table_id, int feature_dim);
-  void BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t table_id,
-                 int feature_dim);
+  void BuildTask(std::shared_ptr<HeterContext> gpu_task);
+  void LoadIntoMemory();
+  void BeginPass();
+  void EndPass();
+  void start_build_thread();
+  void build_cpu_thread();
+  void build_gpu_thread();
+
+  void Finalize() {
+    VLOG(3) << "PSGPUWrapper Begin Finalize.";
+    if (s_instance_ == nullptr) {
+      return;
+    }
+    data_ready_channel_->Closed();
+    buildcpu_ready_channel_->Closed();
+    gpu_free_channel_->Closed();
+    train_ready_channel_->Closed();
+    running_ = false;
+    VLOG(3) << "begin stop build_cpu_threads_";
+    build_cpu_threads_.join();
+    VLOG(3) << "begin stop build_gpu_threads_";
+    build_gpu_threads_.join();
+    s_instance_ = nullptr;
+    VLOG(3) << "PSGPUWrapper Finalize Finished.";
+  }
+
   void InitializeGPU(const std::vector<int>& dev_ids) {
     if (s_instance_ != NULL && is_initialized_ == false) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
@@ -131,6 +154,22 @@ class PSGPUWrapper {
 #endif
       }
       heter_devices_ = dev_ids;
+      data_ready_channel_->Open();
+      data_ready_channel_->SetCapacity(3);
+      buildcpu_ready_channel_->Open();
+      buildcpu_ready_channel_->SetCapacity(3);
+      gpu_free_channel_->Open();
+      gpu_free_channel_->SetCapacity(1);
+      train_ready_channel_->Open();
+      train_ready_channel_->SetCapacity(1);
+
+      current_task_ = nullptr;
+      gpu_free_channel_->Put(current_task_);
+
+      // start build cpu&gpu ps thread
+      start_build_thread();
+      // TODO(fengdanlei): set this parameter
+      table_id_ = 1;
     }
   }
 
@@ -208,7 +247,6 @@ class PSGPUWrapper {
     slot_vector_ = slot_vector;
   }
 
-  void EndPass() { HeterPs_->end_pass(); }
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
  private:
@@ -224,17 +262,38 @@ class PSGPUWrapper {
   std::vector<int> slot_vector_;
   int multi_node_{0};
   int node_size_;
+  uint64_t table_id_;
   std::vector<ncclComm_t> inner_comms_;
   std::vector<ncclComm_t> inter_comms_;
   std::vector<ncclUniqueId> inter_ncclids_;
   std::vector<int> heter_devices_;
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
-  HeterObjectPool<HeterContext> task_queue_;
   std::vector<std::vector<std::unordered_set<uint64_t>>> thread_keys_;
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
   uint64_t max_fea_num_per_pass_ = 5000000000;
+
+  std::shared_ptr<
+      paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
+      data_ready_channel_ =
+          paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
+  std::shared_ptr<
+      paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
+      buildcpu_ready_channel_ =
+          paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
+  std::shared_ptr<
+      paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
+      gpu_free_channel_ =
+          paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
+  std::shared_ptr<
+      paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
+      train_ready_channel_ =
+          paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
+  std::shared_ptr<HeterContext> current_task_ = nullptr;
+  std::thread build_cpu_threads_;
+  std::thread build_gpu_threads_;
+  bool running_ = false;
 
  protected:
   static bool is_initialized_;
