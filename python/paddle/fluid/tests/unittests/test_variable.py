@@ -304,11 +304,30 @@ class TestVariable(unittest.TestCase):
         prog = paddle.static.Program()
         with fluid.program_guard(prog):
             x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
-            exe = fluid.Executor()
+            exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
 
             output = exe.run(prog, fetch_list=[x.size()])
             self.assertEqual(output[0], [24])
+
+    def test_matmul(self):
+        main = fluid.Program()
+        with fluid.program_guard(main):
+            t1 = layers.data(name='t1', shape=[2, 3], dtype='float32')
+            t2 = layers.data(name='t2', shape=[3, 5], dtype='float32')
+            res1 = layers.matmul(t1, t2)
+            res2 = t1 @t2  # __matmul__
+            exe = fluid.Executor(fluid.CPUPlace())
+            res1, res2 = exe.run(main,
+                                 feed={
+                                     't1': np.ones(
+                                         [2, 3], dtype='float32'),
+                                     't2': np.ones(
+                                         [3, 5], dtype='float32')
+                                 },
+                                 fetch_list=[res1, res2])
+
+            self.assertTrue(np.allclose(res1, res2))
 
     def test_detach(self):
         b = default_main_program().current_block()
@@ -332,7 +351,7 @@ class TestVariable(unittest.TestCase):
                 x.persistable = True
                 feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
                 detach_x = x.detach()
-                exe = fluid.Executor()
+                exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup)
                 result = exe.run(main,
                                  feed={'x': feed_data},

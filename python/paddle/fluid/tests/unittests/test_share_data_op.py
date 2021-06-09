@@ -15,6 +15,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle.fluid import core
+from paddle.fluid.op import Operator
 
 
 class TestShareDataOp(OpTest):
@@ -27,6 +29,31 @@ class TestShareDataOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
+    def get_places(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        return places
+
+    def check_with_place(self, place):
+        scope = core.Scope()
+        np_array = np.random.random((2, 3, 5)).astype("float32")
+
+        # initialize input and output variable
+        x = scope.var('Input').get_tensor()
+        x.set(np_array, place)
+        out = scope.var("Out").get_tensor()
+
+        op = Operator("share_data", Input="Input", Out="Out")
+        op.run(scope, place)
+        self.assertTrue(np.allclose(np_array, out))
+
+    def test_check_output(self):
+        for place in self.get_places():
+            self.check_with_place(place)
 
 
 if __name__ == '__main__':
