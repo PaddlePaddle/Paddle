@@ -28,8 +28,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-seqconv_eltadd_relu_fuse_pass::SeqConvEltAddReluFusePass() {
-  AddOpCompat(OPCompat("sequence_conv"))
+SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
+  AddOpCompat(OpCompat("sequence_conv"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -67,7 +67,9 @@ seqconv_eltadd_relu_fuse_pass::SeqConvEltAddReluFusePass() {
 
 class Node;
 
-int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
+void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
+  std::string name_scope = "seqconv_eltadd_relu_fuse_pass";
+  FusePassBase::Init(name_scope, graph);
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -131,14 +133,6 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
   };
 
   gpd(graph, handler);
-
-  return fusion_count;
-}
-
-void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
-  FusePassBase::Init(name_scope_, graph);
-
-  int fusion_count = BuildFusion(graph, name_scope_, param_scope());
   AddStatis(fusion_count);
 }
 
