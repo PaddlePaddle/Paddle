@@ -36,11 +36,32 @@ from paddle.utils import deprecated
 from .utils import check_shape
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'create_global_var', 'cast',
-    'tensor_array_to_tensor', 'concat', 'sums', 'assign',
-    'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
-    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'triu'
+    'create_tensor',
+    'create_parameter',
+    'create_global_var',
+    'cast',
+    'tensor_array_to_tensor',
+    'concat',
+    'sums',
+    'assign',
+    'fill_constant_batch_size_like',
+    'fill_constant',
+    'argmin',
+    'argmax',
+    'argsort',
+    'ones',
+    'zeros',
+    'reverse',
+    'has_inf',
+    'has_nan',
+    'isfinite',
+    'range',
+    'linspace',
+    'zeros_like',
+    'ones_like',
+    'diag',
+    'eye',
+    'triu',
 ]
 
 

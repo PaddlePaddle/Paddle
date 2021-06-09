@@ -29,9 +29,19 @@ add_subdirectory(io)
 proto_library(framework_proto SRCS framework.proto)
 
 proto_library(op_def_proto SRCS op_def.proto)
-set(OP_DEF_FOLDER "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/")
-configure_file("op_def_api.h.in" "op_def_api.h")
 cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto)
+
+FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
+FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt 
+     "namespace { \n"
+     "const std::unordered_map<std::string, std::string> op_def_map =  { \n")
+foreach(OP_DEF_FILE ${OP_DEF_FILES})
+    FILE(READ ${OP_DEF_FILE}  OP_DEF_CONTENT)
+    get_filename_component(OP_NAME ${OP_DEF_FILE} NAME_WE)
+    FILE(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt
+    "{\"${OP_NAME}\",R\"(${OP_DEF_CONTENT})\"},\n")
+endforeach(OP_DEF_FILE)
+FILE(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt "{\"\",\"\"}};\n}")
 
 proto_library(heter_service_proto SRCS heter_service.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
