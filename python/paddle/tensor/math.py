@@ -871,12 +871,17 @@ def trunc(input, name=None):
 
             import paddle
 
-            paddle.set_device('cpu')
             input = paddle.rand([2,2],'float32')
+            print(input)
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [[0.02331470, 0.42374918],
+            #         [0.79647720, 0.74970269]])
+            
             output = paddle.trunc(input)
             print(output)
-            #        [[0., 1.],
-            #        [0., 0.]])
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [[0., 0.],
+            #         [0., 0.]])
     '''
     if in_dygraph_mode():
         return core.ops.trunc(input)
