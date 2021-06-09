@@ -124,7 +124,7 @@ void validate_cache_onednn(int cache_capacity = 1) {
   // as internally reorders may be called
   // so it will impact cache size
   auto output_names = predictor->GetOutputNames();
-  auto output_t = predictor->GetOutputHandle(output_names[0]);
+  auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
   size_t out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                    std::multiplies<int>());
