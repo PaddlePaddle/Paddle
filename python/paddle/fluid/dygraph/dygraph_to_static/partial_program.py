@@ -221,23 +221,15 @@ class PartialProgramLayer(layers.Layer):
 
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
-        framework._dygraph_tracer().trace_op(
-            type='run_program',
-            inputs={
-                'X': valid_vars(in_vars),
-                'Params': valid_vars(self._params)
-            },
-            outputs={
-                'Out': valid_vars(out_vars),
-                'OutScope': tmp_scope_vec,
-                'DOut': valid_vars(self._double_grads)
-            },
-            attrs={
-                'global_block': self.program.desc.block(0),
-                'start_op_index': 0,
-                'end_op_index': self._infer_program.desc.block(0).op_size(),
-                'is_test': not self.training
-            })
+
+        attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
+                 0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
+                 'is_test', not self.training)
+        core.ops.run_program(
+            valid_vars(in_vars),
+            valid_vars(self._params),
+            valid_vars(out_vars), tmp_scope_vec,
+            valid_vars(self._double_grads), *attrs)
 
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
