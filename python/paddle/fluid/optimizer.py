@@ -257,11 +257,11 @@ class Optimizer(object):
 
             assert model_np.shape == load_para_np.shape,  \
                                         "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                                                item.name, model_np.shape, load_para_np.shape)
+                                                param.name, model_np.shape, load_para_np.shape)
 
             assert model_np.dtype == load_para_np.dtype, \
                                         "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                                            item.name, model_np.dtype, load_para_np.dtype)
+                                            param.name, model_np.dtype, load_para_np.dtype)
 
             tensor.set(load_para_np, framework._current_expected_place())
 
@@ -1725,6 +1725,9 @@ class LarsMomentumOptimizer(Optimizer):
             For details, please refer to :ref:`api_guide_Name`. Default is None.
         exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay. Default is None.
         epsilon (float, optional): Epsilon to avoid Division by Zero when calculate local lr. Default is 0.
+        multi_precision (bool, optional): Whether to use multi-precision during weight updating.
+        rescale_grad (float, optional): Multiply the gradient with `rescale_grad` \
+            before updating. Often choose to be `1.0/batch_size`.
         
     Examples:
         .. code-block:: python
@@ -1758,7 +1761,9 @@ class LarsMomentumOptimizer(Optimizer):
                  grad_clip=None,
                  name=None,
                  exclude_from_weight_decay=None,
-                 epsilon=0):
+                 epsilon=0,
+                 multi_precision=False,
+                 rescale_grad=1.0):
         assert learning_rate is not None
         assert momentum is not None
         super(LarsMomentumOptimizer, self).__init__(
@@ -1776,16 +1781,70 @@ class LarsMomentumOptimizer(Optimizer):
             self._exclude_from_weight_decay = []
         else:
             self._exclude_from_weight_decay = exclude_from_weight_decay
+        self._multi_precision = multi_precision
+        self._rescale_grad = float(rescale_grad)
+        self._master_weights = {}
+
+    def _create_master_weight(self, param):
+        assert isinstance(self.helper, LayerHelper)
+
+        var_name = param.name + '_fp32_master'
+        var_name = unique_name.generate(var_name)
+        var = layers.create_global_var(
+            name=var_name,
+            shape=param.shape,
+            value=0,
+            dtype='float32',
+            persistable=True)
+        block = self.helper.startup_program.global_block()
+        block.append_op(
+            type="cast",
+            inputs={"X": [param]},
+            outputs={"Out": [var]},
+            attrs={
+                "in_dtype": param.dtype,
+                "out_dtype": core.VarDesc.VarType.FP32
+            })
+        self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        target_param = self._master_weights[
+            param.name] if find_master else param
+        target_name = target_param.name
+        if (name not in self._accumulators or
+                target_name not in self._accumulators[name]):
+            raise Exception("Accumulator {} does not exist for parameter {}".
+                            format(name, target_name))
+        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._velocity_acc_str, master_p)
+                continue
+            if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._velocity_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
-
         _lars_weight_decay = self._lars_weight_decay
         param_name = param_and_grad[0].name
         if len(self._exclude_from_weight_decay) > 0:
@@ -1796,25 +1855,40 @@ class LarsMomentumOptimizer(Optimizer):
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
+        lr = self._create_param_lr(param_and_grad)
+
+        find_master = self._multi_precision and param_and_grad[
+            0].dtype == core.VarDesc.VarType.FP16
+        master_weight = (self._master_weights[param_and_grad[0].name]
+                         if find_master else None)
+
+        attrs = {
+            "mu": self._momentum,
+            "lars_coeff": self._lars_coeff,
+            "lars_weight_decay": _lars_weight_decay,
+            "multi_precision": find_master,
+            "rescale_grad": self._rescale_grad
+        }
+
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "Velocity": velocity_acc,
+            "LearningRate": lr
+        }
+
+        outputs = {"ParamOut": param_and_grad[0], "VelocityOut": velocity_acc}
+
+        if find_master:
+            inputs["MasterParam"] = master_weight
+            outputs["MasterParamOut"] = master_weight
+
         # create the momentum optimize op
         momentum_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Velocity": velocity_acc,
-                "LearningRate": self._create_param_lr(param_and_grad)
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "VelocityOut": velocity_acc
-            },
-            attrs={
-                "mu": self._momentum,
-                "lars_coeff": self._lars_coeff,
-                "lars_weight_decay": _lars_weight_decay,
-                "epsilon": self._epsilon
-            },
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
 
         return momentum_op
@@ -4010,6 +4084,7 @@ class PipelineOptimizer(object):
                     'out_dtype': out_var.dtype,
                     self._op_role_key: self._op_role.Optimize
                 })
+            offset += 1
         return offset
 
     def _create_vars(self, block, ori_block):
@@ -4522,12 +4597,15 @@ class PipelineOptimizer(object):
                                 'ring_id': ring_id
                             })
                         extra_index_info['index'] += 1
+                        var_shape = list(var.shape)
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
                             attrs={
-                                'out_shape': var.shape,
+                                'out_shape': var_shape,
                                 'dtype': var.dtype,
                                 self._op_device_key: cur_dev,
                                 self._op_role_key: op_role,

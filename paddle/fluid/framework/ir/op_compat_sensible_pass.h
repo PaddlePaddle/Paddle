@@ -29,7 +29,7 @@ class OpCompat;
 class AttrCompat {
  public:
   AttrCompat(const std::string& attr_name, OpCompat* op_compat)
-      : attr_name_(attr_name), op_compat_(op_compat) {}
+      : optional_(false), attr_name_(attr_name), op_compat_(op_compat) {}
 
   // @{ String-related methods
   //! Assert the attribute is an string in the `candidates` domain.
@@ -70,12 +70,15 @@ class AttrCompat {
   //! Tell whether this attribute is left as default value.
   AttrCompat& IsLeftDefault();
 
+  AttrCompat& IsOptional();
+
   //! Jump back to retrieve OpCompat instance.
   OpCompat& End() { return *op_compat_; }
 
   bool operator()(const OpDesc& op_desc);
 
  private:
+  bool optional_;
   std::string attr_name_;
   OpCompat* op_compat_;
   std::vector<std::function<bool(const Attribute&)>> conditions_;
@@ -134,9 +137,11 @@ class OpCompat {
 
  private:
   std::string op_name_;
-  std::vector<AttrCompat> attr_compats_;
+  std::unordered_map<std::string, AttrCompat> attr_compats_;
   std::unordered_map<std::string, InputOrOutputCompat> input_compats_;
   std::unordered_map<std::string, InputOrOutputCompat> output_compats_;
+  std::unordered_set<std::string> extra_attrs_;
+  bool is_first_judge_ = true;
 };
 
 /**
@@ -179,15 +184,6 @@ class OpCompat {
  * };
  */
 class OpCompatSensiblePass : public Pass {
- public:
-  //! Access the subgraph and pattern.
-  void AccessSubgraph(const GraphPatternDetector::subgraph_t& subgraph,
-                      Graph* g) {
-    if (IsCompat(subgraph, g)) {
-      AccessSubgraphImpl(subgraph, g);
-    }
-  }
-
  protected:
   /**
    * Developer should push the compatibility `teller` for each kind of Op in the
@@ -196,12 +192,6 @@ class OpCompatSensiblePass : public Pass {
    * that all the following methods are valid.
    */
   OpCompat& AddOpCompat(OpCompat&& op_compat);
-
-  //! Modify the subgraph.
-  virtual bool AccessSubgraphImpl(
-      const GraphPatternDetector::subgraph_t& subgraph, Graph* g) const {
-    return true;
-  }
 
   //! Tell the Op compability of a subgraph.
   bool IsCompat(const GraphPatternDetector::subgraph_t& subgraph,
@@ -212,9 +202,10 @@ class OpCompatSensiblePass : public Pass {
     // Check the all the ops in the subgraph are contained in the
     // op_compat.
     for (auto& node_pair : subgraph) {
-      if (!node_pair.first->IsOp()) continue;
+      if (!node_pair.second->IsOp()) continue;
       auto op_type = node_pair.second->Op()->Type();
       if (!op_compat_judgers_.count(op_type)) {
+        LOG(WARNING) << op_type << "compat not registered!";
         return false;
       }
       auto& judger = *op_compat_judgers_.at(op_type);

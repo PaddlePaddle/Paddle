@@ -32,11 +32,34 @@ def set_random_seed(seed, dp_id, rank_id):
     paddle.seed(seed + rank_id)
 
 
-vocab_size = 5
+vocab_size = 20
 hidden_size = 10
 inner_size = 8
-output_size = 2
+output_size = 10
 seq_length = 2
+batch_size = 4
+
+
+def parallel_matmul(lm_output, logit_weights, parallel_output):
+    hcg = fleet.get_hybrid_communicate_group()
+    model_parallel_group = hcg.get_model_parallel_group()
+    world_size = hcg.get_model_parallel_world_size()
+    rank = hcg.get_model_parallel_rank()
+
+    if world_size > 1:
+        input_parallel = paddle.distributed.collective._c_identity(
+            lm_output, group=model_parallel_group)
+
+        logits = paddle.matmul(input_parallel, logit_weights, transpose_y=True)
+
+        if parallel_output:
+            return logits
+
+        return paddle.distributed.collective._c_concat(
+            logits, group=model_parallel_group)
+    else:
+        logits = paddle.matmul(lm_output, logit_weights, transpose_y=True)
+        return logits
 
 
 class SimpleMPNet(fluid.dygraph.Layer):
@@ -85,6 +108,7 @@ class SimpleMPNet(fluid.dygraph.Layer):
         x = self.linear1(x)
         x = self.linear2(x)
         x = self.linear3(x)
+        x = parallel_matmul(x, self.embedding.weight, False)
         return x
 
 
@@ -127,19 +151,8 @@ class SimpleDPNet(fluid.dygraph.Layer):
         x = self.linear1(x)
         x = self.linear2(x)
         x = self.linear3(x)
+        x = paddle.matmul(x, self.embedding.weight, transpose_y=True)
         return x
-
-
-class TrainDataset(Dataset):
-    def __init__(self, length):
-        self.length = length
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, index):
-        np_input_data = np.random.randint(0, vocab_size, (seq_length, ))
-        return np_input_data
 
 
 class TestDistMPTraning(unittest.TestCase):
@@ -178,20 +191,6 @@ class TestDistMPTraning(unittest.TestCase):
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
-        train_data = TrainDataset(length=10000)
-
-        train_batch_sampler = paddle.io.DistributedBatchSampler(
-            train_data,
-            batch_size=4,
-            shuffle=False,
-            num_replicas=self.data_parallel_size,
-            rank=dp_id)
-        train_data_loader = DataLoader(
-            dataset=train_data,
-            batch_sampler=train_batch_sampler,
-            num_workers=0,
-            return_list=True)
-
         model_a = SimpleMPNet(vocab_size, hidden_size, inner_size, output_size,
                               np_fc1, np_fc2, mp_id)
         optimizer_a = self.build_optimizer(model_a)
@@ -202,21 +201,22 @@ class TestDistMPTraning(unittest.TestCase):
                               np_fc1, np_fc2)
         optimizer_b = self.build_optimizer(model_b)
 
-        return model_a, optimizer_a, model_b, optimizer_b, train_data_loader
+        return model_a, optimizer_a, model_b, optimizer_b
 
     def test_mp_model(self):
-        model_a, optimizer_a, model_b, optimizer_b, train_data_loader = self.build_model_optimizer(
+        model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
         )
 
-        for step, batch in enumerate(train_data_loader):
-            if step > 5:
-                return
-
+        for _ in range(5):
+            np_data = np.random.randint(0, vocab_size, (
+                batch_size,
+                seq_length, ))
+            batch = paddle.to_tensor(np_data)
             loss_a = self.train_batch(batch, model_a, optimizer_a, True)
             loss_b = self.train_batch(batch, model_b, optimizer_b, False)
 
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-5)
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-6)
 
 
 if __name__ == "__main__":
