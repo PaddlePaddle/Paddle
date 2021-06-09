@@ -12,9 +12,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/trunc_op.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace operators {
+
+using platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 class TruncFunctor {
@@ -71,7 +75,7 @@ class TruncCUDAKernel : public framework::OpKernel<T> {
 
     int64_t numel = x->numel();
 
-    int theads = platform::PADDLE_CUDA_NUM_THREADS;
+    int theads = PADDLE_CUDA_NUM_THREADS;
     int blocks = (numel + theads - 1) / theads;
 
     Trunc<<<blocks, theads>>>(x_data, out_data, numel);
@@ -90,9 +94,10 @@ class TruncCUDAGradKernel : public framework::OpKernel<T> {
 
     int64_t numel = dout->numel();
 
-    dim3 blockSize(256);
-    dim3 gridSize((numel + blockSize.x - 1) / blockSize.x);
-    TruncGrad<<<gridSize, blockSize>>>(dx_data, numel);
+    int theads = PADDLE_CUDA_NUM_THREADS;
+    int blocks = (numel + theads - 1) / theads;
+
+    TruncGrad<<<blocks, theads>>>(dx_data, numel);
   }
 };
 
