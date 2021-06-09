@@ -172,12 +172,17 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
                 # pack as LoDTensorArray
                 array = core.LoDTensorArray()
+                has_gpu = False
                 for slot in batch:
                     if isinstance(slot, paddle.Tensor):
+                        if not slot.place._equals(core.CPUPlace()):
+                            has_gpu = True
                         slot = slot.value().get_tensor()
                     elif not isinstance(slot, core.LoDTensor):
                         tmp = core.LoDTensor()
-                        tmp.set(slot, core.CPUPlace())
+                        place = core.CUDAPlace(0) if has_gpu else core.CPUPlace(
+                        )
+                        tmp.set(slot, place)
                         slot = tmp
 
                     array.append(slot)
