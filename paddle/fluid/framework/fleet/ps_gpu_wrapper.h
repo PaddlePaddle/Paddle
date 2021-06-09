@@ -97,10 +97,10 @@ class PSGPUWrapper {
     if (s_instance_ == nullptr) {
       return;
     }
-    data_ready_channel_->Closed();
-    buildcpu_ready_channel_->Closed();
-    gpu_free_channel_->Closed();
-    train_ready_channel_->Closed();
+    data_ready_channel_->Close();
+    buildcpu_ready_channel_->Close();
+    gpu_free_channel_->Close();
+    train_ready_channel_->Close();
     running_ = false;
     VLOG(3) << "begin stop build_cpu_threads_";
     build_cpu_threads_.join();
@@ -166,10 +166,10 @@ class PSGPUWrapper {
       current_task_ = nullptr;
       gpu_free_channel_->Put(current_task_);
 
-      // start build cpu&gpu ps thread
-      start_build_thread();
       // TODO(fengdanlei): set this parameter
       table_id_ = 1;
+      // start build cpu&gpu ps thread
+      start_build_thread();
     }
   }
 

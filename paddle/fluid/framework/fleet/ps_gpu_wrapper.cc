@@ -382,7 +382,7 @@ void PSGPUWrapper::build_cpu_thread() {
     // build cpu ps data process
     BuildTask(gpu_task);
     timer.Pause();
-    VLOG(3) << "thread BuildTask end, cost time: " << timer.ElapsedSec() << "s";
+    VLOG(1) << "thread BuildTask end, cost time: " << timer.ElapsedSec() << "s";
     buildcpu_ready_channel_->Put(gpu_task);
   }
   VLOG(3) << "build cpu thread end";
@@ -402,7 +402,7 @@ void PSGPUWrapper::build_gpu_thread() {
     timer.Start();
     BuildGPUTask(gpu_task);
     timer.Pause();
-    VLOG(3) << "thread BuildGPUTask end, cost time: " << timer.ElapsedSec()
+    VLOG(1) << "thread BuildGPUTask end, cost time: " << timer.ElapsedSec()
             << "s";
 
     gpu_task_pool_.Push(gpu_task);
@@ -423,7 +423,7 @@ void PSGPUWrapper::BeginPass() {
     PADDLE_THROW(platform::errors::Fatal("train_ready_channel_ failed."));
   }
   timer.Pause();
-  VLOG(0) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
+  VLOG(1) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
 void PSGPUWrapper::EndPass() {
@@ -437,7 +437,7 @@ void PSGPUWrapper::EndPass() {
   gpu_free_channel_->Put(current_task_);
   current_task_ = nullptr;
   timer.Pause();
-  VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
+  VLOG(1) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
