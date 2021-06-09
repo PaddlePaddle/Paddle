@@ -274,16 +274,19 @@ class Momentum(Optimizer):
                                              param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
 
+        # For fusion of momentum and l2decay 
         param = param_and_grad[0]
+        regularization_method = self._regularization_method
+        regularization_coeff = self._regularization_coeff
         if hasattr(param, 'regularizer'):
             # we skip param's l2decay before, so fuse it with momentum here.
             if isinstance(param.regularizer, L2DecayRegularizer):
-                self._regularization_method = "l2_decay"
-                self._regularization_coeff = param.regularizer._regularization_coeff
+                regularization_method = "l2_decay"
+                regularization_coeff = param.regularizer._regularization_coeff
             # the param's regularization has been done before, we avoid do l2decay in momentum.
             elif param.regularizer is not None:
-                self._regularization_method = ""
-                self._regularization_coeff = 0
+                regularization_method = ""
+                regularization_coeff = 0
 
         if framework.in_dygraph_mode():
             if isinstance(param_and_grad, dict):
@@ -292,8 +295,8 @@ class Momentum(Optimizer):
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
                 param_and_grad[0], velocity_acc, 'mu', self._momentum,
                 'use_nesterov', self._use_nesterov, 'regularization_method',
-                self._regularization_method, 'regularization_coeff',
-                self._regularization_coeff)
+                regularization_method, 'regularization_coeff',
+                regularization_coeff)
             return None
 
         find_master = self._multi_precision and param_and_grad[
@@ -304,8 +307,8 @@ class Momentum(Optimizer):
         attrs = {
             "mu": self._momentum,
             "use_nesterov": self._use_nesterov,
-            "regularization_method": self._regularization_method,
-            "regularization_coeff": self._regularization_coeff,
+            "regularization_method": regularization_method,
+            "regularization_coeff": regularization_coeff,
             "multi_precision": find_master,
             "rescale_grad": self._rescale_grad
         }
