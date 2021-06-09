@@ -855,24 +855,25 @@ def add_n(inputs, name=None):
     return out
 
 
-def trunc(x, name=None):
+def trunc(input, name=None):
     '''
-    Returns a new tensor with the truncated integer values of input.
+    This API is used to returns a new tensor with the truncated integer values of input.
     Args:
-        x (Tensor): The input tensor, it's data type should be int, float, double.
+        input (Tensor): The input tensor, it's data type should be int, float, double.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
-        Tensor: The product Tensor.
+        Tensor: The output Tensor of trunc.
     
     Examples:
         .. code-block:: python
+
             import paddle
-            import numpy as np
+            
             paddle.set_device('cpu')
-            x = paddle.rand([2,2],'float32')
-            out = paddle.trunc(x)
-            print(out)
+            input = paddle.rand([2,2],'float32')
+            output = paddle.trunc(input)
+            print(output)
             #        [[0., 1.],
             #        [0., 0.]])
     '''
