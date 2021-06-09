@@ -143,7 +143,7 @@ def _getitem_impl_(var, item):
             is_bool_list = False
             for i in slice_item:
                 if not isinstance(i, (int, bool)):
-                    raise TypeError("Only support int or bool in list.")
+                    raise TypeError("Only support int or bool in index list.")
 
                 if isinstance(i, bool):
                     is_bool_list = True
@@ -158,7 +158,9 @@ def _getitem_impl_(var, item):
                 new_slice_item = []
                 for idx, ele in enumerate(slice_item):
                     if not isinstance(ele, bool):
-                        raise TypeError("Only support bool in list.")
+                        raise TypeError(
+                            "Mixed bool index with other types is not supported."
+                        )
 
                     if ele is True:
                         new_slice_item.append(idx)
