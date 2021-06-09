@@ -954,6 +954,35 @@ class _Linear(layers.Layer):
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
 
 
+def _c_softmax_with_cross_entropy(logits,
+                                  label,
+                                  group=None,
+                                  return_softmax=False):
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+    global_rank = _get_global_env().rank
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
+
+    input_dims = len(list(logits.shape))
+    label_dims = len(list(label.shape))
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+             (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
+    if input_dims - 1 == label_dims:
+        label = paddle.unsqueeze(label, axis=-1)
+
+    if in_dygraph_mode():
+        softmax, loss = core.ops.c_softmax_with_cross_entropy(
+            logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks)
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+
+
 def _linear(x, weight, bias=None, name=None):
     """
     Fuction Linear
