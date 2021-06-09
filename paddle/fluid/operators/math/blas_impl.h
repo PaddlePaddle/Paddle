@@ -51,6 +51,12 @@ static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
 static void onednn_handler_axpy(int n, platform::bfloat16 alpha,
                                 const platform::bfloat16 *x, int incx,
                                 platform::bfloat16 *y, int incy) {
+  // fallback to naive version
+  if (n < 100) {
+    axpy(n, alpha, x, incx, y, incy);
+    return;
+  }
+
   // TODO(jczaja): support other increments values diffrent from 1
   PADDLE_ENFORCE_EQ(incx, 1, platform::errors::Unimplemented(
                                  "Blas AXPY support incx == 1 only"));
