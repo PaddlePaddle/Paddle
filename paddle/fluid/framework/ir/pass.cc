@@ -32,16 +32,9 @@ namespace framework {
 namespace ir {
 
 Graph* Pass::Apply(Graph* graph) const {
+  CheckPrevPass();
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  if (FLAGS_convert_all_blocks) {
-    // NOTE(levi): If graph is main_graph, apply pass on the 1st sub_graph.
-    if (graph->IsMainGraph()) {
-      this->Apply(graph->GetSubGraph(0));
-      return graph;
-    }
-  }
-  CheckPrevPass();
   for (const std::string& attr : required_pass_attrs_) {
     PADDLE_ENFORCE_NE(
         attrs_.find(attr), attrs_.end(),

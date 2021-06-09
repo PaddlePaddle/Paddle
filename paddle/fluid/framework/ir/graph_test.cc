@@ -104,13 +104,7 @@ TEST(GraphTest, Basic) {
   ASSERT_EQ(proto::VarType::LOD_TENSOR,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
-  std::unique_ptr<ir::Graph> _g(new ir::Graph(prog));
-  const ir::Graph *g;
-  if (FLAGS_convert_all_blocks) {
-    g = _g->GetSubGraph(0);
-  } else {
-    g = _g.get();
-  }
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   std::vector<ir::Node *> nodes(g->Nodes().begin(), g->Nodes().end());
   for (ir::Node *n : nodes) {
     if (n->Name() == "sum") {
@@ -147,13 +141,7 @@ TEST(GraphTest, WriteAfterRead) {
   prog.MutableBlock(0)->Var("b")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("c")->SetType(proto::VarType::LOD_TENSOR);
 
-  std::unique_ptr<ir::Graph> _g(new ir::Graph(prog));
-  const ir::Graph *g;
-  if (FLAGS_convert_all_blocks) {
-    g = _g->GetSubGraph(0);
-  } else {
-    g = _g.get();
-  }
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   ir::Node *control_dep1 = nullptr;
   ir::Node *control_dep2 = nullptr;
   for (ir::Node *n : g->Nodes()) {
@@ -192,13 +180,7 @@ TEST(GraphTest, WriteAfterWrite) {
   prog.MutableBlock(0)->Var("b")->SetType(proto::VarType::LOD_TENSOR);
   prog.MutableBlock(0)->Var("c")->SetType(proto::VarType::LOD_TENSOR);
 
-  std::unique_ptr<ir::Graph> _g(new ir::Graph(prog));
-  const ir::Graph *g;
-  if (FLAGS_convert_all_blocks) {
-    g = _g->GetSubGraph(0);
-  } else {
-    g = _g.get();
-  }
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   ir::Node *control_dep1 = nullptr;
   ir::Node *control_dep2 = nullptr;
   for (ir::Node *n : g->Nodes()) {
@@ -222,13 +204,7 @@ TEST(GraphTest, WriteAfterWrite) {
 
 TEST(GraphTest, TestException) {
   ProgramDesc prog;
-  std::unique_ptr<ir::Graph> _g(new ir::Graph(prog));
-  ir::Graph *g;
-  if (FLAGS_convert_all_blocks) {
-    g = _g->GetSubGraph(0);
-  } else {
-    g = _g.get();
-  }
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
 
   bool not_met_exception = false;
   try {
@@ -274,27 +250,18 @@ TEST(GraphTest, TestException) {
 
 TEST(GraphTest, TestAttrCopy) {
   ProgramDesc prog;
-  std::unique_ptr<ir::Graph> _src_g(new ir::Graph(prog));
-  std::unique_ptr<ir::Graph> _dst_g(new ir::Graph(prog));
-  ir::Graph *src_g;
-  ir::Graph *dst_g;
-  if (FLAGS_convert_all_blocks) {
-    src_g = _src_g->GetSubGraph(0);
-    dst_g = _dst_g->GetSubGraph(0);
-  } else {
-    src_g = _src_g.get();
-    dst_g = _dst_g.get();
-  }
+  ir::Graph src_g(prog);
+  ir::Graph dst_g(prog);
   const std::string kIntValue = "int_value";
   const std::string kFloatValue = "float_value";
   const int INT_VALUE = 3;
-  src_g->Set<int>(kIntValue, new int(INT_VALUE));
-  details::CopyGraphAttrIfExists<int>(*src_g, dst_g, kIntValue);
-  details::CopyGraphAttrIfExists<float>(*src_g, dst_g, kFloatValue);
+  src_g.Set<int>(kIntValue, new int(INT_VALUE));
+  details::CopyGraphAttrIfExists<int>(src_g, &dst_g, kIntValue);
+  details::CopyGraphAttrIfExists<float>(src_g, &dst_g, kFloatValue);
 
-  ASSERT_TRUE(dst_g->Has(kIntValue));
-  ASSERT_EQ(dst_g->Get<int>(kIntValue), INT_VALUE);
-  ASSERT_FALSE(dst_g->Has(kFloatValue));
+  ASSERT_TRUE(dst_g.Has(kIntValue));
+  ASSERT_EQ(dst_g.Get<int>(kIntValue), INT_VALUE);
+  ASSERT_FALSE(dst_g.Has(kFloatValue));
 }
 
 TEST(GraphTest, TestMultiBlock) {

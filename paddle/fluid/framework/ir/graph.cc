@@ -275,11 +275,11 @@ void Graph::ResolveHazard(
 }
 
 std::shared_ptr<Graph> Graph::Clone() {
+  PADDLE_ENFORCE_EQ(
+      this->IsMainGraph(), true,
+      platform::errors::InvalidArgument(
+          "This graph is a subgraph, and can't be cloned individually"));
   if (FLAGS_convert_all_blocks) {
-    PADDLE_ENFORCE_EQ(
-        this->IsMainGraph(), true,
-        platform::errors::InvalidArgument(
-            "This graph is a subgraph, and can't be cloned individually"));
     auto cloned_graph = std::make_shared<Graph>(this->program_);
     cloned_graph->ReleaseSubGraphs();
     for (size_t idx = 0; idx < this->program_.Size(); ++idx) {
