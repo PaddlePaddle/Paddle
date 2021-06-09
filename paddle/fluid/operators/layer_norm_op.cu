@@ -209,6 +209,73 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
   }
 }
 
+template <typename T, typename U, int BlockDim>
+__global__ void LayerNormForwardFP16(const T *x, const U *scale, const U *bias,
+                                     T *y, U *mean, U *var, float epsilon,
+                                     int feature_size) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+  using BlockReduce = cub::BlockReduce<PairForLayerNorm<U>, BlockDim>;
+  __shared__ typename BlockReduce::TempStorage temp_storage;
+  __shared__ U mean_share;
+  __shared__ U var_share;
+
+  int beg_idx = blockIdx.x * feature_size + threadIdx.x;
+  int end_idx = (blockIdx.x + 1) * feature_size;
+
+  // Step 1: Reduce to calculate mean and var
+  U mean_val = 0;
+  U var_val = 0;
+  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    U tmp = static_cast<U>(x[i]);
+    mean_val += tmp;
+    var_val += (tmp * tmp);
+  }
+  auto pair = BlockReduce(temp_storage)
+                  .Reduce(PairForLayerNorm<U>(mean_val, var_val),
+                          PairForLayerNormAddFunctor<U>());
+  if (threadIdx.x == 0) {
+    auto tmp = pair.first_ / static_cast<U>(feature_size);
+    mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
+    var[blockIdx.x] = var_share =
+        static_cast<U>(pair.second_ / static_cast<U>(feature_size) - tmp * tmp);
+  }
+  __syncthreads();
+
+  mean_val = mean_share;
+  U invvar = rsqrt_<U>(var_share + static_cast<U>(epsilon));
+
+  // Step 2: Calculate y
+  if (scale != nullptr) {
+    if (bias != nullptr) {
+      for (int i = beg_idx, j = threadIdx.x; i < end_idx;
+           i += BlockDim, j += BlockDim) {
+        y[i] = static_cast<T>(
+            scale[j] * (static_cast<U>(x[i]) - mean_val) * invvar + bias[j]);
+      }
+    } else {
+      for (int i = beg_idx, j = threadIdx.x; i < end_idx;
+           i += BlockDim, j += BlockDim) {
+        y[i] = static_cast<T>(scale[j] * (static_cast<U>(x[i]) - mean_val) *
+                              invvar);
+      }
+    }
+  } else {  // scale == nullptr
+    if (bias != nullptr) {
+      for (int i = beg_idx, j = threadIdx.x; i < end_idx;
+           i += BlockDim, j += BlockDim) {
+        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
+                              bias[j]);
+      }
+    } else {
+      for (int i = beg_idx, j = threadIdx.x; i < end_idx;
+           i += BlockDim, j += BlockDim) {
+        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar);
+      }
+    }
+  }
+#endif
+}
+
 template <typename T, typename U, int VPT>
 __inline__ __device__ void cuLoadAddStridedInputs(
     const int i1_block, const int thr_load_row_off, const int thr_load_col_off,
@@ -872,6 +939,28 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
   }
 }
 
+template <>
+void LayerNormDirectCUDAFunctor<half>::operator()(
+    gpuStream_t stream, const half *input, std::vector<int> input_shape,
+    const half *bias, const half *scale, half *output, half *mean,
+    half *variance, int begin_norm_axis, float eps) {
+  const auto x_dims = framework::make_ddim(input_shape);
+  auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+  int batch_size = static_cast<int>(matrix_dim[0]);
+  int feature_size = static_cast<int>(matrix_dim[1]);
+  switch (GetDesiredBlockDim(feature_size)) {
+    FIXED_BLOCK_DIM_CASE(
+        LayerNormForwardFP16<half, half,
+                             kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(
+            input, scale, bias, output, mean, variance, eps, feature_size));
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Product from begin_norm_axis to end in layer_norm must be larger "
+          "than 1"));
+      break;
+  }
+}
+
 template <typename T>
 class LayerNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -961,6 +1050,9 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
 };
 
 template class LayerNormDirectCUDAFunctor<float>;
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+template class LayerNormDirectCUDAFunctor<half>;
+#endif
 
 #undef FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE_BASE
 #undef FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE

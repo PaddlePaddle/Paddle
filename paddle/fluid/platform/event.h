@@ -40,7 +40,7 @@ class Event {
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
   Event(EventType type, std::string name, uint32_t thread_id,
-        EventRole role = EventRole::kOrdinary);
+        EventRole role = EventRole::kOrdinary, std::string attr = "none");
 
   const EventType& type() const;
   Event* parent() const { return parent_; }
@@ -50,7 +50,7 @@ class Event {
   uint32_t thread_id() const { return thread_id_; }
   void set_name(std::string name) { name_ = name; }
   void set_role(EventRole role) { role_ = role; }
-
+  std::string attr() const { return attr_; }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifndef PADDLE_WITH_CUPTI
   gpuEvent_t event() const { return event_; }
@@ -69,6 +69,7 @@ class Event {
   EventRole role_{};
   int64_t cpu_ns_;
   bool visited_status_{false};
+  std::string attr_;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;

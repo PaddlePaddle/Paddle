@@ -185,6 +185,7 @@ packages=['paddle',
           'paddle.fluid.contrib.mixed_precision',
           'paddle.fluid.contrib.mixed_precision.bf16',
           'paddle.fluid.contrib.layers',
+          'paddle.fluid.contrib.sparsity',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
@@ -212,6 +213,7 @@ packages=['paddle',
           'paddle.nn',
           'paddle.nn.functional',
           'paddle.nn.layer',
+          'paddle.nn.quant',
           'paddle.nn.initializer',
           'paddle.nn.utils',
           'paddle.metric',
@@ -403,15 +405,15 @@ headers = (
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
     # to `extension/incude`,
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
-    headers += list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}'))   # errorMessage.pb for errormessage
+    # externalErrorMsg.pb for External Error message
+    headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):

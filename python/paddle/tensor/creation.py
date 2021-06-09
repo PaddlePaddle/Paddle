@@ -40,9 +40,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     Constructs a ``paddle.Tensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
 
-    If the ``data`` is already a tensor, and ``dtype`` or ``place`` does't change, no copy 
-    will be performed and return origin tensor, otherwise a new tensor will be constructed
-    and returned. 
+    If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
+    If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
 
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
@@ -75,32 +74,31 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
         #        [1])
 
-        x = paddle.to_tensor(1)
-        paddle.to_tensor(x, dtype='int32', place=paddle.CPUPlace()) # A new tensor will be constructed due to different dtype or place
-        # Tensor(shape=[1], dtype=int32, place=CPUPlace, stop_gradient=True,
+        x = paddle.to_tensor(1, stop_gradient=False)
+        print(x)
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
         #        [1])
 
-        paddle.to_tensor((1.1, 2.2), place=paddle.CUDAPinnedPlace())
-        # Tensor(shape=[1], dtype=float32, place=CUDAPinnedPlace, stop_gradient=True,
-        #        [1])
+        paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
+        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        [1])        
 
-        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CUDAPlace(0), stop_gradient=False)
-        # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
+        # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
         #        [[0.10000000, 0.20000000],
         #         [0.30000001, 0.40000001]])
 
         type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
-        # <class 'paddle.VarBase'>
+        # <class 'paddle.Tensor'>
 
         paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
-        # Tensor(shape=[2, 2], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+        # Tensor(shape=[2, 2], dtype=complex64, place=CPUPlace, stop_gradient=True,
         #        [[(1+1j), (2+0j)],
         #         [(3+2j), (4+0j)]])
     """
-
     place = _get_paddle_place(place)
     if place is None:
         place = _current_expected_place()
@@ -119,10 +117,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     if not isinstance(data, np.ndarray):
 
-        def _handle_diff_place_dtype(data, dtype, place, stop_gradient):
-            data.stop_gradient = stop_gradient
-            if not data.place._equals(place):
-                data = data._copy_to(place, False)
+        def _handle_dtype(data, dtype):
             if dtype:
                 if convert_dtype(dtype) != convert_dtype(data.dtype):
                     return data.astype(convert_dtype(dtype))
@@ -138,11 +133,17 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                     "this means the input data contains nested lists with different lengths. "
                 )
         elif isinstance(data, paddle.Tensor):
-            return _handle_diff_place_dtype(data, dtype, place, stop_gradient)
-        elif isinstance(data, (core.Tensor, core.LoDTensor)):
-            # convert LoDTensor to VarBase first, and then process it as input VarBase
+            data = data._copy_to(place, False)
+            ata = _handle_dtype(data, dtype)
+            data.stop_gradient = stop_gradient
+        elif isinstance(data, core.LoDTensor):
+            # convert LoDTensor to VarBase first
+            # Currenly, LoDTensor does no copy when places are same
             data = paddle.Tensor(data)
-            return _handle_diff_place_dtype(data, dtype, place, stop_gradient)
+            if not data.place._equals(place):
+                data = data._copy_to(place, False)
+            data = _handle_dtype(data, dtype)
+            data.stop_gradient = stop_gradient
         else:
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".
@@ -584,7 +585,7 @@ def tril(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
             retained. A positive value includes just as many diagonals above the main
@@ -1053,3 +1054,64 @@ def assign(x, output=None):
     check_type(x, 'x', (Variable, np.ndarray, list, tuple, float, int, bool),
                'assign')
     return tensor.assign(x, output)
+
+
+#NOTE(zhiqiu): not public 
+def _memcpy(input, place=None, output=None):
+    """
+
+    The OP copies the :attr:`input` to the :attr:`output`.
+    NOTE: currently, only support CUDAPlace <-> CUDAPinnedPlace or NPUPlace <-> CPUPlace.
+
+    Parameters:
+        input (Tensor): A tensor. Its data type supports float16, float32, float64, int32, int64, and bool.
+        device (Place): Target place for the output.
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
+
+    Returns:
+        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result = paddle._memcpy(data, place=paddle.CPUPlace())  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+    """
+    helper = LayerHelper('memcpy', **locals())
+    check_type(input, 'input', (Variable), 'memcpy')
+
+    if isinstance(input, (Variable, core.VarBase)):
+        check_dtype(input.dtype, 'input', [
+            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+            'uint8', 'bool'
+        ], 'memcpy', '(When the type of input in memcpy is Variable.)')
+    if output is None:
+        output = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    dst_place_type = -1
+    if place is None:
+        dst_place_type = -1
+    else:
+        p = core.Place()
+        p.set_place(place)
+        if p.is_cpu_place():
+            dst_place_type = 0
+        elif p.is_gpu_place():
+            dst_place_type = 1
+        elif p.is_cuda_pinned_place():
+            dst_place_type = 2
+        elif p.is_xpu_place():
+            dst_place_type = 3
+        elif p.is_npu_place():
+            dst_place_type = 4
+
+    attrs = {'dst_place_type': dst_place_type}
+    helper.append_op(
+        type='memcpy',
+        inputs={'X': [input]},
+        outputs={'Out': [output]},
+        attrs=attrs)
+    return output
