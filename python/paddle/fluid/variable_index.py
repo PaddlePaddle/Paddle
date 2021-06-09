@@ -112,6 +112,7 @@ def _getitem_impl_(var, item):
 
     use_strided_slice = False
     item, none_axes = replace_none(item)
+    item = replace_ellipsis(var, item)
 
     for dim, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item):

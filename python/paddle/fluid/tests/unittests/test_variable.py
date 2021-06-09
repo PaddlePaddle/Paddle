@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle
 from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -218,6 +219,26 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[2] == expected[2]).all())
         self.assertTrue((result[3] == expected[3]).all())
 
+    def _test_slice_index_ellipsis(self, place):
+        data = np.random.rand(2, 3, 4).astype("float32")
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            out1 = x[0:, ..., 1:]
+            out2 = x[0:, ...]
+            out3 = x[..., 1:]
+            out4 = x[...]
+
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=[out1, out2, out3, out4])
+
+        expected = [data[0:, ..., 1:], data[0:, ...], data[..., 1:], data[...]]
+
+        self.assertTrue((result[0] == expected[0]).all())
+        self.assertTrue((result[1] == expected[1]).all())
+        self.assertTrue((result[2] == expected[2]).all())
+        self.assertTrue((result[3] == expected[3]).all())
+
         with self.assertRaises(IndexError):
             res = x[[1, 0], [0, 0]]
 
@@ -233,6 +254,7 @@ class TestVariable(unittest.TestCase):
             self._test_slice(place)
             self._test_slice_index_tensor(place)
             self._test_slice_index_list(place)
+            self._test_slice_index_ellipsis(place)
 
     def _tostring(self):
         b = default_main_program().current_block()
