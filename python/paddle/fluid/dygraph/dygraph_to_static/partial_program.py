@@ -16,6 +16,7 @@ from __future__ import print_function
 import numpy as np
 import six
 
+import paddle
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
@@ -220,23 +221,15 @@ class PartialProgramLayer(layers.Layer):
 
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
-        framework._dygraph_tracer().trace_op(
-            type='run_program',
-            inputs={
-                'X': valid_vars(in_vars),
-                'Params': valid_vars(self._params)
-            },
-            outputs={
-                'Out': valid_vars(out_vars),
-                'OutScope': tmp_scope_vec,
-                'DOut': valid_vars(self._double_grads)
-            },
-            attrs={
-                'global_block': self.program.desc.block(0),
-                'start_op_index': 0,
-                'end_op_index': self._infer_program.desc.block(0).op_size(),
-                'is_test': not self.training
-            })
+
+        attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
+                 0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
+                 'is_test', not self.training)
+        core.ops.run_program(
+            valid_vars(in_vars),
+            valid_vars(self._params),
+            valid_vars(out_vars), tmp_scope_vec,
+            valid_vars(self._double_grads), *attrs)
 
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
@@ -263,7 +256,17 @@ class PartialProgramLayer(layers.Layer):
                     place=framework._current_expected_place(),
                     zero_copy=True)
             elif isinstance(value, core.VarBase):
-                var = value
+                if value.stop_gradient:
+                    # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
+                    # into CUDAPlace when it's as input of multi Ops. so we move it in advance
+                    # to avoid this problem.
+                    var = paddle.to_tensor(
+                        value,
+                        dtype=value.dtype,
+                        place=framework._current_expected_place(),
+                        stop_gradient=True)
+                else:
+                    var = value
                 var.name = self._inputs[i].desc.name()
             else:
                 continue

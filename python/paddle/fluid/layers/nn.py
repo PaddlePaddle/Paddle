@@ -26,7 +26,7 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only, _global_flags
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -9500,7 +9500,7 @@ def relu6(x, threshold=6.0, name=None):
         outputs={'Out': out},
         attrs={
             'threshold': threshold,
-            'use_mkldnn': core.globals()["FLAGS_use_mkldnn"]
+            'use_mkldnn': _global_flags()["FLAGS_use_mkldnn"]
         })
     return out
 
@@ -11569,7 +11569,7 @@ Examples:
             axis=axis,
             act=act,
             op_name='elementwise_add',
-            use_mkldnn=core.globals()["FLAGS_use_mkldnn"])
+            use_mkldnn=_global_flags()["FLAGS_use_mkldnn"])
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
