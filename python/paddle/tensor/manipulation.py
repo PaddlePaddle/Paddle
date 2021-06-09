@@ -864,11 +864,8 @@ def gather(x, index, axis=None, name=None):
         axis = 0
 
     if in_dygraph_mode():
-        if not isinstance(axis, Variable):
-            return core.ops.gather(x, index, None, "axis", axis, "overwrite",
-                                   False)
-        else:
-            return core.ops.gather(x, index, axis, "overwrite", False)
+        axis = axis.item() if isinstance(saxis, paddle.Tensor) else axis
+        return core.ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],

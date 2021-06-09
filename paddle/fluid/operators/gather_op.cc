@@ -53,15 +53,16 @@ class GatherOp : public framework::OperatorWithKernel {
               index_dims.size()));
     }
 
+    auto axis = ctx->Attrs().Get<int>("axis");
     auto input_dim = ctx->GetInputDim("X");
-    if (ctx->HasInput("Axis")) {
+    if (ctx->HasInput("Axis") || axis == 0) {
+      // if HasInput("Axis"), we can not obtain correct shape of output
       int batch_size = index_dims[0];
       framework::DDim output_dims(input_dim);
       output_dims[0] = batch_size;
       ctx->SetOutputDim("Out", output_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
     } else {
-      auto axis = ctx->Attrs().Get<int>("axis");
       int index_size = index_dims[0];
       std::vector<int> out_dim_vec;
       for (int i = 0; i < axis; i++) {
