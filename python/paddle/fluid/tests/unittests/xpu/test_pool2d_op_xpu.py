@@ -26,6 +26,8 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import paddle
 
+from test_pool2d_op import adaptive_start_index, adaptive_end_index
+
 paddle.enable_static()
 
 
