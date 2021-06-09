@@ -963,6 +963,10 @@ class Variable(object):
                 y = x.detach()
 
         """
+        assert self.type == core.VarDesc.VarType.SELECTED_ROWS or \
+            self.type == core.VarDesc.VarType.LOD_TENSOR, \
+            "only support a variable with SELECTED_ROWS or LOD_TENSOR to be detached"
+
         output = self.block.create_var(
             name=unique_name.generate_with_ignorable_key("detach_" + self.name),
             dtype=self.dtype,
