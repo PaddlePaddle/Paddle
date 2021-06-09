@@ -405,7 +405,7 @@ for mode in {0, 1}:
                 grad_chek=False)
             create_test_class(
                 'gelu_add_fp16' + suffix,
-                relu_add_func, {
+                gelu_add_func, {
                     'functor_list': ["gelu", "elementwise_add"],
                     'save_intermediate_out': save_intermediate_out,
                 },
