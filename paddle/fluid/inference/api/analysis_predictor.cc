@@ -1234,6 +1234,8 @@ USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(nearest_interp);
+USE_TRT_CONVERTER(reduce_sum);
+USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reshape);
 #endif
 
