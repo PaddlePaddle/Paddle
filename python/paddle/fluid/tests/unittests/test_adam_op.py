@@ -804,9 +804,46 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
         adam.minimize(b)
         state_dict = adam.state_dict()
         fluid.save_dygraph(state_dict, "paddle_dy")
-        para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
-        adam.set_state_dict(opti_state_dict)
+        para_state_dict, opt_state_dict = fluid.load_dygraph("paddle_dy")
+        adam.set_state_dict(opt_state_dict)
 
+        paddle.enable_static()
+
+    def test_adam_save_load_error(self):
+        paddle.disable_static()
+
+        def get_opt(dtype, shape):
+            with paddle.utils.unique_name.guard():
+                paddle.set_default_dtype(dtype)
+                a = paddle.rand([4, 10])
+                linear = paddle.nn.Linear(10, 10)
+                b = linear(a)
+                state_dict = linear.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
+
+                scheduler = paddle.optimizer.lr.NoamDecay(
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.fluid.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameter_list=linear.parameters(),
+                    use_global_beta_pow=True)
+                adam.minimize(b)
+                return adam
+
+        adam = get_opt('float32', [10, 10])
+
+        state_dict = adam.state_dict()
+        fluid.save_dygraph(state_dict, "paddle_dy")
+        para_state_dict, opt_state_dict = fluid.load_dygraph("paddle_dy")
+        adam.set_state_dict(opt_state_dict)
+
+        adam2 = get_opt('float64', [10, 10])  # dtype not match
+        self.assertRaises(AssertionError, adam2.set_state_dict, opt_state_dict)
+
+        adam3 = get_opt('float32', [10, 10])  # shape not match
+        opt_state_dict['beta1_pow_acc_0'] = np.array(
+            [0.9, 0.9], dtype='float32')
+        self.assertRaises(AssertionError, adam3.set_state_dict, opt_state_dict)
         paddle.enable_static()
 
 
