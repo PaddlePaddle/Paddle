@@ -207,6 +207,8 @@ from .tensor.math import isnan  # noqa: F401
 from .tensor.math import prod  # noqa: F401
 from .tensor.math import broadcast_shape  # noqa: F401
 from .tensor.math import conj  # noqa: F401
+from .tensor.math import neg  # noqa: F401
+from .tensor.math import lgamma  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -424,6 +426,8 @@ __all__ = [     #noqa
            'prod',
            'broadcast_shape',
            'conj',
+           'neg',
+           'lgamma',
            'square',
            'divide',
            'ceil',
