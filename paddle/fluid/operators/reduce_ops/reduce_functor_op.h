@@ -13,83 +13,117 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include <float.h>
-#include <limits.h>
 #include <math.h>
-#include <cstdint>
+#include <limits>
+
+#ifdef __HIPCC__
+#include <hip/hip_runtime.h>
+#endif
 
 namespace paddle {
 namespace operators {
 
+// Post processing function for sum, max, min, prod, any
+template <typename Tx, typename Ty = Tx>
+struct IdentityFunctor {
+  __device__ explicit inline IdentityFunctor() {}
+
+  __device__ explicit inline IdentityFunctor(int n) {}
+
+  __device__ inline Ty operator()(const Tx &x) const {
+    return static_cast<Ty>(x);
+  }
+};
+
+// Post processing function for mean
 template <typename T>
-struct DataBound {
-  static inline T max() { return static_cast<T>(FLT_MAX); }
-  static inline T min() { return static_cast<T>(-FLT_MAX); }
+struct DivideFunctor {
+  __device__ explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
+
+  __device__ inline T operator()(const T &x) const { return x * n_inv; }
+
+ private:
+  T n_inv;
 };
 
-template <>
-struct DataBound<float> {
-  static inline float max() { return FLT_MAX; }
-  static inline float min() { return -FLT_MAX; }
-};
-
-template <>
-struct DataBound<double> {
-  static inline double max() { return DBL_MAX; }
-  static inline double min() { return -DBL_MAX; }
-};
-
-template <>
-struct DataBound<int32_t> {
-  static inline int32_t max() { return INT32_MAX; }
-  static inline int32_t min() { return INT32_MIN; }
-};
-
-template <>
-struct DataBound<int64_t> {
-  static inline int64_t max() { return INT64_MAX; }
-  static inline int64_t min() { return INT64_MIN; }
-};
-
-template <typename T>
+template <typename Tx, typename Ty = Tx>
 struct CustomMin {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+  using Transformer = IdentityFunctor<Tx>;
+
+  __device__ __forceinline__ Ty initial() {
+    return std::numeric_limits<Ty>::max();
+  }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return (b < a) ? b : a;
   }
 };
 
-template <typename T>
+template <typename Tx, typename Ty = Tx>
 struct CustomMax {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+  using Transformer = IdentityFunctor<Tx>;
+
+  __device__ __forceinline__ Ty initial() {
+    return std::numeric_limits<Ty>::min();
+  }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return (b > a) ? b : a;
   }
 };
 
-template <typename T>
+// for cub::Reduce
+template <typename Tx, typename Ty = Tx>
 struct CustomSum {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+  using Transformer = IdentityFunctor<Tx, Ty>;
+
+  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(0.0f); }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b + a;
   }
 };
 
-template <typename T>
+template <typename Tx, typename Ty = Tx>
+struct CustomMean {
+  using Transformer = DivideFunctor<Tx>;
+
+  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(0.0f); }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
+    return b + a;
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
 struct CustomMul {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+  using Transformer = IdentityFunctor<Tx>;
+
+  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(1.0f); }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b * a;
   }
 };
 
-template <typename T>
+template <typename Tx, typename Ty = Tx>
 struct CustomLogicalOr {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+  using Transformer = IdentityFunctor<Tx>;
+
+  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(false); }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b || a;
   }
 };
 
-template <typename T>
+template <typename Tx, typename Ty = Tx>
 struct CustomLogicalAnd {
-  __device__ __forceinline__ T operator()(const T &a, const T &b) const {
+  using Transformer = IdentityFunctor<Tx>;
+
+  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(true); }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b && a;
   }
 };

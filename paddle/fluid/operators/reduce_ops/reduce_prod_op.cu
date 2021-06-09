@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cuh"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
 namespace paddle {
@@ -28,37 +27,19 @@ class ReduceProdKernel : public framework::OpKernel<T> {
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
     auto out_dtype = context.Attr<int>("out_dtype");
-
     auto dims = context.Attr<std::vector<int>>("dim");
-    bool keep_dim = context.Attr<bool>("keep_dim");
 
-    std::vector<int> reduce_dims;
-    if (reduce_all) {
-      reduce_dims.resize(input->dims().size());
-      for (int i = 0; i < reduce_dims.size(); ++i) {
-        reduce_dims[i] = i;
-      }
-    } else {
-      for (auto e : dims) {
-        reduce_dims.push_back(e >= 0 ? e : e + input->dims().size());
-      }
-    }
-
-    int reduce_num = 1;
-    for (int i = 0; i < reduce_dims.size(); ++i) {
-      reduce_num *= input->dims()[reduce_dims[i]];
-    }
+    std::vector<int> reduce_dims =
+        detail::GetReduceDim(dims, input->dims().size(), reduce_all);
 
     auto stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunctorImpl<T, CustomMul, detail::IdentityFunctor>(
-              *input, output, reduce_dims, static_cast<double>(1.0f), stream));
+          TensorReduceFunctorImpl<T, CustomMul>(*input, output, reduce_dims,
+                                                stream));
     } else {
-      TensorReduceFunc<T, T, CustomMul<T>, detail::IdentityFunctor<T>>(
-          *input, output, reduce_dims, static_cast<T>(1.0f), CustomMul<T>(),
-          detail::IdentityFunctor<T>(), detail::IdentityFunctor<T>(), stream);
+      TensorReduceFunc<T, T, CustomMul>(*input, output, reduce_dims, stream);
     }
   }
 };

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cuh"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {
@@ -26,26 +26,13 @@ class ReduceMinKernel : public framework::OpKernel<T> {
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
-
     auto dims = context.Attr<std::vector<int>>("dim");
-    bool keep_dim = context.Attr<bool>("keep_dim");
 
-    std::vector<int> reduce_dims;
-    if (reduce_all) {
-      reduce_dims.resize(input->dims().size());
-      for (int i = 0; i < reduce_dims.size(); ++i) {
-        reduce_dims[i] = i;
-      }
-    } else {
-      for (auto e : dims) {
-        reduce_dims.push_back(e >= 0 ? e : e + input->dims().size());
-      }
-    }
+    std::vector<int> reduce_dims =
+        detail::GetReduceDim(dims, input->dims().size(), reduce_all);
 
     auto stream = context.cuda_device_context().stream();
-    TensorReduceFunc<T, T, CustomMin<T>, detail::IdentityFunctor<T>>(
-        *input, output, reduce_dims, DataBound<T>::max(), CustomMin<T>(),
-        detail::IdentityFunctor<T>(), detail::IdentityFunctor<T>(), stream);
+    TensorReduceFunc<T, T, CustomMin>(*input, output, reduce_dims, stream);
   }
 };
 
