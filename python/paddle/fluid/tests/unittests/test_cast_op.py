@@ -86,12 +86,8 @@ class TestCastOp4(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
-            self.check_output_with_place(place, atol=1e-6)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-6)
 
 
 class TestCastOp5(op_test.OpTest):
@@ -106,13 +102,10 @@ class TestCastOp5(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
-            # results are represented as uint16,
-            # so the maximum diff between actual-value and expected-value is 1.
-            self.check_output_with_place(place, atol=1)
+        place = core.CUDAPlace(0)
+        # results are represented as uint16,
+        # so the maximum diff between actual-value and expected-value is 1.
+        self.check_output_with_place(place, atol=1)
 
 
 class TestCastOpError(unittest.TestCase):
