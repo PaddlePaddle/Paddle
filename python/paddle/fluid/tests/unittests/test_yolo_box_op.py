@@ -38,7 +38,8 @@ def YoloBox(x, img_size, attrs):
     iou_aware = attrs['iou_aware']
     iou_aware_factor = attrs['iou_aware_factor']
     bias_x_y = -0.5 * (scale_x_y - 1.)
-    input_size = downsample * h
+    input_h = downsample * h
+    input_w = downsample * w
 
     if iou_aware:
         ioup = x[:, :an_num, :, :]
@@ -56,7 +57,7 @@ def YoloBox(x, img_size, attrs):
 
     anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
     anchors_s = np.array(
-        [(an_w / input_size, an_h / input_size) for an_w, an_h in anchors])
+        [(an_w / input_w, an_h / input_h) for an_w, an_h in anchors])
     anchor_w = anchors_s[:, 0:1].reshape((1, an_num, 1, 1))
     anchor_h = anchors_s[:, 1:2].reshape((1, an_num, 1, 1))
     pred_box[:, :, :, :, 2] = np.exp(pred_box[:, :, :, :, 2]) * anchor_w
