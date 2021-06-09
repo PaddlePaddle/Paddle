@@ -163,7 +163,7 @@ def init_communicator(program, rank, nranks, wait_port, current_endpoint,
             })
     elif core.is_compiled_with_npu():
         hccl_id_var = block.create_var(
-            name=unique_name.generate('hccl_id'),
+            name=fluid.unique_name.generate('hccl_id'),
             persistable=True,
             type=core.VarDesc.VarType.RAW)
         endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
@@ -710,10 +710,10 @@ class DynamicGraphAdapter(object):
                 enable=self._amp_level != 'O0', **self._amp_custom_lists):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
-                    * [to_variable(x) for x in inputs])
+                    *[to_variable(x) for x in inputs])
             else:
                 outputs = self.model.network.forward(
-                    * [to_variable(x) for x in inputs])
+                    *[to_variable(x) for x in inputs])
 
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -732,7 +732,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -746,7 +746,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -777,7 +777,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -1831,6 +1831,7 @@ class Model(object):
                 batch_size=1,
                 num_workers=0,
                 stack_outputs=False,
+                verbose=1,
                 callbacks=None):
         """
         Compute the output predictions on testing data.
@@ -1851,7 +1852,10 @@ class Model(object):
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
+            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+                1 = progress bar, 2 = one line per batch. Default: 1.
             callbacks(Callback): A Callback instance, default None.
+
         Returns:
             list: output of models.
 
@@ -1911,7 +1915,7 @@ class Model(object):
 
         self._test_dataloader = test_loader
 
-        cbks = config_callbacks(callbacks, model=self, verbose=1)
+        cbks = config_callbacks(callbacks, model=self, verbose=verbose)
 
         test_steps = self._len_data_loader(test_loader)
         logs = {'steps': test_steps}

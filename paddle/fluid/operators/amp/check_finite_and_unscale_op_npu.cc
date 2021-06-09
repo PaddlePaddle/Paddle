@@ -42,13 +42,11 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 
     found_inf->mutable_data<bool>(ctx.GetPlace());
 
-    bool found_inf_data = false;
-
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    // step1: inverse scale(RealDiv)
+    // step1: inverse scale
     Tensor const_tensor;
     const_tensor.mutable_data<T>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<T>(&const_tensor, static_cast<T>(1.0));
@@ -58,44 +56,49 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     Tensor inverse_out(scale->type());
     inverse_out.Resize(scale->dims());
     inverse_out.mutable_data<T>(ctx.GetPlace());
-    auto runner_inverse =
+    const auto& runner_inverse =
         NpuOpRunner("Div", {const_tensor, *scale}, {inverse_out}, {});
     runner_inverse.Run(stream);
     tmp_inverse_out = &inverse_out;
 
-    // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
-    // tmp is only placeholder.
+    // NOTE(zhiqiu):
     Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
-    found_inf_data = FoundNanOrInf(ctx.template device_context<paddle::platform::NPUDeviceContext>(), 
-            stream, float_status, &tmp);
+    // NOTE(zhiqiu): NPUGetFloatStatus updates data on input in-place.
+    // tmp is only placeholder.
+    const auto& runner_float_status =
+        NpuOpRunner("NPUGetFloatStatus", {*float_status}, {tmp},
+                    {{"message", std::string("check_nan_and_inf")}});
+    runner_float_status.Run(stream);
 
+    Tensor sum;
+    sum.mutable_data<float>({1}, ctx.GetPlace());
+    const auto& runner_reduce_sum =
+        NpuOpRunner("ReduceSumD", {*float_status}, {sum},
+                    {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
+    runner_reduce_sum.Run(stream);
+
+    const auto& runner_greater =
+        NpuOpRunner("GreaterEqual", {sum, const_tensor}, {*found_inf}, {});
+    runner_greater.Run(stream);
+
+    // NOTE(zhiqiu): The normal logic is :
+    // out = in, if found_inf = true
+    // out = in/scale, if found_inf = false
+    // However, on NPU, in order to avoid stream sync, we do not copy the
+    // found_inf data to cpu to check whether to unscale or not.
+    // Instead, we do the Mul no matter found_inf or not.
+    // And, a fact is, only few steps contains nan/inf during training.
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
-      if (!found_inf_data) {
-        // MatMul
-        auto runner_matmul =
-            NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
-        runner_matmul.Run(stream);
-      }
+      const auto& runner_mul =
+          NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
+      runner_mul.Run(stream);
     }
 
-    // set found_inf to true
-    VLOG(4) << "found overflow:" << found_inf_data;
-    Tensor found_inf_tensor;
-    found_inf_tensor.Resize({1});
-    bool* is_found_inf =
-        found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
-    *is_found_inf = found_inf_data;
-
-    framework::TensorCopy(
-        found_inf_tensor, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), found_inf);
-    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-
-    auto runner_clear_status =
+    const auto& runner_clear_status =
         NpuOpRunner("NPUClearFloatStatus", {*float_status}, {tmp});
     runner_clear_status.Run(stream);
   }
