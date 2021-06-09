@@ -858,6 +858,7 @@ def add_n(inputs, name=None):
 def trunc(input, name=None):
     '''
     This API is used to returns a new tensor with the truncated integer values of input.
+    
     Args:
         input (Tensor): The input tensor, it's data type should be int, float, double.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -869,7 +870,7 @@ def trunc(input, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             paddle.set_device('cpu')
             input = paddle.rand([2,2],'float32')
             output = paddle.trunc(input)
@@ -878,14 +879,14 @@ def trunc(input, name=None):
             #        [0., 0.]])
     '''
     if in_dygraph_mode():
-        return core.ops.trunc(x)
+        return core.ops.trunc(input)
     else:
-        inputs = {"X": x}
+        inputs = {"X": input}
         attrs = {}
 
         helper = LayerHelper("trunc", **locals())
-        check_variable_and_dtype(x, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc')
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        check_variable_and_dtype(input, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc')
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
         helper.append_op(
             type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out})
