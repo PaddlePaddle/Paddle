@@ -28,7 +28,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-seqconv_eltadd_relu_fuse_pass::seqconv_eltadd_relu_fuse_pass() {
+seqconv_eltadd_relu_fuse_pass::SeqConvEltAddReluFusePass() {
   AddOpCompat(OPCompat("sequence_conv"))
       .AddInput("X")
       .IsTensor()
