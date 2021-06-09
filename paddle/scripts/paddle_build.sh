@@ -426,6 +426,13 @@ EOF
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
+    elif [ "$1" == "paddle_inference_c" ]; then
+        cd ${PADDLE_ROOT}/build
+        cp -r paddle_inference_c_install_dir paddle_inference_c
+        tar -czf paddle_inference_c.tgz paddle_inference_c
+        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_c.tgz |awk '{print $1}')
+        echo "Paddle_Inference Capi Size: $buildSize"
+        echo "ipipe_log_param_Paddle_Inference_capi_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -1943,6 +1950,7 @@ EOF
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     build_size "paddle_inference"
+    build_size "paddle_inference_c"
 }
 
 function tar_fluid_lib() {
