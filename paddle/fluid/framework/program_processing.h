@@ -32,7 +32,7 @@ class ProgramProcessor {
 
   // explicit ProgramProcessor(const ProgramDesc &program);
 
-  bool IsControlFlowBlock(ProgramDesc *program, BlockDesc *current_block);
+  bool IsControlFlowBlock(ProgramDesc *program, const BlockDesc &current_block);
 
   void SSAProgram(ProgramDesc *program);
 };

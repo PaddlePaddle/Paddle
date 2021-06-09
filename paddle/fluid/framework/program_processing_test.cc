@@ -61,6 +61,34 @@ TEST(ProgramDesc, SSAprogram) {
   VLOG(3) << "sub_blocks_Parent:" << sub_blocks[0]->Parent();
   op->SetAttr("sub_blocks", sub_blocks);
 
+  // building cond op such as less_than
+  BlockDesc* parent_block = program.MutableBlock(sub_blocks[0]->Parent());
+  op = parent_block->AppendOp();
+  op->SetType("less_than");
+  auto* x = parent_block->Var("X");
+  x->SetType(proto::VarType::LOD_TENSOR);
+  x->SetLoDLevel(0);
+  x->SetDataType(proto::VarType::FP32);
+  x->SetShape({1});
+
+  auto* y = parent_block->Var("Y");
+  y->SetType(proto::VarType::LOD_TENSOR);
+  y->SetLoDLevel(0);
+  y->SetDataType(proto::VarType::FP32);
+  y->SetShape({1});
+
+  op->SetInput("X", {x->Name()});
+  op->SetInput("Y", {y->Name()});
+
+  auto* out = parent_block->Var("Out");
+  out->SetType(proto::VarType::BOOL);
+  op->SetOutput("Out", {out->Name()});
+
+  // building while op
+  // BlockDesc* parent_block = program.MutableBlock(sub_blocks[0]->Parent());
+  op = parent_block->AppendOp();
+  op->SetType("while");
+
   ProgramProcessor program_processor;
   program_processor.SSAProgram(&program);
 }

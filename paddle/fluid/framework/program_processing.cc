@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,12 +29,12 @@ bool ProgramProcessor::IsControlFlowBlock(ProgramDesc *program,
           inner_inputs.end())
         inner_inputs.push_back(iname);
   }
-  BlockDesc parent_block = program->Block(current_block.Parent());
   for (auto in_var_name : inner_inputs) {
-    VarDesc *parent_block_var = parent_block.FindVarRecursive(in_var_name);
+    VarDesc *parent_block_var =
+        program->Block(current_block.Parent()).FindVarRecursive(in_var_name);
     VarDesc *current_block_var;
     if (current_block.HasVar(in_var_name)) {
-      current_block_var = current_block.Var(in_var_name);
+      current_block_var = current_block.FindVar(in_var_name);
     }
     if (parent_block_var == nullptr && current_block_var)
       removed_inner_inputs.push_back(in_var_name);
@@ -51,6 +51,8 @@ void ProgramProcessor::SSAProgram(ProgramDesc *program) {
     if (IsControlFlowBlock(program, program->Block(i))) {
       VLOG(3) << "Block ID with whlie op:" << program->Block(i).ID();
       // ssa_processing(program, cur_block);
+    } else {
+      VLOG(3) << "Not a ControlFlow Block";
     }
   }
 }
