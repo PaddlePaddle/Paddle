@@ -1395,7 +1395,7 @@ class DGCMomentumOptimizer(Optimizer):
             Default is [0.999]. For example, if the sparsity is [0.99, 0.999], \
                 the top [1%, 0.1%] important element will be transmitted.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
-            this parameter is required in dygraph mode. \
+            This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
