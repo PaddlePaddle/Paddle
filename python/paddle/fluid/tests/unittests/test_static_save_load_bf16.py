@@ -34,12 +34,12 @@ class TestSaveLoadBF16(unittest.TestCase):
     def test_ptb_rnn_cpu_bfloat16(self):
         seed = 90
         hidden_size = 10
-        vocab_size = 1000
+        vocab_size = 500
         num_layers = 1
         num_steps = 3
         init_scale = 0.1
         batch_size = 4
-        batch_num = 200
+        batch_num = 100
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
