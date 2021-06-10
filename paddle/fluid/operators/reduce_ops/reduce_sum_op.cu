@@ -18,13 +18,13 @@
 namespace paddle {
 namespace operators {
 
-template <typename Tx, typename Ty = Tx>
+template <typename Tout>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
 
   template <typename U>
-  HOSTDEVICE inline Ty operator()(const U& x) const {
-    return static_cast<Ty>(x);
+  HOSTDEVICE inline Tout operator()(const U& x) const {
+    return static_cast<Tout>(x);
   }
 };
 
@@ -63,9 +63,9 @@ class ReduceSumKernel : public framework::OpKernel<T> {
               *input, output, reduce_dims, static_cast<double>(0.0), cub::Sum(),
               stream));
     } else {
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T, T>>(
+      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
           *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
-          IdentityFunctor<T, T>(), stream);
+          IdentityFunctor<T>(), stream);
     }
   }
 };

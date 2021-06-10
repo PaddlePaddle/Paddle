@@ -20,7 +20,6 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
 
@@ -48,9 +47,9 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
       auto stream = context.cuda_device_context().stream();
       std::vector<int> reduce_dims;
       reduce_dims.push_back(out->dims().size());
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+      TensorReduce<T, T, cub::Sum, IdentityFunctor>(
           diag, out, reduce_dims, static_cast<T>(0), cub::Sum(),
-          IdentityFunctor<T>(), stream);
+          IdentityFunctor(), stream);
     }
   }
 };

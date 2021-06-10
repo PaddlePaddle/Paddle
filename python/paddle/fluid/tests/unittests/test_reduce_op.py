@@ -50,7 +50,7 @@ class TestSumOp_fp16(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output()
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -65,6 +65,8 @@ class TestSumOp_fp16_withInt(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.inputs = {
+            # ref to https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+            # Precision limitations on integer values between 0 and 2048 can be exactly represented
             'X': np.random.randint(0, 30, (10, 10)).astype("float16")
         }
         self.attrs = {'dim': [0, 1]}

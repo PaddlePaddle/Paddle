@@ -436,8 +436,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
 #undef CUB_BLOCK_DIM_CASE
 }
 
-template <typename Tx, typename ReduceOp,
-          template <typename, typename> class TransformOp>
+template <typename Tx, typename ReduceOp, template <typename> class TransformOp>
 struct TensorReduceFunctor {
   const framework::Tensor& x;
   framework::Tensor* y;
@@ -459,9 +458,9 @@ struct TensorReduceFunctor {
 
   void apply() const {
     const Ty& init_cast = static_cast<Ty>(init);
-    TensorReduce<Tx, Ty, ReduceOp, TransformOp<Tx, Ty>>(
-        x, y, origin_reduce_dims, init_cast, reducer, TransformOp<Tx, Ty>(),
-        stream);
+    TensorReduce<Tx, Ty, ReduceOp, TransformOp<Ty>>(x, y, origin_reduce_dims,
+                                                    init_cast, reducer,
+                                                    TransformOp<Ty>(), stream);
   }
 };
 
