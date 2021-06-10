@@ -415,7 +415,6 @@ class ModelAverage(Optimizer):
                                                         param)
                 old_num_accumulates = self._get_accumulator(
                     'old_num_accumulates', param)
-                num_updates = self._get_accumulator('num_updates', param)
                 sum_1 = self._get_accumulator('sum_1', param)
                 sum_2 = self._get_accumulator('sum_2', param)
                 sum_3 = self._get_accumulator('sum_3', param)
@@ -506,17 +505,15 @@ class ModelAverage(Optimizer):
             self._get_accumulator('num_accumulates', param))
         old_num_accumulates = block._clone_variable(
             self._get_accumulator('old_num_accumulates', param))
-        num_updates = block._clone_variable(
-            self._get_accumulator('num_updates', param))
         # backup param value to grad
         layers.assign(input=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
         sum = layers.sum(x=[sum_1, sum_2, sum_3])
         tmp = layers.cast(
-            x=tmp, dtype='float32' if self._dtype == None else self._dtype)
+            x=tmp, dtype='float32' if self._dtype is None else self._dtype)
         sum = layers.cast(
-            x=sum, dtype='float32' if self._dtype == None else self._dtype)
+            x=sum, dtype='float32' if self._dtype is None else self._dtype)
         layers.ops._elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param):
