@@ -33,6 +33,45 @@ class Graph;
 
 class SkipLayerNormFusePass : public FusePassBase {
  public:
+  SkipLayerNormFusePass() {
+    AddOpCompat(OpCompat("elementwise_add"))
+        .AddInput("X")
+        .IsTensor()
+        .End()
+        .AddInput("Y")
+        .IsTensor()
+        .End()
+        .AddOutput("Out")
+        .IsTensor()
+        .End()
+        .AddAttr("axis")  // unconstrained
+        .End();
+
+    AddOpCompat(OpCompat("layer_norm"))
+        .AddInput("X")
+        .IsTensor()
+        .End()
+        .AddInput("Scale")
+        .IsTensor()
+        .End()
+        .AddInput("Bias")
+        .IsTensor()
+        .End()
+        .AddOutput("Y")
+        .IsTensor()
+        .End()
+        .AddOutput("Mean")
+        .IsTensor()
+        .End()
+        .AddOutput("Variance")
+        .IsTensor()
+        .End()
+        .AddAttr("epsilon")  // unconstrained
+        .End()
+        .AddAttr("begin_norm_axis")  // unconstrained
+        .End();
+  }
+
   virtual ~SkipLayerNormFusePass() {}
 
  protected:
