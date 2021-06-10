@@ -32,7 +32,7 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 __all__ = ["FleetUtil"]
 
 _logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+    __name__, logging.INFO, fmt='%(asctime)s %(levelname)s: %(message)s')
 
 fleet = None
 
