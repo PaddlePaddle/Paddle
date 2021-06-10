@@ -140,19 +140,36 @@ def _getitem_impl_(var, item):
             end = MAX_INTEGER if end is None else end
 
         elif isinstance(slice_item, list):
+            is_bool_list = False
             for i in slice_item:
-                if not isinstance(i, int):
-                    raise TypeError("Only support int value in list")
+                if not isinstance(i, (int, bool)):
+                    raise TypeError("Only support int or bool in index list.")
+
+                if isinstance(i, bool):
+                    is_bool_list = True
+                    break
 
             if len(item) != 1:
                 raise IndexError(
                     "When index contains a list, its length must be 1, but received {}".
                     format(len(item)))
 
+            if is_bool_list:
+                new_slice_item = []
+                for idx, ele in enumerate(slice_item):
+                    if not isinstance(ele, bool):
+                        raise TypeError(
+                            "Mixed bool index with other types is not supported."
+                        )
+
+                    if ele is True:
+                        new_slice_item.append(idx)
+                slice_item = new_slice_item
+
             from .layers import assign
             from ..tensor import index_select
 
-            idx = assign(np.array(slice_item))
+            idx = assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
         elif isinstance(slice_item, Variable):
