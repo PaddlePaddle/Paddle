@@ -124,6 +124,8 @@ Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format);
 
 Tensor GenerateNZTensor(const Tensor &src_tensor);
 
+void InferNPUStorageFormatAndDims(const Tensor &src, Tensor *dst);
+
 template <typename T>
 void FillNpuTensorWithConstant(Tensor *tensor, T val) {
   PADDLE_ENFORCE_EQ(

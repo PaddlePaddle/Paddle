@@ -144,9 +144,13 @@ const DDim& Tensor::dims() const { return dims_; }
 
 int64_t Tensor::numel() const {
 #ifdef PADDLE_WITH_ASCEND_CL
-  if (npu_storage_layout_ == DataLayout::kFractalNZ) {
-    return product(npu_storage_dims_);
-  }
+  int64_t npu_storage_numel = product(npu_storage_dims_);
+  PADDLE_ENFORCE_LT(npu_storage_numel, 0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The size of NPU Tensor's storage dims should be "
+                        "larger than 0, but get %d",
+                        npu_storage_numel));
+  return npu_storage_numel;
 #endif
   return product(dims_);
 }
