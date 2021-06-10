@@ -242,14 +242,19 @@ TEST(c_allreduce_sum, NPU) {
 
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num: " << i << " float";
-    TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
+    //TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
+    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(3.0));
   }
 
   touch_inf(&scope, ctx);
 
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num 4: " << i << " float";
-    TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
+    //TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
+    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(3.0));
   }
   ctx.Wait();
+  VLOG(0) << "exit";
 }
+
+
