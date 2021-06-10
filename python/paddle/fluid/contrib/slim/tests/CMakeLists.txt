@@ -127,6 +127,7 @@ if(WIN32)
 	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_lstm_model)
 	list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
 	list(REMOVE_ITEM TEST_OPS test_quantize_transpiler_v2)
+	list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
 endif()
 
 if(LINUX AND WITH_MKLDNN)
@@ -280,7 +281,6 @@ if(WIN32)
         test_moving_average_abs_max_scale_op
         test_imperative_qat_channelwise
         test_imperative_qat
-        test_imperative_qat_amp
         test_imperative_out_scale
         test_graph)
     LIST(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
