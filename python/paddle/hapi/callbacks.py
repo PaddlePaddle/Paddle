@@ -634,7 +634,7 @@ class LRScheduler(Callback):
                     boundaries=boundaries, values=values)
                 learning_rate = paddle.optimizer.lr.LinearWarmup(
                     learning_rate=learning_rate,
-                    warmup_steps=wamup_epochs,
+                    warmup_steps=wamup_steps,
                     start_lr=base_lr / 5.,
                     end_lr=base_lr,
                     verbose=True)
