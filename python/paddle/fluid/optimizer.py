@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import warnings
 import numpy as np
 import six
 import os
@@ -21,6 +22,7 @@ import logging
 from collections import defaultdict
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
 
@@ -1393,7 +1395,7 @@ class DGCMomentumOptimizer(Optimizer):
             Default is [0.999]. For example, if the sparsity is [0.99, 0.999], \
                 the top [1%, 0.1%] important element will be transmitted.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+            this parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1469,7 +1471,7 @@ class DGCMomentumOptimizer(Optimizer):
             assert isinstance(
                 num_trainers, int
             ), "The type of num_trainers should be 'int', but received %s" % type(
-                value)
+                num_trainers)
             assert num_trainers > 0, "The value of num_trainers should be greater than 0!"
 
             self._num_trainers = num_trainers
