@@ -614,6 +614,10 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   }
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, storage_format));
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      aclSetTensorStorageShape(desc, storage_dims.size(), storage_dims.data()));
+  /*
   if (op_type_ == "TransData" || op_type_ == "MatMul" ||
       op_type_ == "BatchMatMul") {
     VLOG(4) << "Set Storage format and shape for TransData, MatMul, "
@@ -625,7 +629,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
     PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclSetTensorStorageShape(desc, dims.size(), dims.data()));
-  }
+  }*/
   return desc;
 }
 

@@ -88,18 +88,18 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     Tensor tmp_y = CastNPUFormat(*y, 29);
 
     if (x->dims().size() == 2) {
-      out->mutable_data<T>(ctx.GetPlace());
-      out->ResizeNPUDims(out->dims());
-      // out->set_layout(DataLayout::kFractalNZ);
-
-      // Tensor tmp_out(out->type());
-      // tmp_out.Resize(out->dims());
-      // tmp_out = CastNPUFormat(*out, tmp_out, 29);
-
-      Tensor tmp_out = GenerateNZTensor(*out);
+      // out->mutable_data<T>(ctx.GetPlace());
+      // out->ResizeNPUDims(out->dims());
+      // Tensor tmp_out = GenerateNZTensor(*out);
+      out->ResizeNPUDims(framework::make_ddim(
+          InferShapeNDToNZ(framework::vectorize(out->dims()))));
+      out->set_npu_storage_layout(DataLayout::kFractalNZ);
+      size_t npu_storage_size =
+          out->npu_storage_numel() * framework::SizeOfType(x->type());
+      out->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
 
       const auto& runner = NpuOpRunner(
-          "MatMul", {tmp_x, tmp_y}, {tmp_out},
+          "MatMul", {tmp_x, tmp_y}, {*out},
           {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}});
 
       auto stream =
@@ -107,16 +107,23 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
               .stream();
       runner.Run(stream);
 
-      RunTransDataNPUOP(tmp_out, out, stream);
+      // RunTransDataNPUOP(tmp_out, out, stream);
 
     } else if (x->dims().size() > 2) {
-      out->mutable_data<T>(ctx.GetPlace());
-      out->ResizeNPUDims(out->dims());
+      // out->mutable_data<T>(ctx.GetPlace());
+      // out->ResizeNPUDims(out->dims());
 
-      Tensor tmp_out = GenerateNZTensor(*out);
+      // Tensor tmp_out = GenerateNZTensor(*out);
+
+      out->ResizeNPUDims(framework::make_ddim(
+          InferShapeNDToNZ(framework::vectorize(out->dims()))));
+      out->set_npu_storage_layout(DataLayout::kFractalNZ);
+      size_t npu_storage_size =
+          out->npu_storage_numel() * framework::SizeOfType(x->type());
+      out->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
 
       const auto& runner =
-          NpuOpRunner("BatchMatMul", {tmp_x, tmp_y}, {tmp_out},
+          NpuOpRunner("BatchMatMul", {tmp_x, tmp_y}, {*out},
                       {{"adj_x1", transpose_x}, {"adj_x2", transpose_y}});
 
       auto stream =
@@ -124,7 +131,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
               .stream();
       runner.Run(stream);
 
-      RunTransDataNPUOP(tmp_out, out, stream);
+      // RunTransDataNPUOP(tmp_out, out, stream);
     }
   }
 };
@@ -150,97 +157,161 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
     if (x->dims().size() == 2) {
       if (transpose_y) {
         if (dx) {
-          dx->mutable_data<T>(ctx.GetPlace());
-          dx->ResizeNPUDims(dx->dims());
-          Tensor tmp_dx = GenerateNZTensor(*dx);
+          // dx->mutable_data<T>(ctx.GetPlace());
+          // dx->ResizeNPUDims(dx->dims());
+          // Tensor tmp_dx = GenerateNZTensor(*dx);
+
+          dx->ResizeNPUDims(framework::make_ddim(
+              InferShapeNDToNZ(framework::vectorize(dx->dims()))));
+          dx->set_npu_storage_layout(DataLayout::kFractalNZ);
+          size_t npu_storage_size =
+              dx->npu_storage_numel() * framework::SizeOfType(x->type());
+          dx->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
           const auto& runner_dx =
-              NpuOpRunner("MatMul", {tmp_dout, tmp_y}, {tmp_dx},
+              NpuOpRunner("MatMul", {tmp_dout, tmp_y}, {*dx},
                           {{"transpose_x1", false}, {"transpose_x2", false}});
 
           runner_dx.Run(stream);
-          RunTransDataNPUOP(tmp_dx, dx, stream);
+          // RunTransDataNPUOP(tmp_dx, dx, stream);
         }
         if (dy) {
-          dy->mutable_data<T>(ctx.GetPlace());
-          dy->ResizeNPUDims(dy->dims());
-          Tensor tmp_dy = GenerateNZTensor(*dy);
+          // dy->mutable_data<T>(ctx.GetPlace());
+          // dy->ResizeNPUDims(dy->dims());
+          // Tensor tmp_dy = GenerateNZTensor(*dy);
+
+          dy->ResizeNPUDims(framework::make_ddim(
+              InferShapeNDToNZ(framework::vectorize(dy->dims()))));
+          dy->set_npu_storage_layout(DataLayout::kFractalNZ);
+          size_t npu_storage_size =
+              dy->npu_storage_numel() * framework::SizeOfType(x->type());
+          dy->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
           const auto& runner_dy =
-              NpuOpRunner("MatMul", {tmp_dout, tmp_x}, {tmp_dy},
+              NpuOpRunner("MatMul", {tmp_dout, tmp_x}, {*dy},
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
           runner_dy.Run(stream);
-          RunTransDataNPUOP(tmp_dy, dy, stream);
+          // RunTransDataNPUOP(tmp_dy, dy, stream);
         }
 
       } else {
         if (dx) {
-          dx->mutable_data<T>(ctx.GetPlace());
-          dx->ResizeNPUDims(dx->dims());
-          Tensor tmp_dx = GenerateNZTensor(*dx);
+          // dx->mutable_data<T>(ctx.GetPlace());
+          // dx->ResizeNPUDims(dx->dims());
+          // Tensor tmp_dx = GenerateNZTensor(*dx);
+
+          dx->ResizeNPUDims(framework::make_ddim(
+              InferShapeNDToNZ(framework::vectorize(dx->dims()))));
+          dx->set_npu_storage_layout(DataLayout::kFractalNZ);
+          size_t npu_storage_size =
+              dx->npu_storage_numel() * framework::SizeOfType(x->type());
+          dx->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
           const auto& runner_dx =
-              NpuOpRunner("MatMul", {tmp_dout, tmp_y}, {tmp_dx},
+              NpuOpRunner("MatMul", {tmp_dout, tmp_y}, {*dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
 
           runner_dx.Run(stream);
-          RunTransDataNPUOP(tmp_dx, dx, stream);
+          // RunTransDataNPUOP(tmp_dx, dx, stream);
         }
         if (dy) {
-          dy->mutable_data<T>(ctx.GetPlace());
-          dy->ResizeNPUDims(dy->dims());
-          Tensor tmp_dy = GenerateNZTensor(*dy);
+          // dy->mutable_data<T>(ctx.GetPlace());
+          // dy->ResizeNPUDims(dy->dims());
+          // Tensor tmp_dy = GenerateNZTensor(*dy);
+
+          dy->ResizeNPUDims(framework::make_ddim(
+              InferShapeNDToNZ(framework::vectorize(dy->dims()))));
+          dy->set_npu_storage_layout(DataLayout::kFractalNZ);
+          size_t npu_storage_size =
+              dy->npu_storage_numel() * framework::SizeOfType(x->type());
+          dy->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
           const auto& runner_dy =
-              NpuOpRunner("MatMul", {tmp_x, tmp_dout}, {tmp_dy},
+              NpuOpRunner("MatMul", {tmp_x, tmp_dout}, {*dy},
                           {{"transpose_x1", true}, {"transpose_x2", false}});
 
           runner_dy.Run(stream);
-          RunTransDataNPUOP(tmp_dy, dy, stream);
+          // RunTransDataNPUOP(tmp_dy, dy, stream);
         }
       }
     } else if (x->dims().size() > 2) {
       if (transpose_y) {
         if (dx) {
-          dx->mutable_data<T>(ctx.GetPlace());
-          dx->ResizeNPUDims(dx->dims());
-          Tensor tmp_dx = GenerateNZTensor(*dx);
+          // dx->mutable_data<T>(ctx.GetPlace());
+          // dx->ResizeNPUDims(dx->dims());
+          // Tensor tmp_dx = GenerateNZTensor(*dx);
+
+          dx->ResizeNPUDims(framework::make_ddim(
+              InferShapeNDToNZ(framework::vectorize(dx->dims()))));
+          dx->set_npu_storage_layout(DataLayout::kFractalNZ);
+          size_t npu_storage_size =
+              dx->npu_storage_numel() * framework::SizeOfType(x->type());
+          dx->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
           const auto& runner_dx =
-              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_y}, {tmp_dx},
+              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_y}, {*dx},
                           {{"adj_x1", false}, {"adj_x2", false}});
 
           runner_dx.Run(stream);
-          RunTransDataNPUOP(tmp_dx, dx, stream);
+          // RunTransDataNPUOP(tmp_dx, dx, stream);
         }
         if (dy) {
-          dy->mutable_data<T>(ctx.GetPlace());
-          dy->ResizeNPUDims(dy->dims());
-          Tensor tmp_dy = GenerateNZTensor(*dy);
+          // dy->mutable_data<T>(ctx.GetPlace());
+          // dy->ResizeNPUDims(dy->dims());
+          // Tensor tmp_dy = GenerateNZTensor(*dy);
+
+          dy->ResizeNPUDims(framework::make_ddim(
+              InferShapeNDToNZ(framework::vectorize(dy->dims()))));
+          dy->set_npu_storage_layout(DataLayout::kFractalNZ);
+          size_t npu_storage_size =
+              dy->npu_storage_numel() * framework::SizeOfType(x->type());
+          dy->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
           const auto& runner_dy =
-              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_x}, {tmp_dy},
+              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_x}, {*dy},
                           {{"adj_x1", true}, {"adj_x2", false}});
 
           runner_dy.Run(stream);
-          RunTransDataNPUOP(tmp_dy, dy, stream);
+          // RunTransDataNPUOP(tmp_dy, dy, stream);
         }
       } else {
         if (dx) {
-          dx->mutable_data<T>(ctx.GetPlace());
-          dx->ResizeNPUDims(dx->dims());
-          Tensor tmp_dx = GenerateNZTensor(*dx);
+          // dx->mutable_data<T>(ctx.GetPlace());
+          // dx->ResizeNPUDims(dx->dims());
+          // Tensor tmp_dx = GenerateNZTensor(*dx);
+
+          dx->ResizeNPUDims(framework::make_ddim(
+              InferShapeNDToNZ(framework::vectorize(dx->dims()))));
+          dx->set_npu_storage_layout(DataLayout::kFractalNZ);
+          size_t npu_storage_size =
+              dx->npu_storage_numel() * framework::SizeOfType(x->type());
+          dx->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
           const auto& runner_dx =
-              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_y}, {tmp_dx},
+              NpuOpRunner("BatchMatMul", {tmp_dout, tmp_y}, {*dx},
                           {{"adj_x1", false}, {"adj_x2", true}});
 
           runner_dx.Run(stream);
-          RunTransDataNPUOP(tmp_dx, dx, stream);
+          // RunTransDataNPUOP(tmp_dx, dx, stream);
         }
         if (dy) {
-          dy->mutable_data<T>(ctx.GetPlace());
-          dy->ResizeNPUDims(dy->dims());
-          Tensor tmp_dy = GenerateNZTensor(*dy);
+          // dy->mutable_data<T>(ctx.GetPlace());
+          // dy->ResizeNPUDims(dy->dims());
+          // Tensor tmp_dy = GenerateNZTensor(*dy);
+
+          dy->ResizeNPUDims(framework::make_ddim(
+              InferShapeNDToNZ(framework::vectorize(dy->dims()))));
+          dy->set_npu_storage_layout(DataLayout::kFractalNZ);
+          size_t npu_storage_size =
+              dy->npu_storage_numel() * framework::SizeOfType(x->type());
+          dy->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
           const auto& runner_dy =
-              NpuOpRunner("BatchMatMul", {tmp_x, tmp_dout}, {tmp_dy},
+              NpuOpRunner("BatchMatMul", {tmp_x, tmp_dout}, {*dy},
                           {{"adj_x1", true}, {"adj_x2", false}});
           runner_dy.Run(stream);
-          RunTransDataNPUOP(tmp_dy, dy, stream);
+          // RunTransDataNPUOP(tmp_dy, dy, stream);
         }
       }
     }
