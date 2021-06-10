@@ -20,6 +20,9 @@ add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(jit)
+if(WITH_MKLDNN)
+    add_subdirectory(mkldnn)
+endif()
 
 
 if(WITH_DISTRIBUTE)

@@ -21,13 +21,6 @@
 #include <limits>
 #include <vector>
 
-#if defined(PADDLE_WITH_MKLDNN) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/mkldnn/axpy_handler.h"
-#include "paddle/fluid/platform/profiler.h"
-#endif
-
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
@@ -48,45 +41,6 @@ static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
   }
 }
 
-#if defined(PADDLE_WITH_MKLDNN) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
-template <typename T>
-static void onednn_handler_axpy(int n, T alpha, const T *x, int incx, T *y,
-                                int incy) {
-  // fallback to naive version
-  if (n < 100) {
-    axpy(n, alpha, x, incx, y, incy);
-    return;
-  }
-
-  // TODO(jczaja): support other increments values diffrent from 1
-  PADDLE_ENFORCE_EQ(incx, 1, platform::errors::Unimplemented(
-                                 "Blas AXPY support incx == 1 only"));
-  PADDLE_ENFORCE_EQ(incy, 1, platform::errors::Unimplemented(
-                                 "Blas AXPY support incy == 1 only"));
-
-  auto &pool = platform::DeviceContextPool::Instance();
-  auto cpu_place = platform::CPUPlace();
-  auto *dev_ctx =
-      dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(cpu_place));
-  auto &cpu_engine = dev_ctx->GetEngine();
-
-  platform::AXPYMKLDNNHandler<T> handler(*dev_ctx, cpu_engine, cpu_place, n,
-                                         static_cast<float>(alpha));
-
-  auto reorder_src_memory_p = handler.AcquireSrcMemory(x);
-  auto reorder_dst_memory_p = handler.AcquireDstMemory(y);
-  auto reorder_p =
-      handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-
-  auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
-  platform::RecordEvent record_reorder("axpy_int_reorder",
-                                       platform::EventRole::kUniqueOp);
-  reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
-  astream.wait();
-}
-#endif
-
 }  // namespace detail
 
 template <typename T>
@@ -105,12 +59,7 @@ template <>
 struct CBlas<platform::bfloat16> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-#if defined(PADDLE_WITH_MKLDNN) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
-    detail::onednn_handler_axpy(args...);
-#else
     detail::axpy(args...);
-#endif
   }
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
