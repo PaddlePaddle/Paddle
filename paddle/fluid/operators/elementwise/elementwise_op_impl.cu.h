@@ -14,36 +14,15 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/fast_divmod.h"
-
-#ifdef __HIPCC__
-#define ELEMENTWISE_BLOCK_SIZE 256
-#else
-#define ELEMENTWISE_BLOCK_SIZE 512
-#endif
 
 namespace paddle {
 namespace operators {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2 };
 
-/*
-* According to NVIDIA, the number of blocks should be greater (at least 2x~4x)
-* than number of SMs. Hence, SMs is took into consideration within this
-* function to determine the right number of threads per block,
-*/
-template <typename Enable = void>
-int GetThreadsConfig(const platform::CUDADeviceContext &ctx, int64_t numel) {
-  int threads = ELEMENTWISE_BLOCK_SIZE;
-  int sm_nums = ctx.GetSMCount();
-  if (numel / (sm_nums << 1) < ELEMENTWISE_BLOCK_SIZE) {
-    threads = platform::RoundToPowerOfTwo(numel / (sm_nums << 1));
-  } else if (numel / (sm_nums << 2) < ELEMENTWISE_BLOCK_SIZE) {
-    threads = platform::RoundToPowerOfTwo(numel / (sm_nums << 1));
-  }
-  return threads;
-}
+int GetThreadsConfig(const platform::CUDADeviceContext &ctx, int64_t numel,
+                     int vec_size);
 
 /*
 * Only the address of input data is the multiplier of 1,2,4, vectorized load
@@ -56,14 +35,24 @@ int GetVectorizedSizeImpl(const T *pointer) {
   constexpr int max_load_bits = 128;
   int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
+  constexpr int vec8 =
+      std::alignment_of<CudaAlignedVector<T, 8>>::value;  // NOLINT
   constexpr int vec4 =
       std::alignment_of<CudaAlignedVector<T, 4>>::value;  // NOLINT
   constexpr int vec2 =
       std::alignment_of<CudaAlignedVector<T, 2>>::value;  // NOLINT
-  if (address % vec4 == 0) {
-    return std::min(vec4, valid_vec_size);
+  if (address % vec8 == 0) {
+    /*
+    * Currently, decide to deal with no more than 4 data once while adopting
+    * vectorization load/store, if performance test shows that dealing with
+    * 8 data once in vectorization load/store does get optimized, return code
+    * below can be changed into " return std::min(8, valid_vec_size); " .
+    */
+    return std::min(4, valid_vec_size);
+  } else if (address % vec4 == 0) {
+    return std::min(4, valid_vec_size);
   } else if (address % vec2 == 0) {
-    return std::min(vec2, valid_vec_size);
+    return std::min(2, valid_vec_size);
   } else {
     return 1;
   }
@@ -204,7 +193,7 @@ void LaunchSameDimsElementwiseCudaKernel(
   // calculate the max vec_size for all ins and outs
   auto size = ins[0]->numel();
   int vec_size = GetVectorizedSize<InT, OutT>(ins, *outs);
-  int block_size = GetThreadsConfig(ctx, size);
+  int block_size = GetThreadsConfig(ctx, size, vec_size);
   int grid_size =
       ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
   const InT *in0 = ins[0]->data<InT>();

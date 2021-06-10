@@ -26,7 +26,7 @@ struct CudaFloorDivFunctor {
     PADDLE_ENFORCE(argv[1] != 0,
                    "InvalidArgument: divide by zero "
                    "encountered in floor-divide ops, please check.\n");
-    return argv[0] / argv[1];
+    return static_cast<T>(std::trunc(argv[0] / argv[1]));
   }
 };
 
