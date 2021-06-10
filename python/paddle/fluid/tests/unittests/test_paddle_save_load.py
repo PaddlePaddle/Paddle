@@ -874,13 +874,6 @@ class TestSaveLoadLayer(unittest.TestCase):
         path = "test_save_load_layer_/layer.pdmodel"
         paddle.save(origin_layer, path)
 
-        # static
-        paddle.enable_static()
-        with self.assertRaises(ValueError):
-            paddle.load(path)
-        # dygraph
-        paddle.disable_static()
-
         loaded_layer = paddle.load(path)
         loaded_result = [l(inps) for l in loaded_layer]
         for i in range(len(origin)):
