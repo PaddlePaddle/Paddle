@@ -140,6 +140,51 @@ void recompute_bias_and_weights(const Scope* scope,
   }
 }
 
+ConvBNFusePass::ConvBNFusePass() {
+  AddOpCompat(OpCompat("conv"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End();
+  .AddAttr("padding_algorithm").End();
+  .AddAttr("groups").End();
+  .AddAttr("dilations").End();
+
+  AddOpCompat(OpCompat("batch_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddInput("Mean")
+      .IsTensor()
+      .End()
+      .AddInput("Variance")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddAttr("epsilon")
+      .End();
+}
+
 void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -161,8 +206,11 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
   int found_conv_bn_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     VLOG(4) << "handle " + conv_type() + "BN fuse";
-
     // conv, batch_norm,
     // conv_weight, conv_out,
     // bn_scale, bn_bias, bn_mean, bn_variance,
@@ -267,6 +315,64 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_bn_count);
+}
+
+ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
+  AddOpCompat(OpCompat("conv"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End();
+  .AddAttr("padding_algorithm").End();
+  .AddAttr("groups").End();
+  .AddAttr("dilations").End();
+
+  AddOpCompat(OpCompat("batch_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddInput("Mean")
+      .IsTensor()
+      .End()
+      .AddInput("Variance")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddAttr("epsilon")
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .End();
 }
 
 void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
