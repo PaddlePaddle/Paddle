@@ -245,6 +245,34 @@ class TestVariable(unittest.TestCase):
         with self.assertRaises(TypeError):
             res = x[[1.2, 0]]
 
+    def _test_slice_index_list_bool(self, place):
+        data = np.random.rand(2, 3).astype("float32")
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(data)
+            idx0 = [True, False]
+            idx1 = [False, True]
+            idx2 = [False, False]
+            idx3 = [True, True]
+
+            out0 = x[idx0]
+            out1 = x[idx1]
+            out2 = x[idx2]
+            out3 = x[idx3]
+
+        exe = paddle.static.Executor(place)
+        result = exe.run(prog, fetch_list=[out0, out1, out2, out3])
+
+        expected = [data[idx0], data[idx1], data[idx2], data[idx3]]
+
+        self.assertTrue((result[0] == expected[0]).all())
+        self.assertTrue((result[1] == expected[1]).all())
+        self.assertTrue((result[2] == expected[2]).all())
+        self.assertTrue((result[3] == expected[3]).all())
+
+        with self.assertRaises(TypeError):
+            res = x[[True, 0]]
+
     def test_slice(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -255,6 +283,7 @@ class TestVariable(unittest.TestCase):
             self._test_slice_index_tensor(place)
             self._test_slice_index_list(place)
             self._test_slice_index_ellipsis(place)
+            self._test_slice_index_list_bool(place)
 
     def _tostring(self):
         b = default_main_program().current_block()
