@@ -154,6 +154,7 @@ FCElementwiseLayerNormFusePass::FCElementwiseLayerNormFusePass() {
       .IsNumGE(1)
       .End()
       .AddAttr("activation_type")
+      .IsStringIn({"relu", ""})
       .End();
 
   AddOpCompat(OpCompat("layer_norm"))
@@ -193,48 +194,8 @@ FCElementwiseLayerNormFusePass::FCElementwiseLayerNormFusePass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
-      .End();
-
-  AddOpCompat(OpCompat("fused_fc_elementwise_layernorm"))
-      .AddInput("X")
-      .IsTensor()
       .End()
-      .AddInput("W")
-      .IsTensor()
-      .End()
-      .AddInput("Bias0")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddInput("Scale")
-      .IsTensor()
-      .End()
-      .AddInput("Bias1")
-      .IsTensor()
-      .End()
-
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddOutput("Mean")
-      .IsOptional()
-      .End()
-      .AddOutput("Variance")
-      .IsOptional()
-      .End()
-
-      .AddAttr("x_num_col_dims")
-      .IsNumGE(1)
-      .End()
-      .AddAttr("epsilon")
-      .IsNumGE(0.0f)
-      .IsNumLE(0.001f)
-      .End()
-      .AddAttr("begin_norm_axis")
-      .End()
-      .AddAttr("activation_type")
+      .AddAttr("axis")
       .End();
 }
 
@@ -339,12 +300,6 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetAttr("begin_norm_axis",
                      layer_norm->Op()->GetAttr("begin_norm_axis"));
     new_desc.SetAttr("activation_type", fc->Op()->GetAttr("activation_type"));
-
-    if (!IsCompat(new_desc)) {
-      LOG(WARNING)
-          << "fc_elementwise_layernorm fuse pass in out fc op compat failed.";
-      return;
-    }
 
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
 
