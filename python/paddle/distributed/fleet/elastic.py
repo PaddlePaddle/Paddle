@@ -97,6 +97,8 @@ class ElasticManager(object):
         scale = args.scale or int(os.getenv('PADDLE_ELASTIC_SCALE', 0))
         force = args.force or os.getenv('PADDLE_ELASTIC_FORCE')
 
+        self.dte = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
+
         self.elastic_level = int(
             os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL', 1))
 
@@ -106,10 +108,6 @@ class ElasticManager(object):
 
         self.hosts = []
         self.stopped = False
-        '''
-        set to True when other failed, then restart self
-        '''
-        self.restart_flag = False
 
         if not server or ':' not in server or not name or not np:
             logger.info(
@@ -130,6 +128,7 @@ class ElasticManager(object):
         self.prefix = "/paddle/" + name
         self.node_prefix = self.prefix + '/nodes/'
         self.np_path = self.prefix + '/np'
+        self.dte_path = self.prefix + '/dte'
         self.host_path = self.node_prefix + self.host
 
         self.np = np + scale
@@ -146,10 +145,10 @@ class ElasticManager(object):
 
         def host_call_back(event):
             if self.etcd.get(self.host_path)[0] == None:
-                self.restart_flag = True
+                # ensure unmatch trigger
+                logger.info('register host again {}'.format(self.host))
                 time.sleep(5)
 
-                logger.debug('register host again {}'.format(self.host))
                 self.etcd.put(self.host_path, six.b(self.host))
 
         host_watch = self.etcd.add_watch_callback(self.host_path,
@@ -175,7 +174,17 @@ class ElasticManager(object):
 
         np_watch = self.etcd.add_watch_callback(self.np_path, np_call_back)
 
-        self.watches = [host_watch, np_watch]
+        # dte handle DISTRIBUTED_TRAINER_ENDPOINTS
+        self.etcd.put(self.dte_path, six.b(self.dte))
+
+        def dte_call_back(event):
+            logger.info("etcd: set DISTRIBUTED_TRAINER_ENDPOINTS to {} ".format(
+                self.dte))
+            self.dte = six.ensure_str(self.etcd.get(self.dte_path)[0] or '')
+
+        dte_watch = self.etcd.add_watch_callback(self.dte_path, dte_call_back)
+
+        self.watches = [host_watch, np_watch, dte_watch]
 
     def exit(self, completed=False):
         logger.info('manager exist completed {}'.format(completed))
@@ -217,6 +226,12 @@ class ElasticManager(object):
 
     def _update_hosts(self):
         assert len(self.hosts) != 0, 'hosts empty'
+
+        if self.host in self.dte:
+            os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.dte
+            logger.info("update self DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
+                self.dte))
+            return
 
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
         idx = self.hosts.index(self.host)
@@ -270,11 +285,6 @@ class ElasticManager(object):
                     return ElasticStatus.RESTART
                 else:
                     return ElasticStatus.ERROR
-
-            if self.restart_flag:
-                self.restart_flag = False
-                self.launcher.stop()
-                return ElasticStatus.HOLD
 
             if not self._completed() and not self._match():
                 self.launcher.stop()
