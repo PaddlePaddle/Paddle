@@ -3856,6 +3856,7 @@ class PipelineOptimizer(object):
                     'out_dtype': out_var.dtype,
                     self._op_role_key: self._op_role.Optimize
                 })
+            offset += 1
         return offset
 
     def _create_vars(self, block, ori_block):
@@ -4364,12 +4365,15 @@ class PipelineOptimizer(object):
                                 'ring_id': ring_id
                             })
                         extra_index_info['index'] += 1
+                        var_shape = list(var.shape)
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
                             attrs={
-                                'out_shape': var.shape,
+                                'out_shape': var_shape,
                                 'dtype': var.dtype,
                                 self._op_device_key: cur_dev,
                                 self._op_role_key: op_role,
