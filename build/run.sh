@@ -25,9 +25,9 @@ export PADDLE_TRAINER_ID=${gpu_id}
 export DEVICE_ID=${gpu_id}
 export FLAGS_selected_npus=${gpu_id}
 export PROJECT="build_ubuntu_pipopt_release_ascend_y_none_3.7.5"
-export GLOG_v=3
+export GLOG_v=10
 export ASCEND_GLOBAL_LOG_LEVEL=0
 BIN_PATH=${PADDLE_DIR}/build/${PROJECT}/paddle/fluid/operators/collective
-ls -l ${BIN_PATH}
+#ls -l ${BIN_PATH}
 stdbuf -oL ${BIN_PATH}/c_allreduce_sum_op_npu_test
 

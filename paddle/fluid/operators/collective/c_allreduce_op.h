@@ -144,7 +144,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     int64_t numel = in->numel();
 
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
-    out->mutable_data<T>(in->dims(), ctx.GetPlace());
+    out->mutable_data<T>(in->dims(), ctx.GetPlace(), sizeof(T) * numel);
     void* recvbuff = reinterpret_cast<void*>(out->data<T>());
 
     int ring_id = ctx.Attr<int>("ring_id");
@@ -154,9 +154,9 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto dev_ctx = static_cast<platform::NPUDeviceContext*>(platform::DeviceContextPool::Instance().Get(place));
     if (ctx.Attr<bool>("use_calc_stream")) {
-      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
+      stream = dev_ctx->stream();
     } else {
       stream = comm->stream();
     }
@@ -167,19 +167,13 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     tmp.mutable_data<float>({8}, ctx.GetPlace());
 
     nan_or_inf = FoundNanOrInf(ctx.template device_context<paddle::platform::NPUDeviceContext>(),
-            stream, float_status, &tmp);
+            dev_ctx->stream(), float_status, &tmp);
     if (nan_or_inf){
-        // FIXME(gongwb): remove this
-        ctx.device_context().Wait();
-
         /*
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         VLOG(4) << "fill input data constant inf";
         FillNpuTensorWithConstant<T>(const_cast<framework::Tensor*>(in), inf);
         */
-
-        // FIXME(gongwb): remove this
-        ctx.device_context().Wait();
     }
 
     HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
@@ -207,35 +201,45 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 
     VLOG(3) << "begin hccl allreduce, parameter is: "
             << "input num: " << numel << "dtype: " << dtype
-            << "hccl_red_type: " << hccl_red_type << ", group is: " << group;
+            << "hccl_red_type: " << hccl_red_type << ", group is: " << group
+            << ", sendbuff:" << sendbuff
+            << ", recvbuff:" <<  recvbuff
+            << ", out_size:" << out->memory_size();
 
-    ctx.device_context().Wait();
     std::vector<T> out_vec;
-    TensorToVector(*in, ctx.device_context(), &out_vec);
+    TensorToVector(*in, *dev_ctx, &out_vec);
     PrintDebugInfo2("c_allreduce_kernel input data", out_vec);
+
+    //aclrtMemcpy((void*)sendbuff, malloc_kSize, data, out->memory_size(), ACL_MEMCPY_HOST_TO_DEVICE);
+    //aclrtMemset(recvbuff, out->memory_size(), 0, out->memory_size());
+    //dev_ctx.Wait();
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
         sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
         reinterpret_cast<void*>(stream)));
 
-    if (nan_or_inf){
-        // FIXME(gongwb): remove this
-        ctx.device_context().Wait();
+    // NOTE(gongwb): It's useful to debug.
+    VLOG(3) << "after hccl allreduce, parameter is: "
+            << "input num: " << numel << "dtype: " << dtype
+            << "hccl_red_type: " << hccl_red_type << ", group is: " << group
+            << ", sendbuff:" << sendbuff
+            << ", recvbuff:" <<  recvbuff
+            << ", out_size:" << out->memory_size()
+            << ", use_calc_stream:" << ctx.Attr<bool>("use_calc_stream")
+            << ", stream:" << stream;
 
+    if (nan_or_inf){
         /*
         T inf = static_cast<T>(std::numeric_limits<float>::infinity());
         VLOG(4) << "fill output data constant inf";
         FillNpuTensorWithConstant<T>(out, inf);
         */
-
-        // FIXME(gongwb): remove this
-        ctx.device_context().Wait();
     }
 
-    out->Resize(in->dims());
-
-    ctx.device_context().Wait();
-    TensorToVector(*out, ctx.device_context(), &out_vec);
+    //out->Resize(in->dims());
+    dev_ctx->Wait();
+    //aclrtSynchronizeStream(stream);
+    TensorToVector(*out, *dev_ctx, &out_vec);
     PrintDebugInfo2("c_allreduce_kernel output data", out_vec);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -255,7 +259,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     BKCLDataType dtype = platform::ToBKCLDataType(in->type());
     int64_t numel = in->numel();
-    const void* sendbuff = in->data<void>();
+    const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
@@ -317,7 +321,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
-    const void* sendbuff = in->data<void>();
+    const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 

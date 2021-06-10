@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 #include <iostream>
 #include <cmath>        // std::abs
+#include <unistd.h>
 
 #include "gtest/gtest.h"
 
@@ -97,8 +98,6 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
   VLOG(3) << "break";
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
-  ctx.Wait();
-
   memcpy(hccl_id, id, 1024);
 }
 
@@ -125,35 +124,39 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
       "c_comm_init_hccl", {{"X", {"X"}}}, {}, comm_init_attrs);
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
-  ctx.Wait();
 }
 
 
-
-void touch_inf(f::Scope* scope, const p::DeviceContext& ctx){
-  std::vector<float16> init;
+template<typename T>
+void touch(f::Scope* scope, const p::DeviceContext& ctx, f::Variable*  float_status_var){
+  std::vector<T> init;
   for (int64_t i = 0; i < 1; ++i) {
-    init.push_back(static_cast<float16>(0.0));
+    init.push_back(static_cast<T>(1.0));
   }
+
+  auto place=ctx.GetPlace();
 
   auto x = scope->Var("Ele_x");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
-  TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({1});
+  tensor_x->mutable_data<T>(place, sizeof(T));  // allocate
+  TensorFromVector(init, ctx, tensor_x);
 
   auto y = scope->Var("Ele_y");
   auto tensor_y = y->GetMutable<f::LoDTensor>();
-  TensorFromVector(init, ctx, tensor_y);
   tensor_y->Resize({1});
+  tensor_x->mutable_data<T>(place, sizeof(T));  // allocate
+  TensorFromVector(init, ctx, tensor_y);
 
   auto out = scope->Var("Ele_out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
+  tensor_x->mutable_data<T>(place, sizeof(T));  // allocate
   tensor_out->Resize({1});
-  ctx.Wait();
 
   auto op = f::OpRegistry::CreateOp("elementwise_div", {{"X", {"Ele_x"}}, {"Y", {"Ele_y"}}},
                                     {{"Out", {"Ele_out"}}}, {});
   op->Run(*scope, ctx.GetPlace());
+  VLOG(2) << "touch";
 }
 
 template<typename T>
@@ -168,7 +171,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
   tensor_x->Resize({num1, num2});
-  tensor_x->mutable_data<T>(place);  // allocate
+  tensor_x->mutable_data<T>(place, sizeof(T) * num1 * num2);  // allocate
 
   // copy data
   std::vector<T> init;
@@ -184,7 +187,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   auto out = scope->Var("OutData");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num1, num2});
-  tensor_out->mutable_data<T>(place);  // allocate
+  tensor_out->mutable_data<T>(place, sizeof(T) * num1 * num2);  // allocate
 
   // run
   f::AttributeMap attrs;
@@ -199,6 +202,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
     op->Run(*scope, place);
   }
   ctx.Wait();
+  //sleep(5);
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -209,12 +213,12 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
   EXPECT_EQ(out_vec.size(), init.size());
   if(!std::isinf(ret)){
       for (uint32_t i = 0; i < out_vec.size(); i++) {
-        auto ret = abs(static_cast<float>(out_vec[i]) - 3.0);
-        EXPECT_TRUE(ret < 0.1);
+        auto tmp = abs(static_cast<float>(out_vec[i]) - static_cast<float>(ret));
+        EXPECT_TRUE(tmp < 0.1);
       }
   }else{
       for (uint32_t i = 0; i < out_vec.size(); i++) {
-        EXPECT_TRUE(std::isinf(out_vec[i]));
+        EXPECT_TRUE(std::isinf(out_vec[i]) || (out_vec[i] - static_cast<T>(65504) < static_cast<T>(0.1)));
       }
   }
 }
@@ -228,8 +232,9 @@ TEST(c_allreduce_sum, NPU) {
   // only support one device, if more than one device, use first default
   PrepareUniqueId(&scope, ctx, &hccl_id);
   Prepare(&scope, ctx, &hccl_id);
+  //auto inf_all = std::numeric_limits<float>::infinity();
 
-  {
+  //{
       f::Tensor tmp;
       tmp.mutable_data<float>({8}, ctx.GetPlace()); 
 
@@ -238,23 +243,39 @@ TEST(c_allreduce_sum, NPU) {
       float_status->Resize({8});
       float_status->mutable_data<float>(ctx.GetPlace());
       o::alloc_float_status(ctx, float_status);
-  }
+  //}
 
+
+  // test allreduce(1.0+2.0)
   for (int i = 0; i < 1; i++) {
-    VLOG(2) << "iter num: " << i << " float";
-    //TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
-    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(3.0));
+    VLOG(2) << "iter num 1: " << i << " float";
+    TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
+    VLOG(2) << "iter num 2: " << i << " float16";
+    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(2.0), static_cast<float16>(5.0));
   }
 
-  touch_inf(&scope, ctx);
+  /*
+  // test allreduce(inf)
+  for (int i = 0; i < 1; i++) {
+    VLOG(2) << "iter num 3: " << i << " float";
+    TestHCCLAllReduceOp<float>(&scope, ctx, i, inf_all, inf_all);
+    VLOG(2) << "iter num 4: " << i << " float16";
+    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(inf_all), static_cast<float16>(inf_all));
+  }
+  */
 
+  touch<float16>(&scope, ctx, float_status_var);
+  //std::unordered_set<f::Variable*> reserved = {float_status_var};
+  //scope.EraseVarsExcept(reserved);
   for (int i = 0; i < 1; i++) {
     VLOG(2) << "iter num 4: " << i << " float";
-    //TestHCCLAllReduceOp<float>(&scope, ctx, i, 1.0, 3.0);
-    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(1.0), static_cast<float16>(3.0));
+    TestHCCLAllReduceOp<float>(&scope, ctx, i, 4.0, 9.0);
+    VLOG(2) << "iter num 5: " << i << " float16";
+    TestHCCLAllReduceOp<float16>(&scope, ctx, i, static_cast<float16>(5.0), static_cast<float16>(11.0));
   }
   ctx.Wait();
   VLOG(0) << "exit";
+  sleep(5);
 }
 
 
