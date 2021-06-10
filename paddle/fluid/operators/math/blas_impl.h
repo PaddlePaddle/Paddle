@@ -21,9 +21,11 @@
 #include <limits>
 #include <vector>
 
-#ifdef PADDLE_WITH_MKLDNN
+#if defined(PADDLE_WITH_MKLDNN) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/mkldnn/axpy_handler.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 #endif
 
 #include "paddle/fluid/operators/math/math_function.h"
@@ -46,11 +48,11 @@ static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
   }
 }
 
-#ifdef PADDLE_WITH_MKLDNN
-
-static void onednn_handler_axpy(int n, platform::bfloat16 alpha,
-                                const platform::bfloat16 *x, int incx,
-                                platform::bfloat16 *y, int incy) {
+#if defined(PADDLE_WITH_MKLDNN) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+template <typename T>
+static void onednn_handler_axpy(int n, T alpha, const T *x, int incx, T *y,
+                                int incy) {
   // fallback to naive version
   if (n < 100) {
     axpy(n, alpha, x, incx, y, incy);
@@ -69,8 +71,8 @@ static void onednn_handler_axpy(int n, platform::bfloat16 alpha,
       dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(cpu_place));
   auto &cpu_engine = dev_ctx->GetEngine();
 
-  platform::AXPYMKLDNNHandler<platform::bfloat16> handler(
-      *dev_ctx, cpu_engine, cpu_place, n, static_cast<float>(alpha));
+  platform::AXPYMKLDNNHandler<T> handler(*dev_ctx, cpu_engine, cpu_place, n,
+                                         static_cast<float>(alpha));
 
   auto reorder_src_memory_p = handler.AcquireSrcMemory(x);
   auto reorder_dst_memory_p = handler.AcquireDstMemory(y);
@@ -103,7 +105,8 @@ template <>
 struct CBlas<platform::bfloat16> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-#ifdef PADDLE_WITH_MKLDNN
+#if defined(PADDLE_WITH_MKLDNN) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     detail::onednn_handler_axpy(args...);
 #else
     detail::axpy(args...);
