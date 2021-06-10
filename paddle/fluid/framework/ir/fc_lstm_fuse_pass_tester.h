@@ -49,7 +49,10 @@ Scope* CreateParamScope() {
   return param_scope;
 }
 
-std::unique_ptr<ir::Graph> PrepareGraph() {
+std::unique_ptr<ir::Graph> PrepareGraph(
+    std::string gate_activation = "sigmoid",
+    std::string cell_activation = "tanh",
+    std::string candidate_activation = "tanh") {
   // inputs                     operator            output
   // --------------------------------------------------------
   // (a, lstm_fc_w)                mul         ->   fc_0_tmp_0
@@ -74,8 +77,8 @@ std::unique_ptr<ir::Graph> PrepareGraph() {
       layers.data("lstm_batch_cell_pre_gate_0", {}, false);
   auto* lstm_hidden_0 = layers.data("lstm_hidden_0", {}, false);
   layers.lstm(fc_0_tmp1, lstm_w, lstm_b, lstm_cell_0, lstm_batch_gate_0,
-              lstm_hidden_0, lstm_batch_cell_pre_gate_0);
-
+              lstm_hidden_0, lstm_batch_cell_pre_gate_0, nullptr, nullptr, true,
+              false, gate_activation, cell_activation, candidate_activation);
   auto* fc_1_tmp0 = layers.mul(b, fc_w);
   auto* fc_1_tmp1 = layers.elementwise_add(fc_1_tmp0, fc_b);
   auto* lstm_cell_1 = layers.data("lstm_cell_1", {}, false);
@@ -84,7 +87,8 @@ std::unique_ptr<ir::Graph> PrepareGraph() {
       layers.data("lstm_batch_cell_pre_gate_1", {}, false);
   auto* lstm_hidden_1 = layers.data("lstm_hidden_1", {}, false);
   layers.lstm(fc_1_tmp1, lstm_w, lstm_b, lstm_cell_1, lstm_batch_gate_1,
-              lstm_hidden_1, lstm_batch_cell_pre_gate_1);
+              lstm_hidden_1, lstm_batch_cell_pre_gate_1, nullptr, nullptr, true,
+              false, gate_activation, cell_activation, candidate_activation);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   return std::move(graph);

@@ -47,7 +47,8 @@ Scope* CreateParamScope() {
   return param_scope;
 }
 
-std::unique_ptr<ir::Graph> PrepareGraph() {
+std::unique_ptr<ir::Graph> PrepareGraph(
+    std::string activation = "tanh", std::string gate_activation = "sigmoid") {
   // inputs                     operator            output
   // --------------------------------------------------------
   // (a, gru_fc_w)                mul         ->   fc_0_tmp_0
@@ -72,7 +73,8 @@ std::unique_ptr<ir::Graph> PrepareGraph() {
   auto* gru_batch_hidden_0 = layers.data("gru_batch_hidden_0", {}, false);
   auto* gru_hidden_0 = layers.data("gru_hidden_0", {}, false);
   layers.gru(fc_0_tmp1, gru_w, gru_b, gru_batch_gate_0,
-             gru_batch_reset_hidden_prev_0, gru_batch_hidden_0, gru_hidden_0);
+             gru_batch_reset_hidden_prev_0, gru_batch_hidden_0, gru_hidden_0,
+             nullptr, false, false, activation, gate_activation);
 
   auto* fc_1_tmp0 = layers.mul(b, fc_w);
   auto* fc_1_tmp1 = layers.elementwise_add(fc_1_tmp0, fc_b);
@@ -82,7 +84,8 @@ std::unique_ptr<ir::Graph> PrepareGraph() {
   auto* gru_batch_hidden_1 = layers.data("gru_batch_hidden_1", {}, false);
   auto* gru_hidden_1 = layers.data("gru_hidden_1", {}, false);
   layers.gru(fc_1_tmp1, gru_w, gru_b, gru_batch_gate_1,
-             gru_batch_reset_hidden_prev_1, gru_batch_hidden_1, gru_hidden_1);
+             gru_batch_reset_hidden_prev_1, gru_batch_hidden_1, gru_hidden_1,
+             nullptr, false, false, activation, gate_activation);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   return std::move(graph);

@@ -194,14 +194,18 @@ struct Layers {
   }
 
   VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
-               int x_num_col_dims = 1) {
+               int x_num_col_dims = 1, bool use_mkldnn = false) {
     AttributeMap attrs;
     attrs["x_num_col_dims"] = 1;
+    attrs["use_mkldnn"] = use_mkldnn;
     return binary_op("mul", x, y, out, &attrs);
   }
 
-  VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
-    return binary_op("elementwise_add", x, y, out);
+  VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
+                           bool use_mkldnn = false) {
+    AttributeMap attrs;
+    attrs["use_mkldnn"] = use_mkldnn;
+    return binary_op("elementwise_add", x, y, out, &attrs);
   }
 
   VarDesc* elementwise_mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
