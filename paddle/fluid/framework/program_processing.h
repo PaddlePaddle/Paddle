@@ -13,12 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include <stdint.h>
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
@@ -33,6 +27,11 @@ class ProgramProcessor {
   // explicit ProgramProcessor(const ProgramDesc &program);
 
   bool IsControlFlowBlock(ProgramDesc *program, const BlockDesc &current_block);
+
+  void GetInputsOutputsInBlock(ProgramDesc *program,
+                               const BlockDesc &current_block,
+                               std::set<std::string> *inner_inputs,
+                               std::set<std::string> *inner_outputs);
 
   void SSAProgram(ProgramDesc *program);
 };

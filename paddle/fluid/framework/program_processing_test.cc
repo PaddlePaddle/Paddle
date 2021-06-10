@@ -43,9 +43,9 @@ TEST(ProgramDesc, SSAprogram) {
   op->SetInput("X", {x->Name()});
   op->SetInput("Y", {y->Name()});
 
-  auto* out = global_block->Var("Out");
-  out->SetType(proto::VarType::LOD_TENSOR);
-  op->SetOutput("Y", {out->Name()});
+  auto* out1 = global_block->Var("Out");
+  out1->SetType(proto::VarType::LOD_TENSOR);
+  op->SetOutput("Y", {out1->Name()});
 
   BlockDesc* new_block = program.AppendBlock(*global_block);
   op = new_block->AppendOp();
@@ -65,32 +65,67 @@ TEST(ProgramDesc, SSAprogram) {
   BlockDesc* parent_block = program.MutableBlock(sub_blocks[0]->Parent());
   op = parent_block->AppendOp();
   op->SetType("less_than");
-  auto* x = parent_block->Var("X");
-  x->SetType(proto::VarType::LOD_TENSOR);
-  x->SetLoDLevel(0);
-  x->SetDataType(proto::VarType::FP32);
-  x->SetShape({1});
+  auto* x1 = parent_block->Var("X");
+  x1->SetType(proto::VarType::LOD_TENSOR);
+  x1->SetLoDLevel(0);
+  x1->SetDataType(proto::VarType::FP32);
+  x1->SetShape({1});
 
-  auto* y = parent_block->Var("Y");
-  y->SetType(proto::VarType::LOD_TENSOR);
-  y->SetLoDLevel(0);
-  y->SetDataType(proto::VarType::FP32);
-  y->SetShape({1});
+  auto* y1 = parent_block->Var("Y");
+  y1->SetType(proto::VarType::LOD_TENSOR);
+  y1->SetLoDLevel(0);
+  y1->SetDataType(proto::VarType::FP32);
+  y1->SetShape({1});
 
-  op->SetInput("X", {x->Name()});
-  op->SetInput("Y", {y->Name()});
+  op->SetInput("X", {x1->Name()});
+  op->SetInput("Y", {y1->Name()});
 
-  auto* out = parent_block->Var("Out");
-  out->SetType(proto::VarType::BOOL);
-  op->SetOutput("Out", {out->Name()});
+  auto* less_than_out = parent_block->Var("Out");
+  out1->SetType(proto::VarType::BOOL);
+  op->SetOutput("Out", {less_than_out->Name()});
 
   // building while op
   // BlockDesc* parent_block = program.MutableBlock(sub_blocks[0]->Parent());
-  op = parent_block->AppendOp();
+  op = sub_blocks[0]->AppendOp();
   op->SetType("while");
+  auto* x2 = parent_block->Var("X1");
+
+  x2->SetType(proto::VarType::LOD_TENSOR);
+  x2->SetLoDLevel(0);
+  x2->SetDataType(proto::VarType::FP32);
+  x2->SetShape({1});
+
+  // auto* Condition = parent_block->Var("Condition");
+  // Condition->SetType(proto::VarType::BOOL);
+
+  op->SetInput("kX", {x2->Name()});
+  op->SetInput("kCondition", {less_than_out->Name()});
+
+  auto* out = sub_blocks[0]->Var("Out");
+  out->SetType(proto::VarType::LOD_TENSOR);
+  out->SetLoDLevel(0);
+  out->SetDataType(proto::VarType::FP32);
+  out->SetShape({1});
+
+  auto* steps = sub_blocks[0]->Var("StepScopes");
+  // steps->SetType(proto::VarType::STEP_SCOPES);
+  // steps->SetDataType(proto::VarType::FP32);
+  // steps->SetShape({1});
+
+  op->SetOutput("kOutputs", {out->Name()});
+  op->SetOutput("kStepScopes", {steps->Name()});
 
   ProgramProcessor program_processor;
-  program_processor.SSAProgram(&program);
+  // program_processor.SSAProgram(&program);
+
+  std::set<std::string> x_name_list;
+  std::set<std::string> inner_outputs;
+
+  program_processor.GetInputsOutputsInBlock(&program, *sub_blocks[0],
+                                            &x_name_list, &inner_outputs);
+
+  VLOG(3) << "inner_inputs length:" << x_name_list.size();
+  VLOG(3) << "inner_outputs length:" << inner_outputs.size();
 }
 }  // namespace framework
 }  // namespace paddle

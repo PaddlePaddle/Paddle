@@ -25,9 +25,11 @@ bool ProgramProcessor::IsControlFlowBlock(ProgramDesc *program,
   std::vector<std::string> removed_inner_inputs;
   for (OpDesc *op : current_block.AllOps()) {
     for (auto iname : op->InputNames())
-      if (std::find(inner_inputs.begin(), inner_inputs.end(), iname) !=
-          inner_inputs.end())
-        inner_inputs.push_back(iname);
+      for (auto in_var_name : op->Inputs().find(iname)->second) {
+        if (std::find(inner_inputs.begin(), inner_inputs.end(), in_var_name) !=
+            inner_inputs.end())
+          inner_inputs.push_back(in_var_name);
+      }
   }
   for (auto in_var_name : inner_inputs) {
     VarDesc *parent_block_var =
@@ -36,11 +38,62 @@ bool ProgramProcessor::IsControlFlowBlock(ProgramDesc *program,
     if (current_block.HasVar(in_var_name)) {
       current_block_var = current_block.FindVar(in_var_name);
     }
-    if (parent_block_var == nullptr && current_block_var)
+    if (parent_block_var == nullptr && current_block_var &&
+        current_block_var->GetType() == proto::VarType::LOD_TENSOR)
       removed_inner_inputs.push_back(in_var_name);
   }
 
   return !removed_inner_inputs.empty();
+}
+
+void ProgramProcessor::GetInputsOutputsInBlock(
+    ProgramDesc *program, const BlockDesc &current_block,
+    std::set<std::string> *inner_inputs, std::set<std::string> *inner_outputs) {
+  // Step1: update inner_inputs and inner_outputs
+  // NOTE: Here assumes that all variables are input or output of Ops,
+  // but some variables are created without appendding a real op.
+  // For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
+  VLOG(3) << "GetInputsOutputsInBlock <<<<<<<:";
+  std::set<std::string> removed_inner_inputs;
+  VLOG(3) << "current_block.AllOps length:" << current_block.AllOps().size();
+  for (OpDesc *op : current_block.AllOps()) {
+    for (auto iname : op->InputNames())
+      for (auto in_var_name : op->Inputs().find(iname)->second) {
+        if ((*inner_inputs).find(in_var_name) == (*inner_inputs).end())
+          (*inner_inputs).insert(in_var_name);
+        VLOG(3) << "insert iname:" << in_var_name;
+      }
+
+    for (auto oname : op->OutputNames())
+      for (auto out_var_name : op->Outputs().find(oname)->second) {
+        VLOG(3) << "insert oame:" << out_var_name;
+        (*inner_outputs).insert(out_var_name);
+      }
+  }
+
+  //  Step2: Remove LOD_TENSOR_ARRAY created in current control flow block.
+  BlockDesc *parent_block = program->MutableBlock(current_block.Parent());
+  if (parent_block) {
+    for (auto in_var_name : *inner_inputs) {
+      VLOG(3) << "Step2 iname:" << in_var_name;
+      VarDesc *parent_block_var = parent_block->FindVarRecursive(in_var_name);
+      VLOG(3) << "Step2 FindVarRecursive:" << in_var_name;
+      VarDesc *current_block_var;
+      if (current_block.HasVar(in_var_name)) {
+        current_block_var = current_block.FindVar(in_var_name);
+      }
+      if (parent_block_var == nullptr && current_block_var &&
+          current_block_var->GetType() == proto::VarType::LOD_TENSOR)
+        removed_inner_inputs.insert(in_var_name);
+      VLOG(3) << "removed_inner_inputs iname:" << in_var_name;
+    }
+  }
+
+  std::set_difference((*inner_inputs).begin(), (*inner_inputs).end(),
+                      removed_inner_inputs.begin(), removed_inner_inputs.end(),
+                      inserter((*inner_inputs), (*inner_inputs).begin()));
+  VLOG(3) << "inner_inputs length:" << (*inner_inputs).size();
+  VLOG(3) << "inner_outputs length:" << (*inner_outputs).size();
 }
 
 void ProgramProcessor::SSAProgram(ProgramDesc *program) {
