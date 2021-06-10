@@ -143,28 +143,6 @@ void onednn_handler_axpy(int n, T alpha, const T *x, T *y) {
   astream.wait();
 }
 
-template <>
-void onednn_handler_axpy<double>(int, double, const double *, double *) {
-  PADDLE_THROW(plat::errors::Unavailable(
-      "Currently oneDNN library doesn't support double data type."));
-}
-
-template <>
-void onednn_handler_axpy<plat::complex<double>>(int, plat::complex<double>,
-                                                const plat::complex<double> *,
-                                                plat::complex<double> *) {
-  PADDLE_THROW(plat::errors::Unavailable(
-      "Currently oneDNN library doesn't support complex<double> data type."));
-}
-
-template <>
-void onednn_handler_axpy<plat::complex<float>>(int, plat::complex<float>,
-                                               const plat::complex<float> *,
-                                               plat::complex<float> *) {
-  PADDLE_THROW(plat::errors::Unavailable(
-      "Currently oneDNN library doesn't support complex<float> data type."));
-}
-
 template void onednn_handler_axpy<float>(int, float, const float *, float *);
 template void onednn_handler_axpy<plat::bfloat16>(int, plat::bfloat16,
                                                   const plat::bfloat16 *,
