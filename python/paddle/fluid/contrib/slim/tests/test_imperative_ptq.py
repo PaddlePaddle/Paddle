@@ -30,10 +30,6 @@ from paddle.dataset.common import download
 
 from imperative_test_utils import fix_model_dict, ImperativeLenet
 
-os.environ["CPU_NUM"] = "1"
-if paddle.is_compiled_with_cuda():
-    fluid.set_flags({"FLAGS_cudnn_deterministic": True})
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
@@ -84,38 +80,20 @@ class TestImperativePTQ(unittest.TestCase):
         return data_cache_folder
 
     def set_vars(self):
-        if True:
-            self.ptq = ImperativePTQ(algo='abs_max')
+        self.ptq = ImperativePTQ(algo='abs_max')
 
-            self.batch_num = 10
-            self.batch_size = 10
-            self.eval_acc_top1 = 0.99
+        self.batch_num = 10
+        self.batch_size = 10
+        self.eval_acc_top1 = 0.99
 
-            self.gt_thresholds = {
-                'conv2d_0': [[1.0], [0.37673383951187134]],
-                'batch_norm2d_0':
-                [[0.37673383951187134], [0.44249194860458374]],
-                're_lu_0': [[0.44249194860458374], [0.25804123282432556]],
-                'max_pool2d_0': [[0.25804123282432556], [0.25804123282432556]],
-                'linear_0': [[1.7058950662612915], [14.405526161193848]],
-                'add_0': [[1.7058950662612915, 0.0], [1.7058950662612915]],
-            }
-        else:
-            self.ptq = ImperativePTQ(algo='hist')
-
-            self.batch_num = 10
-            self.batch_size = 10
-            self.eval_acc_top1 = 0.99
-
-            self.gt_thresholds = {
-                'conv2d_0': [[1.0], [0.37673383951187134]],
-                'batch_norm2d_0':
-                [[0.37673383951187134], [0.44249194860458374]],
-                're_lu_0': [[0.44249194860458374], [0.25804123282432556]],
-                'max_pool2d_0': [[0.25804123282432556], [0.25804123282432556]],
-                'linear_0': [[1.7058950662612915], [14.405526161193848]],
-                'add_0': [[1.7058950662612915, 0.0], [1.7058950662612915]],
-            }
+        self.gt_thresholds = {
+            'conv2d_0': [[1.0], [0.37673383951187134]],
+            'batch_norm2d_0': [[0.37673383951187134], [0.44249194860458374]],
+            're_lu_0': [[0.44249194860458374], [0.25804123282432556]],
+            'max_pool2d_0': [[0.25804123282432556], [0.25804123282432556]],
+            'linear_0': [[1.7058950662612915], [14.405526161193848]],
+            'add_0': [[1.7058950662612915, 0.0], [1.7058950662612915]],
+        }
 
     def model_train(self, model, train_reader, max_step=-1):
         model.train()
@@ -183,16 +161,24 @@ class TestImperativePTQ(unittest.TestCase):
         for name, layer in model.named_sublayers():
             layer_name = layer.full_name()
             if layer_name in self.gt_thresholds:
-                gt_thresholds = self.gt_thresholds[layer_name]
+                ref_val = self.gt_thresholds[layer_name]
                 assert hasattr(layer, '_quant_config')
                 quant_config = layer._quant_config
+                in_val = quant_config.input_thresholds
+                out_val = quant_config.output_thresholds
 
-                msg = "The thresholds of {%s} is different " \
-                    "from the ground truth." % layer_name
                 self.assertTrue(
-                    gt_thresholds[0] == quant_config.input_thresholds, msg)
+                    np.allclose(
+                        ref_val[0], in_val, atol=1e-3),
+                    "%s | The thresholds(%s) is different "
+                    "from the ground truth(%s)." %
+                    (layer_name, str(in_val), str(ref_val[0])))
                 self.assertTrue(
-                    gt_thresholds[1] == quant_config.output_thresholds, msg)
+                    np.allclose(
+                        ref_val[1], out_val, atol=1e-3),
+                    "%s | The thresholds(%s) is different "
+                    "from the ground truth(%s)." %
+                    (layer_name, str(out_val), str(ref_val[1])))
 
     def test_ptq(self):
         start_time = time.time()
