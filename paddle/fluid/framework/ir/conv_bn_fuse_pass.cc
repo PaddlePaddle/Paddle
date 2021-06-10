@@ -141,7 +141,7 @@ void recompute_bias_and_weights(const Scope* scope,
 }
 
 ConvBNFusePass::ConvBNFusePass() {
-  AddOpCompat(OpCompat("conv"))
+  AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -157,10 +157,13 @@ ConvBNFusePass::ConvBNFusePass() {
       .AddAttr("strides")
       .End()
       .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .End()
+      .AddAttr("groups")
+      .End()
+      .AddAttr("dilations")
       .End();
-  .AddAttr("padding_algorithm").End();
-  .AddAttr("groups").End();
-  .AddAttr("dilations").End();
 
   AddOpCompat(OpCompat("batch_norm"))
       .AddInput("X")
@@ -318,7 +321,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
-  AddOpCompat(OpCompat("conv"))
+  AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -334,10 +337,13 @@ ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
       .AddAttr("strides")
       .End()
       .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .End()
+      .AddAttr("groups")
+      .End()
+      .AddAttr("dilations")
       .End();
-  .AddAttr("padding_algorithm").End();
-  .AddAttr("groups").End();
-  .AddAttr("dilations").End();
 
   AddOpCompat(OpCompat("batch_norm"))
       .AddInput("X")
