@@ -18,6 +18,7 @@ from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
+from .creation import diagflat  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
 from .creation import ones  # noqa: F401
@@ -164,6 +165,8 @@ from .math import any  # noqa: F401
 from .math import broadcast_shape  # noqa: F401
 from .math import conj  # noqa: F401
 from .math import trunc  # noqa: F401
+from .math import neg  # noqa: F401
+from .math import lgamma  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -281,6 +284,8 @@ tensor_method_func  = [ #noqa
            'isnan',
            'broadcast_shape',
            'conj',
+           'neg',
+           'lgamma',
            'equal',
            'equal_all',
            'greater_equal',

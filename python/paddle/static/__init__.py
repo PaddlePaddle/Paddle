@@ -85,6 +85,7 @@ __all__ = [     #noqa
            'load',
            'save_inference_model',
            'load_inference_model',
+           'normalize_program',
            'load_program_state',
            'set_program_state',
            'cpu_places',
