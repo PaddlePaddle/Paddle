@@ -29,10 +29,10 @@ def dyfunc_tensor_shape_1(x):
 
 
 def dyfunc_tensor_shape_2(x):
-    x = fluid.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     shape = x.shape
     shape2 = shape
-    res = fluid.layers.reshape(x, shape2)
+    res = paddle.reshape(x, shape2)
     return res
 
 
@@ -190,7 +190,7 @@ def dyfunc_with_while_3(x):
 
 
 def dyfunc_with_while_4(x):
-    x = fluid.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     y = numpy.ones(5)
     y_shape_0 = y.shape[0]
     i = 1
