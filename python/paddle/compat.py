@@ -19,7 +19,7 @@ __all__ = []
 
 if six.PY2:
     int_type = int
-    long_type = long
+    long_type = long  # noqa: F821
 else:
     int_type = int
     long_type = int

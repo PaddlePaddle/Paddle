@@ -282,9 +282,6 @@ class LookAhead(Optimizer):
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
 
-        parameter_list = parameters if parameters \
-            else self._parameter_list
-
         # Apply inner optimizer to the main_program
         optimize_ops, params_grads = self.inner_optimizer.minimize(
             loss,

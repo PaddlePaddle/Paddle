@@ -150,7 +150,6 @@ def init_parallel_env():
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if init_gloo:
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
-        ep_rank = parallel_env.trainer_endpoints[parallel_env.rank].split(":")
         manager = Manager()
         # glboal dict to store status
         http_server_d = manager.dict()

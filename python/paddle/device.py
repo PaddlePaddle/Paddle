@@ -21,7 +21,17 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 
-__all__ = []
+
+__all__ = [  # npqa
+    'get_cudnn_version',
+    'set_device',
+    'get_device',
+    'XPUPlace',
+    'is_compiled_with_xpu',
+    'is_compiled_with_cuda',
+    'is_compiled_with_rocm',
+    'is_compiled_with_npu'
+]
 
 _cudnn_version = None
 
@@ -113,15 +123,13 @@ def _convert_to_place(device):
         place = core.CPUPlace()
     elif lower_device == 'gpu':
         if not core.is_compiled_with_cuda():
-            raise ValueError(
-                "The device should not be 'gpu', " \
-                "since PaddlePaddle is not compiled with CUDA")
+            raise ValueError("The device should not be 'gpu', "
+                             "since PaddlePaddle is not compiled with CUDA")
         place = core.CUDAPlace(ParallelEnv().dev_id)
     elif lower_device == 'xpu':
         if not core.is_compiled_with_xpu():
-            raise ValueError(
-                "The device should not be 'xpu', " \
-                "since PaddlePaddle is not compiled with XPU")
+            raise ValueError("The device should not be 'xpu', "
+                             "since PaddlePaddle is not compiled with XPU")
         selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
         device_id = int(selected_xpus[0])
         place = core.XPUPlace(device_id)
@@ -135,7 +143,7 @@ def _convert_to_place(device):
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
-                    "The device should not be {}, since PaddlePaddle is " \
+                    "The device should not be {}, since PaddlePaddle is "
                     "not compiled with CUDA".format(avaliable_gpu_device))
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
@@ -144,7 +152,7 @@ def _convert_to_place(device):
         if avaliable_xpu_device:
             if not core.is_compiled_with_xpu():
                 raise ValueError(
-                    "The device should not be {}, since PaddlePaddle is " \
+                    "The device should not be {}, since PaddlePaddle is "
                     "not compiled with XPU".format(avaliable_xpu_device))
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
