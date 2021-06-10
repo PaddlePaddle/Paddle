@@ -1,4 +1,4 @@
-type: "conv2d"
+type: "conv3d"
 def {
   inputs {
     name: "Input"
