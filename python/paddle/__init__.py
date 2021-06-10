@@ -148,6 +148,7 @@ from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
 from .tensor.math import atan  # noqa: F401
+from .tensor.math import atan2  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
@@ -425,6 +426,7 @@ __all__ = [  # noqa
            'divide',
            'ceil',
            'atan',
+           'atan2',
            'expand',
            'broadcast_to',
            'ones_like',
