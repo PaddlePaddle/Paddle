@@ -32,13 +32,33 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 
 #define BOUNDARY 512  // Reduce split or not, Whether to use ReduceHigherDim
 
 namespace paddle {
 namespace operators {
 namespace detail {
+
+// Post processing function for sum, max, min, prod, any
+template <typename Tx, typename Ty = Tx>
+struct IdentityFunctor {
+  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(x);
+  }
+};
+
+// Post processing function for mean
+template <typename T>
+struct DivideFunctor {
+  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
+
+  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
+
+ private:
+  T n_inv;
+};
 
 static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
                                             int dim_size, bool reduce_all) {
@@ -576,10 +596,11 @@ static void LaunchKernel(const Tx* x_data, Ty* y_data, const ReduceOp& reducer,
     dim3 grid(config.grid.x, 1, config.grid.z);
 
     ReduceKernelFunction<
-        Ty, Ty, ReduceOp, IdentityFunctor<Ty>, 128, kRank, kReduceRank,
+        Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, 128, kRank, kReduceRank,
         ReduceType::kReduceHigherDim><<<grid, block, 0, stream>>>(
-        config.output_data, y_data, reducer, IdentityFunctor<Ty>(),
-        config.grid.y, config.left_num, config.grid.y,
+        config.output_data, y_data, reducer,
+        detail::IdentityFunctor<Ty>(config.grid.y), config.grid.y,
+        config.left_num, config.grid.y,
         detail::VectorToArray<int, kRank>(config.x_strides),
         detail::VectorToArray<int, kReduceRank>(config.reduce_dim),
         detail::VectorToArray<int, kReduceRank>(config.reduce_strides),

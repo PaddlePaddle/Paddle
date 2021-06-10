@@ -16,6 +16,7 @@ limitations under the License. */
 #include <math.h>
 #include <limits>
 
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #ifdef __HIPCC__
 #include <hip/hip_runtime.h>
 #endif
@@ -23,32 +24,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// Post processing function for sum, max, min, prod, any
-template <typename Tx, typename Ty = Tx>
-struct IdentityFunctor {
-  __device__ explicit inline IdentityFunctor() {}
-
-  __device__ explicit inline IdentityFunctor(int n) {}
-
-  __device__ inline Ty operator()(const Tx &x) const {
-    return static_cast<Ty>(x);
-  }
-};
-
-// Post processing function for mean
-template <typename T>
-struct DivideFunctor {
-  __device__ explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
-
-  __device__ inline T operator()(const T &x) const { return x * n_inv; }
-
- private:
-  T n_inv;
-};
-
 template <typename Tx, typename Ty = Tx>
 struct CustomMin {
-  using Transformer = IdentityFunctor<Tx>;
+  using Transformer = detail::IdentityFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() {
     return std::numeric_limits<Ty>::max();
@@ -61,7 +39,7 @@ struct CustomMin {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMax {
-  using Transformer = IdentityFunctor<Tx>;
+  using Transformer = detail::IdentityFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() {
     return std::numeric_limits<Ty>::min();
@@ -75,7 +53,7 @@ struct CustomMax {
 // for cub::Reduce
 template <typename Tx, typename Ty = Tx>
 struct CustomSum {
-  using Transformer = IdentityFunctor<Tx, Ty>;
+  using Transformer = detail::IdentityFunctor<Tx, Ty>;
 
   HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(0.0f); }
 
@@ -86,7 +64,7 @@ struct CustomSum {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMean {
-  using Transformer = DivideFunctor<Tx>;
+  using Transformer = detail::DivideFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(0.0f); }
 
@@ -97,7 +75,7 @@ struct CustomMean {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMul {
-  using Transformer = IdentityFunctor<Tx>;
+  using Transformer = detail::IdentityFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(1.0f); }
 
@@ -108,7 +86,7 @@ struct CustomMul {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomLogicalOr {
-  using Transformer = IdentityFunctor<Tx>;
+  using Transformer = detail::IdentityFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(false); }
 
@@ -119,7 +97,7 @@ struct CustomLogicalOr {
 
 template <typename Tx, typename Ty = Tx>
 struct CustomLogicalAnd {
-  using Transformer = IdentityFunctor<Tx>;
+  using Transformer = detail::IdentityFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(true); }
 
