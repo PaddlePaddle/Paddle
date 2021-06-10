@@ -22,8 +22,7 @@ from paddle.fluid.op import Operator
 class TestShareDataOp(OpTest):
     def setUp(self):
         self.op_type = "share_data"
-        self.dtype = np.float16
-        input = np.random.random((2, 3, 5)).astype(self.dtype),
+        input = np.random.rand(2, 3, 5).astype("float32")
         self.inputs = {'Input': input}
         self.outputs = {'Out': input}
 
@@ -40,7 +39,7 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
 
     def check_with_place(self, place):
         scope = core.Scope()
-        np_array = np.random.random((2, 3, 5)).astype("float32")
+        np_array = np.random.rand(2, 3, 5).astype("float32")
 
         # initialize input and output variable
         x = scope.var('Input').get_tensor()
