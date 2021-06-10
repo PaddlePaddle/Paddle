@@ -38,8 +38,8 @@ def equal_all(x, y, name=None):
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
-        x(Tensor): Tensor, data type is float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
