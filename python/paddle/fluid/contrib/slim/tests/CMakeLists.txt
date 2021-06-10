@@ -280,7 +280,7 @@ if(WIN32)
         test_moving_average_abs_max_scale_op
         test_imperative_qat_channelwise
         test_imperative_qat
-		test_imperative_qat_amp
+        test_imperative_qat_amp
         test_imperative_out_scale
         test_graph)
     LIST(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})

@@ -90,7 +90,7 @@ class TestImperativeQatAmp(unittest.TestCase):
 
         self.train_batch_num = 30
         self.train_batch_size = 32
-        self.test_batch_num = -1
+        self.test_batch_num = 100
         self.test_batch_size = 32
         self.eval_acc_top1 = 0.99
 
@@ -156,7 +156,7 @@ class TestImperativeQatAmp(unittest.TestCase):
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
 
-            with paddle.amp.auto_cast(False):
+            with paddle.amp.auto_cast(use_amp):
                 out = model(img)
                 acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
                 acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
