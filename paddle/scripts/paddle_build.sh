@@ -2252,11 +2252,6 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        example_info=$(exec_samplecode_test gpu)
-        example_code=$?
-        check_style_code=0
-        check_style_info=
-        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         parallel_test
         ;;
       check_xpu)
