@@ -396,8 +396,11 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
   int found_conv_bn_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     VLOG(4) << "handle " + conv_type() + "BN fuse";
-
     // conv, batch_norm,
     // conv_weight, conv_out,
     // bn_scale, bn_bias, bn_mean, bn_variance,
