@@ -29,7 +29,7 @@ class TestDigammaOp(OpTest):
 
         self.op_type = 'digamma'
         self.init_dtype_type()
-        shape = (5, 20)
+        shape = (5, 32)
         data = np.random.random(shape).astype(self.dtype) + 1
         self.inputs = {'X': data}
         result = np.ones(shape).astype(self.dtype)
@@ -63,7 +63,7 @@ class TestDigammaAPI(unittest.TestCase):
         self.places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
-        self._shape = [2, 20, 2, 3]
+        self._shape = [8, 3, 32, 32]
 
     def test_in_static_mode(self):
         def init_input_output(dtype):
