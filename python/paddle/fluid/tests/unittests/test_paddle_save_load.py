@@ -869,9 +869,10 @@ class TestSaveLoadLayer(unittest.TestCase):
         layer2 = LinearNet()
         layer1.eval()
         layer2.eval()
+        origin_layer = (layer1, layer2)
         origin = (layer1(inps), layer2(inps))
         path = "test_save_load_layer_/layer.pdmodel"
-        paddle.save((layer1, layer2), path)
+        paddle.save(origin_layer, path)
 
         # static
         paddle.enable_static()
@@ -884,6 +885,8 @@ class TestSaveLoadLayer(unittest.TestCase):
         loaded_result = [l(inps) for l in loaded_layer]
         for i in range(len(origin)):
             self.assertTrue((origin[i] - loaded_result[i]).abs().max() < 1e-10)
+            for k, v in origin_layer[i]._linear.weight.__dict__.items():
+                self.assertTrue(v == loaded_layer[i]._linear.weight.__dict__[k])
 
 
 if __name__ == '__main__':
