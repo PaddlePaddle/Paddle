@@ -12,21 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#ifdef _WIN32
-#if defined(__AVX2__)
-#include <immintrin.h>  // avx2
-#elif defined(__AVX__)
-#include <intrin.h>  // avx
-#endif               // AVX
-#else                // WIN32
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
-#endif  // WIN32
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/cpu_info.h"
+
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
@@ -126,8 +116,10 @@ class IndexSelectKernel : public framework::OpKernel<T> {
 };
 
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
-template <typename T, platform::cpu_isa_t isa = platform::isa_any>
+template <platform::cpu_isa_t isa = platform::isa_any, typename T,
+          typename Enable = void>
 void IndexSelectAdd(const int n, const T* src, T* dst) {
+  printf("########any########@@@@@@@@#");
   for (auto k = 0; k < n; ++k) {
     dst[k] += src[k];
   }
@@ -135,57 +127,46 @@ void IndexSelectAdd(const int n, const T* src, T* dst) {
 
 // description: Index addition uses intel intrinsic instruction set to read and
 // write data in parallel
-template <>
-void IndexSelectAdd<float, platform::avx>(const int n, const float* src,
-                                          float* dst) {
+// template <platform::cpu_isa_t plt, typename T>
+template <platform::cpu_isa_t isa = platform::avx, typename T,
+          typename std::enable_if<std::is_floating_point<T>::value>::type>
+void IndexSelectAdd(const int n, const T* src, T* dst) {
 #ifdef __AVX__
-  constexpr int block = YMM_FLOAT_BLOCK;
+  printf("########avx######!!!!!###");
+  int block = 0;
+  if (std::is_same<T, float>::value) {
+    block = YMM_FLOAT_BLOCK;
+  } else if (std::is_same<T, double>::value) {
+    block = XMM_FLOAT_BLOCK;
+  }
   int i = 0;
   int end = n & ~(block - 1);
   for (i = 0; i < end; i += block) {
     // Quote from https://software.intel.com/sites/landingpage/IntrinsicsGuide/
-    _mm256_storeu_ps(reinterpret_cast<float*>(dst) + i,
-                     _mm256_add_ps(_mm256_loadu_ps((const float*)dst + i),
-                                   _mm256_loadu_ps((const float*)src + i)));
+    if (std::is_same<T, float>::value) {
+      _mm256_storeu_ps(reinterpret_cast<float*>(dst) + i,
+                       _mm256_add_ps(_mm256_loadu_ps((const float*)dst + i),
+                                     _mm256_loadu_ps((const float*)src + i)));
+    } else if (std::is_same<T, double>::value) {
+      _mm256_storeu_pd(reinterpret_cast<double*>(dst) + i,
+                       _mm256_add_pd(_mm256_loadu_pd((const double*)dst + i),
+                                     _mm256_loadu_pd((const double*)src + i)));
+    }
   }
   for (; i < n; i++) {
     dst[i] += src[i];
   }
 #else
-  IndexSelectAdd<float, platform::isa_any>(n, src, dst);
+  IndexSelectAdd<T>(n, src, dst);
 #endif
 }
 
-template <>
-void IndexSelectAdd<double, platform::avx>(const int n, const double* src,
-                                           double* dst) {
-#ifdef __AVX__
-  constexpr int block = XMM_FLOAT_BLOCK;
-  int i = 0;
-  int end = n & ~(block - 1);
-  for (i = 0; i < end; i += block) {
-    _mm256_storeu_pd(reinterpret_cast<double*>(dst) + i,
-                     _mm256_add_pd(_mm256_loadu_pd((const double*)dst + i),
-                                   _mm256_loadu_pd((const double*)src + i)));
-  }
-  for (; i < n; i++) {
-    dst[i] += src[i];
-  }
-#else
-  IndexSelectAdd<double, platform::isa_any>(n, src, dst);
-#endif
+template <platform::cpu_isa_t isa = platform::avx, typename T,
+          typename std::enable_if<std::is_integral<T>::value>::type>
+void IndexSelectAdd(const int n, const T* src, T* dst) {
+  IndexSelectAdd<T>(n, src, dst);
 }
 
-template <>
-void IndexSelectAdd<int64_t, platform::avx>(const int n, const int64_t* src,
-                                            int64_t* dst) {
-  IndexSelectAdd<int64_t, platform::isa_any>(n, src, dst);
-}
-
-template <>
-void IndexSelectAdd<int, platform::avx>(const int n, const int* src, int* dst) {
-  IndexSelectAdd<int, platform::isa_any>(n, src, dst);
-}
 #endif
 
 template <typename T, typename IndexT = int>
@@ -224,10 +205,12 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       auto dst = out_data + output_start_offset + index_value * slice_size;
 
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
+
 #ifdef __AVX__
-      IndexSelectAdd<T, platform::avx>(slice_size, src, dst);
+      printf("@@@@@avx@@@");
+      IndexSelectAdd<platform::avx, T>(slice_size, src, dst);
 #else
-      IndexSelectAdd<T>(slice_size, src, dst);
+      IndexSelectAdd<platform::isa_any, T>(slice_size, src, dst);
 #endif
 #endif
     }
