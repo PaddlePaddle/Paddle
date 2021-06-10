@@ -31,6 +31,7 @@ class Graph;
 
 class ConvBNFusePass : public FusePassBase {
  public:
+  ConvBNFusePass();
   virtual ~ConvBNFusePass() {}
   virtual std::string conv_type() const { return "conv2d"; }
 
@@ -41,6 +42,7 @@ class ConvBNFusePass : public FusePassBase {
 
 class ConvEltwiseAddBNFusePass : public FusePassBase {
  public:
+  ConvEltwiseAddBNFusePass();
   virtual ~ConvEltwiseAddBNFusePass() {}
   virtual std::string conv_type() const { return "conv2d"; }
 
@@ -51,11 +53,13 @@ class ConvEltwiseAddBNFusePass : public FusePassBase {
 
 class ConvTransposeBNFusePass : public ConvBNFusePass {
  public:
+  ConvTransposeBNFusePass();
   std::string conv_type() const { return "conv2d_transpose"; }
 };
 
 class ConvTransposeEltwiseAddBNFusePass : public ConvEltwiseAddBNFusePass {
  public:
+  ConvTransposeEltwiseAddBNFusePass();
   std::string conv_type() const { return "conv2d_transpose"; }
 };
 
