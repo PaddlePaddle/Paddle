@@ -472,7 +472,7 @@ __device__ __forceinline__ void ReduceAny(
   for (int k = 0; k < Rank; ++k) {
     idx_x += (sub_index[k] * x_strides[k]);
   }
-  Ty reduce_var = static_cast<Ty>(x[idx_x]);
+  Ty reduce_var = static_cast<Ty>(transformer(x[idx_x]));
 
   for (int i = threadIdx.x + BlockDim; i < reduce_num; i += BlockDim) {
     int reduce_idx = i;

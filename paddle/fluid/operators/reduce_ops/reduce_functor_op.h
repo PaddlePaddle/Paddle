@@ -50,7 +50,7 @@ template <typename Tx, typename Ty = Tx>
 struct CustomMin {
   using Transformer = IdentityFunctor<Tx>;
 
-  __device__ __forceinline__ Ty initial() {
+  HOSTDEVICE __forceinline__ Ty initial() {
     return std::numeric_limits<Ty>::max();
   }
 
@@ -63,7 +63,7 @@ template <typename Tx, typename Ty = Tx>
 struct CustomMax {
   using Transformer = IdentityFunctor<Tx>;
 
-  __device__ __forceinline__ Ty initial() {
+  HOSTDEVICE __forceinline__ Ty initial() {
     return std::numeric_limits<Ty>::min();
   }
 
@@ -77,7 +77,7 @@ template <typename Tx, typename Ty = Tx>
 struct CustomSum {
   using Transformer = IdentityFunctor<Tx, Ty>;
 
-  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(0.0f); }
+  HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(0.0f); }
 
   __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b + a;
@@ -88,7 +88,7 @@ template <typename Tx, typename Ty = Tx>
 struct CustomMean {
   using Transformer = DivideFunctor<Tx>;
 
-  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(0.0f); }
+  HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(0.0f); }
 
   __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b + a;
@@ -99,7 +99,7 @@ template <typename Tx, typename Ty = Tx>
 struct CustomMul {
   using Transformer = IdentityFunctor<Tx>;
 
-  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(1.0f); }
+  HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(1.0f); }
 
   __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b * a;
@@ -110,7 +110,7 @@ template <typename Tx, typename Ty = Tx>
 struct CustomLogicalOr {
   using Transformer = IdentityFunctor<Tx>;
 
-  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(false); }
+  HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(false); }
 
   __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b || a;
@@ -121,7 +121,7 @@ template <typename Tx, typename Ty = Tx>
 struct CustomLogicalAnd {
   using Transformer = IdentityFunctor<Tx>;
 
-  __device__ __forceinline__ Ty initial() { return static_cast<Ty>(true); }
+  HOSTDEVICE __forceinline__ Ty initial() { return static_cast<Ty>(true); }
 
   __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
     return b && a;
