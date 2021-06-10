@@ -854,6 +854,27 @@ class DistributedStrategy(object):
             )
 
     @property
+    def fuse_grad_size_in_num(self):
+        """
+        This based on raw_program_optimizer program and allreduce the num of the fused op
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_grad_size_in_num = 2
+        """
+        return self.strategy.fuse_grad_size_in_num
+
+    @fuse_grad_size_in_num.setter
+    @is_strict_auto
+    def fuse_grad_size_in_num(self, num):
+        if isinstance(num, int):
+            self.strategy.fuse_grad_size_in_num = num
+        else:
+            print(
+                "WARNING: fuse_grad_size_in_num should have value of int32 type")
+
+    @property
     def pipeline(self):
         """
         Indicating whether we are using pipeline parallelism for distributed training.
