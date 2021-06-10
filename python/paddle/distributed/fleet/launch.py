@@ -183,13 +183,15 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
 
     # parameter elastic mode
     elastic_group = parser.add_argument_group("Elastic Parameters")
-    elastic_group.add_argument("--elastic_server", type=str, help="")
-    elastic_group.add_argument("--job_id", type=str, help="")
-    elastic_group.add_argument("--np", type=int, help="")
-    elastic_group.add_argument("--scale", type=int, default=0, help="")
-    elastic_group.add_argument("--port", type=int, help="")
-    elastic_group.add_argument("--host", type=str, help="")
-    elastic_group.add_argument("--force", type=bool, default=False, help="")
+    elastic_group.add_argument(
+        "--elastic_server", type=str, help="etcd server host:port")
+    elastic_group.add_argument("--job_id", type=str, help="job unique id")
+    elastic_group.add_argument("--np", type=int, help="job pod/node number")
+    elastic_group.add_argument("--scale", type=int, default=0, help="scale np")
+    elastic_group.add_argument(
+        "--host", type=str, help="bind host, default to POD_IP env")
+    elastic_group.add_argument(
+        "--force", type=bool, default=False, help="update np force")
 
     return parser.parse_args()
 

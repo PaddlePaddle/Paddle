@@ -94,7 +94,7 @@ class ElasticManager(object):
         name = args.job_id or os.getenv('PADDLE_ELASTIC_JOB_ID')
         np = args.np or int(os.getenv('PADDLE_ELASTIC_NP', 0))
         host = args.host or os.getenv('POD_IP')
-        scale = args.scale or int(os.getenv('PADDLE_SCALE', 0))
+        scale = args.scale or int(os.getenv('PADDLE_ELASTIC_SCALE', 0))
         force = args.force or os.getenv('PADDLE_ELASTIC_FORCE')
 
         self.elastic_level = int(
@@ -112,6 +112,9 @@ class ElasticManager(object):
         self.restart_flag = False
 
         if not server or ':' not in server or not name or not np:
+            logger.info(
+                'Elastic is not enabled with server {} name {} and np {}'.
+                format(server, name, np))
             self.enable = False
             return
         else:
