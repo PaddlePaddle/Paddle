@@ -199,6 +199,7 @@ static inline void HandleViewBetweenInputAndOutput(
 
 extern PyTypeObject* g_varbase_pytype;
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_blockdesc_pytype;
 
 inline bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 
@@ -669,6 +670,25 @@ static inline void CastPyArg2AttrStrings(
   }
 }
 
+static inline void CastPyArg2AttrBlock(
+    PyObject* obj, paddle::framework::AttributeMap& attrs,  // NOLINT
+    const std::string& key, const std::string& op_type, ssize_t arg_pos) {
+  ::pybind11::detail::instance* inst =
+      (::pybind11::detail::instance*)obj;  // NOLINT
+
+  if (!PyObject_IsInstance((PyObject*)inst,                   // NOLINT
+                           (PyObject*)g_blockdesc_pytype)) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "BlockDesc, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+  void** vh = inst->simple_layout ? inst->simple_value_holder
+                                  : &inst->nonsimple.values_and_holders[0];
+  attrs[key] = reinterpret_cast<paddle::framework::BlockDesc*&>(vh[0]);
+}
+
 static inline void ConstructAttrMapFromPyArgs(
     const std::string& op_type, PyObject* args, ssize_t attr_start,
     ssize_t attr_end, paddle::framework::AttributeMap& attrs) {  // NOLINT
@@ -734,6 +754,9 @@ static inline void ConstructAttrMapFromPyArgs(
         break;
       case paddle::framework::proto::AttrType::FLOAT64S:
         CastPyArg2AttrFloat64s(obj, attrs, key, op_type, arg_pos);
+        break;
+      case paddle::framework::proto::AttrType::BLOCK:
+        CastPyArg2AttrBlock(obj, attrs, key, op_type, arg_pos);
         break;
       default:
         break;

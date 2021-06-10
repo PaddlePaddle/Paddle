@@ -30,6 +30,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_vartype_pytype = NULL;
+PyTypeObject *g_blockdesc_pytype = NULL;
 
 namespace pd = paddle::framework;
 
@@ -84,8 +85,9 @@ void BindProgramDesc(pybind11::module *m) {
 }
 
 void BindBlockDesc(pybind11::module *m) {
-  pybind11::class_<pd::BlockDesc>(*m, "BlockDesc", "")
-      .def_property_readonly("id", &pd::BlockDesc::ID)
+  pybind11::class_<pd::BlockDesc> blockdesc(*m, "BlockDesc", "");
+  g_blockdesc_pytype = (PyTypeObject *)blockdesc.ptr();  // NOLINT
+  blockdesc.def_property_readonly("id", &pd::BlockDesc::ID)
       .def_property_readonly("parent", &pd::BlockDesc::Parent)
       .def("get_forward_block_idx", &pd::BlockDesc::ForwardBlockID)
       .def("_set_forward_block_idx", &pd::BlockDesc::SetForwardBlockID)
