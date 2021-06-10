@@ -347,7 +347,7 @@ class TestTupleShape2(TestTensorShapeBasic):
 class TestTupleShape3(TestTensorShapeBasic):
     def init_test_func(self):
         self.input = numpy.ones((5, 7)).astype("int32")
-        self.input_spec = [paddle.static.InputSec(shape=[5, 7], dtype="int32")]
+        self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
         self.dygraph_func = dyfunc_tuple_shape_3
 
     def _set_expected_op_num(self):

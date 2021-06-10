@@ -116,19 +116,19 @@ def _getitem_impl_(var, item):
 
     for dim, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item):
-            if isinstance(slice_item, int) and var.shape[
-                    dim] is not None and var.shape[dim] != -1:
-                if slice_item < 0 or slice_item >= var.shape[dim]:
-                    # For python, if users write a, b = var, the __getitem__
-                    # method will iterate through 0, 1, 2 ... until __getitem__
-                    # throws an IndexError, then stop. The var[0], var[1] will
-                    # be given to a, b respectively. If more values are given,
-                    # the unpack size would cause error.
-                    #
-                    # We raises IndexError here to support grammar like `a, b = var`
-                    raise IndexError(
-                        "slice_item %d at dim %d should be >= 0 and < var.shape[%d]: %d"
-                        % (slice_item, dim, dim, var.shape[dim]))
+            if isinstance(slice_item,
+                          int) and var.shape[dim] is not None and var.shape[
+                              dim] >= 0 and slice_item >= var.shape[dim]:
+                # For python, if users write a, b = var, the __getitem__
+                # method will iterate through 0, 1, 2 ... until __getitem__
+                # throws an IndexError, then stop. The var[0], var[1] will
+                # be given to a, b respectively. If more values are given,
+                # the unpack size would cause error.
+                #
+                # We raises IndexError here to support grammar like `a, b = var`
+                raise IndexError(
+                    "slice_item %d at dim %d should be >= 0 and < var.shape[%d]: %d"
+                    % (slice_item, dim, dim, var.shape[dim]))
             decrease_axes.append(dim)
             start = slice_item
             step = 1
