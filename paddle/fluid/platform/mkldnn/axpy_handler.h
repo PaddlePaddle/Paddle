@@ -13,24 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <cinttypes>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "mkldnn.hpp"
 #include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace platform {
 
 template <typename T>
-class AXPYMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::reorder> {
+class AXPYMKLDNNHandler : public MKLDNNHandlerT<T, dnnl::reorder> {
  public:
-  AXPYMKLDNNHandler(const platform::MKLDNNDeviceContext& dev_ctx,
-                    const mkldnn::engine mkldnn_engine,
-                    platform::Place cpu_place, int n, float alpha)
-      : platform::MKLDNNHandlerT<T, dnnl::reorder>(
+  AXPYMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+                    const mkldnn::engine mkldnn_engine, Place cpu_place, int n,
+                    float alpha)
+      : MKLDNNHandlerT<T, dnnl::reorder>(
             dev_ctx, mkldnn_engine, cpu_place,
-            platform::CreateKey(dev_ctx, static_cast<int64_t>(n),
-                                platform::MKLDNNGetDataType<T>(), alpha,
-                                "-axpy")),
+            CreateKey(dev_ctx, static_cast<int64_t>(n), MKLDNNGetDataType<T>(),
+                      alpha, "-axpy")),
         alpha_(alpha),
         n_(n) {}
 
@@ -41,7 +46,7 @@ class AXPYMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::reorder> {
     auto mem_p = std::static_pointer_cast<mkldnn::memory>(
         this->dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
-      auto md = mkldnn::memory::desc({n_}, platform::MKLDNNGetDataType<T>(),
+      auto md = mkldnn::memory::desc({n_}, MKLDNNGetDataType<T>(),
                                      dnnl::memory::format_tag::x);
       mem_p = std::make_shared<mkldnn::memory>(md, this->engine_, ptr);
       this->dev_ctx_.SetBlob(local_key, mem_p);
@@ -52,7 +57,7 @@ class AXPYMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::reorder> {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(const T* x) {
-    return this->AcquireMemory(platform::to_void_cast(x), "@user_src_mem_p");
+    return this->AcquireMemory(to_void_cast(x), "@user_src_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(T* y) {
