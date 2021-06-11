@@ -126,6 +126,14 @@ class TestEqualReduceAPI(unittest.TestCase):
         out = paddle.equal_all(x, y, name='equal_res')
         assert 'equal_res' in out.name
 
+    def test_dynamic_api(self):
+        paddle.disable_static()
+        x = paddle.ones(shape=[10, 10], dtype="int32")
+        y = paddle.ones(shape=[10, 10], dtype="int32")
+        out = paddle.equal_all(x, y)
+        assert out.numpy()[0] == True
+        paddle.enable_static()
+
 
 if __name__ == '__main__':
     unittest.main()

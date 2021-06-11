@@ -59,6 +59,8 @@ def equal_all(x, y, name=None):
           result2 = paddle.equal_all(x, z)
           print(result2) # result2 = [False ]
     """
+    if in_dygraph_mode():
+        return core.ops.equal_all(x, y)
 
     helper = LayerHelper("equal_all", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
