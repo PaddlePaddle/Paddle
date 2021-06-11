@@ -31,7 +31,7 @@ class TestInputSpec(unittest.TestCase):
         x_bool = fluid.layers.fill_constant(shape=[1], dtype='bool', value=True)
         bool_spec = InputSpec.from_tensor(x_bool)
         self.assertEqual(bool_spec.dtype, x_bool.dtype)
-        self.assertEqual(bool_spec.shape, x_bool.shape)
+        self.assertEqual(list(bool_spec.shape), list(x_bool.shape))
         self.assertEqual(bool_spec.name, x_bool.name)
 
         bool_spec2 = InputSpec.from_tensor(x_bool, name='bool_spec')
@@ -182,15 +182,14 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
 
         net = NetWithNonTensorSpec(self.in_num, self.out_num)
         net.eval()
+        # dygraph out
+        dy_out = net(self.x, *specs[1:])
 
         # jit.save directly
         paddle.jit.save(net, path + '_direct', input_spec=specs)
         load_net = paddle.jit.load(path + '_direct')
         load_net.eval()
         pred_out = load_net(self.x)
-
-        # dygraph out
-        dy_out = net(self.x, *specs[1:])
 
         self.assertTrue(np.allclose(dy_out, pred_out))
 
@@ -230,6 +229,71 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         pred_out = load_net(self.x)
 
         self.assertTrue(np.allclose(dy_out, pred_out))
+
+
+class NetWithNonTensorSpecPrune(paddle.nn.Layer):
+    def __init__(self, in_num, out_num):
+        super(NetWithNonTensorSpecPrune, self).__init__()
+        self.linear_1 = paddle.nn.Linear(in_num, out_num)
+        self.bn_1 = paddle.nn.BatchNorm1D(out_num)
+
+    def forward(self, x, y, use_bn=False):
+        x = self.linear_1(x)
+        if use_bn:
+            x = self.bn_1(x)
+
+        out = paddle.mean(x)
+
+        if y is not None:
+            loss = paddle.mean(y) + out
+
+        return out, loss
+
+
+class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
+    def setUp(self):
+        self.in_num = 16
+        self.out_num = 16
+        self.x_spec = paddle.static.InputSpec([-1, 16], name='x')
+        self.y_spec = paddle.static.InputSpec([16], name='y')
+        self.x = paddle.randn([4, 16])
+        self.y = paddle.randn([16])
+
+    @classmethod
+    def setUpClass(cls):
+        paddle.disable_static()
+
+    def test_non_tensor_with_prune(self):
+        specs = [self.x_spec, self.y_spec, True]
+        path = './net_non_tensor_prune_'
+
+        net = NetWithNonTensorSpecPrune(self.in_num, self.out_num)
+        net.eval()
+        # dygraph out
+        dy_out, _ = net(self.x, self.y, *specs[2:])
+
+        # jit.save directly
+        paddle.jit.save(net, path + '_direct', input_spec=specs)
+        load_net = paddle.jit.load(path + '_direct')
+        load_net.eval()
+        pred_out, _ = load_net(self.x, self.y)
+
+        self.assertTrue(np.allclose(dy_out, pred_out))
+
+        # @to_static by InputSpec
+        net = paddle.jit.to_static(net, input_spec=specs)
+        st_out, _ = net(self.x, self.y, *specs[2:])
+
+        self.assertTrue(np.allclose(dy_out, st_out))
+
+        # jit.save and jit.load with prune y and loss
+        prune_specs = [self.x_spec, True]
+        paddle.jit.save(net, path, prune_specs, output_spec=[st_out])
+        load_net = paddle.jit.load(path)
+        load_net.eval()
+        load_out = load_net(self.x)  # no y and no loss
+
+        self.assertTrue(np.allclose(st_out, load_out))
 
 
 if __name__ == '__main__':

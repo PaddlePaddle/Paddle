@@ -403,8 +403,15 @@ def _get_input_var_names(inputs, input_spec):
     ]
     if input_spec is None:
         # no prune
-        result_list = input_var_names
-    elif input_spec is not None and len(input_spec) == len(input_var_names):
+        return input_var_names
+    else:
+        # fileter out non-tensor type spec infos.
+        input_spec = [
+            spec for spec in input_spec
+            if isinstance(spec, paddle.static.InputSpec)
+        ]
+
+    if len(input_spec) == len(input_var_names):
         # no prune
         result_list = input_var_names
         # if input spec name not in input_var_names, only raise warning
