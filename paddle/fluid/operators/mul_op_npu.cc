@@ -119,8 +119,10 @@ class MulNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("BroadcastToD", {*y}, {tmp_y},
                       {{"shape", broadcast_shape}});
       broadcast_runner.Run(stream);
+      */
+
       Tensor x_nz_format = CastNPUFormat(*x, 29);
-      Tensor y_nz_format = CastNPUFormat(tmp_y, 29);
+      Tensor y_nz_format = CastNPUFormat(*y, 29);
 
       // out->mutable_data<T>(ctx.GetPlace());
       // out->ResizeNPUDims(out->dims());
@@ -144,8 +146,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
 
       // RunTransDataNPUOP(out_nz_format, out, stream);
 
-      */
-
+      /*
       // flatten => x.shape=[6, 4]
       Tensor tmp_x(x->type());
       int64_t first_dim = x->dims()[0] * x->dims()[1];
@@ -187,19 +188,6 @@ class MulNPUKernel : public framework::OpKernel<T> {
       runner_matmul.Run(stream);
       RunTransDataNPUOP(out_nz_format, &tmp_matmul, stream);
 
-      /*std::vector<int64_t> new_shape = framework::vectorize(out->dims());
-      Tensor new_shape_tensor(framework::proto::VarType::INT64);
-      new_shape_tensor.mutable_data<int64_t>({3}, ctx.GetPlace());
-      framework::TensorFromVector(new_shape, ctx.device_context(),
-      &new_shape_tensor);
-
-      out->mutable_data(ctx.GetPlace(), x->type());
-      const auto& runner_reshape =
-          NpuOpRunner("Reshape", {tmp_matmul, new_shape_tensor}, {*out},
-                      {{"axis", 0}, {"num_axes", -1}});
-
-      runner_reshape.Run(stream);*/
-
       // reshape [6, 5] => [2, 3, 5]
       (*out).Resize(
           framework::make_ddim({x->dims()[0], x->dims()[1], y->dims()[1]}));
@@ -209,6 +197,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
           ctx.template device_context<platform::DeviceContext>(), out);
       (*out).Resize(
           framework::make_ddim({x->dims()[0], x->dims()[1], y->dims()[1]}));
+      */
     }
   }
 };
@@ -348,7 +337,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
       Tensor dout_nz_format = CastNPUFormat(tmp_dout, 29);
 
       if (dx) {
-        // tmp_dout * y [6,5] * [4,5] => [6, 4]
+        /*// tmp_dout * y [6,5] * [4,5] => [6, 4]
         dx->mutable_data<T>(ctx.GetPlace());
         auto dx_dims = dx->dims();
         dx->Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
@@ -364,7 +353,25 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         RunTransDataNPUOP(dx_nz_format, dx, stream);
         // reshape [2, 12] => [2, 3, 4]
         dx->Resize(dx_dims);
-        dx->ResizeNPUDims(dx_dims);
+        dx->ResizeNPUDims(dx_dims);*/
+
+        Tensor y_nz_format = CastNPUFormat(*y, 29);
+
+        dx->ResizeNPUDims(framework::make_ddim(
+            InferShapeNDToNZ(framework::vectorize(dx->dims()))));
+        dx->set_npu_storage_layout(DataLayout::kFractalNZ);
+        size_t npu_storage_size =
+            dx->npu_storage_numel() * framework::SizeOfType(x->type());
+        dx->mutable_data(ctx.GetPlace(), x->type(), npu_storage_size);
+
+        const auto& runner =
+            NpuOpRunner("BatchMatMul", {dout_nz_format, y_nz_format}, {*dx},
+                        {{"adj_x1", false}, {"adj_x2", true}});
+
+        auto stream =
+            ctx.template device_context<paddle::platform::NPUDeviceContext>()
+                .stream();
+        runner.Run(stream);
       }
       if (dy) {
         // flatten x.shape [2,3,4] => [6, 4]

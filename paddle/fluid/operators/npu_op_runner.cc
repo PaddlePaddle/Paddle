@@ -393,9 +393,9 @@ Tensor GenerateNZTensor(const Tensor &src_tensor) {
   return out_tensor;
 }
 
-void InferNPUStorageFormatAndDims(const Tensor &src, Tensor *dst) {
-  dst->set_npu_storage_layout(src.npu_storage_layout());
-  if (src.npu_storage_layout() == DataLayout::kFractalNZ) {
+void InferNPUStorageFormatAndDims(Tensor *dst, DataLayout layout) {
+  dst->set_npu_storage_layout(layout);
+  if (layout == DataLayout::kFractalNZ) {
     dst->ResizeNPUDims(framework::make_ddim(
         InferShapeNDToNZ(framework::vectorize(dst->dims()))));
   } else {

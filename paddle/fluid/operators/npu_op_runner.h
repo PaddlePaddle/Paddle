@@ -124,7 +124,7 @@ Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format);
 
 Tensor GenerateNZTensor(const Tensor &src_tensor);
 
-void InferNPUStorageFormatAndDims(const Tensor &src, Tensor *dst);
+void InferNPUStorageFormatAndDims(Tensor *dst, DataLayout layout);
 
 template <typename T>
 void FillNpuTensorWithConstant(Tensor *tensor, T val) {
