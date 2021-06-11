@@ -97,9 +97,8 @@ class ElasticManager(object):
         scale = args.scale or int(os.getenv('PADDLE_ELASTIC_SCALE', 0))
         force = args.force or os.getenv('PADDLE_ELASTIC_FORCE')
 
-        self.endpoints = '{}|{}'.format(
-            os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', ''),
-            os.getenv('PADDLE_TRAINERS', ''))
+        self.endpoints = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
+        self.trainers = os.getenv('PADDLE_TRAINERS', '')
 
         self.elastic_level = int(
             os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL', 1))
@@ -131,7 +130,7 @@ class ElasticManager(object):
         self.node_prefix = self.prefix + '/nodes/'
         self.np_path = self.prefix + '/np'
         self.endpoints_path = self.prefix + '/endpoints'
-        self.host_path = self.node_prefix + self.host
+        self.host_path = '{}{}'.format(self.node_prefix, time.time())
 
         self.np = np + scale
         '''
@@ -177,14 +176,17 @@ class ElasticManager(object):
         np_watch = self.etcd.add_watch_callback(self.np_path, np_call_back)
 
         # endpoints handle DISTRIBUTED_TRAINER_ENDPOINTS and PADDLE_TRAINERS
-        self.etcd.put(self.endpoints_path, six.b(self.endpoints))
+        self.etcd.put(self.endpoints_path,
+                      six.b('{}|{}'.format(self.endpoints, self.trainers)))
 
         def endpoints_call_back(event):
-            logger.info(
-                "etcd: set DISTRIBUTED_TRAINER_ENDPOINTS|PADDLE_TRAINERS to {} ".
-                format(self.endpoints))
-            self.endpoints = six.ensure_str(
-                self.etcd.get(self.endpoints_path)[0] or '')
+            if not self.endpoints:
+                return
+            edps = six.ensure_str(self.etcd.get(self.endpoints_path)[0] or '')
+            self.endpoints, self.trainers = edps.split('|')
+            logger.info("set DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
+                self.endpoints))
+            logger.info("set PADDLE_TRAINERS {} ".format(self.trainers))
 
         endpoints_watch = self.etcd.add_watch_callback(self.endpoints_path,
                                                        endpoints_call_back)
@@ -232,20 +234,13 @@ class ElasticManager(object):
     def _update_hosts(self):
         assert len(self.hosts) != 0, 'hosts empty'
 
-        endpoints, trainers = self.endpoints.split('|')
-        if ':' in endpoints:
-            if self.host in endpoints:
-                os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = endpoints
-                os.environ['PADDLE_TRAINERS'] = trainers
-                logger.info("update DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
-                    endpoints))
-                logger.info("update PADDLE_TRAINERS {} ".format(trainers))
-                return
-            else:
-                self.exit()
-                raise Exception(
-                    "ENV DISTRIBUTED_TRAINER_ENDPOINTS {} set but incorrect ".
-                    format(endpoints))
+        if self.host in self.endpoints:
+            os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.endpoints
+            os.environ['PADDLE_TRAINERS'] = self.trainers
+            logger.info("update env DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
+                self.endpoints))
+            logger.info("update env PADDLE_TRAINERS {} ".format(self.trainers))
+            return
 
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))
         idx = self.hosts.index(self.host)
