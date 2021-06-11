@@ -891,7 +891,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
+    #set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     if(WITH_DISTRIBUTE)
         set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
@@ -920,7 +920,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
         test_collective_reduce_api
         test_pipeline_parallel
         test_collective_allreduce_api
-        test_new_group_api
+        #test_new_group_api
         test_collective_broadcast_api
         test_collective_allgather_api
         test_collective_alltoall_api

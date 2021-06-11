@@ -52,6 +52,42 @@ framework::proto::OpDesc PrepareOpDesc(
   desc.Flush();
   return *desc.Proto();
 }
+ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
 
 void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add2_act_fuse";
@@ -66,6 +102,10 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_NODES;
 
     auto base_op_desc = *conv_op->Op()->Proto();
