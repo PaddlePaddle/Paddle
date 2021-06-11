@@ -848,13 +848,13 @@ class ColorJitter(BaseTransform):
     """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
-        brightness: How much to jitter brightness.
+        brightness (float): How much to jitter brightness.
             Chosen uniformly from [max(0, 1 - brightness), 1 + brightness]. Should be non negative numbers.
-        contrast: How much to jitter contrast.
+        contrast (float): How much to jitter contrast.
             Chosen uniformly from [max(0, 1 - contrast), 1 + contrast]. Should be non negative numbers.
-        saturation: How much to jitter saturation.
+        saturation (float): How much to jitter saturation.
             Chosen uniformly from [max(0, 1 - saturation), 1 + saturation]. Should be non negative numbers.
-        hue: How much to jitter hue.
+        hue (float): How much to jitter hue.
             Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
