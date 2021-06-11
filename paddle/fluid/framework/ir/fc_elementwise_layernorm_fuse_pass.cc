@@ -196,6 +196,7 @@ FCElementwiseLayerNormFusePass::FCElementwiseLayerNormFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
+      .IsNumEQ(-1)
       .End();
 }
 
