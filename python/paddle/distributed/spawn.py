@@ -335,7 +335,9 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Start multiple processes with ``spawn`` method for parallel training.
 
     .. note::
-        ``spawn`` now only supports GPU or XPU collective mode.
+        ``spawn`` now only supports GPU or XPU collective mode. The collective mode
+        of GPU and XPU cannot be started at the same time, so the option `gpus` and
+        `xpus` cannot be configured at the same time.
 
     Args:
         func (function): The target function is called by spawned process.
