@@ -176,6 +176,9 @@ class MKLDNNHandlerT {
       const std::string key_fpd = key_ + "@fwd_pd";
       fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
           dev_ctx_.GetBlob(key_fpd));
+      PADDLE_ENFORCE_NOT_NULL(
+          fwd_pd_, platform::errors::Unavailable(
+                       "Error: FWD PD should be set when BWD PD is cached."));
       return true;
     }
   }
