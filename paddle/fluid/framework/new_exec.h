@@ -539,9 +539,9 @@ void build_op_func_list( const framework::ProgramDesc& pdesc, std::vector<Operat
 
     for ( auto& op : global_block.AllOps() )
     { 
-        cerr << op->Type() << endl;
+        //cerr << op->Type() << endl;
         //bool debug = op->Type() == "softmax_with_cross_entropy_grad";
-        bool debug = true;
+        bool debug = false;
         
         //cerr << "create op" << endl;
         //auto op_base_u = OpRegistry::CreateOp(*op);
@@ -638,16 +638,20 @@ void build_op_func_list( const framework::ProgramDesc& pdesc, std::vector<Operat
         // add transfer log
         //cerr << "in map size " << ins_map.size() << endl;
         VariableValueMap&  ins_map_temp = runtime_context.inputs;
-        cerr << "ins map siz" <<  ins_map_temp.size() << endl;
+        //cerr << "ins map siz" <<  ins_map_temp.size() << endl;
         for( auto& var_name_item : ins_map_temp  )
         {
-          cerr << "in name " << var_name_item.first << endl; 
+          
           //auto& vec_ids = ins_name2id[ var_name_item.first ];
           for( size_t i = 0; i < var_name_item.second.size();  ++i )
           {
             auto var = var_name_item.second[i];
             auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
-            cerr << "i " << i << "\t" << tensor_in->IsInitialized() << endl;
+            if( !tensor_in->IsInitialized() )
+            {
+              continue;
+            }
+            //cerr << "i " << i << "\t" << tensor_in->IsInitialized() << endl;
             auto kernel_type_for_var = static_cast<const framework::OperatorWithKernel*>(op_base)->GetKernelTypeForVar(
                 var_name_item.first, *tensor_in, expected_kernel_key);
             if( debug) 
@@ -669,7 +673,7 @@ void build_op_func_list( const framework::ProgramDesc& pdesc, std::vector<Operat
               var_scope->var_list.push_back(std::unique_ptr<Variable>(v));
 
               VariableNameMap copy_in_map;
-              cerr << "ints name is " << input_names[var_name_item.first][i] << endl;
+              //cerr << "ints name is " << input_names[var_name_item.first][i] << endl;
               copy_in_map["X"] = { input_names[var_name_item.first][i] };
               VariableNameMap copy_out_map;
               copy_out_map["Out"] = { new_var_name };
@@ -779,7 +783,7 @@ void exec_op_func_list( const std::vector<OpFuncNode>& vec_func_list,
             
             input_vars.reserve(var_name_item.second.size());
             for (auto& id : var_name_item.second) {    
-                cerr << var_name_item.first << "\t " << id << endl;            
+                //cerr << var_name_item.first << "\t " << id << endl;            
                 input_vars.emplace_back( var_scope.var_list[ id ].get() );                
             }
             ins_map.emplace( var_name_item.first, std::move(input_vars) );            
@@ -792,7 +796,7 @@ void exec_op_func_list( const std::vector<OpFuncNode>& vec_func_list,
             
             out_vars.reserve(var_name_item.second.size());
             for (auto& id : var_name_item.second) {       
-                cerr << var_name_item.first << "\t " << id << endl;         
+                //cerr << var_name_item.first << "\t " << id << endl;         
                 out_vars.emplace_back( var_scope.var_list[ id ].get());                 
             }            
             outs_map.emplace( var_name_item.first, std::move( out_vars ) );
@@ -826,15 +830,23 @@ void exec_op_func_list( const std::vector<OpFuncNode>& vec_func_list,
 class InterpreterCore
 {
 public:
-  InterpreterCore( const platform::Place& place, const ProgramDesc& prog ) : place_(place), prog_(prog) {
+  InterpreterCore( const platform::Place& place, const ProgramDesc& prog,  const ProgramDesc& startup_prog) : place_(place), prog_(prog) {
     paddle::framework::InitDevices();
 
     is_build = false;
 
+    paddle::framework::build_variable_scope( startup_prog, &global_scope );
+
+
+    std::vector<paddle::framework::OpFuncNode> vec_func_list;
+    std::vector< paddle::framework::OperatorBase* > op_list;
+    paddle::framework::build_op_func_list( startup_prog, op_list, vec_func_list, &global_scope, place_);
+
   } 
-  void run( const std::vector<std::string> vec_name, const std::vector<framework::Tensor>& vec_tensor, const vector<std::string>& vec_fetch_name)
+  void run( const std::vector<std::string> vec_name, const std::vector<framework::Tensor>& vec_tensor, const vector<std::string>& vec_fetch_name, 
+            std::vector<framework::Tensor>& vec_out)
   {
-    cerr << "run" << endl;
+    //cerr << "run" << endl;
       // set static data
     if( is_build == false )
     {
@@ -843,13 +855,13 @@ public:
     for ( size_t i = 0; i < vec_name.size(); ++i )
     {
         auto it = global_scope.name2id.find( vec_name[i] );
-        cerr << "find " << ( it != global_scope.name2id.end() ) <<endl;
+        //cerr << "find " << ( it != global_scope.name2id.end() ) <<endl;
         assert( it != global_scope.name2id.end() );
         
         auto feed_tensor = global_scope.var_list[ it->second]->GetMutable<framework::LoDTensor>();
-        cerr << " get tensor" << endl;
+        //cerr << " get tensor" << endl;
         feed_tensor->ShareDataWith( vec_tensor[i] );
-        cerr << "share buffer with" << endl;
+        //cerr << "share buffer with" << endl;
     }
     
     if( is_build == false )
@@ -873,14 +885,16 @@ public:
         //cerr << "out  "  << fetch_tensor->data<float>()[0] << endl;
         if ( platform::is_gpu_place(fetch_tensor->place() ) )
         {
-          cerr << "fetch gpu" << endl;
+          //cerr << "fetch gpu" << endl;
             Tensor out;
             platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
             auto* dev_ctx = pool.Get(place_);
             dev_ctx->Wait();
             TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
             dev_ctx->Wait();
-            cerr << "out  " << out << endl;
+            //cerr << "out  " << out << endl;
+            //cout << out.data<float>()[0] << endl;
+            vec_out.push_back( out );
         }
         else
         {

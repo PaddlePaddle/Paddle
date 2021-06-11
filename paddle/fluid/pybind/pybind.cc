@@ -1980,7 +1980,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::InterpreterCore>(m, "InterpreterCore")
-      .def(py::init<const platform::Place &, const ProgramDesc &>())
+      .def(py::init<const platform::Place &, const ProgramDesc &, const ProgramDesc &>())
       .def("run", [](InterpreterCore &self, const std::unordered_map<std::string, py::array>& input_dict, std::vector<std::string> vec_fetch_name) {
         pybind11::gil_scoped_release release;
         std::vector<framework::Tensor> vec_tensor;
@@ -1993,13 +1993,13 @@ All parameter, weight, gradient are variables in Paddle.
         for ( auto & item : input_dict )
         {
           //cerr << "test flag  " << test_flag << endl;
-          cerr << item.first << endl;
+          //cerr << item.first << endl;
           framework::LoDTensor t;
           SetTensorFromPyArray<platform::CPUPlace>(&t, item.second,
                                                     platform::CPUPlace(), false);
                                                 
-          cerr << t.dims() << endl;
-          cerr << t.data<float>()[0] << endl;
+          //cerr << t.dims() << endl;
+          //cerr << t.data<float>()[0] << endl;
 
           vec_name.push_back( item.first );
           vec_tensor.push_back( t );
@@ -2007,10 +2007,17 @@ All parameter, weight, gradient are variables in Paddle.
       
         
         
-        std::cerr << "11" << std::endl;
-        self.run(vec_name, vec_tensor, vec_fetch_name);
+        //std::cerr << "11" << std::endl;
+        std::vector<framework::Tensor> vec_out;
+        self.run(vec_name, vec_tensor, vec_fetch_name, vec_out);
         //self.Run(prog, scope, block_id, create_local_scope, create_vars,
         //         fetch_vars);
+        std::vector< py::array> vec_ret;
+        for( size_t i = 0; i < vec_out.size(); ++i )
+        {
+          vec_ret.push_back( TensorToPyArray(vec_out[i], true) ) ;
+        }
+        return vec_ret;
       });
 
   m.def("init_gflags", framework::InitGflags);
