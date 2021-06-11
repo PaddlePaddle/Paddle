@@ -540,6 +540,29 @@ class Fleet(object):
         """
         self._runtime_handle._init_server(*args, **kwargs)
 
+    def load_model(self, path, mode):
+        """
+        load fleet model from path
+
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.load_model("path", "mode")
+
+        """
+        self._runtime_handle.load_model(path, mode)
+
     @is_non_distributed_check
     @inited_runtime_handler
     def run_server(self):

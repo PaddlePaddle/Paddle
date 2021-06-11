@@ -62,6 +62,7 @@ from ..fluid.layers import erf    # noqa: F401
 from ..fluid.layers import sqrt    # noqa: F401
 from ..fluid.layers import sqrt_    # noqa: F401
 from ..fluid.layers import sin    # noqa: F401
+from ..fluid.layers import lgamma    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
@@ -232,13 +233,11 @@ def add(x, y, name=None):
         print(z)  # [3., 8., 6. ]
 
     """
-    op_type = 'elementwise_add'
-    axis = -1
-    if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, op_name=op_type)
 
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    if in_dygraph_mode():
+        return core.ops.elementwise_add(x, y)
+
+    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -2282,3 +2281,27 @@ def conj(x, name=None):
 
     helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
     return out
+
+def neg(x, name=None):
+    """
+    This function computes the negative of the Tensor elementwisely.
+
+    Args:
+        x (Tensor): Input of neg operator, an N-D Tensor, with data type float32, float64, int8, int16, int32, or int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The negative of input Tensor. The shape and data type are the same with input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.neg(x)
+            print(out)
+            # [0.4 0.2 -0.1 -0.3]
+    """
+
+    return layers.scale(x, scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name)
