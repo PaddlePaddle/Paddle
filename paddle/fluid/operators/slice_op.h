@@ -177,14 +177,13 @@ class SliceKernel : public framework::OpKernel<T> {
       out_dims = GetDecreasedDims(slice_dims, decrease_axis);
 
       // 2.2 Get output
-      auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-      auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+      auto offsets = Eigen::array<int64_t, D>();
+      auto extents = Eigen::array<int64_t, D>();
 
       for (size_t i = 0; i < D; ++i) {
         offsets[i] = 0;
         extents[i] = slice_dims[i];
       }
-
       for (size_t i = 0; i < axes.size(); ++i) {
         offsets[axes[i]] = starts[i];
       }
@@ -205,12 +204,11 @@ class SliceKernel : public framework::OpKernel<T> {
           offsets_32bit[i] = offsets[i];
           extents_32bit[i] = extents[i];
         }
-        EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-            eigen_place, framework::To32BitIndex(out_t),
-            framework::To32BitIndex(in_t), offsets_32bit, extents_32bit);
+
+        framework::To32BitIndex(out_t).device(eigen_place) =
+            framework::To32BitIndex(in_t).slice(offsets_32bit, extents_32bit);
       } else {
-        EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-            eigen_place, out_t, in_t, offsets, extents);
+        out_t.device(eigen_place) = in_t.slice(offsets, extents);
       }
 
       out->Resize(out_dims);
