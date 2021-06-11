@@ -56,7 +56,7 @@ int main()
     paddle::framework::build_op_func_list( main_prog, op_main_list, vec_main_func_list, global_scope);
 
     auto start = std::chrono::steady_clock::now();
-    //ProfilerStart("new_executor.prof");
+    ProfilerStart("new_executor.prof");
     for ( size_t i = 0; i < 2320; ++i )
     {
         if( i % 200 == 0)
@@ -65,7 +65,7 @@ int main()
         }
         paddle::framework::exec_op_func_list( vec_main_func_list, op_main_list, global_scope ); 
     }
-    //ProfilerStop();
+    ProfilerStop();
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> diff = end-start;
 
