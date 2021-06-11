@@ -21,8 +21,7 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 
-import paddle.batch
-batch = batch.batch
+from .batch import batch  # noqa: F401
 from .fluid import monkey_patch_variable
 from .fluid.dygraph import monkey_patch_math_varbase
 monkey_patch_variable()
@@ -135,7 +134,6 @@ from .tensor.manipulation import squeeze  # noqa: F401
 from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
 from .tensor.manipulation import strided_slice  # noqa: F401
-from .tensor.manipulation import transpose  # noqa: F401
 from .tensor.manipulation import unique  # noqa: F401
 from .tensor.manipulation import unsqueeze  # noqa: F401
 from .tensor.manipulation import unsqueeze_  # noqa: F401
@@ -191,7 +189,6 @@ from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
-from .tensor.math import atan  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
@@ -244,9 +241,8 @@ from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
 from .framework import DataParallel  # noqa: F401
 
-from .framework import set_default_dtype  #DEFINE_ALIAS
-from .framework import get_default_dtype  #DEFINE_ALIAS
-from .framework import set_grad_enabled  #DEFINE_ALIAS
+from .framework import set_default_dtype  # noqa: F401
+from .framework import get_default_dtype  # noqa: F401
 
 from .tensor.search import index_sample  # noqa: F401
 from .tensor.stat import mean  # noqa: F401
@@ -281,7 +277,7 @@ import paddle.vision  # noqa: F401
 from .tensor.random import check_shape  # noqa: F401
 disable_static()
 
-__all__ = [     #noqa
+__all__ = [  # noqa
            'dtype',
            'uint8',
            'int8',
@@ -323,7 +319,6 @@ __all__ = [     #noqa
            'cos',
            'tan',
            'mean',
-           'XPUPlace',
            'mv',
            'in_dynamic_mode',
            'min',
@@ -360,7 +355,6 @@ __all__ = [     #noqa
            'to_tensor',
            'gather_nd',
            'isinf',
-           'set_device',
            'uniform',
            'floor_divide',
            'remainder',
@@ -384,8 +378,6 @@ __all__ = [     #noqa
            'rand',
            'less_equal',
            'triu',
-           'is_compiled_with_cuda',
-           'is_compiled_with_rocm',
            'sin',
            'dist',
            'unbind',
@@ -414,8 +406,6 @@ __all__ = [     #noqa
            'bernoulli',
            'summary',
            'sinh',
-           'is_compiled_with_xpu',
-           'is_compiled_with_npu',
            'round',
            'DataParallel',
            'argmin',
@@ -437,7 +427,6 @@ __all__ = [     #noqa
            'not_equal',
            'sum',
            'tile',
-           'get_device',
            'greater_equal',
            'isfinite',
            'create_parameter',
@@ -470,7 +459,6 @@ __all__ = [     #noqa
            'scatter_nd',
            'set_default_dtype',
            'expand_as',
-           'get_cudnn_version',
            'stack',
            'sqrt',
            'cholesky',
@@ -484,7 +472,6 @@ __all__ = [     #noqa
            'logical_not',
            'add_n',
            'minimum',
-           'ComplexTensor',
            'scatter',
            'scatter_',
            'floor',
@@ -493,5 +480,6 @@ __all__ = [     #noqa
            'log2',
            'log10',
            'concat',
-           'check_shape'
+           'check_shape',
+           'standard_normal'
 ]
