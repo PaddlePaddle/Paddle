@@ -51,7 +51,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-PyTypeObject *g_varbase_pytype = NULL;
+PyTypeObject *g_varbase_pytype = nullptr;
 
 namespace py = ::pybind11;
 
@@ -472,9 +472,9 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
 }
 
 template <typename P>
-static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,
-                        imperative::VarBase &dst, const P &dst_device,
-                        const bool blocking) {
+static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
+                        imperative::VarBase &dst,                   // NOLINT
+                        const P &dst_device, const bool blocking) {
   if (dst.SharedVar()->IsEmpty()) {
     VLOG(3) << "deep copy Variable from " << src->Name() << " to "
             << dst.Name();

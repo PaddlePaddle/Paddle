@@ -275,7 +275,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
       PyEval_RestoreThread(tstate);
     }
     ThrowExceptionToPython(std::current_exception());
-    return NULL;
+    return nullptr;
   }
 })";
 
@@ -616,7 +616,7 @@ int main(int argc, char* argv[]) {
 
   out << "static PyMethodDef ExtestMethods[] = {\n"
       << paddle::string::join_strings(std::get<1>(op_funcs), '\n')
-      << "\n  {NULL,NULL,0,NULL}"
+      << "\n  {nullptr,nullptr,0,nullptr}"
       << "};\n\n";
 
   out << "inline void BindOpFunctions(pybind11::module *module) {\n"

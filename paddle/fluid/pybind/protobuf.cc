@@ -29,8 +29,8 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-PyTypeObject *g_vartype_pytype = NULL;
-PyTypeObject *g_blockdesc_pytype = NULL;
+PyTypeObject *g_vartype_pytype = nullptr;
+PyTypeObject *g_blockdesc_pytype = nullptr;
 
 namespace pd = paddle::framework;
 
