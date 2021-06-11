@@ -342,15 +342,19 @@ class SingleFieldDataset(Dataset):
 
 
 class TestSingleFieldDataset(unittest.TestCase):
+    def init_dataset(self):
+        self.sample_num = 16
+        self.dataset = SingleFieldDataset(self.sample_num)
+
     def run_main(self, num_workers):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
         place = paddle.CPUPlace()
         with fluid.dygraph.guard(place):
-            dataset = SingleFieldDataset(16)
-            assert len(dataset) == 16
+            self.init_dataset()
+            assert len(self.dataset) == self.sample_num
             dataloader = DataLoader(
-                dataset,
+                self.dataset,
                 places=place,
                 num_workers=num_workers,
                 batch_size=2,
@@ -363,6 +367,21 @@ class TestSingleFieldDataset(unittest.TestCase):
     def test_main(self):
         for num_workers in [0, 2]:
             self.run_main(num_workers)
+
+
+class SingleFieldIterableDataset(IterableDataset):
+    def __init__(self, sample_num):
+        self.sample_num = sample_num
+
+    def __iter__(self):
+        for _ in range(self.sample_num):
+            yield np.random.random((2, 3)).astype('float32')
+
+
+class TestSingleFieldIterableDataset(unittest.TestCase):
+    def init_dataset(self):
+        self.sample_num = 16
+        self.dataset = SingleFieldIterableDataset(self.sample_num)
 
 
 class TestDataLoaderGenerateStates(unittest.TestCase):
