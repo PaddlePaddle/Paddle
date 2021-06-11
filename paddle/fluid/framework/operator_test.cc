@@ -526,7 +526,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
 
-  paddle::framework::RuntimeContext ctx({}, {});
+  paddle::framework::RuntimeContext ctx;
   paddle::framework::ExecutionContext exe_context(*(op.get()), scope, *dev_ctx,
                                                   ctx);
 

@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -37,7 +38,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
-#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace framework {
@@ -119,15 +119,19 @@ class OperatorBase;
 
 class RuntimeContext {
  public:
-  RuntimeContext(const VariableNameMap& innames,
-                 const VariableNameMap& outnames, const Scope& scope);
+  // RuntimeContext(const VariableNameMap& innames,
+  //                const VariableNameMap& outnames, const Scope& scope);
 
-  RuntimeContext(const VariableValueMap& invars,
-                 const VariableValueMap& outvars)
-      : inputs(invars), outputs(outvars) {}
+  // RuntimeContext(const VariableValueMap& invars,
+  //                const VariableValueMap& outvars)
+  //     : inputs(invars), outputs(outvars) {}
 
-  VariableValueMap inputs;
-  VariableValueMap outputs;
+  // VariableValueMap inputs;
+  // VariableValueMap outputs;
+  std::vector<std::vector<Variable*>> input_values;
+  std::vector<std::vector<Variable*>> output_values;
+  std::map<std::string, size_t> input_name_map;
+  std::map<std::string, size_t> output_name_map;
 };
 
 /**
@@ -301,26 +305,28 @@ class ExecutionContext {
       const std::string& name) const {
     LogVarUsageIfUnusedVarCheckEnabled(name);
 
-    auto it = ctx_.inputs.find(name);
-    if (it == ctx_.inputs.end()) {
+    auto it = ctx_.input_name_map.find(name);
+    if (it == ctx_.input_name_map.end()) {
       return {};
     }
-    return {it->second.begin(), it->second.end()};
+    // return {it->second.begin(), it->second.end()};
+    return ctx_.input_values[it->second];
   }
 
   virtual std::vector<Variable*> MultiOutputVar(const std::string& name) const {
-    auto it = ctx_.outputs.find(name);
-    if (it == ctx_.outputs.end()) {
+    auto it = ctx_.output_name_map.find(name);
+    if (it == ctx_.output_name_map.end()) {
       return {};
     }
-    return it->second;
+    // return it->second;
+    return ctx_.output_values[it->second];
   }
 
   virtual std::vector<std::string> InNameList() const {
     std::vector<std::string> vec_temp;
-    vec_temp.reserve(ctx_.inputs.size());
+    vec_temp.reserve(ctx_.output_name_map.size());
 
-    for (auto& input : ctx_.inputs) {
+    for (auto& input : ctx_.output_name_map) {
       vec_temp.push_back(input.first);
     }
 

@@ -167,24 +167,24 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
   }
 }
 
-RuntimeContext::RuntimeContext(const VariableNameMap& innames,
-                               const VariableNameMap& outnames,
-                               const Scope& scope) {
-  for (auto& var_name_item : innames) {
-    std::vector<Variable*>& input_vars = inputs[var_name_item.first];
-    input_vars.reserve(var_name_item.second.size());
-    for (auto& var_name : var_name_item.second) {
-      input_vars.push_back(scope.FindVar(var_name));
-    }
-  }
-  for (auto& var_name_item : outnames) {
-    std::vector<Variable*>& output_vars = outputs[var_name_item.first];
-    output_vars.reserve(var_name_item.second.size());
-    for (auto& var_name : var_name_item.second) {
-      output_vars.push_back(scope.FindVar(var_name));
-    }
-  }
-}
+// RuntimeContext::RuntimeContext(const VariableNameMap& innames,
+//                                const VariableNameMap& outnames,
+//                                const Scope& scope) {
+//   for (auto& var_name_item : innames) {
+//     std::vector<Variable*>& input_vars = inputs[var_name_item.first];
+//     input_vars.reserve(var_name_item.second.size());
+//     for (auto& var_name : var_name_item.second) {
+//       input_vars.push_back(scope.FindVar(var_name));
+//     }
+//   }
+//   for (auto& var_name_item : outnames) {
+//     std::vector<Variable*>& output_vars = outputs[var_name_item.first];
+//     output_vars.reserve(var_name_item.second.size());
+//     for (auto& var_name : var_name_item.second) {
+//       output_vars.push_back(scope.FindVar(var_name));
+//     }
+//   }
+// }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
@@ -512,27 +512,31 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
   LogVarUsageIfUnusedVarCheckEnabled(name);
 
-  auto it = ctx_.inputs.find(name);
-  if (it == ctx_.inputs.end()) return nullptr;
+  auto it = ctx_.input_name_map.find(name);
+  if (it == ctx_.input_name_map.end()) return nullptr;
 
   PADDLE_ENFORCE_LE(
-      it->second.size(), 1UL,
+      ctx_.input_values[it->second].size(), 1UL,
       platform::errors::InvalidArgument(
           "Operator %s's input %s should contain only one variable.",
           op_.Type(), name));
-  return it->second.empty() ? nullptr : it->second[0];
+  return ctx_.input_values[it->second].empty()
+             ? nullptr
+             : ctx_.input_values[it->second][0];
 }
 
 Variable* ExecutionContext::OutputVar(const std::string& name) const {
-  auto it = ctx_.outputs.find(name);
-  if (it == ctx_.outputs.end()) return nullptr;
+  auto it = ctx_.output_name_map.find(name);
+  if (it == ctx_.output_name_map.end()) return nullptr;
 
   PADDLE_ENFORCE_LE(
-      it->second.size(), 1UL,
+      ctx_.output_values[it->second].size(), 1UL,
       platform::errors::InvalidArgument(
           "Operator %s's output %s should contain only one variable.",
           op_.Type(), name));
-  return it->second.empty() ? nullptr : it->second[0];
+  return ctx_.output_values[it->second].empty()
+             ? nullptr
+             : ctx_.output_values[it->second][0];
 }
 
 template <>
@@ -609,12 +613,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool HasInput(const std::string& name) const override {
     // has only one input
-    const auto& ins = ctx_.inputs;
+    const auto& ins = ctx_.input_name_map;
     auto it = ins.find(name);
     if (it == ins.end()) {
       return false;
     }
-    const auto& in = it->second;
+    const auto& in = ctx_.input_values[it->second];
     if (in.size() == 0) return false;
     PADDLE_ENFORCE_EQ(
         in.size(), 1UL,
@@ -625,12 +629,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string& name) const override {
     // has only one output
-    const auto& outs = ctx_.outputs;
+    const auto& outs = ctx_.output_name_map;
     auto it = outs.find(name);
     if (it == outs.end()) {
       return false;
     }
-    const auto& out = it->second;
+    const auto& out = ctx_.output_values[it->second];
     if (out.size() == 0) {
       return false;
     }
@@ -642,12 +646,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasInputs(const std::string& name) const override {
-    const auto& ins = ctx_.inputs;
+    const auto& ins = ctx_.output_name_map;
     auto it = ins.find(name);
-    if (it == ins.end() || it->second.empty()) {
+    if (it == ins.end() || ctx_.input_values[it->second].empty()) {
       return false;
     }
-    for (auto& input : it->second) {
+    for (auto& input : ctx_.input_values[it->second]) {
       if (input == nullptr) {
         return false;
       }
@@ -656,12 +660,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   bool HasOutputs(const std::string& name) const override {
-    const auto& outs = ctx_.outputs;
+    const auto& outs = ctx_.output_name_map;
     auto it = outs.find(name);
-    if (it == outs.end() || it->second.empty()) {
+    if (it == outs.end() || ctx_.output_values[it->second].empty()) {
       return false;
     }
-    for (auto& output : it->second) {
+    for (auto& output : ctx_.output_values[it->second]) {
       if (output == nullptr) {
         return false;
       }
@@ -704,27 +708,27 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) override {
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
+    auto in_it = ctx_.input_name_map.find(in);
+    auto out_it = ctx_.output_name_map.find(out);
     PADDLE_ENFORCE_NE(
-        in_it, ctx_.inputs.end(),
+        in_it, ctx_.input_name_map.end(),
         platform::errors::NotFound("Input %s does not exist.", in));
     PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
+        out_it, ctx_.output_name_map.end(),
         platform::errors::NotFound("Output %s does not exist.", out));
-    PADDLE_ENFORCE_LT(i, in_it->second.size(),
+    PADDLE_ENFORCE_LT(i, ctx_.input_values[in_it->second].size(),
                       platform::errors::InvalidArgument(
                           "The index of input dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
-                          in_it->second.size(), i));
-    PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                          ctx_.input_values[in_it->second].size(), i));
+    PADDLE_ENFORCE_LT(j, ctx_.output_values[out_it->second].size(),
                       platform::errors::InvalidArgument(
                           "The index of output dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
-                          out_it->second.size(), j));
+                          ctx_.output_values[out_it->second].size(), j));
 
-    Variable* in_var = in_it->second[i];
-    Variable* out_var = out_it->second[j];
+    Variable* in_var = ctx_.input_values[in_it->second][i];
+    Variable* out_var = ctx_.output_values[out_it->second][j];
 
     PADDLE_ENFORCE_EQ(
         in_var->Type(), out_var->Type(),
@@ -751,18 +755,18 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void ShareAllLoD(const std::string& in,
                    const std::string& out) const override {
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+    auto in_it = ctx_.input_name_map.find(in);
+    auto out_it = ctx_.output_name_map.find(out);
+    PADDLE_ENFORCE_NE(in_it, ctx_.input_name_map.end(),
                       platform::errors::NotFound(
                           "Input [%s] found error in Op [%s]", in, op_.Type()));
     PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
+        out_it, ctx_.output_name_map.end(),
         platform::errors::NotFound("Output [%s] found error in Op [%s]", out,
                                    op_.Type()));
 
-    auto& in_var_list = in_it->second;
-    auto& out_var_list = out_it->second;
+    auto& in_var_list = ctx_.input_values[in_it->second];
+    auto& out_var_list = ctx_.output_values[out_it->second];
 
     PADDLE_ENFORCE_EQ(
         in_var_list.size(), out_var_list.size(),
@@ -796,28 +800,28 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
-    auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
+    auto in_it = ctx_.input_name_map.find(in);
+    auto out_it = ctx_.output_name_map.find(out);
     PADDLE_ENFORCE_NE(
-        in_it, ctx_.inputs.end(),
+        in_it, ctx_.input_name_map.end(),
         platform::errors::NotFound("Input %s does not exist.", in));
     PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
+        out_it, ctx_.output_name_map.end(),
         platform::errors::NotFound("Output %s does not exist.", out));
-    PADDLE_ENFORCE_LT(i, in_it->second.size(),
+    PADDLE_ENFORCE_LT(i, ctx_.input_values[in_it->second].size(),
                       platform::errors::InvalidArgument(
                           "The index of input dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
-                          in_it->second.size(), i));
-    PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                          ctx_.input_values[in_it->second].size(), i));
+    PADDLE_ENFORCE_LT(j, ctx_.output_values[out_it->second].size(),
                       platform::errors::InvalidArgument(
                           "The index of output dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
-                          out_it->second.size(), j));
+                          ctx_.output_values[out_it->second].size(), j));
 
-    Variable* in_var = in_it->second.at(i);
+    Variable* in_var = ctx_.input_values[in_it->second].at(i);
     if (!in_var->IsType<LoDTensor>()) return;
-    Variable* out_var = out_it->second.at(j);
+    Variable* out_var = ctx_.output_values[out_it->second].at(j);
     PADDLE_ENFORCE_EQ(
         out_var->IsType<LoDTensor>(), true,
         platform::errors::InvalidArgument(
@@ -1005,27 +1009,26 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
  private:
   const std::vector<Variable*>& InputVars(const std::string& name) const {
-    auto it = ctx_.inputs.find(name);
+    auto it = ctx_.input_name_map.find(name);
     PADDLE_ENFORCE_NE(
-        it, ctx_.inputs.end(),
+        it, ctx_.input_name_map.end(),
         platform::errors::NotFound(
             "Operator (%s) does not have the input (%s).", op_.Type(), name));
-    return it->second;
+    return ctx_.input_values[it->second];
   }
 
   const std::vector<Variable*>& OutputVars(const std::string& name) const {
-    auto it = ctx_.outputs.find(name);
+    auto it = ctx_.output_name_map.find(name);
     PADDLE_ENFORCE_NE(
-        it, ctx_.outputs.end(),
+        it, ctx_.output_name_map.end(),
         platform::errors::NotFound(
             "Operator (%s) does not have the outputs (%s).", op_.Type(), name));
-    return it->second;
+    return ctx_.output_values[it->second];
   }
 
   const OperatorBase& op_;
   const RuntimeContext& ctx_;
 };
-
 
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
@@ -1084,14 +1087,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
   if (!enable_cache_runtime_context_) {
-    RuntimeContext ctx(Inputs(), Outputs(), scope);
+    // RuntimeContext ctx(Inputs(), Outputs(), scope);
+    RuntimeContext ctx;
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        // runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        runtime_ctx_.reset(new RuntimeContext());
         pre_scope_ = cur_scope;
       }
     }
@@ -1313,7 +1318,8 @@ void OperatorWithKernel::TransferInplaceVarsBack(
 void OperatorWithKernel::HandleComplexGradToRealGrad(
     const Scope& scope, RuntimeContext* ctx) const {
   for (auto& var_name_item : Outputs()) {
-    std::vector<Variable*>& output_vars = ctx->outputs[var_name_item.first];
+    std::vector<Variable*>& output_vars =
+        ctx->output_values[ctx->output_name_map[var_name_item.first]];
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       // 1. find grad_var & check whether is complex tensor
       auto var_name = var_name_item.second[i];
@@ -1397,7 +1403,8 @@ Scope* OperatorWithKernel::PrepareData(
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
 
-    std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
+    std::vector<Variable*>& input_vars =
+        ctx->input_values[ctx->input_name_map[var_name_item.first]];
 
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto& var_name = var_name_item.second[i];
@@ -1513,7 +1520,7 @@ Scope* OperatorWithKernel::PrepareData(
             VLOG(4) << "Found inplace between input(" << var_name_item.first
                     << ") and output(" << pair.first
                     << "), the variable name is " << var_name;
-            ctx->outputs[pair.first][j] = trans_var;
+            ctx->output_values[ctx->output_name_map[pair.first]][j] = trans_var;
             transfered_inplace_vars->emplace_back(var_name);
           }
         }
@@ -1610,7 +1617,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  //std::cerr << "par in" << std::endl;
+  // std::cerr << "par in" << std::endl;
   ParseInputDataType(ctx, name, &data_type);
   //
   PADDLE_ENFORCE_NE(
