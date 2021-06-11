@@ -112,9 +112,23 @@ def _getitem_impl_(var, item):
 
     use_strided_slice = False
     item, none_axes = replace_none(item)
+    item = replace_ellipsis(var, item)
 
     for dim, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item):
+            if isinstance(slice_item,
+                          int) and var.shape[dim] is not None and var.shape[
+                              dim] >= 0 and slice_item >= var.shape[dim]:
+                # For python, if users write a, b = var, the __getitem__
+                # method will iterate through 0, 1, 2 ... until __getitem__
+                # throws an IndexError, then stop. The var[0], var[1] will
+                # be given to a, b respectively. If more values are given,
+                # the unpack size would cause error.
+                #
+                # We raises IndexError here to support grammar like `a, b = var`
+                raise IndexError(
+                    "slice_item %d at dim %d should be >= 0 and < var.shape[%d]: %d"
+                    % (slice_item, dim, dim, var.shape[dim]))
             decrease_axes.append(dim)
             start = slice_item
             step = 1
@@ -139,19 +153,36 @@ def _getitem_impl_(var, item):
             end = MAX_INTEGER if end is None else end
 
         elif isinstance(slice_item, list):
+            is_bool_list = False
             for i in slice_item:
-                if not isinstance(i, int):
-                    raise TypeError("Only support int value in list")
+                if not isinstance(i, (int, bool)):
+                    raise TypeError("Only support int or bool in index list.")
+
+                if isinstance(i, bool):
+                    is_bool_list = True
+                    break
 
             if len(item) != 1:
                 raise IndexError(
                     "When index contains a list, its length must be 1, but received {}".
                     format(len(item)))
 
+            if is_bool_list:
+                new_slice_item = []
+                for idx, ele in enumerate(slice_item):
+                    if not isinstance(ele, bool):
+                        raise TypeError(
+                            "Mixed bool index with other types is not supported."
+                        )
+
+                    if ele is True:
+                        new_slice_item.append(idx)
+                slice_item = new_slice_item
+
             from .layers import assign
             from ..tensor import index_select
 
-            idx = assign(np.array(slice_item))
+            idx = assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
         elif isinstance(slice_item, Variable):
