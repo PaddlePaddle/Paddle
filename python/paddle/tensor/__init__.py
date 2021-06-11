@@ -18,6 +18,7 @@ from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
+from .creation import diagflat  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
 from .creation import ones  # noqa: F401
@@ -25,7 +26,6 @@ from .creation import ones_like  # noqa: F401
 from .creation import zeros  # noqa: F401
 from .creation import zeros_like  # noqa: F401
 from .creation import arange  # noqa: F401
-from .creation import eye  # noqa: F401
 from .creation import full  # noqa: F401
 from .creation import full_like  # noqa: F401
 from .creation import triu  # noqa: F401
@@ -82,7 +82,6 @@ from .manipulation import squeeze  # noqa: F401
 from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
 from .manipulation import strided_slice  # noqa: F401
-from .manipulation import transpose  # noqa: F401
 from .manipulation import unique  # noqa: F401
 from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
@@ -143,7 +142,6 @@ from .math import add  # noqa: F401
 from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
-from .math import atan  # noqa: F401
 from .math import logsumexp  # noqa: F401
 from .math import inverse  # noqa: F401
 from .math import log2  # noqa: F401
@@ -163,6 +161,8 @@ from .math import all  # noqa: F401
 from .math import any  # noqa: F401
 from .math import broadcast_shape  # noqa: F401
 from .math import conj  # noqa: F401
+from .math import neg  # noqa: F401
+from .math import lgamma  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -227,7 +227,6 @@ tensor_method_func  = [ #noqa
            'log2',
            'log10',
            'logsumexp',
-           'mul',
            'multiplex',
            'pow',
            'prod',
@@ -280,6 +279,8 @@ tensor_method_func  = [ #noqa
            'isnan',
            'broadcast_shape',
            'conj',
+           'neg',
+           'lgamma',
            'equal',
            'equal_all',
            'greater_equal',

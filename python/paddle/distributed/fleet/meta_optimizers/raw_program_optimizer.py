@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
 from __future__ import print_function
 from __future__ import division
 import os
+import collections
+import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
+from paddle.fluid.dygraph import Layer, LayerList
 from ..base.private_helper_function import wait_server_ready
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_loss_grad_op, is_backward_op, is_optimizer_op
@@ -38,6 +41,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
         super(RawProgramOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
         self.without_graph_optimization = user_defined_strategy.without_graph_optimization
+        self.fuse_all_reduce_ops = user_defined_strategy.fuse_all_reduce_ops
+        if self.fuse_all_reduce_ops:
+            self.fuse_grad_size_in_num = user_defined_strategy.fuse_grad_size_in_num
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -113,7 +119,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
-
+        if self.nranks == 1:
+            return optimize_ops, params_grads
         self._init_process_group()
 
         self.main_program = program
@@ -123,7 +130,11 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
     def _transpile_main_program(self, loss):
         self._insert_loss_grad_ops(loss)
-        self._insert_allreduce_ops()
+        if self.fuse_all_reduce_ops and core.is_compiled_with_npu():
+            self._calc_stream = True
+            self._allreduce_fusion_program()
+        else:
+            self._insert_allreduce_ops()
 
     def _insert_loss_grad_ops(self, loss):
         """
@@ -194,3 +205,260 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     attrs={'ring_id': ring_id,
                            OP_ROLE_KEY: OpRole.Backward})
                 break
+
+    # TODO(Liu yuang): ADD CUDA allreduce_fusion fuction.
+    # This function helps reduce the input of allreduce by integrating can save communication time.
+    def _allreduce_fusion_program(self):
+        block = self.main_program.global_block()
+        ring_id = self.global_ring_id
+        record_idx, allreduce_input_vars, allreduce_output_vars = [], [], []
+        block_ops = len(list(enumerate(block.ops)))
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if is_backward_op(op) and \
+                    OP_ROLE_VAR_KEY in op.attr_names:
+                op_role_var = op.attr(OP_ROLE_VAR_KEY)
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    param_name = op_role_var[i]
+                    param = block.var(param_name)
+                    grad_name = op_role_var[i + 1]
+                    grad = block.var(grad_name)
+                    if param.is_distributed:
+                        continue
+                    if ".cast_fp16@GRAD" in grad_name:
+                        param_name = param_name + ".cast_fp16"
+                        if not block.has_var(param_name):
+                            raise ValueError("op cast name error {}".format(
+                                op.type))
+                        else:
+                            param = block.var(param_name)
+
+                    if len(allreduce_output_vars) == 0:
+                        allreduce_output_vars.append([grad])
+                        allreduce_input_vars.append([param])
+                        if self.fuse_grad_size_in_num == 1:
+                            record_idx.append([idx, idx])
+                            continue
+                        record_idx.append([-2, idx])
+                    elif len(allreduce_output_vars[
+                            -1]) == self.fuse_grad_size_in_num:
+                        allreduce_output_vars.append([grad])
+                        allreduce_input_vars.append([param])
+                        if self.fuse_grad_size_in_num == 1:
+                            record_idx.append([idx, idx])
+                            continue
+                        if idx != block_ops - 1:
+                            record_idx.append([-2, idx])
+                    else:
+                        allreduce_output_vars[-1].append(grad)
+                        allreduce_input_vars[-1].append(param)
+                        record_idx[-1][0] = idx
+
+                if record_idx[-1][0] == -2:
+                    record_idx[-1][0] = record_idx[-1][1]
+
+        assert len(allreduce_output_vars) == len(
+            record_idx
+        ), "It has different lens between the allreduce_output_vars and record_idx."
+
+        if not allreduce_output_vars or not allreduce_input_vars:
+            return
+
+        self.vars = collections.OrderedDict()
+        index, offset_pos, pos, offset = 0, 0, 0, 0
+        start, end = record_idx[index]
+        men_list = [end, start]
+
+        # Here we need to explain the flag. When integrating OP, we will encounter different groups of the same Op.
+        # Because we insert coalesce tensor in reverse ops,
+        # we need to use flag to record whether the current OP has been inserted into coalesce tensor。
+        # For example:
+        # [(3, 2), (2, 2), (1, 0)], (3, 2), (2, 2) using same op, but in different groups.
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if idx == start:
+                pos = 0
+                flag = True if end == men_list[-1] else False
+                offset = offset_pos if flag else 0
+                done_output_vars, done_input_vars = self._split_fuction(
+                    allreduce_output_vars[index], allreduce_input_vars[index])
+                for id_, done_output_var in enumerate(done_output_vars):
+                    if flag:
+                        tmp_var = block.create_var(
+                            name=unique_name.generate(
+                                'FusedOutput_{}_{}'.format(start, id_ +
+                                                           offset)),
+                            dtype=done_output_var[0].dtype,
+                            persistable=False,
+                            stop_gradient=True)
+                        self.vars['FusedOutput_{}_{}'.format(start, id_ +
+                                                             offset)] = tmp_var
+
+                        block._insert_op(
+                            idx + id_ + offset,
+                            type="coalesce_tensor",
+                            inputs={"Input": done_input_vars[id_]},
+                            outputs={
+                                "Output": done_output_var,
+                                "FusedOutput": tmp_var
+                            },
+                            attrs={
+                                "copy_data": False,
+                                "use_align": True,
+                                "dtype": done_output_var[0].dtype
+                            })
+                        pos += 1
+                    else:
+                        tmp_var = block.create_var(
+                            name=unique_name.generate(
+                                'FusedOutput_{}_{}'.format(start, id_)),
+                            dtype=done_output_var[0].dtype,
+                            persistable=False,
+                            stop_gradient=True)
+                        self.vars['FusedOutput_{}_{}'.format(start,
+                                                             id_)] = tmp_var
+
+                        block._insert_op(
+                            idx + id_,
+                            type="coalesce_tensor",
+                            inputs={"Input": done_input_vars[id_]},
+                            outputs={
+                                "Output": done_output_var,
+                                "FusedOutput": tmp_var
+                            },
+                            attrs={
+                                "copy_data": False,
+                                "use_align": True,
+                                "dtype": done_output_var[0].dtype
+                            })
+                        pos += 1
+                offset_pos = pos
+
+                # TODO(Liu yuang): ADD CUDA and NPU's EVENT and c_allreduce_sum.
+                for id_ in range(len(done_output_vars)):
+                    if flag:
+                        block._insert_op(
+                            end + id_ + pos + 1,
+                            type='c_allreduce_sum',
+                            inputs={
+                                'X': self.vars['FusedOutput_{}_{}'.format(
+                                    start, id_ + offset)]
+                            },
+                            outputs={
+                                'Out': self.vars['FusedOutput_{}_{}'.format(
+                                    start, id_ + offset)]
+                            },
+                            attrs={
+                                'ring_id': ring_id,
+                                'use_calc_stream': True
+                                if self._calc_stream else False,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
+                    else:
+                        block._insert_op(
+                            end + id_ + pos + 1,
+                            type='c_allreduce_sum',
+                            inputs={
+                                'X': self.vars['FusedOutput_{}_{}'.format(start,
+                                                                          id_)]
+                            },
+                            outputs={
+                                'Out': self.vars['FusedOutput_{}_{}'.format(
+                                    start, id_)]
+                            },
+                            attrs={
+                                'ring_id': ring_id,
+                                'use_calc_stream': True
+                                if self._calc_stream else False,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
+                index += 1
+                men_list.append(end)
+                men_list.append(start)
+                if len(record_idx) == index:
+                    start = end = -1
+                    continue
+                start, end = record_idx[index]
+
+        if not self._calc_stream:
+            for idx, op in enumerate(block.ops):
+                if is_optimizer_op(op):
+                    block._insert_op(
+                        idx,
+                        type='c_sync_comm_stream',
+                        inputs={'X': block.create_var()},
+                        outputs={'Out': block.create_var()},
+                        attrs={
+                            'ring_id': ring_id,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
+                    break
+
+    # Integrate grads of the same type to form a combination. If skip_comb is selected, will return grads of the same group.
+    # For example:[(fp16, fp16), (fp32), (fp16)] -> [(fp16, fp16, fp16), (fp32)]
+    def _split_fuction(self,
+                       allreduce_output_vars,
+                       allreduce_input_vars,
+                       skip_comb=True):
+        input_vars, final_input_vars, output_vars, final_output_vars = [], [], [], []
+        if len(allreduce_output_vars) - 1 == 0:
+            final_output_vars.append(allreduce_output_vars)
+            final_input_vars.append(allreduce_input_vars)
+            return final_output_vars, final_input_vars
+
+        for idx in range(len(allreduce_input_vars) - 1):
+            if allreduce_input_vars[idx].dtype == allreduce_input_vars[idx +
+                                                                       1].dtype:
+                input_vars.append(allreduce_input_vars[idx])
+                if idx == len(allreduce_input_vars) - 2:
+                    input_vars.append(allreduce_input_vars[idx + 1])
+                    final_input_vars.append(input_vars)
+            else:
+                input_vars.append(allreduce_input_vars[idx])
+                final_input_vars.append(input_vars)
+                input_vars = []
+                if idx == len(allreduce_input_vars) - 2:
+                    input_vars.append(allreduce_input_vars[idx + 1])
+                    final_input_vars.append(input_vars)
+
+        for idx in range(len(allreduce_output_vars) - 1):
+            if allreduce_output_vars[idx].dtype == allreduce_output_vars[
+                    idx + 1].dtype:
+                output_vars.append(allreduce_output_vars[idx])
+                if idx == len(allreduce_output_vars) - 2:
+                    output_vars.append(allreduce_output_vars[idx + 1])
+                    final_output_vars.append(output_vars)
+            else:
+                output_vars.append(allreduce_output_vars[idx])
+                final_output_vars.append(output_vars)
+                output_vars = []
+                if idx == len(allreduce_output_vars) - 2:
+                    output_vars.append(allreduce_output_vars[idx + 1])
+                    final_output_vars.append(output_vars)
+        if skip_comb:
+            input_fp16_vars, input_fp32_vars, output_fp16_vars, output_fp32_vars = [], [], [], []
+            for final_input_var in final_input_vars:
+                if final_input_var[0].dtype == core.VarDesc.VarType.FP16:
+                    input_fp16_vars.extend(final_input_var)
+                else:
+                    input_fp32_vars.extend(final_input_var)
+
+            for final_output_var in final_output_vars:
+                if final_output_var[0].dtype == core.VarDesc.VarType.FP16:
+                    output_fp16_vars.extend(final_output_var)
+                else:
+                    output_fp32_vars.extend(final_output_var)
+            final_output_vars, final_input_vars = [], []
+            if output_fp16_vars:
+                final_output_vars.append(output_fp16_vars)
+            if output_fp32_vars:
+                final_output_vars.append(output_fp32_vars)
+            if input_fp16_vars:
+                final_input_vars.append(input_fp16_vars)
+            if input_fp32_vars:
+                final_input_vars.append(input_fp32_vars)
+
+        return final_output_vars, final_input_vars
