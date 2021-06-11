@@ -14,15 +14,43 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/fast_divmod.h"
+
+#ifdef __HIPCC__
+#define ELEMENTWISE_BLOCK_SIZE 256
+#else
+#define ELEMENTWISE_BLOCK_SIZE 512
+#endif
 
 namespace paddle {
 namespace operators {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2 };
 
-int GetThreadsConfig(const platform::CUDADeviceContext &ctx, int64_t numel,
-                     int vec_size);
+/*
+* According to NVIDIA, if number of threads per block is 64/128/256/512,
+* cuda performs better. And number of blocks should be greater (at least
+* 2x~4x) than number of SMs. Hence, SM count is took into account within
+* this function to determine the right number of threads per block.
+*/
+inline int GetThreadsConfig(const platform::CUDADeviceContext &ctx,
+                            int64_t numel, int vec_size) {
+  int threads = ELEMENTWISE_BLOCK_SIZE;
+  int sm_count = ctx.GetSMCount();
+  int active_threads_num = numel / vec_size;
+  if (active_threads_num / (sm_count << 1) < ELEMENTWISE_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about twice of SM, to acquire better performance.
+    threads = platform::RoundToPowerOfTwo(active_threads_num / (sm_count << 1));
+  } else if (active_threads_num / (sm_count << 2) < ELEMENTWISE_BLOCK_SIZE) {
+    // Round up threads number into an exponential multiple of 2, while number
+    // of acitve blocks is about 4 times of SM, to acquire better performance.
+    threads = platform::RoundToPowerOfTwo(active_threads_num / (sm_count << 2));
+  }
+  // Number of threads per block shall be larger than 64.
+  return std::max(64, threads);
+}
 
 /*
 * Only the address of input data is the multiplier of 1,2,4, vectorized load

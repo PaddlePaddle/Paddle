@@ -56,7 +56,6 @@ if (WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
         SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
     endif()
-    set(OP_HEADER_DEPS ${OP_HEADER_DEPS} elementwise_op)
 endif()
 
 
