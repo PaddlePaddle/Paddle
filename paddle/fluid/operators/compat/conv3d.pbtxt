@@ -29,6 +29,10 @@ def {
     name: "dilations"
     type: INTS
   }
+  attrs {
+    name: "data_format"
+    type: STRING
+  }
 }
 extra {
   inputs {
@@ -85,10 +89,6 @@ extra {
   attrs {
     name: "force_fp32_output"
     type: BOOLEAN
-  }
-  attrs {
-    name: "data_format"
-    type: STRING
   }
   attrs {
     name: "workspace_size_MB"
