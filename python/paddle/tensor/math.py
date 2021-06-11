@@ -861,7 +861,7 @@ def trunc(input, name=None):
     This API is used to returns a new tensor with the truncated integer values of input.
     
     Args:
-        input (Tensor): The input tensor, it's data type should be int, float, double.
+        input (Tensor): The input tensor, it's data type should be int32, int64, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
