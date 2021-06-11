@@ -222,7 +222,7 @@ class Accuracy(Metric):
           transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
           train_dataset = MNIST(mode='train', transform=transform)
 
-          model = paddle.Model(paddle.vision.LeNet(), input, label)
+          model = paddle.Model(paddle.vision.models.LeNet(), input, label)
           optim = paddle.optimizer.Adam(
               learning_rate=0.001, parameters=model.parameters())
           model.prepare(
