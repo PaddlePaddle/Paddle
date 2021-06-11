@@ -1291,7 +1291,7 @@ class GeneratorLoader(DataLoaderBase):
             except Exception as ex:
                 self._queue.kill()
                 self._thread = None
-                logging.warn('Your reader has raised an exception!')
+                logging.warning('Your reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
         self._thread = threading.Thread(

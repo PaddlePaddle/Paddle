@@ -14,9 +14,11 @@
 
 from __future__ import print_function
 
+import six
 import tarfile
 import numpy as np
 import gzip
+import six
 
 from paddle.io import Dataset
 import paddle.compat as cpt

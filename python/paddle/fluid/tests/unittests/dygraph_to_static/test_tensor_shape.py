@@ -85,6 +85,13 @@ def dyfunc_tuple_shape_2(x):
     return res
 
 
+def dyfunc_tuple_shape_3(x):
+    x = paddle.to_tensor(x)
+    a, b = paddle.shape(x)
+    res = paddle.reshape(x, shape=(b, a))
+    return res
+
+
 def dyfunc_paddle_shape_api(x):
     x = paddle.to_tensor(x)
     # paddle.shape will not be converted.
@@ -330,6 +337,18 @@ class TestTupleShape2(TestTensorShapeBasic):
         self.input = numpy.ones((5, 7)).astype("int32")
         self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
         self.dygraph_func = dyfunc_tuple_shape_2
+
+    def _set_expected_op_num(self):
+        self.expected_op_num = 5
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 2
+
+
+class TestTupleShape3(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.input = numpy.ones((5, 7)).astype("int32")
+        self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
+        self.dygraph_func = dyfunc_tuple_shape_3
 
     def _set_expected_op_num(self):
         self.expected_op_num = 5
