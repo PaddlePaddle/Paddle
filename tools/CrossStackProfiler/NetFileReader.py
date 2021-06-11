@@ -18,6 +18,7 @@ import glob
 import logging
 import pandas as pd
 
+import multiprocessing
 from multiprocessing import Process
 
 from CspChromeTraceFormatter import ChromeTraceFormatter

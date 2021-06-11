@@ -20,7 +20,7 @@ import six
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, to_variable, Layer
-
+from paddle.optimizer.lr import NoamDecay
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 """
 Note(chenweihang): To compare loss of single-card and multi-card 

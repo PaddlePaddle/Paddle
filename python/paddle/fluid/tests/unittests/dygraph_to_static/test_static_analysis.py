@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import gast
+import paddle
 import inspect
 import numpy as np
 import paddle.fluid as fluid
