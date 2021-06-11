@@ -330,9 +330,10 @@ static inline void CastPyArg2AttrBooleans(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of bool, but got %s item",
+            "list of bool, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -347,9 +348,10 @@ static inline void CastPyArg2AttrBooleans(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of bool, but got %s item",
+            "list of bool, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -377,9 +379,10 @@ static inline void CastPyArg2AttrInts(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of int, but got %s item",
+            "list of int, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -394,9 +397,10 @@ static inline void CastPyArg2AttrInts(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of int, but got %s item",
+            "list of int, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -411,9 +415,10 @@ static inline void CastPyArg2AttrInts(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of int, but got %s item",
+            "list of int, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -441,9 +446,10 @@ static inline void CastPyArg2AttrLongs(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of long, but got %s item",
+            "list of int, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -458,9 +464,10 @@ static inline void CastPyArg2AttrLongs(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of long, but got %s item",
+            "list of int, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -475,9 +482,10 @@ static inline void CastPyArg2AttrLongs(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of long, but got %s item",
+            "list of int, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -505,9 +513,10 @@ static inline void CastPyArg2AttrFloats(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of float, but got %s item",
+            "list of float, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -522,9 +531,10 @@ static inline void CastPyArg2AttrFloats(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of float, but got %s item",
+            "list of float, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -539,9 +549,10 @@ static inline void CastPyArg2AttrFloats(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of float, but got %s item",
+            "list of float, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -568,9 +579,10 @@ static inline void CastPyArg2AttrFloat64s(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of float, but got %s item",
+            "list of float, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -585,9 +597,10 @@ static inline void CastPyArg2AttrFloat64s(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of float, but got %s item",
+            "list of float, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -602,9 +615,10 @@ static inline void CastPyArg2AttrFloat64s(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of float, but got %s item",
+            "list of float, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -635,9 +649,10 @@ static inline void CastPyArg2AttrStrings(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of str, but got %s item",
+            "list of str, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
@@ -655,9 +670,10 @@ static inline void CastPyArg2AttrStrings(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
-            "list of str, but got %s item",
+            "list of str, but got %s at pos %d",
             op_type, arg_pos + 1,
-            ((PyTypeObject*)item->ob_type)->tp_name));  // NOLINT
+            ((PyTypeObject*)item->ob_type)->tp_name,  // NOLINT
+            i));
       }
     }
     attrs[key] = value;
