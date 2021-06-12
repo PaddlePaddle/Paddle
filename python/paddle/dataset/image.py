@@ -34,18 +34,14 @@ from __future__ import print_function
 
 import six
 import numpy as np
-# FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
+
+# Test for cv2 avaibility. Do so without importing it so as to
+# avoid the numpy bug reported here.
 # https://github.com/numpy/numpy/issues/12497
 if six.PY3:
-    import subprocess
-    import sys
-    import_cv2_proc = subprocess.Popen(
-        [sys.executable, "-c", "import cv2"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    out, err = import_cv2_proc.communicate()
-    retcode = import_cv2_proc.poll()
-    if retcode != 0:
+    from importlib.util import find_spec
+
+    if find_spec("cv2") is None:
         cv2 = None
     else:
         import cv2
