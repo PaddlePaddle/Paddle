@@ -25,6 +25,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if IS_TRT_VERSION_LT(8000)
 class HardSwishPlugin : public PluginTensorRT {
  public:
   HardSwishPlugin(const float threshold, const float scale, const float offset)
@@ -73,6 +74,7 @@ class HardSwishPlugin : public PluginTensorRT {
     SerializeValue(&buffer, offset_);
   }
 };
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

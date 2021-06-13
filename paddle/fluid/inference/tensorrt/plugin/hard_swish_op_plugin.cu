@@ -22,6 +22,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if IS_TRT_VERSION_LT(8000)
 HardSwishPlugin* CreateHardSwishPluginDeserialize(const void* buffer,
                                                   size_t length) {
   return new HardSwishPlugin(buffer, length);
@@ -79,6 +80,7 @@ int HardSwishPlugin::enqueue(int batch_size, const void* const* inputs,
 
   return cudaGetLastError() != cudaSuccess;
 }
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt
