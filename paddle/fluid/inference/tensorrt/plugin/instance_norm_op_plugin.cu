@@ -40,6 +40,7 @@ cudnnStatus_t convert_trt2cudnn_dtype(nvinfer1::DataType trt_dtype,
   return CUDNN_STATUS_SUCCESS;
 }
 
+#if IS_TRT_VERSION_LT(8000)
 InstanceNormPlugin *CreateInstanceNormPluginDeserialize(const void *buffer,
                                                         size_t length) {
   return new InstanceNormPlugin(buffer, length);
@@ -107,6 +108,7 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
       eps_, nullptr, nullptr);
   return cudaGetLastError() != cudaSuccess;
 }
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

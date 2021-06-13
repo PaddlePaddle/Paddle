@@ -27,6 +27,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if IS_TRT_VERSION_LT(8000)
 class InstanceNormPlugin : public PluginTensorRT {
  private:
   float eps_;
@@ -111,6 +112,7 @@ class InstanceNormPlugin : public PluginTensorRT {
             (format == nvinfer1::PluginFormat::kNCHW));
   }
 };
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt
