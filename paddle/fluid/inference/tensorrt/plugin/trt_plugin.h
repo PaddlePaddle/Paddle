@@ -44,6 +44,7 @@ typedef std::function<PluginTensorRT*(const void*, size_t)>
 
 typedef std::function<PluginTensorRT*(void)> PluginConstructFunc;
 
+#if IS_TRT_VERSION_LT(8000)
 // Deprecated. Do not inherit this class, please refer to PluginTensorRTV2Ext
 class PluginTensorRT : public nvinfer1::IPluginExt {
  public:
@@ -119,6 +120,7 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   std::vector<nvinfer1::ITensor*> inputs_;
   bool with_fp16_;
 };
+#endif
 
 // TensorRT introduced IPluginV2Ext after 5.1, Paddle no longer supports
 // versions before 5.1
@@ -137,15 +139,16 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   // The Func in IPluginV2Ext
   virtual nvinfer1::DataType getOutputDataType(
       int index, const nvinfer1::DataType* input_types,
-      int nb_inputs) const = 0;
+      int nb_inputs) const TRT_NOEXCEPT = 0;
 
-  virtual bool isOutputBroadcastAcrossBatch(int32_t output_index,
-                                            const bool* input_is_broadcasted,
-                                            int32_t nb_inputs) const {
+  virtual bool isOutputBroadcastAcrossBatch(
+      int32_t output_index, const bool* input_is_broadcasted,
+      int32_t nb_inputs) const TRT_NOEXCEPT {
     return false;
   }
 
-  virtual bool canBroadcastInputAcrossBatch(int32_t input_index) const {
+  virtual bool canBroadcastInputAcrossBatch(int32_t input_index) const
+      TRT_NOEXCEPT {
     return false;
   }
 
@@ -156,57 +159,57 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
                        const bool* input_is_broadcast,
                        const bool* output_is_broadcast,
                        nvinfer1::PluginFormat float_format,
-                       int32_t max_batch_size) override;
+                       int32_t max_batch_size) TRT_NOEXCEPT override;
 
-  virtual IPluginV2Ext* clone() const = 0;
+  virtual IPluginV2Ext* clone() const TRT_NOEXCEPT = 0;
 
   void attachToContext(cudnnContext*, cublasContext*,
-                       nvinfer1::IGpuAllocator*) override {}
+                       nvinfer1::IGpuAllocator*) TRT_NOEXCEPT override {}
 
-  void detachFromContext() override {}
+  void detachFromContext() TRT_NOEXCEPT override {}
 
   // The Func in IPluginV2
-  virtual const char* getPluginType() const = 0;
-  const char* getPluginVersion() const override { return "1"; }
-  virtual int32_t getNbOutputs() const { return 1; }
+  virtual const char* getPluginType() const TRT_NOEXCEPT = 0;
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+  virtual int32_t getNbOutputs() const TRT_NOEXCEPT { return 1; }
   virtual nvinfer1::Dims getOutputDimensions(int32_t index,
                                              const nvinfer1::Dims* inputs,
-                                             int32_t nb_input) = 0;
+                                             int32_t nb_input) TRT_NOEXCEPT = 0;
   // Check format support. The default is FLOAT32 and NCHW.
-  bool supportsFormat(nvinfer1::DataType type,
-                      nvinfer1::PluginFormat format) const override {
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
+      const TRT_NOEXCEPT override {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
   // Initialize the layer for execution.
   // This is called when the engine is created.
-  int initialize() override { return 0; }
+  int initialize() TRT_NOEXCEPT override { return 0; }
 
   // Shutdown the layer. This is called when the engine is destroyed
-  void terminate() override {}
+  void terminate() TRT_NOEXCEPT override {}
 
   // Find the workspace size required by the layer
-  size_t getWorkspaceSize(int) const override { return 0; }
+  size_t getWorkspaceSize(int) const TRT_NOEXCEPT override { return 0; }
 
   // Execute the layer
   virtual int enqueue(int batch_size, const void* const* inputs, void** outputs,
-                      void* workspace, cudaStream_t stream) = 0;
+                      void* workspace, cudaStream_t stream) TRT_NOEXCEPT = 0;
 
   // Find the size of the serialization buffer required
-  virtual size_t getSerializationSize() const = 0;
+  virtual size_t getSerializationSize() const TRT_NOEXCEPT = 0;
 
   // Serialize the layer config to buffer.
   // TensorRT will call this func to serialize the configuration of TensorRT
   // engine. It should not be called by users.
-  virtual void serialize(void* buffer) const = 0;
+  virtual void serialize(void* buffer) const TRT_NOEXCEPT = 0;
 
-  virtual void destroy() = 0;
+  virtual void destroy() TRT_NOEXCEPT = 0;
 
-  void setPluginNamespace(const char* plugin_namespace) override {
+  void setPluginNamespace(const char* plugin_namespace) TRT_NOEXCEPT override {
     name_space_ = plugin_namespace;
   }
 
-  const char* getPluginNamespace() const override {
+  const char* getPluginNamespace() const TRT_NOEXCEPT override {
     return name_space_.c_str();
   }
 
@@ -235,52 +238,52 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   DynamicPluginTensorRT(const void* serialized_data, size_t length) {}
 
   // The Func in IPluginExt or IpluginExtV2
-  virtual const char* getPluginVersion() const { return "1"; }
-  virtual const char* getPluginType() const = 0;
-  int getNbOutputs() const { return 1; }
-  int initialize() override { return 0; }
-  void terminate() override{};
+  virtual const char* getPluginVersion() const TRT_NOEXCEPT { return "1"; }
+  virtual const char* getPluginType() const TRT_NOEXCEPT = 0;
+  int getNbOutputs() const TRT_NOEXCEPT { return 1; }
+  int initialize() TRT_NOEXCEPT override { return 0; }
+  void terminate() TRT_NOEXCEPT override{};
 
-  virtual size_t getSerializationSize() const = 0;
-  virtual void serialize(void* buffer) const = 0;
+  virtual size_t getSerializationSize() const TRT_NOEXCEPT = 0;
+  virtual void serialize(void* buffer) const TRT_NOEXCEPT = 0;
 
   // The Func in IPluginV2
-  nvinfer1::IPluginV2DynamicExt* clone() const = 0;
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT = 0;
   virtual nvinfer1::DimsExprs getOutputDimensions(
       int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) = 0;  // NOLINT
+      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT = 0;  // NOLINT
 
   virtual bool supportsFormatCombination(
       int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
-      int nb_outputs) = 0;
+      int nb_outputs) TRT_NOEXCEPT = 0;
 
   virtual void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                                int nb_inputs,
                                const nvinfer1::DynamicPluginTensorDesc* out,
-                               int nb_outputs) = 0;
+                               int nb_outputs) TRT_NOEXCEPT = 0;
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nb_inputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nb_outputs) const override {
+                          int nb_outputs) const TRT_NOEXCEPT override {
     return 0;
   }
 
   virtual int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                       const nvinfer1::PluginTensorDesc* output_desc,
                       const void* const* inputs, void* const* outputs,
-                      void* workspace, cudaStream_t stream) = 0;
+                      void* workspace, cudaStream_t stream) TRT_NOEXCEPT = 0;
 
   virtual nvinfer1::DataType getOutputDataType(
       int index, const nvinfer1::DataType* input_types,
-      int nb_inputs) const = 0;
-  void setPluginNamespace(const char* plugin_namespace) override {
+      int nb_inputs) const TRT_NOEXCEPT = 0;
+  void setPluginNamespace(const char* plugin_namespace) TRT_NOEXCEPT override {
     name_space_ = plugin_namespace;
   }
-  const char* getPluginNamespace() const override {
+  const char* getPluginNamespace() const TRT_NOEXCEPT override {
     return name_space_.c_str();
   }
-  virtual void destroy() = 0;
+  virtual void destroy() TRT_NOEXCEPT = 0;
 
  protected:
   void deserializeBase(void const*& serial_data,  // NOLINT

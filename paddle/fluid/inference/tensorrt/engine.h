@@ -102,7 +102,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
             input, ShapeStr(shape)));
       }
-      return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
+      return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
       if (shape[1] == -1 || shape[2] == -1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -112,10 +112,10 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
       }
       return nvinfer1::Dims2(shape[1], shape[2]);
     }
-    return nvinfer1::DimsCHW(shape[1], 1, 1);
+    return nvinfer1::Dims3(shape[1], 1, 1);
   } else {
     if (shape.size() == 4UL) {
-      return nvinfer1::DimsNCHW(shape[0], shape[1], shape[2], shape[3]);
+      return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
       return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
     }
@@ -281,9 +281,14 @@ class TensorRTEngine {
 
 #endif
     } else {
+#if IS_TRT_VERSION_GE(8000)
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size()));
+#else
       infer_engine_.reset(runtime->deserializeCudaEngine(
           engine_serialized_data.c_str(), engine_serialized_data.size(),
           &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+#endif
     }
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
@@ -306,8 +311,10 @@ class TensorRTEngine {
 
   int GetDeviceId() { return device_id_; }
 
+#if IS_TRT_VERSION_GE(8000)
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
+#endif
 
   nvinfer1::IPluginV2Layer* AddPluginV2Ext(nvinfer1::ITensor* const* inputs,
                                            int num_inputs,
@@ -419,7 +426,9 @@ class TensorRTEngine {
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
 
+#if IS_TRT_VERSION_LT(8000)
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
+#endif
   std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_plugin_v2ext_;
 
   // TensorRT related internal members

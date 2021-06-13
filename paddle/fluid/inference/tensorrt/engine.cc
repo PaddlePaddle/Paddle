@@ -43,7 +43,12 @@ void TensorRTEngine::InitNetwork() {
     optim_profile_ = infer_builder_->createOptimizationProfile();
 #endif
   } else {
+#if IS_TRT_VERSION_LT(8000)
     infer_network_.reset(infer_builder_->createNetwork());
+#else
+    infer_network_.reset(infer_builder_->createNetworkV2(0));
+    infer_builder_config_.reset(infer_builder_->createBuilderConfig());
+#endif
   }
 }
 
@@ -73,12 +78,18 @@ void TensorRTEngine::FreezeNetwork() {
                               "Call InitNetwork first to initialize network."));
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
+#if IS_TRT_VERSION_LT(8000)
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
+#else
+  infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
+#endif
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
 #if IS_TRT_VERSION_GE(5000)
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
+#if IS_TRT_VERSION_LT(8000)
     infer_builder_->setFp16Mode(support_fp16);
+#endif
     if (!support_fp16) {
       LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
                    "FP16 speed up, use FP32 instead.";
@@ -95,14 +106,18 @@ void TensorRTEngine::FreezeNetwork() {
   bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
 
   if (enable_int8) {
+#if IS_TRT_VERSION_LT(8000)
     infer_builder_->setInt8Mode(true);
+#endif
     if (calibrator_) {
-      infer_builder_->setInt8Calibrator(calibrator_);
+      infer_builder_config_->setInt8Calibrator(calibrator_);
     } else {
-      infer_builder_->setInt8Calibrator(nullptr);
+      infer_builder_config_->setInt8Calibrator(nullptr);
 
 #if IS_TRT_VERSION_GE(5000)
+#if IS_TRT_VERSION_LT(8000)
       infer_builder_->setStrictTypeConstraints(true);
+#endif
       for (auto &quant_range : quant_dynamic_range_) {
         auto tensor = quant_range.first;
         float range = quant_range.second;
@@ -189,9 +204,13 @@ void TensorRTEngine::FreezeNetwork() {
                      << infer_builder_->getNbDLACores() << ", but got "
                      << dla_core_ << ", so use use 0 as default.";
       }
-      infer_builder_->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
-      infer_builder_->setDLACore(dla_core_);
+      infer_builder_config_->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+      infer_builder_config_->setDLACore(dla_core_);
+#if IS_TRT_VERSION_LT(8000)
       infer_builder_->allowGPUFallback(true);
+#else
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
+#endif
       LOG(INFO) << "TensorRT DLA enabled in FreezeNetwork(), DLACore "
                 << dla_core_;
     }
@@ -234,7 +253,12 @@ void TensorRTEngine::FreezeNetwork() {
         *network(), *infer_builder_config_));
 #endif
   } else {
+#if IS_TRT_VERSION_LT(8000)
     infer_engine_.reset(infer_builder_->buildCudaEngine(*network()));
+#else
+    infer_engine_.reset(infer_builder_->buildEngineWithConfig(
+        *network(), *infer_builder_config_));
+#endif
   }
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_, platform::errors::Fatal(
@@ -346,12 +370,14 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
 
 int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
 
+#if IS_TRT_VERSION_LT(8000)
 nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
     nvinfer1::ITensor *const *inputs, int num_inputs,
     plugin::PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
   return network()->addPluginExt(inputs, num_inputs, *plugin);
 }
+#endif
 
 nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
     nvinfer1::ITensor *const *inputs, int num_inputs,
