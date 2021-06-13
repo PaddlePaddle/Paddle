@@ -36,6 +36,7 @@ class InstanceNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
+#if IS_TRT_VERSION_LT(8000)
     VLOG(4) << "convert fluid prelu op to tensorrt instance norm layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -78,6 +79,7 @@ class InstanceNormOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Y")[0];
     RreplenishLayerAndOutput(layer, "instance_norm", {output_name}, test_mode);
+#endif
   }
 };
 
