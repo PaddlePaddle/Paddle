@@ -24,6 +24,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if IS_TRT_VERSION_LT(8000)
 template <class T>
 __inline__ __device__ T BilinearInterpolate(const T* input_data,
                                             const int height, const int width,
@@ -373,6 +374,7 @@ nvinfer1::IPluginV2Ext* RoiAlignPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
+#endif
 #endif
 
 }  // namespace plugin

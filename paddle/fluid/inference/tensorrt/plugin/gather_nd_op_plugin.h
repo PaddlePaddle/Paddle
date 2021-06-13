@@ -26,6 +26,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if IS_TRT_VERSION_LT(8000)
 #if IS_TRT_VERSION_GE(6000)
 class GatherNdPluginDynamic : public DynamicPluginTensorRT {
  public:
@@ -124,6 +125,7 @@ class GatherNdPluginDynamicCreator : public nvinfer1::IPluginCreator {
 };
 
 REGISTER_TRT_PLUGIN_V2(GatherNdPluginDynamicCreator);
+#endif
 #endif
 
 }  // namespace plugin
