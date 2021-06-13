@@ -98,11 +98,13 @@ class SliceOpConverter : public OpConverter {
           "your TRT version is no less than 6.0"));
 #endif
     } else {
+#if IS_TRT_VERSION_LT(8000)  // TODO(trt8)
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SlicePlugin* plugin =
           new plugin::SlicePlugin(starts, ends, axes, with_fp16);
       layer = engine_->AddPlugin(&input, 1, plugin);
+#endif
     }
 
     auto output_name = op_desc.Output("Out")[0];

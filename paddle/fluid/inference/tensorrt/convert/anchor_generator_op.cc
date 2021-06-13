@@ -25,6 +25,7 @@ class AnchorGeneratorOpConverter : public OpConverter {
   void operator()(const paddle::framework::proto::OpDesc& op,
                   const paddle::framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_LT(8000)  // TODO(trt8)
     VLOG(3) << "convert a fluid anchor generator op to tensorrt plugin";
     framework::OpDesc op_desc(op, nullptr);
     std::string input_name = op_desc.Input("Input").front();
@@ -69,6 +70,7 @@ class AnchorGeneratorOpConverter : public OpConverter {
 
     RreplenishLayerAndOutput(anchor_generator_layer, "anchor_generator",
                              output_names, test_mode);
+#endif
   }
 };
 

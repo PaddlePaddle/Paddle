@@ -63,6 +63,7 @@ class Pool2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
                   const framework::Scope &scope, bool test_mode) override {
+#if IS_TRT_VERSION_LT(8000)  // TODO(trt8)
     VLOG(4)
         << "convert a fluid pool2d op to tensorrt pool2d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
@@ -201,6 +202,7 @@ class Pool2dOpConverter : public OpConverter {
       pool_layer->setAverageCountExcludesPadding(exclusive);
       layer = pool_layer;
     } else {
+#if IS_TRT_VERSION_LT(8000)  // TODO(trt8)
       // Average pooling needs to exclude the padding pixels from the average
       // mean.
       // It is not supported well by TRT, we use a plugin here.
@@ -217,9 +219,11 @@ class Pool2dOpConverter : public OpConverter {
           platform::errors::Fatal(
               "trt pool plugin layer in converter could not be created."));
       layer = pool_layer;
+#endif
     }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
+#endif
   }
 };
 

@@ -249,6 +249,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
             "your TRT version is no less than 6.0"));
 #endif
       } else {
+#if IS_TRT_VERSION_LT(8000)  // TODO(trt8)
         plugin::ElementWisePlugin* plugin =
             new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
         plugin->AddInput(X);
@@ -258,6 +259,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
             reinterpret_cast<plugin::PluginTensorRT*>(plugin));
 
         layer = plugin_layer;
+#endif
       }
     }
     common_func(layer);

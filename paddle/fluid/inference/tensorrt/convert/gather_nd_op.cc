@@ -23,6 +23,7 @@ class GatherNdOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
+#if IS_TRT_VERSION_LT(8000)  // TODO(trt8)
     VLOG(4) << "convert a paddle gather_nd op to tensorrt gather_nd plugin";
     framework::OpDesc op_desc(op, nullptr);
 
@@ -48,6 +49,7 @@ class GatherNdOpConverter : public OpConverter {
       engine_->DeclareOutput(output_name);
     }
     layer->setName((layer_name + ")").c_str());
+#endif
   }
 };
 

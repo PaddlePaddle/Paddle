@@ -36,6 +36,7 @@ class RoiAlignOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
+#if IS_TRT_VERSION_LT(8000)  // TODO(trt8)
     VLOG(3) << "convert a fluid roi align op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -70,6 +71,7 @@ class RoiAlignOpConverter : public OpConverter {
 
     std::vector<std::string> output_names{output_name};
     RreplenishLayerAndOutput(layer, "roi_align", output_names, test_mode);
+#endif
   }
 };
 

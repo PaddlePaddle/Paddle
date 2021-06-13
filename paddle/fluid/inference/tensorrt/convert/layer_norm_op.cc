@@ -76,6 +76,7 @@ class LayerNormOpConverter : public OpConverter {
                                              variance_shape);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
+#if IS_TRT_VERSION_LT(8000)  // TODO(trt8)
       int input_num = 1;
       for (int i = begin_norm_axis - 1; i < X->getDimensions().nbDims; i++) {
         input_num *= X->getDimensions().d[i];
@@ -87,6 +88,7 @@ class LayerNormOpConverter : public OpConverter {
           begin_norm_axis, eps, mean_shape, variance_shape);
       layernorm_layer = engine_->AddPlugin(
           &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
+#endif
     }
 
     auto output_name = op_desc.Output("Y").front();
