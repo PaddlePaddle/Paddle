@@ -44,6 +44,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self.fuse_all_reduce_ops = user_defined_strategy.fuse_all_reduce_ops
         if self.fuse_all_reduce_ops:
             self.fuse_grad_size_in_num = user_defined_strategy.fuse_grad_size_in_num
+            self.calc_comm_same_stream = user_defined_strategy._calc_comm_same_stream
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -130,8 +131,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
     def _transpile_main_program(self, loss):
         self._insert_loss_grad_ops(loss)
-        if self.fuse_all_reduce_ops and core.is_compiled_with_npu():
-            self._calc_stream = True
+        if self.fuse_all_reduce_ops:
             self._allreduce_fusion_program()
         else:
             self._insert_allreduce_ops()
@@ -206,22 +206,30 @@ class RawProgramOptimizer(MetaOptimizerBase):
                            OP_ROLE_KEY: OpRole.Backward})
                 break
 
-    # TODO(Liu yuang): ADD CUDA allreduce_fusion fuction.
-    # This function helps reduce the input of allreduce by integrating can save communication time.
+    # This function helps reduce the number of allreduce by integrating op, which can save communication time.
+    # to use allreduce fuse, follow these codes:
+    # strategy = paddle.distributed.fleet.DistributedStrategy()
+    # strategy.without_graph_optimization = True
+    # strategy.fuse_all_reduce_ops = True
+    # strategy.calc_comm_same_stream = False
+    # strategy.fuse_grad_size_in_num = 8
     def _allreduce_fusion_program(self):
         block = self.main_program.global_block()
         ring_id = self.global_ring_id
         record_idx, allreduce_input_vars, allreduce_output_vars = [], [], []
-        block_ops = len(list(enumerate(block.ops)))
+        ops = list(enumerate(block.ops))
 
-        for idx, op in reversed(list(enumerate(block.ops))):
+        for idx, op in reversed(ops):
+            # we travers the ops reversely
             if is_backward_op(op) and \
                     OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.attr(OP_ROLE_VAR_KEY)
                 if len(op_role_var) == 0:
                     continue
-                assert len(op_role_var) % 2 == 0
+                assert len(op_role_var) % 2 == 0, "vars need to be one param var followed by one grad var, " \
+                                                  "but got odd number of vars"
                 for i in range(0, len(op_role_var), 2):
+                    # handle vars in each op, each time handle a param and a grad
                     param_name = op_role_var[i]
                     param = block.var(param_name)
                     grad_name = op_role_var[i + 1]
@@ -229,6 +237,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     if param.is_distributed:
                         continue
                     if ".cast_fp16@GRAD" in grad_name:
+                        # when amp=True get the fp16 param
                         param_name = param_name + ".cast_fp16"
                         if not block.has_var(param_name):
                             raise ValueError("op cast name error {}".format(
@@ -236,154 +245,102 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         else:
                             param = block.var(param_name)
 
-                    if len(allreduce_output_vars) == 0:
+                    if len(allreduce_output_vars) == 0 or \
+                            len(allreduce_output_vars[-1]) == \
+                            self.fuse_grad_size_in_num:
+                        # start of the fusion or last group meets the config size
                         allreduce_output_vars.append([grad])
                         allreduce_input_vars.append([param])
-                        if self.fuse_grad_size_in_num == 1:
-                            record_idx.append([idx, idx])
-                            continue
-                        record_idx.append([-2, idx])
-                    elif len(allreduce_output_vars[
-                            -1]) == self.fuse_grad_size_in_num:
-                        allreduce_output_vars.append([grad])
-                        allreduce_input_vars.append([param])
-                        if self.fuse_grad_size_in_num == 1:
-                            record_idx.append([idx, idx])
-                            continue
-                        if idx != block_ops - 1:
-                            record_idx.append([-2, idx])
+                        # add the start and end idx to the record idx
+                        record_idx.append([idx, idx])
                     else:
+                        # Current group's size is below the config size
+                        # append grad and param to the last group (current group)
+                        # update the start idx to current op's idx
+                        # Since we travers the ops reversely, the idx is descending
+                        # we update the first entry of each entry for record_idx
                         allreduce_output_vars[-1].append(grad)
                         allreduce_input_vars[-1].append(param)
                         record_idx[-1][0] = idx
-
-                if record_idx[-1][0] == -2:
-                    record_idx[-1][0] = record_idx[-1][1]
 
         assert len(allreduce_output_vars) == len(
             record_idx
         ), "It has different lens between the allreduce_output_vars and record_idx."
 
         if not allreduce_output_vars or not allreduce_input_vars:
+            # nothing needs to be allreduced
             return
 
         self.vars = collections.OrderedDict()
-        index, offset_pos, pos, offset = 0, 0, 0, 0
+        index, pos, offset = 0, 0, 0
         start, end = record_idx[index]
-        men_list = [end, start]
-
-        # Here we need to explain the flag. When integrating OP, we will encounter different groups of the same Op.
-        # Because we insert coalesce tensor in reverse ops,
-        # we need to use flag to record whether the current OP has been inserted into coalesce tensor。
-        # For example:
-        # [(3, 2), (2, 2), (1, 0)], (3, 2), (2, 2) using same op, but in different groups.
-
-        for idx, op in reversed(list(enumerate(block.ops))):
+        for idx, op in reversed(ops):
             if idx == start:
                 pos = 0
-                flag = True if end == men_list[-1] else False
-                offset = offset_pos if flag else 0
                 done_output_vars, done_input_vars = self._split_fuction(
-                    allreduce_output_vars[index], allreduce_input_vars[index])
+                    allreduce_output_vars[index],  # grad
+                    allreduce_input_vars[index]  # param
+                )
                 for id_, done_output_var in enumerate(done_output_vars):
-                    if flag:
-                        tmp_var = block.create_var(
-                            name=unique_name.generate(
-                                'FusedOutput_{}_{}'.format(start, id_ +
-                                                           offset)),
-                            dtype=done_output_var[0].dtype,
-                            persistable=False,
-                            stop_gradient=True)
-                        self.vars['FusedOutput_{}_{}'.format(start, id_ +
-                                                             offset)] = tmp_var
+                    tmp_var = block.create_var(
+                        name=unique_name.generate('FusedOutput_{}'.format(
+                            done_output_var[0].name)),
+                        dtype=done_output_var[0].dtype,
+                        persistable=False,
+                        stop_gradient=True)
+                    self.vars['FusedOutput_{}'.format(done_output_var[0]
+                                                      .name)] = tmp_var
 
-                        block._insert_op(
-                            idx + id_ + offset,
-                            type="coalesce_tensor",
-                            inputs={"Input": done_input_vars[id_]},
-                            outputs={
-                                "Output": done_output_var,
-                                "FusedOutput": tmp_var
-                            },
-                            attrs={
-                                "copy_data": False,
-                                "use_align": True,
-                                "dtype": done_output_var[0].dtype
-                            })
-                        pos += 1
-                    else:
-                        tmp_var = block.create_var(
-                            name=unique_name.generate(
-                                'FusedOutput_{}_{}'.format(start, id_)),
-                            dtype=done_output_var[0].dtype,
-                            persistable=False,
-                            stop_gradient=True)
-                        self.vars['FusedOutput_{}_{}'.format(start,
-                                                             id_)] = tmp_var
+                    block._insert_op(
+                        idx + id_,
+                        type="coalesce_tensor",
+                        inputs={"Input": done_input_vars[id_]},
+                        outputs={
+                            "Output": done_output_var,
+                            "FusedOutput": tmp_var
+                        },
+                        attrs={
+                            "copy_data": False,
+                            "use_align": True,
+                            "dtype": done_output_var[0].dtype,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
+                    pos += 1
 
-                        block._insert_op(
-                            idx + id_,
-                            type="coalesce_tensor",
-                            inputs={"Input": done_input_vars[id_]},
-                            outputs={
-                                "Output": done_output_var,
-                                "FusedOutput": tmp_var
-                            },
-                            attrs={
-                                "copy_data": False,
-                                "use_align": True,
-                                "dtype": done_output_var[0].dtype
-                            })
-                        pos += 1
-                offset_pos = pos
-
-                # TODO(Liu yuang): ADD CUDA and NPU's EVENT and c_allreduce_sum.
                 for id_ in range(len(done_output_vars)):
-                    if flag:
+                    x = self.vars['FusedOutput_{}'.format(done_output_vars[id_][
+                        0].name)]
+                    out = x
+
+                    # NOTE: there still some optimize space if use EVENT instead of sync
+                    if not self.calc_comm_same_stream:
+                        # need sync if the calc and comm stream are not the same
                         block._insert_op(
                             end + id_ + pos + 1,
-                            type='c_allreduce_sum',
-                            inputs={
-                                'X': self.vars['FusedOutput_{}_{}'.format(
-                                    start, id_ + offset)]
-                            },
-                            outputs={
-                                'Out': self.vars['FusedOutput_{}_{}'.format(
-                                    start, id_ + offset)]
-                            },
-                            attrs={
-                                'ring_id': ring_id,
-                                'use_calc_stream': True
-                                if self._calc_stream else False,
-                                OP_ROLE_KEY: OpRole.Backward
-                            })
-                    else:
-                        block._insert_op(
-                            end + id_ + pos + 1,
-                            type='c_allreduce_sum',
-                            inputs={
-                                'X': self.vars['FusedOutput_{}_{}'.format(start,
-                                                                          id_)]
-                            },
-                            outputs={
-                                'Out': self.vars['FusedOutput_{}_{}'.format(
-                                    start, id_)]
-                            },
-                            attrs={
-                                'ring_id': ring_id,
-                                'use_calc_stream': True
-                                if self._calc_stream else False,
-                                OP_ROLE_KEY: OpRole.Backward
-                            })
+                            type='c_sync_calc_stream',
+                            inputs={'X': x},
+                            outputs={'Out': out},
+                            attrs={OP_ROLE_KEY: OpRole.Backward})
+
+                    block._insert_op(
+                        end + id_ + pos + 1
+                        if self.calc_comm_same_stream else end + id_ + pos + 2,
+                        type='c_allreduce_sum',
+                        inputs={'X': x},
+                        outputs={'Out': out},
+                        attrs={
+                            'ring_id': ring_id,
+                            'use_calc_stream': self.calc_comm_same_stream,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
+
                 index += 1
-                men_list.append(end)
-                men_list.append(start)
                 if len(record_idx) == index:
-                    start = end = -1
-                    continue
+                    break
                 start, end = record_idx[index]
 
-        if not self._calc_stream:
+        if not self.calc_comm_same_stream:
+            # need sync if the calc and comm stream are not the same
             for idx, op in enumerate(block.ops):
                 if is_optimizer_op(op):
                     block._insert_op(
@@ -397,34 +354,50 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         })
                     break
 
-    # Integrate grads of the same type to form a combination. If skip_comb is selected, will return grads of the same group.
+    # Integrate grads of the same type to form a combination.
+    # If combination is selected, will return grads of the same type in a groups.
     # For example:[(fp16, fp16), (fp32), (fp16)] -> [(fp16, fp16, fp16), (fp32)]
     def _split_fuction(self,
                        allreduce_output_vars,
                        allreduce_input_vars,
-                       skip_comb=True):
+                       combination=True):
         input_vars, final_input_vars, output_vars, final_output_vars = [], [], [], []
-        if len(allreduce_output_vars) - 1 == 0:
+        if len(allreduce_output_vars) == 1:
+            # only have one var to handle
             final_output_vars.append(allreduce_output_vars)
             final_input_vars.append(allreduce_input_vars)
             return final_output_vars, final_input_vars
 
         for idx in range(len(allreduce_input_vars) - 1):
+            # the last var needs to be handled differently
             if allreduce_input_vars[idx].dtype == allreduce_input_vars[idx +
                                                                        1].dtype:
+                # if current var and next var are in same type
+                # append current var to input_vars
                 input_vars.append(allreduce_input_vars[idx])
                 if idx == len(allreduce_input_vars) - 2:
+                    # if current var is the second last var
+                    # append the last var to input_vars
+                    # and update the final_input_vars
                     input_vars.append(allreduce_input_vars[idx + 1])
                     final_input_vars.append(input_vars)
             else:
+                # the current var and next var are in different types
+                # append current var to input_vars
+                # update the final_input_vars
+                # reset input_vars to receive a new type
                 input_vars.append(allreduce_input_vars[idx])
                 final_input_vars.append(input_vars)
                 input_vars = []
                 if idx == len(allreduce_input_vars) - 2:
+                    # if current var is the second last var
+                    # append the last var to a reset input_vars since they are in different types
+                    # and update the final_input_vars
                     input_vars.append(allreduce_input_vars[idx + 1])
                     final_input_vars.append(input_vars)
 
         for idx in range(len(allreduce_output_vars) - 1):
+            # the procedure for the output vars is the same with that for the input vars
             if allreduce_output_vars[idx].dtype == allreduce_output_vars[
                     idx + 1].dtype:
                 output_vars.append(allreduce_output_vars[idx])
@@ -438,10 +411,14 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 if idx == len(allreduce_output_vars) - 2:
                     output_vars.append(allreduce_output_vars[idx + 1])
                     final_output_vars.append(output_vars)
-        if skip_comb:
+
+        # at this time, all vars in each group in final_input_vars and final_output_vars are in the same type
+
+        if combination:
             input_fp16_vars, input_fp32_vars, output_fp16_vars, output_fp32_vars = [], [], [], []
             for final_input_var in final_input_vars:
                 if final_input_var[0].dtype == core.VarDesc.VarType.FP16:
+                    # extend the group
                     input_fp16_vars.extend(final_input_var)
                 else:
                     input_fp32_vars.extend(final_input_var)
@@ -451,6 +428,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     output_fp16_vars.extend(final_output_var)
                 else:
                     output_fp32_vars.extend(final_output_var)
+
             final_output_vars, final_input_vars = [], []
             if output_fp16_vars:
                 final_output_vars.append(output_fp16_vars)
