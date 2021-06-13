@@ -27,6 +27,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if IS_TRT_VERSION_LT(8000)
 PReluPlugin *CreatePreluPluginDeserialize(const void *buffer, size_t length) {
   return new PReluPlugin(buffer, length);
 }
@@ -84,34 +85,36 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
   }
   return cudaGetLastError() != cudaSuccess;
 }
+#endif
 
 #if IS_TRT_VERSION_GE(6000)
-
-void PReluPluginDynamic::terminate() {
+void PReluPluginDynamic::terminate() TRT_NOEXCEPT {
   if (p_gpu_weight_) {
     cudaFree(p_gpu_weight_);
   }
 }
 
-int PReluPluginDynamic::initialize() {
+int PReluPluginDynamic::initialize() TRT_NOEXCEPT {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
   cudaMemcpy(p_gpu_weight_, weight_.data(), weight_.size() * sizeof(float),
              cudaMemcpyHostToDevice);
   return 0;
 }
-size_t PReluPluginDynamic::getSerializationSize() const { return 0; }
+size_t PReluPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
+  return 0;
+}
 
-void PReluPluginDynamic::serialize(void *buffer) const {}
+void PReluPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {}
 
 nvinfer1::DimsExprs PReluPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool PReluPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -124,11 +127,12 @@ bool PReluPluginDynamic::supportsFormatCombination(
   (in_out && pos < (nb_inputs + nb_outputs));
 
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
-          in_out[pos].format == nvinfer1::PluginFormat::kNCHW);
+          in_out[pos].format == nvinfer1::PluginFormat::kLINEAR);
 }
 
 nvinfer1::DataType PReluPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The PRelu Plugin only has one input, so the "
                                   "index value should be 0, but get %d.",
@@ -142,7 +146,8 @@ nvinfer1::DataType PReluPluginDynamic::getOutputDataType(
 int PReluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                                 const nvinfer1::PluginTensorDesc *output_desc,
                                 const void *const *inputs, void *const *outputs,
-                                void *workspace, cudaStream_t stream) {
+                                void *workspace,
+                                cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   const float *alpha = p_gpu_weight_;
   const float *input = static_cast<const float *>(inputs[0]);
