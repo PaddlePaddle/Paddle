@@ -122,8 +122,6 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
 };
 #endif
 
-// TensorRT introduced IPluginV2Ext after 5.1, Paddle no longer supports
-// versions before 5.1
 class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
  public:
   PluginTensorRTV2Ext() : with_fp16_(false) {}
@@ -191,8 +189,13 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   // Find the workspace size required by the layer
   size_t getWorkspaceSize(int) const TRT_NOEXCEPT override { return 0; }
 
-  // Execute the layer
+// Execute the layer
+#if IS_TRT_VERSION_LT(8000)
   virtual int enqueue(int batch_size, const void* const* inputs, void** outputs,
+#else
+  virtual int enqueue(int batch_size, const void* const* inputs,
+                      void* const* outputs,
+#endif
                       void* workspace, cudaStream_t stream) TRT_NOEXCEPT = 0;
 
   // Find the size of the serialization buffer required

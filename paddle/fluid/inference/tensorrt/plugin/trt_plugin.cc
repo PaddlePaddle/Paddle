@@ -49,6 +49,7 @@ inline size_t SeriaSize(const std::vector<nvinfer1::Dims>& input_dims,
           SerializedSize(with_fp16));
 }
 
+#if IS_TRT_VERSION_LT(8000)
 void PluginTensorRT::serializeBase(void*& buffer) {
   Seria(buffer, input_dims_, max_batch_size_, data_type_, data_format_,
         with_fp16_);
@@ -80,6 +81,7 @@ void PluginTensorRT::configureWithFormat(
   input_dims_.assign(input_dims, input_dims + num_inputs);
   max_batch_size_ = max_batch_size;
 }
+#endif
 
 void PluginTensorRTV2Ext::serializeBase(void*& buffer) const {
   Seria(buffer, input_dims_, max_batch_size_, data_type_, data_format_,
@@ -103,7 +105,7 @@ void PluginTensorRTV2Ext::configurePlugin(
     const nvinfer1::DataType* input_types,
     const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
     const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
-    int32_t max_batch_size) {
+    int32_t max_batch_size) TRT_NOEXCEPT {
   input_dims_.assign(input_dims, input_dims + nb_inputs);
   max_batch_size_ = max_batch_size;
   data_format_ = float_format;
