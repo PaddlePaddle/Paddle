@@ -27,6 +27,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if IS_TRT_VERSION_LT(8000)
 #define PrepareParamsOnDevice()                                          \
   constexpr int data_size = 4;                                           \
   cudaMalloc(&anchor_sizes_device_, anchor_sizes_.size() * data_size);   \
@@ -112,18 +113,16 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(const void* data, size_t length) {
   PrepareParamsOnDevice();
 }
 
-const char* AnchorGeneratorPlugin::getPluginType() const TRT_NOEXCEPT {
+const char* AnchorGeneratorPlugin::getPluginType() const {
   return "anchor_generator_plugin";
 }
 
-const char* AnchorGeneratorPlugin::getPluginVersion() const TRT_NOEXCEPT {
-  return "1";
-}
+const char* AnchorGeneratorPlugin::getPluginVersion() const { return "1"; }
 
-int AnchorGeneratorPlugin::getNbOutputs() const TRT_NOEXCEPT { return 2; }
+int AnchorGeneratorPlugin::getNbOutputs() const { return 2; }
 
 nvinfer1::Dims AnchorGeneratorPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims* inputs, int nb_input_dims) TRT_NOEXCEPT {
+    int index, const nvinfer1::Dims* inputs, int nb_input_dims) {
   nvinfer1::Dims dims{};
   dims.nbDims = 4;
   dims.d[0] = height_;
@@ -134,25 +133,20 @@ nvinfer1::Dims AnchorGeneratorPlugin::getOutputDimensions(
 }
 
 bool AnchorGeneratorPlugin::supportsFormat(
-    nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
+    nvinfer1::DataType type, nvinfer1::TensorFormat format) const {
   // static shape plugin can't support different type between input/out
   // it may cause addition overhead in half mode
   return (type == data_type_ && format == nvinfer1::TensorFormat::kLINEAR);
 }
 
-size_t AnchorGeneratorPlugin::getWorkspaceSize(int max_batch_size) const
-    TRT_NOEXCEPT {
+size_t AnchorGeneratorPlugin::getWorkspaceSize(int max_batch_size) const {
   return 0;
 }
 
 template <typename T>
 int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
                                         const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
                                         void** outputs, void* workspace,
-#else
-                                        void* const* outputs, void* workspace,
-#endif
                                         cudaStream_t stream) {
   const int block = 512;
   const int gen_anchor_grid = (box_num_ + block - 1) / block;
@@ -173,20 +167,16 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
 }
 
 int AnchorGeneratorPlugin::enqueue(int batch_size, const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
                                    void** outputs, void* workspace,
-#else
-                                   void* const* outputs, void* workspace,
-#endif
-                                   cudaStream_t stream) TRT_NOEXCEPT {
+                                   cudaStream_t stream) {
   return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
 }
 
-int AnchorGeneratorPlugin::initialize() TRT_NOEXCEPT { return 0; }
+int AnchorGeneratorPlugin::initialize() { return 0; }
 
-void AnchorGeneratorPlugin::terminate() TRT_NOEXCEPT {}
+void AnchorGeneratorPlugin::terminate() {}
 
-size_t AnchorGeneratorPlugin::getSerializationSize() const TRT_NOEXCEPT {
+size_t AnchorGeneratorPlugin::getSerializationSize() const {
   size_t serialize_size = 0;
   serialize_size += SerializedSize(data_type_);
   serialize_size += SerializedSize(anchor_sizes_);
@@ -201,7 +191,7 @@ size_t AnchorGeneratorPlugin::getSerializationSize() const TRT_NOEXCEPT {
   return serialize_size;
 }
 
-void AnchorGeneratorPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
+void AnchorGeneratorPlugin::serialize(void* buffer) const {
   SerializeValue(&buffer, data_type_);
   SerializeValue(&buffer, anchor_sizes_);
   SerializeValue(&buffer, aspect_ratios_);
@@ -214,31 +204,28 @@ void AnchorGeneratorPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, box_num_);
 }
 
-void AnchorGeneratorPlugin::destroy() TRT_NOEXCEPT {}
+void AnchorGeneratorPlugin::destroy() {}
 
-void AnchorGeneratorPlugin::setPluginNamespace(const char* lib_namespace)
-    TRT_NOEXCEPT {
+void AnchorGeneratorPlugin::setPluginNamespace(const char* lib_namespace) {
   namespace_ = std::string(lib_namespace);
 }
 
-const char* AnchorGeneratorPlugin::getPluginNamespace() const TRT_NOEXCEPT {
+const char* AnchorGeneratorPlugin::getPluginNamespace() const {
   return namespace_.c_str();
 }
 
 nvinfer1::DataType AnchorGeneratorPlugin::getOutputDataType(
-    int index, const nvinfer1::DataType* input_type,
-    int nb_inputs) const TRT_NOEXCEPT {
+    int index, const nvinfer1::DataType* input_type, int nb_inputs) const {
   return data_type_;
 }
 
 bool AnchorGeneratorPlugin::isOutputBroadcastAcrossBatch(
-    int output_index, const bool* input_is_broadcast,
-    int nb_inputs) const TRT_NOEXCEPT {
+    int output_index, const bool* input_is_broadcast, int nb_inputs) const {
   return true;
 }
 
-bool AnchorGeneratorPlugin::canBroadcastInputAcrossBatch(int input_index) const
-    TRT_NOEXCEPT {
+bool AnchorGeneratorPlugin::canBroadcastInputAcrossBatch(
+    int input_index) const {
   return false;
 }
 
@@ -248,9 +235,9 @@ void AnchorGeneratorPlugin::configurePlugin(
     const nvinfer1::DataType* input_types,
     const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
     const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
-    int max_batct_size) TRT_NOEXCEPT {}
+    int max_batct_size) {}
 
-nvinfer1::IPluginV2Ext* AnchorGeneratorPlugin::clone() const TRT_NOEXCEPT {
+nvinfer1::IPluginV2Ext* AnchorGeneratorPlugin::clone() const {
   auto plugin = new AnchorGeneratorPlugin(
       data_type_, anchor_sizes_, aspect_ratios_, stride_, variances_, offset_,
       height_, width_, num_anchors_, box_num_);
@@ -258,32 +245,30 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPlugin::clone() const TRT_NOEXCEPT {
   return plugin;
 }
 
-void AnchorGeneratorPluginCreator::setPluginNamespace(const char* lib_namespace)
-    TRT_NOEXCEPT {
+void AnchorGeneratorPluginCreator::setPluginNamespace(
+    const char* lib_namespace) {
   namespace_ = std::string(lib_namespace);
 }
 
-const char* AnchorGeneratorPluginCreator::getPluginNamespace() const
-    TRT_NOEXCEPT {
+const char* AnchorGeneratorPluginCreator::getPluginNamespace() const {
   return namespace_.c_str();
 }
 
-const char* AnchorGeneratorPluginCreator::getPluginName() const TRT_NOEXCEPT {
+const char* AnchorGeneratorPluginCreator::getPluginName() const {
   return "anchor_generator_plugin";
 }
 
-const char* AnchorGeneratorPluginCreator::getPluginVersion() const
-    TRT_NOEXCEPT {
+const char* AnchorGeneratorPluginCreator::getPluginVersion() const {
   return "1";
 }
 
 const nvinfer1::PluginFieldCollection*
-AnchorGeneratorPluginCreator::getFieldNames() TRT_NOEXCEPT {
+AnchorGeneratorPluginCreator::getFieldNames() {
   return &field_collection_;
 }
 
 nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::createPlugin(
-    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
+    const char* name, const nvinfer1::PluginFieldCollection* fc) {
   const nvinfer1::PluginField* fields = fc->fields;
   int type_id = -1;
   std::vector<float> anchor_sizes, aspect_ratios, stride, variances;
@@ -329,8 +314,7 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::createPlugin(
 }
 
 nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::deserializePlugin(
-    const char* name, const void* serial_data,
-    size_t serial_length) TRT_NOEXCEPT {
+    const char* name, const void* serial_data, size_t serial_length) {
   auto plugin = new AnchorGeneratorPlugin(serial_data, serial_length);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
@@ -389,8 +373,7 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(void const* data,
   PrepareParamsOnDevice();
 }
 
-nvinfer1::IPluginV2DynamicExt* AnchorGeneratorPluginDynamic::clone() const
-    TRT_NOEXCEPT {
+nvinfer1::IPluginV2DynamicExt* AnchorGeneratorPluginDynamic::clone() const {
   auto plugin = new AnchorGeneratorPluginDynamic(
       data_type_, anchor_sizes_, aspect_ratios_, stride_, variances_, offset_,
       num_anchors_);
@@ -400,7 +383,7 @@ nvinfer1::IPluginV2DynamicExt* AnchorGeneratorPluginDynamic::clone() const
 
 nvinfer1::DimsExprs AnchorGeneratorPluginDynamic::getOutputDimensions(
     int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
-    nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT {
+    nvinfer1::IExprBuilder& exprBuilder) {
   nvinfer1::DimsExprs ret{};
   ret.nbDims = 4;
   ret.d[0] = inputs[0].d[2];  // feature height
@@ -412,7 +395,7 @@ nvinfer1::DimsExprs AnchorGeneratorPluginDynamic::getOutputDimensions(
 
 bool AnchorGeneratorPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
-    int nbOutputs) TRT_NOEXCEPT {
+    int nbOutputs) {
   // input can be any, doesn't matter
   // anchor generator doesn't read input raw data, only need the shape info
   auto type = inOut[pos].type;
@@ -428,12 +411,11 @@ bool AnchorGeneratorPluginDynamic::supportsFormatCombination(
 
 void AnchorGeneratorPluginDynamic::configurePlugin(
     const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) TRT_NOEXCEPT {}
+    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) {}
 
 size_t AnchorGeneratorPluginDynamic::getWorkspaceSize(
     const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
-    const nvinfer1::PluginTensorDesc* outputs,
-    int nbOutputs) const TRT_NOEXCEPT {
+    const nvinfer1::PluginTensorDesc* outputs, int nbOutputs) const {
   return 0;
 }
 
@@ -466,7 +448,7 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
 int AnchorGeneratorPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* inputDesc,
     const nvinfer1::PluginTensorDesc* outputDesc, const void* const* inputs,
-    void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
+    void* const* outputs, void* workspace, cudaStream_t stream) {
   assert(outputDesc[0].type == nvinfer1::DataType::kFLOAT);
   assert(outputDesc[1].type == nvinfer1::DataType::kFLOAT);
   return enqueue_impl<float>(inputDesc, outputDesc, inputs, outputs, workspace,
@@ -474,24 +456,21 @@ int AnchorGeneratorPluginDynamic::enqueue(
 }
 
 nvinfer1::DataType AnchorGeneratorPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* inputTypes,
-    int nbInputs) const TRT_NOEXCEPT {
+    int index, const nvinfer1::DataType* inputTypes, int nbInputs) const {
   return data_type_;
 }
 
-const char* AnchorGeneratorPluginDynamic::getPluginType() const TRT_NOEXCEPT {
+const char* AnchorGeneratorPluginDynamic::getPluginType() const {
   return "anchor_generator_plugin_dynamic";
 }
 
-int AnchorGeneratorPluginDynamic::getNbOutputs() const TRT_NOEXCEPT {
-  return 2;
-}
+int AnchorGeneratorPluginDynamic::getNbOutputs() const { return 2; }
 
-int AnchorGeneratorPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
+int AnchorGeneratorPluginDynamic::initialize() { return 0; }
 
-void AnchorGeneratorPluginDynamic::terminate() TRT_NOEXCEPT {}
+void AnchorGeneratorPluginDynamic::terminate() {}
 
-size_t AnchorGeneratorPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
+size_t AnchorGeneratorPluginDynamic::getSerializationSize() const {
   size_t serialize_size = 0;
   serialize_size += SerializedSize(data_type_);
   serialize_size += SerializedSize(anchor_sizes_);
@@ -503,7 +482,7 @@ size_t AnchorGeneratorPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return serialize_size;
 }
 
-void AnchorGeneratorPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
+void AnchorGeneratorPluginDynamic::serialize(void* buffer) const {
   SerializeValue(&buffer, data_type_);
   SerializeValue(&buffer, anchor_sizes_);
   SerializeValue(&buffer, aspect_ratios_);
@@ -513,35 +492,32 @@ void AnchorGeneratorPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, num_anchors_);
 }
 
-void AnchorGeneratorPluginDynamic::destroy() TRT_NOEXCEPT {}
+void AnchorGeneratorPluginDynamic::destroy() {}
 
 void AnchorGeneratorPluginDynamicCreator::setPluginNamespace(
-    const char* lib_namespace) TRT_NOEXCEPT {
+    const char* lib_namespace) {
   namespace_ = std::string(lib_namespace);
 }
 
-const char* AnchorGeneratorPluginDynamicCreator::getPluginNamespace() const
-    TRT_NOEXCEPT {
+const char* AnchorGeneratorPluginDynamicCreator::getPluginNamespace() const {
   return namespace_.c_str();
 }
 
-const char* AnchorGeneratorPluginDynamicCreator::getPluginName() const
-    TRT_NOEXCEPT {
+const char* AnchorGeneratorPluginDynamicCreator::getPluginName() const {
   return "anchor_generator_plugin_dynamic";
 }
 
-const char* AnchorGeneratorPluginDynamicCreator::getPluginVersion() const
-    TRT_NOEXCEPT {
+const char* AnchorGeneratorPluginDynamicCreator::getPluginVersion() const {
   return "1";
 }
 
 const nvinfer1::PluginFieldCollection*
-AnchorGeneratorPluginDynamicCreator::getFieldNames() TRT_NOEXCEPT {
+AnchorGeneratorPluginDynamicCreator::getFieldNames() {
   return &field_collection_;
 }
 
 nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::createPlugin(
-    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
+    const char* name, const nvinfer1::PluginFieldCollection* fc) {
   const nvinfer1::PluginField* fields = fc->fields;
   int type_id = -1;
   std::vector<float> anchor_sizes, aspect_ratios, stride, variances;
@@ -578,12 +554,12 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::createPlugin(
 }
 
 nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::deserializePlugin(
-    const char* name, const void* serial_data,
-    size_t serial_length) TRT_NOEXCEPT {
+    const char* name, const void* serial_data, size_t serial_length) {
   auto plugin = new AnchorGeneratorPluginDynamic(serial_data, serial_length);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
+#endif
 #endif
 
 }  // namespace plugin
