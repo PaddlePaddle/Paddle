@@ -90,6 +90,7 @@ class TestElementwiseMulBroadcastingBf16MklDNNOp(
             core.CPUPlace(), ["X", "Y"],
             "Out",
             check_dygraph=False,
+            max_relative_error=0.4,
             user_defined_grads=[
                 np.multiply(self.x, self.y),
                 self.compute_reduced_gradients(np.multiply(self.x, self.x))
@@ -101,6 +102,7 @@ class TestElementwiseMulBroadcastingBf16MklDNNOp(
             core.CPUPlace(), ["Y"],
             "Out",
             check_dygraph=False,
+            max_relative_error=0.4,
             user_defined_grads=[
                 self.compute_reduced_gradients(np.multiply(self.x, self.x))
             ],
