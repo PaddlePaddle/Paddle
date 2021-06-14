@@ -15,7 +15,7 @@
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import Variable, set_flags, core
+from paddle.fluid.framework import Variable, set_flags, core, _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
@@ -122,18 +122,18 @@ class DistributedStrategy(object):
 
         # Set the default values of the following flags to the ones set by users
         key = 'FLAGS_cudnn_batchnorm_spatial_persistent'
-        if core.globals().is_public(key):
+        if _global_flags().is_public(key):
             self.strategy.cudnn_batchnorm_spatial_persistent = bool(
-                core.globals()[key])
+                _global_flags()[key])
         key = 'FLAGS_conv_workspace_size_limit'
-        if core.globals().is_public(key):
-            self.strategy.conv_workspace_size_limit = int(core.globals()[key])
+        if _global_flags().is_public(key):
+            self.strategy.conv_workspace_size_limit = int(_global_flags()[key])
         key = 'FLAGS_cudnn_exhaustive_search'
-        if core.globals().is_public(key):
-            self.strategy.cudnn_exhaustive_search = bool(core.globals()[key])
+        if _global_flags().is_public(key):
+            self.strategy.cudnn_exhaustive_search = bool(_global_flags()[key])
         key = 'FLAGS_sync_nccl_allreduce'
-        if core.globals().is_public(key):
-            self.strategy.sync_nccl_allreduce = bool(core.globals()[key])
+        if _global_flags().is_public(key):
+            self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
         self.__lock_attr = True
 
@@ -287,7 +287,7 @@ class DistributedStrategy(object):
             self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received %s".
+                "The type of `flag` is invalid, expected type is bool, but received {}".
                 format(type(flag)))
 
     @property
@@ -840,7 +840,7 @@ class DistributedStrategy(object):
                 "sharding_segment_strategy": "segment_broadcast_MB",
                 "segment_broadcast_MB": 32,
                 "sharding_degree": 8,
-                "sharding_degree": 2,
+                "dp_degree": 2,
                 "gradient_merge_acc_step": 4,
                 }
         """
@@ -878,6 +878,27 @@ class DistributedStrategy(object):
             print(
                 "WARNING: without_graph_optimization should have value of bool type"
             )
+
+    @property
+    def fuse_grad_size_in_num(self):
+        """
+        This based on raw_program_optimizer program and allreduce the num of the fused op
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_grad_size_in_num = 2
+        """
+        return self.strategy.fuse_grad_size_in_num
+
+    @fuse_grad_size_in_num.setter
+    @is_strict_auto
+    def fuse_grad_size_in_num(self, num):
+        if isinstance(num, int):
+            self.strategy.fuse_grad_size_in_num = num
+        else:
+            print(
+                "WARNING: fuse_grad_size_in_num should have value of int32 type")
 
     @property
     def pipeline(self):
@@ -1587,8 +1608,8 @@ class DistributedStrategy(object):
         ]
 
         for i, key in enumerate(keys):
-            if core.globals().is_public(key):
-                core.globals()[key] = values[i]
+            if _global_flags().is_public(key):
+                _global_flags()[key] = values[i]
 
     def _is_strict_auto(self):
         global non_auto_func_called

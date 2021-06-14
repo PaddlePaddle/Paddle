@@ -330,5 +330,19 @@ class TestComplextDataset(unittest.TestCase):
             self.run_main(num_workers)
 
 
+class TestDataLoaderGenerateStates(unittest.TestCase):
+    def setUp(self):
+        self.inputs = [(0, 1), (0, 2), (1, 3)]
+        self.outputs = [[1835504127, 1731038949, 1320224556, 2330041505],
+                        [2834126987, 2358157858, 1860244682, 1437227251],
+                        [457190280, 2660306227, 859341110, 354512857]]
+
+    def test_main(self):
+        from paddle.fluid.dataloader.worker import _generate_states
+        for inp, outp in zip(self.inputs, self.outputs):
+            out = _generate_states(*inp)
+            assert out == outp
+
+
 if __name__ == '__main__':
     unittest.main()
