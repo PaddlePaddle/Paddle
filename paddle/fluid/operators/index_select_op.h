@@ -137,6 +137,9 @@ struct IndexSelectAdd<
   }
 };
 
+// description: Index addition uses intel intrinsic instruction set to read
+// and
+// write data in parallel
 template <typename T>
 struct IndexSelectAdd<
     platform::avx, T,
