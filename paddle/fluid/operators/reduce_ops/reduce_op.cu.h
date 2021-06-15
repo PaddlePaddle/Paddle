@@ -34,7 +34,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 
-#define BOUNDARY 512  // Reduce split or not, Whether to use ReduceHigherDim
+#define REDUCE_SPLIT_BOUNDARY \
+  512  // Reduce split or not, Whether to use ReduceHigherDim
 
 namespace paddle {
 namespace operators {
@@ -309,7 +310,8 @@ struct ReduceConfig {
   void SetReduceType() {
     int rank = x_dim.size();
     int reduce_rank = reduce_dim.size();
-    bool is_large_enough = (reduce_num > BOUNDARY / 2) || (left_num > BOUNDARY);
+    bool is_large_enough = (reduce_num > REDUCE_SPLIT_BOUNDARY / 2) ||
+                           (left_num > REDUCE_SPLIT_BOUNDARY);
     if (rank == reduce_rank) {
       reduce_type = static_cast<int>(ReduceType::kReduceAll);
 
@@ -357,7 +359,7 @@ struct ReduceConfig {
       // init
       int num_block = (max_threads / left_num);
 
-      if (num_block > 1 && reduce_num >= BOUNDARY) {
+      if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
         blocking_size = detail::GetLastPow2(reduce_num / num_block);
 
         if (blocking_size <= 1) {
