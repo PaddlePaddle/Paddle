@@ -117,6 +117,7 @@ class IndexSelectKernel : public framework::OpKernel<T> {
 };
 
 #if ((!defined __NVCC__) && (!defined __HIPCC__))
+
 template <typename platform::cpu_isa_t isa, typename T, class Enable = void>
 struct IndexSelectAdd {
   void operator()(int n, const T* src, T* dst) {
