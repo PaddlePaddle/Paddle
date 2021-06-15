@@ -870,10 +870,8 @@ class ActivationMKLDNNHandler
 
       auto diff_dst_tz = framework::vectorize<int64_t>(out_grad->dims());
 
-      // diff_dst and src dims should be the same
       auto src_fmt =
           diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : in_x->format();
-
       auto diff_fmt =
           diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : out_grad->format();
 
