@@ -149,7 +149,7 @@ ConvBNFusePass::ConvBNFusePass() {
       .IsTensor()
       .End()
       .AddInput("Bias")
-      .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Output")
       .IsTensor()
@@ -181,10 +181,36 @@ ConvBNFusePass::ConvBNFusePass() {
       .AddInput("Variance")
       .IsTensor()
       .End()
+      .AddOutput("MeanOut")
+      .IsTensor()
+      .End()
+      .AddOutput("VarianceOut")
+      .IsTensor()
+      .End()
+      .AddOutput("SavedMean")
+      .IsTensor()
+      .End()
+      .AddOutput("SavedVariance")
+      .IsTensor()
+      .End()
       .AddOutput("Y")
       .IsTensor()
       .End()
       .AddAttr("epsilon")
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
       .End();
 }
 
@@ -287,6 +313,10 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       }
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({bn_out->Name()}));
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+        return;
+      }
       GraphSafeRemoveNodes(
           graph,
           {conv_out, bn_scale, bn_bias, bn_mean, bn_variance, batch_norm,
@@ -302,6 +332,10 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
       desc.SetType("elementwise_add");
       desc.SetAttr("axis", 1);
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+        return;
+      }
       auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
       GraphSafeRemoveNodes(graph, {bn_scale, bn_bias, bn_mean, bn_variance,
@@ -326,9 +360,6 @@ ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
       .IsTensor()
       .End()
       .AddInput("Filter")
-      .IsTensor()
-      .End()
-      .AddInput("Bias")
       .IsTensor()
       .End()
       .AddOutput("Output")
@@ -378,6 +409,7 @@ ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
+      .IsNumEQ(1)
       .End();
 }
 
@@ -476,7 +508,10 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // Update the elementwise_add node
     eltwise->Op()->SetAttr("axis", 1);
     eltwise->Op()->SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
-
+    if (!IsCompat(desc)) {
+      LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+      return;
+    }
     GraphSafeRemoveNodes(
         graph,
         {bn_scale, bn_bias, bn_mean, bn_variance, batch_norm, bn_mean_out,
