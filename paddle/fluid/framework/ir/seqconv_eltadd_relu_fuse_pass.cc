@@ -45,10 +45,8 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
       .IsNumGT(0)
       .End()
       .AddAttr("contextStart")
-      .IsNumEQ(0)
       .End()
       .AddAttr("contextStride")
-      .IsNumEQ(1)
       .IsNumGT(0)
       .End();
 
