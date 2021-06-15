@@ -75,9 +75,6 @@ AttrCompat& AttrCompat::IsLeftDefault() {
 }
 
 bool AttrCompat::operator()(const OpDesc& op_desc) {
-  if (conditions_.empty()) {
-    return true;
-  }
   if (!op_desc.HasAttr(attr_name_)) {
     if (!optional_) {
       LOG(WARNING) << "The non-optional Attr(" << attr_name_ << ") of Op ("
