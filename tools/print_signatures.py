@@ -36,10 +36,7 @@ visited_modules = set()
 def md5(doc):
     try:
         hashinst = hashlib.md5()
-        if platform.python_version()[0] == "2":
-            hashinst.update(str(doc))
-        else:
-            hashinst.update(str(doc).encode('utf-8'))
+        hashinst.update(str(doc).encode('utf-8'))
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
@@ -142,7 +139,7 @@ def visit_member(parent_name, member, member_name=None):
 
 
 def is_primitive(instance):
-    int_types = (int, long) if platform.python_version()[0] == "2" else (int, )
+    int_types = (int, )
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True

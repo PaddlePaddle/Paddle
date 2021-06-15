@@ -37,10 +37,7 @@ omitted_list = [
 def md5(doc):
     try:
         hashinst = hashlib.md5()
-        if platform.python_version()[0] == "2":
-            hashinst.update(str(doc))
-        else:
-            hashinst.update(str(doc).encode('utf-8'))
+        hashinst.update(str(doc).encode('utf-8'))
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
