@@ -205,6 +205,7 @@ from .tensor.math import isnan  # noqa: F401
 from .tensor.math import prod  # noqa: F401
 from .tensor.math import broadcast_shape  # noqa: F401
 from .tensor.math import conj  # noqa: F401
+from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
 
@@ -489,5 +490,6 @@ __all__ = [  # noqa
            'log10',
            'concat',
            'check_shape',
+           'digamma',
            'standard_normal'
 ]
