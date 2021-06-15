@@ -1,13 +1,10 @@
-type: "conv2d"
+type: "conv3d"
 def {
   inputs {
     name: "Input"
   }
   inputs {
     name: "Filter"
-  }
-  inputs {
-    name: "Bias"
   }
   outputs {
     name: "Output"
@@ -70,14 +67,6 @@ extra {
     type: BOOLEAN
   }
   attrs {
-    name: "fuse_brelu"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "fuse_brelu_threshold"
-    type: FLOAT
-  }
-  attrs {
     name: "fuse_activation"
     type: STRING
   }
@@ -98,22 +87,6 @@ extra {
     type: BOOLEAN
   }
   attrs {
-    name: "Scale_in"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_out"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_in_eltwise"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_weights"
-    type: FLOATS
-  }
-  attrs {
     name: "force_fp32_output"
     type: BOOLEAN
   }
@@ -124,26 +97,6 @@ extra {
   attrs {
     name: "exhaustive_search"
     type: BOOLEAN
-  }
-  attrs {
-    name: "op_role"
-    type: INT
-  }
-  attrs {
-    name: "op_role_var"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_namescope"
-    type: STRING
-  }
-  attrs {
-    name: "op_callstack"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_device"
-    type: STRING
   }
 }
 
