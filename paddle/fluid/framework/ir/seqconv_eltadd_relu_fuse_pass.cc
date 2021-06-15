@@ -53,6 +53,7 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
+      .IsNumEQ(-1)
       .End();
 
   AddOpCompat(OpCompat("relu"))
