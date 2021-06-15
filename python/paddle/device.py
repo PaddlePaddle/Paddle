@@ -34,7 +34,7 @@ __all__ = [  # npqa
 ]
 
 _cudnn_version = None
-print(1)
+print(2)
 
 
 # TODO: WITH_ASCEND_CL may changed to WITH_NPU or others in the future
