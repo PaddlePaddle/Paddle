@@ -30,6 +30,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/framework/array.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 
@@ -149,6 +150,8 @@ static inline paddle::framework::Array<T, ElementCount> VectorToArray(
 }
 
 }  // namespace detail
+
+using Tensor = framework::Tensor;
 
 enum ReduceType {
   kReduceAll = 0x00,        // when reduce_rank == x_rank
@@ -733,6 +736,31 @@ struct TensorReduceFunctorImpl {
   template <typename Ty>
   void apply() const {
     TensorReduceFunc<Tx, Ty, ReduceOp>(x, y, origin_reduce_dims, stream);
+  }
+};
+
+template <typename T, template <typename, typename> class ReduceOp>
+class ReduceCudaKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    const Tensor* input = context.Input<Tensor>("X");
+    Tensor* output = context.Output<Tensor>("Out");
+    auto out_dtype = context.Attr<int>("out_dtype");
+    std::vector<int> dims = context.Attr<std::vector<int>>("dim");
+
+    std::vector<int> reduce_dims =
+        detail::GetReduceDim(dims, input->dims().size(), reduce_all);
+
+    gpuStream_t stream = context.cuda_device_context().stream();
+    if (out_dtype >= 0) {
+      framework::VisitDataTypeSmall(
+          static_cast<framework::proto::VarType::Type>(out_dtype),
+          TensorReduceFunctorImpl<T, ReduceOp>(*input, output, reduce_dims,
+                                               stream));
+    } else {
+      TensorReduceFunc<T, T, ReduceOp>(*input, output, reduce_dims, stream);
+    }
   }
 };
 

@@ -42,7 +42,7 @@ struct CustomMax {
   using Transformer = detail::IdentityFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() {
-    return std::numeric_limits<Ty>::min();
+    return std::numeric_limits<Ty>::lowest();
   }
 
   __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
