@@ -40,6 +40,16 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
+      .End()
+      .AddAttr("contextLength")
+      .IsNumGT(0)
+      .End()
+      .AddAttr("contextStart")
+      .IsNumEQ(0)
+      .End()
+      .AddAttr("contextStride")
+      .IsNumEQ(1)
+      .IsNumGT(0)
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -53,7 +63,6 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(-1)
       .End();
 
   AddOpCompat(OpCompat("relu"))

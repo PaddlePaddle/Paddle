@@ -12,12 +12,6 @@ def {
   outputs {
     name: "Out"
   }
-}
-extra {
-  attrs {
-    name: "paddingTrainable"
-    type: BOOLEAN
-  }
   attrs {
     name: "contextLength"
     type: INT
@@ -29,7 +23,13 @@ extra {
   attrs {
     name: "contextStride"
     type: INT
-   }
+   }  
+}
+extra {
+  attrs {
+    name: "paddingTrainable"
+    type: BOOLEAN
+  }
   attrs {
     name: "op_role"
     type: INT
