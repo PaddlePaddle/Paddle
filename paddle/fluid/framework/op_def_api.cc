@@ -32,6 +32,14 @@
 #include "io/fs.h"
 #include "paddle/fluid/framework/op_def.pb.h"
 
+/*
+// op_def.pbtxt
+namespace {
+ const std::unordered_map<std::string, std::std::string> op_def_map = {...};
+}
+*/
+#include "paddle/fluid/framework/op_def.pbtxt"  //NOLINT
+
 namespace paddle {
 namespace framework {
 
@@ -42,23 +50,27 @@ const proto::OpDef& GetOpDef(const std::string& op_name) {
     std::lock_guard<std::mutex> lk(mtx);
     if (ops_definition.find(op_name) == ops_definition.end()) {
       proto::OpDef op_def;
-      std::string op_path = OP_DEF_FOLDER + op_name + ".pbtxt";
-      int fd = open(op_path.c_str(), O_RDONLY);
-      if (fd == -1) {
-        LOG(WARNING) << op_path << " open failed!";
+      if (op_def_map.find(op_name) == op_def_map.end()) {
+        LOG(WARNING) << op_name << ".pbtxt not exist!";
       } else {
-        ::google::protobuf::io::FileInputStream* input =
-            new ::google::protobuf::io::FileInputStream(fd);
-        if (!::google::protobuf::TextFormat::Parse(input, &op_def)) {
-          LOG(WARNING) << "Failed to parse " << op_path;
+        if (!::google::protobuf::TextFormat::ParseFromString(
+                op_def_map.at(op_name), &op_def)) {
+          LOG(WARNING) << "Failed to parse " << op_name;
         }
-        delete input;
-        close(fd);
       }
-      ops_definition.emplace(std::make_pair(op_name, std::move(op_def)));
+      if (op_def.type() != op_name) {
+        LOG(WARNING) << op_name << ".pbtxt has error type :" << op_def.type();
+        ops_definition.emplace(std::make_pair(op_name, proto::OpDef()));
+      } else {
+        ops_definition.emplace(std::make_pair(op_name, std::move(op_def)));
+      }
     }
   }
   return ops_definition.at(op_name);
+}
+
+bool HasOpDef(const std::string& op_name) {
+  return op_def_map.find(op_name) != op_def_map.end();
 }
 }  // namespace framework
 }  // namespace paddle
