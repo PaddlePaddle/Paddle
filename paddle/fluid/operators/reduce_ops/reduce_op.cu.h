@@ -34,8 +34,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 
-#define REDUCE_SPLIT_BOUNDARY \
-  512  // Reduce split or not, Whether to use ReduceHigherDim
+// Reduce split or not, Whether to use ReduceHigherDim
+#define REDUCE_SPLIT_BOUNDARY 512  
 
 namespace paddle {
 namespace operators {
