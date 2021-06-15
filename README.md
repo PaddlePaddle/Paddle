@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
 <img align="center" src="doc/imgs/logo.png", width=1600>
 <p>
     
@@ -50,10 +50,9 @@ Now our developers can acquire Tesla V100 online computing resources for free. I
      [Click here to learn more](https://github.com/PaddlePaddle/Fleet)
 
 
-- **Accelerated High-Performance Inference over Ubiquitous Deployments**
+- **High-Performance Inference for Multi Terminal and Multi Platform Deployments**
 
-    PaddlePaddle is not only compatible with other open-source frameworks for models training, but also works well on the ubiquitous developments, varying from platforms to devices. More specifically, PaddlePaddle accelerates the inference procedure with the fastest speed-up. Note that, a recent breakthrough of inference speed has been made by PaddlePaddle on Huawei's Kirin NPU, through the hardware/software co-optimization.
-     [Click here to learn more](https://github.com/PaddlePaddle/Paddle-Lite)
+    PaddlePaddle is not only compatible with other open-source frameworks for models training, but also works well on the ubiquitous developments, varying from platforms to devices.Native inference library for high performance server and cloud inference[Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html). A service-oriented reasoning framework suitable for high-level functions such as automatic service and model management[Paddle Serving](https://github.com/PaddlePaddle/Serving).Lightweight inference engine for mobile terminal and Internet of things[Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite).Front end inference engine for browser inference and applet[Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs).More specifically, PaddlePaddle accelerates the inference procedure with the fastest speed-up. Note that, a recent breakthrough of inference speed has been made by PaddlePaddle on Huawei's Kirin NPU, through the hardware/software co-optimization.
      
      
 - **Industry-Oriented Models and Libraries with Open Source Repositories**
