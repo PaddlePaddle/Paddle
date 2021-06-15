@@ -134,7 +134,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                 )
         elif isinstance(data, paddle.Tensor):
             data = data._copy_to(place, False)
-            ata = _handle_dtype(data, dtype)
+            data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
