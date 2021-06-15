@@ -18,8 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/kron_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -185,9 +184,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::KronKernel<paddle::platform::CPUDeviceContext, int>,
     ops::KronKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::KronKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex64>,
+                    paddle::platform::complex<float>>,
     ops::KronKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex128>);
+                    paddle::platform::complex<double>>);
 
 REGISTER_OPERATOR(kron_grad, ops::KronGradOp);
 REGISTER_OP_CPU_KERNEL(
@@ -198,6 +197,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex64>,
+                        paddle::platform::complex<float>>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex128>);
+                        paddle::platform::complex<double>>);

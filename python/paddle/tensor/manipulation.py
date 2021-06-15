@@ -80,7 +80,7 @@ def concat(x, axis=0, name=None):
 
     Args:
         x(list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
-            float32, float64, int32, int64. All the Tensors in ``x`` must have same data type.
+            float32, float64, int32, int64, uint8. All the Tensors in ``x`` must have same data type.
         axis(int|Tensor, optional): Specify the axis to operate on the input Tensors.
             It's a scalar with data type int or a Tensor with shape [1] and data type int32 
             or int64. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
@@ -862,34 +862,39 @@ def gather(x, index, axis=None, name=None):
     """
     if axis is None:
         axis = 0
-    axis_tensor = axis
-    if not isinstance(axis, Variable) and axis == 0:
-        return paddle.fluid.layers.gather(input=x, index=index, overwrite=False)
-    if not isinstance(axis, Variable):
-        with device_guard("cpu"):
-            axis_tensor = fill_constant(
-                shape=[1], dtype='int64', value=axis, force_cpu=True)
+
     if in_dygraph_mode():
-        return core.ops.gather(x, index, axis_tensor)
+        axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
+        return core.ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
         'gather')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
+
     if isinstance(axis, Variable):
         check_variable_and_dtype(axis, 'axis', ['int32', 'int64'], 'gather')
-    else:
-        check_type(axis, 'axis', (int), 'gather')
 
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype('x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="gather",
-        inputs={"X": x,
-                "Index": index,
-                "Axis": axis_tensor},
-        outputs={"Out": out})
+    if not isinstance(axis, Variable):
+        helper.append_op(
+            type="gather",
+            inputs={"X": x,
+                    "Index": index},
+            attrs={'axis': axis,
+                   'overwrite': False},
+            outputs={"Out": out})
+    else:
+        helper.append_op(
+            type="gather",
+            inputs={"X": x,
+                    "Index": index,
+                    "Axis": axis},
+            attrs={"overwrite": False},
+            outputs={"Out": out})
+
     return out
 
 

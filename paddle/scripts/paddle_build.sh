@@ -426,6 +426,13 @@ EOF
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
+    elif [ "$1" == "paddle_inference_c" ]; then
+        cd ${PADDLE_ROOT}/build
+        cp -r paddle_inference_c_install_dir paddle_inference_c
+        tar -czf paddle_inference_c.tgz paddle_inference_c
+        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_c.tgz |awk '{print $1}')
+        echo "Paddle_Inference Capi Size: $buildSize"
+        echo "ipipe_log_param_Paddle_Inference_capi_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -1234,21 +1241,21 @@ set +x
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         exclusive_tests_two_parallel="$exclusive_tests_two_parallel|^$testcase$"
                     else
                         exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         multiple_card_tests_two_parallel="$multiple_card_tests_two_parallel|^$testcase$"
                     else
                         multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
                 else
-                    if [[ $(echo $cpu_parallel_job | grep -o $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
-                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_two_parallel="$single_card_tests_two_parallel|^$testcase$"
                     else
                         single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
@@ -1578,7 +1585,6 @@ set -x
 
     #analy h/cu to Map file
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
-
     #generate ut map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
     wait;
@@ -1942,6 +1948,7 @@ EOF
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     build_size "paddle_inference"
+    build_size "paddle_inference_c"
 }
 
 function tar_fluid_lib() {
@@ -2002,12 +2009,16 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
-
-function example() {
+# origin name: example
+function exec_samplecode_test() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
     cd ${PADDLE_ROOT}/tools
-    python sampcd_processor.py cpu;example_error=$?
+    if [ "$1" = "cpu" ] ; then
+        python sampcd_processor.py cpu; example_error=$?
+    elif [ "$1" = "gpu" ] ; then
+        python sampcd_processor.py --threads=16 --full-test gpu; example_error=$?
+    fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
       exit 5
@@ -2075,6 +2086,34 @@ function summary_check_problems() {
     set -x
 }
 
+
+function reuse_so_cache() {
+    get_html="https://api.github.com/repos/PaddlePaddle/Paddle"
+    curl -X GET ${get_html}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    merge_commit=`grep "sha" tmp.txt| awk -F \" 'NR==1{print $(NF-1)}'| sed 's# ##g'`
+    curl -X GET ${get_html}/commits/${merge_commit} -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    merge_pr=`grep -oP -m 1 '(#[0-9]*)' tmp.txt| sed 's/#//g'`
+    curl -X GET ${get_html}/pulls/${merge_pr}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    pr_commit=`grep "sha" tmp.txt |tail -3|head -1|awk -F : '{print $NF}'|sed 's#"##g'|sed 's#,##g'| sed 's# ##g'`
+    set +e
+    wget -q https://xly-devops.bj.bcebos.com/PR/Paddle/${merge_pr}/${pr_commit}/workspace/Paddle/build/proto_so.tar.gz
+    down_proto_so=`echo $?`
+    set -e
+    if [ "${down_proto_so}" -eq 0 ];then
+        export CI_SKIP_CPP_TEST=ON
+        cd build && mv ../proto_so.tar.gz .
+        tar --use-compress-program=pigz -xpf proto_so.tar.gz
+        cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
+        cd python
+        touch stub.cc
+        alias cp=cp
+        cp -r ../../python/paddle .
+        python setup.py bdist_wheel
+    else
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    fi
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2092,7 +2131,7 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
-        example_info=$(example)
+        example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         assert_api_spec_approvals
@@ -2151,6 +2190,17 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        parallel_test
+        check_coverage
+        check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
+      cpu_cicheck_coverage)
+        check_approvals_of_unittest 1
+        check_diff_file_for_coverage
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        enable_unused_var_check
+        ;;
+      gpu_cicheck_coverage)
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
@@ -2218,6 +2268,10 @@ function main() {
         parallel_test
         check_coverage
         ;;
+      reuse_so_cicheck_py35)
+        reuse_so_cache
+        parallel_test
+        ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
@@ -2236,7 +2290,11 @@ function main() {
         build_document_preview
         ;;
       api_example)
-        example
+        example_info=$(exec_samplecode_test cpu)
+        example_code=$?
+        check_style_code=0
+        check_style_info=
+        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         ;;
       test_op_benchmark)
         test_op_benchmark

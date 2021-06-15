@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -71,6 +71,70 @@ class TestActivation(OpTest):
 
     def init_kernel_type(self):
         pass
+
+
+class TestExpm1(TestActivation):
+    def setUp(self):
+        self.op_type = "expm1"
+        self.init_dtype()
+
+        np.random.seed(2049)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.expm1(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestExpm1API(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float64'
+        self.shape = [11, 17]
+
+    def setUp(self):
+        self.init_dtype()
+        self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        self.out_ref = np.expm1(self.x)
+
+        self.place = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def test_static_api(self):
+        paddle.enable_static()
+
+        def run(place):
+            with paddle.static.program_guard(paddle.static.Program()):
+                X = paddle.fluid.data('X', self.shape, dtype=self.dtype)
+                out = paddle.expm1(X)
+                exe = paddle.static.Executor(place)
+                res = exe.run(feed={'X': self.x})
+            for r in res:
+                self.assertEqual(np.allclose(self.out_ref, r), True)
+
+        for place in self.place:
+            run(place)
+
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            X = paddle.to_tensor(self.x)
+            out = paddle.expm1(X)
+            self.assertEqual(np.allclose(self.out_ref, out.numpy()), True)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            X = paddle.fluid.data('X', self.shape, dtype='int32')
+            self.assertRaises(TypeError, paddle.expm1, X)
+        # The input dtype must be float16, float32, float64.
 
 
 class TestParameter(object):
@@ -1103,12 +1167,19 @@ class TestRelu(TestActivation):
         self.init_dtype()
 
         np.random.seed(1024)
-        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        # The same reason with TestAbs
-        x[np.abs(x) < 0.005] = 0.02
-        out = np.maximum(x, 0)
+        if self.dtype == np.uint16:
+            x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+            # The same reason with TestAbs
+            x[np.abs(x) < 0.005] = 0.02
+            out = convert_float_to_uint16(np.maximum(x, 0))
+            self.inputs = {'X': convert_float_to_uint16(x)}
+        else:
+            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            # The same reason with TestAbs
+            x[np.abs(x) < 0.005] = 0.02
+            out = np.maximum(x, 0)
+            self.inputs = {'X': x}
 
-        self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -2694,6 +2765,7 @@ def create_test_act_fp16_class(parent,
 
 
 create_test_act_fp16_class(TestActivation)
+create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid)
 create_test_act_fp16_class(TestSilu)
 create_test_act_fp16_class(TestLogSigmoid)
@@ -2738,6 +2810,33 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish, grad_atol=0.85)
 create_test_act_fp16_class(TestHardSwish)
+
+
+def create_test_act_bf16_class(parent,
+                               atol=1e-2,
+                               grad_check=True,
+                               grad_atol=0.80):
+    @unittest.skipIf(not paddle.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActBF16(parent):
+        def init_dtype(self):
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=atol)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=grad_atol)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "bf16")
+    TestActBF16.__name__ = cls_name
+    globals()[cls_name] = TestActBF16
+
+
+create_test_act_bf16_class(TestRelu)
 
 if __name__ == "__main__":
     unittest.main()

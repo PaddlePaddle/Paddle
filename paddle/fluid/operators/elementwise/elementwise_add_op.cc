@@ -20,8 +20,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-struct complex128;
-struct complex64;
+template <typename T>
+struct complex;
 }  // namespace platform
 }  // namespace paddle
 
@@ -66,15 +66,6 @@ struct SameDimsElemwiseAdd<
     auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
     eigen_z.device(place) = eigen_x + eigen_y;
-  }
-};
-
-template <typename T>
-struct BroadcastElemwiseAdd<platform::CPUDeviceContext, T> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    default_elementwise_add<platform::CPUDeviceContext, T>(ctx, x, y, z);
   }
 };
 
@@ -144,9 +135,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex64>,
+                              paddle::platform::complex<float>>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex128>);
+                              paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -154,9 +145,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex64>,
+                                  paddle::platform::complex<float>>,
     ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex128>);
+                                  paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_add_grad_grad,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
@@ -168,9 +159,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int64_t>,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex64>,
+                                        paddle::platform::complex<float>>,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex128>);
+                                        paddle::platform::complex<double>>);
 
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.
@@ -187,9 +178,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex64>,
+                              paddle::platform::complex<float>>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex128>);
+                              paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_add)
     .AddCheckpoint(

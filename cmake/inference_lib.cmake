@@ -146,12 +146,12 @@ copy(inference_lib_dist
         SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
         DSTS ${dst_dir})
 
-# Only GPU need cudaErrorMessage.pb
+# GPU must copy externalErrorMsg.pb
 IF(WITH_GPU)
-        set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/cudaerror/data")
-        copy(inference_lib_dist
-                SRCS ${cudaerror_INCLUDE_DIR}
-                DSTS ${dst_dir})
+    set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/externalError/data")
+    copy(inference_lib_dist
+            SRCS ${externalError_INCLUDE_DIR}
+            DSTS ${dst_dir})
 ENDIF()
 
 # CMakeCache Info
@@ -193,10 +193,7 @@ copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include/*
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex64.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
-copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex128.h
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
@@ -259,7 +256,7 @@ copy(fluid_lib_dist
 set(module "platform")
 set(platform_lib_deps profiler_proto error_codes_proto)
 if(WITH_GPU)
-  set(platform_lib_deps ${platform_lib_deps} cuda_error_proto)
+  set(platform_lib_deps ${platform_lib_deps} external_error_proto)
 endif(WITH_GPU)
 
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
@@ -323,11 +320,17 @@ function(version version_file)
             "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
-            "WITH_GPU: ${WITH_GPU}\n")
+            "WITH_GPU: ${WITH_GPU}\n"
+            "WITH_ROCM: ${WITH_ROCM}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
                 "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
+    endif()
+    if(WITH_ROCM)
+        file(APPEND ${version_file}
+                "HIP version: ${HIP_VERSION}\n"
+                "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)

@@ -44,6 +44,9 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
   }
 }
 
+void add_graph_node(std::vector<uint64_t> node_ids,
+                    std::vector<bool> weight_list) {}
+void remove_graph_node(std::vector<uint64_t> node_ids) {}
 void GraphPyService::set_up(std::string ips_str, int shard_num,
                             std::vector<std::string> node_types,
                             std::vector<std::string> edge_types) {
@@ -243,6 +246,34 @@ void GraphPyClient::load_edge_file(std::string name, std::string filepath,
     uint32_t table_id = this->table_id_map[name];
     auto status =
         get_ps_client()->load(table_id, std::string(filepath), params);
+    status.wait();
+  }
+}
+
+void GraphPyClient::clear_nodes(std::string name) {
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status = get_ps_client()->clear_nodes(table_id);
+    status.wait();
+  }
+}
+
+void GraphPyClient::add_graph_node(std::string name,
+                                   std::vector<uint64_t>& node_ids,
+                                   std::vector<bool>& weight_list) {
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status =
+        get_ps_client()->add_graph_node(table_id, node_ids, weight_list);
+    status.wait();
+  }
+}
+
+void GraphPyClient::remove_graph_node(std::string name,
+                                      std::vector<uint64_t>& node_ids) {
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status = get_ps_client()->remove_graph_node(table_id, node_ids);
     status.wait();
   }
 }
