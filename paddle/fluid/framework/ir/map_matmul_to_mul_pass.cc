@@ -183,7 +183,6 @@ Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")
-      .IsNumGE(0.0f)
       .End()
       .AddAttr("transpose_X")
       .End()
