@@ -161,7 +161,7 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 
 Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
   AddOpCompat(OpCompat("reshape2"))
-      .addInput("X")
+      .AddInput("X")
       .IsTensor()
       .End()
       .AddInput("Y")
