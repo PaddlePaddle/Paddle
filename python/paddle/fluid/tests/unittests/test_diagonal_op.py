@@ -39,7 +39,7 @@ class TestDiagonalOp(OpTest):
         self.check_grad(['Input'], 'Out')
 
     def init_config(self):
-        self.case = np.random.randn(20, 6, 3, 5, 4).astype('float64')
+        self.case = np.random.randn(20, 6, 3).astype('float64')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
         self.target = np.diagonal(
@@ -51,7 +51,7 @@ class TestDiagonalOp(OpTest):
 
 class TestDiagonalOpCase1(TestDiagonalOp):
     def init_config(self):
-        self.case = np.random.randn(8, 20, 6, 4).astype('float32')
+        self.case = np.random.randn(4, 2, 4, 4).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -2, 'axis1': 3, 'axis2': 0}
         self.target = np.diagonal(
@@ -80,6 +80,37 @@ class TestDiagonalOpCase2(TestDiagonalOp):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out])
+
+
+class TestDiagonalAPI(unittest.TestCase):
+    def setUp(self):
+        self.shape = [10, 3, 4]
+        self.x = np.random.random((10, 3, 4)).astype(np.float32)
+        self.place = paddle.CPUPlace()
+
+    def test_api_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.fluid.data('X', self.shape)
+            out = paddle.diagonal(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x}, fetch_list=[out])
+        out_ref = np.diagonal(self.x)
+        for out in res:
+            self.assertEqual(np.allclose(out, out_ref, rtol=1e-08), True)
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+        x_tensor = paddle.to_tensor(self.x)
+        out = paddle.diagonal(x_tensor)
+        out_ref = np.diagonal(self.x)
+        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        paddle.enable_static()
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.fluid.data('X', [10, 3, 4], 'bool')
+            self.assertRaises(TypeError, paddle.diagonal, x)
 
 
 if __name__ == '__main__':
