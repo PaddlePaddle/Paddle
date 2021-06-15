@@ -154,6 +154,7 @@ from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import exp  # noqa: F401
+from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
 from .tensor.math import increment  # noqa: F401
 from .tensor.math import log  # noqa: F401
@@ -204,6 +205,7 @@ from .tensor.math import isnan  # noqa: F401
 from .tensor.math import prod  # noqa: F401
 from .tensor.math import broadcast_shape  # noqa: F401
 from .tensor.math import conj  # noqa: F401
+from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
 
@@ -407,6 +409,7 @@ __all__ = [  # noqa
            'acos',
            'logical_xor',
            'exp',
+           'expm1',
            'bernoulli',
            'summary',
            'sinh',
@@ -487,5 +490,6 @@ __all__ = [  # noqa
            'log10',
            'concat',
            'check_shape',
+           'digamma',
            'standard_normal'
 ]

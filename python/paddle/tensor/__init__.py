@@ -102,6 +102,7 @@ from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
+from .math import expm1  # noqa: F401
 from .math import floor  # noqa: F401
 from .math import floor_  # noqa: F401
 from .math import increment  # noqa: F401
@@ -161,6 +162,7 @@ from .math import all  # noqa: F401
 from .math import any  # noqa: F401
 from .math import broadcast_shape  # noqa: F401
 from .math import conj  # noqa: F401
+from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 
@@ -346,5 +348,6 @@ tensor_method_func  = [ #noqa
            'rank',
            'shape',
            'real',
-           'imag'
+           'imag',
+           'digamma'
 ]

@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,25 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/fluid/operators/digamma_op.h"
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+namespace ops = paddle::operators;
 
-namespace paddle {
-namespace framework {
-namespace ir {
+REGISTER_OP_CUDA_KERNEL(
+    digamma, ops::DigammaKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::DigammaKernel<paddle::platform::CUDADeviceContext, double>);
 
-class Graph;
-
-class FCElementwiseLayerNormFusePass : public FusePassBase {
- public:
-  FCElementwiseLayerNormFusePass();
-  virtual ~FCElementwiseLayerNormFusePass() {}
-
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+REGISTER_OP_CUDA_KERNEL(
+    digamma_grad,
+    ops::DigammaGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::DigammaGradKernel<paddle::platform::CUDADeviceContext, double>);
