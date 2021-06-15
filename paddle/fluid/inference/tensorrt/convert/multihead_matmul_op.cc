@@ -193,7 +193,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         plugin_inputs.emplace_back(mask_tensor);
         if (engine_->Has("ernie_pos_name")) {
           plugin_inputs.emplace_back(
-              engine_->Get<std::string>("ernie_pos_name"));
+              engine_->GetITensor(engine_->Get<std::string>("ernie_pos_name")));
         } else {
           plugin_inputs.emplace_back(engine_->GetITensor(
               engine_->network()
