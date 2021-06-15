@@ -155,5 +155,31 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
             self.assertTrue(np.allclose(out, output))
 
 
+class TestLambOpV2Group(TestLambOpV2):
+    def test_lamb_op(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.Lamb(
+            learning_rate=0.01,
+            parameters=[{
+                'params': linear_1.parameters()
+            }, {
+                'params': linear_2.parameters(),
+                'lamb_weight_decay': 0.001,
+                'beta1': 0.9,
+                'beta2': 0.99
+            }],
+            lamb_weight_decay=0.01)
+        out = linear_1(a)
+        out = linear_2(out)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+
 if __name__ == "__main__":
     unittest.main()

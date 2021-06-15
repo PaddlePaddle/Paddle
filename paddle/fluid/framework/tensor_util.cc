@@ -22,8 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -1137,9 +1136,9 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex64>(
+std::ostream& print_tensor<paddle::platform::complex<float>>(
     std::ostream& os, const framework::Tensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex64>();
+  auto inspect = tensor.data<paddle::platform::complex<float>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";
@@ -1155,9 +1154,9 @@ std::ostream& print_tensor<paddle::platform::complex64>(
 }
 
 template <>
-std::ostream& print_tensor<paddle::platform::complex128>(
+std::ostream& print_tensor<paddle::platform::complex<double>>(
     std::ostream& os, const framework::Tensor& tensor) {
-  auto inspect = tensor.data<paddle::platform::complex128>();
+  auto inspect = tensor.data<paddle::platform::complex<double>>();
   auto element_num = tensor.numel();
 
   os << "  - data: [";

@@ -24,7 +24,7 @@ SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 # in case of low internet speed  
 #set(WARPCTC_REPOSITORY  https://gitee.com/tianjianhe/warp-ctc.git)
 set(WARPCTC_REPOSITORY  ${GIT_URL}/baidu-research/warp-ctc.git)
-set(WARPCTC_TAG         c690fc5755abbdbdc98ef78d51ec10a6748a8cd1)
+set(WARPCTC_TAG         37ece0e1bbe8a0019a63ac7e6462c36591c66a5b)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -100,9 +100,9 @@ else()
         "${WARPCTC_DOWNLOAD_CMD}"
         PREFIX          ${WARPCTC_PREFIX_DIR}
         SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
-        #UPDATE_COMMAND  ""
+        UPDATE_COMMAND  ""
         PATCH_COMMAND   ""
-        BUILD_ALWAYS    1
+        #BUILD_ALWAYS    1
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_C_FLAGS=${WARPCTC_C_FLAGS}

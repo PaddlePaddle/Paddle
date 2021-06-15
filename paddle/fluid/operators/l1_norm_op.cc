@@ -91,3 +91,9 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     l1_norm_grad,
     ops::L1NormGradKernel<paddle::platform::CPUDeviceContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(
+    l1_norm, ops::L1NormKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    l1_norm_grad,
+    ops::L1NormGradKernel<paddle::platform::CUDADeviceContext, float>);

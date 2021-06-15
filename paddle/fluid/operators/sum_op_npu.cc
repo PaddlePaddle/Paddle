@@ -43,12 +43,12 @@ class SumNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Add", {*x[0], *x[1]}, {*out}, {});
+    const auto& runner = NpuOpRunner("Add", {*x[0], *x[1]}, {*out}, {});
 
     runner.Run(stream);
     for (int i = 2; i < n; i++) {
-      runner = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
-      runner.Run(stream);
+      const auto& runner1 = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
+      runner1.Run(stream);
     }
   }
 };
