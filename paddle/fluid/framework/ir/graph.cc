@@ -278,7 +278,7 @@ std::shared_ptr<Graph> Graph::Clone() {
   PADDLE_ENFORCE_EQ(
       this->IsMainGraph(), true,
       platform::errors::InvalidArgument(
-          "This graph is a subgraph, and can't be cloned individually"));
+          "This graph is a sub_graph, and can't be cloned individually"));
   if (FLAGS_convert_all_blocks) {
     auto cloned_graph = std::make_shared<Graph>(this->program_);
     cloned_graph->ReleaseSubGraphs();

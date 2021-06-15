@@ -82,7 +82,7 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
-  Graph(const BlockDesc &block, const Graph *parent);
+  Graph(const BlockDesc &block, const Graph *main_graph);
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
