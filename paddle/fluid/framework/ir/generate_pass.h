@@ -25,7 +25,7 @@ namespace ir {
 class GeneratePass : public Pass {
  public:
   // from serialized string
-  // GeneratePass(std::string pb_str);
+  explicit GeneratePass(const std::string& binary_str);
   // from PassDesc/MultiPassDesc
   explicit GeneratePass(const proto::PassDesc& pass_desc);
   explicit GeneratePass(const proto::MultiPassDesc& multi_pass_desc)
@@ -51,6 +51,51 @@ class GeneratePass : public Pass {
 
   proto::MultiPassDesc multi_pass_desc_;
 };
+
+#define PATTERN_OP(op) pattern_##op
+#define PATTERN_OP_VAR(op, var) pattern_##op##_##var
+
+#define ADD_PATTERN_OP(desc, op)                \
+  auto PATTERN_OP(op) = desc->add_pattern_op(); \
+  PATTERN_OP(op)->set_type(#op)
+
+#define PATTERN_OP_ADD_INPUT(op, var)                         \
+  auto PATTERN_OP_VAR(op, var) = PATTERN_OP(op)->add_input(); \
+  PATTERN_OP_VAR(op, var)->set_name(#var)
+
+#define PATTERN_OP_ADD_INPUT_FROM(op, var, from_op, from_var) \
+  PATTERN_OP_ADD_INPUT(op, var);                              \
+  PATTERN_OP_VAR(op, var)->set_from_op_type(#from_op);        \
+  PATTERN_OP_VAR(op, var)->set_from_op_var(#from_var)
+
+#define PATTERN_OP_ADD_OUTPUT(op, var)                         \
+  auto PATTERN_OP_VAR(op, var) = PATTERN_OP(op)->add_output(); \
+  PATTERN_OP_VAR(op, var)->set_name(#var)
+
+#define ALGEBRA_OP(op) algebra_##op
+#define ALGEBRA_OP_VAR(op, var) algebra_##op##_##var
+
+#define ADD_ALGEBRA_OP(desc, op)                \
+  auto ALGEBRA_OP(op) = desc->add_algebra_op(); \
+  ALGEBRA_OP(op)->set_type(#op)
+
+#define ALGEBRA_OP_ADD_INPUT(op, var)                         \
+  auto ALGEBRA_OP_VAR(op, var) = ALGEBRA_OP(op)->add_input(); \
+  ALGEBRA_OP_VAR(op, var)->set_name(#var)
+
+#define ALGEBRA_OP_ADD_INPUT_FROM(op, var, from_op, from_var) \
+  ALGEBRA_OP_ADD_INPUT(op, var);                              \
+  ALGEBRA_OP_VAR(op, var)->set_from_op_type(#from_op);        \
+  ALGEBRA_OP_VAR(op, var)->set_from_op_var(#from_var)
+
+#define ALGEBRA_OP_ADD_OUTPUT(op, var)                         \
+  auto ALGEBRA_OP_VAR(op, var) = ALGEBRA_OP(op)->add_output(); \
+  ALGEBRA_OP_VAR(op, var)->set_name(#var)
+
+#define ALGEBRA_OP_ADD_OUTPUT_FROM(op, var, from_op, from_var) \
+  ALGEBRA_OP_ADD_OUTPUT(op, var);                              \
+  ALGEBRA_OP_VAR(op, var)->set_from_op_type(#from_op);         \
+  ALGEBRA_OP_VAR(op, var)->set_from_op_var(#from_var)
 
 }  // namespace ir
 }  // namespace framework

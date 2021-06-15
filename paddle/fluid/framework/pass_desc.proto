@@ -14,7 +14,6 @@ limitations under the License. */
 
 syntax = "proto2";
 
-import "framework.proto";
 package paddle.framework.proto;
 
 // Describes one subsitute subgraph.
@@ -36,11 +35,13 @@ message PassDesc {
     repeated Var output = 3;
     repeated Attr attr = 4;
   }
-  optional string name = 1;
   // attr
   repeated Op pattern_op = 2;
   repeated Op algebra_op = 3;
 }
 
 // A series of PassDesc.
-message MultiPassDesc { repeated PassDesc pass_desc = 1; }
+message MultiPassDesc {
+  required string name = 1;
+  repeated PassDesc pass_desc = 2;
+}

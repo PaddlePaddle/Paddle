@@ -21,37 +21,23 @@ namespace framework {
 namespace ir {
 
 void init_test_pass_desc(proto::PassDesc* pass_desc) {
-  pass_desc->set_name("test_generate_pass");
   // pattern
-  proto::PassDesc::Op* mul = pass_desc->add_pattern_op();
-  mul->set_type("mul");
-  mul->add_input()->set_name("X");
-  mul->add_input()->set_name("Y");
-  mul->mutable_input(1)->set_persistable(true);
-  mul->add_output()->set_name("out");
-  proto::PassDesc::Op* elementwise_add = pass_desc->add_pattern_op();
-  elementwise_add->set_type("elementwise_add");
-  elementwise_add->add_input()->set_name("X");
-  elementwise_add->mutable_input(0)->set_from_op_type("mul");
-  elementwise_add->mutable_input(0)->set_from_op_var("out");
-  elementwise_add->add_input()->set_name("bias");
-  elementwise_add->mutable_input(1)->set_persistable(true);
-  elementwise_add->add_output()->set_name("out");
+  ADD_PATTERN_OP(pass_desc, mul);
+  PATTERN_OP_ADD_INPUT(mul, X);
+  PATTERN_OP_ADD_INPUT(mul, Y);
+  PATTERN_OP_VAR(mul, Y)->set_persistable(true);
+  PATTERN_OP_ADD_OUTPUT(mul, out);
+  ADD_PATTERN_OP(pass_desc, elementwise_add);
+  PATTERN_OP_ADD_INPUT_FROM(elementwise_add, X, mul, out);
+  PATTERN_OP_ADD_INPUT(elementwise_add, bias);
+  PATTERN_OP_VAR(elementwise_add, bias)->set_persistable(true);
+  PATTERN_OP_ADD_OUTPUT(elementwise_add, out);
   // algebra
-  proto::PassDesc::Op* fc = pass_desc->add_algebra_op();
-  fc->set_type("fc");
-  fc->add_input()->set_name("Input");
-  fc->mutable_input(0)->set_from_op_type("mul");
-  fc->mutable_input(0)->set_from_op_var("X");
-  fc->add_input()->set_name("W");
-  fc->mutable_input(1)->set_from_op_type("mul");
-  fc->mutable_input(1)->set_from_op_var("Y");
-  fc->add_input()->set_name("Bias");
-  fc->mutable_input(2)->set_from_op_type("elementwise_add");
-  fc->mutable_input(2)->set_from_op_var("bias");
-  fc->add_output()->set_name("Out");
-  fc->mutable_output(0)->set_from_op_type("elementwise_add");
-  fc->mutable_output(0)->set_from_op_var("out");
+  ADD_ALGEBRA_OP(pass_desc, fc);
+  ALGEBRA_OP_ADD_INPUT_FROM(fc, Input, mul, X);
+  ALGEBRA_OP_ADD_INPUT_FROM(fc, W, mul, Y);
+  ALGEBRA_OP_ADD_INPUT_FROM(fc, Bias, elementwise_add, bias);
+  ALGEBRA_OP_ADD_OUTPUT_FROM(fc, Out, elementwise_add, out);
 }
 
 void AddVarToScope(Scope* param_scope, const std::string& name,
@@ -70,6 +56,7 @@ Scope* CreateParamScope() {
 
 TEST(GeneatePass, basic) {
   proto::MultiPassDesc multi_pass_desc;
+  multi_pass_desc.set_name("test_generate_pass");
   proto::PassDesc* pass_desc = multi_pass_desc.add_pass_desc();
   init_test_pass_desc(pass_desc);
 
