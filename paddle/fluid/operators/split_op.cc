@@ -73,18 +73,17 @@ class SplitOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
-  }
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
-      return expected_kernel_type;
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -136,6 +135,9 @@ Example:
                  "(int, default 0) "
                  "The axis which the input will be split on.")
         .SetDefault(0);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
   }
 };
 

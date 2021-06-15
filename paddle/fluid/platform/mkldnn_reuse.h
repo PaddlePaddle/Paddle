@@ -1032,6 +1032,42 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
     return mem_p;
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
+      framework::Tensor* output, const std::vector<int64_t>& dims, const int memory_number,
+      const MKLDNNMemoryFormat& fmt, platform::Place place) {
+    auto local_key = key_ + "@user_dst_mem" + std::to_string(memory_number) + "_p";
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
+      auto dst_data =
+          output->mutable_data(place, vtype_dst_, dst_md.get_size());
+
+      mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      // Even if memory object exists , we may be using it for diffrent tensor
+      auto dst_data =
+          output->mutable_data(place, vtype_dst_, mem_p->get_desc().get_size());
+      mem_p->set_data_handle(dst_data);
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::reorder> AcquireReorder(
+      std::shared_ptr<mkldnn::memory> dst_memory_p,
+      std::shared_ptr<mkldnn::memory> src_memory_p, int reorder_number) {
+    auto prim_key = key_ + "@reorder" + std::to_string(reorder_number) + "_p";
+    auto reorder_p =
+        std::static_pointer_cast<mkldnn::reorder>(dev_ctx_.GetBlob(prim_key));
+    if (reorder_p == nullptr) {
+      reorder_p =
+          std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
+      dev_ctx_.SetBlob(prim_key, reorder_p);
+    }
+    return reorder_p;
+  }
+
   std::shared_ptr<mkldnn::reorder> AcquireReorder(
       std::shared_ptr<mkldnn::memory> dst_memory_p,
       std::shared_ptr<mkldnn::memory> src_memory_p) {
