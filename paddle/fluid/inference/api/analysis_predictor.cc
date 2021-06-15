@@ -303,7 +303,9 @@ static void DisablePrepareDataOpt(
                             disable_opt || pre_disable_opt);
     }
     // disable prepare data if unfriendly op is found
-    disable_opt = IsPrepareDataOptTargetOp(op);
+    if (!disable_opt) {
+      disable_opt = IsPrepareDataOptTargetOp(op);
+    }
   }
 }
 
