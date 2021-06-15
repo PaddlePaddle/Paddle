@@ -120,6 +120,19 @@ void validate_cache_onednn(int cache_capacity = 1) {
   file.close();
   infer_file.close();
 
+  // Pick first output tensor from model
+  // as internally reorders may be called
+  // so it will impact cache size
+  auto output_names = predictor->GetOutputNames();
+  auto output_t = predictor->GetOutputTensor(output_names[0]);
+  std::vector<int> output_shape = output_t->shape();
+  size_t out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
+                                   std::multiplies<int>());
+  std::vector<float> out_data;
+  out_data.resize(out_num);
+  output_t->CopyToCpu(out_data.data());
+
+  // Release predictor (relevant cache should be emptied)
   predictor.reset(nullptr);
   cache_filling.push_back(GetNumCachedObjects());
 

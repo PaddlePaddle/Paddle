@@ -45,6 +45,7 @@ from ..fluid.layers import sinh    # noqa: F401
 from ..fluid.layers import cosh    # noqa: F401
 from ..fluid.layers import exp    # noqa: F401
 from ..fluid.layers import exp_    # noqa: F401
+from ..fluid.layers import expm1    # noqa: F401
 from ..fluid.layers import floor    # noqa: F401
 from ..fluid.layers import floor_    # noqa: F401
 from ..fluid.layers import log    # noqa: F401
@@ -2280,6 +2281,42 @@ def conj(x, name=None):
             dtype=helper.input_dtype())
 
     helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
+    return out
+
+def digamma(x, name=None):
+    r"""
+    Calculates the digamma of the given input tensor, element-wise.
+
+    .. math::
+        Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Tensor, the digamma of the input Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
+            res = paddle.digamma(data)
+            print(res)
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[-0.57721591,  0.03648996],
+            #        [ nan       ,  5.32286835]])
+    """
+
+    if in_dygraph_mode():
+        return core.ops.digamma(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
+    helper = LayerHelper('digamma', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
     return out
 
 def neg(x, name=None):

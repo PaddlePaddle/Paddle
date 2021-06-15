@@ -27,7 +27,7 @@ from paddle.fluid.tests.unittests.test_fusion_lstm_op import fc, ACTIVATION
                  "place does not support BF16 evaluation")
 class TestFusionGRUBF16MKLDNNOp(OpTest):
     def set_confs(self):
-        self.mkldnn_data_type = False
+        pass
 
     def test_check_output(self):
         for use_seq in {True, False}:
@@ -48,6 +48,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         self.act_gate = 'sigmoid'
         self.origin_mode = False
         self.use_mkldnn = True
+        self.mkldnn_data_type = "bfloat16"
         self.force_fp32_output = False
         self.weights_dtype = 'fp32'
         self.set_confs()
@@ -113,7 +114,8 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
             'force_fp32_output': self.force_fp32_output,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
+            'mkldnn_data_type': self.mkldnn_data_type,
         }
 
 
