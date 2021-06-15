@@ -22,9 +22,9 @@ from paddle.autograd import PyLayer
 import warnings, time, sys
 
 
-def add_warn(msg):
+def add_warn(msg, line):
     time.sleep(0.005)
-    warnings.warn(msg)
+    warnings.warn(msg + str(line))
     time.sleep(0.005)
 
 
