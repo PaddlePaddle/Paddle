@@ -426,6 +426,13 @@ EOF
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
+    elif [ "$1" == "paddle_inference_c" ]; then
+        cd ${PADDLE_ROOT}/build
+        cp -r paddle_inference_c_install_dir paddle_inference_c
+        tar -czf paddle_inference_c.tgz paddle_inference_c
+        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_c.tgz |awk '{print $1}')
+        echo "Paddle_Inference Capi Size: $buildSize"
+        echo "ipipe_log_param_Paddle_Inference_capi_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -1941,6 +1948,7 @@ EOF
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     build_size "paddle_inference"
+    build_size "paddle_inference_c"
 }
 
 function tar_fluid_lib() {
@@ -2001,12 +2009,16 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
-
-function example() {
+# origin name: example
+function exec_samplecode_test() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
     cd ${PADDLE_ROOT}/tools
-    python sampcd_processor.py cpu;example_error=$?
+    if [ "$1" = "cpu" ] ; then
+        python sampcd_processor.py cpu; example_error=$?
+    elif [ "$1" = "gpu" ] ; then
+        python sampcd_processor.py --threads=16 --full-test gpu; example_error=$?
+    fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
       exit 5
@@ -2119,7 +2131,7 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
-        example_info=$(example)
+        example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         assert_api_spec_approvals
@@ -2278,7 +2290,11 @@ function main() {
         build_document_preview
         ;;
       api_example)
-        example
+        example_info=$(exec_samplecode_test cpu)
+        example_code=$?
+        check_style_code=0
+        check_style_info=
+        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         ;;
       test_op_benchmark)
         test_op_benchmark

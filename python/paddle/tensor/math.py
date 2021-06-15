@@ -45,6 +45,7 @@ from ..fluid.layers import sinh    # noqa: F401
 from ..fluid.layers import cosh    # noqa: F401
 from ..fluid.layers import exp    # noqa: F401
 from ..fluid.layers import exp_    # noqa: F401
+from ..fluid.layers import expm1    # noqa: F401
 from ..fluid.layers import floor    # noqa: F401
 from ..fluid.layers import floor_    # noqa: F401
 from ..fluid.layers import log    # noqa: F401
@@ -62,6 +63,7 @@ from ..fluid.layers import erf    # noqa: F401
 from ..fluid.layers import sqrt    # noqa: F401
 from ..fluid.layers import sqrt_    # noqa: F401
 from ..fluid.layers import sin    # noqa: F401
+from ..fluid.layers import lgamma    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
@@ -2280,3 +2282,63 @@ def conj(x, name=None):
 
     helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
     return out
+
+def digamma(x, name=None):
+    r"""
+    Calculates the digamma of the given input tensor, element-wise.
+
+    .. math::
+        Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Tensor, the digamma of the input Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
+            res = paddle.digamma(data)
+            print(res)
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[-0.57721591,  0.03648996],
+            #        [ nan       ,  5.32286835]])
+    """
+
+    if in_dygraph_mode():
+        return core.ops.digamma(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
+    helper = LayerHelper('digamma', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+def neg(x, name=None):
+    """
+    This function computes the negative of the Tensor elementwisely.
+
+    Args:
+        x (Tensor): Input of neg operator, an N-D Tensor, with data type float32, float64, int8, int16, int32, or int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The negative of input Tensor. The shape and data type are the same with input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.neg(x)
+            print(out)
+            # [0.4 0.2 -0.1 -0.3]
+    """
+
+    return layers.scale(x, scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name)
