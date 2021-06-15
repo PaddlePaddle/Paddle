@@ -108,6 +108,10 @@ from .tensor.logic import logical_and  # noqa: F401
 from .tensor.logic import logical_not  # noqa: F401
 from .tensor.logic import logical_or  # noqa: F401
 from .tensor.logic import logical_xor  # noqa: F401
+from .tensor.logic import bitwise_and  # noqa: F401
+from .tensor.logic import bitwise_not  # noqa: F401
+from .tensor.logic import bitwise_or  # noqa: F401
+from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
@@ -370,6 +374,10 @@ __all__ = [  # noqa
            'max',
            'norm',
            'logical_or',
+           'bitwise_and',
+           'bitwise_or',
+           'bitwise_xor',
+           'bitwise_not',
            'mm',
            'flip',
            'histogram',

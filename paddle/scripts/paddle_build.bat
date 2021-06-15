@@ -78,7 +78,7 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 rem -------set cache build directory-----------
 rmdir build\python /s/q
 rmdir build\paddle\third_party\externalError /s/q
-rmdir build\paddle\fluid\pybind /s/q
+rem rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
