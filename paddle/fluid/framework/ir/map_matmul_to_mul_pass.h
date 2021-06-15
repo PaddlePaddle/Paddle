@@ -95,6 +95,7 @@ class Squeeze2MatmulFusePass : public FusePassBase {
 
 class Reshape2MatmulFusePass : public FusePassBase {
  public:
+  Reshape2MatmulFusePass();
   virtual ~Reshape2MatmulFusePass() {}
 
  protected:

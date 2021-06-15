@@ -24,6 +24,35 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
+  AddOpCompat.OpCompat("reshape2"))
+      .addInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .End()
+      .AddAttrs("pooling_type")
+      .End()
+      .AddAttrs("ksize")
+      .End()
+      .AddAttrs("global_pooling")
+      .End()
+      .AddAttrs("strides")
+      .End()
+      .AddAttrs("paddings")
+      .End()
+      .AddAttrs("exclusive")
+      .End()
+      .AddAttrs("adaptive")
+      .End()
+      .AddAttrs("ceil_mode")
+      .End()
+      .AddAttrs("data_format")
+      .End()
+      .AddAttrs("padding_algorithm")
+      .End();
+}
+
 void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
   std::string name_scope = "adaptive_pool2d_convert_global_pass";
   FusePassBase::Init(name_scope, graph);
