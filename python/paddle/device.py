@@ -37,6 +37,7 @@ __all__ = [
 ]
 
 _cudnn_version = None
+print(1)
 
 
 # TODO: WITH_ASCEND_CL may changed to WITH_NPU or others in the future
