@@ -110,6 +110,8 @@ class ElasticManager(object):
         self.hosts = []
         self.stopped = False
 
+        self.sigint = 0
+
         if not server or ':' not in server or not name or not np:
             logger.info(
                 'Elastic is not enabled with server {} name {} and np {}'.
@@ -306,4 +308,5 @@ class ElasticManager(object):
     def signal_handler(self, sigint, frame):
         if self.enable:
             self.exit()
+        self.sigint = sigint
         self.stopped = True

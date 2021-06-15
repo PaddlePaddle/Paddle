@@ -430,7 +430,7 @@ def launch():
         if ret == ElasticStatus.RESTART:
             sys.exit(ELASTIC_EXIT_CODE)
 
-    sys.exit(0)
+    sys.exit(128 + int(elastic.sigint))
 
 
 if __name__ == "__main__":
