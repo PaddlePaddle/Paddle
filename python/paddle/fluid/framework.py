@@ -987,7 +987,7 @@ class Variable(object):
             outputs={'Out': [output]})
         return output
 
-    @fake_interface_only
+   @fake_interface_only
     def numpy(self):
         """
         **Notes**:
@@ -2186,7 +2186,7 @@ class Operator(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
@@ -2594,7 +2594,7 @@ class Block(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
@@ -4303,7 +4303,7 @@ class Program(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         program_str = ""
         for block in self.blocks:
