@@ -31,12 +31,10 @@ class DiagonalOp : public framework::OperatorWithKernel {
         platform::errors::NotFound("Output of DiagonalOp is not found."));
 
     int offset_ = ctx->Attrs().Get<int>("offset");
-
     int dim1 = ctx->Attrs().Get<int>("axis1");
     int dim2 = ctx->Attrs().Get<int>("axis2");
 
     auto x_dims = ctx->GetInputDim("Input");
-
     int dim1_ = dim1 < 0 ? x_dims.size() + dim1 : dim1;
     int dim2_ = dim2 < 0 ? x_dims.size() + dim2 : dim2;
 
@@ -90,7 +88,7 @@ class DiagonalOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) The partial view of input with the its diagonal elements.");
     AddAttr<int>(
         "offset",
-        R"DOC((int, default 0), offset of the diagonal from the main diagonal. Can be both positive and negative. Defaults to 0.
+        R"DOC((int, default 0), offset of the diagonal from the main diagonal. Can be both positive and negative. Defaults: 0.
         )DOC")
         .SetDefault(0);
     AddAttr<int>(
@@ -114,15 +112,66 @@ The behavior of this operator is similar to how `numpy.diagonal` works.
   }
 };
 
+class DiagonalGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
+                      platform::errors::NotFound(
+                          "Input(Input) of DiagonalGradOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("Input")), true,
+        platform::errors::NotFound(
+            "Output(Input@GRAD) of DiagonalGradOp is not found."));
+    ctx->SetOutputDim(framework::GradVarName("Input"),
+                      ctx->GetInputDim("Input"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+  }
+};
+
+template <typename T>
+class DiagonalGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("diagonal_grad");
+    grad_op->SetInput("Input", this->Input("Input"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("Input"),
+                       this->InputGrad("Input"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(DiagonalGradNoNeedBufferVarsInferer,
+                                    "Input");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    diagonal, ops::DiagonalOp, ops::DiagonalOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(diagonal, ops::DiagonalOp, ops::DiagonalOpMaker,
+                  ops::DiagonalGradOpMaker<paddle::framework::OpDesc>,
+                  ops::DiagonalGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(diagonal_grad, ops::DiagonalGradOp,
+                  ops::DiagonalGradNoNeedBufferVarsInferer)
 
 REGISTER_OP_CPU_KERNEL(diagonal, ops::DiagonalKernel<int>,
                        ops::DiagonalKernel<int64_t>, ops::DiagonalKernel<float>,
                        ops::DiagonalKernel<double>);
+
+REGISTER_OP_CPU_KERNEL(diagonal_grad, ops::DiagonalGradKernel<int>,
+                       ops::DiagonalGradKernel<int64_t>,
+                       ops::DiagonalGradKernel<float>,
+                       ops::DiagonalGradKernel<double>);

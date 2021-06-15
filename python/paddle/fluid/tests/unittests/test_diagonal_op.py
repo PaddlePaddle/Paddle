@@ -35,6 +35,9 @@ class TestDiagonalOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['Input'], 'Out')
+
     def init_config(self):
         self.case = np.random.randn(20, 6, 3, 5, 4).astype('float64')
         self.inputs = {'Input': self.case}
@@ -60,14 +63,23 @@ class TestDiagonalOpCase1(TestDiagonalOp):
 
 class TestDiagonalOpCase2(TestDiagonalOp):
     def init_config(self):
-        self.case = np.random.randn(6, 20, 7, 4).astype('int32')
+        self.case = np.random.randn(100, 100).astype('int64')
         self.inputs = {'Input': self.case}
-        self.attrs = {'offset': -3, 'axis1': 0, 'axis2': -1}
+        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
         self.target = np.diagonal(
             self.inputs['Input'],
             offset=self.attrs['offset'],
             axis1=self.attrs['axis1'],
             axis2=self.attrs['axis2'])
+        self.grad_x = np.eye(100).astype('int64')
+        self.grad_out = np.ones(100).astype('int64')
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['Input'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
 
 
 if __name__ == '__main__':

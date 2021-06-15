@@ -43,6 +43,7 @@ class DiagonalKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     auto input_dim = vectorize(input->dims());
     auto input_dim_size = input_dim.size();
+
     auto* output = context.Output<framework::Tensor>("Out");
     T* output_data = output->mutable_data<T>(context.GetPlace());
     auto output_dim = vectorize(output->dims());
@@ -91,6 +92,72 @@ class DiagonalKernel : public framework::OpKernel<T> {
         }
         idx_output = idx_output + idx_dim[idx_dim.size() - 1];
         output_data[idx_output] = input_data[idx];
+      }
+    }
+  }
+};
+
+template <typename T>
+class DiagonalGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const auto* dout =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    const T* dout_data = dout->data<T>();
+    auto dout_dim = vectorize(dout->dims());
+
+    auto* dx =
+        context.Output<framework::Tensor>(framework::GradVarName("Input"));
+    T* dx_data = dx->mutable_data<T>(context.GetPlace());
+    auto dx_dim = vectorize(dx->dims());
+    auto dx_dim_size = dx_dim.size();
+
+    const int64_t offset_ = context.Attr<int>("offset");
+    const int64_t axis1 = context.Attr<int>("axis1");
+    int64_t axis1_ = axis1 < 0 ? dx_dim_size + axis1 : axis1;
+    const int64_t axis2 = context.Attr<int>("axis2");
+    int64_t axis2_ = axis2 < 0 ? dx_dim_size + axis2 : axis2;
+
+    std::vector<int64_t> dout_stride = ComputeDimStride(dout_dim);
+    std::vector<int64_t> dx_stride = ComputeDimStride(dx_dim);
+
+    int64_t numel = dx->numel();
+
+    for (int64_t idx = 0; idx < numel; idx++) {
+      std::vector<int64_t> idx_dim(dx_dim_size);
+      int64_t temp = 0;
+      for (size_t i = 0; i < dx_dim_size - 1; i++) {
+        idx_dim[i] = (idx - temp) / dx_stride[i];
+        temp = temp + idx_dim[i] * dx_stride[i];
+      }
+      idx_dim[dx_dim_size - 1] = idx - temp;
+
+      int64_t axis1_dim = idx_dim[axis1_];
+      int64_t axis2_dim = idx_dim[axis2_];
+
+      idx_dim.erase(idx_dim.begin() + std::max(axis1_, axis2_));
+      idx_dim.erase(idx_dim.begin() + std::min(axis1_, axis2_));
+
+      bool flag = false;
+      if (offset_ == 0 && axis1_dim == axis2_dim) {
+        idx_dim.push_back(axis1_dim);
+        flag = true;
+      } else if (offset_ > 0 && (axis1_dim + offset_) == axis2_dim) {
+        idx_dim.push_back(axis1_dim);
+        flag = true;
+      } else if (offset_ < 0 && (axis1_dim + offset_) == axis2_dim) {
+        idx_dim.push_back(axis2_dim);
+        flag = true;
+      }
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < idx_dim.size() - 1; i++) {
+          idx_output = idx_output + idx_dim[i] * dout_stride[i];
+        }
+        idx_output = idx_output + idx_dim[idx_dim.size() - 1];
+        dx_data[idx] = dout_data[idx_output];
+      } else {
+        dx_data[idx] = static_cast<T>(0);
       }
     }
   }
