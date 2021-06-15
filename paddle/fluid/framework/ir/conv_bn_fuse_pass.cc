@@ -313,8 +313,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       }
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({bn_out->Name()}));
-      if (!IsCompat(desc)) {
-        LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+      if (!IsCompat(&conv->Op())) {
+        LOG(WARNING) << "conv_bn fuse pass in out conv op compat failed.";
         return;
       }
       GraphSafeRemoveNodes(
@@ -333,7 +333,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetType("elementwise_add");
       desc.SetAttr("axis", 1);
       if (!IsCompat(desc)) {
-        LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+        LOG(WARNING)
+            << "conv_bn fuse pass in out elementwise_add op compat failed.";
         return;
       }
       auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
@@ -508,8 +509,9 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // Update the elementwise_add node
     eltwise->Op()->SetAttr("axis", 1);
     eltwise->Op()->SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
-    if (!IsCompat(desc)) {
-      LOG(WARNING) << "Fc fuse pass in out fc op compat failed.";
+    if (!IsCompat(&eltwise->Op())) {
+      LOG(WARNING)
+          << "conv_eltwise_bn fuse pass in out eltwise op compat failed.";
       return;
     }
     GraphSafeRemoveNodes(
