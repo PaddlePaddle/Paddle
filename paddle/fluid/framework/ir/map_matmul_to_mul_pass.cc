@@ -185,8 +185,27 @@ Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
       .AddAttr("alpha")
       .End()
       .AddAttr("transpose_X")
+      .IsBoolEQ("False")
       .End()
       .AddAttr("transpose_Y")
+      .IsBoolEQ("False")
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGT(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumGT(1)
       .End();
 }
 
@@ -252,6 +271,10 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
         desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+      }
+      if (!IsCompat(ln_op_desc)) {
+        LOG(WARNING) << "reshape2 matmul pass in out mul op compat failed.";
+        return;
       }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(reshape2_in_x, mul_node);
