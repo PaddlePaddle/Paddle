@@ -137,8 +137,7 @@ struct IndexSelectAdd<
   }
 };
 
-// description: Index addition uses intel intrinsic instruction set to read
-// and
+// description: Index addition uses intel intrinsic instruction set to read and
 // write data in parallel
 template <typename T>
 struct IndexSelectAdd<
@@ -223,6 +222,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       IndexSelectAdd<platform::isa_any, T> index_select_add_any;
       index_select_add_any(slice_size, src, dst);
 #endif
+
 #endif
     }
   }
