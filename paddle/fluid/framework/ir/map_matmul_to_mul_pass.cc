@@ -169,7 +169,7 @@ Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
       .End()
       .AddOutput("Out")
       .End()
-      .AddAttrs("Shape")
+      .AddAttr("Shape")
       .End();
 
   AddOpCompat(OpCompat("matmul"))
@@ -274,7 +274,7 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
         desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
       }
-      if (!IsCompat(ln_op_desc)) {
+      if (!IsCompat(desc)) {
         LOG(WARNING) << "reshape2 matmul pass in out mul op compat failed.";
         return;
       }
