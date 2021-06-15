@@ -162,6 +162,7 @@ from .math import all  # noqa: F401
 from .math import any  # noqa: F401
 from .math import broadcast_shape  # noqa: F401
 from .math import conj  # noqa: F401
+from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
 
@@ -347,5 +348,6 @@ tensor_method_func  = [ #noqa
            'rank',
            'shape',
            'real',
-           'imag'
+           'imag',
+           'digamma'
 ]
