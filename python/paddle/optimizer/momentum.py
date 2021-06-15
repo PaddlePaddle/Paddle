@@ -51,8 +51,11 @@ class Momentum(Optimizer):
         learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
         momentum (float): Momentum factor. The default value is 0.9.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+        parameters (list|tuple, optional): List|Tuple of ``Tensor`` to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
@@ -88,6 +91,29 @@ class Momentum(Optimizer):
             back = out.backward()
             momentum.step()
             momentum.clear_grad()
+
+            #Note that the learning_rate of linear_2 is 0.01.
+            linear_1 = paddle.nn.Linear(10, 10)
+            linear_2 = paddle.nn.Linear(10, 10)
+            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            out = linear_1(inp)
+            out = linear_2(out)
+            loss = paddle.mean(out)
+            momentum = paddle.optimizer.Momentum(
+                learning_rate=0.1,
+                parameters=[{
+                    'params': linear_1.parameters()
+                }, {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1
+                }],
+                weight_decay=0.01,
+                momentum=0.9)                   
+            out.backward()
+            momentum.step()
+            momentum.clear_grad()
+
     """
     _velocity_acc_str = "velocity"
 
@@ -105,7 +131,19 @@ class Momentum(Optimizer):
             raise ValueError("learning_rate is not set")
         if momentum is None:
             raise ValueError("momentum is not set")
+
         predicate = lambda regular: isinstance(regular, (L2DecayRegularizer, float))
+        if isinstance(parameters, list):
+            if isinstance(parameters[0], dict):
+                for param_group in parameters:
+                    decay = param_group[
+                        'weight_decay'] if 'weight_decay' in param_group else weight_decay
+                    reg_method, reg_coeff = self._update_regularization(decay)
+                    param_group['regularization_method'] = reg_method
+                    param_group['regularization_coeff'] = reg_coeff
+                    py_regular = None if predicate(decay) else decay
+                    param_group['weight_decay'] = py_regular
+
         py_regular = None if predicate(weight_decay) else weight_decay
         super(Momentum, self).__init__(
             learning_rate=learning_rate,
@@ -116,22 +154,41 @@ class Momentum(Optimizer):
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
-        self._regularization_method = ""
-        self._regularization_coeff = 0
-        if (isinstance(weight_decay, L2DecayRegularizer)):
-            self._regularization_method = "l2_decay"
-            self._regularization_coeff = weight_decay._regularization_coeff
-        if (isinstance(weight_decay, float)):
-            self._regularization_method = "l2_decay"
-            self._regularization_coeff = weight_decay
+        self._regularization_method, self._regularization_coeff = self._update_regularization(
+            weight_decay)
         self._multi_precision = multi_precision
         self._rescale_grad = rescale_grad
         self._master_weights = {}
 
+        self._default_dict = {
+            'momentum': momentum,
+            'use_nesterov': use_nesterov,
+            'rescale_grad': rescale_grad,
+            'regularization_method': self._regularization_method,
+            'regularization_coeff': self._regularization_coeff,
+        }
+
         if framework.in_dygraph_mode():
             self.helper = LayerHelper(self.__class__.__name__)
-            for p in parameters:
-                self._add_accumulator(self._velocity_acc_str, p)
+            if isinstance(self._parameter_list[0], dict):
+                for parameters in self._param_groups:
+                    for p in parameters['params']:
+                        self._add_accumulator(self._velocity_acc_str, p)
+            else:
+                for p in parameters:
+                    self._add_accumulator(self._velocity_acc_str, p)
+
+    def _update_regularization(self, weight_decay):
+        reg_method = ""
+        reg_coeff = 0
+
+        if (isinstance(weight_decay, L2DecayRegularizer)):
+            reg_method = "l2_decay"
+            reg_coeff = weight_decay._regularization_coeff
+        if (isinstance(weight_decay, float)):
+            reg_method = "l2_decay"
+            reg_coeff = weight_decay
+        return reg_method, reg_coeff
 
     def _create_master_weight(self, param):
         assert isinstance(self.helper, LayerHelper)
@@ -195,20 +252,51 @@ class Momentum(Optimizer):
                 )
             self._add_accumulator(self._velocity_acc_str, p)
 
+    def _create_regularization_of_grad(self, param, grad, regularization=None):
+        """ Create and add backward regularization Operators
+    
+        Function helper of append_regularization_ops.
+        """
+        # If ParamAttr is set to L2Decay, we skip doing regularization here. And then we fused
+        # L2Decay with momentum which can refer to _append_optimize_op below.
+        if hasattr(param, 'regularizer') and isinstance(param.regularizer,
+                                                        L2DecayRegularizer):
+            return grad
+        return super(Momentum, self)._create_regularization_of_grad(
+            param, grad, regularization)
+
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
 
+        # For fusion of momentum and l2decay 
+        param = param_and_grad[0]
+        regularization_method = self._regularization_method
+        regularization_coeff = self._regularization_coeff
+        if hasattr(param, 'regularizer'):
+            # we skip param's l2decay before, so fuse it with momentum here.
+            if isinstance(param.regularizer, L2DecayRegularizer):
+                regularization_method = "l2_decay"
+                regularization_coeff = param.regularizer._regularization_coeff
+            # the param's regularization has been done before, we avoid do l2decay in momentum.
+            elif param.regularizer is not None:
+                regularization_method = ""
+                regularization_coeff = 0
+
         if framework.in_dygraph_mode():
+            if isinstance(param_and_grad, dict):
+                self._update_regularization(param_and_grad['weight_decay'])
             _, _ = core.ops.momentum(
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
                 param_and_grad[0], velocity_acc, 'mu', self._momentum,
                 'use_nesterov', self._use_nesterov, 'regularization_method',
-                self._regularization_method, 'regularization_coeff',
-                self._regularization_coeff)
+                regularization_method, 'regularization_coeff',
+                regularization_coeff)
             return None
 
         find_master = self._multi_precision and param_and_grad[
@@ -219,8 +307,8 @@ class Momentum(Optimizer):
         attrs = {
             "mu": self._momentum,
             "use_nesterov": self._use_nesterov,
-            "regularization_method": self._regularization_method,
-            "regularization_coeff": self._regularization_coeff,
+            "regularization_method": regularization_method,
+            "regularization_coeff": regularization_coeff,
             "multi_precision": find_master,
             "rescale_grad": self._rescale_grad
         }
@@ -250,3 +338,18 @@ class Momentum(Optimizer):
             stop_gradient=True)
 
         return momentum_op
+
+    def _update_param_group(self, parameters):
+        self._momentum = parameters.get('momentum',
+                                        self._default_dict['momentum'])
+        self._use_nesterov = parameters.get('use_nesterov',
+                                            self._default_dict['use_nesterov'])
+        self._rescale_grad = parameters.get('rescale_grad',
+                                            self._default_dict['rescale_grad'])
+        self._regularization_method = parameters.get(
+            'regularization_method',
+            self._default_dict['regularization_method'])
+        self._regularization_coeff = parameters.get(
+            'regularization_coeff', self._default_dict['regularization_coeff'])
+        parameters = parameters.get('params')
+        return parameters

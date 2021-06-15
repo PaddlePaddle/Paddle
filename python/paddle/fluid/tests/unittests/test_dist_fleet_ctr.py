@@ -36,7 +36,9 @@ class TestDistMnistAsync2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "CPU_NUM": "2"
+            "CPU_NUM": "2",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -71,7 +73,9 @@ class TestDistCtrHalfAsync2x2(TestFleetBase):
             "FLAGS_communicator_send_queue_size": "2",
             "FLAGS_communicator_max_merge_var_num": "2",
             "CPU_NUM": "2",
-            "SAVE_MODEL": "0"
+            "SAVE_MODEL": "0",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
