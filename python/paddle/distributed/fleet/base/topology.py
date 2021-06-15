@@ -262,6 +262,3 @@ class HybridCommunicateGroup(object):
     def get_rank_from_stage(self, stage_id, **kwargs):
         return self._topo.get_rank_from_stage(
             self.global_rank, pipe=stage_id, **kwargs)
-        # coord = self._topo.get_coord(self.global_rank)
-        # tf = coord._replace(pipe=stage_id, **kwargs)._asdict()
-        # return self._topo.get_rank(**tf)
