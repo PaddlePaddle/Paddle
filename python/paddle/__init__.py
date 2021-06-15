@@ -154,6 +154,7 @@ from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import exp  # noqa: F401
+from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
 from .tensor.math import increment  # noqa: F401
 from .tensor.math import log  # noqa: F401
@@ -407,6 +408,7 @@ __all__ = [  # noqa
            'acos',
            'logical_xor',
            'exp',
+           'expm1',
            'bernoulli',
            'summary',
            'sinh',
