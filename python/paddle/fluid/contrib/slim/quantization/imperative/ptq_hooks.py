@@ -147,6 +147,3 @@ def kl_forward_post_hook(layer, inputs, outputs):
         quant_config.output_hists[0] = new_hist
 
     return outputs
-
-
-hist_forward_post_hook = kl_forward_post_hook

@@ -23,7 +23,11 @@ from .qat import *
 from . import ptq
 from .ptq import *
 
+from . import ptq_config
+from .ptq_config import *
+
 __all__ = []
 __all__ += quant_nn.__all__
 __all__ += qat.__all__
 __all__ += ptq.__all__
+__all__ += ptq_config.__all__

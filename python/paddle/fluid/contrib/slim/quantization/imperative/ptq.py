@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import copy
 import numpy as np
 
 import paddle
@@ -20,6 +21,7 @@ from paddle.fluid.log_helper import get_logger
 
 from . import utils
 from . import ptq_hooks
+from . import ptq_config
 
 __all__ = ['ImperativePTQ']
 
@@ -27,31 +29,12 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-class QuantConfig:
-    """
-    The quant config saved in layers.
-    """
-
-    def __init__(self, forward_post_hook=None):
-        self.forward_post_hook = forward_post_hook
-        self.input_thresholds = []
-        self.output_thresholds = []
-        # hist
-        self.input_abs_max_vals = []
-        self.output_abs_max_vals = []
-        self.input_hists = []
-        self.output_hists = []
-        self.bins = 1024
-        self.upsample_bins = 64
-        self.hist_percent = 0.99999
-
-
 class ImperativePTQ(object):
     """
     Applying static post_training quantization to dgraph model.
     """
 
-    def __init__(self, algo="abs_max", activation_bits=8, weight_bits=8):
+    def __init__(self, quant_config=ptq_config.AbsMaxPTQConfig()):
         """
         Constructor.
         Args:
@@ -61,15 +44,11 @@ class ImperativePTQ(object):
         """
         super(ImperativePTQ, self).__init__()
 
-        supported_algo = ["abs_max", "hist", "kl"]
-        assert algo in supported_algo, \
-            "Input algo error: algo should be one of " + str(supported_algo)
+        assert isinstance(quant_config, ptq_config.PTQConfig)
 
-        self._algo = algo
-        self._activation_bits = activation_bits
-        self._weight_bits = weight_bits
+        self._quant_config = quant_config
 
-    def quantize(self, model):
+    def quantize(self, model, inplace=False):
         """
         Add hook to the leaf layer to calculate the threshold of inputs and outputs.
 
@@ -81,15 +60,18 @@ class ImperativePTQ(object):
         assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
 
+        if not inplace:
+            model = copy.deepcopy(model)
+
         for name, layer in model.named_sublayers():
             if utils.is_leaf_layer(layer):
-                hook_name = self._algo + "_forward_post_hook"
-                assert hook_name in ptq_hooks.__dict__
-                hook_handle = layer.register_forward_post_hook(
-                    ptq_hooks.__dict__[hook_name])
-                layer._forward_post_hooks.move_to_end(
-                    hook_handle._hook_id, last=False)
-                layer._quant_config = QuantConfig(forward_post_hook=hook_handle)
+                quant_config = copy.deepcopy(self._quant_config)
+                hook = layer.register_forward_post_hook(quant_config.get_hook())
+                layer._forward_post_hooks.move_to_end(hook._hook_id, last=False)
+                quant_config.set_hook(hook)
+                layer._quant_config = quant_config
+
+        return model
 
     def convert(self, model):
         """
@@ -107,9 +89,9 @@ class ImperativePTQ(object):
             if utils.is_leaf_layer(sub_layer):
                 assert hasattr(sub_layer, "_quant_config")
 
-                if self._algo == "hist":
+                if isinstance(self._quant_config, ptq_config.HistPTQConfig):
                     self._post_process_hist(sub_layer)
-                elif self._algo == "kl":
+                elif isinstance(self._quant_config, ptq_config.KLPTQConfig):
                     self._post_process_kl(sub_layer)
 
                 # TODO (jc): 
@@ -117,7 +99,7 @@ class ImperativePTQ(object):
                 # add fake_quant_ops
                 # save thresholds
                 quant_config = sub_layer._quant_config
-                quant_config.forward_post_hook.remove()
+                quant_config.hook.remove()
 
     def _post_process_kl(self, layer):
         """
@@ -132,7 +114,7 @@ class ImperativePTQ(object):
             else:
                 threshold = utils.cal_kl_scaling_factor(
                     qc.input_hists[idx], qc.input_abs_max_vals[idx],
-                    self._activation_bits)
+                    qc.activation_bits)
                 qc.input_thresholds.append(threshold)
 
         for idx in range(len(qc.output_hists)):
@@ -141,7 +123,7 @@ class ImperativePTQ(object):
             else:
                 threshold = utils.cal_kl_scaling_factor(
                     qc.output_hists[idx], qc.output_abs_max_vals[idx],
-                    self._activation_bits)
+                    qc.activation_bits)
                 qc.output_thresholds.append(threshold)
 
     def _post_process_hist(self, layer):

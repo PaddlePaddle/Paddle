@@ -24,7 +24,7 @@ import logging
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.contrib.slim.quantization import ImperativePTQ
+from paddle.fluid.contrib.slim.quantization import ImperativePTQ, AbsMaxPTQConfig, KLPTQConfig, HistPTQConfig
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
 
@@ -80,7 +80,7 @@ class TestImperativePTQ(unittest.TestCase):
         return data_cache_folder
 
     def set_vars(self):
-        self.ptq = ImperativePTQ(algo='abs_max')
+        self.ptq = ImperativePTQ(AbsMaxPTQConfig())
 
         self.batch_num = 10
         self.batch_size = 10
@@ -194,7 +194,7 @@ class TestImperativePTQ(unittest.TestCase):
             model_state_dict = paddle.load(params_path)
             model.set_state_dict(model_state_dict)
 
-            self.ptq.quantize(model)
+            self.ptq.quantize(model, inplace=True)
 
             acc_top1 = self.model_test(model, self.batch_num, self.batch_size)
             print('acc_top1: %s' % acc_top1)
@@ -203,7 +203,7 @@ class TestImperativePTQ(unittest.TestCase):
                 msg="The test acc {%f} is less than {%f}." %
                 (acc_top1, self.eval_acc_top1))
 
-        self.ptq.convert(model)
+        self.ptq.convert(model, inplace=True)
 
         self.check_thresholds(model)
 
@@ -223,7 +223,7 @@ class TestImperativePTQHist(TestImperativePTQ):
     """
 
     def set_vars(self):
-        self.ptq = ImperativePTQ(algo='hist')
+        self.ptq = ImperativePTQ(HistPTQConfig())
 
         self.batch_num = 10
         self.batch_size = 10
@@ -244,7 +244,7 @@ class TestImperativePTQKL(TestImperativePTQ):
     """
 
     def set_vars(self):
-        self.ptq = ImperativePTQ(algo='kl')
+        self.ptq = ImperativePTQ(KLPTQConfig())
 
         self.batch_num = 10
         self.batch_size = 10
