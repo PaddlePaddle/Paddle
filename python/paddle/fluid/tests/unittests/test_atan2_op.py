@@ -60,16 +60,28 @@ class TestAtan2_float(TestAtan2):
         self.dtype = np.float32
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X1', 'X2'],
-            'Out',
-            user_defined_grads=atan2_grad(self.inputs['X1'], self.inputs['X2'],
-                                          1 / self.inputs['X1'].size))
+        if self.dtype not in [np.int32, np.int64]:
+            self.check_grad(
+                ['X1', 'X2'],
+                'Out',
+                user_defined_grads=atan2_grad(self.inputs['X1'],
+                                              self.inputs['X2'],
+                                              1 / self.inputs['X1'].size))
 
 
 class TestAtan2_float16(TestAtan2_float):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestAtan2_int32(TestAtan2_float):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestAtan2_int64(TestAtan2_float):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 class TestAtan2API(unittest.TestCase):
@@ -114,24 +126,6 @@ class TestAtan2API(unittest.TestCase):
 
         for place in self.place:
             run(place)
-
-    def test_errors(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            X1 = paddle.fluid.data('X1', self.shape, dtype='int32')
-            X2 = paddle.fluid.data('X2', self.shape, dtype='int32')
-            self.assertRaises(TypeError, paddle.atan2, X1, X2)
-        # The input dtype must be float16, float32, float64.
-
-        def test_support_dtype(dtype):
-            with paddle.static.program_guard(paddle.static.Program()):
-                X1 = paddle.fluid.data('X1_' + dtype, self.shape, dtype=dtype)
-                X2 = paddle.fluid.data('X2_' + dtype, self.shape, dtype=dtype)
-                paddle.atan2(X1, X2)
-
-        support_dtype = ['float16', 'float32', 'float64']
-        for dtype in support_dtype:
-            test_support_dtype(dtype)
 
 
 if __name__ == '__main__':

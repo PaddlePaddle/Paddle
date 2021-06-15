@@ -2360,12 +2360,12 @@ def atan2(y, x, name=None):
           \end{matrix}\right.
 
     Args:
-        y (Tensor): An N-D Tensor, the data type is float16, float32, float64.
+        y (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
         x (Tensor): An N-D Tensor, must have the same type as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
 
     Examples:
         .. code-block:: python
@@ -2385,12 +2385,13 @@ def atan2(y, x, name=None):
           #       [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
 
     """
-    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'atan2')
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'atan2')
 
     if in_dygraph_mode():
         return core.ops.atan2(y, x)
     else:
+        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+
         helper = LayerHelper('atan2', **locals())
         inputs = {'X1' : y, 'X2' : x}
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

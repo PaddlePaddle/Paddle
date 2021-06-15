@@ -98,6 +98,19 @@ class Atan2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class Atan2OpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto type = ctx->GetInputDataType("X1");
+    if (ctx->GetInputDataType("X1") == framework::proto::VarType::INT32 ||
+        ctx->GetInputDataType("X1") == framework::proto::VarType::INT64 ||
+        ctx->GetInputDataType("X2") == framework::proto::VarType::INT32 ||
+        ctx->GetInputDataType("X2") == framework::proto::VarType::INT64) {
+      type = framework::proto::VarType::FP64;
+    }
+    ctx->SetOutputDataType("Out", type);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -105,12 +118,15 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(atan2, ops::Atan2Op, ops::Atan2OpMaker,
                   ops::Atan2GradMaker<paddle::framework::OpDesc>,
-                  ops::Atan2GradMaker<paddle::imperative::OpBase>);
+                  ops::Atan2GradMaker<paddle::imperative::OpBase>,
+                  ops::Atan2OpVarTypeInference);
 
 REGISTER_OPERATOR(atan2_grad, ops::Atan2GradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    atan2, ops::Atan2Kernel<paddle::platform::CPUDeviceContext, float>,
+    atan2, ops::Atan2Kernel<paddle::platform::CPUDeviceContext, int32_t>,
+    ops::Atan2Kernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::Atan2Kernel<paddle::platform::CPUDeviceContext, float>,
     ops::Atan2Kernel<paddle::platform::CPUDeviceContext, double>,
     ops::Atan2Kernel<paddle::platform::CPUDeviceContext,
                      paddle::platform::float16>);

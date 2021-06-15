@@ -28,48 +28,49 @@ using Tensor = framework::Tensor;
 using framework::To32BitIndex;
 
 template <typename T>
+struct Atan2Out {
+  using type = T;
+};
+
+template <>
+struct Atan2Out<int32_t> {
+  using type = double;
+};
+
+template <>
+struct Atan2Out<int64_t> {
+  using type = double;
+};
+
+template <typename T>
 struct Atan2Functor {
-  Atan2Functor(const T* x1, const T* x2, T* out, int64_t numel)
+  Atan2Functor(const T* x1, const T* x2, typename Atan2Out<T>::type* out,
+               int64_t numel)
+      : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    out_[idx] = static_cast<typename Atan2Out<T>::type>(
+        ::atan2f(static_cast<float>(x1_[idx]), static_cast<float>(x2_[idx])));
+  }
+
+  const T* x1_;
+  const T* x2_;
+  typename Atan2Out<T>::type* out_;
+  int64_t numel_;
+};
+
+template <>
+struct Atan2Functor<double> {
+  Atan2Functor(const double* x1, const double* x2, double* out, int64_t numel)
       : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
     out_[idx] = ::atan2(x1_[idx], x2_[idx]);
   }
 
-  const T* x1_;
-  const T* x2_;
-  T* out_;
-  int64_t numel_;
-};
-
-template <>
-struct Atan2Functor<float> {
-  Atan2Functor(const float* x1, const float* x2, float* out, int64_t numel)
-      : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    out_[idx] = ::atan2f(x1_[idx], x2_[idx]);
-  }
-
-  const float* x1_;
-  const float* x2_;
-  float* out_;
-  int64_t numel_;
-};
-template <>
-struct Atan2Functor<platform::float16> {
-  Atan2Functor(const platform::float16* x1, const platform::float16* x2,
-               platform::float16* out, int64_t numel)
-      : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    out_[idx] = static_cast<platform::float16>(
-        ::atan2f(static_cast<float>(x1_[idx]), static_cast<float>(x2_[idx])));
-  }
-
-  const platform::float16* x1_;
-  const platform::float16* x2_;
-  platform::float16* out_;
+  const double* x1_;
+  const double* x2_;
+  double* out_;
   int64_t numel_;
 };
 
@@ -82,9 +83,11 @@ struct Atan2GradFunctor {
       : x1_(x1), x2_(x2), dout_(dout), dx1_(dx1), dx2_(dx2), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    auto x = x1_[idx] * x1_[idx] + x2_[idx] * x2_[idx];
-    dx1_[idx] = dout_[idx] * x2_[idx] / x;
-    dx2_[idx] = -dout_[idx] * x1_[idx] / x;
+    float x1 = static_cast<float>(x1_[idx]);
+    float x2 = static_cast<float>(x2_[idx]);
+    float x = x1 * x1 + x2 * x2;
+    dx1_[idx] = static_cast<T>(static_cast<float>(dout_[idx]) * x2 / x);
+    dx2_[idx] = static_cast<T>(-static_cast<float>(dout_[idx]) * x1 / x);
   }
 
   const T* x1_;
@@ -96,27 +99,22 @@ struct Atan2GradFunctor {
 };
 
 template <>
-struct Atan2GradFunctor<platform::float16> {
-  Atan2GradFunctor(const platform::float16* x1, const platform::float16* x2,
-                   const platform::float16* dout, platform::float16* dx1,
-                   platform::float16* dx2, int64_t numel)
+struct Atan2GradFunctor<double> {
+  Atan2GradFunctor(const double* x1, const double* x2, const double* dout,
+                   double* dx1, double* dx2, int64_t numel)
       : x1_(x1), x2_(x2), dout_(dout), dx1_(dx1), dx2_(dx2), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    float x1 = static_cast<float>(x1_[idx]);
-    float x2 = static_cast<float>(x2_[idx]);
-    float x = x1 * x1 + x2 * x2;
-    dx1_[idx] =
-        static_cast<platform::float16>(static_cast<float>(dout_[idx]) * x2 / x);
-    dx2_[idx] = static_cast<platform::float16>(-static_cast<float>(dout_[idx]) *
-                                               x1 / x);
+    auto x = x1_[idx] * x1_[idx] + x2_[idx] * x2_[idx];
+    dx1_[idx] = dout_[idx] * x2_[idx] / x;
+    dx2_[idx] = -dout_[idx] * x1_[idx] / x;
   }
 
-  const platform::float16* x1_;
-  const platform::float16* x2_;
-  const platform::float16* dout_;
-  platform::float16* dx1_;
-  platform::float16* dx2_;
+  const double* x1_;
+  const double* x2_;
+  const double* dout_;
+  double* dx1_;
+  double* dx2_;
   int64_t numel_;
 };
 
@@ -131,8 +129,8 @@ class Atan2Kernel : public framework::OpKernel<T> {
     auto numel = X1->numel();
     auto x1 = X1->data<T>();
     auto x2 = X2->data<T>();
-    auto out =
-        Out->mutable_data<T>(context.GetPlace(), size_t(numel * sizeof(T)));
+    auto out = Out->mutable_data<typename Atan2Out<T>::type>(
+        context.GetPlace(), size_t(numel * sizeof(typename Atan2Out<T>::type)));
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);

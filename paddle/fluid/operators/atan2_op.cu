@@ -16,7 +16,9 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    atan2, ops::Atan2Kernel<paddle::platform::CUDADeviceContext, float>,
+    atan2, ops::Atan2Kernel<paddle::platform::CUDADeviceContext, int32_t>,
+    ops::Atan2Kernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::Atan2Kernel<paddle::platform::CUDADeviceContext, float>,
     ops::Atan2Kernel<paddle::platform::CUDADeviceContext, double>,
     ops::Atan2Kernel<paddle::platform::CUDADeviceContext,
                      paddle::platform::float16>);
