@@ -25,7 +25,7 @@ namespace framework {
 namespace ir {
 
 AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
-  AddOpCompat.OpCompat("reshape2"))
+  AddOpCompat(OpCompat("reshape2"))
       .addInput("X")
       .IsTensor()
       .End()
@@ -36,6 +36,7 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
       .AddAttrs("ksize")
       .End()
       .AddAttrs("global_pooling")
+      .IsOptional()
       .End()
       .AddAttrs("strides")
       .End()
@@ -44,6 +45,7 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
       .AddAttrs("exclusive")
       .End()
       .AddAttrs("adaptive")
+      .IsOptional()
       .End()
       .AddAttrs("ceil_mode")
       .End()

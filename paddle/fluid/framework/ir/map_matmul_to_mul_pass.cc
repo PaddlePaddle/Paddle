@@ -160,7 +160,7 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
-  AddOpCompat.OpCompat("reshape2"))
+  AddOpCompat(OpCompat("reshape2"))
       .addInput("X")
       .IsTensor()
       .End()
@@ -183,6 +183,7 @@ Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")
+      .IsNumGE(0.0f)
       .End()
       .AddAttr("transpose_X")
       .End()
