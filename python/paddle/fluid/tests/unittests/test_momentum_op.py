@@ -613,6 +613,77 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
 
+class TestFusedMomentumWithDecayAPI(unittest.TestCase):
+    def get_program(self, weight_attr, bias_attr=False):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(
+                main_program=main_program, startup_program=startup_program):
+            x = paddle.static.data(name='x', shape=[10, 10])
+            linear = paddle.nn.Linear(
+                10, 10, weight_attr=weight_attr, bias_attr=bias_attr)
+            out = linear(x)
+            loss = paddle.mean(out)
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.01,
+                momentum=0.9,
+                weight_decay=paddle.regularizer.L2Decay(0.5))
+            optimizer.minimize(loss)
+        return main_program
+
+    def test_param_has_l2decay(self):
+        paddle.enable_static()
+        weight_attr = paddle.ParamAttr(
+            name="weight",
+            initializer=paddle.nn.initializer.Constant(value=0.5),
+            regularizer=paddle.regularizer.L2Decay(0.1))
+        program = self.get_program(weight_attr, bias_attr=False)
+        ops = program.global_block().ops
+
+        self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
+        self.assertEqual(ops[-1].attr('regularization_coeff'), np.float32(0.1))
+        for i in range(len(ops)):
+            self.assertTrue('sum' not in ops[i].type)
+            self.assertTrue('scale' not in ops[i].type)
+
+    def test_param_has_l1decay(self):
+        paddle.enable_static()
+        weight_attr = paddle.ParamAttr(
+            name="weight",
+            initializer=paddle.nn.initializer.Constant(value=0.5),
+            regularizer=paddle.regularizer.L1Decay(0.1))
+        bias_attr = paddle.ParamAttr(
+            name="bias",
+            initializer=paddle.nn.initializer.Constant(value=0.),
+            regularizer=None)
+        program = self.get_program(weight_attr, bias_attr)
+        ops = program.global_block().ops
+
+        self.assertEqual(ops[-1].type, 'momentum')
+        self.assertEqual(ops[-2].type, 'momentum')
+        self.assertEqual(ops[-3].type, 'sum')
+        self.assertEqual(ops[-4].type, 'scale')
+        self.assertEqual(ops[-5].type, 'sign')
+        self.assertEqual(ops[-6].type, 'matmul_grad')
+        if 'weight' in ops[-1].input('Param'):
+            self.assertEqual(ops[-1].attr('regularization_method'), '')
+            self.assertEqual(ops[-1].attr('regularization_coeff'), 0)
+        if 'bias' in ops[-2].input('Param'):
+            self.assertEqual(ops[-2].attr('regularization_method'), 'l2_decay')
+            self.assertEqual(ops[-2].attr('regularization_coeff'),
+                             np.float32(0.5))
+
+    def test_param_has_no_regularizer(self):
+        paddle.enable_static()
+        program = self.get_program(weight_attr=None)
+        ops = program.global_block().ops
+        self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
+        self.assertEqual(ops[-1].attr('regularization_coeff'), np.float32(0.5))
+        for i in range(len(ops)):
+            self.assertTrue('sum' not in ops[i].type)
+            self.assertTrue('scale' not in ops[i].type)
+
+
 class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
     def __update_params(self, momentum, linear):
         for i in range(10):

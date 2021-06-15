@@ -661,6 +661,8 @@ if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
 
+add_subdirectory(asp)
+
 add_subdirectory(ir)
 
 if (WITH_TESTING)
