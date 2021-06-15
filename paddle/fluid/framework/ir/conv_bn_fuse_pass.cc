@@ -313,7 +313,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       }
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({bn_out->Name()}));
-      if (!IsCompat(&conv->Op())) {
+      if (!IsCompat(*conv->Op())) {
         LOG(WARNING) << "conv_bn fuse pass in out conv op compat failed.";
         return;
       }
@@ -509,7 +509,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // Update the elementwise_add node
     eltwise->Op()->SetAttr("axis", 1);
     eltwise->Op()->SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
-    if (!IsCompat(&eltwise->Op())) {
+    if (!IsCompat(*eltwise->Op())) {
       LOG(WARNING)
           << "conv_eltwise_bn fuse pass in out eltwise op compat failed.";
       return;
