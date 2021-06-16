@@ -22,6 +22,7 @@ from paddle.fluid.log_helper import get_logger
 from . import utils
 from . import ptq_hooks
 from . import ptq_config
+from .ptq_registry import PTQRegistry
 
 __all__ = ['ImperativePTQ']
 
@@ -31,10 +32,10 @@ _logger = get_logger(
 
 class ImperativePTQ(object):
     """
-    Applying static post_training quantization to dgraph model.
+    Applying static post_training quantization to the dgraph model.
     """
 
-    def __init__(self, quant_config=ptq_config.AbsMaxPTQConfig()):
+    def __init__(self, quant_config=ptq_config.default_ptq_config):
         """
         Constructor.
         Args:
@@ -64,12 +65,16 @@ class ImperativePTQ(object):
             model = copy.deepcopy(model)
 
         for name, layer in model.named_sublayers():
-            if utils.is_leaf_layer(layer):
+            if PTQRegistry.is_supported_layer(layer) \
+                and utils.is_leaf_layer(layer):
                 quant_config = copy.deepcopy(self._quant_config)
-                hook = layer.register_forward_post_hook(quant_config.get_hook())
-                layer._forward_post_hooks.move_to_end(hook._hook_id, last=False)
-                quant_config.set_hook(hook)
                 layer._quant_config = quant_config
+
+                hook = ptq_hooks.quant_forward_post_hook
+                hook_handle = layer.register_forward_post_hook(hook)
+                quant_config.hook_handle = hook_handle
+                layer._forward_post_hooks.move_to_end(
+                    hook_handle._hook_id, last=False)
 
         return model
 
@@ -86,71 +91,22 @@ class ImperativePTQ(object):
             "The input model must be the instance of paddle.nn.Layer."
 
         for name, sub_layer in model.named_sublayers():
-            if utils.is_leaf_layer(sub_layer):
-                assert hasattr(sub_layer, "_quant_config")
+            if PTQRegistry.is_supported_layer(sub_layer) \
+                and utils.is_leaf_layer(sub_layer):
 
-                if isinstance(self._quant_config, ptq_config.HistPTQConfig):
-                    self._post_process_hist(sub_layer)
-                elif isinstance(self._quant_config, ptq_config.KLPTQConfig):
-                    self._post_process_kl(sub_layer)
+                assert hasattr(sub_layer, "_quant_config")
+                quant_config = sub_layer._quant_config
+                quant_config.hook_handle.remove()
+
+                quant_config.in_act_quantizer.cal_thresholds()
+                quant_config.out_act_quantizer.cal_thresholds()
+
+                # get weight thresholds
+                if isinstance(sub_layer, tuple(utils.fake_quant_input_layers)):
+                    weights = (sub_layer.weight, )
+                    quant_config.wt_quantizer.sample_data(sub_layer, weights)
 
                 # TODO (jc): 
-                # get the threshold of weight for conv2d and linear
-                # add fake_quant_ops
-                # save thresholds
-                quant_config = sub_layer._quant_config
-                quant_config.hook.remove()
+                # save input activation threshold and quant bits
 
-    def _post_process_kl(self, layer):
-        """
-        Post process for using kl algorithm.
-        """
-        _logger.info("Post process for %s" % layer.full_name())
-
-        qc = layer._quant_config
-        for idx in range(len(qc.input_hists)):
-            if qc.input_hists[idx] is None:
-                qc.input_thresholds.append(qc.input_abs_max_vals[idx])
-            else:
-                threshold = utils.cal_kl_scaling_factor(
-                    qc.input_hists[idx], qc.input_abs_max_vals[idx],
-                    qc.activation_bits)
-                qc.input_thresholds.append(threshold)
-
-        for idx in range(len(qc.output_hists)):
-            if qc.output_hists[idx] is None:
-                qc.output_thresholds.append(qc.output_abs_max_vals[idx])
-            else:
-                threshold = utils.cal_kl_scaling_factor(
-                    qc.output_hists[idx], qc.output_abs_max_vals[idx],
-                    qc.activation_bits)
-                qc.output_thresholds.append(threshold)
-
-    def _post_process_hist(self, layer):
-        """
-        Post process for using kl algorithm.
-        """
-
-        def _helper(abs_max, hist, percent):
-            assert hist.ndim == 1 and percent < 1.0
-            hist = hist / np.sum(hist, dtype=np.float64)
-            cumsumed_hist = np.cumsum(hist)
-            index = np.argwhere(cumsumed_hist >= percent)[0]
-            return float((index - 0.5) * (abs_max / hist.shape[0]))
-
-        qc = layer._quant_config
-        for idx in range(len(qc.input_hists)):
-            if qc.input_hists[idx] is None:
-                qc.input_thresholds.append(qc.input_abs_max_vals[idx])
-            else:
-                threshold = _helper(qc.input_abs_max_vals[idx],
-                                    qc.input_hists[idx], qc.hist_percent)
-                qc.input_thresholds.append(threshold)
-
-        for idx in range(len(qc.output_hists)):
-            if qc.output_hists[idx] is None:
-                qc.output_thresholds.append(qc.output_abs_max_vals[idx])
-            else:
-                threshold = _helper(qc.output_abs_max_vals[idx],
-                                    qc.output_hists[idx], qc.hist_percent)
-                qc.output_thresholds.append(threshold)
+        return model

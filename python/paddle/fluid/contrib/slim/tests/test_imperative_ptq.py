@@ -24,7 +24,7 @@ import logging
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.contrib.slim.quantization import ImperativePTQ, AbsMaxPTQConfig, KLPTQConfig, HistPTQConfig
+from paddle.fluid.contrib.slim.quantization import *
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
 
@@ -80,18 +80,19 @@ class TestImperativePTQ(unittest.TestCase):
         return data_cache_folder
 
     def set_vars(self):
-        self.ptq = ImperativePTQ(AbsMaxPTQConfig())
+        self.ptq = ImperativePTQ(default_ptq_config)
 
         self.batch_num = 10
         self.batch_size = 10
         self.eval_acc_top1 = 0.99
 
         self.gt_thresholds = {
-            'conv2d_0': [[1.0], [0.37673383951187134]],
+            'conv2d_0': [[1.0], [0.37673383951187134], [0.10933732241392136]],
             'batch_norm2d_0': [[0.37673383951187134], [0.44249194860458374]],
             're_lu_0': [[0.44249194860458374], [0.25804123282432556]],
             'max_pool2d_0': [[0.25804123282432556], [0.25804123282432556]],
-            'linear_0': [[1.7058950662612915], [14.405526161193848]],
+            'linear_0':
+            [[1.7058950662612915], [14.405526161193848], [0.4373355209827423]],
             'add_0': [[1.7058950662612915, 0.0], [1.7058950662612915]],
         }
 
@@ -158,14 +159,18 @@ class TestImperativePTQ(unittest.TestCase):
         return eval_acc_top1
 
     def check_thresholds(self, model):
+        check_num = 0
         for name, layer in model.named_sublayers():
             layer_name = layer.full_name()
             if layer_name in self.gt_thresholds:
                 ref_val = self.gt_thresholds[layer_name]
                 assert hasattr(layer, '_quant_config')
+
                 quant_config = layer._quant_config
-                in_val = quant_config.input_thresholds
-                out_val = quant_config.output_thresholds
+                in_val = quant_config.in_act_quantizer.thresholds
+                out_val = quant_config.out_act_quantizer.thresholds
+                wt_val = quant_config.wt_quantizer.thresholds
+                check_num += 1
 
                 self.assertTrue(
                     np.allclose(
@@ -179,6 +184,15 @@ class TestImperativePTQ(unittest.TestCase):
                     "%s | The thresholds(%s) is different "
                     "from the ground truth(%s)." %
                     (layer_name, str(out_val), str(ref_val[1])))
+                if len(ref_val) > 2 and ref_val[2] != []:
+                    self.assertTrue(
+                        np.allclose(
+                            ref_val[2], wt_val, atol=1e-3),
+                        "%s | The thresholds(%s) is different "
+                        "from the ground truth(%s)." %
+                        (layer_name, str(wt_val), str(ref_val[2])))
+
+        self.assertTrue(check_num == len(self.gt_thresholds))
 
     def test_ptq(self):
         start_time = time.time()
@@ -203,7 +217,7 @@ class TestImperativePTQ(unittest.TestCase):
                 msg="The test acc {%f} is less than {%f}." %
                 (acc_top1, self.eval_acc_top1))
 
-        self.ptq.convert(model, inplace=True)
+        self.ptq.convert(model)
 
         self.check_thresholds(model)
 
@@ -223,18 +237,21 @@ class TestImperativePTQHist(TestImperativePTQ):
     """
 
     def set_vars(self):
-        self.ptq = ImperativePTQ(HistPTQConfig())
+        config = PTQConfig(HistQuantizer(), AbsmaxQuantizer())
+        self.ptq = ImperativePTQ(config)
 
         self.batch_num = 10
         self.batch_size = 10
         self.eval_acc_top1 = 0.99
 
         self.gt_thresholds = {
-            'conv2d_0': [[0.99853515625], [0.35732391771364225]],
+            'conv2d_0':
+            [[0.99853515625], [0.35732391771364225], [0.10933732241392136]],
             'batch_norm2d_0': [[0.35732391771364225], [0.4291427868761275]],
             're_lu_0': [[0.4291427868761275], [0.2359918110742001]],
             'max_pool2d_0': [[0.2359918110742001], [0.25665526917146053]],
-            'linear_0': [[1.7037603475152991], [14.395224522473026]],
+            'linear_0':
+            [[1.7037603475152991], [14.395224522473026], [0.4373355209827423]],
             'add_0': [[1.7037603475152991, 0.0], [1.7037603475152991]],
         }
 
@@ -244,14 +261,21 @@ class TestImperativePTQKL(TestImperativePTQ):
     """
 
     def set_vars(self):
-        self.ptq = ImperativePTQ(KLPTQConfig())
+        config = PTQConfig(KLQuantizer(), PerChannelAbsmaxQuantizer())
+        self.ptq = ImperativePTQ(config)
 
         self.batch_num = 10
         self.batch_size = 10
         self.eval_acc_top1 = 0.99
 
+        conv2d_1_wt_thresholds = [
+            0.18116560578346252, 0.17079241573810577, 0.1702047884464264,
+            0.179476797580719, 0.1454375684261322, 0.22981858253479004
+        ]
         self.gt_thresholds = {
             'conv2d_0': [[0.99267578125], [0.37695913558696836]],
+            'conv2d_1': [[0.19189296757394914], [0.24514256547263358],
+                         [conv2d_1_wt_thresholds]],
             'batch_norm2d_0': [[0.37695913558696836], [0.27462541429440535]],
             're_lu_0': [[0.27462541429440535], [0.19189296757394914]],
             'max_pool2d_0': [[0.19189296757394914], [0.19189296757394914]],
