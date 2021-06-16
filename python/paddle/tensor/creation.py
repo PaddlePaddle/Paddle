@@ -134,16 +134,19 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                 )
         elif isinstance(data, paddle.Tensor):
             data = data._copy_to(place, False)
-            ata = _handle_dtype(data, dtype)
+            data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
-        elif isinstance(data, core.LoDTensor):
-            # convert LoDTensor to VarBase first
-            # Currenly, LoDTensor does no copy when places are same
+            return data
+        elif isinstance(data, (core.LoDTensor, core.Tensor)):
+            # Note(zhouwei25): should't expose it to users, just for internal use.
+            # convert core.Tensor/core.LoDTensor to VarBase first
+            # Currenly, there is no copy when places are same
             data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
+            return data
         else:
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".
@@ -585,7 +588,7 @@ def tril(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
             retained. A positive value includes just as many diagonals above the main
@@ -770,6 +773,131 @@ def meshgrid(*args, **kwargs):
         type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out})
 
     return out
+
+
+def diagflat(x, offset=0, name=None):
+    """
+    If ``x`` is a vector (1-D tensor), a 2-D square tensor whth the elements of ``x`` as the diagonal is returned.
+
+    If ``x`` is a tensor (more than 1-D), a 2-D square tensor with the elements of flattened ``x`` as the diagonal is returned.
+
+    The argument ``offset`` controls the diagonal offset.
+
+
+    If ``offset`` = 0, it is the main diagonal.
+
+    If ``offset`` > 0, it is superdiagonal.
+
+    If ``offset`` < 0, it is subdiagonal.
+
+    Args:
+        x (Tensor): The input tensor. It can be any shape. Its data type should be float32, float64, int32, int64.
+        offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0 (main diagonal).
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, a square matrix. The output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          x = paddle.to_tensor([1, 2, 3])
+          y = paddle.diagflat(x)
+          print(y.numpy())
+          # [[1 0 0]
+          #  [0 2 0]
+          #  [0 0 3]]
+
+          y = paddle.diagflat(x, offset=1)
+          print(y.numpy())
+          # [[0 1 0 0]
+          #  [0 0 2 0]
+          #  [0 0 0 3]
+          #  [0 0 0 0]]
+
+          y = paddle.diagflat(x, offset=-1)
+          print(y.numpy())
+          # [[0 0 0 0]
+          #  [1 0 0 0]
+          #  [0 2 0 0]
+          #  [0 0 3 0]]
+        
+        .. code-block:: python
+
+          import paddle
+
+          x = paddle.to_tensor([[1, 2], [3, 4]])
+          y = paddle.diagflat(x)
+          print(y.numpy())
+          # [[1 0 0 0]
+          #  [0 2 0 0]
+          #  [0 0 3 0]
+          #  [0 0 0 4]]
+
+          y = paddle.diagflat(x, offset=1)
+          print(y.numpy())
+          # [[0 1 0 0 0]
+          #  [0 0 2 0 0]
+          #  [0 0 0 3 0]
+          #  [0 0 0 0 4]
+          #  [0 0 0 0 0]]
+
+          y = paddle.diagflat(x, offset=-1)
+          print(y.numpy())
+          # [[0 0 0 0 0]
+          #  [1 0 0 0 0]
+          #  [0 2 0 0 0]
+          #  [0 0 3 0 0]
+          #  [0 0 0 4 0]]
+    """
+    padding_value = 0
+    if in_dygraph_mode():
+        if len(x.shape) == 1:
+            return core.ops.diag_v2(x, "offset", offset, "padding_value",
+                                    padding_value)
+        else:
+            y, _ = core.ops.flatten_contiguous_range(x, "start_axis", 0,
+                                                     "stop_axis", -1)
+            return core.ops.diag_v2(y, "offset", offset, "padding_value",
+                                    padding_value)
+
+    check_type(x, 'x', (Variable), 'diagflat')
+    check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
+                'diagflat')
+    check_type(offset, 'offset', (int), 'diagflat')
+
+    helper = LayerHelper("diagflat", **locals())
+    out1 = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out1_shape = helper.create_variable_for_type_inference(x.dtype)
+    out2 = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if len(x.shape) == 1:
+        helper.append_op(
+            type='diag_v2',
+            inputs={'X': x},
+            outputs={'Out': out2},
+            attrs={'offset': offset,
+                   'padding_value': padding_value})
+    else:
+        helper.append_op(
+            type='flatten_contiguous_range',
+            inputs={'X': x},
+            outputs={'Out': out1,
+                     'XShape': out1_shape},
+            attrs={'start_axis': 0,
+                   'stop_axis': -1})
+        out1.stop_gradient = True
+
+        helper.append_op(
+            type='diag_v2',
+            inputs={'X': out1},
+            outputs={'Out': out2},
+            attrs={'offset': offset,
+                   'padding_value': padding_value})
+    out2.stop_gradient = True
+    return out2
 
 
 def diag(x, offset=0, padding_value=0, name=None):
