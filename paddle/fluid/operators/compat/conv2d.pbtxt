@@ -38,6 +38,10 @@ extra {
     name: "ResidualData"
   }
   attrs {
+    name: "skip_quant"
+    type: BOOLEAN
+  }
+  attrs {
     name: "is_test"
     type: BOOLEAN
   }
