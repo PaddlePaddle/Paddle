@@ -24,10 +24,6 @@ class ProgramProcessor {
  public:
   ProgramProcessor();
 
-  // explicit ProgramProcessor(const ProgramDesc &program);
-
-  bool IsControlFlowBlock(ProgramDesc *program, const BlockDesc &current_block);
-
   void GetInputsOutputsInBlock(ProgramDesc *program,
                                const BlockDesc &current_block,
                                std::set<std::string> *inner_inputs,

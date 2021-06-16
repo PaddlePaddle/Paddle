@@ -23,7 +23,7 @@ namespace paddle {
 
 namespace framework {
 
-TEST(ProgramDesc, SSAprogram) {
+TEST(ProgramDesc, GetInputsOutputsInBlock) {
   ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
   auto* x = global_block->Var("X");
@@ -38,94 +38,84 @@ TEST(ProgramDesc, SSAprogram) {
   y->SetDataType(proto::VarType::FP32);
   y->SetShape({784, 100});
 
-  auto* op = global_block->AppendOp();
-  op->SetType("mul");
-  op->SetInput("X", {x->Name()});
-  op->SetInput("Y", {y->Name()});
+  auto* op1 = global_block->AppendOp();
+  op1->SetType("mul");
+  op1->SetInput("X", {x->Name()});
+  op1->SetInput("Y", {y->Name()});
 
-  auto* out1 = global_block->Var("Out");
+  auto* out1 = global_block->Var("Out1");
   out1->SetType(proto::VarType::LOD_TENSOR);
-  op->SetOutput("Y", {out1->Name()});
+  op1->SetOutput("Y", {out1->Name()});
 
   BlockDesc* new_block = program.AppendBlock(*global_block);
-  op = new_block->AppendOp();
-  op->SetType("mul");
+  auto* op2 = new_block->AppendOp();
+  op2->SetType("mul");
 
-  op = global_block->AppendOp();
-  op->SetType("op_with_subblock");
-  op->SetAttr("sub_block", new_block);
+  auto* op3 = global_block->AppendOp();
+  op3->SetType("op_with_subblock");
+  op3->SetAttr("sub_block", new_block);
   std::vector<BlockDesc*> sub_blocks;
   sub_blocks.push_back(program.AppendBlock(*global_block));
-  sub_blocks.push_back(program.AppendBlock(*global_block));
-  VLOG(3) << "sub_blocks_ID:" << sub_blocks[0]->ID();
-  VLOG(3) << "sub_blocks_Parent:" << sub_blocks[0]->Parent();
-  op->SetAttr("sub_blocks", sub_blocks);
+  op3->SetAttr("sub_blocks", sub_blocks);
 
   // building cond op such as less_than
-  BlockDesc* parent_block = program.MutableBlock(sub_blocks[0]->Parent());
-  op = parent_block->AppendOp();
-  op->SetType("less_than");
-  auto* x1 = parent_block->Var("X");
+  BlockDesc* parent_block = program.MutableBlock(new_block->Parent());
+  auto* op4 = parent_block->AppendOp();
+  op4->SetType("less_than");
+  auto* x1 = parent_block->Var("X1");
   x1->SetType(proto::VarType::LOD_TENSOR);
   x1->SetLoDLevel(0);
   x1->SetDataType(proto::VarType::FP32);
   x1->SetShape({1});
 
-  auto* y1 = parent_block->Var("Y");
+  auto* y1 = parent_block->Var("Y1");
   y1->SetType(proto::VarType::LOD_TENSOR);
   y1->SetLoDLevel(0);
   y1->SetDataType(proto::VarType::FP32);
   y1->SetShape({1});
 
-  op->SetInput("X", {x1->Name()});
-  op->SetInput("Y", {y1->Name()});
+  op4->SetInput("X", {x1->Name()});
+  op4->SetInput("Y", {y1->Name()});
 
-  auto* less_than_out = parent_block->Var("Out");
+  auto* less_than_out = parent_block->Var("Out1");
   out1->SetType(proto::VarType::BOOL);
-  op->SetOutput("Out", {less_than_out->Name()});
+  op4->SetOutput("Out", {less_than_out->Name()});
 
-  // building while op
-  // BlockDesc* parent_block = program.MutableBlock(sub_blocks[0]->Parent());
-  op = sub_blocks[0]->AppendOp();
-  op->SetType("while");
-  auto* x2 = parent_block->Var("X1");
+  // building while op in sub_block
+  auto* op5 = sub_blocks[0]->AppendOp();
+  op5->SetType("while");
 
+  auto* x2 = sub_blocks[0]->Var("X2");
   x2->SetType(proto::VarType::LOD_TENSOR);
   x2->SetLoDLevel(0);
   x2->SetDataType(proto::VarType::FP32);
   x2->SetShape({1});
 
-  // auto* Condition = parent_block->Var("Condition");
-  // Condition->SetType(proto::VarType::BOOL);
+  op5->SetInput("kX", {x2->Name()});
+  op5->SetInput("kCondition", {less_than_out->Name()});
 
-  op->SetInput("kX", {x2->Name()});
-  op->SetInput("kCondition", {less_than_out->Name()});
-
-  auto* out = sub_blocks[0]->Var("Out");
-  out->SetType(proto::VarType::LOD_TENSOR);
-  out->SetLoDLevel(0);
-  out->SetDataType(proto::VarType::FP32);
-  out->SetShape({1});
+  auto* out2 = sub_blocks[0]->Var("Out2");
+  out2->SetType(proto::VarType::LOD_TENSOR);
+  out2->SetLoDLevel(0);
+  out2->SetDataType(proto::VarType::FP32);
+  out2->SetShape({1});
 
   auto* steps = sub_blocks[0]->Var("StepScopes");
-  // steps->SetType(proto::VarType::STEP_SCOPES);
-  // steps->SetDataType(proto::VarType::FP32);
-  // steps->SetShape({1});
 
-  op->SetOutput("kOutputs", {out->Name()});
-  op->SetOutput("kStepScopes", {steps->Name()});
+  op5->SetOutput("kOutputs", {out2->Name()});
+  op5->SetOutput("kStepScopes", {steps->Name()});
 
   ProgramProcessor program_processor;
-  // program_processor.SSAProgram(&program);
-
-  std::set<std::string> x_name_list;
+  std::set<std::string> inner_inputs;
   std::set<std::string> inner_outputs;
 
   program_processor.GetInputsOutputsInBlock(&program, *sub_blocks[0],
-                                            &x_name_list, &inner_outputs);
+                                            &inner_inputs, &inner_outputs);
 
-  VLOG(3) << "inner_inputs length:" << x_name_list.size();
-  VLOG(3) << "inner_outputs length:" << inner_outputs.size();
+  // while op inner_inputs : kCondition = Out1
+  ASSERT_EQ(1UL, inner_inputs.size());
+  // while op inner_outputs : kOutputs = Out2, kStepScopes = StepScopes
+  ASSERT_EQ(2UL, inner_outputs.size());
 }
 }  // namespace framework
 }  // namespace paddle
