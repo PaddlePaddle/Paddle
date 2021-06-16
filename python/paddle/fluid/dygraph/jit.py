@@ -426,8 +426,6 @@ def _get_input_var_names(inputs, input_spec):
     else:
         # prune
         for spec in input_spec:
-            if not isinstance(spec, paddle.static.InputSpec):
-                continue
             if spec.name is None:
                 # name is None, the input_spec only can be InputSpec
                 raise ValueError(name_none_error % spec)
