@@ -161,8 +161,12 @@ ConvBNFusePass::ConvBNFusePass() {
       .AddAttr("padding_algorithm")
       .End()
       .AddAttr("groups")
+      .IsNumGE(1)
       .End()
       .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC"})
       .End();
 
   AddOpCompat(OpCompat("batch_norm"))
@@ -197,6 +201,8 @@ ConvBNFusePass::ConvBNFusePass() {
       .IsTensor()
       .End()
       .AddAttr("epsilon")
+      .IsNumLE(0.001f)
+      .IsNumGE(0.0f)
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))

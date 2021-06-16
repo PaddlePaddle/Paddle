@@ -48,6 +48,7 @@ struct Layers {
     op->SetInput("Bias", {bias->Name()});
     op->SetOutput("Output", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
+    op->SetAttr("groups", 1);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
