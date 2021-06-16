@@ -39,7 +39,11 @@ struct Layers {
   }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
-                  bool use_cudnn = false) {
+                  int groups = 1, std::vector<int> strides = {1, 1},
+                  std::vector<int> paddings = {0, 0},
+                  std::string padding_algorithm = "EXPLICIT",
+                  std::vector<int> dilations = {1, 1},
+                  std::string data_format = "NCHW", bool use_cudnn = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("conv2d");
@@ -48,18 +52,23 @@ struct Layers {
     op->SetInput("Bias", {bias->Name()});
     op->SetOutput("Output", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
-    op->SetAttr("groups", 1);
-    op->SetAttr("strides", std::vector<int>{1, 1});
-    op->SetAttr("paddings", std::vector<int>{0, 0});
-    op->SetAttr("padding_algorithm", "EXPLICIT");
-    op->SetAttr("dilations", std::vector<int>{1, 1});
-    op->SetAttr("data_format", "NCHW");
+    op->SetAttr("groups", groups);
+    op->SetAttr("strides", strides);
+    op->SetAttr("paddings", paddings);
+    op->SetAttr("padding_algorithm", padding_algorithm);
+    op->SetAttr("dilations", dilations);
+    op->SetAttr("data_format", data_format);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
   }
 
-  VarDesc* conv2d_transpose(VarDesc* input, VarDesc* filter, VarDesc* bias) {
+  VarDesc* conv2d_transpose(VarDesc* input, VarDesc* filter, VarDesc* bias,
+                            int groups = 1, std::vector<int> strides = {1, 1},
+                            std::vector<int> paddings = {0, 0},
+                            std::string padding_algorithm = "EXPLICIT",
+                            std::vector<int> dilations = {1, 1},
+                            std::string data_format = "NCHW") {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("conv2d_transpose");
@@ -67,12 +76,12 @@ struct Layers {
     op->SetInput("Filter", {filter->Name()});
     op->SetInput("Bias", {bias->Name()});
     op->SetOutput("Output", {out->Name()});
-    op->SetAttr("groups", 1);
-    op->SetAttr("strides", std::vector<int>{1, 1});
-    op->SetAttr("paddings", std::vector<int>{0, 0});
-    op->SetAttr("padding_algorithm", "EXPLICIT");
-    op->SetAttr("dilations", std::vector<int>{1, 1});
-    op->SetAttr("data_format", "NCHW");
+    op->SetAttr("groups", groups);
+    op->SetAttr("strides", strides);
+    op->SetAttr("paddings", paddings);
+    op->SetAttr("padding_algorithm", padding_algorithm);
+    op->SetAttr("dilations", dilations);
+    op->SetAttr("data_format", data_format);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
