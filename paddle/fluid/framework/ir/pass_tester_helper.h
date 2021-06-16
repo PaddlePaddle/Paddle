@@ -49,8 +49,8 @@ struct Layers {
     op->SetOutput("Output", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
     op->SetAttr("groups", 1);
-    op->SetAttr("strides", {1，1});
-    op->SetAttr("paddings", {0，0});
+    op->SetAttr("strides", {1, 1});
+    op->SetAttr("paddings", {0, 0});
     op->SetAttr("padding_algorithm", "EXPLICIT");
     op->SetAttr("dilations", {1, 1});
     op->SetAttr("data_format", "NCHW");
