@@ -204,10 +204,10 @@ Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
       .IsTensor()
       .End()
       .AddAttr("x_num_col_dims")
-      .IsNumGT(1)
+      .IsNumEQ(1)
       .End()
       .AddAttr("y_num_col_dims")
-      .IsNumGT(1)
+      .IsNumEQ(1)
       .End();
 }
 

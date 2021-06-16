@@ -25,7 +25,7 @@ namespace framework {
 namespace ir {
 
 AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
-  AddOpCompat(OpCompat("reshape2"))
+  AddOpCompat(OpCompat("pool2d"))
       .AddInput("X")
       .IsTensor()
       .End()
