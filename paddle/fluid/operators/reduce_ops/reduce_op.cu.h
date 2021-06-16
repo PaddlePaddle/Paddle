@@ -729,13 +729,13 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
 }
 
 template <typename Tx, template <typename, typename> class ReduceOp>
-struct TensorReduceFunctor {
+struct TensorReduceFunc {
   const framework::Tensor& x;
   framework::Tensor* y;
   std::vector<int> origin_reduce_dims;
   gpuStream_t stream;
-  TensorReduceFunctor(const framework::Tensor& x, framework::Tensor* y,
-                      std::vector<int> origin_reduce_dims, gpuStream_t stream)
+  TensorReduceFunc(const framework::Tensor& x, framework::Tensor* y,
+                   std::vector<int> origin_reduce_dims, gpuStream_t stream)
       : x(x), y(y), origin_reduce_dims(origin_reduce_dims), stream(stream) {}
 
   template <typename Ty>
@@ -761,8 +761,7 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunctor<T, ReduceOp>(*input, output, reduce_dims,
-                                           stream));
+          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
     } else {
       TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
                                               stream);
