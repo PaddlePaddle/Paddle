@@ -18,6 +18,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
 from paddle.fluid.framework import core, convert_np_dtype_to_dtype_
+from paddle.fluid.dygraph.dygraph_to_static.utils import _compatible_non_tensor_spec
 
 
 class TestInputSpec(unittest.TestCase):
@@ -294,6 +295,26 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
         load_out = load_net(self.x)  # no y and no loss
 
         self.assertTrue(np.allclose(st_out, load_out))
+
+
+class UnHashableObject:
+    def __init__(self, val):
+        self.val = val
+
+    def __hash__(self):
+        raise TypeError("Unsupported to call hash()")
+
+
+class TestCompatibleNonTensorSpec(unittest.TestCase):
+    def test_case(self):
+        self.assertTrue(_compatible_non_tensor_spec([1, 2, 3], [1, 2, 3]))
+        self.assertFalse(_compatible_non_tensor_spec([1, 2, 3], [1, 2]))
+        self.assertFalse(_compatible_non_tensor_spec([1, 2, 3], [1, 3, 2]))
+
+        # not supported unhashable object.
+        self.assertTrue(
+            _compatible_non_tensor_spec(
+                UnHashableObject(1), UnHashableObject(1)))
 
 
 if __name__ == '__main__':

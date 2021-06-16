@@ -142,9 +142,9 @@ def make_hashable(x, error_msg=None):
     """
     Makes input `x` hashable.
 
-    For some unhashable objects, such as `dict/list/np.ndarray`,applying hash function by using their values.
+    For some unhashable objects, such as `dict/list/set/np.ndarray`,applying hash function by using their values.
     """
-    if isinstance(x, (tuple, list)):
+    if isinstance(x, (tuple, list, set)):
         return tuple(map(make_hashable, x))
 
     try:
