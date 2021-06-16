@@ -44,7 +44,8 @@ class SkipLayerNormFusePass : public FusePassBase {
         .AddOutput("Out")
         .IsTensor()
         .End()
-        .AddAttr("axis")  // unconstrained
+        .AddAttr("axis")
+        .IsNumEQ(0)
         .End();
 
     AddOpCompat(OpCompat("layer_norm"))
@@ -66,9 +67,12 @@ class SkipLayerNormFusePass : public FusePassBase {
         .AddOutput("Variance")
         .IsTensor()
         .End()
-        .AddAttr("epsilon")  // unconstrained
+        .AddAttr("epsilon")
+        .IsNumGE(0.0f)
+        .IsNumLE(0.001f)
         .End()
-        .AddAttr("begin_norm_axis")  // unconstrained
+        .AddAttr("begin_norm_axis")
+        .IsNumGT(0)
         .End();
   }
 
