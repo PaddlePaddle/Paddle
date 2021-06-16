@@ -555,12 +555,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
 framework::ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
+  if (!fin.is_open()) {
+    std::cout << "open file " << file_name << " faild!" << std::endl;
+  }
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
   fin.read(&buffer[0], buffer.size());
   fin.close();
-
   ProgramDesc program_desc(buffer);
   return program_desc;
 }
@@ -623,7 +625,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
   auto& global_block = pdesc.Block(0);
 
   for (auto& op : global_block.AllOps()) {
-    std::cerr << op->Type() << std::endl;
+    // std::cerr << op->Type() << std::endl;
     // bool debug = op->Type() == "softmax_with_cross_entropy_grad";
     bool debug = false;
 
@@ -744,9 +746,9 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     // std::cerr << "in map size " << ins_map.size() << std::endl;
     // VariableValueMap&  ins_map_temp = runtime_context.inputs;
     auto ins_map_temp = runtime_context.input_name_map;
-    std::cerr << "ins map siz" << ins_map_temp.size() << std::endl;
+    // std::cerr << "ins map siz" << ins_map_temp.size() << std::endl;
     for (auto& var_name_item : ins_map_temp) {
-      std::cerr << "in name " << var_name_item.first << std::endl;
+      // std::cerr << "in name " << var_name_item.first << std::endl;
       // auto& vec_ids = ins_name2id[ var_name_item.first ];
       for (size_t i = 0;
            i < runtime_context.input_values[var_name_item.second].size(); ++i) {
@@ -907,7 +909,7 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
 
       input_vars.reserve(func_node.input_index[var_name_item.second].size());
       for (auto& id : func_node.input_index[var_name_item.second]) {
-        std::cerr << var_name_item.first << "\t " << id << std::endl;
+        // std::cerr << var_name_item.first << "\t " << id << std::endl;
         input_vars.emplace_back(var_scope.var_list[id].get());
       }
       // ins_map.emplace( var_name_item.first, std::move(input_vars) );
@@ -921,11 +923,11 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
 
       out_vars.reserve(func_node.output_index[var_name_item.second].size());
       for (auto& id : func_node.output_index[var_name_item.second]) {
-        std::cerr << var_name_item.first << "\t " << id << std::endl;
+        // std::cerr << var_name_item.first << "\t " << id << std::endl;
         out_vars.emplace_back(var_scope.var_list[id].get());
       }
       // outs_map.emplace( var_name_item.first, std::move( out_vars ) );
-      ins_map.emplace_back(std::move(out_vars));
+      outs_map.emplace_back(std::move(out_vars));
     }
 
     RuntimeContextV2 runtime_context(
@@ -983,6 +985,7 @@ class InterpreterCore {
     if (is_build == false) {
       paddle::framework::build_variable_scope(prog_, &global_scope);
     }
+
     for (size_t i = 0; i < vec_name.size(); ++i) {
       auto it = global_scope.name2id.find(vec_name[i]);
       // std::cerr << "find " << (it != global_scope.name2id.end()) <<
@@ -991,9 +994,9 @@ class InterpreterCore {
 
       auto feed_tensor =
           global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
-      std::cerr << " get tensor" << std::endl;
+      // std::cerr << " get tensor" << std::endl;
       feed_tensor->ShareDataWith(vec_tensor[i]);
-      std::cerr << "share buffer with" << std::endl;
+      // std::cerr << "share buffer with" << std::endl;
     }
 
     if (is_build == false) {
@@ -1014,7 +1017,7 @@ class InterpreterCore {
 
       // std::cerr << "out  "  << fetch_tensor->data<float>()[0] << std::endl;
       if (platform::is_gpu_place(fetch_tensor->place())) {
-        std::cerr << "fetch gpu" << std::endl;
+        // std::cerr << "fetch gpu" << std::endl;
         Tensor out;
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
@@ -1025,7 +1028,7 @@ class InterpreterCore {
         // std::cerr << "out  " << out << std::endl;
         vec_out.push_back(out);
       } else {
-        std::cerr << "out  " << *fetch_tensor << std::endl;
+        // std::cerr << "out  " << *fetch_tensor << std::endl;
       }
     }
   }

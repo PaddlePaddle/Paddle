@@ -39,16 +39,13 @@ int main() {
   paddle::framework::InitDevices();
   paddle::framework::VariableScope global_scope;
   auto place = paddle::platform::CUDAPlace(0);
-
   {
     auto test_prog = paddle::framework::load_from_file("lm_startup_program");
     paddle::framework::build_variable_scope(test_prog, &global_scope);
-
     std::vector<paddle::framework::OpFuncNode> vec_func_list;
     std::vector<paddle::framework::OperatorBase*> op_list;
     paddle::framework::build_op_func_list(test_prog, op_list, vec_func_list,
                                           &global_scope, place);
-
     paddle::framework::exec_op_func_list(vec_func_list, op_list, global_scope,
                                          place);
   }
@@ -71,6 +68,7 @@ int main() {
     }
     paddle::framework::exec_op_func_list(vec_main_func_list, op_main_list,
                                          global_scope, place);
+    33
   }
   // ProfilerStop();
   auto end = std::chrono::steady_clock::now();
