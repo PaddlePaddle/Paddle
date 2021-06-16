@@ -1010,6 +1010,25 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
     return this->AcquireMemory(dims_, dtype_, fmt, ptr, "@user_src_mem_p");
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireSrcSubmemory(
+      const std::vector<int64_t>& dims, const std::vector<int64_t>& offset,
+      const std::shared_ptr<mkldnn::memory> mem_p){
+        std::string local_key = key_;
+        AppendKey(&local_key, dims);
+        AppendKey(&local_key, offset);
+
+        auto sub_mem_p = std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+        if (mem_p == nullptr){
+          auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
+          auto sub_mem_p = std::make_shared<mkldnn::memory>(
+                          sub_md, engine_, mem_p->get_data_handle());
+                          dev_ctx_.SetBlob(local_key, mem_p);
+        } else {
+          sub_mem_p->set_data_handle(mem_p->get_data_handle());
+        }
+      return sub_mem_p;
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       framework::Tensor* output, const MKLDNNMemoryFormat& fmt,
       platform::Place place) {

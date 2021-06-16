@@ -20,10 +20,11 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
 from paddle.fluid.tests.unittests.op_test import OpTest
 
-
-class TestSplitSectionsOneDNNOp(OpTest):
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestSplitSectionsBF16OneDNNOp(OpTest):
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype("float32")
+        self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 1
         self.sections = [2, 1, 2]
         indices_or_sections = [2, 3]  # sections
@@ -52,29 +53,31 @@ class TestSplitSectionsOneDNNOp(OpTest):
             for i in range(len(self.out))]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
-    def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+# TODO jakpiase enable grad check(concat op)
+#    def test_check_grad(self):
+#        self.check_grad_with_place(
+#            core.CPUPlace(), ["X"],
+#            "Out",
+#            check_dygraph=False,
+#            user_defined_grads=[self.inputs['X']],
+#            user_defined_grad_outputs=self.out[0])
 
 
-# test with attr(num)
-class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
+class TestSplitNumBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
-        self.x = np.random.random((4, 8, 5, 3)).astype("float32")
+        self.x = np.random.random((4, 8, 5, 3)).astype("uint16")
         self.axis = 1
         self.sections = []
         self.num = 4
         indices_or_sections = 4  #indices
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
-    def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2', 'out3'])
 
-
-class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
+class TestSplitNumAxisTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype("float32")
+        self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = None
         self.sections = []
         self.num = 3
@@ -83,10 +86,9 @@ class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
         self.out = np.split(self.x, indices_or_sections, 2)
 
 
-# attr(sections) is list containing Tensor
-class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
+class TestSplitSectionsTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype("float32")
+        self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 1
         self.sections = [2, 1, 2]
         self.sections_tensor_list = []
@@ -98,9 +100,9 @@ class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
 
-class TestSplitOpUnknownSectionOneDNNOp(TestSplitSectionsOneDNNOp):
+class TestSplitOpUnknownSectionBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype("float32")
+        self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 2
         self.sections = [2, 2, -1]
         indices_or_sections = [2, 4]  #sections
