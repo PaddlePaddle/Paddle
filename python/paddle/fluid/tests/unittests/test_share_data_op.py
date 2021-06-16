@@ -37,22 +37,50 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         return places
 
-    def check_with_place(self, place):
+    def check_with_tensor(self, place):
         scope = core.Scope()
         np_array = np.random.rand(2, 3, 5).astype("float32")
 
         # initialize input and output variable
-        x = scope.var('Input').get_tensor()
+        x = scope.var('X').get_tensor()
         x.set(np_array, place)
         out = scope.var("Out").get_tensor()
 
-        op = Operator("share_data", Input="Input", Out="Out")
+        op = Operator("share_data", Input="X", Out="Out")
         op.run(scope, place)
         self.assertTrue(np.allclose(np_array, out))
 
+    def check_with_selected_rows(self, place):
+        scope = core.Scope()
+        x_rows = [0, 1, 5, 4, 19]
+        x_height = 20
+        row_numel = 2
+        np_array = np.ones((len(x_rows), row_numel)).astype("float32")
+
+        # initialize input variable
+        x = scope.var('X').get_selected_rows()
+        x.set_rows(x_rows)
+        x.set_height(x_height)
+        x_tensor = x.get_tensor()
+        x_tensor.set(np_array, place)
+
+        # initialize the Out variable
+        out = scope.var("Out").get_selected_rows()
+        out_tensor = out.get_tensor()
+
+        op = Operator("share_data", Input="X", Out="Out")
+        op.run(scope, place)
+
+        out_height = out.height()
+        out_rows = out.rows()
+        self.assertTrue(np.allclose(np_array, out_tensor))
+        self.assertEqual(x_height, out_height)
+        self.assertEqual(x_rows, out_rows)
+
     def test_check_output(self):
         for place in self.get_places():
-            self.check_with_place(place)
+            self.check_with_selected_rows(place)
+            self.check_with_tensor(place)
 
 
 if __name__ == '__main__':
