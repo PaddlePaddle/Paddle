@@ -40,9 +40,97 @@
 namespace paddle {
 namespace framework {
 
+class RuntimeContextV2 {
+ public:
+  RuntimeContextV2(std::vector<std::vector<Variable*>>& in_values,   // NOLINT
+                   std::vector<std::vector<Variable*>>& out_values,  // NOLINT
+                   const std::map<std::string, size_t>& in_name_map,
+                   const std::map<std::string, size_t>& out_name_map)
+      : input_values(std::move(in_values)),
+        output_values(std::move(out_values)),
+        input_name_map(in_name_map),
+        output_name_map(out_name_map) {}
+  std::vector<std::vector<Variable*>> input_values;
+  std::vector<std::vector<Variable*>> output_values;
+  const std::map<std::string, size_t>& input_name_map;
+  const std::map<std::string, size_t>& output_name_map;
+};
+
+class ExecutionContextV2 : public ExecutionContext {
+ public:
+  ExecutionContextV2(const OperatorBase& op, const Scope& scope,
+                     const platform::DeviceContext& device_context,
+                     const RuntimeContextV2& ctx)
+      : ExecutionContext(op, scope, device_context, RuntimeContext({}, {})),
+        ctx_(ctx) {}
+
+  const std::vector<Variable*> MultiInputVar(const std::string& name) const {
+    LogVarUsageIfUnusedVarCheckEnabled(name);
+
+    auto it = ctx_.input_name_map.find(name);
+    if (it == ctx_.input_name_map.end()) {
+      return {};
+    }
+    // return {it->second.begin(), it->second.end()};
+    return ctx_.input_values[it->second];
+  }
+
+  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
+    auto it = ctx_.output_name_map.find(name);
+    if (it == ctx_.output_name_map.end()) {
+      return {};
+    }
+    // return it->second;
+    return ctx_.output_values[it->second];
+  }
+
+  std::vector<std::string> InNameList() const {
+    std::vector<std::string> vec_temp;
+    vec_temp.reserve(ctx_.output_name_map.size());
+
+    for (auto& input : ctx_.output_name_map) {
+      vec_temp.push_back(input.first);
+    }
+
+    return vec_temp;
+  }
+
+  const Variable* InputVar(const std::string& name) const {
+    LogVarUsageIfUnusedVarCheckEnabled(name);
+
+    auto it = ctx_.input_name_map.find(name);
+    if (it == ctx_.input_name_map.end()) return nullptr;
+
+    PADDLE_ENFORCE_LE(
+        ctx_.input_values[it->second].size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Operator %s's input %s should contain only one variable.",
+            GetOp().Type(), name));
+    return ctx_.input_values[it->second].empty()
+               ? nullptr
+               : ctx_.input_values[it->second][0];
+  }
+
+  Variable* OutputVar(const std::string& name) const {
+    auto it = ctx_.output_name_map.find(name);
+    if (it == ctx_.output_name_map.end()) return nullptr;
+
+    PADDLE_ENFORCE_LE(
+        ctx_.output_values[it->second].size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Operator %s's output %s should contain only one variable.",
+            GetOp().Type(), name));
+    return ctx_.output_values[it->second].empty()
+               ? nullptr
+               : ctx_.output_values[it->second][0];
+  }
+
+  const RuntimeContextV2& ctx_;
+};
+
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
-  RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx)
+  RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContextV2& ctx)
       : op_(op), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
@@ -347,7 +435,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   void SetOutputDim(const std::string& name, const DDim& dim) override {
-    // cerr << "set out dim" << endl;
+    // std::cerr << "set out dim" << std::endl;
     auto& vars = OutputVars(name);
     PADDLE_ENFORCE_EQ(
         vars.size(), 1UL,
@@ -462,7 +550,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   const OperatorBase& op_;
-  const RuntimeContext& ctx_;
+  const RuntimeContextV2& ctx_;
 };
 
 framework::ProgramDesc load_from_file(const std::string& file_name) {
@@ -514,7 +602,7 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
     if (var->Name() == framework::kEmptyVarName) {
       continue;
     }
-    // cerr << "var name "  << var->Name() << endl;
+    // std::cerr << "var name "  << var->Name() << std::endl;
 
     if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
       var_scope->name2id[var->Name()] = var_scope->var_list.size();
@@ -535,11 +623,11 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
   auto& global_block = pdesc.Block(0);
 
   for (auto& op : global_block.AllOps()) {
-    cerr << op->Type() << endl;
+    std::cerr << op->Type() << std::endl;
     // bool debug = op->Type() == "softmax_with_cross_entropy_grad";
-    bool debug = true;
+    bool debug = false;
 
-    // cerr << "create op" << endl;
+    // std::cerr << "create op" << std::endl;
     // auto op_base_u = OpRegistry::CreateOp(*op);
     auto& info = OpInfoMap::Instance().Get(op->Type());
 
@@ -578,7 +666,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
       // ins_map[ var_name_item.first ] = input_vars;
       // ins_name2id[ var_name_item.first ] = vec_ids;
     }
-    if (debug) cerr << "1" << endl;
+    if (debug) std::cerr << "1" << std::endl;
 
     // VariableValueMap outs_map;
     // std::map<std::string, std::vector<int> > outs_name2id;
@@ -592,7 +680,8 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
       for (auto& var_name : var_name_item.second) {
         auto it = var_scope->name2id.find(var_name);
         assert(it != var_scope->name2id.end());
-        // cerr << it->second << "\t" << var_scope.var_list.size() << endl;
+        // std::cerr << it->second << "\t" << var_scope.var_list.size() <<
+        // std::endl;
         output_vars.push_back(var_scope->var_list[it->second].get());
         vec_ids.push_back(it->second);
       }
@@ -600,7 +689,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
       outs_index.emplace_back(std::move(vec_ids));
       outs_name_map[var_name_item.first] = outs_index.size() - 1;
       // outs_map[ var_name_item.first ] = output_vars;
-      // //cerr << ToTypeName(output_vars[0]->Type() ) << endl;
+      // //std::cerr << ToTypeName(output_vars[0]->Type() ) << std::endl;
       // outs_name2id[ var_name_item.first ] = vec_ids;
     }
 
@@ -610,18 +699,19 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     op_func_node.input_name_map = ins_name_map;
     op_func_node.output_index = outs_index;
     op_func_node.output_name_map = outs_name_map;
-    RuntimeContext runtime_context;
+    RuntimeContextV2 runtime_context(ins_value, outs_value, ins_name_map,
+                                     outs_name_map);
     // runtime_context.inputs.swap( ins_map );
     // runtime_context.outputs.swap(  outs_map );
-    runtime_context.input_values.swap(ins_value);
-    runtime_context.input_name_map = ins_name_map;
-    runtime_context.output_values.swap(outs_value);
-    runtime_context.output_name_map = outs_name_map;
-    // cerr << "create runtime context" << endl;
+    // runtime_context.input_values.swap(ins_value);
+    // runtime_context.input_name_map = ins_name_map;
+    // runtime_context.output_values.swap(outs_value);
+    // runtime_context.output_name_map = outs_name_map;
+    // std::cerr << "create runtime context" << std::endl;
     RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
-    // cerr << "fin infer shape" << endl;
+    // std::cerr << "fin infer shape" << std::endl;
     auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
     auto kernels_iter = all_op_kernels.find(op->Type());
     PADDLE_ENFORCE_NE(
@@ -630,11 +720,11 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
             "There are no kernels which are registered in the %s operator.",
             op->Type()));
 
-    // cerr << "create kernel" << endl;
+    // std::cerr << "create kernel" << std::endl;
     using OpKernelFunc = std::function<void(const ExecutionContext&)>;
     using OpKernelMap =
         std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
-    if (debug) cerr << "2" << endl;
+    if (debug) std::cerr << "2" << std::endl;
     OpKernelMap& kernels = kernels_iter->second;
     // auto place = platform::CPUPlace();
     // auto place = platform::CUDAPlace(0);
@@ -642,52 +732,56 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
     auto* dev_ctx = pool.Get(place);
     Scope scope;
     auto exec_ctx =
-        ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
-    if (debug) cerr << "21" << endl;
+        ExecutionContextV2(*op_base, scope, *dev_ctx, runtime_context);
+    if (debug) std::cerr << "21" << std::endl;
     auto expected_kernel_key =
         dynamic_cast<const framework::OperatorWithKernel*>(op_base)
             ->GetExpectedKernelType(exec_ctx);
-    if (debug) cerr << "22" << endl;
-    // cerr << "22" << endl;
+    if (debug) std::cerr << "22" << std::endl;
+    // std::cerr << "22" << std::endl;
 
     // add transfer log
-    // cerr << "in map size " << ins_map.size() << endl;
+    // std::cerr << "in map size " << ins_map.size() << std::endl;
     // VariableValueMap&  ins_map_temp = runtime_context.inputs;
     auto ins_map_temp = runtime_context.input_name_map;
-    cerr << "ins map siz" << ins_map_temp.size() << endl;
+    std::cerr << "ins map siz" << ins_map_temp.size() << std::endl;
     for (auto& var_name_item : ins_map_temp) {
-      cerr << "in name " << var_name_item.first << endl;
+      std::cerr << "in name " << var_name_item.first << std::endl;
       // auto& vec_ids = ins_name2id[ var_name_item.first ];
       for (size_t i = 0;
            i < runtime_context.input_values[var_name_item.second].size(); ++i) {
         auto var = runtime_context.input_values[var_name_item.second][i];
         auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
-        cerr << "i " << i << "\t" << tensor_in->IsInitialized() << endl;
+        if (!tensor_in->IsInitialized()) {
+          continue;
+        }
+        // std::cerr << "i " << i << "\t" << tensor_in->IsInitialized() <<
+        // std::endl;
         auto kernel_type_for_var =
             static_cast<const framework::OperatorWithKernel*>(op_base)
                 ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
                                       expected_kernel_key);
         if (debug) {
-          cerr << "var name " << var_name_item.first << endl;
-          cerr << expected_kernel_key.place_ << "\t"
-               << kernel_type_for_var.place_ << endl;
+          std::cerr << "var name " << var_name_item.first << std::endl;
+          std::cerr << expected_kernel_key.place_ << "\t"
+                    << kernel_type_for_var.place_ << std::endl;
         }
         if (!platform::is_same_place(kernel_type_for_var.place_,
                                      expected_kernel_key.place_)) {
-          if (debug) cerr << "add data transfer" << endl;
+          if (debug) std::cerr << "add data transfer" << std::endl;
           // need trans place
           // add var in scope
           // add copy op
           std::string new_var_name =
-              "temp_1" + to_string(var_scope->var_list.size() + 1);
+              "temp_1" + std::to_string(var_scope->var_list.size() + 1);
           auto v = new Variable();
           v->GetMutable<LoDTensor>();
           var_scope->name2id[new_var_name] = var_scope->var_list.size();
           var_scope->var_list.push_back(std::unique_ptr<Variable>(v));
 
           VariableNameMap copy_in_map;
-          cerr << "ints name is " << input_names[var_name_item.first][i]
-               << endl;
+          // std::cerr << "ints name is " << input_names[var_name_item.first][i]
+          //     << std::endl;
           copy_in_map["X"] = {input_names[var_name_item.first][i]};
           VariableNameMap copy_out_map;
           copy_out_map["Out"] = {new_var_name};
@@ -713,7 +807,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           auto& copy_info = OpInfoMap::Instance().Get("memcpy");
           auto copy_op = copy_info.Creator()("memcpy", copy_in_map,
                                              copy_out_map, attr_map);
-          if (debug) cerr << "create memcpy" << endl;
+          if (debug) std::cerr << "create memcpy" << std::endl;
           OpFuncNode copy_op_func_node;
           // copy_op_func_node.input_index = copy_ins_name2id;
           // copy_op_func_node.output_index = copy_out_name2id;
@@ -723,21 +817,27 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
           copy_op_func_node.output_index.push_back(
               {var_scope->name2id[new_var_name]});
           copy_op_func_node.output_name_map["Out"] = 0;
-          RuntimeContext copy_runtime_context;
-          copy_runtime_context.input_values.push_back({var});
-          copy_runtime_context.input_name_map["X"] = 0;
-          copy_runtime_context.output_values.push_back({v});
-          copy_runtime_context.output_name_map["Out"] = 0;
+          std::vector<std::vector<Variable*>> in_values;
+          std::vector<std::vector<Variable*>> out_values;
+          in_values.push_back({var});
+          out_values.push_back({v});
+          RuntimeContextV2 copy_runtime_context(
+              in_values, out_values, copy_op_func_node.input_name_map,
+              copy_op_func_node.output_name_map);
+          // copy_runtime_context.input_values.push_back({var});
+          // copy_runtime_context.input_name_map["X"] = 0;
+          // copy_runtime_context.output_values.push_back({v});
+          // copy_runtime_context.output_name_map["Out"] = 0;
           // copy_runtime_context.inputs.swap( copy_ins_value_map );
           // copy_runtime_context.outputs.swap(  copy_outs_value_map );
-          // cerr << "create runtime context" << endl;
+          // std::cerr << "create runtime context" << std::endl;
           RuntimeInferShapeContext copy_infer_shape_ctx(*copy_op,
                                                         copy_runtime_context);
-          if (debug) cerr << "before infer shape" << endl;
+          if (debug) std::cerr << "before infer shape" << std::endl;
           static_cast<const framework::OperatorWithKernel*>(copy_op)
               ->InferShape(&copy_infer_shape_ctx);
-          if (debug) cerr << "infer shape" << endl;
-          // cerr << "fin infer shape" << endl;
+          if (debug) std::cerr << "infer shape" << std::endl;
+          // std::cerr << "fin infer shape" << std::endl;
           auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
           auto kernels_iter = all_op_kernels.find("memcpy");
           PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
@@ -745,7 +845,7 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
                                 "There are no kernels which are registered in "
                                 "the memcpy operator."));
 
-          // cerr << "create kernel" << endl;
+          // std::cerr << "create kernel" << std::endl;
           using OpKernelFunc = std::function<void(const ExecutionContext&)>;
           using OpKernelMap = std::unordered_map<OpKernelType, OpKernelFunc,
                                                  OpKernelType::Hash>;
@@ -758,18 +858,18 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
               platform::DeviceContextPool::Instance();
           auto* dev_ctx = pool.Get(place);
           Scope scope;
-          auto copy_exec_ctx =
-              ExecutionContext(*copy_op, scope, *dev_ctx, copy_runtime_context);
-          if (debug) cerr << "21" << endl;
+          auto copy_exec_ctx = ExecutionContextV2(*copy_op, scope, *dev_ctx,
+                                                  copy_runtime_context);
+          if (debug) std::cerr << "21" << std::endl;
           auto expected_kernel_key =
               dynamic_cast<const framework::OperatorWithKernel*>(copy_op)
                   ->GetExpectedKernelType(copy_exec_ctx);
-          if (debug) cerr << "22" << endl;
-          // cerr << "22" << endl;
+          if (debug) std::cerr << "22" << std::endl;
+          // std::cerr << "22" << std::endl;
           auto kernel_iter = kernels.find(expected_kernel_key);
           copy_op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
           copy_op_func_node.kernel_func_(copy_exec_ctx);
-          if (debug) cerr << "run exe ctx" << endl;
+          if (debug) std::cerr << "run exe ctx" << std::endl;
 
           op_list.push_back(copy_op);
           vec_func_list.push_back(copy_op_func_node);
@@ -783,12 +883,12 @@ void build_op_func_list(const framework::ProgramDesc& pdesc,
 
     auto kernel_iter = kernels.find(expected_kernel_key);
 
-    if (debug) cerr << "3" << endl;
+    if (debug) std::cerr << "3" << std::endl;
     op_func_node.kernel_func_ = OpKernelFunc(kernel_iter->second);
-    if (debug) cerr << "3-1" << endl;
+    if (debug) std::cerr << "3-1" << std::endl;
     op_func_node.kernel_func_(exec_ctx);
     vec_func_list.push_back(op_func_node);
-    if (debug) cerr << "5" << endl;
+    if (debug) std::cerr << "5" << std::endl;
   }
 }
 
@@ -807,7 +907,7 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
 
       input_vars.reserve(func_node.input_index[var_name_item.second].size());
       for (auto& id : func_node.input_index[var_name_item.second]) {
-        cerr << var_name_item.first << "\t " << id << endl;
+        std::cerr << var_name_item.first << "\t " << id << std::endl;
         input_vars.emplace_back(var_scope.var_list[id].get());
       }
       // ins_map.emplace( var_name_item.first, std::move(input_vars) );
@@ -821,20 +921,21 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
 
       out_vars.reserve(func_node.output_index[var_name_item.second].size());
       for (auto& id : func_node.output_index[var_name_item.second]) {
-        cerr << var_name_item.first << "\t " << id << endl;
+        std::cerr << var_name_item.first << "\t " << id << std::endl;
         out_vars.emplace_back(var_scope.var_list[id].get());
       }
       // outs_map.emplace( var_name_item.first, std::move( out_vars ) );
       ins_map.emplace_back(std::move(out_vars));
     }
 
-    RuntimeContext runtime_context;
+    RuntimeContextV2 runtime_context(
+        ins_map, outs_map, func_node.input_name_map, func_node.output_name_map);
     // runtime_context.inputs.swap( ins_map );
     // runtime_context.outputs.swap(  outs_map );
-    runtime_context.input_values.swap(ins_map);
-    runtime_context.output_values.swap(outs_map);
-    runtime_context.input_name_map = func_node.input_name_map;
-    runtime_context.output_name_map = func_node.output_name_map;
+    // runtime_context.input_values.swap(ins_map);
+    // runtime_context.output_values.swap(outs_map);
+    // runtime_context.input_name_map = func_node.input_name_map;
+    // runtime_context.output_name_map = func_node.output_name_map;
 
     RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
 
@@ -851,7 +952,7 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
     Scope scope;
 
     auto exec_context =
-        ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
+        ExecutionContextV2(*op_base, scope, *dev_ctx, runtime_context);
 
     func_node.kernel_func_(exec_context);
   }
@@ -859,30 +960,40 @@ void exec_op_func_list(const std::vector<OpFuncNode>& vec_func_list,
 
 class InterpreterCore {
  public:
-  InterpreterCore(const platform::Place& place, const ProgramDesc& prog)
+  InterpreterCore(const platform::Place& place, const ProgramDesc& prog,
+                  const ProgramDesc& startup_prog)
       : place_(place), prog_(prog) {
     paddle::framework::InitDevices();
 
     is_build = false;
+
+    paddle::framework::build_variable_scope(startup_prog, &global_scope);
+
+    std::vector<paddle::framework::OpFuncNode> vec_func_list;
+    std::vector<paddle::framework::OperatorBase*> op_list;
+    paddle::framework::build_op_func_list(startup_prog, op_list, vec_func_list,
+                                          &global_scope, place_);
   }
   void run(const std::vector<std::string> vec_name,
            const std::vector<framework::Tensor>& vec_tensor,
-           const vector<std::string>& vec_fetch_name) {
-    cerr << "run" << endl;
+           const std::vector<std::string>& vec_fetch_name,
+           std::vector<framework::Tensor>& vec_out) {  // NOLINT
+    // std::cerr << "run" << std::endl;
     // set static data
     if (is_build == false) {
       paddle::framework::build_variable_scope(prog_, &global_scope);
     }
     for (size_t i = 0; i < vec_name.size(); ++i) {
       auto it = global_scope.name2id.find(vec_name[i]);
-      cerr << "find " << (it != global_scope.name2id.end()) << endl;
+      // std::cerr << "find " << (it != global_scope.name2id.end()) <<
+      // std::endl;
       assert(it != global_scope.name2id.end());
 
       auto feed_tensor =
           global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
-      cerr << " get tensor" << endl;
+      std::cerr << " get tensor" << std::endl;
       feed_tensor->ShareDataWith(vec_tensor[i]);
-      cerr << "share buffer with" << endl;
+      std::cerr << "share buffer with" << std::endl;
     }
 
     if (is_build == false) {
@@ -901,9 +1012,9 @@ class InterpreterCore {
       auto fetch_tensor =
           global_scope.var_list[it->second]->GetMutable<framework::LoDTensor>();
 
-      // cerr << "out  "  << fetch_tensor->data<float>()[0] << endl;
+      // std::cerr << "out  "  << fetch_tensor->data<float>()[0] << std::endl;
       if (platform::is_gpu_place(fetch_tensor->place())) {
-        cerr << "fetch gpu" << endl;
+        std::cerr << "fetch gpu" << std::endl;
         Tensor out;
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
@@ -911,9 +1022,10 @@ class InterpreterCore {
         dev_ctx->Wait();
         TensorCopySync(*fetch_tensor, platform::CPUPlace(), &out);
         dev_ctx->Wait();
-        cerr << "out  " << out << endl;
+        // std::cerr << "out  " << out << std::endl;
+        vec_out.push_back(out);
       } else {
-        cerr << "out  " << *fetch_tensor << endl;
+        std::cerr << "out  " << *fetch_tensor << std::endl;
       }
     }
   }

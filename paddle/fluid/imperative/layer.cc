@@ -74,8 +74,7 @@ static framework::RuntimeContext PrepareRuntimeContext(
       out_ctx.emplace_back(out_var->MutableVar());
     }
   }
-  // return framework::RuntimeContext(std::move(inputs), std::move(outputs));
-  return framework::RuntimeContext();
+  return framework::RuntimeContext(std::move(inputs), std::move(outputs));
 }
 
 template <typename VarType>

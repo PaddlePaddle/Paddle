@@ -92,7 +92,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  framework::RuntimeContext ctx;
+  framework::RuntimeContext ctx({}, {});
 
 #ifdef PADDLE_WITH_MKLDNN
   // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and

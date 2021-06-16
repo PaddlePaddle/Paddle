@@ -354,7 +354,7 @@ TEST(test_layer, test_dygraph_execution_context) {
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
-  paddle::framework::RuntimeContext ctx;
+  paddle::framework::RuntimeContext ctx({}, {});
   framework::Scope scope;
 
   DygraphExecutionContext<imperative::VarBase> dy_exe_context(

@@ -135,8 +135,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(dev_place);
 
-    // framework::RuntimeContext run_ctx(Inputs(), Outputs(), scope);
-    framework::RuntimeContext run_ctx;
+    framework::RuntimeContext run_ctx(Inputs(), Outputs(), scope);
     framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx);
 
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
