@@ -47,9 +47,9 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
     [查看详情](https://github.com/PaddlePaddle/Fleet)
     
 
-- **多端多平台部署的高性能推理引擎**
+- **支持多端多平台的高性能推理部署工具**
 
-    飞桨不仅兼容其他开源框架训练的模型，而且高性能的推理部署也可支持不同的场景。适用于高性能服务器及云端推理的原生推理库 [Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html)，适用于自动服务、模型管理等高阶功能的服务化推理框架 [Paddle Serving](https://github.com/PaddlePaddle/Serving)，适用于移动端、物联网的轻量化推理引擎 [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)，适用于浏览器推理、小程序的前端推理引擎 [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)。同时，飞桨的推理速度也是全面领先的。尤其经过了跟华为麒麟NPU的软硬一体优化，使得飞桨在NPU上的推理速度进一步突破。
+    飞桨不仅广泛兼容第三方开源框架训练的模型部署，并且为不同的场景的生产环境提供了完备的推理引擎，包括适用于高性能服务器及云端推理的原生推理库 [Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html)，面向分布式、流水线生产环境下自动上云、A/B测试等高阶功能的服务化推理框架 [Paddle Serving](https://github.com/PaddlePaddle/Serving)，针对于移动端、物联网场景的轻量化推理引擎 [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)，以及在浏览器、小程序等环境下使用的前端推理引擎 [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)。同时，透过与不同场景下的主流硬件高度适配优化及异构计算的支持, 飞桨的推理性能也领先绝大部分的主流实现。
 
 
 - **面向产业应用，开源开放覆盖多领域的工业级模型库。**
