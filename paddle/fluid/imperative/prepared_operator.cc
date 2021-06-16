@@ -182,7 +182,7 @@ static void PreparedOpRunImpl(
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
         op.Type(), outs, dev_ctx->GetPlace());
   }
-  
+
   /**
    * [ Why need handle complex gradient to real gradient? ]
    *
