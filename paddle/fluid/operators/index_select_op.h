@@ -127,17 +127,7 @@ struct IndexSelectAdd {
   }
 };
 
-template <typename T>
-struct IndexSelectAdd<
-    platform::avx, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const int n, const T* src, T* dst) {
-    for (int i = 0; i < n; i++) {
-      dst[i] += src[i];
-    }
-  }
-};
-
+#ifdef __AVX__
 // description: Index addition uses intel intrinsic instruction set to read and
 // write data in parallel
 template <typename T>
@@ -145,7 +135,6 @@ struct IndexSelectAdd<
     platform::avx, T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   void operator()(const int n, const T* src, T* dst) {
-#ifdef __AVX__
     int block = 0;
     if (std::is_same<T, float>::value) {
       block = YMM_FLOAT_BLOCK;
@@ -171,12 +160,10 @@ struct IndexSelectAdd<
     for (; i < n; i++) {
       dst[i] += src[i];
     }
-#else
-    IndexSelectAdd<platform::isa_any, T> index_select_add_any;
-    index_select_add_any(n, src, dst);
-#endif
   }
 };
+#endif
+
 #endif
 
 template <typename T, typename IndexT = int>
