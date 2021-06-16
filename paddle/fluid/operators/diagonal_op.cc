@@ -22,21 +22,16 @@ class DiagonalOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"), true,
-        platform::errors::NotFound("Input of DiagonalOp is not found."));
-
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output of DiagonalOp is not found."));
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "diagonal");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "diagonal");
 
     int offset_ = ctx->Attrs().Get<int>("offset");
-    int dim1 = ctx->Attrs().Get<int>("axis1");
-    int dim2 = ctx->Attrs().Get<int>("axis2");
+    int axis1 = ctx->Attrs().Get<int>("axis1");
+    int axis2 = ctx->Attrs().Get<int>("axis2");
 
     auto x_dims = ctx->GetInputDim("Input");
-    int dim1_ = dim1 < 0 ? x_dims.size() + dim1 : dim1;
-    int dim2_ = dim2 < 0 ? x_dims.size() + dim2 : dim2;
+    int axis1_ = axis1 < 0 ? x_dims.size() + axis1 : axis1;
+    int axis2_ = axis2 < 0 ? x_dims.size() + axis2 : axis2;
 
     PADDLE_ENFORCE_GE(
         x_dims.size(), 2,
@@ -44,35 +39,44 @@ class DiagonalOp : public framework::OperatorWithKernel {
                                      "least 2 dimensions, but got %ld).",
                                      x_dims.size()));
     PADDLE_ENFORCE_LT(
-        dim1_, x_dims.size(),
+        axis1_, x_dims.size(),
         platform::errors::OutOfRange(
             "Attr(axis1) is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
-            -(x_dims.size()), (x_dims.size() - 1), dim1));
+            -(x_dims.size()), (x_dims.size() - 1), axis1));
     PADDLE_ENFORCE_LT(
-        dim2_, x_dims.size(),
+        axis2_, x_dims.size(),
         platform::errors::OutOfRange(
             "Attr(axis2) is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
-            -(x_dims.size()), (x_dims.size() - 1), dim2));
-    PADDLE_ENFORCE_NE(dim1_, dim2_,
+            -(x_dims.size()), (x_dims.size() - 1), axis2));
+    PADDLE_ENFORCE_NE(axis1_, axis2_,
                       platform::errors::InvalidArgument(
                           "The dimensions should not be identical "
-                          "%ld vs %ld.",
-                          dim1, dim2));
+                          "%d vs %d.",
+                          axis1, axis2));
 
     auto out_dims = vectorize(x_dims);
-    auto dim1_size = out_dims[dim1_];
-    auto dim2_size = out_dims[dim2_];
-    out_dims.erase(out_dims.begin() + std::max(dim1_, dim2_));
-    out_dims.erase(out_dims.begin() + std::min(dim1_, dim2_));
+    // from out_dims get the dim size of axis1_.
+    auto axis1_size = out_dims[axis1_];
+    auto axis2_size = out_dims[axis2_];
+    // delete two dims by attr axis1 and axis2 from out_dims.
+    /* example:
+       out_dim = [2, 3, 4];
+       axis1 = 0;
+       axis2 = 1;
+       according to the attr of axis1 and axis2, we get:
+       out_dim = [4].
+    */
+    out_dims.erase(out_dims.begin() + std::max(axis1_, axis2_));
+    out_dims.erase(out_dims.begin() + std::min(axis1_, axis2_));
 
     if (offset_ == 0) {
-      out_dims.push_back(std::min(dim1_size, dim2_size));
+      out_dims.push_back(std::min(axis1_size, axis2_size));
     } else if (offset_ > 0) {
-      out_dims.push_back(std::min(dim1_size, dim2_size - offset_));
+      out_dims.push_back(std::min(axis1_size, axis2_size - offset_));
     } else {
-      out_dims.push_back(std::min(dim1_size + offset_, dim2_size));
+      out_dims.push_back(std::min(axis1_size + offset_, axis2_size));
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
   }
@@ -88,7 +92,7 @@ class DiagonalOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) The partial view of input with the its diagonal elements.");
     AddAttr<int>(
         "offset",
-        R"DOC((int, default 0), offset of the diagonal from the main diagonal. Can be both positive and negative. Defaults: 0.
+        R"DOC((int, default 0), offset of the diagonal from the main diagonal. Can be both positive and negative. Default: 0.
         )DOC")
         .SetDefault(0);
     AddAttr<int>(
@@ -117,13 +121,10 @@ class DiagonalGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      platform::errors::NotFound(
-                          "Input(Input) of DiagonalGradOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("Input")), true,
-        platform::errors::NotFound(
-            "Output(Input@GRAD) of DiagonalGradOp is not found."));
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "DiagonalGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
+                   framework::GradVarName("Input"), "DiagonalGrad");
+
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
   }

@@ -21,21 +21,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-std::vector<T> ComputeDimStride(const std::vector<T> dim) {
-  size_t dim_size = dim.size();
-  std::vector<T> dim_strides;
-  dim_strides.resize(dim_size - 1);
-  for (size_t i = 0; i < dim_size - 1; i++) {
-    size_t temp_stride = 1;
-    for (size_t j = i + 1; j < dim_size; j++) {
-      temp_stride = temp_stride * dim[j];
-    }
-    dim_strides[i] = temp_stride;
-  }
-  return dim_strides;
-}
-
-template <typename T>
 class DiagonalKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -54,19 +39,18 @@ class DiagonalKernel : public framework::OpKernel<T> {
     const int64_t axis2 = context.Attr<int>("axis2");
     int64_t axis2_ = axis2 < 0 ? input_dim_size + axis2 : axis2;
 
-    std::vector<int64_t> input_stride = ComputeDimStride(input_dim);
-    std::vector<int64_t> output_stride = ComputeDimStride(output_dim);
+    auto input_stride = framework::stride(input->dims()).Get();
+    auto output_stride = framework::stride(output->dims()).Get();
 
     int64_t numel = input->numel();
 
     for (int64_t idx = 0; idx < numel; idx++) {
       std::vector<int64_t> idx_dim(input_dim_size);
       int64_t temp = 0;
-      for (size_t i = 0; i < input_dim_size - 1; i++) {
+      for (size_t i = 0; i < input_dim_size; i++) {
         idx_dim[i] = (idx - temp) / input_stride[i];
         temp = temp + idx_dim[i] * input_stride[i];
       }
-      idx_dim[input_dim_size - 1] = idx - temp;
 
       int64_t axis1_dim = idx_dim[axis1_];
       int64_t axis2_dim = idx_dim[axis2_];
@@ -87,10 +71,9 @@ class DiagonalKernel : public framework::OpKernel<T> {
       }
       if (flag) {
         int64_t idx_output = 0;
-        for (size_t i = 0; i < idx_dim.size() - 1; i++) {
+        for (size_t i = 0; i < idx_dim.size(); i++) {
           idx_output = idx_output + idx_dim[i] * output_stride[i];
         }
-        idx_output = idx_output + idx_dim[idx_dim.size() - 1];
         output_data[idx_output] = input_data[idx];
       }
     }
@@ -118,19 +101,18 @@ class DiagonalGradKernel : public framework::OpKernel<T> {
     const int64_t axis2 = context.Attr<int>("axis2");
     int64_t axis2_ = axis2 < 0 ? dx_dim_size + axis2 : axis2;
 
-    std::vector<int64_t> dout_stride = ComputeDimStride(dout_dim);
-    std::vector<int64_t> dx_stride = ComputeDimStride(dx_dim);
+    auto dout_stride = framework::stride(dout->dims()).Get();
+    auto dx_stride = framework::stride(dx->dims()).Get();
 
     int64_t numel = dx->numel();
 
     for (int64_t idx = 0; idx < numel; idx++) {
       std::vector<int64_t> idx_dim(dx_dim_size);
       int64_t temp = 0;
-      for (size_t i = 0; i < dx_dim_size - 1; i++) {
+      for (size_t i = 0; i < dx_dim_size; i++) {
         idx_dim[i] = (idx - temp) / dx_stride[i];
         temp = temp + idx_dim[i] * dx_stride[i];
       }
-      idx_dim[dx_dim_size - 1] = idx - temp;
 
       int64_t axis1_dim = idx_dim[axis1_];
       int64_t axis2_dim = idx_dim[axis2_];
@@ -151,10 +133,9 @@ class DiagonalGradKernel : public framework::OpKernel<T> {
       }
       if (flag) {
         int64_t idx_output = 0;
-        for (size_t i = 0; i < idx_dim.size() - 1; i++) {
+        for (size_t i = 0; i < idx_dim.size(); i++) {
           idx_output = idx_output + idx_dim[i] * dout_stride[i];
         }
-        idx_output = idx_output + idx_dim[idx_dim.size() - 1];
         dx_data[idx] = dout_data[idx_output];
       } else {
         dx_data[idx] = static_cast<T>(0);
