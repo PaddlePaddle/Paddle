@@ -55,10 +55,6 @@ class TestLookupTableV2BF16OpWIsSelectedRows4DIds(
         self.ids_shape = (3, 4, 5)
 
 
-@skip_check_grad_ci(
-    reason="Since paddings are not trainable and fixed in forward,"
-    "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
 class TestLookupTableBF16OpWithPadding(TestLookupTableV2BF16Op):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
@@ -68,10 +64,6 @@ class TestLookupTableBF16OpWithPadding(TestLookupTableV2BF16Op):
         self.check_output_with_place(core.CPUPlace())
 
 
-@skip_check_grad_ci(
-    reason="Since paddings are not trainable and fixed in forward,"
-    "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
 class TestLookupTableBF16OpIds4DPadding(TestLookupTableV2BF16OpIds4D):
     def test_check_output(self):
         ids = self.inputs['Ids']
