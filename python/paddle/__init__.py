@@ -499,7 +499,7 @@ __all__ = [  # noqa
            'log10',
            'concat',
            'check_shape',
-           'trunc'
+           'trunc',
            'digamma',
            'standard_normal'
 ]
