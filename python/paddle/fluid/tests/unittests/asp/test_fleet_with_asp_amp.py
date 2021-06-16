@@ -54,15 +54,16 @@ class TestFleetWithASP(unittest.TestCase):
             strategy.asp = True
         return avg_cost, strategy, input_x, input_y
 
-    def test_with_asp(self):
+    def test_with_asp_and_amp(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy, input_x, input_y = self.net(train_prog,
                                                         startup_prog)
+        strategy.amp = True
 
         with fluid.program_guard(train_prog, startup_prog):
-            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.optimizer.Momentum(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)
@@ -73,6 +74,49 @@ class TestFleetWithASP(unittest.TestCase):
         exe = fluid.Executor(place)
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
+
+        optimizer.amp_init(place)
+
+        sparsity.prune_model(place, train_prog)
+
+        for _ in range(3):
+            data = (np.random.randn(64, 3, 32, 32), np.random.randint(
+                10, size=(64, 1)))
+            exe.run(train_prog, feed=feeder.feed([data]))
+
+        for param in train_prog.global_block().all_parameters():
+            if ASPHelper._is_supported_layer(train_prog, param.name):
+                mat = np.array(fluid.global_scope().find_var(param.name)
+                               .get_tensor())
+                self.assertTrue(sparsity.check_sparsity(mat.T, n=2, m=4))
+
+    def test_with_asp_and_pure_fp16(self):
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        fleet.init(role)
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        with paddle.static.amp.fp16_guard():
+            avg_cost, strategy, \
+                input_x, input_y = self.net(train_prog,
+                                            startup_prog)
+        strategy.amp = True
+        strategy.amp_configs = {'use_pure_fp16': True}
+
+        with fluid.program_guard(train_prog, startup_prog):
+            with paddle.static.amp.fp16_guard():
+                optimizer = optimizer = paddle.optimizer.Momentum(
+                    learning_rate=0.01, multi_precision=True)
+                optimizer = fleet.distributed_optimizer(
+                    optimizer, strategy=strategy)
+                optimizer.minimize(avg_cost)
+
+        place = paddle.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
+        exe.run(startup_prog)
+
+        optimizer.amp_init(place)
 
         sparsity.prune_model(place, train_prog)
 
