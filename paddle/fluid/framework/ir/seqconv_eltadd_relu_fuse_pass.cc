@@ -36,7 +36,7 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
       .IsTensor()
       .End()
       .AddInput("PaddingData")
-      .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Out")
       .IsTensor()
@@ -47,6 +47,7 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
       .AddAttr("contextStart")
       .End()
       .AddAttr("contextStride")
+      .IsNumEQ(1)
       .IsNumGT(0)
       .End();
 
