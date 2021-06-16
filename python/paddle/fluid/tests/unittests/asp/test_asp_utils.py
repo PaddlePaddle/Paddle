@@ -39,9 +39,9 @@ class TestASPUtils(unittest.TestCase):
         x = np.array([[1.0, 1.0, 1.0, 0.0, 1.0], [1.0, 1.0, 0.0, 0.0, 1.0],
                       [1.0, 0.0, 0.0, 0.0, 1.0], [1.0, 1.0, 0.0, 0.0, 1.0],
                       [0.0, 1.0, 0.0, 0.0, 1.0]])
-        self.assertEqual(sparsity.density(x), 0.56)
+        self.assertEqual(sparsity.calculate_density(x), 0.56)
         x[:, 0] = 0.0
-        self.assertEqual(sparsity.density(x), 0.4)
+        self.assertEqual(sparsity.calculate_density(x), 0.4)
 
     def test_check_mask_1d(self):
         x = np.array([[1.0, 0.0, 0.0, 1.0, 1.0], [1.0, 1.0, 0.0, 0.0, 1.0],
@@ -114,11 +114,11 @@ class TestASPUtils(unittest.TestCase):
         for _ in range(4):
             computing_thread = threading.Thread(
                 target=paddle.fluid.contrib.sparsity.utils.
-                compute_valid_2d_patterns,
+                _compute_valid_2d_patterns,
                 args=(2, 4))
             computing_thread.start()
         time.sleep(3)
-        patterns_map = paddle.fluid.contrib.sparsity.utils.valid_2d_patterns
+        patterns_map = paddle.fluid.contrib.sparsity.utils._valid_2d_patterns
         reference_patterns = get_reference()
         reference_key = '4_2'
 

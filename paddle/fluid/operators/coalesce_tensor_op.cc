@@ -121,6 +121,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                       : len;
       }
     } else if (context.Attr<bool>("set_constant")) {
+      // TODO(Liu yuang) ADD NPU SET_CONSTANT FUNCTION.
       math::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx, fused_tensor,
                    static_cast<T>(context.Attr<float>("constant")));
@@ -146,6 +147,14 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     offset = 0;
     std::stringstream ss;
     ss << "alloc_space_for_vars: ";
+#if defined(PADDLE_WITH_ASCEND_CL)
+    auto stream =
+        context.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    platform::NPUMemsetAsync(
+        static_cast<void *>(fused_tensor->mutable_data<T>(dev_ctx.GetPlace())),
+        0.0, fused_tensor->numel() * sizeof(T), stream);
+#endif
     for (size_t i = 0; i < out_tensors.size(); ++i) {
       size_t len = static_cast<size_t>(out_tensors[i]->numel());
       auto dim = out_tensors[i]->dims();
@@ -164,6 +173,12 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
          << ", ";
       offset += len;
     }
+    PADDLE_ENFORCE_EQ(
+        (int64_t)offset, fused_tensor->numel(),
+        platform::errors::InvalidArgument(
+            "The alloc_space_for_vars's offset: %s is unequal with "
+            "fused_tensor's numel: %s.",
+            offset, fused_tensor->numel()));
     VLOG(10) << ss.str();
   }
 
@@ -205,7 +220,6 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
          << ", ";
       *numel += len;
     }
-
     VLOG(10) << ss.str();
   }
 };
@@ -362,6 +376,16 @@ REGISTER_OP_XPU_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, int>,
     ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, float>,
     ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, double>);
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+REGISTER_OP_NPU_KERNEL(
+    coalesce_tensor,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext,
+                                plat::float16>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, double>);
 #endif
 
 REGISTER_OP_VERSION(coalesce_tensor)

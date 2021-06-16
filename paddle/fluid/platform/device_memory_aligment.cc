@@ -28,13 +28,12 @@ size_t Alignment(size_t size, const platform::Place &place, int align_size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       alignment = GpuMinChunkSize();
 #elif defined(PADDLE_WITH_XPU)
-      // TODO(wangxi): add XpuMinChunkSize
       alignment = alignment;
 #elif defined(PADDLE_WITH_ASCEND_CL)
       alignment = NPUMinChunkSize();
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Fluid is not compiled with CUDA."));
+          "Fluid is not compiled with CUDA/XPU/NPU."));
 #endif
     }
   }
