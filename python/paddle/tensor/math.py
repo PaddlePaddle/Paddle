@@ -857,6 +857,50 @@ def add_n(inputs, name=None):
     return out
 
 
+def trunc(input, name=None):
+    '''
+    This API is used to returns a new tensor with the truncated integer values of input.
+    
+    Args:
+        input (Tensor): The input tensor, it's data type should be int32, int64, float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: The output Tensor of trunc.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input = paddle.rand([2,2],'float32')
+            print(input)
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [[0.02331470, 0.42374918],
+            #         [0.79647720, 0.74970269]])
+
+            output = paddle.trunc(input)
+            print(output)
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [[0., 0.],
+            #         [0., 0.]]))
+    '''
+    if in_dygraph_mode():
+        return core.ops.trunc(input)
+    else:
+        inputs = {"X": input}
+        attrs = {}
+
+        helper = LayerHelper("trunc", **locals())
+        check_variable_and_dtype(input, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc')
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+        helper.append_op(
+            type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out})
+        return out
+
+
+
 def mm(input, mat2, name=None):
     """
 
