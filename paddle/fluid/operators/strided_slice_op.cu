@@ -13,28 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/strided_slice_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     strided_slice,
+    ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, int>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, float>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, double>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex64>,
+                            paddle::platform::complex<float>>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex128>);
+                            paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     strided_slice_grad,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::complex64>,
+                                paddle::platform::complex<float>>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::complex128>);
+                                paddle::platform::complex<double>>);

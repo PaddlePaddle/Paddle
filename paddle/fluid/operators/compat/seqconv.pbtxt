@@ -1,0 +1,34 @@
+type: "sequence_conv"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "Filter"
+  }
+  inputs {
+    name: "PaddingData"
+  }
+  outputs {
+    name: "Out"
+  }
+}
+extra {
+  attrs {
+    name: "paddingTrainable"
+    type: BOOLEAN
+  }
+   attrs {
+    name: "contextLength"
+    type: INT
+   }
+   attrs {
+    name: "contextStart"
+    type: INT
+   }
+   attrs {
+    name: "contextStride"
+    type: INT
+   }
+   
+}
