@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <math.h>
+#include <cmath>
 #include <limits>
-
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/platform/hostdevice.h"
 #ifdef __HIPCC__
 #include <hip/hip_runtime.h>
 #endif
@@ -29,7 +29,7 @@ struct CustomMin {
   using Transformer = detail::IdentityFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() {
-    return std::numeric_limits<Ty>::max();
+    return static_cast<Ty>(std::numeric_limits<Ty>::max());
   }
 
   __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
@@ -42,7 +42,7 @@ struct CustomMax {
   using Transformer = detail::IdentityFunctor<Tx>;
 
   HOSTDEVICE __forceinline__ Ty initial() {
-    return std::numeric_limits<Ty>::lowest();
+    return static_cast<Ty>(std::numeric_limits<Ty>::lowest());
   }
 
   __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {

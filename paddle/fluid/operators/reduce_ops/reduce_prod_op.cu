@@ -17,7 +17,6 @@
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
 // reduce_prod
-
 #ifdef __HIPCC__
 // Eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h:922
 // do not support double in HIPCC platform (Eigen3 to be fixed)
