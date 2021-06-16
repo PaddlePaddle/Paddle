@@ -69,36 +69,14 @@ class MulNPUKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "now only support x_num_col_dims == 2: but got %d",
                             x_num_col_dims));
-      // flatten => x.shape=[6, 4]
-      Tensor tmp_x(x->type());
-      int64_t first_dim = x->dims()[0] * x->dims()[1];
-      int64_t sec_dim = x->dims()[2];
-      tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
-      tmp_x.mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopy(
-          *x, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &tmp_x);
-      tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
 
-      // matmul [6,4] , [4, 5] => [6, 5]
-      Tensor tmp_matmul(x->type());
-      tmp_matmul.Resize(framework::make_ddim({first_dim, y->dims()[1]}));
-      tmp_matmul.mutable_data<T>(ctx.GetPlace());
+      const auto& runner = NpuOpRunner("BatchMatMul", {*x, *y}, {*out},
+                                       {{"adj_x1", false}, {"adj_x2", false}});
 
-      const auto& runner_matmul =
-          NpuOpRunner("MatMul", {tmp_x, *y}, {tmp_matmul},
-                      {{"transpose_x1", false}, {"transpose_x2", false}});
-
-      runner_matmul.Run(stream);
-      // reshape [6, 5] => [2, 3, 5]
-      (*out).Resize(
-          framework::make_ddim({x->dims()[0], x->dims()[1], y->dims()[1]}));
-      out->mutable_data(ctx.GetPlace(), x->type());
-      framework::TensorCopy(
-          tmp_matmul, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), out);
-      (*out).Resize(
-          framework::make_ddim({x->dims()[0], x->dims()[1], y->dims()[1]}));
+      auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      runner.Run(stream);
     }
   }
 };
@@ -189,16 +167,16 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
       tmp_dout.Resize(framework::make_ddim({dout_first_dim, dout_sec_dim}));
 
       if (dx) {
-        // tmp_dout * y [6,5] * [4,5] => [6, 4]
+        // tmp_dout * y [2, 3, 5] * [4,5] => [2, 3, 4]
         dx->mutable_data<T>(ctx.GetPlace());
-        auto dx_dims = dx->dims();
-        dx->Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
-        const auto& runner_matmul =
-            NpuOpRunner("MatMul", {tmp_dout, *y}, {*dx},
-                        {{"transpose_x1", false}, {"transpose_x2", true}});
-        runner_matmul.Run(stream);
-        // reshape [2, 12] => [2, 3, 4]
-        dx->Resize(dx_dims);
+
+        const auto& runner = NpuOpRunner("BatchMatMul", {*dout, *y}, {*dx},
+                                         {{"adj_x1", false}, {"adj_x2", true}});
+
+        auto stream =
+            ctx.template device_context<paddle::platform::NPUDeviceContext>()
+                .stream();
+        runner.Run(stream);
       }
       if (dy) {
         // flatten x.shape [2,3,4] => [6, 4]
