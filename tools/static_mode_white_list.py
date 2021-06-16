@@ -22,6 +22,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_lod_reset_op',
     'test_lookup_table_op',
     'test_lookup_table_bf16_op',
+    'test_lookup_table_v2_bf16_op',
     'test_pad2d_op',
     'test_scatter_op',
     'test_sequence_concat',
