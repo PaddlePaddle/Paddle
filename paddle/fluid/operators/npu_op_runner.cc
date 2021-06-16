@@ -624,9 +624,18 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   }
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
-  PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, storage_format));
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      aclSetTensorStorageShape(desc, storage_dims.size(), storage_dims.data()));
+
+  if (storage_format == ACL_FORMAT_FRACTAL_NZ) {
+    VLOG(4) << "Set Tensor's storage format with NZ format";
+    PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, storage_format));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageShape(
+        desc, storage_dims.size(), storage_dims.data()));
+  } else {
+    VLOG(4) << "Set Tensor's storage format with NCHW format";
+    PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclSetTensorStorageShape(desc, dims.size(), dims.data()));
+  }
   /*
   if (op_type_ == "TransData" || op_type_ == "MatMul" ||
       op_type_ == "BatchMatMul") {
