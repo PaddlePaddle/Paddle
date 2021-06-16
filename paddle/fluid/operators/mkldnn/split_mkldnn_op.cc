@@ -23,10 +23,6 @@ using paddle::framework::Tensor;
 static inline std::vector<std::vector<int64_t>> CalculateOutsDims(
     const framework::DDim& in_dims, const size_t num,
     const std::vector<int>& sections, const size_t axis, const int outs_number) {
-  PADDLE_ENFORCE_NE(num, 0, platform::errors::InvalidArgument(
-                                "Only num option is implemented for now, num "
-                                "must be different than 0"));
-
   std::vector<std::vector<int64_t>> outs_dims(outs_number, framework::vectorize(in_dims));
 
   if (num > 0) {

@@ -34,6 +34,7 @@ class TestSplitSectionsOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "split"
         self.axis_tensor = None
+        self.sections_tensor_list = None
         self.init_data()
         self.inputs = {'X': self.x}
         self.attrs = {'use_mkldnn' : True}
@@ -46,6 +47,10 @@ class TestSplitSectionsOneDNNOp(OpTest):
             self.attrs['sections'] = self.sections
         if self.axis_tensor is not None:
             self.inputs['AxisTensor'] = self.axis_tensor
+        if self.sections_tensor_list is not None:
+            print("haha")
+            print(self.sections_tensor_list)
+            self.inputs['SectionsTensorList'] = self.sections_tensor_list
 
         self.outputs = {'Out': [('out%d' % i, self.out[i]) \
             for i in range(len(self.out))]}
@@ -58,7 +63,7 @@ class TestSplitSectionsOneDNNOp(OpTest):
 
 
 # test with attr(num)
-class TestSplitNumOneDNNop(TestSplitSectionsOneDNNOp):
+class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
     def init_data(self):
         self.x = np.random.random((4, 8, 5)).astype("float32")
         self.axis = 1
@@ -71,7 +76,7 @@ class TestSplitNumOneDNNop(TestSplitSectionsOneDNNOp):
         self.check_grad(['X'], ['out0', 'out1', 'out2', 'out3'])
 
 
-class TestSplitNumAxisTensorOneDNN(TestSplitSectionsOneDNNOp):
+class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = 1
@@ -81,55 +86,22 @@ class TestSplitNumAxisTensorOneDNN(TestSplitSectionsOneDNNOp):
         self.axis_tensor = np.array([2]).astype("int32")
         self.out = np.split(self.x, indices_or_sections, 2)
 
-    def test_check_output(self):
-        self.check_output()
 
-#
 # attr(sections) is list containing Tensor
-#class TestSplitOp_SectionsTensor(OpTest):
-#    def setUp(self):
-#        self._set_op_type()
-#        self.dtype = self.get_dtype()
-#        self.init_data()
-#        self.inputs = {'X': self.x}
-#
-#        sections_tensor = []
-#        for index, ele in enumerate(self.sections):
-#            sections_tensor.append(("x" + str(index), np.ones(
-#                (1)).astype('int32') * ele))
-#
-#        self.inputs['SectionsTensorList'] = sections_tensor
-#
-#        self.attrs = {
-#            'axis': self.axis,
-#            'sections': self.sections_infer,
-#            'num': self.num
-#        }
-#
-#        out = np.split(self.x, self.indices_or_sections, self.axis)
-#        self.outputs = {'Out': [('out%d' % i, out[i]) \
-#                                for i in range(len(out))]}
-#
-#    def init_data(self):
-#        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
-#        self.axis = 1
-#        self.sections = [2, 1, 2]
-#        self.sections_infer = [-1, -1, -1]
-#        self.num = 0
-#        self.indices_or_sections = [2, 3]
-#
-#    def get_dtype(self):
-#        return "float64"
-#
-#    def _set_op_type(self):
-#        self.op_type = "split"
-#
-#    def test_check_output(self):
-#        self.check_output()
-#
-#    def test_check_grad(self):
-#        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
+    def init_data(self):
+        self.x = np.random.random((4, 5, 6)).astype("float32")
+        self.axis = 1
+        self.sections = [2, 1, 2]
+        self.sections_tensor_list = []
+        for index, ele in enumerate(self.sections):
+            self.sections_tensor_list.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+        self.sections = [-1, -1, -1]
 
+        self.num = 0
+        indices_or_sections = [2, 3] #sections
+        self.out = np.split(self.x, indices_or_sections, self.axis)
 
 #class TestSplitOp_unk_section(OpTest):
 #    def setUp(self):
