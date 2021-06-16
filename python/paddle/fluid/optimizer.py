@@ -135,7 +135,7 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         # global_accumulator dict, {accum_name : acc_variable, ...}
         self._global_accumulators = {}
-        self.helper = None
+        self.helper = LayerHelper(self.__class__.__name__)
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
@@ -748,7 +748,7 @@ class Optimizer(object):
                 current_block.backward_block_idx]
 
         start = len(target_block.ops)
-        self.helper = LayerHelper(self.__class__.__name__)
+
         self._update_param_device_map(parameters_and_grads, target_block)
         self._create_accumulators(
             target_block,
@@ -893,66 +893,82 @@ class Optimizer(object):
         return params_grads
 
     def flatten_param_grads(self, params_grads):
-
-        need_flatten_params_grads = []
+        need_flatten_params = []
+        need_flatten_grads = []
+        align_size = 256
         for p, g in params_grads:
             if g is None:
                 continue
-            if getattr(p, 'need_clip', True) is False:
+            g.persistable = True
+            if getattr(p, 'need_clip', True) is False or getattr(
+                    p, 'regularizer', None) is not None:
                 warnings.warn(
-                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip if False".
-                    format(p.name))
+                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip if False or "
+                    "the regularizer is set for parameter".format(p.name))
                 self._flatten_param_grads = False
-                return
+                return params_grads
 
             need_flatten_params.append(p)
             need_flatten_grads.append(g)
 
         shape = [np.prod(p.shape) for p in need_flatten_params]
         block = need_flatten_params[0].block
-
-        flatten_param = block.create_var(
+        flatten_param = self.helper.create_global_variable(
             name='flatten_param',
-            shape=[np.sum(shape)],
+            persistable=True,
             dtype=need_flatten_params[0].dtype,
-            initializer=Constant(0.0),
-            persistable=True)
-
-        flatten_grad = block.create_var(
-            name='flatten_grad',
             shape=[np.sum(shape)],
-            dtype=need_flatten_grads[0].dtype,
-            initializer=Constant(0.0),
-            persistable=True)
+            belong_to_optimizer=True)
 
-        with fluid.program_guard(fluid.default_startup_program(),
-                                 fluid.default_startup_program()):
-            self._helper.append_op(
+        flatten_param.trainable = True
+        flatten_param.optimize_attr = need_flatten_params[0].optimize_attr
+        flatten_param.regularizer = need_flatten_params[0].regularizer
+
+        self.helper.set_variable_initializer(
+            flatten_param, initializer=Constant(0.0))
+
+        flatten_grad = self.helper.create_global_variable(
+            name='flatten_grad',
+            persistable=True,
+            dtype=need_flatten_grads[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True)
+        self.helper.set_variable_initializer(
+            flatten_grad, initializer=Constant(0.0))
+
+        with program_guard(default_main_program()):
+            block.append_op(
                 type="coalesce_tensor",
                 inputs={"Input": need_flatten_params},
                 outputs={
                     "Output": need_flatten_params,
-                    "FusedOutput": self.flatten_param
+                    "FusedOutput": flatten_param
                 },
                 attrs={
                     "copy_data": True,
                     "use_align": True,
+                    "align_size": align_size,
                     "dtype": need_flatten_params[0].dtype
                 })
-            self._helper.append_op(
+            t = paddle.fluid.layers.Print(
+                need_flatten_params[0],
+                message="The content of b0:",
+                summarize=-1)
+            block.append_op(
                 type="coalesce_tensor",
-                inputs={"Input": self.need_flatten_grads},
+                inputs={"Input": need_flatten_grads},
                 outputs={
-                    "Output": self.need_flatten_grads,
-                    "FusedOutput": self.flatten_grad
+                    "Output": need_flatten_grads,
+                    "FusedOutput": flatten_grad
                 },
                 attrs={
                     "copy_data": True,
-                    "use_align": False,
+                    "use_align": True,
+                    "align_size": align_size,
                     "dtype": need_flatten_grads[0].dtype
                 })
 
-        return
+        return [(flatten_param, flatten_grad)]
 
     def apply_gradients(self, params_grads):
         """
@@ -977,6 +993,9 @@ class Optimizer(object):
                 optimizer.apply_gradients(params_grads)
         """
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        if self._flatten_param_grads and self.regularization is None:
+            params_grads = self.flatten_param_grads(params_grads)
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
@@ -2249,7 +2268,8 @@ class AdamOptimizer(Optimizer):
                  grad_clip=None,
                  name=None,
                  lazy_mode=False,
-                 use_global_beta_pow=False):
+                 use_global_beta_pow=False,
+                 flatten_param_grads=False):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -2259,6 +2279,7 @@ class AdamOptimizer(Optimizer):
             parameter_list=parameter_list,
             regularization=regularization,
             grad_clip=grad_clip,
+            flatten_param_grads=flatten_param_grads,
             name=name)
         self.type = "adam"
         self._beta1 = beta1

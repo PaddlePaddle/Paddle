@@ -95,7 +95,9 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
         repeate_regularizer = False
         with framework.name_scope('regularization'):
             for param, grad in parameters_and_grads:
-                if not repeate_regularizer and param.regularizer is not None and regularization is not None:
+                if not repeate_regularizer and getattr(
+                        param, 'regularizer',
+                        None) is not None and regularization is not None:
                     repeate_regularizer = True
                     logging.info(
                         "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
