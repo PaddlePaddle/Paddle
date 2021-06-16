@@ -1,7 +1,7 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto simple_threadpool)
 proto_library(error_codes_proto SRCS error_codes.proto)
 if(WITH_GPU)
-  proto_library(cuda_error_proto SRCS cuda_error.proto)
+  proto_library(external_error_proto SRCS external_error.proto)
 endif(WITH_GPU)
 
 if(WITH_XPU)
@@ -45,7 +45,7 @@ cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
 
 set(enforce_deps flags errors boost)
 if(WITH_GPU)
-  set(enforce_deps ${enforce_deps} cuda_error_proto)
+  set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
 cc_library(enforce INTERFACE SRCS enforce.cc DEPS ${enforce_deps})
 cc_library(monitor SRCS monitor.cc)
