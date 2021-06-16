@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -35,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace framework {
@@ -415,7 +415,7 @@ class ExecutionContext {
     return temp_tensor;
   }
 
-  // const RuntimeContext Context() const { return ctx_; }
+  const RuntimeContext Context() const { return ctx_; }
 
   std::string DebugString() const { return op_.DebugString(); }
   const OperatorBase& GetOp() const { return op_; }
