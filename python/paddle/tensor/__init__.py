@@ -54,6 +54,10 @@ from .logic import logical_and  # noqa: F401
 from .logic import logical_not  # noqa: F401
 from .logic import logical_or  # noqa: F401
 from .logic import logical_xor  # noqa: F401
+from .logic import bitwise_and  # noqa: F401
+from .logic import bitwise_or  # noqa: F401
+from .logic import bitwise_xor  # noqa: F401
+from .logic import bitwise_not  # noqa: F401
 from .logic import not_equal  # noqa: F401
 from .logic import allclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
@@ -352,4 +356,16 @@ tensor_method_func  = [ #noqa
            'imag',
            'trunc'
            'digamma'
+           'bitwise_and',
+           'bitwise_or',
+           'bitwise_xor',
+           'bitwise_not',
+]
+
+#this list used in math_op_patch.py for magic_method bind
+magic_method_func = [
+    ('__and__', 'bitwise_and'),
+    ('__or__', 'bitwise_or'),
+    ('__xor__', 'bitwise_xor'),
+    ('__invert__', 'bitwise_not'),
 ]
