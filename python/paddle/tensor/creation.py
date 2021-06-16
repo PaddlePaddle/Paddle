@@ -136,9 +136,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             data = data._copy_to(place, False)
             ata = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
-        elif isinstance(data, core.LoDTensor):
-            # convert LoDTensor to VarBase first
-            # Currenly, LoDTensor does no copy when places are same
+        elif isinstance(data, (core.LoDTensor, core.Tensor)):
+            # Note(zhouwei25): should't expose it to users, just for internal use.
+            # convert core.Tensor/core.LoDTensor to VarBase first
+            # Currenly, there is no copy when places are same
             data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
