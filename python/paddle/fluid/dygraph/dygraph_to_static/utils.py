@@ -1423,9 +1423,9 @@ def input_specs_compatible(src_input_specs, desired_input_specs):
 
     args:
         src_input_spec (list or tuple[InputSpec et.al]): list/tuple of
-            paddle.static.InputSpec or or int/str et.al
+            paddle.static.InputSpec or int/str et.al
         desired_input_specs (list or tuple[InputSpec et.al]): list/tuple of
-            paddle.static.InputSpec or or int/str et.al
+            paddle.static.InputSpec or int/str et.al
     """
     len_specs = len(src_input_specs)
     if len_specs != len(desired_input_specs):
