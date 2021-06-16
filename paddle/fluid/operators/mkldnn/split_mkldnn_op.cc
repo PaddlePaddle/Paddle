@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -22,26 +22,26 @@ using paddle::framework::Tensor;
 
 static inline std::vector<std::vector<int64_t>> CalculateOutsDims(
     const framework::DDim& in_dims, const size_t num,
-    const std::vector<int>& sections, const size_t axis, const int outs_number) {
-  std::vector<std::vector<int64_t>> outs_dims(outs_number, framework::vectorize(in_dims));
+    const std::vector<int>& sections, const size_t axis,
+    const int outs_number) {
+  std::vector<std::vector<int64_t>> outs_dims(outs_number,
+                                              framework::vectorize(in_dims));
 
   if (num > 0) {
-    PADDLE_ENFORCE_EQ(
-      in_dims[axis] % num, 0,
-        platform::errors::InvalidArgument(
-            "The input's size along the split dimension "
-            "must be evenly divisible by Attr(num_or_sections). "
-            "But received Attr(num_or_sections) "
-            "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
-            num, in_dims, axis));
+    PADDLE_ENFORCE_EQ(in_dims[axis] % num, 0,
+                      platform::errors::InvalidArgument(
+                          "The input's size along the split dimension "
+                          "must be evenly divisible by Attr(num_or_sections). "
+                          "But received Attr(num_or_sections) "
+                          "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
+                          num, in_dims, axis));
 
     const size_t out_axis_dim = in_dims[axis] / num;
-    
-    for (auto& out_dim : outs_dims)
-      out_dim[axis] = out_axis_dim;
+
+    for (auto& out_dim : outs_dims) out_dim[axis] = out_axis_dim;
   } else {
-    for (size_t i=0;i<outs_dims.size();++i)
-      outs_dims[i][axis] = sections[i];    
+    for (size_t i = 0; i < outs_dims.size(); ++i)
+      outs_dims[i][axis] = sections[i];
   }
   return outs_dims;
 }
@@ -74,26 +74,25 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
       need_resize = true;
     }
 
-    auto sections_tensor_list =
-        ctx.MultiInput<Tensor>("SectionsTensorList");
+    auto sections_tensor_list = ctx.MultiInput<Tensor>("SectionsTensorList");
     if (sections_tensor_list.size() > 0) {
       sections = GetDataFromTensorList(sections_tensor_list);
       need_resize = true;
     }
 
-    if(need_resize){
-      const auto outs_dims = CalculateOutsDims(x->dims(), num, sections, axis, outs_number);
-      for(size_t i=0;i<outs.size();++i){
+    if (need_resize) {
+      const auto outs_dims =
+          CalculateOutsDims(x->dims(), num, sections, axis, outs_number);
+      for (size_t i = 0; i < outs.size(); ++i) {
         outs[i]->Resize(framework::make_ddim(outs_dims[i]));
       }
     }
 
     auto x_vec_dims = framework::vectorize(x_dims);
 
-    mkldnn::memory::data_type x_type =
-        framework::ToMKLDNNDataType(x->type());
-    std::string key = platform::CreateKey(
-        dev_ctx, x_vec_dims, x->format(), x->format(), x_type); 
+    mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
+    std::string key = platform::CreateKey(dev_ctx, x_vec_dims, sections,
+                                          x->format(), x->format(), x_type);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
@@ -104,32 +103,27 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
 
-    for(size_t i=0;i<outs_number;++i){
-        auto out_vec_dims = framework::vectorize(outs[i]->dims());
-        const auto slice_md = reorder_src_memory_p->get_desc().submemory_desc(out_vec_dims, {offset});
-        auto slice_mem_p = std::make_shared<mkldnn::memory>(slice_md, onednn_engine, reorder_src_memory_p->get_data_handle());
+    for (size_t i = 0; i < outs_number; ++i) {
+      auto out_vec_dims = framework::vectorize(outs[i]->dims());
+      const auto slice_md = reorder_src_memory_p->get_desc().submemory_desc(
+          out_vec_dims, {offset});
+      auto slice_mem_p = std::make_shared<mkldnn::memory>(
+          slice_md, onednn_engine, reorder_src_memory_p->get_data_handle());
 
-        // change in mkldnn_reuse AcquireDstMemory and add keys in split case!!! new function is needed
-        auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        outs[i], out_vec_dims, i, x->format(), ctx.GetPlace());
-        auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
-                                                            slice_mem_p, i);
+      auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+          outs[i], out_vec_dims, i, x->format(), ctx.GetPlace());
+      auto reorder_p =
+          reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p, i);
 
-        reorder_p->execute(astream, *slice_mem_p, *reorder_dst_memory_p);
+      reorder_p->execute(astream, *slice_mem_p, *reorder_dst_memory_p);
 
-        offset[axis] += num > 0 ? x->dims()[axis] / num : sections[i];
+      offset[axis] += num > 0 ? x->dims()[axis] / num : sections[i];
 
-        outs[i]->set_layout(framework::DataLayout::kMKLDNN);
-        outs[i]->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+      outs[i]->set_layout(framework::DataLayout::kMKLDNN);
+      outs[i]->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
     }
     astream.wait();
-    // add also sections case
-
-    //for(int i=0;i<outs_number;++i){
-    //  outs[i]->set_layout(framework::DataLayout::kMKLDNN);
-    //  outs[i]->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
-    //}
-  }//
+  }
 };
 }  // namespace operators
 }  // namespace paddle
@@ -138,4 +132,3 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(split, MKLDNN, paddle::platform::CPUPlace,
                    ops::SplitMKLDNNKernel<float>,
                    ops::SplitMKLDNNKernel<paddle::platform::bfloat16>);
-

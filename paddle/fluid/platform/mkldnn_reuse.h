@@ -1033,9 +1033,11 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
-      framework::Tensor* output, const std::vector<int64_t>& dims, const int memory_number,
-      const MKLDNNMemoryFormat& fmt, platform::Place place) {
-    auto local_key = key_ + "@user_dst_mem" + std::to_string(memory_number) + "_p";
+      framework::Tensor* output, const std::vector<int64_t>& dims,
+      const int memory_number, const MKLDNNMemoryFormat& fmt,
+      platform::Place place) {
+    auto local_key =
+        key_ + "@user_dst_mem" + std::to_string(memory_number) + "_p";
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {

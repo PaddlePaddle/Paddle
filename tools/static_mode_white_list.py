@@ -474,6 +474,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_split_and_merge_lod_tensor_op',
     'test_split_ids_op',
     'test_split_op',
+    'test_split_mkldnn_op'
     'test_spp_op',
     'test_square_error_cost',
     'test_squared_l2_norm_op',

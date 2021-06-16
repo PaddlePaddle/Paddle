@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <memory>
 #include "paddle/fluid/operators/concat_op.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -158,11 +158,11 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             -rank, rank, concat_axis));
     platform::MKLDNNDeviceContext::tls().log_lib_version();
 
-    if(ctx.HasInput("AxisTensor")){
+    if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<Tensor>("AxisTensor");
       concat_axis = GetDataFromTensor(axis_tensor)[0];
       auto out_dims = multi_input[0]->dims();
-      for(size_t i=1;i<multi_input.size();++i){
+      for (size_t i = 1; i < multi_input.size(); ++i) {
         out_dims[concat_axis] += multi_input[i]->dims()[concat_axis];
       }
       output->Resize(out_dims);
