@@ -67,7 +67,6 @@ struct Layers {
     op->SetInput("Filter", {filter->Name()});
     op->SetInput("Bias", {bias->Name()});
     op->SetOutput("Output", {out->Name()});
-    op->SetAttr("use_cudnn", use_cudnn);
     op->SetAttr("groups", 1);
     op->SetAttr("strides", std::vector<int>{1, 1});
     op->SetAttr("paddings", std::vector<int>{0, 0});
