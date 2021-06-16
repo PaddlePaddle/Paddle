@@ -49,10 +49,10 @@ struct Layers {
     op->SetOutput("Output", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
     op->SetAttr("groups", 1);
-    op->SetAttr("strides", {1, 1});
-    op->SetAttr("paddings", {0, 0});
+    op->SetAttr("strides", std::vector<int>{1, 1});
+    op->SetAttr("paddings", std::vector<int>{0, 0});
     op->SetAttr("padding_algorithm", "EXPLICIT");
-    op->SetAttr("dilations", {1, 1});
+    op->SetAttr("dilations", std::vector<int>{1, 1});
     op->SetAttr("data_format", "NCHW");
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
