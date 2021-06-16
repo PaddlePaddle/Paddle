@@ -82,6 +82,7 @@ class CompareOpKernel<platform::CUDADeviceContext, Functor, InverseFunctor>
 #define REGISTER_CUDA_COMPARE_KERNEL(op_type, func)                            \
   REGISTER_OP_CUDA_KERNEL(                                                     \
       op_type,                                                                 \
+      ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<bool>, void>,    \
       ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<int>, void>,     \
       ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<int64_t>, void>, \
       ops::CompareOpKernel<plat::CUDADeviceContext, ops::func<float>, void>,   \

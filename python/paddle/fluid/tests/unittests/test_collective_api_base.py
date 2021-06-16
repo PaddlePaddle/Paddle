@@ -257,11 +257,10 @@ class TestDistBase(unittest.TestCase):
         elif col_type == "parallel_embedding":
             result_data = tr0_out[0]
             np.random.seed(2020)
-            need_result = np.random.rand(10, 8)
+            need_result = np.random.rand(12, 8)
             for i in range(result_data.shape[0]):
                 for j in range(result_data.shape[1]):
                     data = result_data[i][j]
-                    if data >= 4: data += 1
                     assert np.allclose(
                         tr0_out[1][i][j], need_result[data], atol=1e-08)
         elif col_type == "row_parallel_linear":
