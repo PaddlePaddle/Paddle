@@ -45,7 +45,7 @@ class SkipLayerNormFusePass : public FusePassBase {
         .IsTensor()
         .End()
         .AddAttr("axis")
-        .IsNumEQ(0)
+        .IsIntIn({0, -1})
         .End();
 
     AddOpCompat(OpCompat("layer_norm"))
