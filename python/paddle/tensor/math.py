@@ -1654,15 +1654,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
 def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     """
-    **trace**
-
     This OP computes the diagonals of the input tensor x.
 
     If ``x`` is 2D, returns the diagonal.
-
-    If ``x`` has larger dimensions, diagonals be taken from
-    the 2D planes specified by axis1 and axis2. By default, the 2D planes formed by the first and second axis
-    of the input tensor x.
+    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2. 
+    By default, the 2D planes formed by the first and second axis of the input tensor x.
 
     The argument ``offset`` determines where diagonals are taken from input tensor x:
 
@@ -1671,7 +1667,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset < 0, it is below the main diagonal.
     
     Args:
-        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be int32, int64, float32, float64.
         offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
         axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
         axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
@@ -1726,7 +1722,6 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         assert axis2_ < len(input_shape),   \
             "The argument axis2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
             % (-(len(input_shape)), len(input_shape) - 1, axis2)
-
 
         assert  axis1_ != axis2_,   \
                "axis1 and axis2 cannot be the same axis." \
