@@ -46,7 +46,7 @@ struct Layers {
     op->SetInput("Input", {input->Name()});
     op->SetInput("Filter", {filter->Name()});
     op->SetInput("Bias", {bias->Name()});
-    op->SetOutput("Out", {out->Name()});
+    op->SetOutput("Output", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
@@ -60,7 +60,7 @@ struct Layers {
     op->SetInput("Input", {input->Name()});
     op->SetInput("Filter", {filter->Name()});
     op->SetInput("Bias", {bias->Name()});
-    op->SetOutput("Out", {out->Name()});
+    op->SetOutput("Output", {out->Name()});
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
