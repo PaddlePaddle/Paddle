@@ -68,6 +68,7 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .AddAttr("paddings")
       .End()
       .AddAttr("padding_algorithm")
+      .IsOptional()
       .End()
       .AddAttr("groups")
       .IsNumGE(1)
