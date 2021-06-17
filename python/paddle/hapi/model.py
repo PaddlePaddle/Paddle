@@ -1031,6 +1031,7 @@ class Model(object):
                 a numpy array or paddle.Tensor, or a list of arrays or tensors 
                 (in case the model has multiple labels). If has no labels, 
                 set None. Default is None.
+            update (bool): Whether update parameters after loss.backward() computes. Using this to accumulate gradients. Default is True.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
@@ -2045,9 +2046,6 @@ class Model(object):
                     _inputs.append((step + 1) % self._accumulate == 0)
 
                 outs = getattr(self, mode + '_batch')(*_inputs)
-
-                # outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
-                #                                       data[len(self._inputs):])
 
                 if self._metrics and self._loss:
                     metrics = [[l[0] for l in outs[0]]]
