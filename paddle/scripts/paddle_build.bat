@@ -18,19 +18,18 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 @ECHO ON
-setlocal
+setlocal enabledelayedexpansion
 
 rem -------clean up environment-----------
 set work_dir=%cd%
-set cache_dir=%work_dir:Paddle=cache%
+if not defined cache_dir set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
-taskkill /f /im op_function_generator.exe  2>NUL
 taskkill /f /im cmake.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
-taskkill /f /im CL.exe 2>NUL
-taskkill /f /im Lib.exe 2>NUL
+taskkill /f /im cl.exe 2>NUL
+taskkill /f /im lib.exe 2>NUL
 taskkill /f /im link.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
@@ -41,14 +40,12 @@ taskkill /f /im python.exe  2>NUL
 taskkill /f /im nvcc.exe 2>NUL
 taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
 
 rem ------initialize common variable------
@@ -66,7 +63,7 @@ if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
-if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
 if not defined WITH_CLCACHE set WITH_CLCACHE=OFF
 if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_UNITY_BUILD set WITH_UNITY_BUILD=OFF
@@ -79,6 +76,7 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
 rmdir build\python /s/q
+rem rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
@@ -137,10 +135,11 @@ goto :CASE_%1
 
 echo "Usage: paddle_build.bat [OPTION]"
 echo "OPTION:"
-echo "wincheck_mkl: run Windows MKL/GPU/UnitTest CI tasks on Windows"
-echo "wincheck_openbals: run Windows OPENBLAS/CPU CI tasks on Windows"
+echo "wincheck_mkl: run Windows MKL/GPU PR CI tasks on Windows"
+echo "wincheck_openbals: run Windows OPENBLAS/CPU PR CI tasks on Windows"
 echo "build_avx_whl: build Windows avx whl package on Windows"
 echo "build_no_avx_whl: build Windows no avx whl package on Windows"
+echo "build_inference_lib: build Windows inference library on Windows"
 exit /b 1
 
 rem ------PR CI windows check for MKL/GPU----------
@@ -200,6 +199,7 @@ goto:success
 
 rem ------Build windows inference library------
 :CASE_build_inference_lib
+set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
 
@@ -226,6 +226,8 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
 set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
+rem Use 64-bit ToolSet to compile
+set PreferredToolArchitecture=x64
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -250,14 +252,15 @@ if "%WITH_GPU%"=="ON" (
 )
 
 rem ------initialize the python environment------
+@ECHO ON
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
-if %WITH_PYTHON% == "OFF" (
+if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     pip install wheel --user
     pip install -r %work_dir%\python\requirements.txt --user
-    if %ERRORLEVEL% NEQ 0 (
+    if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 7
     )
@@ -318,7 +321,7 @@ if "%WITH_GPU%"=="ON" (
 )
 
 :cmake_impl
-echo cmake .. -G %GENERATOR% -T host=x64 -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -T host=x64 -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
@@ -374,6 +377,7 @@ set build_times=1
 rem clcache.exe -z
 
 rem -------clean up environment again-----------
+taskkill /f /im cmake.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL
 taskkill /f /im lib.exe 2>NUL
@@ -386,18 +390,20 @@ taskkill /f /im csc.exe 2>NUL
 taskkill /f /im nvcc.exe 2>NUL
 taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
+
+if "%WITH_TESTING%"=="ON" (
+    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%#
+)
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
-    ninja -j %PARALLEL_PROJECT_COUNT%
+    ninja all
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
         MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
@@ -488,7 +494,6 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
-
 
 : set CI_SKIP_CPP_TEST if only *.py changed
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
@@ -778,15 +783,16 @@ taskkill /f /im python.exe  2>NUL
 taskkill /f /im nvcc.exe 2>NUL
 taskkill /f /im cicc.exe 2>NUL
 taskkill /f /im ptxas.exe 2>NUL
-taskkill /f /im test_api_impl.exe 2>NUL
 taskkill /f /im op_function_generator.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-wmic process where name="test_api_impl.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
 wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="CL.exe" call terminate 2>NUL
-wmic process where name="Lib.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 wmic process where name="python.exe" call terminate 2>NUL
+if "%WITH_TESTING%"=="ON" (
+    for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%#
+)
 echo Windows CI run successfully!
 exit /b 0
 
