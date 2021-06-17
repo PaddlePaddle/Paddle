@@ -35,7 +35,6 @@ class TestCollectiveRunnerBase(object):
             "get model should be implemented by child class.")
 
     def wait_server_ready(self, endpoints):
-        assert not isinstance(endpoints, string_types)
         while True:
             all_ok = True
             not_ready_endpoints = []
