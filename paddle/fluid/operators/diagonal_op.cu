@@ -21,26 +21,25 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-template <typename T, int INPUT_DIM_SIZE, int OUTPUT_DIM_SIZE>
-__global__ void Diagonal(const T* input_data, T* output_data,
-                         const int64_t offset_, int64_t axis1_, int64_t axis2_,
-                         int64_t* input_stride, int64_t* output_stride,
-                         int64_t numel) {
+template <typename T, int X_DIM_SIZE, int OUT_DIM_SIZE>
+__global__ void Diagonal(const T* data1, T* data2, const int64_t offset_,
+                         int64_t axis1_, int64_t axis2_, int64_t* x_stride,
+                         int64_t* out_stride, int64_t numel, bool is_grad) {
   CUDA_KERNEL_LOOP(idx, numel) {
-    int64_t idx_dim[INPUT_DIM_SIZE] = {0};
+    int64_t idx_dim[X_DIM_SIZE] = {0};
     int64_t temp = 0;
-    for (size_t i = 0; i < INPUT_DIM_SIZE - 1; i++) {
-      idx_dim[i] = (idx - temp) / input_stride[i];
-      temp = temp + idx_dim[i] * input_stride[i];
+    for (size_t i = 0; i < X_DIM_SIZE - 1; i++) {
+      idx_dim[i] = (idx - temp) / x_stride[i];
+      temp = temp + idx_dim[i] * x_stride[i];
     }
-    idx_dim[INPUT_DIM_SIZE - 1] = idx - temp;
+    idx_dim[X_DIM_SIZE - 1] = idx - temp;
 
     int64_t axis1_dim = idx_dim[axis1_];
     int64_t axis2_dim = idx_dim[axis2_];
 
-    int64_t out_dim[OUTPUT_DIM_SIZE] = {0};
+    int64_t out_dim[OUT_DIM_SIZE] = {0};
     int temp_pos = 0;
-    for (int i = 0; i < INPUT_DIM_SIZE; i++) {
+    for (int i = 0; i < X_DIM_SIZE; i++) {
       if (i != axis1_ && i != axis2_) {
         out_dim[temp_pos] = idx_dim[i];
         temp_pos++;
@@ -57,13 +56,26 @@ __global__ void Diagonal(const T* input_data, T* output_data,
       out_dim[temp_pos] = axis2_dim;
       flag = true;
     }
-    if (flag) {
-      int64_t idx_output = 0;
-      for (size_t i = 0; i < OUTPUT_DIM_SIZE - 1; i++) {
-        idx_output = idx_output + out_dim[i] * output_stride[i];
+    if (!is_grad) {
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
+          idx_output = idx_output + out_dim[i] * out_stride[i];
+        }
+        idx_output = idx_output + out_dim[OUT_DIM_SIZE - 1];
+        data2[idx_output] = data1[idx];
       }
-      idx_output = idx_output + out_dim[OUTPUT_DIM_SIZE - 1];
-      output_data[idx_output] = input_data[idx];
+    } else {
+      if (flag) {
+        int64_t idx_output = 0;
+        for (size_t i = 0; i < OUT_DIM_SIZE - 1; i++) {
+          idx_output = idx_output + out_dim[i] * out_stride[i];
+        }
+        idx_output = idx_output + out_dim[OUT_DIM_SIZE - 1];
+        data2[idx] = data1[idx_output];
+      } else {
+        data2[idx] = static_cast<T>(0);
+      }
     }
   }
 }
@@ -77,46 +89,22 @@ class DiagonalCUDAKernel : public framework::OpKernel<T> {
     auto input_dim = input->dims().Get();
     auto input_dim_size = input->dims().size();
 
-    int input_stride_size = input_dim_size - 1;
-    int64_t* host_input_stride;
-    host_input_stride =
-        reinterpret_cast<int64_t*>(malloc(input_stride_size * sizeof(int64_t)));
-    for (size_t i_input = 0; i_input < input_stride_size; i_input++) {
-      int64_t temp_stride = 1;
-      for (size_t j = i_input + 1; j < input_dim_size; j++) {
-        temp_stride = temp_stride * input_dim[j];
-      }
-      host_input_stride[i_input] = temp_stride;
-    }
-    int64_t* input_stride;
-    cudaMalloc(reinterpret_cast<void**>(&input_stride),
-               input_stride_size * sizeof(int64_t));
-    cudaMemcpy(reinterpret_cast<void*>(input_stride),
-               reinterpret_cast<void*>(host_input_stride),
-               input_stride_size * sizeof(int64_t), cudaMemcpyHostToDevice);
+    std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
+    paddle::framework::Tensor input_stride_tensor;
+    framework::TensorFromVector<int64_t>(res_in, context.device_context(),
+                                         &input_stride_tensor);
+    int64_t* input_stride = input_stride_tensor.data<int64_t>();
 
     auto* output = context.Output<framework::Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
     auto output_dim = output->dims().Get();
     auto output_dim_size = output->dims().size();
 
-    int output_stride_size = output_dim_size - 1;
-    int64_t* host_output_stride;
-    host_output_stride = reinterpret_cast<int64_t*>(
-        malloc(output_stride_size * sizeof(int64_t)));
-    for (size_t i_output = 0; i_output < output_stride_size; i_output++) {
-      int64_t temp_stride = 1;
-      for (size_t j = i_output + 1; j < output_dim_size; j++) {
-        temp_stride = temp_stride * output_dim[j];
-      }
-      host_output_stride[i_output] = temp_stride;
-    }
-    int64_t* output_stride;
-    cudaMalloc(reinterpret_cast<void**>(&output_stride),
-               output_stride_size * sizeof(int64_t));
-    cudaMemcpy(reinterpret_cast<void*>(output_stride),
-               reinterpret_cast<void*>(host_output_stride),
-               output_stride_size * sizeof(int64_t), cudaMemcpyHostToDevice);
+    std::vector<int64_t> res_out = vectorize(framework::stride(output->dims()));
+    paddle::framework::Tensor output_stride_tensor;
+    framework::TensorFromVector<int64_t>(res_out, context.device_context(),
+                                         &output_stride_tensor);
+    int64_t* output_stride = output_stride_tensor.data<int64_t>();
 
     const int64_t offset_ = context.Attr<int>("offset");
     const int64_t axis1 = context.Attr<int>("axis1");
@@ -132,103 +120,50 @@ class DiagonalCUDAKernel : public framework::OpKernel<T> {
       case 2:
         Diagonal<T, 2, 1><<<blocks, threads>>>(input_data, output_data, offset_,
                                                axis1_, axis2_, input_stride,
-                                               output_stride, numel);
+                                               output_stride, numel, false);
         break;
       case 3:
         Diagonal<T, 3, 2><<<blocks, threads>>>(input_data, output_data, offset_,
                                                axis1_, axis2_, input_stride,
-                                               output_stride, numel);
+                                               output_stride, numel, false);
         break;
       case 4:
         Diagonal<T, 4, 3><<<blocks, threads>>>(input_data, output_data, offset_,
                                                axis1_, axis2_, input_stride,
-                                               output_stride, numel);
+                                               output_stride, numel, false);
         break;
       case 5:
         Diagonal<T, 5, 4><<<blocks, threads>>>(input_data, output_data, offset_,
                                                axis1_, axis2_, input_stride,
-                                               output_stride, numel);
+                                               output_stride, numel, false);
         break;
       case 6:
         Diagonal<T, 6, 5><<<blocks, threads>>>(input_data, output_data, offset_,
                                                axis1_, axis2_, input_stride,
-                                               output_stride, numel);
+                                               output_stride, numel, false);
         break;
       case 7:
         Diagonal<T, 7, 6><<<blocks, threads>>>(input_data, output_data, offset_,
                                                axis1_, axis2_, input_stride,
-                                               output_stride, numel);
+                                               output_stride, numel, false);
         break;
       case 8:
         Diagonal<T, 8, 7><<<blocks, threads>>>(input_data, output_data, offset_,
                                                axis1_, axis2_, input_stride,
-                                               output_stride, numel);
+                                               output_stride, numel, false);
         break;
       case 9:
         Diagonal<T, 9, 8><<<blocks, threads>>>(input_data, output_data, offset_,
                                                axis1_, axis2_, input_stride,
-                                               output_stride, numel);
+                                               output_stride, numel, false);
         break;
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The rank of input should be less than 10, but received %d.",
             input_dim_size));
     }
-    cudaFree(input_stride);
-    cudaFree(output_stride);
-    free(host_input_stride);
-    free(host_output_stride);
   }
 };
-
-template <typename T, int DX_DIM_SIZE, int DOUT_DIM_SIZE>
-__global__ void GradDiagonal(const T* dout_data, T* dx_data,
-                             const int64_t offset_, int64_t axis1_,
-                             int64_t axis2_, int64_t* dout_stride,
-                             int64_t* dx_stride, int64_t numel) {
-  CUDA_KERNEL_LOOP(idx, numel) {
-    int64_t idx_dim[DX_DIM_SIZE] = {0};
-    int64_t temp = 0;
-    for (size_t i = 0; i < DX_DIM_SIZE - 1; i++) {
-      idx_dim[i] = (idx - temp) / dx_stride[i];
-      temp = temp + idx_dim[i] * dx_stride[i];
-    }
-    idx_dim[DX_DIM_SIZE - 1] = idx - temp;
-
-    int64_t axis1_dim = idx_dim[axis1_];
-    int64_t axis2_dim = idx_dim[axis2_];
-
-    int64_t dout_dim[DOUT_DIM_SIZE] = {0};
-    int temp_pos = 0;
-    for (int i = 0; i < DX_DIM_SIZE; i++) {
-      if (i != axis1_ && i != axis2_) {
-        dout_dim[temp_pos] = idx_dim[i];
-        temp_pos++;
-      }
-    }
-    bool flag = false;
-    if (offset_ == 0 && axis1_dim == axis2_dim) {
-      dout_dim[temp_pos] = axis1_dim;
-      flag = true;
-    } else if (offset_ > 0 && (axis1_dim + offset_) == axis2_dim) {
-      dout_dim[temp_pos] = axis1_dim;
-      flag = true;
-    } else if (offset_ < 0 && (axis1_dim + offset_) == axis2_dim) {
-      dout_dim[temp_pos] = axis2_dim;
-      flag = true;
-    }
-    if (flag) {
-      int64_t idx_output = 0;
-      for (size_t i = 0; i < DOUT_DIM_SIZE - 1; i++) {
-        idx_output = idx_output + dout_dim[i] * dout_stride[i];
-      }
-      idx_output = idx_output + dout_dim[DOUT_DIM_SIZE - 1];
-      dx_data[idx] = dout_data[idx_output];
-    } else {
-      dx_data[idx] = static_cast<T>(0);
-    }
-  }
-}
 
 template <typename T>
 class DiagonalGradCUDAKernel : public framework::OpKernel<T> {
@@ -240,23 +175,11 @@ class DiagonalGradCUDAKernel : public framework::OpKernel<T> {
     auto dout_dim = dout->dims().Get();
     auto dout_dim_size = dout->dims().size();
 
-    int dout_stride_size = dout_dim_size - 1;
-    int64_t* host_dout_stride;
-    host_dout_stride =
-        reinterpret_cast<int64_t*>(malloc(dout_stride_size * sizeof(int64_t)));
-    for (size_t i_dout = 0; i_dout < dout_stride_size; i_dout++) {
-      int64_t temp_stride = 1;
-      for (size_t j = i_dout + 1; j < dout_dim_size; j++) {
-        temp_stride = temp_stride * dout_dim[j];
-      }
-      host_dout_stride[i_dout] = temp_stride;
-    }
-    int64_t* dout_stride;
-    cudaMalloc(reinterpret_cast<void**>(&dout_stride),
-               dout_stride_size * sizeof(int64_t));
-    cudaMemcpy(reinterpret_cast<void*>(dout_stride),
-               reinterpret_cast<void*>(host_dout_stride),
-               dout_stride_size * sizeof(int64_t), cudaMemcpyHostToDevice);
+    std::vector<int64_t> res_dout = vectorize(framework::stride(dout->dims()));
+    paddle::framework::Tensor dout_stride_tensor;
+    framework::TensorFromVector<int64_t>(res_dout, context.device_context(),
+                                         &dout_stride_tensor);
+    int64_t* dout_stride = dout_stride_tensor.data<int64_t>();
 
     auto* dx =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
@@ -264,23 +187,11 @@ class DiagonalGradCUDAKernel : public framework::OpKernel<T> {
     auto dx_dim = dx->dims().Get();
     auto dx_dim_size = dx->dims().size();
 
-    int dx_stride_size = dx_dim_size - 1;
-    int64_t* host_dx_stride;
-    host_dx_stride =
-        reinterpret_cast<int64_t*>(malloc(dx_stride_size * sizeof(int64_t)));
-    for (size_t i_dx = 0; i_dx < dx_stride_size; i_dx++) {
-      int64_t temp_stride = 1;
-      for (size_t j = i_dx + 1; j < dx_dim_size; j++) {
-        temp_stride = temp_stride * dx_dim[j];
-      }
-      host_dx_stride[i_dx] = temp_stride;
-    }
-    int64_t* dx_stride;
-    cudaMalloc(reinterpret_cast<void**>(&dx_stride),
-               dx_stride_size * sizeof(int64_t));
-    cudaMemcpy(reinterpret_cast<void*>(dx_stride),
-               reinterpret_cast<void*>(host_dx_stride),
-               dx_stride_size * sizeof(int64_t), cudaMemcpyHostToDevice);
+    std::vector<int64_t> res_dx = vectorize(framework::stride(dx->dims()));
+    paddle::framework::Tensor dx_stride_tensor;
+    framework::TensorFromVector<int64_t>(res_dx, context.device_context(),
+                                         &dx_stride_tensor);
+    int64_t* dx_stride = dx_stride_tensor.data<int64_t>();
 
     const int64_t offset_ = context.Attr<int>("offset");
     const int64_t axis1 = context.Attr<int>("axis1");
@@ -295,44 +206,44 @@ class DiagonalGradCUDAKernel : public framework::OpKernel<T> {
 
     switch (dx_dim_size) {
       case 2:
-        GradDiagonal<T, 2, 1><<<blocks, threads>>>(dout_data, dx_data, offset_,
-                                                   axis1_, axis2_, dout_stride,
-                                                   dx_stride, numel);
+        Diagonal<T, 2, 1><<<blocks, threads>>>(dout_data, dx_data, offset_,
+                                               axis1_, axis2_, dx_stride,
+                                               dout_stride, numel, true);
         break;
       case 3:
-        GradDiagonal<T, 3, 2><<<blocks, threads>>>(dout_data, dx_data, offset_,
-                                                   axis1_, axis2_, dout_stride,
-                                                   dx_stride, numel);
+        Diagonal<T, 3, 2><<<blocks, threads>>>(dout_data, dx_data, offset_,
+                                               axis1_, axis2_, dx_stride,
+                                               dout_stride, numel, true);
         break;
       case 4:
-        GradDiagonal<T, 4, 3><<<blocks, threads>>>(dout_data, dx_data, offset_,
-                                                   axis1_, axis2_, dout_stride,
-                                                   dx_stride, numel);
+        Diagonal<T, 4, 3><<<blocks, threads>>>(dout_data, dx_data, offset_,
+                                               axis1_, axis2_, dx_stride,
+                                               dout_stride, numel, true);
         break;
       case 5:
-        GradDiagonal<T, 5, 4><<<blocks, threads>>>(dout_data, dx_data, offset_,
-                                                   axis1_, axis2_, dout_stride,
-                                                   dx_stride, numel);
+        Diagonal<T, 5, 4><<<blocks, threads>>>(dout_data, dx_data, offset_,
+                                               axis1_, axis2_, dx_stride,
+                                               dout_stride, numel, true);
         break;
       case 6:
-        GradDiagonal<T, 6, 5><<<blocks, threads>>>(dout_data, dx_data, offset_,
-                                                   axis1_, axis2_, dout_stride,
-                                                   dx_stride, numel);
+        Diagonal<T, 6, 5><<<blocks, threads>>>(dout_data, dx_data, offset_,
+                                               axis1_, axis2_, dx_stride,
+                                               dout_stride, numel, true);
         break;
       case 7:
-        GradDiagonal<T, 7, 6><<<blocks, threads>>>(dout_data, dx_data, offset_,
-                                                   axis1_, axis2_, dout_stride,
-                                                   dx_stride, numel);
+        Diagonal<T, 7, 6><<<blocks, threads>>>(dout_data, dx_data, offset_,
+                                               axis1_, axis2_, dx_stride,
+                                               dout_stride, numel, true);
         break;
       case 8:
-        GradDiagonal<T, 8, 7><<<blocks, threads>>>(dout_data, dx_data, offset_,
-                                                   axis1_, axis2_, dout_stride,
-                                                   dx_stride, numel);
+        Diagonal<T, 8, 7><<<blocks, threads>>>(dout_data, dx_data, offset_,
+                                               axis1_, axis2_, dx_stride,
+                                               dout_stride, numel, true);
         break;
       case 9:
-        GradDiagonal<T, 9, 8><<<blocks, threads>>>(dout_data, dx_data, offset_,
-                                                   axis1_, axis2_, dout_stride,
-                                                   dx_stride, numel);
+        Diagonal<T, 9, 8><<<blocks, threads>>>(dout_data, dx_data, offset_,
+                                               axis1_, axis2_, dx_stride,
+                                               dout_stride, numel, true);
         break;
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -340,10 +251,6 @@ class DiagonalGradCUDAKernel : public framework::OpKernel<T> {
             "received %d.",
             dx_dim_size));
     }
-    cudaFree(dout_stride);
-    cudaFree(dx_stride);
-    free(host_dout_stride);
-    free(host_dx_stride);
   }
 };
 
