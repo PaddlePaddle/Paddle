@@ -158,7 +158,7 @@ def get_all_api(root_path='paddle', attr="__all__"):
     logger.info('%s: collected %d apis, %d distinct apis.', attr, api_counter,
                 len(api_info_dict))
 
-    return [(list(api_info['all_names'])[0], md5(api_info['docstring']))
+    return [(sorted(list(api_info['all_names']))[0], md5(api_info['docstring']))
             for api_info in api_info_dict.values()]
 
 
