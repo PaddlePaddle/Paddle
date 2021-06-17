@@ -419,12 +419,12 @@ template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim>
 __device__ __forceinline__ void ReduceLastDim(const Tx* x, Ty* y,
                                               ReduceOp reducer,
-                                              TransformOp transformer,
+                                              TransformOp transformer, Ty init,
                                               int reduce_num) {
   __shared__ typename cub::BlockReduce<Ty, BlockDim>::TempStorage temp_storage;
   int idx_x = blockIdx.x * reduce_num;
   int idx_y = threadIdx.x;
-  Ty reduce_var = reducer.initial();
+  Ty reduce_var = init;
   for (int idx_y = threadIdx.x; idx_y < reduce_num; idx_y += BlockDim) {
     reduce_var =
         reducer(reduce_var, static_cast<Ty>(transformer(x[idx_x + idx_y])));
@@ -448,12 +448,12 @@ template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
 __device__ __forceinline__ void ReduceHigherDim(const Tx* x, Ty* y,
                                                 ReduceOp reducer,
                                                 TransformOp transformer,
-                                                int reduce_num, int left_num,
-                                                int block_size) {
+                                                Ty init, int reduce_num,
+                                                int left_num, int block_size) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int idy = blockIdx.y * block_size;
 
-  Ty reduce_var = reducer.initial();
+  Ty reduce_var = init;
 
   if (idx < left_num) {
     int loop = reduce_num - idy;
@@ -532,7 +532,7 @@ __device__ __forceinline__ void ReduceAny(
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim, int Rank, int ReduceRank, int ReduceType>
 __device__ __forceinline__ void ReduceModule(
-    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer,
+    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
     int reduce_num, int left_num, int blocking_size,
     paddle::framework::Array<int, Rank> x_strides,
     paddle::framework::Array<int, ReduceRank> reduce_dim,
@@ -542,12 +542,12 @@ __device__ __forceinline__ void ReduceModule(
   // reduce_rank == 1 && reduce_dim[0] == x_dim.size() - 1
   if (ReduceType == ReduceType::kReduceLastDim) {
     ReduceLastDim<Tx, Ty, ReduceOp, TransformOp, BlockDim>(
-        x, y, reducer, transformer, reduce_num);
+        x, y, reducer, transformer, init, reduce_num);
 
     // reduce_rank == 1 && reduce_dim[0] != x_dim.size() - 1
   } else if (ReduceType == ReduceType::kReduceHigherDim) {
     ReduceHigherDim<Tx, Ty, ReduceOp, TransformOp>(
-        x, y, reducer, transformer, reduce_num, left_num, blocking_size);
+        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
 
     // reduce_rank >= 2
   } else {
@@ -560,7 +560,7 @@ __device__ __forceinline__ void ReduceModule(
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim, int Rank, int ReduceRank, int ReduceType>
 __global__ void ReduceKernelFunction(
-    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer,
+    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
     int reduce_num, int left_num, int block_size,
     paddle::framework::Array<int, Rank> x_strides,
     paddle::framework::Array<int, ReduceRank> reduce_dim,
@@ -568,24 +568,24 @@ __global__ void ReduceKernelFunction(
     paddle::framework::Array<int, Rank - ReduceRank> left_dim,
     paddle::framework::Array<int, Rank - ReduceRank> left_strides) {
   ReduceModule<Tx, Ty, ReduceOp, TransformOp, BlockDim, Rank, ReduceRank,
-               ReduceType>(x, y, reducer, transformer, reduce_num, left_num,
-                           block_size, x_strides, reduce_dim, reduce_strides,
-                           left_dim, left_strides);
+               ReduceType>(x, y, reducer, transformer, init, reduce_num,
+                           left_num, block_size, x_strides, reduce_dim,
+                           reduce_strides, left_dim, left_strides);
 }
 
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
           typename TransformOp, int kRank, int kReduceRank>
 static void LaunchKernel(const Tx* x_data, Ty* y_data, const ReduceOp& reducer,
-                         const TransformOp& transformer, gpuStream_t stream,
-                         ReduceConfig<Ty> config) {
+                         const TransformOp& transformer, Ty init,
+                         gpuStream_t stream, ReduceConfig<Ty> config) {
 #define CUB_REDUCE_TYPE_CASE(type)                                             \
   case type: {                                                                 \
     constexpr auto kReduceType = type;                                         \
     ReduceKernelFunction<                                                      \
         Tx, Ty, ReduceOp, TransformOp, BlockDim, kRank, kReduceRank,           \
         kReduceType><<<config.grid, config.block, 0, stream>>>(                \
-        x_data, config.output_data, reducer, transformer, config.reduce_num,   \
-        config.left_num, config.blocking_size,                                 \
+        x_data, config.output_data, reducer, transformer, init,                \
+        config.reduce_num, config.left_num, config.blocking_size,              \
         detail::VectorToArray<int, kRank>(config.x_strides),                   \
         detail::VectorToArray<int, kReduceRank>(config.reduce_dim),            \
         detail::VectorToArray<int, kReduceRank>(config.reduce_strides),        \
@@ -607,7 +607,7 @@ static void LaunchKernel(const Tx* x_data, Ty* y_data, const ReduceOp& reducer,
         Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, 128, kRank, kReduceRank,
         ReduceType::kReduceHigherDim><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer,
-        detail::IdentityFunctor<Ty>(config.grid.y), config.grid.y,
+        detail::IdentityFunctor<Ty>(config.grid.y), init, config.grid.y,
         config.left_num, config.grid.y,
         detail::VectorToArray<int, kRank>(config.x_strides),
         detail::VectorToArray<int, kReduceRank>(config.reduce_dim),
@@ -621,7 +621,7 @@ template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
           typename TransformOp>
 static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
                                const ReduceOp& reducer,
-                               const TransformOp& transformer,
+                               const TransformOp& transformer, Ty init,
                                gpuStream_t stream, ReduceConfig<Ty> config) {
   int reduce_rank = config.reduce_strides.size();
   int rank = config.x_strides.size();
@@ -636,7 +636,7 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
   case i: {                                                                    \
     constexpr auto kReduceRank = i;                                            \
     LaunchKernel<Tx, Ty, BlockDim, ReduceOp, TransformOp, kRank, kReduceRank>( \
-        x_data, y_data, reducer, transformer, stream, config);                 \
+        x_data, y_data, reducer, transformer, init, stream, config);           \
   } break
 
   detail::CheckReduceRank(reduce_rank, rank);
@@ -711,8 +711,8 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   case block_dim: {                                                       \
     constexpr auto kBlockDim = block_dim;                                 \
     LaunchReduceKernel<Tx, Ty, block_dim, ReduceOp<Tx, Ty>, TransformOp>( \
-        x_data, y_data, reducer, TransformOp(config.reduce_num), stream,  \
-        config);                                                          \
+        x_data, y_data, reducer, TransformOp(config.reduce_num),          \
+        reducer.initial(), stream, config);                               \
   } break
 
   switch (detail::GetBlockDim(config.reduce_num)) {
