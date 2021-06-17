@@ -87,17 +87,16 @@ class MulNPUKernel : public framework::OpKernel<T> {
         tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
 
         // matmul [6,4] , [4, 5] => [6, 5]
-        out->Resize(framework::make_ddim({first_dim, y->dims()[1]}));
         out->mutable_data<T>(ctx.GetPlace());
 
+        Tensor tmp_out(x->type());
+        tmp_out.ShareDataWith(*out);
+        tmp_out.Resize(framework::make_ddim({first_dim, y->dims()[1]}));
+
         const auto& runner_matmul =
-            NpuOpRunner("MatMul", {tmp_x, *y}, {*out},
+            NpuOpRunner("MatMul", {tmp_x, *y}, {tmp_out},
                         {{"transpose_x1", false}, {"transpose_x2", false}});
         runner_matmul.Run(stream);
-
-        // reshape [6, 5] => [2, 3, 5]
-        out->Resize(
-            framework::make_ddim({x->dims()[0], x->dims()[1], y->dims()[1]}));
       }
     }
   }
@@ -142,14 +141,14 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         if (dx) {
           // matmul [2, 5] * [12, 5] => [2, 12]
           dx->mutable_data<T>(ctx.GetPlace());
-          auto dx_dims = dx->dims();
-          dx->Resize(framework::make_ddim({dout->dims()[0], y->dims()[0]}));
+          Tensor tmp_dx(x->type());
+          tmp_dx.ShareDataWith(*dx);
+          tmp_dx.Resize(framework::make_ddim({dout->dims()[0], y->dims()[0]}));
+
           const auto& runner_matmul =
-              NpuOpRunner("MatMul", {*dout, *y}, {*dx},
+              NpuOpRunner("MatMul", {*dout, *y}, {tmp_dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
           runner_matmul.Run(stream);
-          // reshape [2, 12] => [2, 3, 4]
-          dx->Resize(dx_dims);
         }
 
         if (dy) {
@@ -197,14 +196,14 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           runner.Run(stream);
         } else {
           dx->mutable_data<T>(ctx.GetPlace());
-          auto dx_dims = dx->dims();
-          dx->Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
+          Tensor tmp_dx(x->type());
+          tmp_dx.ShareDataWith(*dx);
+          tmp_dx.Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
+
           const auto& runner_matmul =
-              NpuOpRunner("MatMul", {tmp_dout, *y}, {*dx},
+              NpuOpRunner("MatMul", {tmp_dout, *y}, {tmp_dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
           runner_matmul.Run(stream);
-          // reshape [2, 12] => [2, 3, 4]
-          dx->Resize(dx_dims);
         }
       }
       if (dy) {
