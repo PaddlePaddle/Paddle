@@ -27,19 +27,30 @@ import pydoc
 import hashlib
 import platform
 import functools
+import pkgutil
+import logging
+import paddle
 
 member_dict = collections.OrderedDict()
 
 visited_modules = set()
 
+logger = logging.getLogger()
+if logger.handlers:
+    # we assume the first handler is the one we want to configure
+    console = logger.handlers[0]
+else:
+    console = logging.StreamHandler(sys.stderr)
+    logger.addHandler(console)
+console.setFormatter(
+    logging.Formatter(
+        "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
+
 
 def md5(doc):
     try:
         hashinst = hashlib.md5()
-        if platform.python_version()[0] == "2":
-            hashinst.update(str(doc))
-        else:
-            hashinst.update(str(doc).encode('utf-8'))
+        hashinst.update(str(doc).encode('utf-8'))
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
@@ -142,7 +153,7 @@ def visit_member(parent_name, member, member_name=None):
 
 
 def is_primitive(instance):
-    int_types = (int, long) if platform.python_version()[0] == "2" else (int, )
+    int_types = (int, )
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True
@@ -199,11 +210,124 @@ def visit_all_module(mod):
                 visit_member(mod.__name__, instance)
 
 
+# all from gen_doc.py
+api_info_dict = {}  # used by get_all_api
+
+
+# step 1: walkthrough the paddle package to collect all the apis in api_set
+def get_all_api(root_path='paddle', attr="__all__"):
+    """
+    walk through the paddle package to collect all the apis.
+    """
+    global api_info_dict
+    api_counter = 0
+    for filefinder, name, ispkg in pkgutil.walk_packages(
+            path=paddle.__path__, prefix=paddle.__name__ + '.'):
+        try:
+            if name in sys.modules:
+                m = sys.modules[name]
+            else:
+                # importlib.import_module(name)
+                m = eval(name)
+                continue
+        except AttributeError:
+            logger.warning("AttributeError occurred when `eval(%s)`", name)
+            pass
+        else:
+            api_counter += process_module(m, attr)
+
+    api_counter += process_module(paddle, attr)
+
+    logger.info('%s: collected %d apis, %d distinct apis.', attr, api_counter,
+                len(api_info_dict))
+
+    return [api_info['all_names'][0] for api_info in api_info_dict.values()]
+
+
+def insert_api_into_dict(full_name, gen_doc_anno=None):
+    """
+    insert add api into the api_info_dict
+    Return:
+        api_info object or None
+    """
+    try:
+        obj = eval(full_name)
+        fc_id = id(obj)
+    except AttributeError:
+        logger.warning("AttributeError occurred when `id(eval(%s))`", full_name)
+        return None
+    except:
+        logger.warning("Exception occurred when `id(eval(%s))`", full_name)
+        return None
+    else:
+        logger.debug("adding %s to api_info_dict.", full_name)
+        if fc_id in api_info_dict:
+            api_info_dict[fc_id]["all_names"].add(full_name)
+        else:
+            api_info_dict[fc_id] = {
+                "all_names": set([full_name]),
+                "id": fc_id,
+                "object": obj,
+                "type": type(obj).__name__,
+            }
+            docstr = inspect.getdoc(obj)
+            if docstr:
+                api_info_dict[fc_id]["docstring"] = inspect.cleandoc(docstr)
+            if gen_doc_anno:
+                api_info_dict[fc_id]["gen_doc_anno"] = gen_doc_anno
+        return api_info_dict[fc_id]
+
+
+# step 1 fill field : `id` & `all_names`, type, docstring
+def process_module(m, attr="__all__"):
+    api_counter = 0
+    if hasattr(m, attr):
+        # may have duplication of api
+        for api in set(getattr(m, attr)):
+            if api[0] == '_': continue
+            # Exception occurred when `id(eval(paddle.dataset.conll05.test, get_dict))`
+            if ',' in api: continue
+
+            # api's fullname
+            full_name = m.__name__ + "." + api
+            api_info = insert_api_into_dict(full_name)
+            if api_info is not None:
+                api_counter += 1
+                if inspect.isclass(api_info['object']):
+                    for name, value in inspect.getmembers(api_info['object']):
+                        if (not name.startswith("_")) and hasattr(value,
+                                                                  '__name__'):
+                            method_full_name = full_name + '.' + name  # value.__name__
+                            method_api_info = insert_api_into_dict(
+                                method_full_name, 'class_method')
+                            if method_api_info is not None:
+                                api_counter += 1
+    return api_counter
+
+
+def get_all_api_from_modulelist():
+    modulelist = [
+        paddle, paddle.amp, paddle.nn, paddle.nn.functional,
+        paddle.nn.initializer, paddle.nn.utils, paddle.static, paddle.static.nn,
+        paddle.io, paddle.jit, paddle.metric, paddle.distribution,
+        paddle.optimizer, paddle.optimizer.lr, paddle.regularizer, paddle.text,
+        paddle.utils, paddle.utils.download, paddle.utils.profiler,
+        paddle.utils.cpp_extension, paddle.sysconfig, paddle.vision,
+        paddle.distributed, paddle.distributed.fleet,
+        paddle.distributed.fleet.utils, paddle.distributed.parallel,
+        paddle.distributed.utils, paddle.callbacks, paddle.hub, paddle.autograd
+    ]
+    for m in modulelist:
+        visit_all_module(m)
+
+    return member_dict
+
+
 if __name__ == '__main__':
-    import paddle
-    modules = sys.argv[1].split(",")
-    for m in modules:
-        visit_all_module(importlib.import_module(m))
+    # modules = sys.argv[1].split(",")
+    # for m in modules:
+    #    visit_all_module(importlib.import_module(m))
+    get_all_api_from_modulelist()
 
     for name in member_dict:
         print(name, member_dict[name])

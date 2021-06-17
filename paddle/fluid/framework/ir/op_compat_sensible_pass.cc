@@ -75,9 +75,6 @@ AttrCompat& AttrCompat::IsLeftDefault() {
 }
 
 bool AttrCompat::operator()(const OpDesc& op_desc) {
-  if (conditions_.empty()) {
-    return true;
-  }
   if (!op_desc.HasAttr(attr_name_)) {
     if (!optional_) {
       LOG(WARNING) << "The non-optional Attr(" << attr_name_ << ") of Op ("
@@ -120,7 +117,7 @@ InputOrOutputCompat& InputOrOutputCompat::IsOptional() {
 
 bool InputOrOutputCompat::operator()(
     const std::vector<std::string>& input) const {
-  if (input.empty()) return false;
+  if (input.empty()) return optional_;
   for (auto& func : conditions_) {
     if (!func(input)) {
       return false;
@@ -248,6 +245,32 @@ OpCompat& OpCompatSensiblePass::AddOpCompat(OpCompat&& op_compat) {
   std::string name = op_compat.Name();
   op_compat_judgers_[name].reset(new OpCompat(std::move(op_compat)));
   return *(op_compat_judgers_[name]);
+}
+
+//! Tell the Op compability of a subgraph.
+bool OpCompatSensiblePass::IsCompat(
+    const GraphPatternDetector::subgraph_t& subgraph, Graph*) const {
+  PADDLE_ENFORCE_EQ(op_compat_judgers_.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "At least one OpCompat instance should be added"));
+  // Check the all the ops in the subgraph are contained in the
+  // op_compat.
+  for (auto& node_pair : subgraph) {
+    if (!node_pair.second->IsOp()) continue;
+    auto op_type = node_pair.second->Op()->Type();
+    if (!op_compat_judgers_.count(op_type)) {
+      if (HasOpDef(op_type)) {
+        LOG(WARNING) << op_type << "compat not registered!";
+        return false;
+      }
+      continue;
+    }
+    auto& judger = *op_compat_judgers_.at(op_type);
+    if (!judger.Judge(*(node_pair.second->Op()))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace ir
