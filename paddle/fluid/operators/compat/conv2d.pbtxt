@@ -38,6 +38,10 @@ extra {
     name: "ResidualData"
   }
   attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
+    type: BOOLEAN
+  } 
+  attrs {
     name: "skip_quant"
     type: BOOLEAN
   }
