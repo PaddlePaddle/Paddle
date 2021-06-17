@@ -298,10 +298,11 @@ class StaticGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
+        assert update is True, "Model does not support `update == False` in static mode by now."
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
