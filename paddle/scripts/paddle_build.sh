@@ -2158,6 +2158,7 @@ function main() {
         ;;
       build_and_check)
         set +e
+        export WITH_GPU=ON
         check_style_info=$(check_style)
         check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
@@ -2165,6 +2166,8 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
+        example_info_gpu=$(exec_samplecode_test gpu)
+        example_code_gpu=$?
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
