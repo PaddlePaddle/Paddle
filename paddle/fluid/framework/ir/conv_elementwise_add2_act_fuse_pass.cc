@@ -116,7 +116,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Pass in op compat failed.";
+      LOG(WARNING) << "Pass op compat failed.";
       return;
     }
     GET_NODES;
