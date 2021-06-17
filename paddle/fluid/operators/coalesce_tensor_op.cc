@@ -147,14 +147,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     offset = 0;
     std::stringstream ss;
     ss << "alloc_space_for_vars: ";
-#if defined(PADDLE_WITH_ASCEND_CL)
-    auto stream =
-        context.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    platform::NPUMemsetAsync(
-        static_cast<void *>(fused_tensor->mutable_data<T>(dev_ctx.GetPlace())),
-        0.0, fused_tensor->numel() * sizeof(T), stream);
-#endif
+
     for (size_t i = 0; i < out_tensors.size(); ++i) {
       size_t len = static_cast<size_t>(out_tensors[i]->numel());
       auto dim = out_tensors[i]->dims();
