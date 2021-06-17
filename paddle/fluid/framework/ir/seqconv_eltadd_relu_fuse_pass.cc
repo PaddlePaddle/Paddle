@@ -37,17 +37,16 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
       .End()
       .AddInput("PaddingData")
       .IsOptional()
+      .IsTensor()
       .End()
       .AddOutput("Out")
       .IsTensor()
       .End()
       .AddAttr("contextLength")
-      .IsNumGT(0)
       .End()
       .AddAttr("contextStart")
       .End()
       .AddAttr("contextStride")
-      .IsNumEQ(1)
       .IsNumGT(0)
       .End();
 
@@ -76,15 +75,14 @@ SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
 class Node;
 
 void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
-  std::string name_scope = "seqconv_eltadd_relu_fuse_pass";
-  FusePassBase::Init(name_scope, graph);
+  FusePassBase::Init(name_scope_, graph);
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
-  PDNode* x = pattern->NewNode(patterns::PDNodeName(name_scope, "X"))
+  PDNode* x = pattern->NewNode(patterns::PDNodeName(name_scope_, "X"))
                   ->assert_is_op_input("sequence_conv")
                   ->assert_var_not_persistable();
-  patterns::SeqConvEltAddRelu fuse_pattern(pattern, name_scope);
+  patterns::SeqConvEltAddRelu fuse_pattern(pattern, name_scope_);
   fuse_pattern(x);
 
   // Create New OpDesc
