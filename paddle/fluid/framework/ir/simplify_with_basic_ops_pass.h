@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/op_compat_sensible_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -26,7 +26,7 @@ namespace ir {
 class Graph;
 class Node;
 
-class SimplifyWithBasicOpsPass : public FusePassBase {
+class SimplifyWithBasicOpsPass : public OpCompatSensiblePass {
  public:
   SimplifyWithBasicOpsPass();
 
