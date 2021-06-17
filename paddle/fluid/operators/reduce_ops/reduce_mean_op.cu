@@ -17,29 +17,7 @@
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T>
-class ReduceMeanKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    bool reduce_all = context.Attr<bool>("reduce_all");
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
-    auto dims = context.Attr<std::vector<int>>("dim");
-
-    std::vector<int> reduce_dims =
-        detail::GetReduceDim(dims, input->dims().size(), reduce_all);
-
-    auto stream = context.cuda_device_context().stream();
-    TensorReduceFunc<T, T, CustomMean>(*input, output, reduce_dims, stream);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
-REGISTER_OP_CUDA_KERNEL(reduce_mean, ops::ReduceMeanKernel<bool>,
-                        ops::ReduceMeanKernel<float>,
-                        ops::ReduceMeanKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    reduce_mean, ops::ReduceCudaKernel<bool, paddle::operators::CustomMean>,
+    ops::ReduceCudaKernel<float, paddle::operators::CustomMean>,
+    ops::ReduceCudaKernel<double, paddle::operators::CustomMean>);

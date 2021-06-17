@@ -16,40 +16,13 @@
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T>
-class ReduceSumKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    bool reduce_all = context.Attr<bool>("reduce_all");
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
-    auto out_dtype = context.Attr<int>("out_dtype");
-    auto dims = context.Attr<std::vector<int>>("dim");
-
-    std::vector<int> reduce_dims =
-        detail::GetReduceDim(dims, input->dims().size(), reduce_all);
-
-    auto stream = context.cuda_device_context().stream();
-    if (out_dtype >= 0) {
-      framework::VisitDataTypeSmall(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunctorImpl<T, CustomSum>(*input, output, reduce_dims,
-                                                stream));
-    } else {
-      TensorReduceFunc<T, T, CustomSum>(*input, output, reduce_dims, stream);
-    }
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 REGISTER_OP_CUDA_KERNEL(
-    reduce_sum, ops::ReduceSumKernel<bool>, ops::ReduceSumKernel<float>,
-    ops::ReduceSumKernel<double>, ops::ReduceSumKernel<int>,
-    ops::ReduceSumKernel<int64_t>,
-    ops::ReduceSumKernel<paddle::platform::complex<float>>,
-    ops::ReduceSumKernel<paddle::platform::complex<double>>);
+    reduce_sum, ops::ReduceCudaKernel<bool, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<float, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<double, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<int, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<int64_t, paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<paddle::platform::complex<float>,
+                          paddle::operators::CustomSum>,
+    ops::ReduceCudaKernel<paddle::platform::complex<double>,
+                          paddle::operators::CustomSum>);
