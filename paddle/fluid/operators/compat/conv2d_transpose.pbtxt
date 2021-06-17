@@ -1,4 +1,4 @@
-type: "reduce_mean"
+type: "conv2d_transpose"
 def {
   inputs {
     name: "Input"
@@ -40,6 +40,10 @@ def {
     name: "padding_algorithm"
     type: STRING
   }
+  attrs {
+    name: "data_format"
+    type: STRING
+  }
 }
 extra {
   attrs {
@@ -77,10 +81,6 @@ extra {
   attrs {
     name: "fuse_beta"
     type: FLOAT
-  }
-  attrs {
-    name: "data_format"
-    type: STRING
   }
   attrs {
     name: "workspace_size_MB"
