@@ -785,6 +785,7 @@ class TestAdamOptimizer(unittest.TestCase):
 
     def test_adam_flatten_param_grads_with_regularizer(self):
         # flatten_param_grads + regularizer is not supported yet.
+        paddle.enable_static()
         main = fluid.Program()
         weight_attr = paddle.ParamAttr(
             name="weight1",
@@ -805,6 +806,7 @@ class TestAdamOptimizer(unittest.TestCase):
             adam = fluid.optimizer.AdamOptimizer(
                 0.01, flatten_param_grads=True, align_size=256)
             adam.minimize(avg_cost)
+            paddle.disable_static()
 
             self.assertEqual(adam._flatten_param_grads, False)
 
