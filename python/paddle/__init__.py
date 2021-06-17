@@ -21,8 +21,7 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 
-import paddle.batch
-batch = batch.batch
+from .batch import batch  # noqa: F401
 from .fluid import monkey_patch_variable
 from .fluid.dygraph import monkey_patch_math_varbase
 monkey_patch_variable()
@@ -109,6 +108,10 @@ from .tensor.logic import logical_and  # noqa: F401
 from .tensor.logic import logical_not  # noqa: F401
 from .tensor.logic import logical_or  # noqa: F401
 from .tensor.logic import logical_xor  # noqa: F401
+from .tensor.logic import bitwise_and  # noqa: F401
+from .tensor.logic import bitwise_not  # noqa: F401
+from .tensor.logic import bitwise_or  # noqa: F401
+from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
@@ -136,7 +139,6 @@ from .tensor.manipulation import squeeze  # noqa: F401
 from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
 from .tensor.manipulation import strided_slice  # noqa: F401
-from .tensor.manipulation import transpose  # noqa: F401
 from .tensor.manipulation import unique  # noqa: F401
 from .tensor.manipulation import unsqueeze  # noqa: F401
 from .tensor.manipulation import unsqueeze_  # noqa: F401
@@ -150,12 +152,14 @@ from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
 from .tensor.math import atan  # noqa: F401
+from .tensor.math import atan2  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import exp  # noqa: F401
+from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
 from .tensor.math import increment  # noqa: F401
 from .tensor.math import log  # noqa: F401
@@ -192,7 +196,6 @@ from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
-from .tensor.math import atan  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
@@ -207,6 +210,10 @@ from .tensor.math import isnan  # noqa: F401
 from .tensor.math import prod  # noqa: F401
 from .tensor.math import broadcast_shape  # noqa: F401
 from .tensor.math import conj  # noqa: F401
+from .tensor.math import trunc  # noqa: F401
+from .tensor.math import digamma  # noqa: F401
+from .tensor.math import neg  # noqa: F401
+from .tensor.math import lgamma  # noqa: F401
 
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
@@ -245,9 +252,8 @@ from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
 from .framework import DataParallel  # noqa: F401
 
-from .framework import set_default_dtype  #DEFINE_ALIAS
-from .framework import get_default_dtype  #DEFINE_ALIAS
-from .framework import set_grad_enabled  #DEFINE_ALIAS
+from .framework import set_default_dtype  # noqa: F401
+from .framework import get_default_dtype  # noqa: F401
 
 from .tensor.search import index_sample  # noqa: F401
 from .tensor.stat import mean  # noqa: F401
@@ -282,7 +288,7 @@ import paddle.vision  # noqa: F401
 from .tensor.random import check_shape  # noqa: F401
 disable_static()
 
-__all__ = [     #noqa
+__all__ = [  # noqa
            'dtype',
            'uint8',
            'int8',
@@ -325,7 +331,6 @@ __all__ = [     #noqa
            'cos',
            'tan',
            'mean',
-           'XPUPlace',
            'mv',
            'in_dynamic_mode',
            'min',
@@ -362,7 +367,6 @@ __all__ = [     #noqa
            'to_tensor',
            'gather_nd',
            'isinf',
-           'set_device',
            'uniform',
            'floor_divide',
            'remainder',
@@ -372,6 +376,10 @@ __all__ = [     #noqa
            'max',
            'norm',
            'logical_or',
+           'bitwise_and',
+           'bitwise_or',
+           'bitwise_xor',
+           'bitwise_not',
            'mm',
            'flip',
            'histogram',
@@ -386,8 +394,6 @@ __all__ = [     #noqa
            'rand',
            'less_equal',
            'triu',
-           'is_compiled_with_cuda',
-           'is_compiled_with_rocm',
            'sin',
            'dist',
            'unbind',
@@ -413,21 +419,23 @@ __all__ = [     #noqa
            'acos',
            'logical_xor',
            'exp',
+           'expm1',
            'bernoulli',
            'summary',
            'sinh',
-           'is_compiled_with_xpu',
-           'is_compiled_with_npu',
            'round',
            'DataParallel',
            'argmin',
            'prod',
            'broadcast_shape',
            'conj',
+           'neg',
+           'lgamma',
            'square',
            'divide',
            'ceil',
            'atan',
+           'atan2',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -439,7 +447,6 @@ __all__ = [     #noqa
            'not_equal',
            'sum',
            'tile',
-           'get_device',
            'greater_equal',
            'isfinite',
            'create_parameter',
@@ -472,7 +479,6 @@ __all__ = [     #noqa
            'scatter_nd',
            'set_default_dtype',
            'expand_as',
-           'get_cudnn_version',
            'stack',
            'sqrt',
            'cholesky',
@@ -486,7 +492,6 @@ __all__ = [     #noqa
            'logical_not',
            'add_n',
            'minimum',
-           'ComplexTensor',
            'scatter',
            'scatter_',
            'floor',
@@ -495,5 +500,8 @@ __all__ = [     #noqa
            'log2',
            'log10',
            'concat',
-           'check_shape'
+           'check_shape',
+           'trunc'
+           'digamma',
+           'standard_normal'
 ]

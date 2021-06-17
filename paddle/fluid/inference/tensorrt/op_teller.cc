@@ -300,23 +300,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       }
     }
-    if (op_type == "flatten2") {
-      // flatten doesn't support dynamic shape currently
+    if (op_type == "flatten2" || op_type == "flatten") {
       if (!desc.HasAttr("axis")) {
         return false;
       } else {
+#if IS_TRT_VERSION_GE(7130)
+#else
         if (with_dynamic_shape) return false;
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis != 1) return false;
-      }
-    }
-
-    if (op_type == "flatten") {
-      // flatten doesn't support dynamic shape currently
-      if (!desc.HasAttr("axis")) {
-        return false;
-      } else {
-        if (with_dynamic_shape) return false;
+#endif
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
@@ -703,7 +694,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
         // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
       } else if (desc.Input("Shape").size() >= 1 ||
-                 desc.Input("ShapeTensor").size() >= 1 || with_dynamic_shape) {
+                 desc.Input("ShapeTensor").size() >= 1) {
         return false;
       } else {
         std::vector<int> shape =

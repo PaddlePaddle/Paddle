@@ -30,20 +30,28 @@ from collections import Iterable
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
-from paddle.fluid.framework import in_dygraph_mode, Variable, _get_paddle_place
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import Variable
+from paddle.fluid.framework import ParamBase
+from paddle.fluid.framework import _current_expected_place
+from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
+from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers import collective
 
-from paddle.io import DataLoader, Dataset, DistributedBatchSampler
-from paddle.fluid.executor import scope_guard, Executor
+from paddle.io import DataLoader
+from paddle.io import Dataset
+from paddle.io import DistributedBatchSampler
+from paddle.fluid.executor import scope_guard
+from paddle.fluid.executor import Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
@@ -166,7 +174,6 @@ def init_communicator(program, rank, nranks, wait_port, current_endpoint,
             name=fluid.unique_name.generate('hccl_id'),
             persistable=True,
             type=core.VarDesc.VarType.RAW)
-        endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
         block.append_op(
             type='c_gen_hccl_id',
             inputs={},
@@ -1363,8 +1370,9 @@ class Model(object):
             # pure float16 training has some restricts now
             if self._adapter._amp_level == "O2":
                 if in_dygraph_mode():
-                    warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
-                        "and it will be supported in future version.")
+                    warnings.warn(
+                        "Pure float16 training is not supported in dygraph mode now, and it will be supported in future version."
+                    )
                 else:
                     # grad clip is not supported in pure fp16 training now
                     assert self._optimizer._grad_clip is None, \
@@ -1398,8 +1406,7 @@ class Model(object):
 
         if 'use_pure_fp16' in amp_configs:
             raise ValueError(
-                "''use_pure_fp16' is an invalid parameter, "
-                "the level of mixed precision training only depends on 'O1' or 'O2'."
+                "'use_pure_fp16' is an invalid parameter, the level of mixed precision training only depends on 'O1' or 'O2'."
             )
 
         _check_pure_fp16_configs()
@@ -1427,9 +1434,8 @@ class Model(object):
             }
             if amp_config_key_set - accepted_param_set:
                 raise ValueError(
-                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, "
-                    "but {} could not be recognized.".format(
-                        tuple(amp_config_key_set - accepted_param_set)))
+                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, but {} could not be recognized.".
+                    format(tuple(amp_config_key_set - accepted_param_set)))
 
             if 'use_fp16_guard' in amp_config_key_set:
                 if in_dygraph_mode():
@@ -1501,8 +1507,9 @@ class Model(object):
         self._optimizer = optimizer
         if loss is not None:
             if not isinstance(loss, paddle.nn.Layer) and not callable(loss):
-                raise TypeError("'loss' must be sub classes of " \
-                    "`paddle.nn.Layer` or any callable function.")
+                raise TypeError(
+                    "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
+                )
         self._loss = loss
 
         metrics = metrics or []
@@ -2084,7 +2091,7 @@ class Model(object):
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
            
-              model = paddle.Model(paddle.vision.LeNet(),
+              model = paddle.Model(paddle.vision.models.LeNet(),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
@@ -2126,9 +2133,11 @@ class Model(object):
             else:
                 out_specs = to_list(specs)
         elif isinstance(specs, dict):
-            assert is_input == False
-            out_specs = [specs[n] \
-                for n in extract_args(self.network.forward) if n != 'self']
+            assert is_input is False
+            out_specs = [
+                specs[n] for n in extract_args(self.network.forward)
+                if n != 'self'
+            ]
         else:
             out_specs = to_list(specs)
         # Note: checks each element has specificed `name`.

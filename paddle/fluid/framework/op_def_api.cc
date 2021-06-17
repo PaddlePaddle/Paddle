@@ -68,5 +68,9 @@ const proto::OpDef& GetOpDef(const std::string& op_name) {
   }
   return ops_definition.at(op_name);
 }
+
+bool HasOpDef(const std::string& op_name) {
+  return op_def_map.find(op_name) != op_def_map.end();
+}
 }  // namespace framework
 }  // namespace paddle
