@@ -992,7 +992,7 @@ class Optimizer(object):
             if getattr(p, 'need_clip', True) is False or getattr(
                     p, 'regularizer', None) is not None:
                 warnings.warn(
-                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip if False or "
+                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip is False or "
                     "the regularizer is set for parameter".format(p.name))
                 self._flatten_param_grads = False
                 return params_grads

@@ -636,7 +636,7 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestNetWithEpsilonTensor(unittest.TestCase):
+class TestAdamOptimizer(unittest.TestCase):
     def _test(self,
               place,
               use_tensor=True,
@@ -782,6 +782,31 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
         self._test_with_place(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self._test_with_place(paddle.CUDAPlace(0))
+
+    def test_adam_flatten_param_grads_with_regularizer(self):
+        # flatten_param_grads + regularizer is not supported yet.
+        main = fluid.Program()
+        weight_attr = paddle.ParamAttr(
+            name="weight1",
+            initializer=fluid.initializer.Constant(value=1.0),
+            regularizer=fluid.regularizer.L1DecayRegularizer(
+                regularization_coeff=0.1),
+            trainable=True)
+        with fluid.program_guard(main):
+            x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x,
+                                        size=1,
+                                        act=None,
+                                        param_attr=weight_attr)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = fluid.layers.mean(cost)
+
+            adam = fluid.optimizer.AdamOptimizer(
+                0.01, flatten_param_grads=True, align_size=256)
+            adam.minimize(avg_cost)
+
+            self.assertEqual(adam._flatten_param_grads, False)
 
     def test_adam_exception(self):
         paddle.enable_static()
