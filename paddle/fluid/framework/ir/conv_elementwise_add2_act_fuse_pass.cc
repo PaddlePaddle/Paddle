@@ -70,10 +70,12 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .AddAttr("padding_algorithm")
       .End()
       .AddAttr("groups")
+      .IsNumGE(1)
       .End()
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
+      .IsStringIn({"NHWC", "NCHW"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -87,6 +89,7 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
+      .IsNumEQ(-1)
       .End();
 
   AddOpCompat(OpCompat("relu"))
