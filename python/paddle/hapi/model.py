@@ -302,7 +302,7 @@ class StaticGraphAdapter(object):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
-        assert update is True, "Model does not support `update == False` in static mode by now."
+        assert update is True, "Does not support `update == False` in static mode by now."
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -1032,7 +1032,7 @@ class Model(object):
                 a numpy array or paddle.Tensor, or a list of arrays or tensors 
                 (in case the model has multiple labels). If has no labels, 
                 set None. Default is None.
-            update (bool): Whether update parameters after loss.backward() computes. Using this to accumulate gradients. Default is True.
+            update (bool): Whether update parameters after loss.backward() computing. Using it to accumulate gradients. Default is True.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
@@ -1584,7 +1584,7 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-            accumulate (int): The number of steps to accumulate gradident in training process before optimizer update. Using this to mimic large batch size. Default: 1.
+            accumulate (int): The number of steps to accumulate gradident during training process before optimizer updates. It can mimic large batch size. Default: 1.
             
         Returns:
             None
