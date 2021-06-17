@@ -51,8 +51,6 @@ void BindPSGPUWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("load_into_memory", &framework::PSGPUWrapper::LoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())
-      .def("build_gpu_ps", &framework::PSGPUWrapper::BuildGPUPS,
-           py::call_guard<py::gil_scoped_release>())
       .def("finalize", &framework::PSGPUWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper

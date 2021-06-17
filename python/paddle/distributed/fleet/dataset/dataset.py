@@ -713,6 +713,7 @@ class InMemoryDataset(DatasetBase):
         if not self.use_ps_gpu:
             self.dataset.load_into_memory()
         else:
+            self.psgpu.set_dataset(self.dataset)
             self.psgpu.load_into_memory()
 
     def preload_into_memory(self, thread_num=None):

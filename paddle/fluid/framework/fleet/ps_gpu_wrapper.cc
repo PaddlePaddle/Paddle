@@ -307,48 +307,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           << " s.";
 }
 
-void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
-  int device_num = heter_devices_.size();
-  std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
-  gpu_task->Reset();
-  // remove table_id and feature_dim params
-  BuildTask(gpu_task);
-  platform::Timer timeline;
-  timeline.Start();
-
-  std::vector<size_t> feature_keys_count(device_num);
-  size_t size_max = 0;
-  for (int i = 0; i < device_num; i++) {
-    feature_keys_count[i] = gpu_task->device_keys_[i].size();
-    VLOG(1) << i << " card contains feasign nums: " << feature_keys_count[i];
-    size_max = std::max(size_max, feature_keys_count[i]);
-  }
-  if (HeterPs_) {
-    delete HeterPs_;
-    HeterPs_ = nullptr;
-  }
-  std::vector<std::thread> threads(device_num);
-  HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
-  HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
-  auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
-    std::cout << "building table: " << i << std::endl;
-    this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
-                             gpu_task->device_values_[i].data(),
-                             feature_keys_count[i], 500000, 2);
-    HeterPs_->show_one_table(i);
-  };
-  for (size_t i = 0; i < threads.size(); i++) {
-    threads[i] = std::thread(build_func, i);
-  }
-  for (std::thread& t : threads) {
-    t.join();
-  }
-  timeline.Pause();
-  VLOG(1) << "GpuPs build table total costs: " << timeline.ElapsedSec()
-          << " s.";
-  gpu_task_pool_.Push(gpu_task);
-}
-
 void PSGPUWrapper::LoadIntoMemory() {
   platform::Timer timer;
   VLOG(3) << "Begin LoadIntoMemory(), dataset[" << dataset_ << "]";
@@ -434,8 +392,8 @@ void PSGPUWrapper::EndPass() {
   platform::Timer timer;
   timer.Start();
   HeterPs_->end_pass();
-  gpu_free_channel_->Put(current_task_);
   current_task_ = nullptr;
+  gpu_free_channel_->Put(current_task_);
   timer.Pause();
   VLOG(1) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
 }

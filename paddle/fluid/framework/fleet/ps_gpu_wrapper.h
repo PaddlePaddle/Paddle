@@ -83,7 +83,6 @@ class PSGPUWrapper {
                    const int batch_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
-  void BuildGPUPS(const uint64_t table_id, int feature_dim);
   void BuildTask(std::shared_ptr<HeterContext> gpu_task);
   void LoadIntoMemory();
   void BeginPass();
@@ -166,8 +165,10 @@ class PSGPUWrapper {
       current_task_ = nullptr;
       gpu_free_channel_->Put(current_task_);
 
-      // TODO(fengdanlei): set this parameter
       table_id_ = 1;
+#ifdef PADDLE_WITH_PSLIB
+      table_id_ = 0;
+#endif
       // start build cpu&gpu ps thread
       start_build_thread();
     }
