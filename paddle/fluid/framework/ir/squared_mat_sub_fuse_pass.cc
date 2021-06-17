@@ -466,6 +466,7 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .End();
 }
 
+// to use IsCompat
 bool SquaredMatSubFusePass::IsAcceptable(
     const GraphPatternDetector::subgraph_t& subgraph, Graph* g) const {
   return IsCompat(subgraph, g);
