@@ -74,9 +74,17 @@ class DiagonalOp : public framework::OperatorWithKernel {
     if (offset_ == 0) {
       out_dims.push_back(std::min(axis1_size, axis2_size));
     } else if (offset_ > 0) {
-      out_dims.push_back(std::min(axis1_size, axis2_size - offset_));
+      if ((axis2_size - offset_) > 0) {
+        out_dims.push_back(std::min(axis1_size, axis2_size - offset_));
+      } else {
+        out_dims.push_back(0);
+      }
     } else {
-      out_dims.push_back(std::min(axis1_size + offset_, axis2_size));
+      if ((axis1_size + offset_) > 0) {
+        out_dims.push_back(std::min(axis1_size + offset_, axis2_size));
+      } else {
+        out_dims.push_back(0);
+      }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
   }
