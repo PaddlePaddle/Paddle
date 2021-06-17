@@ -27,6 +27,7 @@ SEED = 2021
 
 
 class TestMul(OpTest):
+    # case 1: (32, 5) * (5, 100) -> (32, 100)
     def config(self):
         self.x_shape = (32, 5)
         self.y_shape = (5, 100)
@@ -55,21 +56,13 @@ class TestMul(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
 
 
-    #
 class TestMulFP16(TestMul):
-    """
-    case 2
-    """
-
     def init_dtype(self):
         self.dtype = np.float16
 
 
-class TestMul3(TestMul):
-    """
-    case 3
-    """
-
+class TestMul2(TestMul):
+    # case 2: (2, 2, 5) * (10, 5) -> (2, 5), x_num_col_dims = 1
     def config(self):
         self.x_shape = (2, 2, 5)
         self.y_shape = (10, 5)
@@ -90,10 +83,13 @@ class TestMul3(TestMul):
         }
 
 
-class TestMul4(TestMul):
-    """
-    case 4
-    """
+class TestMul2FP16(TestMul2):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestMul3(TestMul):
+    # case 3: (2, 3, 4) * (4, 5) -> (2, 3, 5), x_num_col_dims = 2
 
     def config(self):
         self.x_shape = (2, 3, 4)
@@ -114,9 +110,17 @@ class TestMul4(TestMul):
         self.outputs = {'Out': np.matmul(self.inputs['X'], self.inputs['Y'])}
 
 
+class TestMul3FP16(TestMul3):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestMulNet(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = np.float32
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -124,17 +128,17 @@ class TestMulNet(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        a_np = np.random.random(size=(2, 3)).astype('float32')
-        b_np = np.random.random(size=(2, 3)).astype('float32')
-        c_np = np.random.random(size=(3, 2)).astype('float32')
-        d_np = np.random.random(size=(3, 2)).astype('float32')
+        a_np = np.random.random(size=(2, 3)).astype(self.dtype)
+        b_np = np.random.random(size=(2, 3)).astype(self.dtype)
+        c_np = np.random.random(size=(3, 2)).astype(self.dtype)
+        d_np = np.random.random(size=(3, 2)).astype(self.dtype)
         label_np = np.random.randint(2, size=(2, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[2, 3], dtype='float32')
-            b = paddle.static.data(name="b", shape=[2, 3], dtype='float32')
-            c = paddle.static.data(name="c", shape=[3, 2], dtype='float32')
-            d = paddle.static.data(name="d", shape=[3, 2], dtype='float32')
+            a = paddle.static.data(name="a", shape=[2, 3], dtype=self.dtype)
+            b = paddle.static.data(name="b", shape=[2, 3], dtype=self.dtype)
+            c = paddle.static.data(name="c", shape=[3, 2], dtype=self.dtype)
+            d = paddle.static.data(name="d", shape=[3, 2], dtype=self.dtype)
             label = paddle.static.data(
                 name="label", shape=[2, 1], dtype='int64')
 
@@ -176,6 +180,7 @@ class TestMulNet(unittest.TestCase):
         return pred_res, loss_res
 
     def test_npu(self):
+        self.init_dtype()
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
@@ -185,7 +190,17 @@ class TestMulNet(unittest.TestCase):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
+class TestMulNet_FP16(TestMulNet):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestMulNet3_2(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = np.float32
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -193,17 +208,17 @@ class TestMulNet3_2(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        a_np = np.random.random(size=(2, 3, 4)).astype('float32')
-        b_np = np.random.random(size=(2, 3, 4)).astype('float32')
-        c_np = np.random.random(size=(12, 5)).astype('float32')
-        d_np = np.random.random(size=(12, 5)).astype('float32')
+        a_np = np.random.random(size=(2, 3, 4)).astype(self.dtype)
+        b_np = np.random.random(size=(2, 3, 4)).astype(self.dtype)
+        c_np = np.random.random(size=(12, 5)).astype(self.dtype)
+        d_np = np.random.random(size=(12, 5)).astype(self.dtype)
         label_np = np.random.randint(2, size=(2, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[2, 3, 4], dtype='float32')
-            b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
-            c = paddle.static.data(name="c", shape=[12, 5], dtype='float32')
-            d = paddle.static.data(name="d", shape=[12, 5], dtype='float32')
+            a = paddle.static.data(name="a", shape=[2, 3, 4], dtype=self.dtype)
+            b = paddle.static.data(name="b", shape=[2, 3, 4], dtype=self.dtype)
+            c = paddle.static.data(name="c", shape=[12, 5], dtype=self.dtype)
+            d = paddle.static.data(name="d", shape=[12, 5], dtype=self.dtype)
             label = paddle.static.data(
                 name="label", shape=[2, 1], dtype='int64')
 
@@ -245,6 +260,7 @@ class TestMulNet3_2(unittest.TestCase):
         return pred_res, loss_res
 
     def test_npu(self):
+        self.init_dtype()
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
@@ -255,7 +271,17 @@ class TestMulNet3_2(unittest.TestCase):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
+class TestMulNet3_2_FP16(TestMulNet3_2):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestMulNet3_2_xc2(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = np.float32
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -263,17 +289,17 @@ class TestMulNet3_2_xc2(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        a_np = np.random.random(size=(2, 3, 4)).astype('float32')
-        b_np = np.random.random(size=(2, 3, 4)).astype('float32')
-        c_np = np.random.random(size=(4, 5)).astype('float32')
-        d_np = np.random.random(size=(4, 5)).astype('float32')
+        a_np = np.random.random(size=(2, 3, 4)).astype(self.dtype)
+        b_np = np.random.random(size=(2, 3, 4)).astype(self.dtype)
+        c_np = np.random.random(size=(4, 5)).astype(self.dtype)
+        d_np = np.random.random(size=(4, 5)).astype(self.dtype)
         label_np = np.random.randint(2, size=(2, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[2, 3, 4], dtype='float32')
-            b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
-            c = paddle.static.data(name="c", shape=[4, 5], dtype='float32')
-            d = paddle.static.data(name="d", shape=[4, 5], dtype='float32')
+            a = paddle.static.data(name="a", shape=[2, 3, 4], dtype=self.dtype)
+            b = paddle.static.data(name="b", shape=[2, 3, 4], dtype=self.dtype)
+            c = paddle.static.data(name="c", shape=[4, 5], dtype=self.dtype)
+            d = paddle.static.data(name="d", shape=[4, 5], dtype=self.dtype)
             label = paddle.static.data(
                 name="label", shape=[2, 1], dtype='int64')
 
@@ -316,11 +342,19 @@ class TestMulNet3_2_xc2(unittest.TestCase):
         return pred_res, loss_res
 
     def test_npu(self):
+        self.init_dtype()
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
         self.assertTrue(np.allclose(npu_pred, cpu_pred))
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestMulNet3_2_xc2_FP16(TestMulNet3_2_xc2):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == '__main__':
