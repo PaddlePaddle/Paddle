@@ -75,7 +75,7 @@ class Optimizer(object):
         """
         Args:
             flatten_param_grads (bool, optional): Whether to flatten all the parameters and grads. 
-                If true, the parameters and gradients will be coalesce to continue mempry, 
+                If true, the parameters and gradients will be coalesce to contiguous mempry, 
                 and the grad_clip ops / optimizer ops will be fuse to one operator.
         """
         # Because of the loop import, so place it in the function body
