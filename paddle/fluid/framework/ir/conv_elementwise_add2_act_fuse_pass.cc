@@ -90,7 +90,7 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(-1)
+      .IsIntIn({1, -1})
       .End();
 
   AddOpCompat(OpCompat("relu"))
