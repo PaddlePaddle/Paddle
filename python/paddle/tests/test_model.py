@@ -729,8 +729,9 @@ class TestModelFunction(unittest.TestCase):
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs, labels)
         model.prepare(optim, loss=CrossEntropyLoss(reduction="sum"))
-        loss1, = model.train_batch([data], [label], update=True)
-        loss2, = model.train_batch([data], [label], update=False)
+        loss1, = model.train_batch([data], [label], update=False)
+        loss2, = model.train_batch([data], [label], update=True)
+        np.testing.assert_almost_equal(loss1, loss2, decimal=4)
 
 
 class TestModelWithLRScheduler(unittest.TestCase):
