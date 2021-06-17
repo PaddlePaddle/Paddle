@@ -300,23 +300,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       }
     }
-    if (op_type == "flatten2") {
-      // flatten doesn't support dynamic shape currently
+    if (op_type == "flatten2" || op_type == "flatten") {
       if (!desc.HasAttr("axis")) {
         return false;
       } else {
+#if IS_TRT_VERSION_GE(7130)
+#else
         if (with_dynamic_shape) return false;
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis != 1) return false;
-      }
-    }
-
-    if (op_type == "flatten") {
-      // flatten doesn't support dynamic shape currently
-      if (!desc.HasAttr("axis")) {
-        return false;
-      } else {
-        if (with_dynamic_shape) return false;
+#endif
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
@@ -685,6 +676,33 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "fc") {
+      int x_num_col_dims =
+          desc.HasAttr("x_num_col_dims")
+              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              : (desc.HasAttr("in_num_col_dims")
+                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     : 1);
+      if (x_num_col_dims < 1) {
+        VLOG(3) << "converter expects x_num_col_dims >= 1, "
+                   "but x_num_col_dims = %d.";
+        return false;
+      }
+    }
+    if (op_type == "reshape" || op_type == "reshape2") {
+      if (!desc.HasAttr("shape")) {
+        return false;
+        // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      } else if (desc.Input("Shape").size() >= 1 ||
+                 desc.Input("ShapeTensor").size() >= 1) {
+        return false;
+      } else {
+        std::vector<int> shape =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+        if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
+    }
+
     if (op_type == "reduce_sum") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the reduce_sum does not support static shape yet";
@@ -699,19 +717,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "reshape" || op_type == "reshape2") {
-      if (!desc.HasAttr("shape")) {
-        return false;
-        // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
-      } else if (desc.Input("Shape").size() >= 1 ||
-                 desc.Input("ShapeTensor").size() >= 1) {
-        return false;
-      } else {
-        std::vector<int> shape =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
-        if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      }
-    }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
