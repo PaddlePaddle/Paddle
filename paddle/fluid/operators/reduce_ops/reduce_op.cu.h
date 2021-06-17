@@ -191,7 +191,7 @@ struct ReduceConfig {
     if (should_reduce_again) {
       output_data = tmp->mutable_data<Ty>(
           framework::make_ddim(
-              {static_cast<int64_t>(left_num * grid.y * sizeof(Ty))}),
+              {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}),
           place);
     } else {
       output_data = y_data;
@@ -674,10 +674,11 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>(x.place());
 
-  framework::Tensor tmp;
+  // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
   //   temp_output should be stored temp_data in output_data space or stored in
   //   y_data;
+  framework::Tensor tmp;
   config.SetOutputData(y_data, x.place(), &tmp);
 
   if (config.reduce_num == 1) {
