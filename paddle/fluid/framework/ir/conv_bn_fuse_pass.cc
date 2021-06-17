@@ -167,7 +167,7 @@ ConvBNFusePass::ConvBNFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("conv2d_transpose"))
@@ -196,7 +196,7 @@ ConvBNFusePass::ConvBNFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("batch_norm"))
@@ -418,7 +418,7 @@ ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("conv2d_transpose"))
@@ -447,7 +447,7 @@ ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("batch_norm"))
