@@ -718,6 +718,20 @@ class TestModelFunction(unittest.TestCase):
         model.save(save_dir, training=False)
         shutil.rmtree(save_dir)
 
+    def test_accumulate(self, ):
+        dim = 20
+        data = np.random.random(size=(4, dim)).astype(np.float32)
+        label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+        net = MyModel()
+        optim = fluid.optimizer.SGD(learning_rate=0.001,
+                                    parameter_list=net.parameters())
+        inputs = [InputSpec([None, dim], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        model = Model(net, inputs, labels)
+        model.prepare(optim, loss=CrossEntropyLoss(reduction="sum"))
+        loss1, = model.train_batch([data], [label], update=True)
+        loss2, = model.train_batch([data], [label], update=False)
+
 
 class TestModelWithLRScheduler(unittest.TestCase):
     def test_fit_by_step(self):
