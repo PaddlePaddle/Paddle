@@ -29,6 +29,7 @@ import platform
 import functools
 import pkgutil
 import logging
+import argparse
 import paddle
 
 member_dict = collections.OrderedDict()
@@ -157,7 +158,8 @@ def get_all_api(root_path='paddle', attr="__all__"):
     logger.info('%s: collected %d apis, %d distinct apis.', attr, api_counter,
                 len(api_info_dict))
 
-    return [api_info['all_names'][0] for api_info in api_info_dict.values()]
+    return [(list(api_info['all_names'])[0], md5(api_info['docstring']))
+            for api_info in api_info_dict.values()]
 
 
 def insert_api_into_dict(full_name, gen_doc_anno=None):
@@ -185,6 +187,7 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
                 "id": fc_id,
                 "object": obj,
                 "type": type(obj).__name__,
+                "docstring": '',
             }
             docstr = inspect.getdoc(obj)
             if docstr:
@@ -229,15 +232,49 @@ def get_all_api_from_modulelist():
     return member_dict
 
 
-if __name__ == '__main__':
-    get_all_api_from_modulelist()
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser(description='Print Apis Signatures')
+    parser.add_argument('--debug', dest='debug', action="store_true")
+    parser.add_argument(
+        '--method',
+        dest='method',
+        type=str,
+        default='from_modulelist',
+        help="using get_all_api or from_modulelist")
+    parser.add_argument(
+        'module', type=str, help='module', default='paddle')  # not used
 
-    for name in member_dict:
-        print(name, member_dict[name])
+    if len(sys.argv) == 1:
+        args = parser.parse_args(['paddle'])
+        return args
+    #    parser.print_help()
+    #    sys.exit(1)
+
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == '__main__':
+    args = parse_args()
+
+    if args.method == 'from_modulelist':
+        get_all_api_from_modulelist()
+        for name in member_dict:
+            print(name, member_dict[name])
+    elif args.method == 'get_all_api':
+        api_signs = get_all_api()
+        for api_sign in api_signs:
+            print("{0} ({0}, ('document', '{1}'))".format(api_sign[0], api_sign[
+                1]))
+
     if len(ErrorSet) == 0:
         sys.exit(0)
-    for erroritem in ErrorSet:
-        print(
-            "Error, new function {} is unreachable".format(erroritem),
-            file=sys.stderr)
-    sys.exit(1)
+    else:
+        for erroritem in ErrorSet:
+            print(
+                "Error, new function {} is unreachable".format(erroritem),
+                file=sys.stderr)
+        sys.exit(1)
