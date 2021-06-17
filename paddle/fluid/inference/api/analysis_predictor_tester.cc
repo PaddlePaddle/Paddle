@@ -289,6 +289,12 @@ class MkldnnQuantizerTest : public testing::Test {
     return mkldnn_quantizer->GetKLScalingFactor(var_tensor, is_unsigned);
   }
 
+  std::pair<bool, framework::LoDTensor> GetMaxChGRUScalingFactor(
+      const framework::LoDTensor& wx_tensor,
+      const framework::LoDTensor& wh_tensor) const {
+    return mkldnn_quantizer->GetMaxChGRUScalingFactor(wx_tensor, wh_tensor);
+  }
+
  protected:
   std::unique_ptr<PaddlePredictor> predictor;
   std::unique_ptr<AnalysisPredictor::MkldnnQuantizer> mkldnn_quantizer;
@@ -488,6 +494,43 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
   ASSERT_EQ(lod_tensor.numel(), 1);
   ASSERT_NEAR(lod_tensor.data<double>()[0], 1.0 / 0.0252845321362, abs_error);
 }
+
+const std::vector<std::vector<float>> wx = {
+    {0.04347931, -0.5643393, 0.7551297, 0.26713502, 0.8055306, 0.91144973},
+    {0.01707571, 0.12741385, 0.15419468, 0.66127586, 0.46821925, 0.9665961},
+    {0.40393898, 0.884427, -0.5853097, 0.5840954, 0.9170512, 0.98245513}};
+const std::vector<std::vector<float>> wh = {
+    {0.42484227, -0.9025513, 0.17087583, 0.8403284, 0.03325734, 0.92331886},
+    {0.32630175, 0.41691914, 0.99848574, 0.3504407, 0.06707559, 0.62239844}};
+
+TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
+  framework::LoDTensor wx_tensor, wh_tensor, lod_tensor;
+
+  wx_tensor.Resize(framework::make_dim(wx.size(), wx[0].size()));
+  for (int i = 0; i < wx.size(); i++)
+    std::copy(
+        begin(wx[i]), end(wx[i]),
+        wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
+
+  wh_tensor.Resize(framework::make_dim(wh.size(), wh[0].size()));
+  for (int i = 0; i < wh.size(); i++)
+    std::copy(
+        begin(wh[i]), end(wh[i]),
+        wh_tensor.mutable_data<float>(platform::CPUPlace()) + i * wh[0].size());
+
+  bool is_unsigned;
+  std::tie(is_unsigned, lod_tensor) =
+      GetMaxChGRUScalingFactor(wx_tensor, wh_tensor);
+
+  std::vector<double> scales = {2.35381475, 1.08304947, 1.32427582,
+                                1.19001095, 1.00151656, 1.01785819};
+  ASSERT_EQ(is_unsigned, false);
+  ASSERT_EQ(lod_tensor.numel(), scales.size());
+  for (int64_t i = 0; i < lod_tensor.numel(); i++) {
+    ASSERT_NEAR(lod_tensor.data<double>()[i], scales[i], abs_error);
+  }
+}
+
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
