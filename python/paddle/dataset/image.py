@@ -93,7 +93,7 @@ def batch_images_from_tar(data_file,
     :rtype: string
     """
     batch_dir = data_file + "_batch"
-    out_path = "%s/%s" % (batch_dir, dataset_name)
+    out_path = "%s/%s_%s" % (batch_dir, dataset_name, os.getpid())
     meta_file = "%s/%s.txt" % (batch_dir, dataset_name)
 
     if os.path.exists(out_path):
