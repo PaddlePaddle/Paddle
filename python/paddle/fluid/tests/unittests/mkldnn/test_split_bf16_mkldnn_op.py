@@ -23,6 +23,8 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
+@unittest.skipIf(core.is_compiled_with_cuda(),
+                 "core is compiled with CUDA which has no BF implementation")
 class TestSplitSectionsBF16OneDNNOp(OpTest):
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
