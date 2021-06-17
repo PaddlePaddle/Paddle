@@ -85,6 +85,16 @@ class SplitOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class SplitOpMaker : public framework::OpProtoAndCheckerMaker {

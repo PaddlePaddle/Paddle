@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
 from paddle.fluid.tests.unittests.op_test import OpTest
 
+
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestSplitSectionsBF16OneDNNOp(OpTest):
@@ -54,6 +55,7 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
 
     def test_check_output(self):
         self.check_output(check_dygraph=False)
+
 
 # TODO jakpiase enable grad check(concat op)
 #    def test_check_grad(self):
