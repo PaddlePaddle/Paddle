@@ -458,12 +458,11 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .IsTensor()
       .End()
       .AddAttr("dtype")
+      .IsNumGE(0)
       .End()
       .AddAttr("shape")
       .End()
       .AddAttr("value")
-      .End()
-      .AddAttr("str_value")
       .End();
 }
 
