@@ -190,13 +190,6 @@ class TestMulNet(unittest.TestCase):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestMulNet_FP16(TestMulNet):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet3_2(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -271,13 +264,6 @@ class TestMulNet3_2(unittest.TestCase):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestMulNet3_2_FP16(TestMulNet3_2):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet3_2_xc2(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -348,13 +334,6 @@ class TestMulNet3_2_xc2(unittest.TestCase):
 
         self.assertTrue(np.allclose(npu_pred, cpu_pred))
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestMulNet3_2_xc2_FP16(TestMulNet3_2_xc2):
-    def init_dtype(self):
-        self.dtype = np.float16
 
 
 if __name__ == '__main__':
