@@ -13,6 +13,10 @@ extra {
     type: FLOAT
   }
   attrs {
+    name: "is_test"
+    type: FLOAT
+  }
+  attrs {
     name: "use_mkldnn"
     type: BOOLEAN
   }
