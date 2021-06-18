@@ -44,6 +44,7 @@ SimplifyWithBasicOpsPass::SimplifyWithBasicOpsPass() {
       .End()
       .AddAttr("scale")
       .IsNumGE(0.f)
+      .IsNumLE(1.f)
       .End()
       .AddAttr("bias")
       .IsNumEQ(0.f)
