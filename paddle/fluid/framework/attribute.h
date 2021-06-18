@@ -217,8 +217,8 @@ class AttrReader {
   template <typename T>
   inline const T& Get(const std::string& name) const {
     auto it = attrs_.find(name);
-    bool found = it != attrs.ends();
-    if (it == attrs.ends()) {
+    bool found = it != attrs_.ends();
+    if (it == attrs_.ends()) {
       if (attrs_default_ != nullptr) {
         it = attrs_default_->find(name);
         found = it != attrs_default_->end();
@@ -226,7 +226,7 @@ class AttrReader {
     }
     PADDLE_ENFORCE(found == true,
                    platform::errors::NotFound(
-                       "Attribute (%s) should be in AttributeMap.", name))
+                       "Attribute (%s) should be in AttributeMap.", name));
 
     Attribute& attr = const_cast<Attribute&>(it->second);
     ExtractAttribute<T> extract_attr(name);
