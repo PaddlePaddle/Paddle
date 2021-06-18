@@ -984,12 +984,11 @@ void InitOpsAttrTypeMap() {
   }
 }
 
-PyObject* EOFExceptionException =
-    PyErr_NewException("paddle.EOFException", PyExc_Exception, NULL);
-PyObject* EnforceNotMetException =
-    PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, NULL);
-
 void ThrowExceptionToPython(std::exception_ptr p) {
+  static PyObject* EOFExceptionException =
+      PyErr_NewException("paddle.EOFException", PyExc_Exception, NULL);
+  static PyObject* EnforceNotMetException =
+      PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, NULL);
   try {
     if (p) std::rethrow_exception(p);
   } catch (const platform::EOFException& e) {
