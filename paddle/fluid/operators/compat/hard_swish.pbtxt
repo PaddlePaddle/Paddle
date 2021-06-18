@@ -25,6 +25,10 @@ extra {
     type: INT
   }
   attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
+    type: BOOLEAN
+  }
+  attrs {
     name: "op_role_var"
     type: STRINGS
   }
