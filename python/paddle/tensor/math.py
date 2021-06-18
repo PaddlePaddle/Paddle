@@ -1718,7 +1718,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
-        Tensor: the output data type is the same as input data type.
+        Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
 
     Examples:
         .. code-block:: python
@@ -1728,18 +1728,34 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             x = paddle.rand([2,2,3],'float32')
             print(x)
             # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[[0.78954303, 0.03080254, 0.86929739],
-            #          [0.85419118, 0.66349584, 0.60896820]],
+            #        [[[0.03550689, 0.95332026, 0.72263676],
+            #         [0.39929324, 0.28395978, 0.02209182]],
 
-            #         [[0.50427347, 0.78351408, 0.00833563],
-            #          [0.36932808, 0.83527362, 0.49408615]]])
+            #        [[0.39408177, 0.72126228, 0.05123695],
+            #         [0.25892028, 0.34103420, 0.06237243]]])
 
-            out = paddle.diagonal(x)
-            print(out)
-            # Tensor(shape=[3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[0.78954303, 0.36932808],
-            #         [0.03080254, 0.83527362],
-            #         [0.86929739, 0.49408615]])
+            out1 = paddle.diagonal(x)
+            print(out1)
+            #Tensor(shape=[3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[0.03550689, 0.25892028],
+            #        [0.95332026, 0.34103420],
+            #        [0.72263676, 0.06237243]])
+
+            out2 = paddle.diagonal(x,0,1,1)
+            # [Hint: Expected axis1_ != axis2_, but received axis1_:1 == axis2_:1.]
+
+            out3 = paddle.diagonal(x,1,0,1)
+            print(out3)
+            #Tensor(shape=[3, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[0.39929324],
+            #        [0.28395978],
+            #        [0.02209182]])
+
+            out4 = paddle.diagonal(x,0,1,2)
+            print(out4)
+            #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[0.03550689, 0.28395978],
+            #        [0.39408177, 0.34103420]])
             
     """
     inputs = {'Input': [x]}

@@ -359,7 +359,6 @@ tensor_method_func  = [ #noqa
            'digamma',
            'diagonal'
            'trunc'
-           'digamma'
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',
