@@ -416,7 +416,7 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       ++found_count;
 
       if (!IsCompat(desc)) {
-        LOG(WARNING) << "MapMatmul2MulPass in out mul op compat failed.";
+        LOG(WARNING) << "Flatten2MatmulFusePass in out mul op compat failed.";
         return;
       }
     }
