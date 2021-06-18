@@ -459,9 +459,11 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .End()
       .AddAttr("dtype")
       .IsNumGE(0)
+      .IsNumLE(25)
       .End()
       .AddAttr("shape")
       .End()
+      // type: vector<float>
       .AddAttr("value")
       .End();
 }
