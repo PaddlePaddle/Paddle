@@ -390,7 +390,7 @@ def execute_samplecode(tfname):
     """
     result = True
     msg = None
-    if platform.python_version()[0] in ["2", "3"]:
+    if platform.python_version()[0] in ["3"]:
         cmd = [sys.executable, tfname]
     else:
         logger.error("Error: fail to parse python version!")
