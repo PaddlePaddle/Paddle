@@ -49,6 +49,11 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle " + conv_type() + "+" + activation_type() + " fuse";
+
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass op compat failed.";
+      return;
+    }
     GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight,
                               conv_activation_pattern);  // Filter
     GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out,
@@ -95,6 +100,86 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_conv_activation_count);
+}
+
+ConvActivationFusePass::ConvActivationFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NHWC", "NCHW"})
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+Conv2DLeakyReLUFusePass::Conv2DLeakyReLUFusePass() {
+  AddOpCompat(OpCompat("leaky_relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .End();
+}
+Conv2DReLU6FusePass::Conv2DReLU6FusePass() {
+  AddOpCompat(OpCompat("relu6"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+Conv2DSwishFusePass::Conv2DSwishFusePass() {
+  AddOpCompat(OpCompat("swish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
+  AddOpCompat(OpCompat("hard_swish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("threshold")
+      .End()
+      .AddAttr("scale")
+      .End()
+      .AddAttr("offset")
+      .End();
 }
 
 }  // namespace ir
