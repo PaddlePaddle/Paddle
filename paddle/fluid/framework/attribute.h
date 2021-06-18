@@ -217,18 +217,16 @@ class AttrReader {
   template <typename T>
   inline const T& Get(const std::string& name) const {
     auto it = attrs_.find(name);
-    if (it == attrs_.end()) {
+    bool found = it != attrs.ends();
+    if (it == attrs.ends()) {
       if (attrs_default_ != nullptr) {
         it = attrs_default_->find(name);
-        if (it == attrs_default_->end()) {
-          PADDLE_THROW(platform::errors::NotFound(
-              "Attribute (%s) should be in AttributeMap.", name));
-        }
-      } else {
-        PADDLE_THROW(platform::errors::NotFound(
-            "Attribute (%s) should be in AttributeMap.", name));
+        found = it != attrs_default_->end();
       }
     }
+    PADDLE_ENFORCE(found == true,
+                   platform::errors::NotFound(
+                       "Attribute (%s) should be in AttributeMap.", name))
 
     Attribute& attr = const_cast<Attribute&>(it->second);
     ExtractAttribute<T> extract_attr(name);
@@ -249,8 +247,8 @@ class GreaterThanChecker {
   void operator()(const T& value) const {
     PADDLE_ENFORCE_GT(
         value, lower_bound_,
-        platform::errors::OutOfRange(
-            "Check for attribute value greater than a certain value failed."));
+        platform::errors::OutOfRange("Check for attribute value greater than "
+                                     "a certain value failed."));
   }
 
  private:
@@ -347,9 +345,9 @@ class TypedAttrChecker {
   TypedAttrChecker& SetDefault(const T& default_value) {
     PADDLE_ENFORCE_EQ(
         default_value_setter_.empty(), true,
-        platform::errors::AlreadyExists(
-            "Attribute (%s) has a default value and cannot be set repeatedly.",
-            attr_name_));
+        platform::errors::AlreadyExists("Attribute (%s) has a default value "
+                                        "and cannot be set repeatedly.",
+                                        attr_name_));
     default_value_setter_.push_back(DefaultValueSetter<T>(default_value));
     return *this;
   }
@@ -361,7 +359,7 @@ class TypedAttrChecker {
   }
 
   void operator()(AttributeMap* attr_map, bool get_default_value_only = false,
-                  bool no_default_value = false) const {
+                  bool without_default_value = false) const {
     if (get_default_value_only) {
       if (!default_value_setter_.empty()) {
         attr_map->emplace(attr_name_, default_value_setter_[0]());
@@ -369,7 +367,7 @@ class TypedAttrChecker {
       return;
     }
 
-    if (no_default_value) {
+    if (without_default_value) {
       auto it = attr_map->find(attr_name_);
       if (it != attr_map->end()) {
         ExtractAttribute<T> extract_attr(attr_name_);
@@ -387,9 +385,9 @@ class TypedAttrChecker {
             platform::errors::InvalidArgument(
                 "Attribute (%s) is not set correctly.", attr_name_));
         // default_value_setter_ has no more than one element
-        attr_map->emplace(attr_name_, default_value_setter_[0]());
+        auto tmp = attr_map->emplace(attr_name_, default_value_setter_[0]());
+        it = tmp.first;
       }
-      it = attr_map->find(attr_name_);
       ExtractAttribute<T> extract_attr(attr_name_);
       T* attr_value = extract_attr(it->second);
       for (const auto& checker : value_checkers_) {
@@ -417,11 +415,11 @@ class OpAttrChecker {
   }
 
   void Check(AttributeMap* attr_map, bool explicit_only = false,
-             bool no_default_value = false) const {
+             bool without_default_value = false) const {
     auto checker_num = attr_checkers_.size();
     if (explicit_only) checker_num = explicit_checker_num_;
     for (size_t i = 0; i < checker_num; ++i) {
-      attr_checkers_[i](attr_map, false, no_default_value);
+      attr_checkers_[i](attr_map, false, without_default_value);
     }
   }
 
@@ -455,7 +453,8 @@ class OpAttrChecker {
   // for explicit attribute, we mean the attribute added in the customized
   // op makers, usually it's defined in the overloaded Make method.
   // for implicit attribute, we mean the attribute added outside of the Make
-  // method like "op_role", "op_role_var", and they are useless in dynamic graph
+  // method like "op_role", "op_role_var", and they are useless in dynamic
+  // graph
   // mode
   size_t explicit_checker_num_;
 };
