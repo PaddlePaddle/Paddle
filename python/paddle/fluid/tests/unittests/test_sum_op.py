@@ -211,8 +211,6 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
             self.check_with_place(core.CPUPlace(), inplace)
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 'place does not support BF16 evaluation')
 class TestSelectedRowsSumBF16OpBigRow(TestSelectedRowsSumBF16Op):
     def init_kernel_type(self):
         self.row_numel = 102

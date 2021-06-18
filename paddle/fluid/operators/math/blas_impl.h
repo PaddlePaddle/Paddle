@@ -40,7 +40,6 @@ static void axpy(int n, const T alpha, const T *x, const int incx, T *y,
     x = x + incx;
   }
 }
-
 }  // namespace detail
 
 template <typename T>
@@ -61,6 +60,7 @@ struct CBlas<platform::bfloat16> {
   static void AXPY(ARGS... args) {
     detail::axpy(args...);
   }
+
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     PADDLE_THROW(platform::errors::Unimplemented(
