@@ -199,6 +199,15 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
                       platform::errors::InvalidArgument(
                           "float16 can only be used when CUDNN is used"));
   }
+#if PADDLE_WITH_CUDA
+  if (input_data_type == framework::proto::VarType::BF16 &&
+      library == framework::LibraryType::kCUDNN) {
+    PADDLE_ENFORCE_GE(
+        platform::CudnnVersion(), 8100,
+        platform::errors::InvalidArgument(
+            "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
+  }
+#endif  // PADDLE_WITH_CUDA
 
   auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                       library, customized_type_value);
