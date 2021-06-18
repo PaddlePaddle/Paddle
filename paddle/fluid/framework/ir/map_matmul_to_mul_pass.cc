@@ -39,10 +39,14 @@ MapMatmul2MulPass::MapMatmul2MulPass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")
+      .IsNumGE(0.99f)
+      .IsNumLE(1.01f)
       .End()
       .AddAttr("transpose_X")
+      .IsBoolEQ(false)
       .End()
       .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
       .End();
 
   AddOpCompat(OpCompat("mul"))
@@ -59,7 +63,7 @@ MapMatmul2MulPass::MapMatmul2MulPass() {
       .IsNumGE(1)
       .End()
       .AddAttr("y_num_col_dims")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End();
 }
 
@@ -75,10 +79,14 @@ Flatten2MatmulFusePass::Flatten2MatmulFusePass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")
+      .IsNumGE(0.99f)
+      .IsNumLE(1.01f)
       .End()
       .AddAttr("transpose_X")
+      .IsBoolEQ(false)
       .End()
       .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
       .End();
 
   AddOpCompat(OpCompat("flatten2"))
@@ -112,7 +120,7 @@ Flatten2MatmulFusePass::Flatten2MatmulFusePass() {
       .IsNumGE(1)
       .End()
       .AddAttr("y_num_col_dims")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End();
 }
 
@@ -177,6 +185,11 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(mul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {matmul_op});
       ++found_count;
+
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "MapMatmul2MulPass in out mul op compat failed.";
+        return;
+      }
     }
   };
 
@@ -401,6 +414,11 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(mul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {flatten2_op, matmul_in_x, matmul_op});
       ++found_count;
+
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "MapMatmul2MulPass in out mul op compat failed.";
+        return;
+      }
     }
   };
 
