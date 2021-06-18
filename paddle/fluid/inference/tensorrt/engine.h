@@ -102,7 +102,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
             input, ShapeStr(shape)));
       }
-      return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
+      return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
       if (shape[1] == -1 || shape[2] == -1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -112,7 +112,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
       }
       return nvinfer1::Dims2(shape[1], shape[2]);
     }
-    return nvinfer1::DimsCHW(shape[1], 1, 1);
+    return nvinfer1::Dims3(shape[1], 1, 1);
   } else {
     if (shape.size() == 4UL) {
       return nvinfer1::DimsNCHW(shape[0], shape[1], shape[2], shape[3]);
