@@ -108,7 +108,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_WITH_STATIC_CUDA=OFF
                            -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
-                           -DXPU_SDK_URL=${XPU_SDK_URL}
+                           -DXPU_SDK_URL=${XPU_BASE_URL}
                            -DXPU_SDK_ENV=${XPU_SDK_ENV}
                            -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=OFF)
