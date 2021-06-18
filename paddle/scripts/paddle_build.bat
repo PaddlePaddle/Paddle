@@ -22,11 +22,12 @@ setlocal enabledelayedexpansion
 
 rem -------clean up environment-----------
 set work_dir=%cd%
-set cache_dir=%work_dir:Paddle=cache%
+if not defined cache_dir set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
 taskkill /f /im cmake.exe  2>NUL
+taskkill /f /im ninja.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL
 taskkill /f /im lib.exe 2>NUL
@@ -77,7 +78,7 @@ if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 rem -------set cache build directory-----------
 rmdir build\python /s/q
 rmdir build\paddle\third_party\externalError /s/q
-rmdir build\paddle\fluid\pybind /s/q
+rem rmdir build\paddle\fluid\pybind /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
 rmdir build\paddle_inference_c_install_dir /s/q
@@ -217,7 +218,8 @@ set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :zip_file || goto zip_file_error
+call :zip_cc_file || goto zip_cc_file_error
+call :zip_c_file || goto zip_c_file_error
 goto:success
 
 rem "Other configurations are added here"
@@ -689,7 +691,7 @@ goto:eof
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
-:zip_file
+:zip_cc_file
 tree /F %cd%\paddle_inference_install_dir\paddle
 if exist paddle_inference.zip del paddle_inference.zip
 python -c "import shutil;shutil.make_archive('paddle_inference', 'zip', root_dir='paddle_inference_install_dir')"
@@ -701,8 +703,25 @@ for /F %%i in ("%libsize%") do (
 )
 goto:eof
 
-:zip_file_error
+:zip_cc_file_error
 echo Tar inference library failed!
+exit /b 1
+
+rem ---------------------------------------------------------------------------------------------
+:zip_c_file
+tree /F %cd%\paddle_inference_c_install_dir\paddle
+if exist paddle_inference_c.zip del paddle_inference_c.zip
+python -c "import shutil;shutil.make_archive('paddle_inference_c', 'zip', root_dir='paddle_inference_c_install_dir')"
+%cache_dir%\tools\busybox64.exe du -h -k paddle_inference_c.zip > lib_size.txt
+set /p libsize=< lib_size.txt
+for /F %%i in ("%libsize%") do (
+    set /a libsize_m=%%i/1024
+    echo "Windows Paddle_Inference CAPI ZIP Size: !libsize_m!M"
+)
+goto:eof
+
+:zip_c_file_error
+echo Tar inference capi library failed!
 exit /b 1
 
 :timestamp
@@ -763,6 +782,7 @@ echo    ========================================
 echo    Clean up environment  at the end ...
 echo    ========================================
 taskkill /f /im cmake.exe  2>NUL
+taskkill /f /im ninja.exe  2>NUL
 taskkill /f /im MSBuild.exe 2>NUL
 taskkill /f /im git.exe 2>NUL
 taskkill /f /im cl.exe 2>NUL

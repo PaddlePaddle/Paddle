@@ -39,16 +39,16 @@ function add_failed(){
 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
 if [ "$api_spec_diff" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or jzhang533 or swtkiwi or Heeenrrry or TCChenlong) approval for the api change for the management reason of API interface.\n"
+    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or jzhang533 or dingjiaweiww or Heeenrrry or TCChenlong) approval for the api change for the management reason of API interface.\n"
     check_approval 1 46782768 47554610
     echo_line=""
-    check_approval 1 2870059 29231 27208573 28379894 11935832
+    check_approval 1 2870059 29231 23093488 28379894 11935832
 fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
 if [ "$api_doc_spec_diff" != "" ]; then
-    echo_line="You must have one TPM (saxon-zh or jzhang533 or swtkiwi or Heeenrrry or TCChenlong) approval for the api change for the management reason of API document.\n"
-    check_approval 1 2870059 29231 27208573 28379894 11935832
+    echo_line="You must have one TPM (saxon-zh or jzhang533 or dingjiaweiww or Heeenrrry or TCChenlong) approval for the api change for the management reason of API document.\n"
+    check_approval 1 2870059 29231 23093488 28379894 11935832
 fi
 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
