@@ -28,14 +28,11 @@ class ShareDataKernel : public framework::OpKernel<T> {
       const auto &origin_tensor = in_var->Get<framework::LoDTensor>();
       auto *detach_tensor = out_var->GetMutable<framework::LoDTensor>();
       detach_tensor->ShareDataWith(origin_tensor);
-      detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
     } else {
       const auto &origin_selected_rows = in_var->Get<framework::SelectedRows>();
       auto *detach_selected_rows =
           out_var->GetMutable<framework::SelectedRows>();
       detach_selected_rows->mutable_value()->ShareDataWith(
-          origin_selected_rows.value());
-      detach_selected_rows->mutable_value()->ShareInplaceVersionCounterWith(
           origin_selected_rows.value());
     }
   }
