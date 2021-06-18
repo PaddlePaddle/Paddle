@@ -115,7 +115,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     return nvinfer1::Dims3(shape[1], 1, 1);
   } else {
     if (shape.size() == 4UL) {
-      return nvinfer1::DimsNCHW(shape[0], shape[1], shape[2], shape[3]);
+      return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
       return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
     }
