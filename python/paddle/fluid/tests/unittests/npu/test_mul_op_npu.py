@@ -55,10 +55,17 @@ class TestMul(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
 
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], ['Out'], check_dygraph=False)
+
 
 class TestMulFP16(TestMul):
     def init_dtype(self):
         self.dtype = np.float16
+
+    def test_check_grad(self):
+        pass
 
 
 class TestMul2(TestMul):
@@ -87,6 +94,9 @@ class TestMul2FP16(TestMul2):
     def init_dtype(self):
         self.dtype = np.float16
 
+    def test_check_grad(self):
+        pass
+
 
 class TestMul3(TestMul):
     # case 3: (2, 3, 4) * (4, 5) -> (2, 3, 5), x_num_col_dims = 2
@@ -113,6 +123,9 @@ class TestMul3(TestMul):
 class TestMul3FP16(TestMul3):
     def init_dtype(self):
         self.dtype = np.float16
+
+    def test_check_grad(self):
+        pass
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
