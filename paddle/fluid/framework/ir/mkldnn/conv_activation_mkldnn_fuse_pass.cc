@@ -117,7 +117,7 @@ ConvActivationFusePass::ConvActivationFusePass() {
       .IsTensor()
       .End()
       .AddInput("Bias")
-      .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Output")
       .IsTensor()
