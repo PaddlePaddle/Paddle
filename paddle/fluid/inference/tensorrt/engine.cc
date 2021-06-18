@@ -38,7 +38,7 @@ void TensorRTEngine::InitNetwork() {
         1U << static_cast<int>(
             nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
   } else {
-    infer_network_.reset(infer_builder_->createNetwork());
+    infer_network_.reset(infer_builder_->createNetworkV2(0U));
   }
 
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
