@@ -19,7 +19,22 @@
 
 namespace paddle {
 namespace operators {
+template <typename T>
 
+std::vector<T> ComputeDimStride(const std::vector<T> dim) {
+  size_t dim_size = dim.size();
+  std::vector<T> dim_strides;
+  dim_strides.resize(dim_size);
+  for (size_t i = 0; i < dim_size - 1; i++) {
+    size_t temp_stride = 1;
+    for (size_t j = i + 1; j < dim_size; j++) {
+      temp_stride = temp_stride * dim[j];
+    }
+    dim_strides[i] = temp_stride;
+  }
+  dim_strides[dim_size - 1] = 1;
+  return dim_strides;
+}
 template <typename T>
 class DiagonalKernel : public framework::OpKernel<T> {
  public:
@@ -39,8 +54,8 @@ class DiagonalKernel : public framework::OpKernel<T> {
     const int64_t axis2 = context.Attr<int>("axis2");
     int64_t axis2_ = axis2 < 0 ? input_dim_size + axis2 : axis2;
 
-    auto input_stride = framework::stride(input->dims()).Get();
-    auto output_stride = framework::stride(output->dims()).Get();
+    std::vector<int64_t> input_stride = ComputeDimStride(input_dim);
+    std::vector<int64_t> output_stride = ComputeDimStride(output_dim);
 
     int64_t numel = input->numel();
 
@@ -101,8 +116,8 @@ class DiagonalGradKernel : public framework::OpKernel<T> {
     const int64_t axis2 = context.Attr<int>("axis2");
     int64_t axis2_ = axis2 < 0 ? dx_dim_size + axis2 : axis2;
 
-    auto dout_stride = framework::stride(dout->dims()).Get();
-    auto dx_stride = framework::stride(dx->dims()).Get();
+    std::vector<int64_t> dout_stride = ComputeDimStride(dout_dim);
+    std::vector<int64_t> dx_stride = ComputeDimStride(dx_dim);
 
     int64_t numel = dx->numel();
 
