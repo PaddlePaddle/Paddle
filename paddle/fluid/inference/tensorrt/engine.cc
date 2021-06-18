@@ -88,8 +88,8 @@ void TensorRTEngine::FreezeNetwork() {
 
   bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
   if (enable_int8) {
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
+    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
 
     if (calibrator_) {
       infer_builder_->setInt8Calibrator(calibrator_);
@@ -97,7 +97,6 @@ void TensorRTEngine::FreezeNetwork() {
       infer_builder_->setInt8Calibrator(nullptr);
 
 #if IS_TRT_VERSION_GE(5000)
-      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
       for (auto &quant_range : quant_dynamic_range_) {
         auto tensor = quant_range.first;
         float range = quant_range.second;
