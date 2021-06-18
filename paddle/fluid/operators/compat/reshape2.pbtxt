@@ -3,15 +3,6 @@ def {
   inputs {
     name: "X"
   }
-  outputs {
-    name: "Out"
-  }
-  attrs {
-    name: "shape"
-    type: INTS
-  }
-}
-extra {
   inputs {
     name: "Shape"
   }
@@ -21,6 +12,15 @@ extra {
   outputs {
     name: "XShape"
   }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "shape"
+    type: INTS
+  }
+}
+extra {
   attrs {
     name: "use_quantizer"
     type: BOOLEAN
@@ -50,4 +50,3 @@ extra {
     type: STRING
   }
 }
-
