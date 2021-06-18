@@ -106,11 +106,12 @@ class PipelineParallel(MetaParallelBase):
                 group=self.pp_group)
         return loss
 
-    def train_batch(self, data, optimizer, lr_scheduler=None):
+    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
             'optimizer should be HybridParallelOptimizer subclass.')
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
+        self.scaler = scaler
         assert fluid.framework._dygraph_tracer()._has_grad, (
             'Please enable the generation of gradients.')
 
@@ -143,8 +144,8 @@ class PipelineParallel(MetaParallelBase):
         self._layers.allreduce_shared_weight_gradients()
 
         # optimizer
-        self._step()
         self.train_loss = self._reduce_final_loss()
+        self._step()
         return self.train_loss
 
     def _forward(self, cache_id):
@@ -192,7 +193,12 @@ class PipelineParallel(MetaParallelBase):
 
     def _backward(self, cache_id):
         if self.is_last_stage:
-            paddle.autograd.backward(self.caches['outputs'][cache_id])
+            if self.scaler:
+                paddle.autograd.backward(
+                    self.scaler.scale(self.caches['outputs'][cache_id]))
+            else:
+                paddle.autograd.backward(self.caches['outputs'][cache_id])
+
             self._send_gradients(cache_id)
             return
         self._recv_gradients(cache_id)
@@ -441,7 +447,10 @@ class PipelineParallel(MetaParallelBase):
                 p2p.recv(d, self.next_stage_id)
 
     def _step(self):
-        self.optimizer.step()
+        if self.scaler:
+            self.scaler.minimize(self.optimizer, self.train_loss)
+        else:
+            self.optimizer.step()
         self.optimizer.clear_grad()
         if self.lr_scheduler:
             self.lr_scheduler.step()
