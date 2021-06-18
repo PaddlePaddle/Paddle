@@ -18,6 +18,7 @@ decorator to deprecate a function or class
 import warnings
 import functools
 import paddle
+import sys, os
 
 __all__ = []
 
@@ -97,6 +98,10 @@ def deprecated(update_to="", since="", reason="", level=0):
             if level == 2:
                 raise RuntimeError('API "{}.{}" has been deprecated.'.format(
                     func.__module__, func.__name__))
+
+            # ensure ANSI escape sequences print correctly in cmd and powershell
+            if sys.platform.lower() == 'win32':
+                os.system('')
 
             warningmsg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
             v_current = [int(i) for i in paddle.__version__.split(".")]

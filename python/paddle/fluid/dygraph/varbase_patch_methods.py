@@ -16,6 +16,7 @@ import inspect
 import numpy as np
 import warnings
 import weakref
+import sys, os
 
 import paddle
 from .. import framework
@@ -370,6 +371,10 @@ def monkey_patch_varbase():
                 # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
 
         """
+        # ensure ANSI escape sequences print correctly in cmd and powershell
+        if sys.platform.lower() == 'win32':
+            os.system('')
+
         msg = "tensor.grad will return the tensor value of the gradient."
         warning_msg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
         warnings.warn(warning_msg)
