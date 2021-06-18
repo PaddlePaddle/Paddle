@@ -34,17 +34,16 @@ void TensorRTEngine::InitNetwork() {
   infer_builder_.reset(createInferBuilder(&logger_));
 
   if (with_dynamic_shape_) {
-#if IS_TRT_VERSION_GE(6000)
-    infer_networkv2_.reset(infer_builder_->createNetworkV2(
+    infer_network_.reset(infer_builder_->createNetworkV2(
         1U << static_cast<int>(
             nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
-    infer_builder_config_.reset(infer_builder_->createBuilderConfig());
-    infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-    optim_profile_ = infer_builder_->createOptimizationProfile();
-#endif
   } else {
     infer_network_.reset(infer_builder_->createNetwork());
   }
+
+  infer_builder_config_.reset(infer_builder_->createBuilderConfig());
+  infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
+  optim_profile_ = infer_builder_->createOptimizationProfile();
 }
 
 void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
