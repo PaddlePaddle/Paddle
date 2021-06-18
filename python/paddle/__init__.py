@@ -235,6 +235,8 @@ from .tensor.search import sort  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
 
+from .tensor.einsum import einsum  # noqa: F401
+
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
 from .framework.random import set_cuda_rng_state  # noqa: F401
