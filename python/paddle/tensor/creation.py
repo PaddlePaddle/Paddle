@@ -512,13 +512,11 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
         taken with common difference ``step`` beginning from ``start``. Its
         data type is set by ``dtype``.
-
     Raises:
         TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
     Examples:
         .. code-block:: python
-
             import paddle
 
             out1 = paddle.arange(5)
