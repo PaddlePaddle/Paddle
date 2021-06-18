@@ -366,13 +366,7 @@ class TensorRTEngine {
   void Execute(int batch_size, std::vector<void*>* buffers,
                cudaStream_t stream = nullptr);
 
-  nvinfer1::INetworkDefinition* network() {
-    if (with_dynamic_shape_) {
-      return infer_networkv2_.get();
-    } else {
-      return infer_network_.get();
-    }
-  }
+  nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
@@ -527,7 +521,6 @@ class TensorRTEngine {
 
   // For dynamic shape
   bool with_dynamic_shape_{false};
-  infer_ptr<nvinfer1::INetworkDefinition> infer_networkv2_;
 #if IS_TRT_VERSION_GE(6000)
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
   nvinfer1::IOptimizationProfile* optim_profile_;
