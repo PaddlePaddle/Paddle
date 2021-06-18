@@ -53,11 +53,15 @@ class ConvEltwiseAddBNFusePass : public FusePassBase {
 
 class ConvTransposeBNFusePass : public ConvBNFusePass {
  public:
+  ConvTransposeBNFusePass();
+  virtual ~ConvTransposeBNFusePass() {}
   std::string conv_type() const { return "conv2d_transpose"; }
 };
 
 class ConvTransposeEltwiseAddBNFusePass : public ConvEltwiseAddBNFusePass {
  public:
+  ConvTransposeEltwiseAddBNFusePass();
+  virtual ~ConvTransposeEltwiseAddBNFusePass() {}
   std::string conv_type() const { return "conv2d_transpose"; }
 };
 
