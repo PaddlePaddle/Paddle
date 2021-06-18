@@ -18,7 +18,7 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 
@@ -47,7 +47,6 @@ class TestMul(OpTest):
 
     def set_npu(self):
         self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -55,24 +54,51 @@ class TestMul(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
 
-    def test_check_grad(self):
+    def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X', 'Y'], ['Out'], check_dygraph=False)
+            self.place, ['X', 'Y'],
+            'Out',
+            max_relative_error=0.0065,
+            check_dygraph=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            self.place, ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            max_relative_error=0.0065,
+            check_dygraph=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(
+            self.place, ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            max_relative_error=0.0065,
+            check_dygraph=False)
 
 
+@skip_check_grad_ci(
+    reason="Don't support grad checking for NPU OP with FP16 data type.")
 class TestMulFP16(TestMul):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def test_check_grad(self):
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
         pass
 
 
 class TestMul2(TestMul):
-    # case 2: (2, 2, 5) * (10, 5) -> (2, 5), x_num_col_dims = 1
+    # case 2: (20, 2, 5) * (10, 50) -> (20, 50), x_num_col_dims = 1
     def config(self):
-        self.x_shape = (2, 2, 5)
-        self.y_shape = (10, 5)
+        self.x_shape = (20, 2, 5)
+        self.y_shape = (10, 50)
 
     def setUp(self):
         self.set_npu()
@@ -86,24 +112,32 @@ class TestMul2(TestMul):
             'Y': np.random.random(self.y_shape).astype(self.dtype)
         }
         self.outputs = {
-            'Out': np.dot(self.inputs['X'].reshape(2, 10), self.inputs['Y'])
+            'Out': np.dot(self.inputs['X'].reshape(20, 10), self.inputs['Y'])
         }
 
 
+@skip_check_grad_ci(
+    reason="Don't support grad checking for NPU OP with FP16 data type.")
 class TestMul2FP16(TestMul2):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def test_check_grad(self):
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
         pass
 
 
 class TestMul3(TestMul):
-    # case 3: (2, 3, 4) * (4, 5) -> (2, 3, 5), x_num_col_dims = 2
+    # case 3: (20, 3, 4) * (4, 50) -> (20, 3, 50), x_num_col_dims = 2
 
     def config(self):
-        self.x_shape = (2, 3, 4)
-        self.y_shape = (4, 5)
+        self.x_shape = (20, 3, 4)
+        self.y_shape = (4, 50)
 
     def setUp(self):
         self.set_npu()
@@ -120,11 +154,19 @@ class TestMul3(TestMul):
         self.outputs = {'Out': np.matmul(self.inputs['X'], self.inputs['Y'])}
 
 
+@skip_check_grad_ci(
+    reason="Don't support grad checking for NPU OP with FP16 data type.")
 class TestMul3FP16(TestMul3):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def test_check_grad(self):
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
         pass
 
 
