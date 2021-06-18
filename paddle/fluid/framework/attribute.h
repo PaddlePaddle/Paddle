@@ -217,8 +217,8 @@ class AttrReader {
   template <typename T>
   inline const T& Get(const std::string& name) const {
     auto it = attrs_.find(name);
-    bool found = it != attrs_.ends();
-    if (it == attrs_.ends()) {
+    bool found = it != attrs_.end();
+    if (it == attrs_.end()) {
       if (attrs_default_ != nullptr) {
         it = attrs_default_->find(name);
         found = it != attrs_default_->end();
