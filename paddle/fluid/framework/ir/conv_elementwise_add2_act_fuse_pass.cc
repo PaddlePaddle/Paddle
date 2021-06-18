@@ -90,6 +90,7 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
+      // the first elementwise_add-axis needs to be 1, the second has to be -1
       .IsIntIn({1, -1})
       .End();
 
