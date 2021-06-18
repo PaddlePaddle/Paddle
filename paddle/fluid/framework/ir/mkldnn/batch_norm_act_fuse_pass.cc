@@ -24,62 +24,6 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-FuseBatchNormActOneDNNPass::FuseBatchNormActOneDNNPass() {
-  AddOpCompat(OpCompat("batch_norm"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Scale")
-      .IsTensor()
-      .End()
-      .AddInput("Bias")
-      .IsTensor()
-      .End()
-      .AddInput("Mean")
-      .IsTensor()
-      .End()
-      .AddInput("Variance")
-      .IsTensor()
-      .End()
-      .AddOutput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("MeanOut")
-      .IsTensor()
-      .End()
-      .AddOutput("VarianceOut")
-      .IsTensor()
-      .End()
-      .AddOutput("SavedMean")
-      .IsTensor()
-      .End()
-      .AddOutput("SavedVariance")
-      .IsTensor()
-      .End()
-      .AddOutput("ReserveSpace")
-      .IsTensor()
-      .End()
-      .AddAttr("epsilon")
-      .End()
-      // new_desc
-      .AddAttr("use_mkldnn")
-      .End()
-      .AddAttr("trainable_statistics")
-      .End()
-      .AddAttr("is_test")
-      .End()
-      .AddAttr("fuse_with_relu")
-      .End();
-
-  AddOpCompat(OpCompat("relu"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End();
-}
-
 void FuseBatchNormActOneDNNPass::ApplyImpl(Graph *graph) const {
   std::string act_type("relu");
   FuseBatchNormAct(graph, act_type);
@@ -101,12 +45,6 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse BatchNorm with ReLU activation op.";
-
-    if (IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Pass in op compat failed.";
-      return;
-    }
-
     // BN output
     GET_IR_NODE_FROM_SUBGRAPH(bn_out, bn_out, bn_act_pattern);
     // ACT output
