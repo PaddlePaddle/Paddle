@@ -224,9 +224,9 @@ class AttrReader {
         found = it != attrs_default_->end();
       }
     }
-    PADDLE_ENFORCE(found == true,
-                   platform::errors::NotFound(
-                       "Attribute (%s) should be in AttributeMap.", name));
+    PADDLE_ENFORCE_EQ(found, true,
+                      platform::errors::NotFound(
+                          "Attribute (%s) should be in AttributeMap.", name));
 
     Attribute& attr = const_cast<Attribute&>(it->second);
     ExtractAttribute<T> extract_attr(name);
