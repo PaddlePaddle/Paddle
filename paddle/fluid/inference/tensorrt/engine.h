@@ -277,22 +277,19 @@ class TensorRTEngine {
     }
 
     if (with_dynamic_shape_) {
-#if IS_TRT_VERSION_GE(6000)
       infer_engine_.reset(runtime->deserializeCudaEngine(
-          engine_serialized_data.c_str(), engine_serialized_data.size(),
-          nullptr));
-#else
-
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "To enable dynamic shape support, the TensorRT version should be "
-          "greater than 6.0.0"));
-
-#endif
+          engine_serialized_data.c_str(), engine_serialized_data.size()));
     } else {
+#if IS_TRT_VERSION_LT(8000)
       infer_engine_.reset(runtime->deserializeCudaEngine(
           engine_serialized_data.c_str(), engine_serialized_data.size(),
           &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+#else
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size()));
+#endif
     }
+
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
         platform::errors::Fatal(
