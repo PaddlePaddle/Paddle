@@ -118,7 +118,7 @@ ConvActivationFusePass::ConvActivationFusePass() {
       .AddAttr("paddings")
       .End()
       .AddAttr("padding_algorithm")
-      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
       .IsNumGE(1)
@@ -145,6 +145,7 @@ Conv2DLeakyReLUFusePass::Conv2DLeakyReLUFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End()
+      // float, default=0.02
       .AddAttr("alpha")
       .End();
 }
@@ -174,10 +175,13 @@ Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End()
+      // float, optional, default=6.0
       .AddAttr("threshold")
       .End()
+      // float, optional, default=6.0
       .AddAttr("scale")
       .End()
+      // float, optional, default=3.0
       .AddAttr("offset")
       .End();
 }
