@@ -18,6 +18,21 @@ def {
   outputs {
     name: "Y"
   }
+  outputs {
+    name: "MeanOut"
+  }
+  outputs {
+    name: "VarianceOut"
+  }
+  outputs {
+    name: "SavedMean"
+  }
+  outputs {
+    name: "SavedVariance"
+  }
+  outputs {
+    name: "ReserveSpace"
+  }
   attrs {
     name: "epsilon"
     type: FLOAT
@@ -26,6 +41,14 @@ def {
 extra {
   inputs {
     name: "MomentumTensor"
+  }
+   attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
+    type: BOOLEAN
+  } 
+  attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
+    type: BOOLEAN
   }
   attrs {
     name: "is_test"
@@ -54,21 +77,6 @@ extra {
   attrs {
     name: "trainable_statistics"
     type: BOOLEAN
-  }
-  outputs {
-    name: "MeanOut"
-  }
-  outputs {
-    name: "VarianceOut"
-  }
-  outputs {
-    name: "SavedMean"
-  }
-  outputs {
-    name: "SavedVariance"
-  }
-  outputs {
-    name: "ReserveSpace"
   }
   attrs {
     name: "op_role"
