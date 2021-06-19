@@ -46,9 +46,7 @@ _supported_promote_complex_types_ = [
     '__rsub__',
     '__mul__',
     '__rmul__',
-    '__div__',
     '__truediv__',
-    '__rdiv__',
     '__rtruediv__',
     '__matmul__',
 ]
@@ -168,9 +166,6 @@ def monkey_patch_math_varbase():
     def _scalar_mul_(var, value):
         return _scalar_elementwise_op_(var, value, 0.0)
 
-    def _scalar_div_(var, value):
-        return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
-
     # for binary operator such as elementwise, compare
     def _binary_creator_(method_name,
                          op_type,
@@ -201,7 +196,10 @@ def monkey_patch_math_varbase():
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
-                # but only +, -, *, / can use this method
+                # but only +, -, * can use this method
+                # NOTE(chentianyu03): / can not use `scale` method，because the result of
+                # `scale` method (self*(1/other_var)) do not exactly equal with the result 
+                # of `elementwise_div` method.
                 if scalar_method is not None:
                     return scalar_method(self, other_var)
             else:
@@ -288,12 +286,8 @@ def monkey_patch_math_varbase():
         ## a*b == b*a. Do not need to reverse explicitly
         ('__rmul__',
          _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
-        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
-                                     _scalar_div_)),
         ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
-                                         False, _scalar_div_)),
-        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
-                                      None)),
+                                         False, None)),
         ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
                                           None)),
         ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
@@ -325,10 +319,13 @@ def monkey_patch_math_varbase():
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
-        tensor_methods = paddle.tensor.tensor_method_func
-        for method_name in tensor_methods:
+        for method_name in paddle.tensor.tensor_method_func:
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)
+
+        for magic_method, origin_method in paddle.tensor.magic_method_func:
+            impl = getattr(paddle.tensor, origin_method, None)
+            if impl: setattr(core.VarBase, magic_method, impl)
 
     _already_patch_varbase = True

@@ -24,7 +24,7 @@ import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Cifar10', 'Cifar100']
+__all__ = []
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/cifar/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
@@ -151,7 +151,8 @@ class Cifar10(Dataset):
                     six.b('labels'), batch.get(six.b('fine_labels'), None))
                 assert labels is not None
                 for sample, label in six.moves.zip(data, labels):
-                    self.data.append((sample, label))
+                    self.data.append((sample,
+                                      np.array([label]).astype('int64')))
 
     def __getitem__(self, idx):
         image, label = self.data[idx]
@@ -164,9 +165,9 @@ class Cifar10(Dataset):
             image = self.transform(image)
 
         if self.backend == 'pil':
-            return image, np.array(label).astype('int64')
+            return image, label.astype('int64')
 
-        return image.astype(self.dtype), np.array(label).astype('int64')
+        return image.astype(self.dtype), label.astype('int64')
 
     def __len__(self):
         return len(self.data)

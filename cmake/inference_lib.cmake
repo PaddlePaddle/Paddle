@@ -154,6 +154,13 @@ IF(WITH_GPU)
             DSTS ${dst_dir})
 ENDIF()
 
+IF(WITH_XPU)
+    set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/xpu")
+    copy(inference_lib_dist
+        SRCS ${XPU_INC_DIR} ${XPU_LIB_DIR}
+        DSTS ${dst_dir} ${dst_dir})
+ENDIF()
+
 # CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
@@ -320,11 +327,17 @@ function(version version_file)
             "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
-            "WITH_GPU: ${WITH_GPU}\n")
+            "WITH_GPU: ${WITH_GPU}\n"
+            "WITH_ROCM: ${WITH_ROCM}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
                 "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
+    endif()
+    if(WITH_ROCM)
+        file(APPEND ${version_file}
+                "HIP version: ${HIP_VERSION}\n"
+                "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
     endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)
