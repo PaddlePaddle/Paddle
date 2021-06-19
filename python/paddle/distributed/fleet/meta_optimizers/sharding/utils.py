@@ -561,7 +561,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
     """
     # TODO (JZ-LIANG) revise this for uniform mixed parallelism
     if main_program._pipeline_opt:
-        main_program = main_program._pipeline_opt['section_program']['program']
+        main_program = main_program._pipeline_opt['section_program']
 
     def is_opt_vars(var):
         # NOTE(JZ-LIANG): The checks should be updated when add new compatible optimizer

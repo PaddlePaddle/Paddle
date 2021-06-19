@@ -134,7 +134,7 @@ class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
 
 class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
     def init_test_case(self):
-        super(TestMKLDNNWithValidPad, self).init_test_case()
+        super(TestMKLDNNWithValidPad_NHWC, self).init_test_case()
         self.data_format = "NHWC"
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
