@@ -325,25 +325,27 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
+#define REGISTER_FUSE_BN_ADD_ACT_BASE(op_name, grad, ...)               \
+  REGISTER_OP_CUDA_KERNEL(                                              \
+      op_name,                                                          \
+      ops::Fused##grad##Kernel<plat::CUDADeviceContext, plat::float16>, \
+      ##__VA_ARGS__);
+
 #if CUDNN_VERSION >= 8100
-#define FUSED_BN_ADD_ACTIVATION_BF16_REGISTER \
-  ops::FusedBatchNormAddActKernel<plat::CUDADeviceContext, plat::bfloat16>,
-#define FUSED_BN_ADD_ACTIVATION_GRAD_BF16_REGISTER \
-  ops::FusedBatchNormAddActGradKernel<plat::CUDADeviceContext, plat::bfloat16>,
-#else
-#define FUSED_BN_ADD_ACTIVATION_BF16_REGISTER
-#define FUSED_BN_ADD_ACTIVATION_GRAD_BF16_REGISTER
+#define REGISTER_FUSE_BN_ADD_ACT_EX(op_name, grad) \
+  REGISTER_FUSE_BN_ADD_ACT_BASE(                   \
+      op_name, grad,                               \
+      ops::Fused##grad##Kernel<plat::CUDADeviceContext, plat::bfloat16>)
 #endif
 
 #if CUDNN_VERSION >= 7401
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    fused_bn_add_activation,
-    FUSED_BN_ADD_ACTIVATION_BF16_REGISTER ops::FusedBatchNormAddActKernel<
-        plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(fused_bn_add_activation_grad,
-                        FUSED_BN_ADD_ACTIVATION_GRAD_BF16_REGISTER
-                            ops::FusedBatchNormAddActGradKernel<
-                                plat::CUDADeviceContext, plat::float16>);
+REGISTER_FUSE_BN_ADD_ACT_BASE(fused_bn_add_activation, BatchNormAddAct)
+REGISTER_FUSE_BN_ADD_ACT_BASE(fused_bn_add_activation_grad, BatchNormAddActGrad)
+#if CUDNN_VERSION >= 8100
+REGISTER_FUSE_BN_ADD_ACT_EX(fused_bn_add_activation, BatchNormAddAct)
+REGISTER_FUSE_BN_ADD_ACT_EX(fused_bn_add_activation_grad, BatchNormAddActGrad)
+#endif
 #endif
