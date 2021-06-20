@@ -86,9 +86,6 @@ if [ -n "${echo_list}" ];then
   echo "****************"
 fi
 
-# 为什么这里会再次执行？ 前面L48 L62已执行过了啊
-python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
-python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec
 if [ -n "${echo_list}" ]; then
   exit 6
 fi
