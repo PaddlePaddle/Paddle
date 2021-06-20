@@ -30,8 +30,8 @@ class SwishPlugin : public PluginTensorRT {
  private:
   float beta_;
 
- protected:
-  size_t getSerializationSize() override {
+ public:
+  size_t getSerializationSize() const override {
     return SerializedSize(getPluginType()) + getBaseSerializationSize() +
            SerializedSize(beta_);
   }
@@ -39,13 +39,12 @@ class SwishPlugin : public PluginTensorRT {
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  void serialize(void* buffer) override {
+  void serialize(void* buffer) const override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, beta_);
   }
 
- public:
   explicit SwishPlugin(const float beta, const bool with_fp16) : beta_(beta) {
     with_fp16_ = with_fp16;
   }

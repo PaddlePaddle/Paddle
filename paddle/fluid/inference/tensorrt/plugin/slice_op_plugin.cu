@@ -26,10 +26,12 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if false
 SlicePlugin *CreateSlicePluginDeserialize(const void *buffer, size_t length) {
   return new SlicePlugin(buffer, length);
 }
 REGISTER_TRT_PLUGIN("slice_plugin", CreateSlicePluginDeserialize);
+#endif
 
 template <typename T>
 __global__ void SliceKernel(int num, int dims, const T *input,
@@ -188,13 +190,13 @@ int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
   return cudaGetLastError() != cudaSuccess;
 }
 
-size_t SlicePlugin::getSerializationSize() {
+size_t SlicePlugin::getSerializationSize() const {
   return getBaseSerializationSize() + SerializedSize(getPluginType()) +
          SerializedSize(starts_) + SerializedSize(ends_) +
          SerializedSize(axes_);
 }
 
-void SlicePlugin::serialize(void *buffer) {
+void SlicePlugin::serialize(void *buffer) const {
   SerializeValue(&buffer, getPluginType());
   serializeBase(buffer);
   SerializeValue(&buffer, starts_);

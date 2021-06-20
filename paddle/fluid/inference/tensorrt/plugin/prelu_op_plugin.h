@@ -33,8 +33,8 @@ class PReluPlugin : public PluginTensorRT {
   float* p_gpu_weight_;
   std::string mode_;
 
- protected:
-  size_t getSerializationSize() override {
+ public:
+  size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(mode_.c_str()) +
            SerializedSize(weight_) + SerializedSize(getPluginType());
   }
@@ -42,14 +42,13 @@ class PReluPlugin : public PluginTensorRT {
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  void serialize(void* buffer) override {
+  void serialize(void* buffer) const override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, weight_);
     SerializeValue(&buffer, mode_.c_str());
   }
 
- public:
   PReluPlugin(const float* weight, const int weight_num,
               std::string const& mode)
       : mode_(mode) {

@@ -21,11 +21,13 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if false
 ElementWisePlugin *CreateElementWisePluginDeserialize(const void *buffer,
                                                       size_t length) {
   return new ElementWisePlugin(buffer, length);
 }
 REGISTER_TRT_PLUGIN("elementwise_plugin", CreateElementWisePluginDeserialize);
+#endif
 
 namespace details {
 template <typename T>

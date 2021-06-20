@@ -38,8 +38,8 @@ class InstanceNormPlugin : public PluginTensorRT {
   cudnnHandle_t handle_;
   cudnnTensorDescriptor_t x_desc_, y_desc_, b_desc_;
 
- protected:
-  size_t getSerializationSize() override {
+ public:
+  size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(eps_) +
            SerializedSize(scale_) + SerializedSize(bias_) +
            SerializedSize(getPluginType());
@@ -48,7 +48,7 @@ class InstanceNormPlugin : public PluginTensorRT {
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  void serialize(void *buffer) override {
+  void serialize(void *buffer) const override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, eps_);
@@ -56,7 +56,6 @@ class InstanceNormPlugin : public PluginTensorRT {
     SerializeValue(&buffer, bias_);
   }
 
- public:
   explicit InstanceNormPlugin(const float eps, const std::vector<float> scale,
                               const std::vector<float> bias)
       : eps_(eps), scale_(scale), bias_(bias) {

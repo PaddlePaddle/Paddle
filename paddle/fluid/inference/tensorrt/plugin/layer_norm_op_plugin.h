@@ -39,8 +39,8 @@ class LayerNormPlugin : public PluginTensorRT {
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
 
- protected:
-  size_t getSerializationSize() override {
+ public:
+  size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(bias_) +
            SerializedSize(scale_) + SerializedSize(begin_norm_axis_) +
            SerializedSize(eps_) + SerializedSize(mean_shape_) +
@@ -50,7 +50,7 @@ class LayerNormPlugin : public PluginTensorRT {
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  void serialize(void* buffer) override {
+  void serialize(void* buffer) const override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, bias_);
@@ -61,7 +61,6 @@ class LayerNormPlugin : public PluginTensorRT {
     SerializeValue(&buffer, variance_shape_);
   }
 
- public:
   LayerNormPlugin(const float* bias, const int bias_num, const float* scale,
                   const int scale_num, int begin_norm_axis, float eps,
                   std::vector<int64_t> mean_shape,

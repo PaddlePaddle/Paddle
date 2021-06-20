@@ -62,14 +62,13 @@ class ElementWisePlugin : public PluginTensorRT {
   int enqueue(int batch_size, const void* const* inputs, void** outputs,
               void* workspace, cudaStream_t stream);
 
- protected:
-  size_t getSerializationSize() override {
+  size_t getSerializationSize() const override {
     return SerializedSize(getPluginType()) + SerializedSize(axis_) +
            SerializedSize(dims_x_) + SerializedSize(dims_y_) +
            getBaseSerializationSize();
   }
 
-  void serialize(void* buffer) override {
+  void serialize(void* buffer) const override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, type_.c_str());
@@ -78,6 +77,7 @@ class ElementWisePlugin : public PluginTensorRT {
     SerializeValue(&buffer, dims_y_);
   }
 
+ protected:
   std::string type_;
   nvinfer1::Dims dims_x_;
   nvinfer1::Dims dims_y_;

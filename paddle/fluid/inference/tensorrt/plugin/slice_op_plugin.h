@@ -47,12 +47,11 @@ class SlicePlugin : public PluginTensorRT {
   int enqueue(int batch_size, const void* const* inputs, void** outputs,
               void* workspace, cudaStream_t stream) override;
 
- protected:
-  size_t getSerializationSize() override;
+  size_t getSerializationSize() const override;
 
   // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
-  void serialize(void* buffer) override;
+  void serialize(void* buffer) const override;
 
  private:
   std::vector<int> starts_;

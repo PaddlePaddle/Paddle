@@ -27,10 +27,12 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if false
 PReluPlugin *CreatePreluPluginDeserialize(const void *buffer, size_t length) {
   return new PReluPlugin(buffer, length);
 }
 REGISTER_TRT_PLUGIN("prelu_plugin", CreatePreluPluginDeserialize);
+#endif
 
 int PReluPlugin::initialize() {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());

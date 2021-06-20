@@ -52,12 +52,7 @@ class HardSwishPlugin : public PluginTensorRT {
   int enqueue(int batchSize, const void* const* inputs, void** outputs,
               void* workspace, cudaStream_t stream) override;
 
- protected:
-  float threshold_;
-  float scale_;
-  float offset_;
-
-  size_t getSerializationSize() override {
+  size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(threshold_) +
            SerializedSize(scale_) + SerializedSize(offset_) +
            SerializedSize(getPluginType());
@@ -65,13 +60,18 @@ class HardSwishPlugin : public PluginTensorRT {
 
   // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
-  void serialize(void* buffer) override {
+  void serialize(void* buffer) const override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, threshold_);
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, offset_);
   }
+
+ protected:
+  float threshold_;
+  float scale_;
+  float offset_;
 };
 
 }  // namespace plugin
