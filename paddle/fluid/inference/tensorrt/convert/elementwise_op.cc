@@ -253,7 +253,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
             new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
         plugin->AddInput(X);
         plugin->AddInput(Y);
-        nvinfer1::IPluginLayer* plugin_layer = engine_->AddPlugin(
+        auto* plugin_layer = engine_->AddPlugin(
             plugin->GetInputs().data(), 2,
             reinterpret_cast<plugin::PluginTensorRT*>(plugin));
 
