@@ -290,8 +290,7 @@ class TensorRTEngine {
 #endif
     } else {
       infer_engine_.reset(runtime->deserializeCudaEngine(
-          engine_serialized_data.c_str(), engine_serialized_data.size(),
-          &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+          engine_serialized_data.c_str(), engine_serialized_data.size()));
     }
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
@@ -314,8 +313,8 @@ class TensorRTEngine {
 
   int GetDeviceId() { return device_id_; }
 
-  nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
-                                    int num_inputs, plugin::PluginTensorRT*);
+  nvinfer1::IPluginV2Layer* AddPlugin(nvinfer1::ITensor* const* inputs,
+                                      int num_inputs, plugin::PluginTensorRT*);
 
   nvinfer1::IPluginV2Layer* AddPluginV2Ext(nvinfer1::ITensor* const* inputs,
                                            int num_inputs,
