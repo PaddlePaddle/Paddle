@@ -730,8 +730,13 @@ class MKLDNNDeviceContextThreadLocals {
   }
 };
 
+#define DIGITS 4
+#define NUMBERS 1024
+
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
+  static const std::string cached_numbers[NUMBERS];
+
   template <class T>
   using BlobPtr_t = std::shared_ptr<T>;
   template <class P1, class P2>
@@ -782,13 +787,26 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
     return MKLDNNDeviceContextThreadLocals::fetch();
   }
 
+  // static inline const char* get_cached_number(int index) {
+  //  return cached_numbers[index];
+  //}
+
  private:
+  // static const std::array<char[DIGITS], NUMBERS> initialize_cached_numbers()
+  // {
+  //  std::array<char[DIGITS], NUMBERS> cached_numbers;
+  //  for (int i = 0; i < NUMBERS; ++i)
+  //    strcpy(cached_numbers[i], std::to_string(i).c_str());
+  //
+  //  return cached_numbers;
+  //}
   std::shared_ptr<BlobMap> p_blobmap_;
   // Map key is pointer of executor and value is a data(iterator in map) needed
   // to erase
   std::shared_ptr<ExecMap> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
+  // static const std::array<char[DIGITS], NUMBERS> cached_numbers;
 };
 #endif
 

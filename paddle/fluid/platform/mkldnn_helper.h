@@ -397,30 +397,48 @@ inline std::string ThreadIDasStr(void) {
 
 template <typename T>
 inline void AppendKey(std::string* key, const T& num) {
+  !(num & 4294966272)
+      // num < 1000 && num >= 0
+      ? key->append(platform::MKLDNNDeviceContext::cached_numbers[num])
+      : key->append(std::to_string(num));
+  // key->append(std::to_string(num));
+}
+
+template <>
+inline void AppendKey(std::string* key, const float& num) {
   key->append(std::to_string(num));
+  // key->append(std::to_string(num));
 }
 
 template <>
 inline void AppendKey(std::string* key,
                       const mkldnn::memory::format_tag& format) {
-  key->append(std::to_string(static_cast<int>(format)));
+  key->append(
+      platform::MKLDNNDeviceContext::cached_numbers[static_cast<int>(format)]);
+  // key->append(std::to_string(static_cast<int>(format)));
 }
 
 template <>
 inline void AppendKey(std::string* key,
                       const mkldnn::memory::data_type& data_type) {
-  key->append(std::to_string(static_cast<int>(data_type)));
+  key->append(platform::MKLDNNDeviceContext::cached_numbers[static_cast<int>(
+      data_type)]);
+  // key->append(std::to_string(static_cast<int>(data_type)));
 }
 
 template <>
 inline void AppendKey(std::string* key, const mkldnn::algorithm& algorithm) {
-  key->append(std::to_string(static_cast<int>(algorithm)));
+  key->append(platform::MKLDNNDeviceContext::cached_numbers[static_cast<int>(
+      algorithm)]);
+  // key->append(std::to_string(static_cast<int>(algorithm)));
 }
 
 template <>
 inline void AppendKey(std::string* key,
                       const mkldnn::normalization_flags& flags) {
-  key->append(std::to_string(static_cast<int>(flags)));
+  key->append(
+      platform::MKLDNNDeviceContext::cached_numbers[static_cast<int>(flags)]);
+  // key->append(std::to_string(static_cast<int>(flags)));
 }
 
 inline void AppendKey(std::string* key, const std::string& str) {
@@ -432,7 +450,11 @@ inline void AppendKey(std::string* key, const char* str) { key->append(str); }
 template <typename T>
 inline void AppendKey(std::string* key, const std::vector<T>& dims) {
   for (size_t i = 0; i < dims.size(); i++) {
-    AppendKey(key, std::to_string(dims[i]));
+    //(dims[i] < 1000) && (dims[i] >= 0) // #  & 4294966272
+    !(dims[i] & 4294966272)
+        ? key->append(platform::MKLDNNDeviceContext::cached_numbers[dims[i]])
+        : key->append(std::to_string(dims[i]));
+    // AppendKey(key, std::to_string(dims[i]));
   }
 }
 
