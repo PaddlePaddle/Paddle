@@ -21,6 +21,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if false
 PluginTensorRT* PluginFactoryTensorRT::createPlugin(const char* layer_name,
                                                     const void* serial_data,
                                                     size_t serial_length) {
@@ -45,6 +46,7 @@ bool PluginFactoryTensorRT::RegisterPlugin(
 }
 
 void PluginFactoryTensorRT::DestroyPlugins() { owned_plugins_.clear(); }
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

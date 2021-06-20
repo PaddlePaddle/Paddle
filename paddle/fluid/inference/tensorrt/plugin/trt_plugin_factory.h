@@ -33,6 +33,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#if false
 class PluginFactoryTensorRT : public nvinfer1::IPluginFactory,
                               public DeleteHelper {
  public:
@@ -72,6 +73,7 @@ class TrtPluginRegistrar {
       trt_plugin_registrar##ctr UNUSED =                           \
           paddle::inference::tensorrt::plugin::TrtPluginRegistrar( \
               name, deserialize_func)
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt
