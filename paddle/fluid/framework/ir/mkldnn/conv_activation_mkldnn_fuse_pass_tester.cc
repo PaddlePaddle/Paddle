@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 
 #include <gtest/gtest.h>
+#include <vector>
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -30,9 +31,16 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   op->SetAttr("name", name);
   if (type == "conv2d") {
     op->SetAttr("use_mkldnn", use_mkldnn);
+    op->SetAttr("groups", 1);
+    op->SetAttr("padding_algorithm", std::string("EXPLICIT"));
+    op->SetAttr("data_format", std::string("NCHW"));
+    op->SetAttr("strides", std::vector<int>({1, 1}));
+    op->SetAttr("dilations", std::vector<int>({1, 1}));
+    op->SetAttr("paddings", std::vector<int>({0, 0}));
     op->SetInput("Input", {inputs[0]});
     op->SetInput("Filter", {inputs[1]});
     op->SetInput("Bias", {inputs[2]});
+    op->SetOutput("Output", outputs);
   } else if (is_activation) {
     op->SetAttr("use_mkldnn", use_mkldnn);
     op->SetInput("X", inputs);
@@ -43,8 +51,9 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     } else if (type == "swish") {
       op->SetAttr("beta", 1.0f);
     }
+    op->SetOutput("Out", outputs);
   }
-  op->SetOutput("Out", outputs);
+
   op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
               static_cast<int>(OpRole::kForward));
 }

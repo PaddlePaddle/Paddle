@@ -46,6 +46,10 @@ extra {
     type: BOOLEAN
   } 
   attrs {
+    name: "name"
+    type: STRING
+  }
+  attrs {
     name: "skip_quant"
     type: BOOLEAN
   }

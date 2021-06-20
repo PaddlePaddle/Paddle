@@ -13,6 +13,10 @@ extra {
     type: FLOAT
   }
   attrs {
+    name: "name"
+    type: STRING
+  }
+  attrs {
     name: "is_test"
     type: FLOAT
   }

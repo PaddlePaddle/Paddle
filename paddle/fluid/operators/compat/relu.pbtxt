@@ -41,6 +41,10 @@ extra {
     type: STRINGS
   }
   attrs {
+    name: "name"
+    type: STRINGS
+  }
+  attrs {
     name: "op_namescope"
     type: STRING
   }

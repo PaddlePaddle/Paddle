@@ -186,12 +186,15 @@ Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
       .End()
       // float, optional, default=6.0
       .AddAttr("threshold")
+      .IsOptional()
       .End()
       // float, optional, default=6.0
       .AddAttr("scale")
+      .IsOptional()
       .End()
       // float, optional, default=3.0
       .AddAttr("offset")
+      .IsOptional()
       .End();
 }
 
