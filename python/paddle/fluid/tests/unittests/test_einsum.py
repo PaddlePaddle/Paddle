@@ -23,6 +23,7 @@ class TestEinsum(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         np.random.seed(12345)
+
         cls.TEST_SAMPLES = {
             "x": np.random.rand(5),
             "y": np.random.rand(7),
@@ -63,16 +64,17 @@ class TestEinsum(unittest.TestCase):
             TestEinsum.TEST_SAMPLES[operand] for operand in self.sample["data"]
         ]
         expected_result = np.einsum(self.sample["paradigm"], *operands)
+        equation = self.sample["paradigm"]
 
         with paddle.fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=False)):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
-            result = paddle.einsum(self.sample["paradigm"], *pd_operands)
+            result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
 
         with paddle.fluid.dygraph.guard(self._get_place(force_to_use_cpu=True)):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
-            result = paddle.einsum(self.sample["paradigm"], *pd_operands)
+            result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
 
 
@@ -199,6 +201,141 @@ class TestEinsumTestEinsumOthers(TestEinsum):
 class TestEinsumBatch1(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "blq,bhlk->bhlqk", "data": ["J", "K"]}
+
+
+class TestNumpyTests(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def _get_place(self, force_to_use_cpu=False):
+        if force_to_use_cpu:
+            return core.CPUPlace()
+        else:
+            if core.is_compiled_with_cuda():
+                return core.CUDAPlace(0)
+            return core.CPUPlace()
+
+    def check_output_equal(self, actual, expect, rtol=1.e-5, atol=1.e-8):
+        error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
+        self.assertTrue(
+            np.allclose(
+                actual, expect, rtol=rtol, atol=atol),
+            error_msg.format(paddle.get_device(), expect, actual,
+                             self.__class__.__name__))
+
+    def check_output(self, eqn, *ops):
+        with paddle.fluid.dygraph.guard(
+                self._get_place(force_to_use_cpu=False)):
+            pd_operands = [paddle.to_tensor(op) for op in ops]
+            actual = paddle.einsum(eqn, *pd_operands)
+            self.check_output_equal(actual.numpy(), self.expect)
+
+    def test_sums(self):
+        for n in range(1, 17):
+            a = np.arange(n)
+            self.expect = np.einsum("i->", a)
+            self.check_output("i->", a)
+
+        for n in range(1, 17):
+            a = np.arange(2 * 3 * n).reshape(2, 3, n)
+            self.expect = np.einsum("...i->...", a)
+            self.check_output("...i->...", a)
+
+        for n in range(1, 17):
+            a = np.arange(2 * n).reshape(2, n)
+            self.expect = np.einsum("i...->...", a)
+            self.check_output("i...->...", a)
+
+        for n in range(1, 17):
+            a = np.arange(2 * 3 * n).reshape(2, 3, n)
+            self.expect = np.einsum("i...->...", a)
+            self.check_output("i...->...", a)
+
+        for n in range(1, 17):
+            a = np.arange(3 * n).reshape(3, n)
+            b = np.arange(2 * 3 * n).reshape(2, 3, n)
+            self.expect = np.einsum("..., ...", a, b)
+            self.check_output("..., ...", a, b)
+
+        for n in range(1, 17):
+            a = np.arange(2 * 3 * n).reshape(2, 3, n)
+            b = np.arange(n)
+            self.expect = np.einsum("...i, ...i", a, b)
+            self.check_output("...i, ...i", a, b)
+
+        for n in range(1, 11):
+            a = np.arange(n * 3 * 2).reshape(n, 3, 2)
+            b = np.arange(n)
+            self.expect = np.einsum("i..., i...", a, b)
+            self.check_output("i..., i...", a, b)
+
+        for n in range(1, 17):
+            a = np.arange(3) + 1
+            b = np.arange(n) + 1
+            self.expect = np.einsum("i,j", a, b)
+            self.check_output("i,j", a, b)
+
+        for n in range(1, 17):
+            a = np.arange(4 * n).reshape(4, n)
+            b = np.arange(n)
+            self.expect = np.einsum("ij, j", a, b)
+            self.check_output("ij, j", a, b)
+
+        for n in range(1, 17):
+            a = np.arange(4 * n).reshape(4, n)
+            b = np.arange(n)
+            self.expect = np.einsum("ji,j", a.T, b.T)
+            self.check_output("ji,j", a.T, b.T)
+
+        for n in range(1, 17):
+            a = np.arange(4 * n).reshape(4, n)
+            b = np.arange(n * 6).reshape(n, 6)
+            self.expect = np.einsum("ij,jk", a, b)
+            self.check_output("ij,jk", a, b)
+
+        a = np.arange(12).reshape(3, 4)
+        b = np.arange(20).reshape(4, 5)
+        c = np.arange(30).reshape(5, 6)
+        self.expect = np.einsum("ij,jk,kl", a, b, c)
+        self.check_output("ij,jk,kl", a, b, c)
+
+        a = np.arange(60).reshape(3, 4, 5)
+        b = np.arange(24).reshape(4, 3, 2)
+        self.expect = np.einsum("ijk, jil -> kl", a, b)
+        self.check_output("ijk, jil -> kl", a, b)
+
+        for n in range(1, 25):
+            a = np.arange(n)
+            self.expect = np.einsum("...,...", a, a)
+            self.check_output("...,...", a, a)
+            self.expect = np.einsum("i,i", a, a)
+            self.check_output("i,i", a, a)
+
+        p = np.ones((10, 2))
+        q = np.ones((1, 2))
+        self.expect = np.einsum('ij,ij->j', p, q)
+        self.check_output('ij,ij->j', p, q)
+
+        x = np.array([2., 3.])
+        y = np.array([4.])
+        self.expect = np.einsum("i, i", x, y)
+        self.check_output("i, i", x, y)
+
+        p = np.ones((1, 5)) / 2
+        q = np.ones((5, 5)) / 2
+        self.expect = np.einsum("...ij,...jk->...ik", p, p)
+        self.check_output("...ij,...jk->...ik", p, p)
+        self.expect = np.einsum("...ij,...jk->...ik", p, q)
+        self.check_output("...ij,...jk->...ik", p, q)
+
+        x = np.eye(2)
+        y = np.ones(2)
+        self.expect = np.einsum("ji,i->", x, y)
+        self.check_output("ji,i->", x, y)
+        self.expect = np.einsum("i,ij->", y, x)
+        self.check_output("i,ij->", y, x)
+        self.expect = np.einsum("ij,i->", x, y)
+        self.check_output("ij,i->", x, y)
 
 
 if __name__ == "__main__":

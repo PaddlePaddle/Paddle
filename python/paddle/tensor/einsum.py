@@ -264,9 +264,9 @@ def dim_strides(shape):
         stride = stride * size
     return strides
 
-def create_op_view(operand, *view_def):
+def create_view(operand, *view_def):
     '''
-    Create and materialize a view of an operand.
+    Create and materialize a view.
     
     Parameters
     ----------
@@ -309,18 +309,18 @@ def diagonalize(labels, operand):
     new_strides = []
 
     for ax, l in enumerate(labels):
-        new_ax = new_labels.index(l)
-        if new_ax < 0 or l == '.':
+        if l == '.' or l in new_labels:
             # not duplicate
             new_labels.append(l)
             new_strides.append(strides[ax])
             new_shape.append(shape[ax])
         else:
-            # duplicated label
-            new_strides[new_ax] += strides[ax]
+            # duplicate label
+            diag_ax = new_labels.index(l)
+            new_strides[diag_ax] += strides[ax]
 
     # call framework API to build a new tensor
-    new_op = create_op_view(operand, new_shape, new_strides)
+    new_op = create_view(operand, new_shape, new_strides)
     return new_labels, new_op
 
 def prod(iter, default=1):
@@ -565,7 +565,6 @@ class Plan:
                 self.set_var(out_varname, res)
         return res
 
-# def plan_einsum(operands, nop_axes, ndims_bcast, label_count):
 def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
     '''
     Plans the actual execution steps.
