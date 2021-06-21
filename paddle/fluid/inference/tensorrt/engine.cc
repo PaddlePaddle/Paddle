@@ -92,9 +92,9 @@ void TensorRTEngine::FreezeNetwork() {
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
 
     if (calibrator_) {
-      infer_builder_->setInt8Calibrator(calibrator_);
+      infer_builder_config_->setInt8Calibrator(calibrator_);
     } else {
-      infer_builder_->setInt8Calibrator(nullptr);
+      infer_builder_config_->setInt8Calibrator(nullptr);
 
 #if IS_TRT_VERSION_GE(5000)
       for (auto &quant_range : quant_dynamic_range_) {
