@@ -344,14 +344,14 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_matmul(self):
-        a = fluid.layers.data(name='a', shape=[2, 3], dtype='float32')
-        b = fluid.layers.data(name='b', shape=[3, 5], dtype='float32')
+        a = paddle.static.data(name='a', shape=[2, 3], dtype='float32')
+        b = paddle.static.data(name='b', shape=[3, 5], dtype='float32')
         c = a @b  # __matmul__
         a_np = numpy.random.uniform(-1, 1, size=[2, 3]).astype('float32')
         b_np = numpy.random.uniform(-1, 1, size=[3, 5]).astype('float32')
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        c_np = exe.run(fluid.default_main_program(),
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        c_np = exe.run(paddle.static.default_main_program(),
                        feed={"a": a_np,
                              "b": b_np},
                        fetch_list=[c])
