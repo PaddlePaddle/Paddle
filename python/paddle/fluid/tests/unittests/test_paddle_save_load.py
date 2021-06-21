@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import os
 import sys
-import six
 from io import BytesIO
 
 import paddle
@@ -38,10 +37,7 @@ SEED = 10
 IMAGE_SIZE = 784
 CLASS_NUM = 10
 
-if six.PY2:
-    LARGE_PARAM = 2**2
-else:
-    LARGE_PARAM = 2**26
+LARGE_PARAM = 2**26
 
 
 def random_batch_reader():
@@ -105,10 +101,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
         path = os.path.join("test_paddle_save_load_large_param_save",
                             "layer.pdparams")
-        if six.PY2:
-            protocol = 2
-        else:
-            protocol = 4
+        protocol = 4
         paddle.save(save_dict, path, protocol=protocol)
         dict_load = paddle.load(path)
         # compare results before and after saving
@@ -926,9 +919,6 @@ class TestSaveLoadProgram(unittest.TestCase):
 
 class TestSaveLoadLayer(unittest.TestCase):
     def test_save_load_layer(self):
-        if six.PY2:
-            return
-
         paddle.disable_static()
         inps = paddle.randn([1, IMAGE_SIZE], dtype='float32')
         layer1 = LinearNet()

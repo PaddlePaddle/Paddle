@@ -21,7 +21,6 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 import numpy as np
-import six
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  # noqa: F401
 from ..fluid.layers import slice  # noqa: F401
@@ -1214,10 +1213,7 @@ def tile(x, repeat_times, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
 
@@ -1353,10 +1349,7 @@ def broadcast_to(x, shape, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in shape must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in shape must be 1-D Tensors or integers.')
 
@@ -1443,10 +1436,7 @@ def expand(x, shape, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in shape must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in shape must be 1-D Tensors or integers.')
 

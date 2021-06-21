@@ -28,7 +28,7 @@ from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
+from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops, ClipGradByGlobalNorm
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
@@ -42,6 +42,7 @@ from functools import reduce
 from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
+import warnings
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -68,7 +69,15 @@ class Optimizer(object):
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
+                 flatten_param_grads=False,
+                 align_size=-1,
                  name=None):
+        """
+        Args:
+            flatten_param_grads (bool, optional): Whether to flatten all the parameters and grads. 
+                If true, the parameters and gradients will be coalesce to contiguous mempry, 
+                and the grad_clip ops / optimizer ops will be fuse to one operator.
+        """
         # Because of the loop import, so place it in the function body
         from paddle.optimizer.lr import LRScheduler
         self._parameter_list = list(
@@ -107,6 +116,8 @@ class Optimizer(object):
         self.regularization = regularization
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
+        self._flatten_param_grads = flatten_param_grads
+        self._align_size = align_size
 
         self._dtype = None
         # Infer the dtype form parameter
@@ -126,7 +137,7 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         # global_accumulator dict, {accum_name : acc_variable, ...}
         self._global_accumulators = {}
-        self.helper = None
+        self.helper = LayerHelper(self.__class__.__name__)
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
@@ -739,7 +750,7 @@ class Optimizer(object):
                 current_block.backward_block_idx]
 
         start = len(target_block.ops)
-        self.helper = LayerHelper(self.__class__.__name__)
+
         self._update_param_device_map(parameters_and_grads, target_block)
         self._create_accumulators(
             target_block,
@@ -958,7 +969,9 @@ class Optimizer(object):
             repeate_regularizer = False
             with framework.name_scope('regularization'):
                 for param, grad in parameters_and_grads:
-                    if not repeate_regularizer and param.regularizer is not None and regularization is not None:
+                    if not repeate_regularizer and getattr(
+                            param, 'regularizer',
+                            None) is not None and regularization is not None:
                         repeate_regularizer = True
                         logging.info(
                             "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
@@ -969,6 +982,83 @@ class Optimizer(object):
                             param, grad, regularization)
                         params_and_grads.append((param, new_grad))
         return params_and_grads
+
+    def flatten_param_grads(self, params_grads):
+        need_flatten_params = []
+        need_flatten_grads = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            g.persistable = True
+            if getattr(p, 'need_clip', True) is False or getattr(
+                    p, 'regularizer', None) is not None:
+                warnings.warn(
+                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip is False or "
+                    "the regularizer is set".format(p.name))
+                self._flatten_param_grads = False
+                return params_grads
+
+            need_flatten_params.append(p)
+            need_flatten_grads.append(g)
+
+        shape = [np.prod(p.shape) for p in need_flatten_params]
+        block = need_flatten_params[0].block
+
+        flatten_param = self.helper.create_global_variable(
+            name='flatten_param',
+            persistable=True,
+            dtype=need_flatten_params[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True)
+
+        flatten_param.trainable = True
+        flatten_param.optimize_attr = need_flatten_params[0].optimize_attr
+        flatten_param.regularizer = need_flatten_params[0].regularizer
+
+        flatten_grad = self.helper.create_global_variable(
+            name='flatten_grad',
+            persistable=True,
+            dtype=need_flatten_grads[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True)
+
+        with program_guard(default_main_program()):
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_params},
+                outputs={
+                    "Output": need_flatten_params,
+                    "FusedOutput": flatten_param
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "align_size": self._align_size,
+                    "dtype": need_flatten_params[0].dtype
+                })
+
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_grads},
+                outputs={
+                    "Output": need_flatten_grads,
+                    "FusedOutput": flatten_grad
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "align_size": self._align_size,
+                    "dtype": need_flatten_grads[0].dtype
+                })
+
+        #NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
+        # so the shape of flatten_param and flatten_grad will be inferred.
+        self.helper.set_variable_initializer(
+            flatten_param, initializer=Constant(0.0))
+        self.helper.set_variable_initializer(
+            flatten_grad, initializer=Constant(0.0))
+
+        return [(flatten_param, flatten_grad)]
 
     def apply_gradients(self, params_grads):
         """
@@ -992,8 +1082,13 @@ class Optimizer(object):
                 # ...
                 optimizer.apply_gradients(params_grads)
         """
-
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
+        if self._flatten_param_grads and self.regularization is None:
+            if self._grad_clip == None or isinstance(self._grad_clip,
+                                                     ClipGradByGlobalNorm):
+                params_grads = self.flatten_param_grads(params_grads)
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
@@ -1469,7 +1564,7 @@ class DGCMomentumOptimizer(Optimizer):
             assert isinstance(
                 num_trainers, int
             ), "The type of num_trainers should be 'int', but received %s" % type(
-                value)
+                num_trainers)
             assert num_trainers > 0, "The value of num_trainers should be greater than 0!"
 
             self._num_trainers = num_trainers
@@ -2156,6 +2251,9 @@ class AdamOptimizer(Optimizer):
             The default value is False.
         use_global_beta_pow (bool, optional): Whether to use global beta_pow. If true, Adam will use global beta_pow 
             for whole model instead of creating beta_pow for each parameter. Default is false.
+        flatten_param_grads (bool, optional): Whether to flatten all parameters and gradients. Default is false.
+        align_size (int, optional): The alignment size when flatten parameters and gradients. Default is -1, which means
+            use same align_size as allocator. 
 
     Examples:
         .. code-block:: python
@@ -2266,7 +2364,9 @@ class AdamOptimizer(Optimizer):
                  grad_clip=None,
                  name=None,
                  lazy_mode=False,
-                 use_global_beta_pow=False):
+                 use_global_beta_pow=False,
+                 flatten_param_grads=False,
+                 align_size=-1):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -2276,6 +2376,8 @@ class AdamOptimizer(Optimizer):
             parameter_list=parameter_list,
             regularization=regularization,
             grad_clip=grad_clip,
+            flatten_param_grads=flatten_param_grads,
+            align_size=align_size,
             name=name)
         self.type = "adam"
         self._beta1 = beta1
