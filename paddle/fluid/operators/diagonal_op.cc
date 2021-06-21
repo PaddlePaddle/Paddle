@@ -178,7 +178,7 @@ REGISTER_OPERATOR(diagonal_grad, ops::DiagonalGradOp,
 
 REGISTER_OP_CPU_KERNEL(diagonal, ops::DiagonalKernel<int>,
                        ops::DiagonalKernel<int64_t>, ops::DiagonalKernel<float>,
-                       ops::DiagonalKernel<double>);
+                       ops::DiagonalKernel<double>, ops::DiagonalKernel<bool>);
 
 REGISTER_OP_CPU_KERNEL(diagonal_grad, ops::DiagonalGradKernel<int>,
                        ops::DiagonalGradKernel<int64_t>,

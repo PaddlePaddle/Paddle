@@ -82,6 +82,46 @@ class TestDiagonalOpCase2(TestDiagonalOp):
             user_defined_grad_outputs=[self.grad_out])
 
 
+class TestDiagonalOpCase3(TestDiagonalOp):
+    def init_config(self):
+        self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('bool')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -2, 'axis1': 3, 'axis2': 0}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'])
+
+    def test_check_grad(self):
+        pass
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFP16DiagonalOp(TestDiagonalOp):
+    def init_config(self):
+        self.case = np.random.randn(100, 100).astype('float16')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'])
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_output_with_place(place, atol=2e-3)
+
+    def test_checkout_grad(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['Input'], 'Out', max_relative_error=0.8)
+
+
 class TestDiagonalAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [10, 3, 4]
@@ -106,11 +146,6 @@ class TestDiagonalAPI(unittest.TestCase):
         out_ref = np.diagonal(self.x)
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
         paddle.enable_static()
-
-    def test_errors(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [10, 3, 4], 'bool')
-            self.assertRaises(TypeError, paddle.diagonal, x)
 
 
 if __name__ == '__main__':

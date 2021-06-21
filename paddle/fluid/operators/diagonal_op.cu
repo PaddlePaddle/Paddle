@@ -258,12 +258,17 @@ class DiagonalGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(diagonal, ops::DiagonalCUDAKernel<int>,
                         ops::DiagonalCUDAKernel<int64_t>,
                         ops::DiagonalCUDAKernel<float>,
-                        ops::DiagonalCUDAKernel<double>);
+                        ops::DiagonalCUDAKernel<double>,
+                        ops::DiagonalCUDAKernel<plat::float16>,
+                        ops::DiagonalCUDAKernel<bool>);
 
 REGISTER_OP_CUDA_KERNEL(diagonal_grad, ops::DiagonalGradCUDAKernel<int>,
                         ops::DiagonalGradCUDAKernel<int64_t>,
                         ops::DiagonalGradCUDAKernel<float>,
-                        ops::DiagonalGradCUDAKernel<double>);
+                        ops::DiagonalGradCUDAKernel<double>,
+                        ops::DiagonalGradCUDAKernel<plat::float16>,
+                        ops::DiagonalGradCUDAKernel<bool>);
