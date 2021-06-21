@@ -166,7 +166,7 @@ class Conv2DTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = dg.to_variable(self.input)
-        conv = nn.Conv2d(
+        conv = nn.Conv2D(
             self.num_channels,
             self.num_filters,
             self.filter_size,
@@ -268,6 +268,12 @@ def add_error_cases(suite):
     suite.addTest(
         Conv2DErrorTestCase(
             methodName='runTest', num_channels=5, groups=2))
+    suite.addTest(
+        Conv2DErrorTestCase(
+            methodName='runTest', num_channels=5, groups=2, stride=0))
+    suite.addTest(
+        Conv2DErrorTestCase(
+            methodName='runTest', num_channels=5, groups=2, padding=[-1, -1]))
 
 
 def load_tests(loader, standard_tests, pattern):

@@ -47,8 +47,13 @@ void TestCase(size_t num) {
   T *in1, *in2, *out;
   T *d_in1, *d_in2;
   size_t size = sizeof(T) * num;
+#ifdef PADDLE_WITH_HIP
+  hipMalloc(reinterpret_cast<void**>(&d_in1), size);
+  hipMalloc(reinterpret_cast<void**>(&d_in2), size);
+#else
   cudaMalloc(reinterpret_cast<void**>(&d_in1), size);
   cudaMalloc(reinterpret_cast<void**>(&d_in2), size);
+#endif
   in1 = reinterpret_cast<T*>(malloc(size));
   in2 = reinterpret_cast<T*>(malloc(size));
   out = reinterpret_cast<T*>(malloc(size));
@@ -58,12 +63,22 @@ void TestCase(size_t num) {
     in1[i] = static_cast<T>(dist(engine));
     in2[i] = static_cast<T>(dist(engine));
   }
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);
+  hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(AddKernel<T>), dim3(1),
+                     dim3(PADDLE_CUDA_NUM_THREADS), 0, 0, d_in1, d_in2, num);
+  hipDeviceSynchronize();
+  hipMemcpy(out, d_in2, size, hipMemcpyDeviceToHost);
+  hipDeviceSynchronize();
+#else
   cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);
   cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);
   AddKernel<T><<<1, PADDLE_CUDA_NUM_THREADS>>>(d_in1, d_in2, num);
   cudaDeviceSynchronize();
   cudaMemcpy(out, d_in2, size, cudaMemcpyDeviceToHost);
   cudaDeviceSynchronize();
+#endif
   for (size_t i = 0; i < num; ++i) {
     // NOTE(dzhwinter): the float16 add has small underflow/overflow
     // so we use EXPECT_NEAR to check the result.
@@ -73,8 +88,13 @@ void TestCase(size_t num) {
   free(in1);
   free(in2);
   free(out);
+#ifdef PADDLE_WITH_HIP
+  hipFree(d_in1);
+  hipFree(d_in2);
+#else
   cudaFree(d_in1);
   cudaFree(d_in2);
+#endif
 }
 
 // cuda primitives
@@ -103,8 +123,13 @@ void TestUnalign(size_t num, const int shift_bit) {
   size_t size = sizeof(uint8_t) * (num + shift_bit);
   size_t array_size = sizeof(float16) * (num / 2);
 
+#ifdef PADDLE_WITH_HIP
+  hipMalloc(reinterpret_cast<void**>(&d_in1), size);
+  hipMalloc(reinterpret_cast<void**>(&d_in2), size);
+#else
   cudaMalloc(reinterpret_cast<void**>(&d_in1), size);
   cudaMalloc(reinterpret_cast<void**>(&d_in2), size);
+#endif
   in1 = reinterpret_cast<float16*>(malloc(size));
   in2 = reinterpret_cast<float16*>(malloc(size));
   out = reinterpret_cast<float16*>(malloc(size));
@@ -121,12 +146,23 @@ void TestUnalign(size_t num, const int shift_bit) {
     r_in1[i] = static_cast<float16>(dist(engine));
     r_in2[i] = static_cast<float16>(dist(engine));
   }
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(d_in1, r_in1, array_size, hipMemcpyHostToDevice);
+  hipMemcpy(d_in2, r_in2, array_size, hipMemcpyHostToDevice);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(AddKernel<float16>), dim3(1),
+                     dim3(PADDLE_CUDA_NUM_THREADS), 0, 0, d_in1, d_in2,
+                     num / 2);
+  hipDeviceSynchronize();
+  hipMemcpy(out, d_in2, array_size, hipMemcpyDeviceToHost);
+  hipDeviceSynchronize();
+#else
   cudaMemcpy(d_in1, r_in1, array_size, cudaMemcpyHostToDevice);
   cudaMemcpy(d_in2, r_in2, array_size, cudaMemcpyHostToDevice);
   AddKernel<float16><<<1, PADDLE_CUDA_NUM_THREADS>>>(d_in1, d_in2, num / 2);
   cudaDeviceSynchronize();
   cudaMemcpy(out, d_in2, array_size, cudaMemcpyDeviceToHost);
   cudaDeviceSynchronize();
+#endif
   for (size_t i = 0; i < num / 2; ++i) {
     // NOTE(dzhwinter): the float16 add has small truncate error.
     // so we use EXPECT_NEAR to check the result.
@@ -137,8 +173,13 @@ void TestUnalign(size_t num, const int shift_bit) {
   free(in1);
   free(in2);
   free(out);
+#ifdef PADDLE_WITH_HIP
+  hipFree(d_in1);
+  hipFree(d_in2);
+#else
   cudaFree(d_in1);
   cudaFree(d_in2);
+#endif
 }
 
 TEST(CudaAtomic, float16Unalign) {
@@ -203,8 +244,13 @@ void TestReduce(size_t num, float atol = 0.01) {
   T* in1;
   T *d_in1, *d_in2;
   size_t size = sizeof(T) * num;
+#ifdef PADDLE_WITH_HIP
+  hipMalloc(reinterpret_cast<void**>(&d_in1), size);
+  hipMalloc(reinterpret_cast<void**>(&d_in2), sizeof(T));
+#else
   cudaMalloc(reinterpret_cast<void**>(&d_in1), size);
   cudaMalloc(reinterpret_cast<void**>(&d_in2), sizeof(T));
+#endif
   in1 = reinterpret_cast<T*>(malloc(size));
   std::minstd_rand engine;
   std::uniform_real_distribution<double> dist(0.0, 1.0);
@@ -212,17 +258,31 @@ void TestReduce(size_t num, float atol = 0.01) {
     in1[i] = static_cast<T>(dist(engine));
   }
   auto out = std::accumulate(in1, in1 + num, static_cast<T>(0));
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);
+  hipDeviceSynchronize();
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(DeviceReduceSum<T>), dim3(1),
+                     dim3(PADDLE_CUDA_NUM_THREADS), 0, 0, d_in1, d_in2, num);
+  hipMemcpy(in1, d_in2, sizeof(T), hipMemcpyDeviceToHost);
+  hipDeviceSynchronize();
+#else
   cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);
   cudaDeviceSynchronize();
   DeviceReduceSum<T><<<1, PADDLE_CUDA_NUM_THREADS>>>(d_in1, d_in2, num);
   cudaMemcpy(in1, d_in2, sizeof(T), cudaMemcpyDeviceToHost);
   cudaDeviceSynchronize();
+#endif
   // NOTE(dzhwinter): the float16 add has small underflow/overflow
   // so we use EXPECT_NEAR to check the result.
   EXPECT_NEAR(static_cast<float>(in1[0]), static_cast<float>(out), atol);
   free(in1);
+#ifdef PADDLE_WITH_HIP
+  hipFree(d_in1);
+  hipFree(d_in2);
+#else
   cudaFree(d_in1);
   cudaFree(d_in2);
+#endif
 }
 
 TEST(CudaShuffleSync, float16) {

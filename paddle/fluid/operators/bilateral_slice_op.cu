@@ -165,10 +165,11 @@ class BilateralSliceOpCUDAKernel : public framework::OpKernel<T> {
     int total_count = batch_size * h * w * output_dims[1];
 
     platform::GpuLaunchConfig config =
-        platform::getGpuLaunchConfig(total_count, ctx);
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), total_count);
 
-    BilateralSliceCudaForwardKernel<T><<<config.blocks, config.threads, 0,
-                                         ctx.cuda_device_context().stream()>>>(
+    BilateralSliceCudaForwardKernel<
+        T><<<config.block_per_grid, config.thread_per_block, 0,
+             ctx.cuda_device_context().stream()>>>(
         output_data, grid_data, guide_data, input_data, grid_sizes, has_offset,
         total_count, output_dims[1]);
   }
@@ -471,25 +472,30 @@ class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
     grid_sizes.gw = gw;
     grid_sizes.input_chans = input_chans;
 
-    platform::GpuLaunchConfig config =
-        platform::getGpuLaunchConfig(grid_count, ctx, 512);
+    platform::GpuLaunchConfig config = platform::GetGpuLaunchConfig1D(
+        ctx.cuda_device_context(), grid_count, 512);
 
-    BilateralSliceCudaGridGradKernel<T><<<config.blocks, config.threads, 0,
-                                          ctx.cuda_device_context().stream()>>>(
+    BilateralSliceCudaGridGradKernel<
+        T><<<config.block_per_grid, config.thread_per_block, 0,
+             ctx.cuda_device_context().stream()>>>(
         grid_grad_data, output_grad_data, guide_data, input_data, grid_sizes,
         has_offset, grid_count, output_chans);
 
-    config = platform::getGpuLaunchConfig(guide_count, ctx, 512);
+    config = platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                            guide_count, 512);
 
-    BilateralSliceCudaGuideGradKernel<T><<<
-        config.blocks, config.threads, 0, ctx.cuda_device_context().stream()>>>(
+    BilateralSliceCudaGuideGradKernel<
+        T><<<config.block_per_grid, config.thread_per_block, 0,
+             ctx.cuda_device_context().stream()>>>(
         guide_grad_data, output_grad_data, grid_data, guide_data, input_data,
         grid_sizes, has_offset, guide_count, output_chans);
 
-    config = platform::getGpuLaunchConfig(input_count, ctx, 512);
+    config = platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                            input_count, 512);
 
-    BilateralSliceCudaInputGradKernel<T><<<
-        config.blocks, config.threads, 0, ctx.cuda_device_context().stream()>>>(
+    BilateralSliceCudaInputGradKernel<
+        T><<<config.block_per_grid, config.thread_per_block, 0,
+             ctx.cuda_device_context().stream()>>>(
         input_grad_data, output_grad_data, grid_data, guide_data, grid_sizes,
         has_offset, input_count, output_chans);
   }

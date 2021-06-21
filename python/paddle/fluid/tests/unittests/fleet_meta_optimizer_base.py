@@ -50,19 +50,59 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 strategy = paddle.distributed.fleet.DistributedStrategy()
         return avg_cost, strategy
 
+    def pp_net(self, main_prog, startup_prog, pp_degree=2):
+        def fc_block(input_x):
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            fc_3 = paddle.fluid.layers.fc(input=fc_2, size=64, act='tanh')
+            return fc_3
+
+        with fluid.program_guard(main_prog, startup_prog):
+            with fluid.unique_name.guard():
+                role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+                fleet.init(role)
+                with fluid.device_guard("gpu:0"):
+                    input_x = paddle.fluid.layers.data(
+                        name="x", shape=[32], dtype='float32')
+                    input_y = paddle.fluid.layers.data(
+                        name="y", shape=[1], dtype='int64')
+
+                for stage_idx in range(pp_degree):
+                    with fluid.device_guard("gpu:" + str(stage_idx)):
+                        input_x = fc_block(input_x)
+
+                with fluid.device_guard("gpu:" + str(pp_degree - 1)):
+                    prediction = paddle.fluid.layers.fc(input=[input_x],
+                                                        size=2,
+                                                        act='softmax')
+                    cost = paddle.fluid.layers.cross_entropy(
+                        input=prediction, label=input_y)
+                    avg_cost = paddle.fluid.layers.mean(x=cost)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        return avg_cost, strategy
+
     def optimizer(self,
                   loss,
                   strategy,
                   train_prog,
                   startup_prog,
-                  name='momentum'):
+                  name='momentum',
+                  regularization=None,
+                  grad_clip=None):
         with fluid.program_guard(train_prog, startup_prog):
             with fluid.unique_name.guard():
                 if name == 'momentum':
                     optimizer = paddle.fluid.optimizer.Momentum(
-                        learning_rate=0.01, momentum=0.9)
+                        learning_rate=0.01,
+                        momentum=0.9,
+                        regularization=regularization,
+                        grad_clip=grad_clip)
                 elif name == 'adam':
-                    optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+                    optimizer = paddle.fluid.optimizer.Adam(
+                        learning_rate=0.01,
+                        regularization=regularization,
+                        grad_clip=grad_clip)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, strategy=strategy)
                 optimizer.minimize(loss)
@@ -80,6 +120,21 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 "custom_white_list": ['softmax'],
                 "custom_black_list": ['tanh'],
             }
+        elif name == 'pure_fp16':
+            strategy.amp = True
+            strategy.amp_configs = {
+                "init_loss_scaling": 32768,
+                "decr_every_n_nan_or_inf": 2,
+                "incr_every_n_steps": 1000,
+                "incr_ratio": 2.0,
+                "use_dynamic_loss_scaling": True,
+                "decr_ratio": 0.5,
+                "custom_white_list": ['softmax'],
+                "custom_black_list": ['tanh'],
+                "use_pure_fp16": True,
+                "use_fp16_guard": False,
+            }
+
         elif name == 'dgc':
             strategy.dgc = True
             strategy.dgc_configs = {
@@ -121,5 +176,19 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         elif name == "gradient_merge":
             strategy.gradient_merge = True
             strategy.gradient_merge_configs = {"k_steps": 2, "avg": True}
+        elif name == "sharding":
+            strategy.sharding = True
+            strategy.sharding_configs = {
+                "sharding_segment_strategy": "segment_broadcast_MB",
+                "segment_broadcast_MB": 0.2,
+                "sharding_degree": 2,
+            }
+        elif name == "recompute-offload":
+            strategy.recompute = True
+            strategy.recompute_configs = {
+                "checkpoints": ["fc_0.tmp_2", "fc_1.tmp_2"],
+                "enable_offload": True,
+                "checkpoint_shape": [256]
+            }
         else:
             raise NotImplementedError()

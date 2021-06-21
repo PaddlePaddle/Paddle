@@ -22,13 +22,15 @@ import unittest
 from convert import convert_params_for_net
 from rnn_numpy import SimpleRNN, LSTM, GRU
 
+bidirectional_list = ["bidirectional", "bidirect"]
+
 
 class TestSimpleRNN(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super(TestSimpleRNN, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -88,15 +90,20 @@ class TestSimpleRNN(unittest.TestCase):
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        y2 = paddle.multiply(y2, mask, axis=0)
+        mask = paddle.unsqueeze(mask, -1)
+        y2 = paddle.multiply(y2, mask)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
+
+    def test_predict(self):
+        predict_test_util(self.place, "SimpleRNN")
 
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
         self.test_with_input_lengths()
+        self.test_predict()
 
 
 class TestGRU(unittest.TestCase):
@@ -104,7 +111,7 @@ class TestGRU(unittest.TestCase):
         super(TestGRU, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -170,15 +177,20 @@ class TestGRU(unittest.TestCase):
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        y2 = paddle.multiply(y2, mask, axis=0)
+        mask = paddle.unsqueeze(mask, -1)
+        y2 = paddle.multiply(y2, mask)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
+
+    def test_predict(self):
+        predict_test_util(self.place, "GRU")
 
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
         self.test_with_input_lengths()
+        self.test_predict()
 
 
 class TestLSTM(unittest.TestCase):
@@ -186,7 +198,7 @@ class TestLSTM(unittest.TestCase):
         super(TestLSTM, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -251,68 +263,16 @@ class TestLSTM(unittest.TestCase):
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, (h2, c2) = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        y2 = paddle.multiply(y2, mask, axis=0)
+        mask = paddle.unsqueeze(mask, -1)
+        y2 = paddle.multiply(y2, mask)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_predict(self):
-        place = paddle.set_device(self.place)
-        paddle.manual_seed(123)
-        np.random.seed(123)
-
-        class Net(paddle.nn.Layer):
-            def __init__(self):
-                super(Net, self).__init__()
-                self.rnn1 = paddle.nn.LSTM(
-                    16, 32, 2, direction="bidirectional", dropout=0.1)
-
-            def forward(self, input):
-                return self.rnn1(input)
-
-        x = paddle.randn((4, 10, 16))
-        x.stop_gradient = False
-        seq_len = paddle.to_tensor(np.array([10, 6, 8, 5]))
-        mask = sequence_mask(seq_len, maxlen=10, dtype=x.dtype)
-        mask = paddle.unsqueeze(mask, [2])
-        rnn = Net()
-        y, (h, c) = rnn(x)
-        y = y * mask
-        loss = paddle.mean(y)
-        loss.backward()
-        optimizer = paddle.optimizer.Adam(
-            learning_rate=0.1, parameters=rnn.parameters())
-        optimizer.step()
-        rnn.eval()
-        y, (h, c) = rnn(x)
-        # `jit.to_static` would include a train_program, eval mode might cause
-        # some errors currently, such as dropout grad op gets `is_test == True`.
-        rnn.train()
-
-        rnn = paddle.jit.to_static(
-            rnn,
-            [paddle.static.InputSpec(
-                shape=[None, None, 16], dtype=x.dtype)])
-        paddle.jit.save(rnn, "./inference/lstm_infer")
-
-        paddle.enable_static()
-
-        new_scope = paddle.static.Scope()
-        with paddle.static.scope_guard(new_scope):
-            exe = paddle.static.Executor(place)
-            [inference_program, feed_target_names,
-             fetch_targets] = paddle.static.load_inference_model(
-                 dirname="./inference",
-                 executor=exe,
-                 model_filename="lstm_infer.pdmodel",
-                 params_filename="lstm_infer.pdiparams")
-            results = exe.run(inference_program,
-                              feed={feed_target_names[0]: x.numpy()},
-                              fetch_list=fetch_targets)
-            np.testing.assert_equal(
-                y.numpy(), results[0])  # eval results equal predict results
-        paddle.disable_static()
+        predict_test_util(self.place, "LSTM")
+        predict_test_util(self.place, "LSTM", False)
 
     def runTest(self):
         self.test_with_initial_state()
@@ -321,13 +281,74 @@ class TestLSTM(unittest.TestCase):
         self.test_predict()
 
 
+def predict_test_util(place, mode, stop_gradient=True):
+    place = paddle.set_device(place)
+    paddle.seed(123)
+    np.random.seed(123)
+
+    class Net(paddle.nn.Layer):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.rnn = getattr(paddle.nn, mode)(16,
+                                                32,
+                                                2,
+                                                direction="bidirectional",
+                                                dropout=0.1)
+
+        def forward(self, input):
+            return self.rnn(input)
+
+    x = paddle.randn((4, 10, 16))
+    x.stop_gradient = stop_gradient
+    seq_len = paddle.to_tensor(np.array([10, 6, 8, 5]))
+    mask = sequence_mask(seq_len, maxlen=10, dtype=x.dtype)
+    mask = paddle.unsqueeze(mask, [2])
+    rnn = Net()
+    y, _ = rnn(x)
+    y = y * mask
+    loss = paddle.mean(y)
+    loss.backward()
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=0.1, parameters=rnn.parameters())
+    optimizer.step()
+    rnn.eval()
+    y, _ = rnn(x)
+    # `jit.to_static` would include a train_program, eval mode might cause
+    # some errors currently, such as dropout grad op gets `is_test == True`.
+    rnn.train()
+
+    rnn = paddle.jit.to_static(
+        rnn, [paddle.static.InputSpec(
+            shape=[None, None, 16], dtype=x.dtype)])
+    paddle.jit.save(rnn, "./inference/%s_infer" % mode)
+
+    paddle.enable_static()
+
+    new_scope = paddle.static.Scope()
+    with paddle.static.scope_guard(new_scope):
+        exe = paddle.static.Executor(place)
+        [inference_program, feed_target_names,
+         fetch_targets] = paddle.static.load_inference_model(
+             "./inference/%s_infer" % mode, exe)
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: x.numpy()},
+                          fetch_list=fetch_targets)
+        np.testing.assert_equal(
+            y.numpy(), results[0])  # eval results equal predict results
+    paddle.disable_static()
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
         else ["cpu"]
-    for direction in ["forward", "backward", "bidirectional"]:
+    for direction in ["forward", "bidirectional", "bidirect"]:
         for time_major in [True, False]:
             for device in devices:
                 for test_class in [TestSimpleRNN, TestLSTM, TestGRU]:
                     suite.addTest(test_class(time_major, direction, device))
     return suite
+
+
+if __name__ == '__main__':
+    unittest.main()

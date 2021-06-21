@@ -36,6 +36,10 @@ static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
     TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
     tensor_data = cpu_tensor.data<float>();
   }
+  if (platform::is_xpu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<float>();
+  }
   return tensor_data[0];
 }
 
@@ -187,26 +191,28 @@ class AdamFunctor<T, CPUAdam> {
   }
 };
 
-template <typename T, typename Flavour>
+template <typename T, typename Flavour, typename MT = T>
 class SparseAdamFunctor;
 
-template <typename T>
-class SparseAdamFunctor<T, GPUAdam> {
+template <typename T, typename MT>
+class SparseAdamFunctor<T, GPUAdam, MT> {
  private:
-  T beta1_;
-  T beta2_;
-  T epsilon_;
+  MT beta1_;
+  MT beta2_;
+  MT epsilon_;
 
-  const T* beta1_pow_;
-  const T* beta2_pow_;
-  const T* moment1_;
-  T* moment1_out_;
-  const T* moment2_;
-  T* moment2_out_;
-  const T* lr_;
+  const MT* beta1_pow_;
+  const MT* beta2_pow_;
+  const MT* moment1_;
+  MT* moment1_out_;
+  const MT* moment2_;
+  MT* moment2_out_;
+  const MT* lr_;
   const T* grad_;
   const T* param_;
   T* param_out_;
+  const MT* master_param_;
+  MT* master_param_out_;
 
   const int64_t* rows_;
   int64_t row_numel_;
@@ -214,10 +220,11 @@ class SparseAdamFunctor<T, GPUAdam> {
   bool lazy_mode_;
 
  public:
-  SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
-                    const T* beta2_pow, const T* mom1, T* mom1_out,
-                    const T* mom2, T* mom2_out, const T* lr, const T* grad,
-                    const T* param, T* param_out, const int64_t* rows,
+  SparseAdamFunctor(MT beta1, MT beta2, MT epsilon, const MT* beta1_pow,
+                    const MT* beta2_pow, const MT* mom1, MT* mom1_out,
+                    const MT* mom2, MT* mom2_out, const MT* lr, const T* grad,
+                    const T* param, T* param_out, const MT* master_param,
+                    MT* master_param_out, const int64_t* rows,
                     int64_t row_numel, int64_t row_count, bool lazy_mode)
       : beta1_(beta1),
         beta2_(beta2),
@@ -232,31 +239,38 @@ class SparseAdamFunctor<T, GPUAdam> {
         grad_(grad),
         param_(param),
         param_out_(param_out),
+        master_param_(master_param),
+        master_param_out_(master_param_out),
         rows_(rows),
         row_numel_(row_numel),
         row_count_(row_count),
         lazy_mode_(lazy_mode) {}
 
-  inline HOSTDEVICE void adam_update(size_t i, T g) const {
+  inline HOSTDEVICE void adam_update(size_t i, MT g) const {
     // The following code is the same as dense
-    T mom1 = moment1_[i];
-    T mom2 = moment2_[i];
-    T lr = *lr_;
-    T beta1_pow = *beta1_pow_;
-    T beta2_pow = *beta2_pow_;
-    T p = param_[i];
+    MT mom1 = moment1_[i];
+    MT mom2 = moment2_[i];
+    MT lr = *lr_;
+    MT beta1_pow = *beta1_pow_;
+    MT beta2_pow = *beta2_pow_;
+    MT p = master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
 
     // Calculation
-    lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+    lr *= sqrt(static_cast<MT>(1.0) - beta2_pow) /
+          (static_cast<MT>(1.0) - beta1_pow);
 
-    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
-    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-    p -= lr * (mom1 / (sqrt(mom2) + epsilon_ * sqrt(1 - beta2_pow)));
+    mom1 = beta1_ * mom1 + (static_cast<MT>(1.0) - beta1_) * g;
+    mom2 = beta2_ * mom2 + (static_cast<MT>(1.0) - beta2_) * g * g;
+    p -= lr * (mom1 / (sqrt(mom2) +
+                       epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
 
     // Write back to global memory
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
-    param_out_[i] = p;
+    param_out_[i] = static_cast<T>(p);
+    if (master_param_out_) {
+      master_param_out_[i] = p;
+    }
   }
 
   inline HOSTDEVICE void operator()(size_t i) const {
@@ -265,14 +279,16 @@ class SparseAdamFunctor<T, GPUAdam> {
     if (lazy_mode_ && row_idx < 0) {
       return;
     } else {
-      T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_] : 0;
+      MT g = row_idx >= 0
+                 ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_])
+                 : static_cast<MT>(0);
       adam_update(i, g);
     }
   }
 };
 
 template <typename T>
-class SparseAdamFunctor<T, CPUAdam> {
+class SparseAdamFunctor<T, CPUAdam, T> {
  private:
   T beta1_;
   T beta2_;
@@ -390,7 +406,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
-    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    bool use_global_beta_pow = ctx.Attr<bool>("use_global_beta_pow");
+    VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
     auto* mom1 = ctx.Input<LoDTensor>("Moment1");
@@ -424,6 +442,15 @@ class AdamOpKernel : public framework::OpKernel<T> {
                             beta2_tensor->numel()));
       beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
     }
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+    if (ctx.HasInput("EpsilonTensor")) {
+      auto* epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+      PADDLE_ENFORCE_EQ(epsilon_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(EpsilonTensor) size must be 1, but get %d",
+                            epsilon_tensor->numel()));
+      epsilon = static_cast<T>(GetAttrFromTensor(epsilon_tensor));
+    }
     VLOG(3) << "beta1_pow.numel() : " << beta1_pow->numel()
             << "beta2_pow.numel() : " << beta2_pow->numel();
     VLOG(3) << "param.numel(): " << param->numel();
@@ -450,11 +477,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
           lr->data<T>(), grad->data<T>(), param->data<T>(),
           param_out->mutable_data<T>(ctx.GetPlace()));
       functor(param->numel());
-      beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
-          beta1 * beta1_pow->data<T>()[0];
-      beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
-          beta2 * beta2_pow->data<T>()[0];
-
+      if (!use_global_beta_pow) {
+        beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+            beta1 * beta1_pow->data<T>()[0];
+        beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+            beta2 * beta2_pow->data<T>()[0];
+      }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
@@ -498,10 +526,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
           param_out->mutable_data<T>(ctx.GetPlace()), rows, row_numel,
           grad_merge.rows().size(), lazy_mode);
       // update beta1 and beta2
-      beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
-          beta1 * beta1_pow->data<T>()[0];
-      beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
-          beta2 * beta2_pow->data<T>()[0];
+      if (!use_global_beta_pow) {
+        beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+            beta1 * beta1_pow->data<T>()[0];
+        beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+            beta2 * beta2_pow->data<T>()[0];
+      }
       if (lazy_mode) {
         VLOG(3) << "run cpu lazy mode";
         size_t row_count = grad_merge.rows().size();

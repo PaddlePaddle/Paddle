@@ -18,12 +18,13 @@ SET(GLOG_PREFIX_DIR  ${THIRD_PARTY_PATH}/glog)
 SET(GLOG_SOURCE_DIR  ${THIRD_PARTY_PATH}/glog/src/extern_glog)
 SET(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 SET(GLOG_INCLUDE_DIR "${GLOG_INSTALL_DIR}/include" CACHE PATH "glog include directory." FORCE)
-SET(GLOG_REPOSITORY https://github.com/google/glog.git)
-SET(GLOG_TAG        v0.3.5)
+SET(GLOG_REPOSITORY ${GIT_URL}/google/glog.git)
+SET(GLOG_TAG        v0.4.0)
 
 IF(WIN32)
   SET(GLOG_LIBRARIES "${GLOG_INSTALL_DIR}/lib/glog.lib" CACHE FILEPATH "glog library." FORCE)
   SET(GLOG_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267 /wd4530")
+  add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
 ELSE(WIN32)
   SET(GLOG_LIBRARIES "${GLOG_INSTALL_DIR}/lib/libglog.a" CACHE FILEPATH "glog library." FORCE)
   SET(GLOG_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
@@ -44,7 +45,6 @@ ExternalProject_Add(
     DEPENDS         gflags
     PREFIX          ${GLOG_PREFIX_DIR}
     SOURCE_DIR      ${GLOG_SOURCE_DIR}
-    UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${GLOG_CMAKE_CXX_FLAGS}
@@ -56,8 +56,7 @@ ExternalProject_Add(
                     -DCMAKE_INSTALL_PREFIX=${GLOG_INSTALL_DIR}
                     -DCMAKE_INSTALL_LIBDIR=${GLOG_INSTALL_DIR}/lib
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                    -DWITH_GFLAGS=ON
-                    -Dgflags_DIR=${GFLAGS_INSTALL_DIR}/lib/cmake/gflags
+                    -DWITH_GFLAGS=OFF
                     -DBUILD_TESTING=OFF
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}
@@ -70,4 +69,4 @@ ExternalProject_Add(
 ADD_LIBRARY(glog STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET glog PROPERTY IMPORTED_LOCATION ${GLOG_LIBRARIES})
 ADD_DEPENDENCIES(glog extern_glog gflags)
-LINK_LIBRARIES(glog gflags)
+LINK_LIBRARIES(glog)

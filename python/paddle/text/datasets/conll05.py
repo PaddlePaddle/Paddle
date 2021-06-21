@@ -24,7 +24,7 @@ from paddle.io import Dataset
 import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Conll05st']
+__all__ = []
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
@@ -81,7 +81,6 @@ class Conll05st(Dataset):
                 def forward(self, pred_idx, mark, label):
                     return paddle.sum(pred_idx), paddle.sum(mark), paddle.sum(label)
 
-            paddle.disable_static()
 
             conll05st = Conll05st()
 

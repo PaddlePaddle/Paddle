@@ -20,13 +20,13 @@ import math
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
+from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
-@skip_check_grad_ci(reason="There is no grad kernel for roi_align_xpu kernel.")
-class TestROIAlignOp(OpTest):
+class TestROIAlignOp(XPUOpTest):
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -59,16 +59,16 @@ class TestROIAlignOp(OpTest):
         self.pooled_width = 2
         self.sampling_ratio = -1
 
-        self.x = np.random.random(self.x_dim).astype('float64')
+        self.x = np.random.random(self.x_dim).astype('float32')
 
     def pre_calc(self, x_i, roi_xmin, roi_ymin, roi_bin_grid_h, roi_bin_grid_w,
                  bin_size_h, bin_size_w):
         count = roi_bin_grid_h * roi_bin_grid_w
         bilinear_pos = np.zeros(
             [self.channels, self.pooled_height, self.pooled_width, count, 4],
-            np.float64)
+            np.float32)
         bilinear_w = np.zeros(
-            [self.pooled_height, self.pooled_width, count, 4], np.float64)
+            [self.pooled_height, self.pooled_width, count, 4], np.float32)
         for ph in range(self.pooled_width):
             for pw in range(self.pooled_height):
                 c = 0
@@ -118,7 +118,7 @@ class TestROIAlignOp(OpTest):
     def calc_roi_align(self):
         self.out_data = np.zeros(
             (self.rois_num, self.channels, self.pooled_height,
-             self.pooled_width)).astype('float64')
+             self.pooled_width)).astype('float32')
 
         for i in range(self.rois_num):
             roi = self.rois[i]
@@ -166,7 +166,7 @@ class TestROIAlignOp(OpTest):
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype("float64")
+        self.rois = np.array(rois).astype("float32")
 
     def setUp(self):
         self.op_type = "roi_align"
@@ -177,6 +177,36 @@ class TestROIAlignOp(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, {'X'}, 'Out')
+
+
+class TestROIAlignInLodOp(TestROIAlignOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.calc_roi_align()
+
+        seq_len = self.rois_lod[0]
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisNum': np.asarray(seq_len).astype('int32')
+        }
+
+        self.attrs = {
+            'spatial_scale': self.spatial_scale,
+            'pooled_height': self.pooled_height,
+            'pooled_width': self.pooled_width,
+            'sampling_ratio': self.sampling_ratio
+        }
+
+        self.outputs = {'Out': self.out_data}
 
 
 if __name__ == '__main__':

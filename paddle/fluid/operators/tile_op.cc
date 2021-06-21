@@ -167,6 +167,7 @@ class TileGradOp : public framework::OperatorWithKernel {
                    framework::GradVarName("Out"), "TileGrad");
 
     auto x_dims = ctx->GetInputDim("X");
+
     std::vector<int> repeat_times =
         ctx->Attrs().Get<std::vector<int>>("repeat_times");
     if (repeat_times.size() == 0) {
@@ -285,3 +286,20 @@ REGISTER_OP_CPU_KERNEL(
     ops::TileGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TileGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TileGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+REGISTER_OP_CUDA_KERNEL(
+    tile, ops::TileKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TileKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TileKernel<paddle::platform::CUDADeviceContext,
+                    paddle::platform::float16>,
+    ops::TileKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::TileKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::TileKernel<paddle::platform::CUDADeviceContext, bool>);
+REGISTER_OP_CUDA_KERNEL(
+    tile_grad, ops::TileGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TileGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TileGradKernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::float16>,
+    ops::TileGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::TileGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

@@ -40,7 +40,7 @@ class BaseErrorClipAttr(object):
 
 
 class ErrorClipByValue(BaseErrorClipAttr):
-    """
+    r"""
     Clips tensor values to the range [min, max].
 
     Given a tensor ``t`` (see Examples below), this operation clips its value \
@@ -241,7 +241,7 @@ class ClipGradByValue(ClipGradBase):
 
 
 class ClipGradByNorm(ClipGradBase):
-    """
+    r"""
     Limit the l2 norm of multi-dimensional Tensor :math:`X` to ``clip_norm`` .
     
     - If the l2 norm of :math:`X` is greater than ``clip_norm`` , :math:`X` will be compressed by a ratio.
@@ -343,7 +343,7 @@ class ClipGradByNorm(ClipGradBase):
 
 
 class ClipGradByGlobalNorm(ClipGradBase):
-    """
+    r"""
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
     :math:`t\_list` , and limit it to ``clip_norm`` .
     
@@ -669,7 +669,7 @@ def append_gradient_clip_ops(param_grads):
         if g is None:
             continue
         with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('gradient_clip_@CLIP'):
+            [p, g]), framework.name_scope('gradient_clip'):
             clip_attr = getattr(p, 'gradient_clip_attr', None)
             if clip_attr is None:
                 return param_grads
@@ -685,7 +685,7 @@ def append_gradient_clip_ops(param_grads):
         if g is None:
             continue
         with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('graident_clip_@CLIP'):
+            [p, g]), framework.name_scope('gradient_clip'):
             param, new_grad = clip_attr._create_operators(param=p, grad=g)
             param_new_grad_name_dict[param.name] = new_grad.name
             res.append([param, new_grad])

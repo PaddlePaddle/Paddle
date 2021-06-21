@@ -13,12 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
+
 #include <algorithm>
-#include <list>
-#include <map>
-#include <memory>
 #include <mutex>  // NOLINT
-#include <unordered_map>
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
 DEFINE_bool(free_idle_chunk, false,
@@ -138,18 +135,21 @@ void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
   }
 }
 
-void AutoGrowthBestFitAllocator::FreeIdleChunks() {
+uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
+  uint64_t bytes = 0;
   for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
     auto &blocks = chunk_it->blocks_;
     if (blocks.size() == 1 && blocks.begin()->is_free_) {
       auto &block = *blocks.begin();
       VLOG(2) << "Free chunk with size " << block.size_;
+      bytes += block.size_;
       free_blocks_.erase(std::make_pair(block.size_, block.ptr_));
       chunk_it = chunks_.erase(chunk_it);
     } else {
       ++chunk_it;
     }
   }
+  return bytes;
 }
 
 }  // namespace allocation

@@ -57,7 +57,9 @@ class PredictorTools(object):
         config.switch_use_feed_fetch_ops(False)
         config.enable_memory_optim()
         config.disable_glog_info()
-        config.switch_ir_optim(True)
+        # TODO: set it to True after PaddleInference fix the precision error
+        # in CUDA11
+        config.switch_ir_optim(False)
 
         return config
 

@@ -22,7 +22,32 @@ enum Mode {
   HETER = 4; // support XPU and GPU computing server
 }
 
-message RecomputeConfig { repeated string checkpoints = 1; }
+message RecomputeConfig {
+  repeated string checkpoints = 1;
+  optional bool enable_offload = 2 [ default = false ];
+  repeated int32 checkpoint_shape = 3;
+}
+
+message ShardingConfig {
+  optional string sharding_segment_strategy = 1
+      [ default = 'segment_broadcast_MB' ];
+  optional float segment_broadcast_MB = 2 [ default = 32.0 ];
+  repeated string segment_anchors = 3;
+  optional int32 sharding_degree = 4 [ default = 8 ];
+  optional int32 mp_degree = 5 [ default = 1 ];
+  optional int32 dp_degree = 6 [ default = 1 ];
+  optional bool hybrid_dp = 7 [ default = false ];
+  optional int32 gradient_merge_acc_step = 8 [ default = 1 ];
+  optional bool optimize_offload = 9 [ default = false ];
+  optional bool pp_allreduce_in_optimize = 10 [ default = false ];
+  optional int32 pp_degree = 11 [ default = 1 ];
+}
+
+message HybridConfig {
+  optional int32 dp_degree = 1 [ default = -1 ];
+  optional int32 mp_degree = 2 [ default = 1 ];
+  optional int32 pp_degree = 3 [ default = 1 ];
+}
 
 message AMPConfig {
   optional float init_loss_scaling = 1 [ default = 32768.0 ];
@@ -34,6 +59,8 @@ message AMPConfig {
   repeated string custom_white_list = 7;
   repeated string custom_black_list = 8;
   repeated string custom_black_varnames = 9;
+  optional bool use_pure_fp16 = 10 [ default = false ];
+  optional bool use_fp16_guard = 11 [ default = true ];
 }
 
 message LocalSGDConfig {
@@ -79,6 +106,9 @@ message BuildStrategy {
   optional bool enable_inplace = 7 [ default = false ];
   optional bool enable_backward_optimizer_op_deps = 8 [ default = true ];
   optional bool cache_runtime_context = 9 [ default = false ];
+  optional bool fuse_bn_add_act_ops = 10 [ default = true ];
+  optional bool enable_auto_fusion = 11 [ default = false ];
+  optional bool enable_addto = 12 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -99,9 +129,20 @@ message AsyncConfig {
   optional bool runtime_split_send_recv = 8 [ default = false ];
   optional bool launch_barrier = 9 [ default = true ];
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
+  optional int32 lr_decay_steps = 11 [ default = 10 ];
+  optional int32 use_ps_gpu = 12 [ default = 0 ];
 }
 
-message PipelineConfig { optional int32 micro_batch = 1 [ default = 1 ]; }
+message PipelineConfig {
+  optional int32 micro_batch_size = 1 [ default = 1 ];
+  optional int32 accumulate_steps = 2 [ default = 1 ];
+  optional string schedule_mode = 3 [ default = '1F1B' ];
+}
+
+message TensorParallelConfig {
+  optional int32 tensor_parallel_degree = 1 [ default = 1 ];
+  optional int32 tensor_init_seed = 2 [ default = -1 ];
+}
 
 message DistributedStrategy {
   // bool options
@@ -125,11 +166,17 @@ message DistributedStrategy {
   optional bool fuse_all_reduce_ops = 18 [ default = true ];
   optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
   optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
-  optional bool cudnn_exhaustive_search = 21 [ default = true ];
-  optional int32 conv_workspace_size_limit = 22 [ default = 4000 ];
-  optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = true ];
+  optional bool cudnn_exhaustive_search = 21 [ default = false ];
+  optional int32 conv_workspace_size_limit = 22 [ default = 512 ];
+  optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = false ];
   optional bool adaptive_localsgd = 24 [ default = false ];
   optional bool fp16_allreduce = 25 [ default = false ];
+  optional bool sharding = 26 [ default = false ];
+  optional float last_comm_group_size_MB = 27 [ default = 1 ];
+  optional bool find_unused_parameters = 28 [ default = false ];
+  optional bool tensor_parallel = 29 [ default = false ];
+  optional bool without_graph_optimization = 30 [ default = false ];
+  optional int32 fuse_grad_size_in_num = 31 [ default = 1 ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -141,6 +188,9 @@ message DistributedStrategy {
   optional LarsConfig lars_configs = 108;
   optional LambConfig lamb_configs = 109;
   optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
+  optional ShardingConfig sharding_configs = 111;
+  optional HybridConfig hybrid_configs = 112;
+  optional TensorParallelConfig tensor_parallel_configs = 113;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }

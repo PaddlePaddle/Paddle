@@ -22,15 +22,17 @@ import logging
 import pickle
 import contextlib
 from functools import reduce
+import sys
+from io import BytesIO
 
 import numpy as np
-
+import math
 import paddle
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
-    program_guard, dygraph_not_support
+    program_guard, dygraph_not_support, static_only
 from paddle.reader import cache, map_readers, buffered, compose, chain, shuffle, \
     ComposeNotAligned, firstn, xmap_readers, multiprocess_reader
 from .wrapped_decorator import signature_safe_contextmanager
@@ -43,6 +45,8 @@ from . import dataloader
 from .dataloader import *
 from . import core
 from .. import compat as cpt
+from paddle.utils import deprecated
+from paddle.fluid.framework import static_only
 
 batch = paddle.batch
 
@@ -68,6 +72,52 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
+class _open_buffer(object):
+    def __init__(self, buffer):
+        self.buffer = buffer
+
+    def __enter__(self):
+        return self.buffer
+
+
+class _buffer_reader(_open_buffer):
+    def __init__(self, buffer):
+        super(_buffer_reader, self).__init__(buffer)
+        self.initial_tell = self.buffer.tell()
+
+    def __exit__(self, *args):
+        # `args[0]` is type of exception. When the `read` is abnormal, the file pointer returns to the initial position.
+        if args[0] is not None:
+            self.buffer.seek(self.initial_tell)
+
+
+class _buffer_writer(_open_buffer):
+    def __exit__(self, *args):
+        self.buffer.flush()
+
+
+def _is_file_path(path):
+    return isinstance(path, str)
+
+
+def _open_file_buffer(path_or_buffer, mode):
+
+    if _is_file_path(path_or_buffer):
+        return open(path_or_buffer, mode)
+    else:
+        if 'w' in mode:
+            return _buffer_writer(path_or_buffer)
+        elif 'r' in mode:
+            return _buffer_reader(path_or_buffer)
+        else:
+            raise ValueError("Expected 'r' or 'w' in mode but got {}".format(
+                mode))
+
+
+def _is_memory_buffer(buffer):
+    return isinstance(buffer, BytesIO)
+
+
 def is_parameter(var):
     """
     Check whether the given variable is an instance of Parameter.
@@ -82,7 +132,10 @@ def is_parameter(var):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             param = fluid.default_main_program().global_block().var('fc.w')
             res = fluid.io.is_parameter(param)
     """
@@ -103,7 +156,10 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
@@ -137,7 +193,10 @@ def get_program_parameter(program):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             data = fluid.data(name="img", shape=[64, 784])
             w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
@@ -162,7 +221,10 @@ def get_program_persistable_vars(program):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             data = fluid.data(name="img", shape=[64, 784])
             w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
@@ -202,7 +264,7 @@ def _load_program_scope(main=None, startup=None, scope=None):
                     yield
 
 
-def _get_valid_program(main_program):
+def _get_valid_program(main_program=None):
     if main_program is None:
         main_program = default_main_program()
     elif isinstance(main_program, CompiledProgram):
@@ -268,8 +330,10 @@ def save_vars(executor,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
@@ -417,8 +481,11 @@ def save_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+
+            paddle.enable_static()
             params_path = "./my_paddle_model"
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
@@ -465,7 +532,10 @@ def _save_distributed_persistables(executor, dirname, main_program):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -634,8 +704,10 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             dir_path = "./my_paddle_model"
             file_name = "persistables"
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
@@ -711,8 +783,10 @@ def load_vars(executor,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
@@ -946,8 +1020,10 @@ def load_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -995,8 +1071,10 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -1034,7 +1112,10 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -1160,7 +1241,8 @@ def append_fetch_ops(inference_program,
             attrs={'col': i})
 
 
-@dygraph_not_support
+@static_only
+@deprecated(since="2.0.0", update_to="paddle.static.save_inference_model")
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
@@ -1226,8 +1308,10 @@ def save_inference_model(dirname,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             path = "./infer_model"
 
             # User defined network, here a softmax regession example
@@ -1370,7 +1454,8 @@ def save_inference_model(dirname,
     return target_var_name_list
 
 
-@dygraph_not_support
+@static_only
+@deprecated(since="2.0.0", update_to="paddle.static.load_inference_model")
 def load_inference_model(dirname,
                          executor,
                          model_filename=None,
@@ -1422,9 +1507,11 @@ def load_inference_model(dirname,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
+            paddle.enable_static()
             # Build the model
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
@@ -1540,7 +1627,10 @@ def get_parameter_value(para, executor):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param = fluid.default_main_program().global_block().var('fc.w')
             p = fluid.io.get_parameter_value(param, exe)
@@ -1578,7 +1668,10 @@ def get_parameter_value_by_name(name, executor, program=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             p = fluid.io.get_parameter_value('fc.w', exe)
     """
@@ -1665,20 +1758,101 @@ def _load_persistable_nodes(executor, dirname, graph):
     load_vars(executor=executor, dirname=dirname, vars=var_list)
 
 
-@dygraph_not_support
-def save(program, model_path):
+def _unpack_saved_dict(saved_obj, protocol):
+    temp_saved_obj = {}
+    unpack_infor = {}
+    # When pickle protocol=2 or protocol=3 the serialized object cannot be larger than 4G.
+    if 1 < protocol < 4:
+        if isinstance(saved_obj, dict):
+            for key, value in saved_obj.items():
+                if isinstance(value, np.ndarray):
+                    MAX_NUMBER_OF_ELEMENT = int(
+                        (2**30 - 1) / value.dtype.itemsize)
+                    num_element = np.prod(value.shape)
+                    if num_element > MAX_NUMBER_OF_ELEMENT:
+                        unpack_infor[key] = {}
+                        unpack_infor[key]["OriginShape"] = value.shape
+                        unpack_infor[key]["slices"] = []
+                        value = value.flatten()
+                        for i in range(
+                                int(
+                                    math.ceil(num_element * 1.0 /
+                                              MAX_NUMBER_OF_ELEMENT))):
+                            part_name = key + "@@." + str(i)
+                            unpack_infor[key]["slices"].append(part_name)
+                            temp_saved_obj[part_name] = value[
+                                i * MAX_NUMBER_OF_ELEMENT:MAX_NUMBER_OF_ELEMENT
+                                * (i + 1)]
+
+    if unpack_infor:
+        for key, value in unpack_infor.items():
+            if key in saved_obj:
+                saved_obj.pop(key)
+                for part in value['slices']:
+                    saved_obj[part] = temp_saved_obj[part]
+        saved_obj['UnpackBigParamInfor@@'] = unpack_infor
+    return saved_obj
+
+
+def _pack_loaded_dict(load_obj):
+    if isinstance(load_obj, dict):
+        unpack_info = 'UnpackBigParamInfor@@'
+        if unpack_info in load_obj:
+            removes = []
+            for key, value in load_obj[unpack_info].items():
+                slices = [load_obj[part] for part in value["slices"]]
+                load_obj[key] = np.concatenate(slices).reshape(value[
+                    "OriginShape"])
+                removes += value["slices"]
+            for key in removes:
+                load_obj.pop(key)
+            load_obj.pop(unpack_info)
+
+    return load_obj
+
+
+@static_only
+def _legacy_save(param_dict, model_path, protocol=2):
+    def get_tensor(var):
+        if isinstance(var, core.VarBase):
+            return var.numpy()
+        elif isinstance(var, core.LoDTensor):
+            return np.array(var)
+        return var
+
+    param_dict = {name: get_tensor(param_dict[name]) for name in param_dict}
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    if _is_file_path(
+            model_path
+    ) and sys.platform == 'darwin' and sys.version_info.major == 3:
+        pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
+        with open(model_path, 'wb') as f:
+            max_bytes = 2**30
+            for i in range(0, len(pickle_bytes), max_bytes):
+                f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        with _open_file_buffer(model_path, 'wb') as f:
+            pickle.dump(param_dict, f, protocol=protocol)
+
+
+@static_only
+def save(program, model_path, protocol=4, **configs):
     """
     :api_attr: Static Graph
 
-    This function save parameters, optimizer information and network description to  model_path.
+    This function save parameters, optimizer information and network description to model_path.
 
-    The parameters contains all the trainable Variable, will save to a file with suffix ".pdparams".
-    The optimizer information contains all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will save to a file with suffix ".pdopt". (If the optimizer have no variable need to save (like SGD), the fill will not generated).
+    The parameters contains all the trainable Tensor, will save to a file with suffix ".pdparams".
+    The optimizer information contains all the Tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will save to a file with suffix ".pdopt". (If the optimizer have no Tensor need to save (like SGD), the fill will not generated).
     The network description is the description of the program. It's only used for deployment. The description  will save to a file with a suffix ".pdmodel".
 
     Args:
         program(Program) : The program to saved.
         model_path(str): the file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
+        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
+                                 Default: 4
+        configs(dict, optional) : optional keyword arguments.                        
 
     Returns:
         None
@@ -1686,16 +1860,39 @@ def save(program, model_path):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            prog = fluid.default_main_program()
-            fluid.save( prog, "./temp")
+            paddle.enable_static()
 
+            x = static.data(name="x", shape=[10, 10], dtype='float32')
+            y = static.nn.fc(x, 10)
+            z = static.nn.fc(y, 10)
+
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
+            prog = static.default_main_program()
+
+            static.save(prog, "./temp")
     """
 
     base_name = os.path.basename(model_path)
     assert base_name != "", \
         "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    if 'pickle_protocol' in configs:
+        protocol = configs['pickle_protocol']
+        warnings.warn(
+            "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
+        )
+
+    if not isinstance(protocol, int):
+        raise ValueError("The 'protocol' MUST be `int`, but received {}".format(
+            type(protocol)))
+
+    if protocol < 2 or protocol > 4:
+        raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
+                         format(protocol))
 
     dir_name = os.path.dirname(model_path)
     if dir_name and not os.path.exists(dir_name):
@@ -1707,15 +1904,26 @@ def save(program, model_path):
 
     parameter_list = list(filter(is_parameter, program.list_vars()))
     param_dict = {p.name: get_tensor(p) for p in parameter_list}
-    with open(model_path + ".pdparams", 'wb') as f:
-        pickle.dump(param_dict, f, protocol=2)
+
+    param_dict = _unpack_saved_dict(param_dict, protocol)
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    if sys.platform == 'darwin' and sys.version_info.major == 3:
+        pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
+        with open(model_path + ".pdparams", 'wb') as f:
+            max_bytes = 2**30
+            for i in range(0, len(pickle_bytes), max_bytes):
+                f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        with open(model_path + ".pdparams", 'wb') as f:
+            pickle.dump(param_dict, f, protocol=protocol)
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
 
     opt_dict = {p.name: get_tensor(p) for p in optimizer_var_list}
     with open(model_path + ".pdopt", 'wb') as f:
-        pickle.dump(opt_dict, f, protocol=2)
+        pickle.dump(opt_dict, f, protocol=protocol)
 
     main_program = program.clone()
     program.desc.flush()
@@ -1726,7 +1934,18 @@ def save(program, model_path):
         f.write(program.desc.serialize_to_string())
 
 
-@dygraph_not_support
+def _pickle_loads_mac(path, f):
+    pickle_bytes = bytearray(0)
+    file_size = os.path.getsize(path)
+    max_bytes = 2**30
+    for _ in range(0, file_size, max_bytes):
+        pickle_bytes += f.read(max_bytes)
+    load_result = pickle.loads(pickle_bytes) if six.PY2 else pickle.loads(
+        pickle_bytes, encoding='latin1')
+    return load_result
+
+
+@static_only
 def load(program, model_path, executor=None, var_list=None):
     """
     :api_attr: Static Graph
@@ -1743,7 +1962,7 @@ def load(program, model_path, executor=None, var_list=None):
         model_path(str): The file prefix store the program
         executor(Executor, optional): The executor used for initialize the parameter
                                       When startup program is not run.
-        var_list(list, optional): The variable list to load single model file saved with
+        var_list(list|tuple, optional): The Tensor list/tuple to load single model file saved with
                                   [ save_params, save_persistables, save_vars ].
                                   Default: None
 
@@ -1753,13 +1972,22 @@ def load(program, model_path, executor=None, var_list=None):
      Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            prog = fluid.default_main_program()
-            fluid.save( prog, "./temp")
+            paddle.enable_static()
 
-            fluid.load( prog, "./temp")
+            x = static.data(name="x", shape=[10, 10], dtype='float32')
+            y = static.nn.fc(x, 10)
+            z = static.nn.fc(y, 10)
 
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
+            prog = static.default_main_program()
+
+            static.save(prog, "./temp")
+            static.load(prog, "./temp")
     """
 
     assert executor is None or isinstance(executor, Executor)
@@ -1784,6 +2012,12 @@ def load(program, model_path, executor=None, var_list=None):
             raise ValueError(
                 "executor is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
             )
+
+        if var_list is not None:
+            var_list_names = [var.name for var in var_list]
+        else:
+            var_list_names = None
+
         if os.path.isdir(model_path):
             binary_file_set = set()
             for root, dirs, files in os.walk(model_path, topdown=False):
@@ -1794,7 +2028,8 @@ def load(program, model_path, executor=None, var_list=None):
             loaded_var_list = []
             for var in program_var_list:
                 var_path = os.path.join(model_path, var.name).replace("\\", "/")
-                if var_path in binary_file_set:
+                load_condition = var_list_names is None or var.name in var_list_names
+                if var_path in binary_file_set and load_condition:
                     loaded_var_list.append(var)
                     binary_file_set.remove(var_path)
             if len(binary_file_set) > 0:
@@ -1851,6 +2086,14 @@ def load(program, model_path, executor=None, var_list=None):
             place = paddle.fluid.CPUPlace()
         elif p.is_cuda_pinned_place():
             place = paddle.fluid.CUDAPinnedPlace()
+        elif p.is_xpu_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.XPUPlace(p.xpu_device_id())
+        elif p.is_npu_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.NPUPlace(p.npu_device_id())
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
@@ -1865,8 +2108,14 @@ def load(program, model_path, executor=None, var_list=None):
                                                    global_scope(),
                                                    executor._default_executor)
     with open(parameter_file_name, 'rb') as f:
-        load_dict = pickle.load(f) if six.PY2 else pickle.load(
-            f, encoding='latin1')
+
+        # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+        if sys.platform == 'darwin' and sys.version_info.major == 3:
+            load_dict = _pickle_loads_mac(parameter_file_name, f)
+        else:
+            load_dict = pickle.load(f) if six.PY2 else pickle.load(
+                f, encoding='latin1')
+        load_dict = _pack_loaded_dict(load_dict)
     for v in parameter_list:
         assert v.name in load_dict, \
             "Can not find [{}] in model file [{}]".format(
@@ -1903,7 +2152,7 @@ def load_program_state(model_path, var_list=None):
 
     Args:
         model_path(str): The file prefix store the program
-        var_list(list, optional): The variable list to load saved with
+        var_list(list|tuple, optional): The Tensor list/tuple to load saved with
                                   [ save_params, save_persistables, save_vars ].
                                   Default: None.
                                   The var_list is only used to get name,
@@ -1914,19 +2163,22 @@ def load_program_state(model_path, var_list=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
-            y = fluid.layers.fc( x, 10)
-            z = fluid.layers.fc( y, 10)
+            import paddle
+            import paddle.static as static
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run( fluid.default_startup_program() )
-            prog = fluid.default_main_program()
+            paddle.enable_static()
 
-            fluid.save( prog, "./temp")
-            program_state = fluid.load_program_state( "./temp")
+            x = static.data(name="x", shape=[10, 10], dtype='float32')
+            y = static.nn.fc(x, 10)
+            z = static.nn.fc(y, 10)
 
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
+            prog = static.default_main_program()
+
+            static.save(prog, "./temp")
+            program_state = static.load_program_state("./temp")
     """
     model_prefix = model_path
     if model_prefix.endswith(".pdparams"):
@@ -1973,35 +2225,63 @@ def load_program_state(model_path, var_list=None):
                     None,
                     persistable=True)
 
-            loaded_var_list = []
-
-            if var_list is not None:
-                for var in var_list:
-                    loaded_var_list.append(clone_var_to_block(load_block, var))
-            else:
-                for var_name in var_name_list:
-                    loaded_var_list.append(
-                        load_block.create_var(
-                            name=var_name, persistable=True))
+            def _load_vars_with_try_catch(exe,
+                                          dirname,
+                                          vars,
+                                          filename,
+                                          raise_error=True):
+                try:
+                    load_vars(
+                        executor=exe,
+                        dirname=dirname,
+                        vars=vars,
+                        filename=filename)
+                    return True
+                except:
+                    error_str = "Failed to load model/variables `%s`, please make sure " \
+                                "model/variables file is saved with the following APIs: " \
+                                "save_params, save_persistables, save_vars."
+                    filenames = [var.name for var in vars
+                                 ] if filename is None else filename
+                    if raise_error:
+                        raise RuntimeError(error_str % filenames)
+                    else:
+                        warnings.warn(error_str % filenames, RuntimeWarning)
+                return False
 
             place = paddle.fluid.CPUPlace()
             exe = paddle.fluid.Executor(place)
 
-            try:
-                if os.path.isfile(model_path):
-                    dir_name, file_name = os.path.split(model_path)
+            loaded_var_list = []
+
+            if os.path.isfile(model_path):
+                # when model_path is file, var_list cannot be None
+                dir_name, file_name = os.path.split(model_path)
+                for var in var_list:
+                    loaded_var_list.append(clone_var_to_block(load_block, var))
+                _load_vars_with_try_catch(exe, dir_name, loaded_var_list,
+                                          file_name)
+            else:
+                # var_list can be None or not None
+                if var_list is not None:
+                    for var in var_list:
+                        loaded_var_list.append(
+                            clone_var_to_block(load_block, var))
+                    _load_vars_with_try_catch(exe, model_path, loaded_var_list,
+                                              None)
                 else:
-                    dir_name = model_path
-                    file_name = None
-                load_vars(
-                    executor=exe,
-                    dirname=dir_name,
-                    vars=loaded_var_list,
-                    filename=file_name)
-            except:
-                raise RuntimeError(
-                    "Failed to load model file , please make sure model file is saved with the "
-                    "following APIs: save_params, save_persistables, save_vars")
+                    for var_name in var_name_list:
+                        # NOTE(chenweihang): If identify which files the user wants 
+                        # to load from the disk, we load these variables one by one. 
+                        # If a file does not exist, we only warn the user that the 
+                        # file may be an irrelevant file, but does not throw an error 
+                        # to ensure that other legal variables can be loaded.
+                        temp_var = load_block.create_var(
+                            name=var_name, persistable=True)
+                        if _load_vars_with_try_catch(exe, model_path,
+                                                     [temp_var], None, False):
+                            loaded_var_list.append(temp_var)
+
             res_dict = {}
             for var in loaded_var_list:
                 res_dict[var.name] = np.asarray(paddle.fluid.global_scope(
@@ -2013,8 +2293,13 @@ def load_program_state(model_path, var_list=None):
         "Parameter file [{}] not exits".format(parameter_file_name)
 
     with open(parameter_file_name, 'rb') as f:
-        para_dict = pickle.load(f) if six.PY2 else pickle.load(
-            f, encoding='latin1')
+        # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+        if sys.platform == 'darwin' and sys.version_info.major == 3:
+            para_dict = _pickle_loads_mac(parameter_file_name, f)
+        else:
+            para_dict = pickle.load(f) if six.PY2 else pickle.load(
+                f, encoding='latin1')
+    para_dict = _pack_loaded_dict(para_dict)
 
     opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
@@ -2027,7 +2312,7 @@ def load_program_state(model_path, var_list=None):
     return para_dict
 
 
-@dygraph_not_support
+@static_only
 def set_program_state(program, state_dict):
     """
     :api_attr: Static Graph
@@ -2047,22 +2332,26 @@ def set_program_state(program, state_dict):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
-            y = fluid.layers.fc( x, 10)
-            z = fluid.layers.fc( y, 10)
+            import paddle
+            import paddle.static as static
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run( fluid.default_startup_program() )
-            prog = fluid.default_main_program()
+            paddle.enable_static()
 
-            fluid.save( prog, "./temp")
-            program_state = fluid.load_program_state( "./temp")
+            x = static.data(name="x", shape=[10, 10], dtype='float32')
+            y = static.nn.fc(x, 10)
+            z = static.nn.fc(y, 10)
 
-            fluid.set_program_state( prog, program_state)
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
+            prog = static.default_main_program()
 
+            static.save(prog, "./temp")
+            program_state = static.load_program_state("./temp")
+
+            static.set_program_state(prog, program_state)
     """
+    state_dict = _pack_loaded_dict(state_dict)
     parameter_list = list(filter(is_persistable, program.list_vars()))
 
     used_para_list = {}
@@ -2086,8 +2375,8 @@ def set_program_state(program, state_dict):
             ten = var_temp.get_tensor()
             ten_place = ten._place()
 
-            assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
-                "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
+            #assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
+            #    "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
             py_place = paddle.fluid.CPUPlace()
             if ten_place.is_cuda_pinned_place():
                 place = paddle.fluid.CUDAPinnedPlace()
@@ -2095,6 +2384,14 @@ def set_program_state(program, state_dict):
                 p = paddle.fluid.core.Place()
                 p.set_place(ten_place)
                 py_place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+            elif ten_place.is_xpu_place():
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.XPUPlace(p.xpu_device_id())
+            elif ten_place.is_npu_place():
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.NPUPlace(p.npu_device_id())
 
             ten.set(new_para_np, py_place)
 

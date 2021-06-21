@@ -16,113 +16,163 @@ sys.path.append("..")
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+from op_test_xpu import XPUOpTest
 import paddle
-from elementwise import TestXPUElementwiseOpBase
 paddle.enable_static()
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUElementwiseOp(OpTest, TestXPUElementwiseOpBase):
+class TestElementwiseOp(XPUOpTest):
     def setUp(self):
-        TestXPUElementwiseOpBase.setUp(self, "elementwise_max")
-        self.make_input()
-        self.make_output()
+        self.use_xpu = True
+        self.op_type = "elementwise_max"
+        # If x and y have the same value, the max() is not differentiable.
+        # So we generate test data by the following method
+        # to avoid them being too close to each other.
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float32")
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
-    def make_input(self, x_shape=[13, 17], y_shape=[13, 17], idx_list=None):
-        x = np.random.random(x_shape).astype(self.dtype)
-        sgn = np.random.choice([-1, 1], y_shape).astype(self.dtype)
-        if idx_list is None:
-            y = x + sgn * np.random.uniform(0.1, 1, y_shape).astype(self.dtype)
-        else:
-            x_temp = x
-            for idx in idx_list:
-                x_temp = np.take(x_temp, [0], axis=idx)
-            sgn = sgn.reshape(x_temp.shape)
-            y = x_temp + sgn * np.random.uniform(0.1, 1, x_temp.shape)
-            y = y.reshape(y_shape).astype(self.dtype)
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
 
+    def test_check_grad_normal(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['Y'],
+                'Out',
+                max_relative_error=0.006,
+                no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['X'],
+                'Out',
+                max_relative_error=0.006,
+                no_grad_set=set('Y'))
+
+
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestElementwiseMaxOp_scalar(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float32")
+        y = np.array([0.5]).astype("float32")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestElementwiseMaxOp_Vector(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        x = np.random.random((100, )).astype("float32")
+        sgn = np.random.choice([-1, 1], (100, )).astype("float32")
+        y = x + sgn * np.random.uniform(0.1, 1, (100, )).astype("float32")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(np.float32)
+        sgn = np.random.choice([-1, 1], (100, )).astype(np.float32)
+        y = x[:, 0, 0] + sgn * \
+            np.random.uniform(1, 2, (100, )).astype(np.float32)
         self.inputs = {'X': x, 'Y': y}
 
-    def make_output(self, x_shape=None, y_shape=None):
-        x, y = self.reshape_input(x_shape, y_shape)
-        self.outputs = {'Out': np.maximum(x, y)}
+        self.attrs = {'axis': 0}
+        self.outputs = {
+            'Out':
+            np.maximum(self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1))
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseMaxOp_scalar(TestXPUElementwiseOp):
+class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
-        super(TestElementwiseMaxOp_scalar, self).setUp()
-        self.make_input([2, 3, 20], [1])
-        self.make_output()
-        self.grad_implemented = False
+        self.op_type = "elementwise_max"
+        x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float32)
+        sgn = np.random.choice([-1, 1], (100, )).astype(np.float32)
+        y = x[0, :, 0] + sgn * \
+            np.random.uniform(1, 2, (100, )).astype(np.float32)
+        self.inputs = {'X': x, 'Y': y}
+
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out':
+            np.maximum(self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1))
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseMaxOp_Vector(TestXPUElementwiseOp):
+class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
-        super(TestElementwiseMaxOp_Vector, self).setUp()
-        self.make_input([100, ], [100, ])
-        self.make_output()
+        self.op_type = "elementwise_max"
+        x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(np.float32)
+        sgn = np.random.choice([-1, 1], (100, )).astype(np.float32)
+        y = x[0, 0, :] + sgn * \
+            np.random.uniform(1, 2, (100, )).astype(np.float32)
+        self.inputs = {'X': x, 'Y': y}
+
+        self.outputs = {
+            'Out':
+            np.maximum(self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100))
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseMaxOp_broadcast_0(TestXPUElementwiseOp):
+class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
-        super(TestElementwiseMaxOp_broadcast_0, self).setUp()
-        self.attrs['axis'] = 0
-        self.make_input([100, 5, 2], [100, ], [1, 2])
-        self.make_output(y_shape=[100, 1, 1])
+        self.op_type = "elementwise_max"
+        x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(np.float32)
+        sgn = np.random.choice([-1, 1], (50, 2)).astype(np.float32)
+        y = x[0, :, :, 0] + sgn * \
+            np.random.uniform(1, 2, (50, 2)).astype(np.float32)
+        self.inputs = {'X': x, 'Y': y}
+
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out':
+            np.maximum(self.inputs['X'], self.inputs['Y'].reshape(1, 50, 2, 1))
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseMaxOp_broadcast_1(TestXPUElementwiseOp):
+class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
-        super(TestElementwiseMaxOp_broadcast_1, self).setUp()
-        self.attrs['axis'] = 1
-        self.make_input([2, 100, 3], [100, ], [0, 2])
-        self.make_output(y_shape=[1, 100, 1])
+        self.op_type = "elementwise_max"
+        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
+        sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float32)
+        y = x + sgn * \
+            np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float32)
+        self.inputs = {'X': x, 'Y': y}
 
-
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestElementwiseMaxOp_broadcast_2(TestXPUElementwiseOp):
-    def setUp(self):
-        super(TestElementwiseMaxOp_broadcast_2, self).setUp()
-        self.make_input([1, 3, 100], [100, ], [0, 1])
-        self.make_output(y_shape=[1, 1, 100])
-
-
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestElementwiseMaxOp_broadcast_3(TestXPUElementwiseOp):
-    def setUp(self):
-        super(TestElementwiseMaxOp_broadcast_3, self).setUp()
-        self.attrs['axis'] = 1
-        self.make_input([2, 50, 2, 1], [50, 2], [0, 3])
-        self.make_output(y_shape=[1, 50, 2, 1])
-
-
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestElementwiseMaxOp_broadcast_4(TestXPUElementwiseOp):
-    def setUp(self):
-        super(TestElementwiseMaxOp_broadcast_4, self).setUp()
-        self.make_input([2, 3, 4, 5], [2, 3, 1, 5])
-        self.make_output()
-
-
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestElementwiseMaxOp_broadcast_5(TestXPUElementwiseOp):
-    def setUp(self):
-        super(TestElementwiseMaxOp_broadcast_5, self).setUp()
-        self.make_input([2, 3, 100], [1, 1, 100])
-        self.make_output()
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
 if __name__ == '__main__':

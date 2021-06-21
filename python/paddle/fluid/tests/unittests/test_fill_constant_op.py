@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -330,6 +330,22 @@ class TestFillConstantImperative(unittest.TestCase):
                 res4.numpy(), np.full(
                     [1, 2], 88, dtype="int32"))
 
+    def test_nan(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.nan)
+            self.assertTrue(np.isnan(res.numpy().item(0)))
+
+    def test_inf(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.inf)
+            self.assertTrue(np.isinf(res.numpy().item(0)))
+
+    def test_ninf(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.NINF)
+            self.assertTrue(np.isinf(res.numpy().item(0)))
+            self.assertEqual(np.NINF, res.numpy().item(0))
+
 
 class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
@@ -359,15 +375,9 @@ class TestFillConstantOpError(unittest.TestCase):
                 out=x1)
 
             # The argument dtype of fill_constant_op must be one of bool, float16,
-            #float32, float64, int32 or int64
+            #float32, float64, uint8, int32 or int64
             x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
 
-            self.assertRaises(
-                TypeError,
-                fluid.layers.fill_constant,
-                shape=[1],
-                value=5,
-                dtype='uint8')
             self.assertRaises(
                 TypeError,
                 fluid.layers.fill_constant,
@@ -415,5 +425,31 @@ class TestFillConstantOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
 
 
+class TestFillConstantOp_ValueTensorBf16(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "fill_constant"
+        self.init_data()
+
+        self.inputs = {
+            "ShapeTensor": np.array(self.shape).astype("int32"),
+            'ValueTensor':
+            convert_float_to_uint16(np.array([self.value]).astype("float32"))
+        }
+        self.attrs = {'value': self.value, 'dtype': core.VarDesc.VarType.BF16}
+        self.outputs = {'Out': np.full(self.shape, self.value)}
+
+    def init_data(self):
+        self.shape = [123, 92]
+        self.value = 3.0
+        self.dtype = np.uint16
+        self.mkldnn_data_type = "bfloat16"
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

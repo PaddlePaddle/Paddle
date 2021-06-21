@@ -22,7 +22,7 @@ from paddle.static import InputSpec
 
 from collections import OrderedDict
 
-__all__ = ['summary']
+__all__ = []
 
 
 def summary(net, input_size, dtypes=None):
@@ -51,14 +51,14 @@ def summary(net, input_size, dtypes=None):
                     super(LeNet, self).__init__()
                     self.num_classes = num_classes
                     self.features = nn.Sequential(
-                        nn.Conv2d(
+                        nn.Conv2D(
                             1, 6, 3, stride=1, padding=1),
                         nn.ReLU(),
-                        nn.MaxPool2d(2, 2),
-                        nn.Conv2d(
+                        nn.MaxPool2D(2, 2),
+                        nn.Conv2D(
                             6, 16, 5, stride=1, padding=0),
                         nn.ReLU(),
-                        nn.MaxPool2d(2, 2))
+                        nn.MaxPool2D(2, 2))
 
                     if num_classes > 0:
                         self.fc = nn.Sequential(
@@ -78,6 +78,23 @@ def summary(net, input_size, dtypes=None):
             lenet = LeNet()
 
             params_info = paddle.summary(lenet, (1, 1, 28, 28))
+            print(params_info)
+
+            # multi input demo
+            class LeNetMultiInput(LeNet):
+
+                def forward(self, inputs, y):
+                    x = self.features(inputs)
+
+                    if self.num_classes > 0:
+                        x = paddle.flatten(x, 1)
+                        x = self.fc(x + y)
+                    return x
+            
+            lenet_multi_input = LeNetMultiInput()
+
+            params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)], 
+                                        ['float32', 'float32'])
             print(params_info)
 
     """
@@ -244,6 +261,9 @@ def summary_string(model, input_size, dtypes=None):
             (not (layer == model) or depth < 1)):
 
             hooks.append(layer.register_forward_post_hook(hook))
+        # For rnn, gru and lstm layer
+        elif hasattr(layer, 'could_use_cudnn') and layer.could_use_cudnn:
+            hooks.append(layer.register_forward_post_hook(hook))
 
     if isinstance(input_size, tuple):
         input_size = [input_size]
@@ -338,10 +358,12 @@ def summary_string(model, input_size, dtypes=None):
         total_params += summary[layer]["nb_params"]
 
         try:
-            total_output += np.prod(summary[layer]["output_shape"])
+            total_output += np.sum(
+                np.prod(
+                    summary[layer]["output_shape"], axis=-1))
         except:
             for output_shape in summary[layer]["output_shape"]:
-                total_output += np.prod(output_shape)
+                total_output += np.sum(np.prod(output_shape, axis=-1))
 
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:

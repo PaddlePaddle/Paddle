@@ -13,13 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
-#include <algorithm>
 #include <cstdlib>
-#include <memory>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/miopen.h"
+#else
 #include "paddle/fluid/platform/dynload/cudnn.h"
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
@@ -42,34 +44,65 @@ namespace platform {
 int CudnnVersion() {
   if (!dynload::HasCUDNN()) return -1;
 
+#ifdef PADDLE_WITH_HIP
+  size_t version_major, version_minor, version_patch;
+  PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
+      &version_major, &version_minor, &version_patch));
+  return version_major * 100 + version_minor * 10 + version_patch;
+#else
   return dynload::cudnnGetVersion();
+#endif
 }
 static int GetCUDADeviceCountImpl() {
   int driverVersion = 0;
+#ifdef PADDLE_WITH_HIP
+  hipError_t status = hipDriverGetVersion(&driverVersion);
+#else
   cudaError_t status = cudaDriverGetVersion(&driverVersion);
+#endif
 
-  if (!(status == cudaSuccess && driverVersion != 0)) {
+  if (!(status == gpuSuccess && driverVersion != 0)) {
     // No GPU driver
     VLOG(2) << "GPU Driver Version can't be detected. No GPU driver!";
     return 0;
   }
 
+#ifdef PADDLE_WITH_HIP
+  const auto *cuda_visible_devices = std::getenv("HIP_VISIBLE_DEVICES");
+#else
   const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
+#endif
   if (cuda_visible_devices != nullptr) {
     std::string cuda_visible_devices_str(cuda_visible_devices);
+    if (!cuda_visible_devices_str.empty()) {
+      cuda_visible_devices_str.erase(
+          0, cuda_visible_devices_str.find_first_not_of('\''));
+      cuda_visible_devices_str.erase(
+          cuda_visible_devices_str.find_last_not_of('\'') + 1);
+      cuda_visible_devices_str.erase(
+          0, cuda_visible_devices_str.find_first_not_of('\"'));
+      cuda_visible_devices_str.erase(
+          cuda_visible_devices_str.find_last_not_of('\"') + 1);
+    }
     if (std::all_of(cuda_visible_devices_str.begin(),
                     cuda_visible_devices_str.end(),
                     [](char ch) { return ch == ' '; })) {
-      VLOG(2) << "CUDA_VISIBLE_DEVICES is set to be empty. No GPU detected.";
+      VLOG(2) << "CUDA_VISIBLE_DEVICES or HIP_VISIBLE_DEVICES is set to be "
+                 "empty. No GPU detected.";
       return 0;
     }
   }
   int count;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceCount(&count));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDeviceCount(&count));
+#endif
   return count;
 }
 
 int GetCUDADeviceCount() {
+  // cache the count
   static auto dev_cnt = GetCUDADeviceCountImpl();
   return dev_cnt;
 }
@@ -86,13 +119,24 @@ int GetCUDAComputeCapability(int id) {
                         id, GetCUDADeviceCount()));
   int major, minor;
 
+#ifdef PADDLE_WITH_HIP
+  auto major_error_code = hipDeviceGetAttribute(
+      &major, hipDeviceAttributeComputeCapabilityMajor, id);
+  auto minor_error_code = hipDeviceGetAttribute(
+      &minor, hipDeviceAttributeComputeCapabilityMinor, id);
+#else
   auto major_error_code =
       cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, id);
   auto minor_error_code =
       cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, id);
+#endif
   PADDLE_ENFORCE_CUDA_SUCCESS(major_error_code);
   PADDLE_ENFORCE_CUDA_SUCCESS(minor_error_code);
+#ifdef PADDLE_WITH_HIP
+  return major * 100 + minor;
+#else
   return major * 10 + minor;
+#endif
 }
 
 dim3 GetGpuMaxGridDimSize(int id) {
@@ -103,15 +147,30 @@ dim3 GetGpuMaxGridDimSize(int id) {
                         id, GetCUDADeviceCount()));
   dim3 ret;
   int size;
+#ifdef PADDLE_WITH_HIP
+  auto error_code_x =
+      hipDeviceGetAttribute(&size, hipDeviceAttributeMaxGridDimX, id);
+#else
   auto error_code_x = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimX, id);
+#endif
   PADDLE_ENFORCE_CUDA_SUCCESS(error_code_x);
   ret.x = size;
 
+#ifdef PADDLE_WITH_HIP
+  auto error_code_y =
+      hipDeviceGetAttribute(&size, hipDeviceAttributeMaxGridDimY, id);
+#else
   auto error_code_y = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimY, id);
+#endif
   PADDLE_ENFORCE_CUDA_SUCCESS(error_code_y);
   ret.y = size;
 
+#ifdef PADDLE_WITH_HIP
+  auto error_code_z =
+      hipDeviceGetAttribute(&size, hipDeviceAttributeMaxGridDimZ, id);
+#else
   auto error_code_z = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimZ, id);
+#endif
   PADDLE_ENFORCE_CUDA_SUCCESS(error_code_z);
   ret.z = size;
   return ret;
@@ -124,7 +183,11 @@ int GetCUDARuntimeVersion(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
   int runtime_version = 0;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipRuntimeGetVersion(&runtime_version));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaRuntimeGetVersion(&runtime_version));
+#endif
   return runtime_version;
 }
 
@@ -135,12 +198,16 @@ int GetCUDADriverVersion(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
   int driver_version = 0;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipDriverGetVersion(&driver_version));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaDriverGetVersion(&driver_version));
+#endif
   return driver_version;
 }
 
 bool TensorCoreAvailable() {
-#if CUDA_VERSION >= 9000
+#if !defined(PADDLE_WITH_HIP) && CUDA_VERSION >= 9000
   int device = GetCurrentDeviceId();
   int driver_version = GetCUDAComputeCapability(device);
   return driver_version >= 70;
@@ -156,8 +223,13 @@ int GetCUDAMultiProcessors(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
   int count;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipDeviceGetAttribute(&count, hipDeviceAttributeMultiprocessorCount, id));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaDeviceGetAttribute(&count, cudaDevAttrMultiProcessorCount, id));
+#endif
   return count;
 }
 
@@ -168,8 +240,13 @@ int GetCUDAMaxThreadsPerMultiProcessor(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
   int count;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipDeviceGetAttribute(
+      &count, hipDeviceAttributeMaxThreadsPerMultiProcessor, id));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceGetAttribute(
       &count, cudaDevAttrMaxThreadsPerMultiProcessor, id));
+#endif
   return count;
 }
 
@@ -180,14 +257,23 @@ int GetCUDAMaxThreadsPerBlock(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
   int count;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipDeviceGetAttribute(&count, hipDeviceAttributeMaxThreadsPerBlock, id));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaDeviceGetAttribute(&count, cudaDevAttrMaxThreadsPerBlock, id));
+#endif
   return count;
 }
 
 int GetCurrentDeviceId() {
   int device_id;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDevice(&device_id));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDevice(&device_id));
+#endif
   return device_id;
 }
 
@@ -216,7 +302,11 @@ void SetDeviceId(int id) {
                         "Device id must be less than GPU count, "
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(id));
+#ifdef PADDLE_WITH_HIP
+  PADDLE_RETRY_CUDA_SUCCESS(hipSetDevice(id));
+#else
+  PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
+#endif
 }
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
@@ -281,46 +371,91 @@ size_t GpuMaxChunkSize() {
   return max_chunk_size;
 }
 
+#ifdef PADDLE_WITH_HIP
+void GpuMemcpyAsync(void *dst, const void *src, size_t count,
+                    enum hipMemcpyKind kind, hipStream_t stream) {
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpyAsync(dst, src, count, kind, stream));
+}
+#else
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(dst, src, count, kind, stream));
 }
+#endif
 
+#ifdef PADDLE_WITH_HIP
+void GpuMemcpySync(void *dst, const void *src, size_t count,
+                   enum hipMemcpyKind kind) {
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpy(dst, src, count, kind));
+}
+#else
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    enum cudaMemcpyKind kind) {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(dst, src, count, kind));
 }
+#endif
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
-                        int src_device, size_t count, cudaStream_t stream) {
+                        int src_device, size_t count, gpuStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaMemcpyPeerAsync(dst, dst_device, src, src_device, count, stream));
+#endif
 }
 
 void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
                        int src_device, size_t count) {
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipMemcpyPeer(dst, dst_device, src, src_device, count));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaMemcpyPeer(dst, dst_device, src, src_device, count));
+#endif
 }
 
-void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
+void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipMemsetAsync(dst, value, count, stream));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemsetAsync(dst, value, count, stream));
+#endif
 }
 
-void GpuStreamSync(cudaStream_t stream) {
+void GpuStreamSync(gpuStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+#endif
 }
 
-static void RaiseNonOutOfMemoryError(cudaError_t *status) {
+static void RaiseNonOutOfMemoryError(gpuError_t *status) {
+#ifdef PADDLE_WITH_HIP
+  if (*status == hipErrorOutOfMemory) {
+    *status = hipSuccess;
+  }
+#else
   if (*status == cudaErrorMemoryAllocation) {
     *status = cudaSuccess;
   }
+#endif
   PADDLE_ENFORCE_CUDA_SUCCESS(*status);
 
+#ifdef PADDLE_WITH_HIP
+  *status = hipGetLastError();
+  if (*status == hipErrorOutOfMemory) {
+    *status = hipSuccess;
+  }
+#else
   *status = cudaGetLastError();
   if (*status == cudaErrorMemoryAllocation) {
     *status = cudaSuccess;
   }
+#endif
   PADDLE_ENFORCE_CUDA_SUCCESS(*status);
 }
 
@@ -362,26 +497,38 @@ class RecordedCudaMallocHelper {
    * or cudaSuccess would be returned, and the cudaGetLastError() flag
    * would be clear.
    */
-  cudaError_t Malloc(void **ptr, size_t size) {
+  gpuError_t Malloc(void **ptr, size_t size) {
     LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_ + size > limit_size_)) {
+#ifdef PADDLE_WITH_HIP
+      return hipErrorOutOfMemory;
+#else
       return cudaErrorMemoryAllocation;
+#endif
     }
 
     CUDADeviceGuard guard(dev_id_);
+#ifdef PADDLE_WITH_HIP
+    auto result = hipMalloc(ptr, size);
+#else
     auto result = cudaMalloc(ptr, size);
-    if (result == cudaSuccess) {
+#endif
+    if (result == gpuSuccess) {
       if (NeedRecord()) {
         cur_size_ += size;
       }
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      return cudaSuccess;
+      return gpuSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
-      // Non out of memory error would be raised inside
-      // RaiseNonOutOfMemoryError. Therefore, we can
-      // return cudaErrorMemoryAllocation directly here.
+// Non out of memory error would be raised inside
+// RaiseNonOutOfMemoryError. Therefore, we can
+// return cudaErrorMemoryAllocation directly here.
+#ifdef PADDLE_WITH_HIP
+      return hipErrorOutOfMemory;
+#else
       return cudaErrorMemoryAllocation;
+#endif
     }
   }
 
@@ -396,8 +543,13 @@ class RecordedCudaMallocHelper {
     // process is terminating, in which case we don't care if
     // cudaFree succeeds.
     CUDADeviceGuard guard(dev_id_);
+#ifdef PADDLE_WITH_HIP
+    auto err = hipFree(ptr);
+    if (err != hipErrorDeinitialized) {
+#else
     auto err = cudaFree(ptr);
     if (err != cudaErrorCudartUnloading) {
+#endif
       PADDLE_ENFORCE_CUDA_SUCCESS(err);
       if (NeedRecord()) {
         std::lock_guard<std::mutex> guard(*mtx_);
@@ -405,7 +557,11 @@ class RecordedCudaMallocHelper {
       }
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
+#ifdef PADDLE_WITH_HIP
+      hipGetLastError();  // clear the error flag when hipErrorDeinitialized
+#else
       cudaGetLastError();  // clear the error flag when cudaErrorCudartUnloading
+#endif
     }
   }
 
@@ -413,8 +569,12 @@ class RecordedCudaMallocHelper {
                   size_t *actual_total) {
     {
       CUDADeviceGuard guard(dev_id_);
+#ifdef PADDLE_WITH_HIP
+      auto result = hipMemGetInfo(actual_avail, actual_total);
+#else
       auto result = cudaMemGetInfo(actual_avail, actual_total);
-      if (result != cudaSuccess) {
+#endif
+      if (result != gpuSuccess) {
         *actual_avail = 0;
       }
       RaiseNonOutOfMemoryError(&result);
@@ -450,13 +610,13 @@ class RecordedCudaMallocHelper {
 
   static std::once_flag once_flag_;
   static std::vector<std::unique_ptr<RecordedCudaMallocHelper>> instances_;
-};
+};  // NOLINT
 
 std::once_flag RecordedCudaMallocHelper::once_flag_;
 std::vector<std::unique_ptr<RecordedCudaMallocHelper>>
     RecordedCudaMallocHelper::instances_;
 
-cudaError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id) {
+gpuError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id) {
   return RecordedCudaMallocHelper::Instance(dev_id)->Malloc(ptr, size);
 }
 

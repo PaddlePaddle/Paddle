@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -52,11 +53,29 @@ class GatherOp : public framework::OperatorWithKernel {
               index_dims.size()));
     }
 
-    int batch_size = ctx->GetInputDim("Index")[0];
-    framework::DDim output_dims(ctx->GetInputDim("X"));
-    output_dims[0] = batch_size;
-    ctx->SetOutputDim("Out", output_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
+    auto axis = ctx->Attrs().Get<int>("axis");
+    auto input_dim = ctx->GetInputDim("X");
+    if (ctx->HasInput("Axis") || axis == 0) {
+      // if HasInput("Axis"), we can not obtain correct shape of output
+      int batch_size = index_dims[0];
+      framework::DDim output_dims(input_dim);
+      output_dims[0] = batch_size;
+      ctx->SetOutputDim("Out", output_dims);
+      ctx->ShareLoD("X", /*->*/ "Out");
+    } else {
+      int index_size = index_dims[0];
+      std::vector<int> out_dim_vec;
+      for (int i = 0; i < axis; i++) {
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      out_dim_vec.push_back(index_size);
+      for (int i = axis + 1; i < input_dim.size(); i++) {
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      auto output_dims = framework::make_ddim(out_dim_vec);
+      ctx->SetOutputDim("Out", output_dims);
+      ctx->ShareLoD("X", /*->*/ "Out");
+    }
   }
 
  protected:
@@ -65,6 +84,15 @@ class GatherOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Axis") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -84,6 +112,15 @@ class GatherGradOp : public framework::OperatorWithKernel {
                                        ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
   }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Axis") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -102,6 +139,10 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
         "If true, update the grad using the overwrite mode in same index,"
         "If false, using the accumulate mode in same index.")
         .SetDefault(true);
+    AddAttr<int>(
+        "axis",
+        "The Tensor which contains the axis that we do gather operation.")
+        .SetDefault(0);
     AddComment(R"DOC(
 Gather Operator.
 
@@ -166,6 +207,6 @@ REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<uint8_t>,
                        ops::GatherGradientOpKernel<int64_t>);
 REGISTER_OP_VERSION(gather)
-    .AddCheckpoint(R"ROC(upgrad gather, add attribut [axis])ROC",
-                   paddle::framework::compatible::OpVersionDesc().NewAttr(
-                       "axis", "Specify the axis of gather operation.", {}));
+    .AddCheckpoint(R"ROC(upgrad gather, add a new input [Axis])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewInput(
+                       "Axis", "Specify the axis of gather operation."));

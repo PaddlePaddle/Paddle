@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/inference_op_replace_pass.h"
-#include <unordered_map>
+
+#include "paddle/fluid/inference/analysis/argument.h"
 
 namespace paddle {
 namespace inference {

@@ -18,6 +18,7 @@ import paddle.fluid.param_attr as attr
 from functools import reduce
 from paddle.fluid.dygraph import declarative, to_variable
 from paddle.fluid.dygraph import Embedding, Layer, Linear
+from paddle.static import Variable
 
 
 class EmbeddingLayer(object):
@@ -230,7 +231,7 @@ class SoftsignLayer(object):
 
 
 class FC(Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``FC`` class.
     For more details, refer to code examples.
     It creates a fully connected layer in the network. It can take

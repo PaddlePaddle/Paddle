@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_WITH_HIP
+// HIP not support cudnnSpatialTfGridGeneratorForward
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
@@ -28,10 +31,9 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::InvalidArgument("Only "
-                                          "support for CUDAPlace.Please switch "
-                                          "your context from CPUPlace to "
-                                          "CUDAPlace or update your cudnn."));
+        platform::errors::InvalidArgument(
+            "Only support for CUDAPlace.Please switch your context from "
+            "CPUPlace to CUDAPlace or update your cudnn."));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* theta = ctx.Input<Tensor>("Theta");
@@ -106,12 +108,9 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
     const T* output_grad_data = output_grad->data<T>();
     T* theta_grad_data = theta_grad->mutable_data<T>(ctx.GetPlace());
 
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSpatialTfGridGeneratorBackward(
-            handle, cudnn_st_desc, output_grad_data, theta_grad_data),
-        0,
-        "Some errors "
-        "has occurred during forward computation in cudnn;");
+            handle, cudnn_st_desc, output_grad_data, theta_grad_data));
   }
 };
 
@@ -125,3 +124,5 @@ REGISTER_OP_KERNEL(affine_grid, CUDNN, plat::CUDAPlace,
 REGISTER_OP_KERNEL(affine_grid_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNAffineGridGradOpKernel<float>,
                    paddle::operators::CUDNNAffineGridGradOpKernel<double>);
+
+#endif  // not PADDLE_WITH_HIP

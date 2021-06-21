@@ -15,6 +15,8 @@ from paddle.fluid.optimizer import Momentum, DGCMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
+__all__ = []
+
 
 class DGCOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -29,6 +31,10 @@ class DGCOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(DGCOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
+
+    def _init_dgc_opt(self):
+        if self.dgc_opt is not None:
+            return
 
         opt = self.inner_opt
 
@@ -86,13 +92,16 @@ class DGCOptimizer(MetaOptimizerBase):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
+        self._init_dgc_opt()
         return self.dgc_opt.backward(loss, startup_program, parameter_list,
                                      no_grad_set, callbacks)
 
     def apply_gradients(self, params_grads):
+        self._init_dgc_opt()
         return self.dgc_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
+        self._init_dgc_opt()
         return self.dgc_opt.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
@@ -101,6 +110,7 @@ class DGCOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
+        self._init_dgc_opt()
         optimize_ops, params_grads = \
             self.dgc_opt.minimize(loss, startup_program,
                                   parameter_list, no_grad_set)

@@ -14,7 +14,7 @@
 
 import numpy as np
 import unittest
-from op_test import OpTest
+from op_test import OpTest, check_out_dtype
 import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
 import paddle
@@ -63,7 +63,7 @@ def max_pool1D_forward_naive(x,
     return out
 
 
-class TestPool1d_API(unittest.TestCase):
+class TestPool1D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -80,7 +80,7 @@ class TestPool1d_API(unittest.TestCase):
                 input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveMaxPool1d(
+            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveMaxPool1D(
                 output_size=16)
             result = ada_max_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -104,6 +104,17 @@ class TestPool1d_API(unittest.TestCase):
         for place in self.places:
             self.check_adaptive_max_dygraph_results(place)
             self.check_adaptive_max_static_results(place)
+
+
+class TestOutDtype(unittest.TestCase):
+    def test_max_pool(self):
+        api_fn = F.adaptive_max_pool1d
+        shape = [1, 3, 32]
+        check_out_dtype(
+            api_fn,
+            in_specs=[(shape, )],
+            expect_dtypes=['float32', 'float64'],
+            output_size=16)
 
 
 if __name__ == '__main__':

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -27,7 +26,7 @@ namespace imperative {
 class OpBase;
 }  // namespace imperative
 }  // namespace paddle
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
@@ -35,7 +34,7 @@ namespace paddle {
 namespace operators {
 
 static size_t CUDADevCount() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return platform::GetCUDADeviceCount();
 #else
   return 0UL;

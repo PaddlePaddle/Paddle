@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -78,6 +79,11 @@ inline cudnnDataType_t ToCudnnDataType(
     case framework::proto::VarType::FP64:
       type = CUDNN_DATA_DOUBLE;
       break;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    case framework::proto::VarType::BF16:
+      type = CUDNN_DATA_BFLOAT16;
+      break;
+#endif
     default:
       break;
   }
@@ -229,7 +235,8 @@ class ConvolutionDescriptor {
 
   void set(cudnnDataType_t dtype, const std::vector<int>& pads,
            const std::vector<int>& strides, const std::vector<int>& dilations,
-           const int groups = 1) {
+           bool allow_tf32, const int groups = 1) {
+    allow_tf32_ = allow_tf32;
     cudnnDataType_t compute_type =
         (dtype == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     T* desc = desc_.get();
@@ -246,10 +253,17 @@ class ConvolutionDescriptor {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(desc,
                                                          CUDNN_TENSOR_OP_MATH));
+    } else if (dtype == CUDNN_DATA_FLOAT && !allow_tf32) {
+#if CUDA_VERSION >= 11000
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetConvolutionMathType(desc, CUDNN_FMA_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
 #endif
 #endif
   }
+
+  bool allow_tf32_;
 
  private:
   std::unique_ptr<T, Deleter> desc_;

@@ -51,7 +51,7 @@ def sequence_conv(input,
                   param_attr=None,
                   act=None,
                   name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
@@ -139,10 +139,11 @@ def sequence_conv(input,
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
+             import paddle
+             paddle.enable_static()
 
-             x = fluid.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
-             x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
+             x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
+             x_conved = paddle.static.nn.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
     assert not in_dygraph_mode(), (
@@ -175,7 +176,7 @@ def sequence_conv(input,
 
 
 def sequence_softmax(input, use_cudnn=False, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -233,15 +234,17 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     Examples:
 
         .. code-block:: python
-
-             import paddle.fluid as fluid
-             x = fluid.data(name='x', shape=[7, 1],
+             
+             import paddle
+             paddle.enable_static()
+             
+             x = paddle.static.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
-             x_sequence_softmax_1 = fluid.layers.sequence_softmax(input=x)  
+             x_sequence_softmax_1 = paddle.static.nn.sequence_softmax(input=x)  
 
-             y = fluid.data(name='y', shape=[7],
+             y = paddle.static.data(name='y', shape=[7],
                  dtype='float32', lod_level=1)
-             x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  
+             x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)  
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -259,7 +262,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
 
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
@@ -334,15 +337,16 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
-            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-            avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
-            sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
-            sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
-            max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
-            last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
-            first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
+            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            avg_x = paddle.static.nn.sequence_pool(input=x, pool_type='average')
+            sum_x = paddle.static.nn.sequence_pool(input=x, pool_type='sum')
+            sqrt_x = paddle.static.nn.sequence_pool(input=x, pool_type='sqrt')
+            max_x = paddle.static.nn.sequence_pool(input=x, pool_type='max')
+            last_x = paddle.static.nn.sequence_pool(input=x, pool_type='last')
+            first_x = paddle.static.nn.sequence_pool(input=x, pool_type='first')
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -413,10 +417,12 @@ def sequence_concat(input, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
-            y = fluid.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
-            out = fluid.layers.sequence_concat(input=[x, y])
+            import paddle
+            paddle.enable_static()
+
+            x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
+            y = paddle.static.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
+            out = paddle.static.nn.sequence_concat(input=[x, y])
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -481,9 +487,11 @@ def sequence_first_step(input):
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-             x_first_step = fluid.layers.sequence_first_step(input=x)
+             import paddle
+             paddle.enable_static()
+
+             x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+             x_first_step = paddle.static.nn.sequence_first_step(input=x)
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'sequence_first_step')
@@ -538,9 +546,11 @@ def sequence_last_step(input):
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-             x_last_step = fluid.layers.sequence_last_step(input=x)
+             import paddle
+             paddle.enable_static()
+             
+             x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+             x_last_step = paddle.static.nn.sequence_last_step(input=x)
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'sequence_last_step')
@@ -598,13 +608,15 @@ def sequence_slice(input, offset, length, name=None):
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
+             import paddle
+             paddle.enable_static()
+             
              import numpy as np
-             seqs = fluid.data(name='x', shape=[10, 5],
+             seqs = paddle.static.data(name='x', shape=[10, 5],
                               dtype='float32', lod_level=1)
-             offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
-             length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
-             subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset,
+             offset = paddle.assign(np.array([[0, 1]]).astype("int32"))
+             length = paddle.assign(np.array([[2, 1]]).astype("int32"))
+             subseqs = paddle.static.nn.sequence_slice(input=seqs, offset=offset,
                                                    length=length)
     """
     assert not in_dygraph_mode(), (
@@ -636,7 +648,7 @@ def sequence_slice(input, offset, length, name=None):
 
 
 def sequence_expand(x, y, ref_level=-1, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
         Sequence Expand Layer. This layer will expand the input variable ``x`` \
@@ -715,17 +727,18 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     Examples:
         .. code-block:: python
 	
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
+            import paddle
+            from paddle import fluid
+            paddle.enable_static()
             import numpy as np
 
-            x = fluid.data(name='x', shape=[4, 1], dtype='float32')
-            y = fluid.data(name='y', shape=[8, 1],
+            x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[8, 1],
                         dtype='float32', lod_level=1)
-            out = layers.sequence_expand(x=x, y=y, ref_level=0)
+            out = paddle.static.nn.sequence_expand(x=x, y=y, ref_level=0)
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            place = fluid.CPUPlace()
+            exe = paddle.static.Executor(fluid.CPUPlace())
+            place = paddle.CPUPlace()
 
             np_data = np.array([[1], [2], [3], [4]]).astype('float32')
             x_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2]], place)
@@ -759,8 +772,8 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         "sequence layer is not supported in dygraph mode yet.")
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand')
-    helper = LayerHelper('sequence_expand', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('sequence_expand', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sequence_expand',
@@ -772,7 +785,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
 
 def sequence_expand_as(x, y, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
         Sequence Expand As Layer. This OP will expand the input variable ``x`` \
@@ -836,13 +849,14 @@ def sequence_expand_as(x, y, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
+            paddle.enable_static()
             import numpy as np
 
-            x = fluid.data(name='x', shape=[4, 1], dtype='float32')
-            y = fluid.data(name='y', shape=[8, 1], dtype='float32', lod_level=1)
-            out = layers.sequence_expand_as(x=x, y=y)
+            x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[8, 1], dtype='float32', lod_level=1)
+            out = paddle.static.nn.sequence_expand_as(x=x, y=y)
 
             exe = fluid.Executor(fluid.CPUPlace())
             place = fluid.CPUPlace()
@@ -880,8 +894,8 @@ def sequence_expand_as(x, y, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand_as')
     check_type(y, 'y', Variable, 'sequence_expand_as')
-    helper = LayerHelper('sequence_expand_as', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('sequence_expand_as', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sequence_expand_as',
@@ -892,7 +906,7 @@ def sequence_expand_as(x, y, name=None):
 
 
 def sequence_pad(x, pad_value, maxlen=None, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This layer padding the sequences in a same batch to a common length (according \
@@ -969,24 +983,26 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
+            paddle.enable_static()
             import paddle.fluid as fluid
             import numpy
 
-            x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(
-                input=numpy.array([0.0], dtype=numpy.float32))
-            out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            pad_value = paddle.assign(
+                numpy.array([0.0], dtype=numpy.float32))
+            out = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
     """
 
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_pad', input=x, **locals())
+    helper = LayerHelper('sequence_pad', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_pad')
     check_variable_and_dtype(pad_value, 'pad_value',
                              ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_pad')
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     length = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
 
@@ -1048,26 +1064,28 @@ def sequence_unpad(x, length, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
+            paddle.enable_static()
             import paddle.fluid as fluid
             import numpy
 
             # pad data
-            x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
-            pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            pad_value = paddle.assign(numpy.array([0.0], dtype=numpy.float32))
+            pad_data, len = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
             
             # unpad data
-            unpad_data = fluid.layers.sequence_unpad(x=pad_data, length=len)
+            unpad_data = paddle.static.nn.sequence_unpad(x=pad_data, length=len)
     """
 
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_unpad', input=x, **locals())
+    helper = LayerHelper('sequence_unpad', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_unpad')
     check_variable_and_dtype(length, 'length', ['int64'],
                              'fluid.layers.sequence_unpad')
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
 
     length.stop_gradient = True
@@ -1123,9 +1141,11 @@ def sequence_reshape(input, new_dim):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
-            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=4)
+            import paddle
+            paddle.enable_static()
+
+            x = paddle.static.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
+            x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -1200,12 +1220,13 @@ def sequence_scatter(input, index, updates, name=None):
 
         .. code-block:: python
 	
-            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
-            input = fluid.data( name="x", shape=[None, 3, 6], dtype='float32' )
-            index = fluid.data( name='index', shape=[12, 1],  dtype='int64', lod_level=1)
-            updates = fluid.data( name='updates', shape=[12, 1], dtype='float32', lod_level=1)
-            output = fluid.layers.sequence_scatter(input, index, updates)
+            input = paddle.static.data(name="x", shape=[None, 3, 6], dtype='float32' )
+            index = paddle.static.data(name='index', shape=[12, 1],  dtype='int64', lod_level=1)
+            updates = paddle.static.data(name='updates', shape=[12, 1], dtype='float32', lod_level=1)
+            output = paddle.static.nn.sequence_scatter(input, index, updates)
 
     """
     assert not in_dygraph_mode(), (
@@ -1233,7 +1254,7 @@ def sequence_scatter(input, index, updates, name=None):
 
 
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Generate a new sequence for the input index sequence with \
@@ -1279,10 +1300,11 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            x = fluid.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
-            out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
+            import paddle
+            paddle.enable_static()
+            
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
+            out = paddle.static.nn.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -1301,7 +1323,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
 
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
-    """
+    r"""
     **SequenceMask Layer**
 
     This layer outputs a mask according to the input :code:`x` and
@@ -1333,26 +1355,30 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             Tensor or LodTensor with shape [d_1, d_2, ..., d_n].
         maxlen (int, optional): Maximum length of the sequence. If :code:`maxlen` \
                            is None, it would be replace with :math:`max(x)`.
-        dtype (np.dtype|core.VarDesc.VarType|str, optional): Data type of the output, \
+        dtype (np.dtype|paddle.dtype|str, optional): Data type of the output, \
              ``int64`` by default.
         name(str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The output sequence mask. Tensor or LodTensor with shape [d_1, d_2, ..., d_n, maxlen] \
-            and data type of :code:`dtype`. The data type should be float32, float64, int8, \
+    Returns: The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
+            and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
 
-    Return Type: Variable
+    Return Type: Tensor
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
+            import paddle
 
-            x = fluid.data(name='x', shape=[10], dtype='float32', lod_level=1)
-            mask = layers.sequence_mask(x=x)
+            lengths = paddle.to_tensor([10, 9, 8])
+            mask = paddle.nn.functional.sequence_mask(lengths)
+
+            print(mask.numpy())
+            # [[1 1 1 1 1 1 1 1 1 1]
+            #  [1 1 1 1 1 1 1 1 1 0]
+            #  [1 1 1 1 1 1 1 1 0 0]]
 
     """
     helper = LayerHelper('sequence_mask', **locals())
@@ -1414,9 +1440,11 @@ def sequence_reverse(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-            x_reversed = fluid.layers.sequence_reverse(x)
+            import paddle
+            paddle.enable_static()
+
+            x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            x_reversed = paddle.static.nn.sequence_reverse(x)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")

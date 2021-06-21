@@ -154,9 +154,14 @@ class StridedSliceOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    // NOTE: cuda pinned tensor need to copy its data to target place
+    auto in_tensor = ctx.Input<Tensor>("Input");
+    if (platform::is_cuda_pinned_place(in_tensor->place())) {
+      return framework::OpKernelType(in_tensor->type(), ctx.device_context());
+    }
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.Input<Tensor>("Input")->place());
+        in_tensor->place());
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
@@ -319,14 +324,24 @@ REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice,
+    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex<float>>,
+    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice_grad,
+    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
+                                paddle::platform::complex<float>>,
+    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
+                                paddle::platform::complex<double>>);

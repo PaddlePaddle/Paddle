@@ -56,24 +56,13 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        strategy.a_sync_configs = {"k_steps": 100}
+        strategy.a_sync_configs = {"k_steps": 100, "launch_barrier": False}
+
         optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
 
-        prog = paddle.fluid.default_main_program()
-        self.assertEqual(prog.global_block().ops[-1].type, "send")
-
-        sends = 0
-        sgds = 0
-
-        for op in prog.global_block().ops:
-            if op.type == "send":
-                sends += 1
-            if op.type == "sgd":
-                sgds += 1
-        self.assertEqual(sends, 1)
-        self.assertEqual(sgds, 6)
+        with self.assertRaises(ValueError):
+            optimizer.minimize(avg_cost)
 
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
@@ -99,7 +88,8 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        strategy.a_sync_configs = {"k_steps": 100}
+        strategy.a_sync_configs = {"k_steps": 100, "launch_barrier": False}
+
         optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)

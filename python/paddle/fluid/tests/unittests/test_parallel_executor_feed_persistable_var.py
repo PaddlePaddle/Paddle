@@ -16,6 +16,7 @@ from __future__ import print_function
 from functools import partial
 import numpy
 import unittest
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from simple_nets import init_data, simple_fc_net
@@ -76,13 +77,14 @@ class TestFeedPersistableVar(unittest.TestCase):
         self.feed_dict['learning_rate'] = numpy.array(
             [1.0, 1.0]).astype("float32")
         run = partial(self.check_feed_persistable_var, self.feed_dict)
-        self.assertRaises(core.EnforceNotMet, run)
+        self.assertRaises(RuntimeError, run)
 
         self.feed_dict['image'] = self.img[0, :]
         self.feed_dict['label'] = self.label[0, :]
         run = partial(self.check_feed_persistable_var, self.feed_dict)
-        self.assertRaises(core.EnforceNotMet, run)
+        self.assertRaises(RuntimeError, run)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

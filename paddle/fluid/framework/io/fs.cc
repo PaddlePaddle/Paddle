@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/io/fs.h"
 
+#include <sys/stat.h>
 #include <memory>
 
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -238,16 +240,16 @@ void set_download_command(const std::string& x) {
 
 std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
                                      const std::string& converter) {
-  if (fs_end_with_internal(path, ".gz")) {
-    path = string::format_string("%s -text \"%s\"", hdfs_command().c_str(),
+  if (download_cmd() != "") {  // use customized download command
+    path = string::format_string("%s \"%s\"", download_cmd().c_str(),
                                  path.c_str());
   } else {
-    const std::string file_path = path;
-    path = string::format_string("%s -cat \"%s\"", hdfs_command().c_str(),
-                                 file_path.c_str());
-    if (download_cmd() != "") {  // use customized download command
-      path = string::format_string("%s \"%s\"", download_cmd().c_str(),
-                                   file_path.c_str());
+    if (fs_end_with_internal(path, ".gz")) {
+      path = string::format_string("%s -text \"%s\"", hdfs_command().c_str(),
+                                   path.c_str());
+    } else {
+      path = string::format_string("%s -cat \"%s\"", hdfs_command().c_str(),
+                                   path.c_str());
     }
   }
 

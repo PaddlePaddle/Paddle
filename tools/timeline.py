@@ -58,7 +58,7 @@ class _ChromeTraceFormatter(object):
         event = {}
         event['ph'] = ph
         event['cat'] = category
-        event['name'] = name
+        event['name'] = name.replace("ParallelExecutor::Run/", "")
         event['pid'] = pid
         event['tid'] = tid
         event['ts'] = timestamp
@@ -186,6 +186,13 @@ class Timeline(object):
                         self._chrome_trace.emit_pid(
                             "memory usage on %s:cudapinnedplace:%d" %
                             (k, mevent.device_id), pid)
+                elif mevent.place == profiler_pb2.MemEvent.NPUPlace:
+                    if (k, mevent.device_id, "NPU") not in self._mem_devices:
+                        pid = self._allocate_pid()
+                        self._mem_devices[(k, mevent.device_id, "NPU")] = pid
+                        self._chrome_trace.emit_pid(
+                            "memory usage on %s:npu:%d" % (k, mevent.device_id),
+                            pid)
                 if (k, 0, "CPU") not in self._mem_devices:
                     pid = self._allocate_pid()
                     self._mem_devices[(k, 0, "CPU")] = pid
@@ -201,6 +208,11 @@ class Timeline(object):
                     self._mem_devices[(k, 0, "CUDAPinnedPlace")] = pid
                     self._chrome_trace.emit_pid(
                         "memory usage on %s:cudapinnedplace:%d" % (k, 0), pid)
+                if (k, 0, "NPU") not in self._mem_devices:
+                    pid = self._allocate_pid()
+                    self._mem_devices[(k, 0, "NPU")] = pid
+                    self._chrome_trace.emit_pid("memory usage on %s:npu:%d" %
+                                                (k, 0), pid)
 
     def _allocate_events(self):
         for k, profile_pb in six.iteritems(self._profile_dict):
@@ -227,7 +239,8 @@ class Timeline(object):
         place_to_str = {
             profiler_pb2.MemEvent.CPUPlace: "CPU",
             profiler_pb2.MemEvent.CUDAPlace: "GPU",
-            profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace"
+            profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace",
+            profiler_pb2.MemEvent.NPUPlace: "NPU"
         }
         for k, profile_pb in six.iteritems(self._profile_dict):
             mem_list = []

@@ -20,11 +20,6 @@ namespace math {
 
 #define CUDA_NUM_THREADS 1024
 
-// CUDA: grid stride looping
-#define CUDA_KERNEL_LOOP(i, n)                                    \
-  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 inline static int PADDLE_GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
@@ -66,7 +61,7 @@ __global__ void PReluScalarKernel(const T *input, const T *alpha, T *output,
 
 template <typename T>
 void PreluChannelWiseDirectCUDAFunctor<T>::operator()(
-    cudaStream_t stream, const T *input, const T *alpha, T *output,
+    gpuStream_t stream, const T *input, const T *alpha, T *output,
     size_t batch_size, size_t channel, size_t numel) {
   PReluChannelWiseKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0,
                            stream>>>(input, alpha, output, channel,
@@ -74,7 +69,7 @@ void PreluChannelWiseDirectCUDAFunctor<T>::operator()(
 }
 
 template <typename T>
-void PreluElementWiseDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
+void PreluElementWiseDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                       const T *input,
                                                       const T *alpha, T *output,
                                                       size_t batch_size,
@@ -85,7 +80,7 @@ void PreluElementWiseDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
 }
 
 template <typename T>
-void PreluScalarDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
+void PreluScalarDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                  const T *input, const T *alpha,
                                                  T *output, size_t numel) {
   PReluScalarKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(

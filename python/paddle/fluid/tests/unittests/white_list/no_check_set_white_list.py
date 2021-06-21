@@ -28,4 +28,7 @@ no_check_set_white_list = [
     'check_finite_and_unscale',
     'update_loss_scaling',
     'cudnn_lstm',
+    'rnn',
+    'fusion_lstm',
+    'softmax_with_cross_entropy',
 ]

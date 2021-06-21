@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/macros.h"
@@ -45,10 +47,22 @@ class MaxPool {
 
 template <class T>
 class AvgPool {
+  using MT = typename details::MPTypeTrait<T>::Type;
+  MT intermediate_res;
+
  public:
-  DEVICE inline T initial() { return static_cast<T>(0); }
-  DEVICE inline void compute(const T& x, T* y) { *y += x; }
-  DEVICE inline void finalize(const T& pool_field, T* y) { *y /= pool_field; }
+  DEVICE inline T initial() {
+    intermediate_res = static_cast<MT>(0.0f);
+    return static_cast<T>(0);
+  }
+
+  DEVICE inline void compute(const T& x, T* y) {
+    intermediate_res += static_cast<MT>(x);
+  }
+
+  DEVICE inline void finalize(const T& pool_field, T* y) {
+    *y = static_cast<T>(intermediate_res / (static_cast<MT>(pool_field)));
+  }
 };
 
 template <class T>
@@ -56,7 +70,7 @@ class MaxPoolGrad {
  public:
   DEVICE inline void compute(const T& x, const T& y, const T& dy, T scale,
                              T* dx) {
-    *dx += dy * (x == y);
+    *dx += dy * static_cast<T>(x == y);
   }
 };
 
@@ -96,7 +110,7 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
  * This is different from average pooling. So we rewrite the max_pool_grad:
  * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
  */
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename PoolProcess, typename T>
 class Pool2dDirectCUDAFunctor {
  public:
@@ -104,9 +118,9 @@ class Pool2dDirectCUDAFunctor {
                   const std::vector<int>& output_shape,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, T* output,
-                  cudaStream_t stream);
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, T* output, gpuStream_t stream,
+                  PoolProcess pool_compute);
 };
 #endif
 
@@ -116,16 +130,17 @@ class Pool2dFunctor {
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, framework::Tensor* output);
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* output,
+                  PoolProcess pool_compute);
 
   // overload operator() to support argument data_format
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, framework::Tensor* output);
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* output, PoolProcess pool_compute);
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
@@ -136,8 +151,9 @@ class Pool2dGradFunctor {
                   const framework::Tensor& output_grad,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, framework::Tensor* input_grad);
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* input_grad,
+                  PoolProcess pool_compute);
   // overload operator() to support argument data_format
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
@@ -145,8 +161,8 @@ class Pool2dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, framework::Tensor* input_grad);
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* input_grad, PoolProcess pool_compute);
 };
 
 template <typename DeviceContext, class T>
@@ -175,15 +191,16 @@ class Pool3dFunctor {
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, framework::Tensor* output);
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* output,
+                  PoolProcess pool_compute);
   // overload operator() to support argument data_format
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, framework::Tensor* output);
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* output, PoolProcess pool_compute);
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
@@ -194,8 +211,9 @@ class Pool3dGradFunctor {
                   const framework::Tensor& output_grad,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, framework::Tensor* input_grad);
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* input_grad,
+                  PoolProcess pool_compute);
   // overload operator() to support argument data_format
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
@@ -203,8 +221,8 @@ class Pool3dGradFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_compute,
-                  bool exclusive, bool adaptive, framework::Tensor* input_grad);
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* input_grad, PoolProcess pool_compute);
 };
 
 template <typename DeviceContext, class T>

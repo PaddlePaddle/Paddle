@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define LITE_WITH_CUDA 1
 #endif
 
-#ifdef PADDLE_WITH_XPU
+#ifdef LITE_SUBGRAPH_WITH_XPU
 #define LITE_WITH_XPU 1
 #endif
 
@@ -53,15 +53,20 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
                                    cfg.param.c_str(), cfg.param.size());
   lite_cxx_config.set_valid_places(cfg.valid_places);
 #ifdef PADDLE_WITH_ARM
-  set_threads.set_threads(cfg.cpu_math_library_num_threads);
+  lite_cxx_config.set_threads(cfg.cpu_math_library_num_threads);
 #else
-  lite_cxx_config.set_x86_math_library_num_threads(
-      cfg.cpu_math_library_num_threads);
+  lite_cxx_config.set_x86_math_num_threads(cfg.cpu_math_library_num_threads);
 #endif
 
-#ifdef PADDLE_WITH_XPU
+#ifdef LITE_SUBGRAPH_WITH_XPU
+  // Deprecated in Paddle-Lite release/v2.8
   lite_cxx_config.set_xpu_workspace_l3_size_per_thread(
       cfg.xpu_l3_workspace_size);
+  lite_cxx_config.set_xpu_l3_cache_method(cfg.xpu_l3_workspace_size,
+                                          cfg.locked);
+  lite_cxx_config.set_xpu_conv_autotune(cfg.autotune, cfg.autotune_file);
+  lite_cxx_config.set_xpu_multi_encoder_method(cfg.precision,
+                                               cfg.adaptive_seqlen);
 #endif
 
   // create predictor

@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -37,6 +39,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
     auto str_value = ctx.Attr<std::string>("str_value");
     auto float_value = ctx.Attr<float>("value");
     auto force_cpu = ctx.Attr<bool>("force_cpu");
+    auto place_type = ctx.Attr<int>("place_type");
     framework::Tensor *tensor = nullptr;
 
     framework::Variable *out_var = ctx.OutputVar("Out");
@@ -45,15 +48,24 @@ class FillConstantKernel : public framework::OpKernel<T> {
     if (str_value.empty()) {
       value = static_cast<T>(float_value);
     } else {
-      std::stringstream convert_stream(str_value);
-      if (std::is_same<int64_t, T>::value) {
-        int64_t tmp_value;
-        convert_stream >> tmp_value;
-        value = static_cast<T>(tmp_value);
+      // handle NaN/Inf first, which cannot be read from stream.
+      if (str_value == "inf") {
+        value = static_cast<T>(std::numeric_limits<double>::infinity());
+      } else if (str_value == "-inf") {
+        value = static_cast<T>(-std::numeric_limits<double>::infinity());
+      } else if (str_value == "nan") {
+        value = static_cast<T>(std::numeric_limits<double>::quiet_NaN());
       } else {
-        double tmp_value;
-        convert_stream >> tmp_value;
-        value = static_cast<T>(tmp_value);
+        std::stringstream convert_stream(str_value);
+        if (std::is_same<int64_t, T>::value) {
+          int64_t tmp_value;
+          convert_stream >> tmp_value;
+          value = static_cast<T>(tmp_value);
+        } else {
+          double tmp_value;
+          convert_stream >> tmp_value;
+          value = static_cast<T>(tmp_value);
+        }
       }
     }
     if (ctx.HasInput("ValueTensor")) {
@@ -90,29 +102,63 @@ class FillConstantKernel : public framework::OpKernel<T> {
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
-    if (cpu_place) {
+    int actual_place = place_type;
+
+    if (actual_place == -1) {
+      bool cpu_place = (force_cpu || ctx.GetPlace() == platform::CPUPlace() ||
+                        data_type == framework::proto::VarType::BF16);
+      if (cpu_place) {
+        actual_place = 0;
+      } else if (platform::is_gpu_place(ctx.GetPlace())) {
+        actual_place = 1;
+      } else if (platform::is_xpu_place(ctx.GetPlace())) {
+        actual_place = 3;
+      }
+    }
+
+    if (actual_place == 0) {
+      VLOG(4) << "[CPU] FillConstantKernel"
+              << ((data_type == framework::proto::VarType::BF16) ? "<bfloat16>"
+                                                                 : "<T>");
       tensor->mutable_data(platform::CPUPlace(), data_type);
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
-    }
-#ifdef PADDLE_WITH_CUDA
-    if (!cpu_place) {
+    } else if (actual_place == 1) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
-    }
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with GPU."));
 #endif
+    } else if (actual_place == 2) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      tensor->mutable_data(platform::CUDAPinnedPlace(), data_type);
+      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
+              tensor, static_cast<T>(value));
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with GPU."));
+#endif
+    } else if (actual_place == 3) {
 #ifdef PADDLE_WITH_XPU
-    if (!cpu_place) {
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::XPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::XPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
-    }
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with XPU."));
 #endif
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Could NOT determine the place of variable, place_type = %d .",
+          actual_place));
+    }
   }
 };
 }  // namespace operators

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
@@ -34,7 +35,7 @@ class TestCCommInitAllOp(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
         block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
-        with self.assertRaises(core.EnforceNotMet):
+        with self.assertRaises(ValueError):
             self.exe.run(program)
 
     def test_specifying_devices(self):
@@ -47,4 +48,5 @@ class TestCCommInitAllOp(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

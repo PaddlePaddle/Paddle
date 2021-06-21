@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/utils/io_utils.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/utils/io_utils.h"
 
 namespace paddle {
 namespace inference {

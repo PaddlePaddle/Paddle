@@ -13,13 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
-#include <algorithm>
 #include <string>
-#include <unordered_set>
-#include <vector>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 #define MAX_NUM_FC 10
 
@@ -50,10 +54,25 @@ static bool IsFCWithAct(Node* n, const std::string& act_type = "relu") {
   return false;
 }
 
+static bool IsFCWithPaddingWeights(Node* n) {
+  bool res = false;
+  if (n && n->IsOp() && n->Op() && n->Op()->Type() == "fc" &&
+      n->inputs.size() == 3U && n->outputs.size() == 1U) {
+    if (n->Op()->HasAttr("padding_weights")) {
+      res = BOOST_GET_CONST(bool, n->Op()->GetAttr("padding_weights"));
+    }
+  }
+  return res;
+}
+
 static bool IsParamOfFC(Node* n, const std::string& param_name) {
-  if (IsInputOfFC(n) && n->inputs.empty() &&
-      (n->Name() == n->outputs[0]->Op()->Input(param_name)[0])) {
-    return true;
+  if (IsInputOfFC(n) && n->inputs.empty()) {
+    for (auto* out : n->outputs) {
+      if (out->Op()->Type() == "fc" &&
+          n->Name() == out->Op()->Input(param_name)[0]) {
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -251,7 +270,7 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
 
     fc_ops[i] = pattern->NewNode(
         [=](Node* x) {
-          if (!IsFCWithAct(x, "relu")) {
+          if (!IsFCWithAct(x, "relu") || IsFCWithPaddingWeights(x)) {
             return false;
           }
           auto* fc_out_var = x->outputs[0];

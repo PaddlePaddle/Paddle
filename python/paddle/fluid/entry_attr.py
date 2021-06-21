@@ -28,7 +28,7 @@ class EntryAttr(object):
     def __init__(self):
         self._name = None
 
-    def to_attr(self):
+    def _to_attr(self):
         """
         Returns the attributes of this parameter.
 
@@ -40,7 +40,7 @@ class EntryAttr(object):
 
 class ProbabilityEntry(EntryAttr):
     def __init__(self, probability):
-        super(EntryAttr, self).__init__()
+        super(ProbabilityEntry, self).__init__()
 
         if not isinstance(probability, float):
             raise ValueError("probability must be a float in (0,1)")
@@ -51,13 +51,13 @@ class ProbabilityEntry(EntryAttr):
         self._name = "probability_entry"
         self._probability = probability
 
-    def to_attr(self):
+    def _to_attr(self):
         return ":".join([self._name, str(self._probability)])
 
 
 class CountFilterEntry(EntryAttr):
     def __init__(self, count_filter):
-        super(EntryAttr, self).__init__()
+        super(CountFilterEntry, self).__init__()
 
         if not isinstance(count_filter, int):
             raise ValueError(
@@ -70,5 +70,5 @@ class CountFilterEntry(EntryAttr):
         self._name = "count_filter_entry"
         self._count_filter = count_filter
 
-    def to_attr(self):
+    def _to_attr(self):
         return ":".join([self._name, str(self._count_filter)])

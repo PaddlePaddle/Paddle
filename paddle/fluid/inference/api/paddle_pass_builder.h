@@ -140,11 +140,16 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \return A bool variable implying whether we are in gpu mode.
   bool use_gpu() const { return use_gpu_; }
 
+  /// \brief Check if we are using xpu.
+  /// \return A bool variable implying whether we are in xpu mode.
+  bool use_xpu() const { return use_xpu_; }
+
   /// \brief Default destructor.
   virtual ~PassStrategy() = default;
 
  protected:
   /// \cond Protected
+  bool use_xpu_{false};
   bool use_gpu_{false};
   bool use_mkldnn_{false};
   /// \endcond
@@ -226,8 +231,19 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \endcond
 };
 
+/// \class XpuPassStrategy
+/// \brief The XPU passes controller, it is used in AnalysisPredictor with XPU
+/// mode.
+class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
+ public:
+  XpuPassStrategy() : PassStrategy({}) {}
+};
+
 /// \brief List of tensorRT subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kTRTSubgraphPasses;
+
+/// \brief List of dlnne subgraph passes.
+PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;
 
 /// \brief List of lite subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;

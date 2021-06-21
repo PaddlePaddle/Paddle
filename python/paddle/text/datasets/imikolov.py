@@ -22,7 +22,7 @@ import collections
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ['Imikolov']
+__all__ = []
 
 URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
@@ -59,7 +59,6 @@ class Imikolov(Dataset):
                 def forward(self, src, trg):
                     return paddle.sum(src), paddle.sum(trg)
 
-            paddle.disable_static()
 
             imikolov = Imikolov(mode='train', data_type='SEQ', window_size=2)
 

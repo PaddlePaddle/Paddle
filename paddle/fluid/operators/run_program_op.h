@@ -16,12 +16,15 @@ limitations under the License. */
 
 #include <algorithm>
 #include <iterator>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -128,6 +131,9 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
+    if (var_names[i] == "Fake_var") {
+      continue;
+    }
     auto *var = scope->Var(var_names[i]);
     CheckInputVarStatus(*vars[i], var_names[i]);
     VariableShare(*vars[i], var);
@@ -138,9 +144,9 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    if (var_names[i] == framework::kEmptyVarName) {
-      VLOG(2) << "find variable name is " << framework::kEmptyVarName
-              << ", skip it!";
+    if (var_names[i] == framework::kEmptyVarName ||
+        var_names[i] == "Fake_var") {
+      VLOG(2) << "find variable name is " << var_names[i] << ", skip it!";
       continue;
     }
     // NOTE: Here skip not found var is dangerous, if a bug is caused here,
@@ -156,46 +162,6 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
   }
 }
 
-static void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
-                                   std::vector<std::string> *all_vars) {
-  for (auto &var : append_vars) {
-    all_vars->emplace_back(var);
-  }
-}
-
-static void AppendSafeEagerDeletionSkipVars(
-    const framework::ProgramDesc &program,
-    std::vector<std::string> *skip_vars) {
-  const framework::BlockDesc &block = program.Block(0);
-  const std::vector<framework::OpDesc *> &all_ops = block.AllOps();
-
-  std::unordered_set<std::string> grad_op_output;
-  std::unordered_set<std::string> grad_op_input;
-  for (const framework::OpDesc *op : all_ops) {
-    int op_role = BOOST_GET_CONST(
-        int, op->GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
-    if ((op_role & static_cast<int>(framework::OpRole::kBackward)) == 0) {
-      continue;
-    }
-
-    for (const std::string &in_arg_name : op->InputArgumentNames()) {
-      grad_op_input.emplace(in_arg_name);
-    }
-    for (const std::string &out_arg_name : op->OutputArgumentNames()) {
-      grad_op_output.emplace(out_arg_name);
-    }
-  }
-
-  // For the grad op input variables, if it is not output of grad_op, it may
-  // be output of forward op and we should set the variables as skip_var to
-  // prevent it being deleted when grad op is called multiple times.
-  for (const std::string &var_name : grad_op_input) {
-    if (grad_op_output.find(var_name) == grad_op_output.end()) {
-      skip_vars->emplace_back(var_name);
-    }
-  }
-}
-
 }  // namespace details
 
 template <typename DeviceContext, typename T>
@@ -207,9 +173,11 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto &input_vars = ctx.MultiInputVar("X");
     auto &param_vars = ctx.MultiInputVar("Params");
     auto output_vars = ctx.MultiOutputVar("Out");
+    auto dout_vars = ctx.MultiOutputVar("DOut");
 
     auto input_var_names = ctx.InputNames("X");
     auto output_var_names = ctx.OutputNames("Out");
+    auto dout_var_names = ctx.OutputNames("DOut");
 
     // current program may not hold parameters
     std::vector<std::string> param_names;
@@ -217,8 +185,6 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       param_names = ctx.InputNames("Params");
     }
 
-    auto *block = ctx.Attr<BlockDesc *>("global_block");
-    auto *program = block->Program();
     auto start_op_index = ctx.Attr<int64_t>("start_op_index");
     auto end_op_index = ctx.Attr<int64_t>("end_op_index");
     auto is_test = ctx.Attr<bool>("is_test");
@@ -233,14 +199,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and init persistable variables
     framework::Executor exe(ctx.GetPlace());
-
-    // skip delete vars
-    std::vector<std::string> skip_vars;
-    details::AppendSkipDeletionVars(output_var_names, &skip_vars);
-    VLOG(2) << "Prepare to skip " << skip_vars.size()
-            << " var(s): " << string::join_strings(skip_vars, ' ');
-
-    auto exe_ctx = exe.Prepare(*program, 0, skip_vars);
+    auto exe_ctx = framework::GetExecutorInfoFromCache(
+        exe, ctx, {output_var_names, dout_var_names}, /*is_grad=*/false);
 
     // NOTE(Aurelius84): While training some models, forward can be called many
     // times and then apply backpropagation all at once, such as Reinforcement
@@ -259,10 +219,12 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     // Step 3. run ops
     exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
                                   end_op_index, /*create_local_scope=*/false,
-                                  /*create_vars=*/true, /*keep_kids=*/!is_test);
+                                  /*create_vars=*/true,
+                                  /*keep_kids=*/!is_test);
 
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
+    details::ShareVarsFromScope(dout_vars, dout_var_names, &scope);
 
     // Debug info: scope info when run end
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
@@ -305,8 +267,6 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     }
 
     auto *block = ctx.Attr<BlockDesc *>("global_block");
-    auto *program = block->Program();
-
     auto orig_end_op_index = ctx.Attr<int64_t>("end_op_index");
     // NOTE: skip `shape` and `fill_constant` op created by
     // fluid.backward.gradients, one forward output will generate one `shape`
@@ -332,20 +292,12 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and scope
     framework::Executor exe(ctx.GetPlace());
-
-    // skip delete vars
-    std::vector<std::string> skip_vars;
-    details::AppendSkipDeletionVars(input_grad_var_names, &skip_vars);
-    details::AppendSkipDeletionVars(param_grad_names, &skip_vars);
-    details::AppendSafeEagerDeletionSkipVars(*program, &skip_vars);
-    VLOG(2) << "Prepare to skip " << skip_vars.size()
-            << " var(s): " << string::join_strings(skip_vars, ' ');
-
-    auto exe_ctx = exe.Prepare(*program, 0, skip_vars);
+    auto exe_ctx = framework::GetExecutorInfoFromCache(
+        exe, ctx, {input_grad_var_names, param_grad_names},
+        /*is_grad=*/true);
 
     details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
                                 &scope);
-
     // Debug info: scope info when run end
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 

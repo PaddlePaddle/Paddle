@@ -13,11 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_gru_fuse_pass.h"
-#include <string>
-#include <unordered_set>
 
-#include "paddle/fluid/framework/lod_tensor.h"
+#include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -42,8 +47,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   gru_pattern(fc_out);
 
   // Create New OpDesc
-  auto gru_creater = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
-                         Node* bias, Node* hidden, Node* fc_bias) {
+  auto gru_creator = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
+                         Node* bias, Node* hidden, Node* fc_bias,
+                         const bool use_mkldnn) {
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
 
@@ -62,6 +68,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
                     gru->Op()->GetAttrIfExists<bool>("origin_mode"));
     // TODO(TJ): This should be a option for infer
     op_desc.SetAttr("use_seq", true);
+    op_desc.SetAttr("use_mkldnn", use_mkldnn);
     op_desc.SetAttr("activation", gru->Op()->GetAttr("activation"));
     op_desc.SetAttr("gate_activation", gru->Op()->GetAttr("gate_activation"));
 
@@ -144,6 +151,11 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       LOG(INFO) << "fc_gru_fuse_pass not supported when origin_mode=True.";
       return;
     }
+    const bool use_mkldnn =
+        (mul->Op()->GetAttrIfExists<bool>("use_mkldnn") &&
+         gru->Op()->GetAttrIfExists<std::string>("activation") == "tanh" &&
+         gru->Op()->GetAttrIfExists<std::string>("gate_activation") ==
+             "sigmoid");
 
     if (with_fc_bias) {
       GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
@@ -151,14 +163,14 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
 
-      gru_creater(gru, x_n, w, Weight, Bias, Hidden, fc_bias);
+      gru_creator(gru, x_n, w, Weight, Bias, Hidden, fc_bias, use_mkldnn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, gru, elementwise_add, fc_out, mul_out, BatchGate,
            BatchResetHiddenPrev, BatchHidden});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
-      gru_creater(gru, x_n, w, Weight, Bias, Hidden, nullptr);
+      gru_creator(gru, x_n, w, Weight, Bias, Hidden, nullptr, use_mkldnn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, gru, BatchGate, BatchResetHiddenPrev, BatchHidden});
@@ -203,11 +215,11 @@ REGISTER_PASS_CAPABILITY(mul_gru_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
             .EQ("gru", 0)
-            .EQ("fusion_gru", 0));
+            .LE("fusion_gru", 1));
 REGISTER_PASS_CAPABILITY(fc_gru_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("gru", 0)
-            .EQ("fusion_gru", 0));
+            .LE("fusion_gru", 1));

@@ -24,10 +24,8 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 paddle.enable_static()
 
@@ -71,19 +69,22 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        exe.run(fleet.startup_program)
+        exe.run(paddle.static.default_startup_program())
         fleet.init_worker()
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
 
         for batch_id, data in enumerate(train_reader()):
-            exe.run(fleet.main_program, feed=feeder.feed(data), fetch_list=[])
+            exe.run(paddle.static.default_main_program(),
+                    feed=feeder.feed(data),
+                    fetch_list=[])
 
         fleet.stop_worker()
 
     def run_ut(self):
-        strategy = StrategyFactory.create_half_async_strategy()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
 
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
 
@@ -91,7 +92,7 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
             current_id=0,
             role=role_maker.Role.WORKER
             if training_role == "TRAINER" else role_maker.Role.SERVER,
-            worker_num=2,
+            worker_num=1,
             server_endpoints=["127.0.0.1:6002"])
 
         if training_role == "TRAINER":
@@ -112,15 +113,12 @@ import subprocess
 import unittest
 import numpy
 
+from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.communicator import Communicator
-from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
-
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 paddle.enable_static()
 

@@ -13,9 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cub/cub.cuh>  // NOLINT
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -26,19 +35,17 @@ namespace math {
 template <typename T>
 struct CUDATypeTraits;
 
-#ifdef SUPPORTS_CUDA_FP16
 template <>
 struct CUDATypeTraits<half> {
   typedef platform::float16 TYPE;
 };
-#endif
 
 template <>
 struct CUDATypeTraits<float> {
   typedef float TYPE;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // This functor involves a fusion calculation in Ernie or Bert.
 //  The fusion mode is as follows:
 //
@@ -57,7 +64,7 @@ class EmbEltwiseLayerNormFunctor {
  public:
   void operator()(int batch, int seq_len, int hidden, const int64_t *ids,
                   const float *scale, const float *bias, const int64_t *embs,
-                  T *output, float eps, int input_num, cudaStream_t stream);
+                  T *output, float eps, int input_num, gpuStream_t stream);
 };
 
 // This functor involves a fusion calculation in Ernie or Bert.
@@ -99,7 +106,7 @@ class SkipLayerNormFunctor {
  public:
   void operator()(const int num, const int hidden, const T *input1,
                   const T *input2, const float *scale, const float *bias,
-                  T *output, T eps, cudaStream_t stream);
+                  T *output, T eps, gpuStream_t stream);
 };
 #endif
 

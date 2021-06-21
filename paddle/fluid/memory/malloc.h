@@ -38,5 +38,7 @@ extern AllocationPtr Alloc(const platform::Place& place, size_t size);
 
 extern AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size);
 
+extern uint64_t Release(const platform::Place& place);
+
 }  // namespace memory
 }  // namespace paddle

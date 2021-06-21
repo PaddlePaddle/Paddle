@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 
-#include <string>
-
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_reuse.h"
@@ -145,7 +143,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
-                                    platform::Place place) {
+                                    platform::Place place, bool always_copy) {
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::undef,
                     platform::errors::InvalidArgument(
                         "Input tensor format is invalid. Input tensor should "
@@ -179,10 +177,10 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());
 
-  if (in_format != out_format) {
+  if ((in_format != out_format) || always_copy) {
     void* in_data = GetDataFromTensor(in, in_type);
-    const std::string key =
-        platform::CreateKey(in_tz, in_format, out_format, in_type);
+    std::string key =
+        platform::CreateKey(*dev_ctx, in_tz, in_format, out_format, in_type);
 
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
                                            cpu_engine, key);
@@ -193,7 +191,9 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
     auto reorder_p =
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
-    mkldnn::stream astream(cpu_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    platform::RecordEvent record_reorder("ext_reorder",
+                                         platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {

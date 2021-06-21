@@ -15,11 +15,13 @@
 #pragma once
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/place.h"
@@ -175,8 +177,6 @@ class OpBase {
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
-
-  std::vector<std::function<void()>> backward_hooks_;
 };
 
 class GradOpNode {
@@ -227,6 +227,22 @@ class GradOpNode {
     }
   }
 
+  void SetInplaceGradNameMap(
+      const std::map<std::string, std::string>& inplace_input_map) {
+    for (auto& pair : inplace_input_map) {
+      VLOG(10) << "Set mapping relationship ("
+               << framework::GradVarName(pair.first) << ", "
+               << framework::GradVarName(pair.second)
+               << ") for Inplace grad node.";
+      inplace_grad_name_map_[framework::GradVarName(pair.first)] =
+          framework::GradVarName(pair.second);
+    }
+  }
+
+  const std::map<std::string, std::string>& InplaceGradNameMap() const {
+    return inplace_grad_name_map_;
+  }
+
   const std::vector<std::shared_ptr<GradOpNode>>& GradPendingNodes() const {
     return grad_pending_nodes_;
   }
@@ -237,6 +253,9 @@ class GradOpNode {
  private:
   std::vector<OpBase> ops_;
   std::vector<std::shared_ptr<GradOpNode>> grad_pending_nodes_;
+  // Mapping relationship between grad output and grad input of the grad node of
+  // Inplace op.
+  std::map<std::string, std::string> inplace_grad_name_map_;
 };
 
 }  // namespace imperative

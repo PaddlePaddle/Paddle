@@ -29,13 +29,21 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
+#if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
 #include <cuda.h>
+#elif defined(__HIPCC__)
+#include <hip/hip_runtime.h>
+#endif
 #include <thrust/iterator/iterator_adaptor.h>
 
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#ifdef __HIPCC__
+constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
+#else
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
+#endif
 #define BLOCK_X 32
 #define BLOCK_Y 32
 #endif
@@ -51,6 +59,71 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 
 namespace paddle {
 namespace operators {
+
+/*
+*  Pack input and output tensors into respective vectors with
+*  consideration of varible X`s class type.
+*  Input variable X is supported to be whether LoDTensor or
+*  SelectedRows class type in this package function, once X
+*  was SelectedRows type, a valid pointer x_for_selectedrows
+*  is excepted to be passed in from op kernel for acquisition
+*  of the valid address of LoDTensor created ahead in the function.
+*/
+template <typename OutT>
+int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
+                          std::vector<const framework::Tensor *> *ins,
+                          std::vector<framework::Tensor *> *outs,
+                          framework::Tensor *x_for_selectedrows = nullptr) {
+  int axis = -1;
+  auto x_var = ctx.InputVar("X");
+  PADDLE_ENFORCE_NOT_NULL(
+      x_var, platform::errors::InvalidArgument(
+                 "Unable to get input Variable X, Variable name is %s.\n",
+                 ctx.InputName("X")));
+  auto *y = ctx.Input<framework::LoDTensor>("Y");
+  framework::Tensor *z;
+
+  if (x_var->IsType<framework::LoDTensor>()) {
+    auto *x = ctx.Input<framework::LoDTensor>("X");
+    z = ctx.Output<framework::LoDTensor>("Out");
+    ins->emplace_back(x);
+  } else if (x_var->IsType<framework::SelectedRows>()) {
+    PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
+                      platform::errors::InvalidArgument(
+                          "For elementwise_op, if X is Sparse, Y must be "
+                          "scalar. But reveived the size of Y = %d.",
+                          y->dims().size()));
+    PADDLE_ENFORCE_NOT_NULL(
+        x_for_selectedrows,
+        platform::errors::InvalidArgument(
+            "The parameter x_for_selectedrows is excepted to "
+            "be valid, once input varible X`s class type is "
+            "SelectedRows.\n"));
+    auto &x_sele = x_var->Get<framework::SelectedRows>();
+    auto out_sele = ctx.Output<framework::SelectedRows>("Out");
+    *x_for_selectedrows = x_sele.value();
+    out_sele->set_rows(x_sele.rows());
+    out_sele->set_height(x_sele.height());
+    out_sele->mutable_value()->Resize(x_sele.value().dims());
+    out_sele->mutable_value()->mutable_data(ctx.GetPlace(),
+                                            x_for_selectedrows->type());
+    z = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+    ins->emplace_back(x_for_selectedrows);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "X's type[%s] is not supported by elementwise_op. X's type should be "
+        "LoDTensor or SelectedRows.",
+        framework::ToTypeName(x_var->Type())));
+  }
+  z->mutable_data<OutT>(ctx.GetPlace());
+  outs->emplace_back(z);
+
+  if (y != nullptr) {
+    ins->emplace_back(y);
+    axis = ctx.HasAttr("axis") ? ctx.Attr<int>("axis") : -1;
+  }
+  return axis;
+}
 
 /*
  * Out = X ⊙ Y
@@ -95,6 +168,7 @@ inline void get_mid_dims(const framework::DDim &x_dims,
     (*post) *= x_dims[i];
   }
 }
+
 inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
                                const int *index_array) {
   int index_ = 0;
@@ -196,14 +270,18 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
   }
 }
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int pre,
-                                  int n, int post, int total, Functor func) {
+__global__ void ElementwiseKernel(const T *__restrict__ x_data,
+                                  const T *__restrict__ y_data,
+                                  OutType *__restrict__ out_data, int n,
+                                  int post, const size_t total, Functor func) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
-  int idx = tid / post % n;
-  if (tid < total) {
-    out[tid] = func(x[tid], y[idx]);
+  int stride = blockDim.x * gridDim.x;
+
+  for (int i = tid; i < total; i += stride) {
+    int idx = i / post % n;
+    out_data[i] = func(x_data[i], y_data[idx]);
   }
 }
 
@@ -220,14 +298,16 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   int numel = pre * n * post;
   int threads = 256;
   int blocks = (numel + threads - 1) / threads;
+
   if (is_xsize_larger) {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        x_data, y_data, out_data, pre, n, post, numel, func);
+        x_data, y_data, out_data, n, post, numel, func);
+
   } else {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        y_data, x_data, out_data, pre, n, post, numel, func);
+        y_data, x_data, out_data, n, post, numel, func);
   }
 }
 
@@ -310,7 +390,7 @@ void CommonForwardBroadcastCUDA(
       y_data, out_data, out_size, max_dim, func, is_xsize_larger);
 }
 
-#endif  // __NVCC__
+#endif  // __NVCC__ or __HIPCC__
 
 template <typename T, typename DX_OP, typename DY_OP>
 void CommonGradBroadcastCPU(
@@ -382,7 +462,7 @@ inline void ComputeBroadcastTranspositionArray(const int *x_one_indexs,
   }
 }
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename DX_OP, typename DY_OP>
 static __global__ void ElemwiseGradBroadcast1CUDAKernel(
     const T *x, const T *y, const T *out, const T *dout, int h, int w,
@@ -708,10 +788,10 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
       int x_offset = b_i * post + b_j;
       if (dy) {
         dy[y_offset] =
-            dy_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+            dy_op(x[x_offset], y[y_offset], out[y_offset], dout[y_offset]);
       }
       if (dx) {
-        val += dx_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+        val += dx_op(x[x_offset], y[y_offset], out[y_offset], dout[y_offset]);
       }
     }
     if (dx) {
@@ -1212,7 +1292,7 @@ void CommonGradBroadcastCUDA(
   }
 }
 
-#endif  // __NVCC__
+#endif  // __NVCC__ or __HIPCC__
 
 inline framework::DDim trim_trailing_singular_dims(
     const framework::DDim &dims) {
@@ -1339,7 +1419,7 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext>
   int64_t post_;
 };
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 class RowwiseTransformIterator<T, platform::CUDADeviceContext>
     : public thrust::iterator_adaptor<
@@ -1504,10 +1584,10 @@ static void ElemwiseGradBroadcast1CPU(const T *x, const T *y, const T *out,
   }
 }
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 
 template <typename T, typename DX_OP, typename DY_OP>
-static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
+static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
                                        int h, int w, bool is_xsize_larger,
                                        DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
@@ -1577,7 +1657,7 @@ static void ElemwiseGradBroadcast2CPU(const T *x, const T *y, const T *out,
   }
 }
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename DX_OP, typename DY_OP>
 static __global__ void ElemwiseGradBroadcast2CUDAKernel(
     const T *x, const T *y, const T *out, const T *dout, int pre, int n,
@@ -1646,7 +1726,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
 }
 
 template <typename T, typename DX_OP, typename DY_OP>
-static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T *x,
+static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
                                        int pre, int n, int post,
                                        bool is_xsize_larger, DX_OP dx_op,
@@ -1674,7 +1754,6 @@ void CommonElementwiseBroadcastBackward(
   GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
                          y_dims_array.data(), out_dims_array.data(), max_dim,
                          axis);
-
   // for inplace strategy. memset will make dx and dout clear and get wrong
   // result.
   if (dx && dx->IsSharedBufferWith(dout)) {
@@ -1687,7 +1766,7 @@ void CommonElementwiseBroadcastBackward(
           << " ydim:" << framework::make_ddim(y_dims_array);
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     CommonGradBroadcastCUDA<T, DX_OP, DY_OP>(
         x, y, out, dout, dx, dy, x_dims_array.data(), y_dims_array.data(),
         out_dims_array.data(), max_dim,
@@ -1762,7 +1841,6 @@ void ElemwiseGradComputeWithBroadcast(
     get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
                  &is_run_common_broadcast);
   }
-
   // special case for common backward implementation.
   if (is_run_common_broadcast) {
     CommonElementwiseBroadcastBackward<DeviceContext, T, DX_OP, DY_OP>(
@@ -1771,7 +1849,7 @@ void ElemwiseGradComputeWithBroadcast(
   }
   if (post == 1) {
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       ElemwiseGradBroadcast1CUDA(
           ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
           y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, is_xsize_larger,
@@ -1788,7 +1866,7 @@ void ElemwiseGradComputeWithBroadcast(
     }
   } else {
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       ElemwiseGradBroadcast2CUDA(
           ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
           y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post,
@@ -1832,7 +1910,7 @@ void CommonElementwiseBroadcastForward(
                          axis);
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     CommonForwardBroadcastCUDA<Functor, T, OutType>(
         x, y, z, x_dims_array.data(), y_dims_array.data(),
         out_dims_array.data(), max_dim,
@@ -1944,7 +2022,7 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   }
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     ComputeElementwiseCUDA<Functor, T, OutType>(
         x, y, z, pre, n, post,
         ctx.template device_context<platform::CUDADeviceContext>(), func,
@@ -2068,7 +2146,7 @@ static void FusedElemwiseAndActBroadcast2CPU(const T *x, const T *y, int pre,
   }
 }
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename CompoundFunctor, bool BcastY,
           bool KeepIntermediateOut, bool SameShapeOfIntermediateOutAndOut>
 static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
@@ -2109,7 +2187,7 @@ static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
 
 template <typename T, typename CompoundFunctor, bool BcastY,
           bool KeepIntermediateOut, bool SameShapeOfIntermediateOutAndOut>
-static void FusedElemwiseAndActBroadcast1CUDA(cudaStream_t stream, const T *x,
+static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream, const T *x,
                                               const T *y,
                                               CompoundFunctor compound_functor,
                                               int h, int w, T *out,
@@ -2166,7 +2244,7 @@ static __global__ void FusedElemwiseAndActBroadcast2CUDAKernel(
 
 template <typename T, typename CompoundFunctor, bool BcastY,
           bool KeepIntermediateOut, bool SameShapeOfIntermediateOutAndOut>
-static void FusedElemwiseAndActBroadcast2CUDA(cudaStream_t stream, const T *x,
+static void FusedElemwiseAndActBroadcast2CUDA(gpuStream_t stream, const T *x,
                                               const T *y, int pre, int n,
                                               int post,
                                               CompoundFunctor compound_functor,
@@ -2221,7 +2299,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
     int h = pre;
     int w = n;
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast1CUDA<T, CompoundFunctor, BcastY,
                                         KeepIntermediateOut,
                                         SameShapeOfIntermediateOutAndOut>(
@@ -2244,7 +2322,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
     }
   } else {
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast2CUDA<T, CompoundFunctor, BcastY,
                                         KeepIntermediateOut,
                                         SameShapeOfIntermediateOutAndOut>(
@@ -2273,8 +2351,9 @@ template <typename T, typename DX_OP, typename DY_OP, typename DIntermediate_OP,
           bool UseIntermediateOut>
 struct FusedElemwiseAndActGradNoBroadcast {
   HOSTDEVICE void operator()(size_t i) {
-    T x_val = x_[i];
-    T y_val = y_[i];
+    T zero = static_cast<T>(0);
+    T x_val = (x_ == nullptr) ? zero : x_[i];
+    T y_val = (y_ == nullptr) ? zero : y_[i];
     T out_val = out_[i];
     T dout_val = dout_[i];
     T intermediate_out_val = UseIntermediateOut
@@ -2320,16 +2399,19 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
   size_t N = static_cast<size_t>(framework::product(x_dim));
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
-  for_range(
-      FusedElemwiseAndActGradNoBroadcast<T, DX_OP, DY_OP, DIntermediate_OP,
-                                         UseIntermediateOut>{
-          x->data<T>(), y->data<T>(),
-          intermediate_out ? intermediate_out->data<T>() : nullptr,
-          out->data<T>(), dout->data<T>(), dx_op, dy_op, dintermediate_op,
-          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()),
-          dintermediate == nullptr ? nullptr : dintermediate->mutable_data<T>(
-                                                   ctx.GetPlace())});
+  const T *x_data = nullptr;
+  const T *y_data = nullptr;
+  if (x->IsInitialized()) x_data = x->data<T>();
+  if (y->IsInitialized()) y_data = y->data<T>();
+
+  for_range(FusedElemwiseAndActGradNoBroadcast<
+            T, DX_OP, DY_OP, DIntermediate_OP, UseIntermediateOut>{
+      x_data, y_data, intermediate_out ? intermediate_out->data<T>() : nullptr,
+      out->data<T>(), dout->data<T>(), dx_op, dy_op, dintermediate_op,
+      dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+      dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()),
+      dintermediate == nullptr ? nullptr : dintermediate->mutable_data<T>(
+                                               ctx.GetPlace())});
 }
 
 template <typename T, typename DX_OP, typename DY_OP, typename DIntermediate_OP,
@@ -2340,6 +2422,7 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
     const T *dout, int h, int w, DX_OP dx_op, DY_OP dy_op,
     DIntermediate_OP dintermediate_op, T *dx, T *dy, T *d_intermediate) {
   int64_t tmp_out_idx, x_idx, y_idx;
+  T zero = static_cast<T>(0);
   for (int i = 0; i < h; ++i) {
     for (int j = 0; j < w; ++j) {
       int offset = i * w + j;
@@ -2347,6 +2430,8 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
       tmp_out_idx = BcastY ? j : offset;
       y_idx = BcastY ? j : offset;
       x_idx = BcastY ? offset : j;
+      T x_val = (x == nullptr) ? zero : x[x_idx];
+      T y_val = (y == nullptr) ? zero : y[y_idx];
 
       if (SameShapeOfIntermediateOutAndOut) {
         tmp_out_idx = offset;
@@ -2354,11 +2439,10 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
 
       if (dx != nullptr) {
         T tmp = UseIntermediateOut
-                    ? dx_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                    ? dx_op.UseIntermediateOut(x_val, y_val,
                                                intermediate_out[tmp_out_idx],
                                                out[offset], dout[offset])
-                    : dx_op.Recompute(x[x_idx], y[y_idx], out[offset],
-                                      dout[offset]);
+                    : dx_op.Recompute(x_val, y_val, out[offset], dout[offset]);
 
         if (BcastY) {
           dx[x_idx] = tmp;
@@ -2372,11 +2456,10 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
       }
       if (dy != nullptr) {
         T tmp = UseIntermediateOut
-                    ? dy_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                    ? dy_op.UseIntermediateOut(x_val, y_val,
                                                intermediate_out[tmp_out_idx],
                                                out[offset], dout[offset])
-                    : dy_op.Recompute(x[x_idx], y[y_idx], out[offset],
-                                      dout[offset]);
+                    : dy_op.Recompute(x_val, y_val, out[offset], dout[offset]);
         if (BcastY) {
           if (i == 0) {
             dy[y_idx] = tmp;
@@ -2390,10 +2473,10 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
       if (d_intermediate != nullptr) {
         T tmp = UseIntermediateOut
                     ? dintermediate_op.UseIntermediateOut(
-                          x[x_idx], intermediate_out[tmp_out_idx], out[offset],
+                          x_val, intermediate_out[tmp_out_idx], out[offset],
                           dout[offset])
-                    : dintermediate_op.Recompute(x[x_idx], y[y_idx],
-                                                 out[offset], dout[i]);
+                    : dintermediate_op.Recompute(x_val, y_val, out[offset],
+                                                 dout[i]);
         if (SameShapeOfIntermediateOutAndOut) {
           d_intermediate[tmp_out_idx] = tmp;
         } else {
@@ -2416,6 +2499,7 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
     const T *dout, int pre, int n, int post, DX_OP dx_op, DY_OP dy_op,
     DIntermediate_OP dintermediate_op, T *dx, T *dy, T *d_intermediate) {
   int64_t tmp_out_idx, x_idx, y_idx;
+  T zero = static_cast<T>(0);
   for (int i = 0; i < pre; ++i) {
     for (int j = 0; j < n; ++j) {
       for (int k = 0; k < post; ++k) {
@@ -2425,17 +2509,20 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
         y_idx = BcastY ? j : offset;
         x_idx = BcastY ? offset : j;
 
+        T x_val = (x == nullptr) ? zero : x[x_idx];
+        T y_val = (y == nullptr) ? zero : y[y_idx];
+
         if (SameShapeOfIntermediateOutAndOut) {
           tmp_out_idx = offset;
         }
 
         if (dx != nullptr) {
-          T tmp = UseIntermediateOut
-                      ? dx_op.UseIntermediateOut(x[x_idx], y[y_idx],
-                                                 intermediate_out[tmp_out_idx],
-                                                 out[offset], dout[offset])
-                      : dx_op.Recompute(x[x_idx], y[y_idx], out[offset],
-                                        dout[offset]);
+          T tmp =
+              UseIntermediateOut
+                  ? dx_op.UseIntermediateOut(x_val, y_val,
+                                             intermediate_out[tmp_out_idx],
+                                             out[offset], dout[offset])
+                  : dx_op.Recompute(x_val, y_val, out[offset], dout[offset]);
 
           if (BcastY) {
             dx[x_idx] = tmp;
@@ -2448,12 +2535,12 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
           }
         }
         if (dy != nullptr) {
-          T tmp = UseIntermediateOut
-                      ? dy_op.UseIntermediateOut(x[x_idx], y[y_idx],
-                                                 intermediate_out[tmp_out_idx],
-                                                 out[offset], dout[offset])
-                      : dy_op.Recompute(x[x_idx], y[y_idx], out[offset],
-                                        dout[offset]);
+          T tmp =
+              UseIntermediateOut
+                  ? dy_op.UseIntermediateOut(x_val, y_val,
+                                             intermediate_out[tmp_out_idx],
+                                             out[offset], dout[offset])
+                  : dy_op.Recompute(x_val, y_val, out[offset], dout[offset]);
           if (BcastY) {
             if (i == 0 && k == 0) {
               dy[y_idx] = tmp;
@@ -2467,10 +2554,10 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
         if (d_intermediate != nullptr) {
           T tmp = UseIntermediateOut
                       ? dintermediate_op.UseIntermediateOut(
-                            x[x_idx], intermediate_out[tmp_out_idx],
-                            out[offset], dout[offset])
-                      : dintermediate_op.Recompute(x[x_idx], y[y_idx],
-                                                   out[offset], dout[i]);
+                            x_val, intermediate_out[tmp_out_idx], out[offset],
+                            dout[offset])
+                      : dintermediate_op.Recompute(x_val, y_val, out[offset],
+                                                   dout[i]);
           if (SameShapeOfIntermediateOutAndOut) {
             d_intermediate[tmp_out_idx] = tmp;
           } else {
@@ -2486,7 +2573,7 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
   }
 }
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename DX_OP, typename DY_OP, typename DIntermediate_OP,
           bool UseIntermediateOut, bool BcastY,
           bool SameShapeOfIntermediateOutAndOut>
@@ -2499,6 +2586,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
   int tid = threadIdx.x;
   T val(0), inter_val(0);
   int64_t tmp_out_idx, x_idx, y_idx;
+  T zero = static_cast<T>(0);
 
   do {
     int offset = i * w + j;
@@ -2506,18 +2594,19 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     tmp_out_idx = BcastY ? j : offset;
     y_idx = BcastY ? j : offset;
     x_idx = BcastY ? offset : j;
+    T x_val = (x == nullptr) ? zero : x[x_idx];
+    T y_val = (y == nullptr) ? zero : y[y_idx];
 
     if (SameShapeOfIntermediateOutAndOut) {
       tmp_out_idx = offset;
     }
 
     if (dx != nullptr) {
-      T tmp =
-          UseIntermediateOut
-              ? dx_op.UseIntermediateOut(x[x_idx], y[y_idx],
-                                         intermediate_out[tmp_out_idx],
-                                         out[offset], dout[offset])
-              : dx_op.Recompute(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      T tmp = UseIntermediateOut
+                  ? dx_op.UseIntermediateOut(x_val, y_val,
+                                             intermediate_out[tmp_out_idx],
+                                             out[offset], dout[offset])
+                  : dx_op.Recompute(x_val, y_val, out[offset], dout[offset]);
 
       if (BcastY) {
         dx[x_idx] = tmp;
@@ -2526,12 +2615,11 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
       }
     }
     if (dy != nullptr) {
-      T tmp =
-          UseIntermediateOut
-              ? dy_op.UseIntermediateOut(x[x_idx], y[y_idx],
-                                         intermediate_out[tmp_out_idx],
-                                         out[offset], dout[offset])
-              : dy_op.Recompute(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      T tmp = UseIntermediateOut
+                  ? dy_op.UseIntermediateOut(x_val, y_val,
+                                             intermediate_out[tmp_out_idx],
+                                             out[offset], dout[offset])
+                  : dy_op.Recompute(x_val, y_val, out[offset], dout[offset]);
       if (BcastY) {
         val += tmp;
       } else {
@@ -2543,7 +2631,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
                   ? dintermediate_op.UseIntermediateOut(
                         y[y_idx], intermediate_out[tmp_out_idx], out[offset],
                         dout[offset])
-                  : dintermediate_op.Recompute(x[x_idx], y[y_idx], out[offset],
+                  : dintermediate_op.Recompute(x_val, y_val, out[offset],
                                                dout[offset]);
       if (SameShapeOfIntermediateOutAndOut) {
         d_intermediate[tmp_out_idx] = tmp;
@@ -2585,7 +2673,7 @@ template <typename T, typename DX_OP, typename DY_OP, typename DIntermediate_OP,
           bool UseIntermediateOut, bool BcastY,
           bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActGradBroadcast1CUDA(
-    cudaStream_t stream, const T *x, const T *y, const T *intermediate_out,
+    gpuStream_t stream, const T *x, const T *y, const T *intermediate_out,
     const T *out, const T *dout, int h, int w, DX_OP dx_op, DY_OP dy_op,
     DIntermediate_OP dintermediate_op, T *dx, T *dy, T *d_intermediate) {
   int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
@@ -2610,6 +2698,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   T val(0), inter_val(0);
   int ttid = tid;
   int64_t tmp_out_idx, x_idx, y_idx;
+  T zero = static_cast<T>(0);
   while (true) {
     int i = ttid / post;
     int k = ttid % post;
@@ -2620,18 +2709,19 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     tmp_out_idx = BcastY ? j : offset;
     y_idx = BcastY ? j : offset;
     x_idx = BcastY ? offset : j;
+    T x_val = (x == nullptr) ? zero : x[x_idx];
+    T y_val = (y == nullptr) ? zero : y[y_idx];
 
     if (SameShapeOfIntermediateOutAndOut) {
       tmp_out_idx = offset;
     }
 
     if (dx != nullptr) {
-      T tmp =
-          UseIntermediateOut
-              ? dx_op.UseIntermediateOut(x[x_idx], y[y_idx],
-                                         intermediate_out[tmp_out_idx],
-                                         out[offset], dout[offset])
-              : dx_op.Recompute(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      T tmp = UseIntermediateOut
+                  ? dx_op.UseIntermediateOut(x_val, y_val,
+                                             intermediate_out[tmp_out_idx],
+                                             out[offset], dout[offset])
+                  : dx_op.Recompute(x_val, y_val, out[offset], dout[offset]);
 
       if (BcastY) {
         dx[x_idx] = tmp;
@@ -2640,12 +2730,11 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
       }
     }
     if (dy != nullptr) {
-      T tmp =
-          UseIntermediateOut
-              ? dy_op.UseIntermediateOut(x[x_idx], y[y_idx],
-                                         intermediate_out[tmp_out_idx],
-                                         out[offset], dout[offset])
-              : dy_op.Recompute(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      T tmp = UseIntermediateOut
+                  ? dy_op.UseIntermediateOut(x_val, y_val,
+                                             intermediate_out[tmp_out_idx],
+                                             out[offset], dout[offset])
+                  : dy_op.Recompute(x_val, y_val, out[offset], dout[offset]);
       if (BcastY) {
         val += tmp;
       } else {
@@ -2655,9 +2744,9 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     if (d_intermediate != nullptr) {
       T tmp = UseIntermediateOut
                   ? dintermediate_op.UseIntermediateOut(
-                        y[y_idx], intermediate_out[tmp_out_idx], out[offset],
+                        y_val, intermediate_out[tmp_out_idx], out[offset],
                         dout[offset])
-                  : dintermediate_op.Recompute(x[x_idx], y[y_idx], out[offset],
+                  : dintermediate_op.Recompute(x_val, y_val, out[offset],
                                                dout[offset]);
       if (SameShapeOfIntermediateOutAndOut) {
         d_intermediate[tmp_out_idx] = tmp;
@@ -2699,7 +2788,7 @@ template <typename T, typename DX_OP, typename DY_OP, typename DIntermediate_OP,
           bool UseIntermediateOut, bool BcastY,
           bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActGradBroadcast2CUDA(
-    cudaStream_t stream, const T *x, const T *y, const T *intermediate_out,
+    gpuStream_t stream, const T *x, const T *y, const T *intermediate_out,
     const T *out, const T *dout, int pre, int n, int post, DX_OP dx_op,
     DY_OP dy_op, DIntermediate_OP dintermediate_op, T *dx, T *dy,
     T *dintermediate) {
@@ -2730,16 +2819,20 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
 
   int pre, n, post, is_run_common_broadcast;
   get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
+  const T *x_data = nullptr;
+  const T *y_data = nullptr;
+  if (x->IsInitialized()) x_data = x->data<T>();
+  if (y->IsInitialized()) y_data = y->data<T>();
   if (post == 1) {
     int h = pre;
     int w = n;
+
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast1CUDA<T, DX_OP, DY_OP, DIntermediate_OP,
                                             UseIntermediateOut, BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          ctx.template device_context<DeviceContext>().stream(), x->data<T>(),
-          y->data<T>(),
+          ctx.template device_context<DeviceContext>().stream(), x_data, y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
           out->data<T>(), dout->data<T>(), h, w, dx_op, dy_op, dintermediate_op,
           dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
@@ -2751,7 +2844,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
       FusedElemwiseAndActGradBroadcast1CPU<T, DX_OP, DY_OP, DIntermediate_OP,
                                            UseIntermediateOut, BcastY,
                                            SameShapeOfIntermediateOutAndOut>(
-          x->data<T>(), y->data<T>(),
+          x_data, y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
           out->data<T>(), dout->data<T>(), h, w, dx_op, dy_op, dintermediate_op,
           dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
@@ -2761,12 +2854,11 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     }
   } else {
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast2CUDA<T, DX_OP, DY_OP, DIntermediate_OP,
                                             UseIntermediateOut, BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          ctx.template device_context<DeviceContext>().stream(), x->data<T>(),
-          y->data<T>(),
+          ctx.template device_context<DeviceContext>().stream(), x_data, y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
           out->data<T>(), dout->data<T>(), pre, n, post, dx_op, dy_op,
           dintermediate_op,
@@ -2779,7 +2871,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
       FusedElemwiseAndActGradBroadcast2CPU<T, DX_OP, DY_OP, DIntermediate_OP,
                                            UseIntermediateOut, BcastY,
                                            SameShapeOfIntermediateOutAndOut>(
-          x->data<T>(), y->data<T>(),
+          x_data, y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
           out->data<T>(), dout->data<T>(), pre, n, post, dx_op, dy_op,
           dintermediate_op,

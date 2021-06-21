@@ -356,7 +356,7 @@ class TestTensor(unittest.TestCase):
         try:
             error_array = ["1", "2"]
             tensor.set(error_array, place)
-        except core.EnforceNotMet as ex:
+        except ValueError as ex:
             exception = ex
 
         self.assertIsNotNone(exception)

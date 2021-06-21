@@ -14,6 +14,7 @@
 
 from functools import reduce
 import paddle
+from paddle.static import Variable
 
 
 class EmbeddingLayer(object):
@@ -227,7 +228,7 @@ class SoftsignLayer(object):
 
 
 class FC(paddle.nn.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``FC`` class.
     For more details, refer to code examples.
     It creates a fully connected layer in the network. It can take

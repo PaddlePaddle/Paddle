@@ -28,13 +28,10 @@
 # TODO: define normalization api  
 
 import six
-#from ...fluid.dygraph.nn import InstanceNorm
 
-from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
-#from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import BatchNorm  # noqa: F401
 
-#from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
 from ...fluid.dygraph import layers
 from ...framework import get_default_dtype, set_default_dtype
@@ -53,18 +50,14 @@ import warnings
 from ...fluid.dygraph.base import no_grad
 from .. import functional as F
 
-__all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1d',
-    'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d', 'InstanceNorm2d',
-    'InstanceNorm3d', 'SyncBatchNorm', 'LocalResponseNorm'
-]
+__all__ = []
 
 
 class _InstanceNormBase(layers.Layer):
     """
-    This class is based class for InstanceNorm1d, 2d, 3d. 
+    This class is based class for InstanceNorm1D, 2d, 3d. 
 
-    See InstaceNorm1d, InstanceNorm2d or InstanceNorm3d for more details.
+    See InstaceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
 
     def __init__(self,
@@ -73,7 +66,6 @@ class _InstanceNormBase(layers.Layer):
                  momentum=0.9,
                  weight_attr=None,
                  bias_attr=None,
-                 track_running_stats=False,
                  data_format="NCHW",
                  name=None):
         super(_InstanceNormBase, self).__init__()
@@ -108,9 +100,13 @@ class _InstanceNormBase(layers.Layer):
         return instance_norm(
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
+    def extra_repr(self):
+        return 'num_features={}, epsilon={}'.format(self.scale.shape[0],
+                                                    self._epsilon)
 
-class InstanceNorm1d(_InstanceNormBase):
-    """
+
+class InstanceNorm1D(_InstanceNormBase):
+    r"""
     Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCL `[batch, in_channels, length]`
@@ -135,9 +131,6 @@ class InstanceNorm1d(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -159,9 +152,6 @@ class InstanceNorm1d(_InstanceNormBase):
     Returns:
         None.
 
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
-
 
     Examples:
 
@@ -170,14 +160,13 @@ class InstanceNorm1d(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm1d(2)
+          instance_norm = paddle.nn.InstanceNorm1D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out)
 
     """
 
@@ -187,8 +176,8 @@ class InstanceNorm1d(_InstanceNormBase):
                 len(input.shape)))
 
 
-class InstanceNorm2d(_InstanceNormBase):
-    """
+class InstanceNorm2D(_InstanceNormBase):
+    r"""
     Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
@@ -214,9 +203,6 @@ class InstanceNorm2d(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -237,8 +223,6 @@ class InstanceNorm2d(_InstanceNormBase):
     Returns:
         None.
 
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
     Examples:
 
@@ -247,14 +231,13 @@ class InstanceNorm2d(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm2d(2)
+          instance_norm = paddle.nn.InstanceNorm2D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out)
     """
 
     def _check_input_dim(self, input):
@@ -263,8 +246,8 @@ class InstanceNorm2d(_InstanceNormBase):
                 len(input.shape)))
 
 
-class InstanceNorm3d(_InstanceNormBase):
-    """
+class InstanceNorm3D(_InstanceNormBase):
+    r"""
     Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
@@ -290,9 +273,6 @@ class InstanceNorm3d(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -313,8 +293,6 @@ class InstanceNorm3d(_InstanceNormBase):
     Returns:
         None.
 
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
     Examples:
 
@@ -323,14 +301,13 @@ class InstanceNorm3d(_InstanceNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm3d(2)
+          instance_norm = paddle.nn.InstanceNorm3D(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy())
+          print(instance_norm_out.numpy)
     """
 
     def _check_input_dim(self, input):
@@ -369,6 +346,7 @@ class GroupNorm(layers.Layer):
 
     Examples:
         .. code-block:: python
+
           import paddle
           import numpy as np
 
@@ -397,7 +375,7 @@ class GroupNorm(layers.Layer):
         self._num_channels = num_channels
         self._num_groups = num_groups
         if data_format != 'NCHW':
-            raise ValueError("unsupported data layout:" + data_layout)
+            raise ValueError("unsupported data layout:" + data_format)
 
         param_shape = [self._num_channels]
 
@@ -452,9 +430,13 @@ class GroupNorm(layers.Layer):
 
         return self._helper.append_activation(group_norm_out, None)
 
+    def extra_repr(self):
+        return 'num_groups={}, num_channels={}, epsilon={}'.format(
+            self._num_groups, self._num_channels, self._epsilon)
+
 
 class LayerNorm(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
 	:old_api: paddle.fluid.dygraph.LayerNorm
@@ -509,14 +491,13 @@ class LayerNorm(layers.Layer):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
           layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy())
+          print(layer_norm_out)
     """
 
     def __init__(self,
@@ -557,6 +538,10 @@ class LayerNorm(layers.Layer):
             bias=self.bias,
             epsilon=self._epsilon)
 
+    def extra_repr(self):
+        return 'normalized_shape={}, epsilon={}'.format(self._normalized_shape,
+                                                        self._epsilon)
+
 
 class _BatchNormBase(layers.Layer):
     """
@@ -570,12 +555,13 @@ class _BatchNormBase(layers.Layer):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
-                 track_running_stats=True,
+                 use_global_stats=None,
                  name=None):
         super(_BatchNormBase, self).__init__()
         self._num_features = num_features
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._use_global_stats = use_global_stats
 
         if get_default_dtype() == 'float16':
             set_default_dtype('float32')
@@ -636,7 +622,6 @@ class _BatchNormBase(layers.Layer):
         self._momentum = momentum
         self._epsilon = epsilon
         self._fuse_with_relu = False
-        self._track_running_stats = track_running_stats
         self._name = name
 
     def _check_input_dim(self, input):
@@ -651,11 +636,7 @@ class _BatchNormBase(layers.Layer):
 
         self._check_input_dim(input)
 
-        if not self.training and not self._track_running_stats:
-            raise ValueError(
-                'When inference, expected track_running_stats is True.')
-
-        if self.training and not self._track_running_stats:
+        if self.training:
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
@@ -668,14 +649,24 @@ class _BatchNormBase(layers.Layer):
             training=self.training,
             momentum=self._momentum,
             epsilon=self._epsilon,
-            data_format=self._data_format)
+            data_format=self._data_format,
+            use_global_stats=self._use_global_stats)
+
+    def extra_repr(self):
+        main_str = 'num_features={}, momentum={}, epsilon={}'.format(
+            self._num_features, self._momentum, self._epsilon)
+        if self._data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self._data_format)
+        if self._name is not None:
+            main_str += ', name={}'.format(self._name)
+        return main_str
 
 
-class BatchNorm1d(_BatchNormBase):
-    """
+class BatchNorm1D(_BatchNormBase):
+    r"""
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -686,7 +677,7 @@ class BatchNorm1d(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
@@ -720,9 +711,7 @@ class BatchNorm1d(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Defalut "NCL".
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -732,9 +721,6 @@ class BatchNorm1d(_BatchNormBase):
 
     Returns:
         None.
-
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
     
 
     Examples:
@@ -743,15 +729,27 @@ class BatchNorm1d(_BatchNormBase):
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm1d(1)
+          batch_norm = paddle.nn.BatchNorm1D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
+
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCL',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm1D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
 
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NC' or input == 'NCL':
@@ -768,11 +766,11 @@ class BatchNorm1d(_BatchNormBase):
                 len(input.shape)))
 
 
-class BatchNorm2d(_BatchNormBase):
-    """
+class BatchNorm2D(_BatchNormBase):
+    r"""
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -783,7 +781,7 @@ class BatchNorm2d(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
@@ -817,9 +815,7 @@ class BatchNorm2d(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -830,23 +826,19 @@ class BatchNorm2d(_BatchNormBase):
     Returns:
         None
 
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
-
     Examples:
         .. code-block:: python
 
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm2d(1)
+          batch_norm = paddle.nn.BatchNorm2D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
 
     def _check_data_format(self, input):
@@ -863,11 +855,11 @@ class BatchNorm2d(_BatchNormBase):
                 len(input.shape)))
 
 
-class BatchNorm3d(_BatchNormBase):
-    """
+class BatchNorm3D(_BatchNormBase):
+    r"""
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    When track_running_stats = False, the :math:`\\mu_{\\beta}`
+    When use_global_stats = False, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -878,7 +870,7 @@ class BatchNorm3d(_BatchNormBase):
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
 
-    When track_running_stats = True, the :math:`\\mu_{\\beta}`
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
@@ -912,9 +904,7 @@ class BatchNorm3d(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -925,24 +915,33 @@ class BatchNorm3d(_BatchNormBase):
     Returns:
         None
 
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
-
     Examples:
         .. code-block:: python
 
           import paddle
           import numpy as np
 
-          paddle.disable_static()
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm3d(1)
+          batch_norm = paddle.nn.BatchNorm3D(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy())
+          print(batch_norm_out)
     """
+
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCDHW',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm3D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
 
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NCDHW':
@@ -960,7 +959,7 @@ class BatchNorm3d(_BatchNormBase):
 
 
 class SyncBatchNorm(_BatchNormBase):
-    """
+    r"""
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
     be used as a normalizer function for other operations, such as conv2d and fully connected 
@@ -1024,8 +1023,6 @@ class SyncBatchNorm(_BatchNormBase):
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. If it is set to False, this layer will not 
              have trainable bias parameter. Default: None.
-        track_running_stats(bool, optional): Whether to compute global stats, which including running mean and 
-             running variance. Default: True.
 
     Shapes:
         input: Tensor that the dimension from 2 to 5.
@@ -1039,12 +1036,12 @@ class SyncBatchNorm(_BatchNormBase):
           import numpy as np
 
           x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          paddle.disable_static()
           x = paddle.to_tensor(x)
-          if paddle.fluid.is_compiled_with_cuda():
+
+          if paddle.is_compiled_with_cuda():
               sync_batch_norm = nn.SyncBatchNorm(2)
               hidden1 = sync_batch_norm(x)
-              print(hidden1.numpy())
+              print(hidden1)
               # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
     """
 
@@ -1055,13 +1052,23 @@ class SyncBatchNorm(_BatchNormBase):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
-                 track_running_stats=True,
                  name=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, track_running_stats, name)
+                             bias_attr, data_format, None, name)
+
+    def _check_data_format(self):
+        if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
+            self._data_format = 'NCHW'
+        elif self._data_format in ["NHWC", "NDHWC", 'NLC']:
+            self._data_format = 'NHWC'
+        else:
+            raise ValueError(
+                'expected \'NCDHW\', \'NDHWC\', \'NCL\', \'NLC\', \'NC\', \'NCHW\', \'NHWC\' for data_format'
+            )
 
     def forward(self, x):
+        self._check_data_format()
         # create output
         # mean and mean_out share the same memory
         mean_out = self._mean
@@ -1140,17 +1147,24 @@ class SyncBatchNorm(_BatchNormBase):
                 import paddle
                 import paddle.nn as nn
 
-                paddle.disable_static()
-                model = nn.Sequential(nn.Conv2d(3, 5, 3), nn.BatchNorm2d(5))
+                model = nn.Sequential(nn.Conv2D(3, 5, 3), nn.BatchNorm2D(5))
                 sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            layer_output = SyncBatchNorm(
-                layer._num_features, layer._momentum, layer._epsilon,
-                layer._weight_attr, layer._bias_attr, layer._data_format,
-                layer._track_running_stats, layer._name)
+            if layer._weight_attr != None and not isinstance(
+                    layer._weight_attr,
+                    bool) and layer._weight_attr.name != None:
+                layer._weight_attr.name = layer._weight_attr.name + '_sync'
+            if layer._bias_attr != None and not isinstance(
+                    layer._bias_attr, bool) and layer._bias_attr.name != None:
+                layer._bias_attr.name = layer._bias_attr.name + '_sync'
+
+            layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
+                                         layer._epsilon, layer._weight_attr,
+                                         layer._bias_attr, layer._data_format,
+                                         layer._name)
 
             if layer._weight_attr != False and layer._bias_attr != False:
                 with no_grad():
@@ -1159,7 +1173,7 @@ class SyncBatchNorm(_BatchNormBase):
             layer_output._mean = layer._mean
             layer_output._variance = layer._variance
 
-        for name, sublayer in layer.named_sublayers():
+        for name, sublayer in layer.named_children():
             layer_output.add_sublayer(name,
                                       cls.convert_sync_batchnorm(sublayer))
         del layer
@@ -1224,3 +1238,12 @@ class LocalResponseNorm(layers.Layer):
         out = F.local_response_norm(input, self.size, self.alpha, self.beta,
                                     self.k, self.data_format, self.name)
         return out
+
+    def extra_repr(self):
+        main_str = 'size={}, alpha={}, beta={}, k={}'.format(
+            self.size, self.alpha, self.beta, self.k)
+        if self.data_format is not 'NCHW':
+            main_str += ', data_format={}'.format(self.data_format)
+        if self.name is not None:
+            main_str += ', name={}'.format(self.name)
+        return main_str

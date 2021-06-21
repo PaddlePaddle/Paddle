@@ -19,14 +19,20 @@ sys.path.append("..")
 import paddle.fluid.core as core
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+paddle.enable_static()
 
-def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
+
+def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y,
+                               batch_size):
     BATCH_SIZE = 2
+    if batch_size != None:
+        BATCH_SIZE = batch_size
+
     M = 3
     N = 4
     K = 5
@@ -56,6 +62,13 @@ def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
             shape_Y = [K, N]
     if dim_Y == 3:
         shape_Y = [BATCH_SIZE] + shape_Y
+
+    if dim_Y == 3 and dim_X == 2:
+        if transpose_X == False:
+            shape_X[1] = shape_X[1] * BATCH_SIZE
+        else:
+            shape_X[0] = shape_X[0] * BATCH_SIZE
+
     return shape_X, shape_Y
 
 
@@ -75,11 +88,19 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     if transpose_Y:
         if Y.ndim == 1:
             Y = Y.reshape((1, Y.size))
+        elif Y.ndim == 2:
+            Y = Y.T
         else:
             dim = [i for i in range(len(Y.shape))]
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
+    if X.ndim == 3 and Y.ndim == 2:
+        x_dims = X.shape
+        X = X.reshape((x_dims[0] * x_dims[1], x_dims[2]))
+    if Y.ndim == 3 and X.ndim == 2:
+        y_dims = Y.shape
+        Y = Y.reshape((y_dims[0] * y_dims[1], y_dims[2]))
     Out = np.matmul(X, Y)
     if not Out.shape:
         # We do not support 0-dimensional Tensors (scalars). So where
@@ -92,7 +113,9 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 
 class Generator(object):
     def setUp(self):
+        self.use_xpu = True
         self.op_type = "matmul"
+        # self.init_test_case()
         X = np.random.random(self.shape_X).astype("float32")
         Y = np.random.random(self.shape_Y).astype("float32")
         Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
@@ -104,7 +127,7 @@ class Generator(object):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output()
+
         if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
                 self.inputs['Y'].shape) and self.inputs['X'].shape[
                     0] == self.inputs['Y'].shape[0]:
@@ -112,7 +135,7 @@ class Generator(object):
             self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
+
         if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
                 self.inputs['Y'].shape) and self.inputs['X'].shape[
                     0] == self.inputs['Y'].shape[0]:
@@ -121,8 +144,7 @@ class Generator(object):
                 place, ['X', 'Y'], 'Out', max_relative_error=5e-2)
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X"))
+
         if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
                 self.inputs['Y'].shape) and self.inputs['X'].shape[
                     0] == self.inputs['Y'].shape[0]:
@@ -134,8 +156,7 @@ class Generator(object):
                 no_grad_set=set("X"))
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y'))
+
         if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
                 self.inputs['Y'].shape) and self.inputs['X'].shape[
                     0] == self.inputs['Y'].shape[0]:
@@ -192,7 +213,7 @@ def test_negative_dims_program(obj):
                 for idx in range(len(Ref.shape)):
                     if output.shape[idx] != -1:
                         obj.assertEqual(Ref.shape[idx], output.shape[idx])
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = fluid.Executor(fluid.XPUPlace(0))
                 res, = exe.run(fluid.default_main_program(),
                                feed={'x': X,
                                      'y': Y},
@@ -201,11 +222,11 @@ def test_negative_dims_program(obj):
 
 
 # Generate program api cases for all negative possibilities
-def api_test(dim_x, dim_y, trans_x, trans_y):
+def api_test(dim_x, dim_y, trans_x, trans_y, batch_size):
     test_name = ('TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
         dim_x, dim_y, trans_x, trans_y))
     shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
-                                                  trans_y)
+                                                  trans_y, batch_size)
     globals()[test_name] = type(test_name, (unittest.TestCase, ), {
         'shape_X': shape_x,
         'shape_Y': shape_y,
@@ -216,28 +237,35 @@ def api_test(dim_x, dim_y, trans_x, trans_y):
 
 
 # Generate operators cases for all possibilities
-def inject_test(dim_x, dim_y, trans_x, trans_y):
-    test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-        dim_x, dim_y, trans_x, trans_y))
+def inject_test(dim_x, dim_y, trans_x, trans_y, batch_size):
+    test_name = (
+        'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_batch_{}'.format(
+            dim_x, dim_y, trans_x, trans_y, batch))
     shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
-                                                  trans_y)
-    globals()[test_name] = type(test_name, (Generator, OpTest), {
+                                                  trans_y, batch_size)
+    globals()[test_name] = type(test_name, (Generator, XPUOpTest), {
         'shape_X': shape_x,
         'shape_Y': shape_y,
         'transpose_X': trans_x,
         'transpose_Y': trans_y,
+        'op_type': "matmul"
     })
 
 
-for dim_X in (1, 2, 3):
-    for dim_Y in (1, 2, 3):
-        for transose_x in (False, True):
-            for transose_y in (False, True):
-                inject_test(dim_X, dim_Y, transose_x, transose_y)
-                api_test(dim_X, dim_Y, transose_x, transose_y)
+xpu_support_dims_list = [[1, 1], [2, 2], [3, 3]]
+batch_size = [2, 4, 5, 10, 50, 100, 300]
+for dims in xpu_support_dims_list:
+    dim_X = dims[0]
+    dim_Y = dims[1]
+    for transose_x in (False, True):
+        for transose_y in (False, True):
+            for batch in batch_size:
+                inject_test(dim_X, dim_Y, transose_x, transose_y, batch)
+            # xpu not support all negative possibilities
+            # api_test(dim_X, dim_Y, False, False, 10)
 
 
-# Test case n-dim
+            # Test case n-dim
 def generate_compatible_shapes(dim, transpose_X, transpose_Y):
     M = 2
     N = 4
@@ -258,7 +286,7 @@ def generate_compatible_shapes(dim, transpose_X, transpose_Y):
     return shape_X, shape_Y
 
 
-# # Test case n-dim
+# Test case n-dim
 for dim in [4]:
     for transpose_X in [False, True]:
         for transpose_Y in [False, True]:
@@ -267,11 +295,12 @@ for dim in [4]:
                     dim, dim, transpose_X, transpose_Y))
             shape_X, shape_Y = generate_compatible_shapes(dim, transpose_X,
                                                           transpose_Y)
-            globals()[test_name] = type(test_name, (Generator, OpTest), {
+            globals()[test_name] = type(test_name, (Generator, XPUOpTest), {
                 'shape_X': shape_X,
                 'shape_Y': shape_Y,
                 'transpose_X': transpose_X,
                 'transpose_Y': transpose_Y,
+                'op_type': "matmul"
             })
 
 
@@ -282,7 +311,7 @@ class API_TestMm(unittest.TestCase):
             y = fluid.data(name='y', shape=[2], dtype='float64')
             res = fluid.data(name="output", shape=[1], dtype="float64")
             result = paddle.mm(x, y)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(fluid.XPUPlace(0))
             data1 = np.random.rand(2)
             data2 = np.random.rand(2)
             np_res = exe.run(feed={'x': data1, 'y': data2}, fetch_list=[result])
@@ -296,7 +325,7 @@ class API_TestMm(unittest.TestCase):
             {}\n{}, check diff!".format(np_res, expected_result))
 
     def test_dygraph_without_out(self):
-        device = fluid.CPUPlace()
+        device = fluid.XPUPlace(0)
         with fluid.dygraph.guard(device):
             input_array1 = np.random.rand(3, 4).astype("float64")
             input_array2 = np.random.rand(4, 3).astype("float64")
@@ -309,7 +338,7 @@ class API_TestMm(unittest.TestCase):
 
 class Test_API_Matmul(unittest.TestCase):
     def test_dygraph_without_out(self):
-        device = fluid.CPUPlace()
+        device = fluid.XPUPlace(0)
         with fluid.dygraph.guard(device):
             input_array1 = np.random.rand(3, 4).astype("float64")
             input_array2 = np.random.rand(4, 3).astype("float64")

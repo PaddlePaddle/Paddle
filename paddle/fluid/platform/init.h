@@ -35,9 +35,9 @@ bool InitGflags(std::vector<std::string> argv);
 
 void InitGLOG(const std::string& prog_name);
 
-void InitDevices(bool init_p2p);
+void InitDevices();
 
-void InitDevices(bool init_p2p, const std::vector<int> devices);
+void InitDevices(const std::vector<int> devices);
 
 #ifndef _WIN32
 class SignalMessageDumper {

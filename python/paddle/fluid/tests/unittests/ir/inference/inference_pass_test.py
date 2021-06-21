@@ -20,6 +20,7 @@ import random
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PaddleTensor
@@ -34,15 +35,20 @@ from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 
 class InferencePassTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
+        paddle.enable_static()
         super(InferencePassTest, self).__init__(methodName)
+        paddle.enable_static()
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
         self.feeds = None
         self.fetch_list = None
 
         self.enable_mkldnn = False
+        self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
+        self.enable_tensorrt_oss = True
         self.trt_parameters = None
+        self.dynamic_shape_params = None
         self.enable_lite = False
         self.lite_parameters = None
         self.path = "./inference_pass/" + self.__class__.__name__ + "/"
@@ -121,8 +127,20 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.precision,
                     self.trt_parameters.use_static,
                     self.trt_parameters.use_calib_mode)
+
+                if self.dynamic_shape_params:
+                    config.set_trt_dynamic_shape_info(
+                        self.dynamic_shape_params.min_input_shape,
+                        self.dynamic_shape_params.max_input_shape,
+                        self.dynamic_shape_params.optim_input_shape,
+                        self.dynamic_shape_params.disable_trt_plugin_fp16)
+                if self.enable_tensorrt_oss:
+                    config.enable_tensorrt_oss()
+
         elif use_mkldnn:
             config.enable_mkldnn()
+            if self.enable_mkldnn_bfloat16:
+                config.enable_mkldnn_bfloat16()
 
         return config
 
@@ -142,7 +160,8 @@ class InferencePassTest(unittest.TestCase):
                                  use_gpu,
                                  atol=1e-5,
                                  flatten=False,
-                                 quant=False):
+                                 quant=False,
+                                 rtol=1e-5):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT 
         or disable TensorRT, enable MKLDNN or disable MKLDNN 
@@ -211,6 +230,7 @@ class InferencePassTest(unittest.TestCase):
             if flatten:
                 out = out.flatten()
                 analysis_output = analysis_output.flatten()
+
             self.assertTrue(
                 np.allclose(
                     out, analysis_output, atol=atol),
@@ -223,6 +243,12 @@ class InferencePassTest(unittest.TestCase):
                 self._get_analysis_config(
                     use_gpu=use_gpu, use_trt=self.enable_trt))
 
+            if self.trt_parameters.use_static:
+                #deserialize
+                tensorrt_outputs = self._get_analysis_outputs(
+                    self._get_analysis_config(
+                        use_gpu=use_gpu, use_trt=self.enable_trt))
+
             self.assertTrue(
                 len(tensorrt_outputs) == len(outs),
                 "The number of outputs is different between GPU and TensorRT. ")
@@ -232,9 +258,10 @@ class InferencePassTest(unittest.TestCase):
                 if flatten:
                     out = out.flatten()
                     tensorrt_output = tensorrt_output.flatten()
+
                 self.assertTrue(
                     np.allclose(
-                        out, tensorrt_output, atol=atol),
+                        out, tensorrt_output, rtol=rtol, atol=atol),
                     "Output has diff between GPU and TensorRT. ")
 
         # Check whether the mkldnn results and the CPU results are the same. 
@@ -247,6 +274,8 @@ class InferencePassTest(unittest.TestCase):
                 len(outs) == len(mkldnn_outputs),
                 "The number of outputs is different between CPU and MKLDNN. ")
 
+            if self.enable_mkldnn_bfloat16:
+                atol = 0.01
             for out, mkldnn_output in zip(outs, mkldnn_outputs):
                 self.assertTrue(
                     np.allclose(
@@ -266,6 +295,18 @@ class InferencePassTest(unittest.TestCase):
             self.precision = precision
             self.use_static = use_static
             self.use_calib_mode = use_calib_mode
+
+    class DynamicShapeParam:
+        '''
+        Prepare TensorRT subgraph engine dynamic shape parameters. 
+        '''
+
+        def __init__(self, min_input_shape, max_input_shape, optim_input_shape,
+                     disable_trt_plugin_fp16):
+            self.min_input_shape = min_input_shape
+            self.max_input_shape = max_input_shape
+            self.optim_input_shape = optim_input_shape
+            self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
 
     class LiteParam:
         '''

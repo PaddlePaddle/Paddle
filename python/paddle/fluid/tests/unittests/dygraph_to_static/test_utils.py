@@ -14,10 +14,12 @@
 
 from __future__ import print_function
 
+import types
 import unittest
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
 
 from test_program_translator import get_source_code
 
@@ -59,6 +61,15 @@ class TestSplitAssignTransformer(unittest.TestCase):
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_assign)
         self.assertEqual(answer, code)
+
+
+class TestIsPaddle(unittest.TestCase):
+    def fake_module(self):
+        return types.ModuleType('paddlenlp')
+
+    def test_func(self):
+        m = self.fake_module()
+        self.assertFalse(is_paddle_func(m))
 
 
 if __name__ == '__main__':

@@ -56,9 +56,25 @@ class SGDOpXPUKernel : public framework::OpKernel<T> {
       auto &dev_ctx = ctx.template device_context<DeviceContext>();
       int r = xpu::sgd(dev_ctx.x_context(), sz, grad_data, param_data, lr,
                        out_data);
-      PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
-          platform::errors::PermissionDenied("XPU kernel error!"));
+      if (r == xpu::Error_t::INVALID_PARAM) {
+        PADDLE_ENFORCE_EQ(
+            r, xpu::Error_t::SUCCESS,
+            platform::errors::InvalidArgument(
+                "XPU kernel error of SgdOp, error message: INVALID_PARAM, "
+                "please check your input & output."));
+      } else if (r == xpu::Error_t::RUNTIME_ERROR) {
+        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                          platform::errors::Unavailable(
+                              "XPU kernel error of SgdOp, error message: "
+                              "RUNTIME_ERROR, please check whether Baidu "
+                              "Kunlun Card is properly installed."));
+      } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
+        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                          platform::errors::ResourceExhausted(
+                              "XPU kernel error of SgdOp, error "
+                              "message: NO_ENOUGH_WORKSPACE, XPU "
+                              "has no enough memory."));
+      }
     } else {
       PADDLE_ENFORCE_EQ(false, true,
                         platform::errors::PermissionDenied(

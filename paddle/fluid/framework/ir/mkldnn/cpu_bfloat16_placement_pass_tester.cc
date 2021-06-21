@@ -24,22 +24,30 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           const std::string& mkldnn_data_type = "float32") {
+           const std::string& mkldnn_data_type = "float32",
+           const bool use_mkldnn = true) {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
+  if (type != "reshape2") op->SetAttr("use_mkldnn", use_mkldnn);
   op->SetAttr("mkldnn_data_type", mkldnn_data_type);
 
   if (type == "conv2d") {
     op->SetAttr("name", name);
     op->SetInput("Input", {inputs[0]});
-  } else if (type == "relu") {
+  } else if (type == "gelu") {
     op->SetInput("X", inputs);
   } else if (type == "concat") {
     op->SetAttr("axis", 1);
     op->SetInput("X", {inputs[0], inputs[1]});
   } else if (type == "pool2d") {
     op->SetInput("X", {inputs[0]});
+  } else if (type == "transpose2") {
+    op->SetInput("X", {inputs[0]});
+  } else if (type == "reshape2") {
+    op->SetInput("X", {inputs[0]});
+  } else if (type == "sum") {
+    op->SetInput("X", {inputs[0], inputs[1]});
   } else {
     FAIL() << "Unexpected operator type.";
   }
@@ -58,16 +66,21 @@ ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
 
   for (auto& v :
-       std::vector<std::string>({"a", "b", "c", "f", "g", "h", "k", "l"})) {
+       std::vector<std::string>({"a", "b", "c", "f", "g", "h", "k", "l", "m",
+                                 "n", "o", "p", "r", "s"})) {
     prog.MutableBlock(0)->Var(v);
   }
 
   SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"});
   SetOp(&prog, "conv2d", "conv1", {"c"}, {"f"});
-  SetOp(&prog, "relu", "relu1", {"f"}, {"g"});
+  SetOp(&prog, "gelu", "gelu1", {"f"}, {"g"});
   SetOp(&prog, "pool2d", "pool1", {"g"}, {"h"});
   SetOp(&prog, "conv2d", "conv2", {"h"}, {"k"});
   SetOp(&prog, "pool2d", "pool2", {"k"}, {"l"});
+  SetOp(&prog, "concat", "concat2", {"l", "m"}, {"n"});
+  SetOp(&prog, "transpose2", "transpose", {"n"}, {"o"});
+  SetOp(&prog, "reshape2", "reshape", {"o"}, {"p"});
+  SetOp(&prog, "sum", "sum", {"p", "r"}, {"s"});
 
   return prog;
 }
@@ -115,7 +128,7 @@ void DefaultAttrTest(unsigned expected_bfloat16_data_type_count) {
 }
 
 TEST(Bfloat16PlacementPass, enable_all) {
-  MainTest({"conv2d", "pool2d", "relu", "concat"}, 6);
+  MainTest({"conv2d", "pool2d", "gelu", "concat", "sum"}, 8);
 }
 
 TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {
@@ -123,7 +136,7 @@ TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {
   MainTest({"conv2d", "pool2d"}, 3);
 }
 
-TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(0); }
+TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(10); }
 
 }  // namespace ir
 }  // namespace framework

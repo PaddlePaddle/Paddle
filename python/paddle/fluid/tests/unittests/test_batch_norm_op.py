@@ -17,6 +17,7 @@ from __future__ import print_function
 import os
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
@@ -439,16 +440,8 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "SavedMean": block.var('saved_mean'),
                     "SavedVariance": block.var('saved_variance')
                 }
-                has_reserve_space = False
-                if data_format == 'NHWC':
-                    flag = os.environ.get(
-                        'FLAGS_cudnn_batchnorm_spatial_persistent')
-                    if flag is not None and flag.lower() in ['true', '1']:
-                        has_reserve_space = True
-                if has_reserve_space:
-                    block.create_var(name="reserve_space", dtype='float16')
-                    outputs["ReserveSpace"] = block.var('reserve_space')
-                    del os.environ['FLAGS_cudnn_batchnorm_spatial_persistent']
+                block.create_var(name="reserve_space", dtype='float32')
+                outputs["ReserveSpace"] = block.var('reserve_space')
                 bn_op = block.append_op(
                     type="batch_norm",
                     inputs=inputs,
@@ -669,6 +662,19 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             y1 = compute(x, False, False)
             y2 = compute(x, True, True)
             self.assertTrue(np.allclose(y1, y2))
+
+
+class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
+    def test_reservespace(self):
+        with program_guard(Program(), Program()):
+            paddle.enable_static()
+            x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
+            x = fluid.data(name='x', shape=x.shape, dtype=x.dtype)
+            # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op.
+            os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '1'
+            batch_norm = fluid.dygraph.BatchNorm(7, data_layout="NHWC")
+            hidden1 = batch_norm(x)
+            os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '0'
 
 
 if __name__ == '__main__':

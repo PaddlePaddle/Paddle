@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import logging
-import socket
 import time
 import os
 import signal
@@ -26,6 +24,8 @@ import shutil
 from contextlib import closing
 import socket
 import warnings
+import six
+import struct
 
 import paddle
 import paddle.fluid as fluid
@@ -33,13 +33,26 @@ logger = logging.getLogger("root")
 logger.propagate = False
 
 
-class DistributeMode:
+class DistributeMode():
     """
     There are various mode for fleetrun, each of them is designed for different model.
     """
     COLLECTIVE = 0
     PS = 1
     PS_HETER = 2
+
+
+class DeviceMode():
+    """
+    Training devices type
+    """
+    UNKNOWN = -1
+    CPU = 0
+    GPU = 1
+    KUNLUN = 2
+    XPU = 2
+    ASCEND_NPU = 3
+    UNKNOWN = 3
 
 
 class Cluster(object):
@@ -70,7 +83,7 @@ class Cluster(object):
     def __ne__(self, cluster):
         return not self.__eq__(cluster)
 
-    def update_pods(cluster):
+    def update_pods(self, cluster):
         self.pods = copy.copy(cluster.pods)
 
     def trainers_nranks(self):
@@ -86,6 +99,14 @@ class Cluster(object):
                 r.append(t.endpoint)
         return r
 
+    def world_device_ids(self):
+        r = []
+        for pod in self.pods:
+            for t in pod.trainers:
+                str_accelerators = [str(acc) for acc in t.accelerators]
+                r.append(str_accelerators)
+        return r
+
     def pods_endpoints(self):
         r = []
         for pod in self.pods:
@@ -93,7 +114,6 @@ class Cluster(object):
             assert pod.port != None and pod.addr != None, "{} not a valid endpoint".format(
                 ep)
             r.append(ep)
-
         return r
 
     def get_pod_by_id(self, pod_id):
@@ -120,23 +140,23 @@ class JobServer(object):
 
 class Trainer(object):
     def __init__(self):
-        self.gpus = []
+        self.accelerators = []
         self.endpoint = None
         self.rank = None
 
     def __str__(self):
-        return "gpu:{} endpoint:{} rank:{}".format(self.gpus, self.endpoint,
-                                                   self.rank)
+        return "accelerator:{} endpoint:{} rank:{}".format(
+            self.accelerators, self.endpoint, self.rank)
 
     def __eq__(self, t):
-        if len(self.gpus) != len(t.gpus):
+        if len(self.accelerators) != len(t.accelerators):
             return False
 
         if self.endpoint != t.endpoint or \
                 self.rank != t.rank:
             return False
 
-        for a, b in zip(self.gpus, t.gpus):
+        for a, b in zip(self.accelerators, t.accelerators):
             if a != b:
                 return False
 
@@ -159,12 +179,13 @@ class Pod(object):
         self.servers = []
         self.workers = []
         self.heter_workers = []
-        self.gpus = []
+        self.accelerators = []
+        self.device_mode = None
 
     def __str__(self):
-        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{} servers:{} \
+        return "rank:{} id:{} addr:{} port:{} visible_accelerator:{} trainers:{} servers:{} \
             workers:{} heter_workers:{}".format(
-            self.rank, self.id, self.addr, self.port, self.gpus, [
+            self.rank, self.id, self.addr, self.port, self.accelerators, [
                 str(t) for t in self.trainers
             ], [str(s) for s in self.servers], [str(w) for w in self.workers],
             [str(h) for h in self.heter_workers])
@@ -174,7 +195,7 @@ class Pod(object):
                 self.id != pod.id or \
                 self.addr != pod.addr or \
                 self.port != pod.port:
-            logger.debug("pod {} != pod".format(self, pod))
+            logger.debug("pod {} != {}".format(self, pod))
             return False
 
         if len(self.trainers) != len(pod.trainers):
@@ -219,12 +240,12 @@ class Pod(object):
     def rank(self):
         return self.rank
 
-    def get_visible_gpus(self):
+    def get_visible_accelerators(self):
         r = ""
-        for g in self.gpus:
+        for g in self.accelerators:
             r += "{},".format(g)
 
-        assert r != "", "this pod {} can't see any gpus".format(self)
+        assert r != "", "this pod {} can't see any accelerators".format(self)
 
         r = r[:-1]
         return r
@@ -243,7 +264,8 @@ def get_logger(log_level=20, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
+def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
+                devices_per_proc):
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
@@ -251,14 +273,27 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
+        pod.device_mode = device_mode
+
         cur_node_endpoints = trainer_endpoints[node_rank]
-        # when use paddlecloud, endpoints may > selected_gpus(user_defined)
+        # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
         assert len(cur_node_endpoints) >= len(
-            selected_gpus
-        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
-        for i in range(len(selected_gpus)):
+            devices_per_proc
+        ), "current trainer_endpoints size should be greater equal than acclerators size."
+        for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            trainer.gpus.append(selected_gpus[i])
+            if device_mode == DeviceMode.GPU or device_mode == DeviceMode.ASCEND_NPU:
+                if isinstance(devices_per_proc[i], (list, tuple)):
+                    trainer.accelerators.extend(devices_per_proc[i])
+                    pod.accelerators.extend(devices_per_proc[i])
+                else:
+                    trainer.accelerators.append(devices_per_proc[i])
+                    pod.accelerators.append(devices_per_proc[i])
+            elif device_mode == DeviceMode.XPU:
+                if isinstance(devices_per_proc[i], (list, tuple)):
+                    trainer.accelerators.extend(devices_per_proc[i])
+                else:
+                    trainer.accelerators.append(devices_per_proc[i])
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
@@ -326,6 +361,10 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
 def find_free_ports(num):
     def __free_port():
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            # Note(wangxi): Close the connection with a TCP RST instead
+            # of a TCP FIN, to avoid time_wait state.
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                         struct.pack('ii', 1, 0))
             s.bind(('', 0))
             return s.getsockname()[1]
 
@@ -340,7 +379,7 @@ def find_free_ports(num):
             return port_set
 
         step += 1
-        if step > 100:
+        if step > 400:
             print(
                 "can't find avilable port and use the specified static port now!"
             )
@@ -429,15 +468,37 @@ def start_local_trainers(cluster,
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
+    ids = cluster.world_device_ids()
+    res = [':'.join(ele) for ele in ids]
     procs = []
     for idx, t in enumerate(pod.trainers):
         proc_env = {
-            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "PADDLE_RANK_IN_NODE": str(idx),
+            "PADDLE_LOCAL_DEVICE_IDS":
+            ",".join([str(acc) for acc in t.accelerators]),
+            "PADDLE_WORLD_DEVICE_IDS": ",".join(res),
         }
+
+        if len(t.accelerators) > 0 and pod.device_mode == DeviceMode.GPU:
+            proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+
+        elif len(t.
+                 accelerators) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU:
+            proc_env["FLAGS_selected_npus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+
+        if len(t.accelerators) > 0:
+            proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+        # to do: same code style in future
+        if fluid.core.is_compiled_with_xpu() and len(t.accelerators) > 0:
+            proc_env["FLAGS_selected_xpus"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
 
         current_env.update(proc_env)
 
@@ -452,8 +513,8 @@ def start_local_trainers(cluster,
                             pretty_print_envs(proc_env, ("Distributed Envs",
                                                          "Value"))))
             logger.info(
-                "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log.".
-                format(log_dir))
+                "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log, and detail running logs maybe found in {}/workerlog.0".
+                format(log_dir, log_dir))
         fn = None
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
@@ -565,6 +626,99 @@ def get_gpus(gpus):
     return res_gpus
 
 
+def get_xpus(xpus):
+    if xpus is None:
+        xpus_num = fluid.core.get_xpu_device_count()
+        res_xpus = [str(x) for x in range(0, xpus_num)]
+    else:
+        xpu_visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
+        if xpu_visible_devices is None or xpu_visible_devices == "":
+            res_xpus = [x.strip() for x in xpus.split(',')]
+        else:
+            # change xpus into relative values
+            # e.g. XPU_VISIBLE_DEVICES=4,5,6,7; args.xpus=4,5,6,7;
+            # therefore xpus=0,1,2,3
+            xpu_visible_devices_list = xpu_visible_devices.split(',')
+            for x in xpus.split(','):
+                assert x in xpu_visible_devices_list, "Can't find "\
+                    "your xpus %s in XPU_VISIBLE_DEVICES[%s]."\
+                    % (x, xpu_visible_devices)
+            res_xpus = [
+                xpu_visible_devices_list.index(x.strip())
+                for x in xpus.split(',')
+            ]
+            logger.info("Change selected_xpus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "XPU_VISIBLE_DEVICES:{}".format(
+                            xpus, res_xpus, xpu_visible_devices_list))
+
+    return res_xpus
+
+
+def get_device_mode():
+    if fluid.core.is_compiled_with_npu() and \
+            fluid.core.get_npu_device_count() > 0:
+        print("launch train in ascend npu mode!")
+        return DeviceMode.ASCEND_NPU
+
+    if fluid.core.is_compiled_with_cuda() and \
+            fluid.core.get_cuda_device_count() > 0:
+        print("launch train in GPU mode!")
+        return DeviceMode.GPU
+
+    if fluid.core.is_compiled_with_xpu() and fluid.core.get_xpu_device_count(
+    ) > 0:
+        print("launch train in XPU mode")
+        return DeviceMode.XPU
+
+    print("launch train in CPU mode")
+    return DeviceMode.CPU
+
+
+def get_device_proc_info(args):
+    # device_mode
+    device_mode = get_device_mode()
+
+    # devices
+    devices_per_proc = []
+    if device_mode == DeviceMode.GPU:
+        gpus = get_gpus(args.gpus)
+        if args.nproc_per_node is not None:
+            assert (len(gpus) % int(args.nproc_per_node)) ==0, \
+                "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(gpus), arg.nproc_per_node)
+
+            n = int(len(gpus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                gpus[i:i + n] for i in six.moves.range(0, len(gpus), n)
+            ]
+        else:
+            devices_per_proc = gpus
+    elif device_mode == DeviceMode.ASCEND_NPU:
+        devices_per_proc = None
+    elif device_mode == DeviceMode.XPU:
+        xpus = get_xpus(args.xpus)
+        if args.nproc_per_node is not None:
+            assert (len(xpus) % int(args.nproc_per_node)) == 0, \
+                "xpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(xpus), arg.nproc_per_node)
+
+            n = int(len(xpus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                xpus[i:i + n] for i in six.moves.range(0, len(xpus), n)
+            ]
+        else:
+            devices_per_proc = xpus
+    elif device_mode == DeviceMode.CPU:
+        if args.nproc_per_node is None:
+            devices_per_proc = [0]
+        else:
+            devices_per_proc = [x for x in range(0, args.nproc_per_node)]
+    else:
+        assert False, "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
+            device_mode)
+
+    return (device_mode, devices_per_proc)
+
+
 def direct_start(args):
     # run ps-cpu mode on paddlecloud, using given envs
     cmd = [sys.executable, "-u", args.training_script] + \
@@ -603,7 +757,7 @@ def cloud_ps_heter_env_set(args):
     avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
     assert len(
         avilable_ports
-    ) > 3, "set paddle_ports_num >= 2 in config.ini for paddlecloud job submit"
+    ) >= 2, "set paddle_ports_num >= 2 in config.ini for paddlecloud job submit"
 
     # hard code for paddlecloud custom-framework
     trainers_num = len(paddle_pserver_endpoints.split(","))
@@ -894,7 +1048,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "PSERVER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_server.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": "1",
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
@@ -958,7 +1112,7 @@ class ParameterServerLauncher(object):
                 self.heter_worker_endpoints,
                 "TRAINING_ROLE": "TRAINER",
                 "PADDLE_TRAINER_ID": str(cur_worker.rank),
-                "PADDLE_WITH_GLOO": "1",
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",
@@ -1014,7 +1168,8 @@ class ParameterServerLauncher(object):
         elif fluid.core.is_compiled_with_xpu():
             heter_device_num = fluid.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
-        assert heter_device_num != 0
+        if heter_device_num == 0:
+            return
 
         for idx, cur_heter_worker in enumerate(pod.heter_workers):
             device_id = str(device_list[idx % heter_device_num])
@@ -1027,7 +1182,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "HETER_TRAINER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_heter_worker.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": "1",
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",

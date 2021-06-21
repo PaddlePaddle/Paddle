@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
+
 #include <functional>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -22,6 +24,102 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+
+ConvBiasFusePass::ConvBiasFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(-1)
+      .End();
+}
+
+Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
+  AddOpCompat(OpCompat("conv2d_transpose"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("output_padding")
+      .End()
+      .AddAttr("output_size")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(-1)
+      .End();
+}
 
 template <typename BinaryOperation>
 LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
@@ -77,6 +175,12 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_NE(
         subgraph.count(conv_input), 0,
         platform::errors::NotFound("Detector did not find conv input."));
+
+    // check compat
+    if (!IsCompat(subgraph, g)) {
+      VLOG(3) << "Pass in op compat failed.";
+      return;
+    }
 
     // check if fuse can be done and if MKL-DNN should be used
     FuseOptions fuse_option = FindFuseOption(*conv, *eltwise);
@@ -147,12 +251,19 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 REGISTER_PASS(conv_bias_mkldnn_fuse_pass,
               paddle::framework::ir::ConvBiasFusePass);
-REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,
-              paddle::framework::ir::Conv2DTransposeBiasFusePass);
-REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
-              paddle::framework::ir::Conv3DBiasFusePass);
 REGISTER_PASS_CAPABILITY(conv_bias_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
-            .EQ("elementwise_add", 0));
+            .LE("conv2d", 1)
+            .LE("elementwise_add", 1));
+
+REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DTransposeBiasFusePass);
+REGISTER_PASS_CAPABILITY(conv_transpose_bias_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d_transpose", 2)
+            .LE("elementwise_add", 1));
+
+REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv3DBiasFusePass);

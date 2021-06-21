@@ -14,13 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/scope.h"
 
-#include <memory>  // for unique_ptr
-#include <queue>
-#include <set>
-#include <unordered_set>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/string/printf.h"
 
 DECLARE_bool(benchmark);
 
@@ -81,6 +76,13 @@ Variable* Scope::Var(std::string* name) {
 Variable* Scope::FindVar(const std::string& name) const {
   SCOPE_VARS_READER_LOCK
   return FindVarInternal(name);
+}
+
+Variable* Scope::GetVar(const std::string& name) const {
+  auto* var = FindVar(name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound("Cannot find %s in scope.", name));
+  return var;
 }
 
 Variable* Scope::FindLocalVar(const std::string& name) const {

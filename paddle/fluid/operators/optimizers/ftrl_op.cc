@@ -42,7 +42,9 @@ class FTRLOp : public framework::OperatorWithKernel {
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
                       platform::errors::InvalidArgument(
-                          "Two input of FTRL Op's dimension must be same."));
+                          "Two input of FTRL Op's dimension must be same, but "
+                          "param_dim is %d, Grad is %d",
+                          param_dim, ctx->GetInputDim("Grad")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(framework::product(lr_dim), 0,
@@ -51,9 +53,10 @@ class FTRLOp : public framework::OperatorWithKernel {
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(
-        framework::product(lr_dim), 1,
-        platform::errors::InvalidArgument("Learning Rate should be a scalar."));
+    PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
+                      platform::errors::InvalidArgument(
+                          "Learning Rate should be a scalar, but got %d",
+                          framework::product(lr_dim)));
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("SquaredAccumOut", param_dim);

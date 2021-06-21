@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
@@ -72,8 +72,8 @@ class TestMNIST(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         return img, label
 
-    def _compare(self, model, use_cuda, random_data=True, only_forward=False):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def _compare(self, model, use_device, random_data=True, only_forward=False):
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
         img, label = self._init_data(random_data)
 
@@ -90,7 +90,7 @@ class TestMNIST(TestParallelExecutorBase):
             model,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             fuse_relu_depthwise_conv=True,
             use_ir_memory_optimize=True,
             optimizer=_optimizer)
@@ -98,7 +98,7 @@ class TestMNIST(TestParallelExecutorBase):
             model,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             fuse_relu_depthwise_conv=False,
             optimizer=_optimizer)
 
@@ -108,12 +108,12 @@ class TestMNIST(TestParallelExecutorBase):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
 
     def test_simple_depthwise_with_fuse_op(self):
-        self._compare(simple_depthwise_net, True)
-        self._compare(simple_depthwise_net, False)
+        self._compare(simple_depthwise_net, DeviceType.CUDA)
+        self._compare(simple_depthwise_net, DeviceType.CPU)
 
     def test_simple_depthwise_with_fuse_op_only_forward(self):
-        self._compare(simple_depthwise_net, True, only_forward=True)
-        self._compare(simple_depthwise_net, False, only_forward=True)
+        self._compare(simple_depthwise_net, DeviceType.CUDA, only_forward=True)
+        self._compare(simple_depthwise_net, DeviceType.CPU, only_forward=True)
 
 
 if __name__ == '__main__':

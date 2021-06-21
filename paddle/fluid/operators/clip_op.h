@@ -25,7 +25,7 @@ namespace operators {
 using framework::Tensor;
 using platform::Transform;
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename UnaryOperation>
 __global__ void ClipCudaKernel(const T* input, T* out, int num,
                                UnaryOperation op) {
@@ -105,7 +105,7 @@ class ClipKernel : public framework::OpKernel<T> {
       const T* x_data = x->data<T>();
       int64_t numel = x->numel();
       if (platform::is_gpu_place(context.GetPlace())) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
         int threads = 256;
         int blocks = (numel + threads - 1) / threads;
         ClipCudaKernel<T, ClipFunctor<T>><<<
@@ -133,7 +133,8 @@ class ClipKernel : public framework::OpKernel<T> {
       trans(context.template device_context<DeviceContext>(), out_data,
             out_data + numel, out_data, ClipFunctor<T>(min, max));
     } else {
-      PADDLE_THROW("ClipOp only supports LoDTensor and SelectedRows");
+      PADDLE_THROW(platform::errors::Unavailable(
+          "ClipOp only supports LoDTensor and SelectedRows."));
     }
   }
 };

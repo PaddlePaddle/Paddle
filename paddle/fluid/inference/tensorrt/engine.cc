@@ -18,16 +18,14 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <string>
 
+#include "cuda_runtime_api.h"  // NOLINT
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
-namespace plugin {
-class PluginTensorRT;
-}  // namespace plugin
 
 int TensorRTEngine::runtime_batch_ = 1;
 
@@ -173,6 +171,29 @@ void TensorRTEngine::FreezeNetwork() {
                       "TRT to run.";
 #endif
 #endif
+    }
+  }
+
+  if (use_dla_) {
+    if (!enable_int8 && !enable_fp16) {
+      LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
+                      "set float32, so DLA is not used.";
+    } else if (infer_builder_->getNbDLACores() == 0) {
+      LOG(WARNING)
+          << "TensorRT DLA is set by config, but your device does not have "
+             "DLA, so DLA is not used.";
+    } else {
+      if (dla_core_ < 0 || dla_core_ >= infer_builder_->getNbDLACores()) {
+        dla_core_ = 0;
+        LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
+                     << infer_builder_->getNbDLACores() << ", but got "
+                     << dla_core_ << ", so use use 0 as default.";
+      }
+      infer_builder_->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+      infer_builder_->setDLACore(dla_core_);
+      infer_builder_->allowGPUFallback(true);
+      LOG(INFO) << "TensorRT DLA enabled in FreezeNetwork(), DLACore "
+                << dla_core_;
     }
   }
 
@@ -332,6 +353,13 @@ nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
   return network()->addPluginExt(inputs, num_inputs, *plugin);
 }
 
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    plugin::PluginTensorRTV2Ext *plugin) {
+  owned_plugin_v2ext_.emplace_back(plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
+}
+
 void TensorRTEngine::freshDeviceId() {
   int count;
   cudaGetDeviceCount(&count);
@@ -339,7 +367,7 @@ void TensorRTEngine::freshDeviceId() {
                     platform::errors::OutOfRange(
                         "Device id %d exceeds the current device count: %d.",
                         device_id_, count));
-  cudaSetDevice(device_id_);
+  platform::SetDeviceId(device_id_);
 }
 
 }  // namespace tensorrt

@@ -27,7 +27,7 @@ from paddle.io import Dataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
-from test_multiprocess_dataloader_iterable_dataset_static import RandomDataset, prepare_places
+from test_multiprocess_dataloader_iterable_dataset_static import RandomDataset, RandomBatchedDataset, prepare_places
 from test_multiprocess_dataloader_iterable_dataset_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZE, SAMPLE_NUM, CLASS_NUM
 
 
@@ -117,6 +117,48 @@ class TestDygraphDataLoader(unittest.TestCase):
                 results.append(ret)
             assert results[0]['loss'].shape[0] * 2 == results[1]['loss'].shape[
                 0]
+
+
+class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
+    def run_main(self, num_workers, places):
+        fluid.default_startup_program().random_seed = 1
+        fluid.default_main_program().random_seed = 1
+        with fluid.dygraph.guard(places[0]):
+            fc_net = SimpleFCNet()
+            optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
+
+            dataset = RandomBatchedDataset(SAMPLE_NUM, CLASS_NUM)
+            dataloader = DataLoader(
+                dataset,
+                num_workers=num_workers,
+                batch_size=None,
+                drop_last=True)
+
+            step_list = []
+            loss_list = []
+            start_t = time.time()
+            for _ in six.moves.range(EPOCH_NUM):
+                step = 0
+                for image, label in dataloader():
+                    out = fc_net(image)
+                    loss = fluid.layers.cross_entropy(out, label)
+                    avg_loss = fluid.layers.reduce_mean(loss)
+                    avg_loss.backward()
+                    optimizer.minimize(avg_loss)
+                    fc_net.clear_gradients()
+
+                    loss_list.append(np.mean(avg_loss.numpy()))
+                    step += 1
+                step_list.append(step)
+
+        end_t = time.time()
+        ret = {
+            "time": end_t - start_t,
+            "step": step_list,
+            "loss": np.array(loss_list)
+        }
+        print("time cost", ret['time'], 'step_list', ret['step'])
+        return ret
 
 
 if __name__ == '__main__':

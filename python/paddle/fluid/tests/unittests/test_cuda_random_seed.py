@@ -31,7 +31,7 @@ class TestGeneratorSeed(unittest.TestCase):
     """
 
     def test_gen_dropout_dygraph(self):
-        gen = paddle.manual_seed(12343)
+        gen = paddle.seed(12343)
 
         fluid.enable_dygraph()
 
@@ -70,13 +70,13 @@ class TestGeneratorSeed(unittest.TestCase):
         """Test Generator seed."""
         fluid.enable_dygraph()
 
-        paddle.manual_seed(12312321111)
+        paddle.seed(12312321111)
         x = fluid.layers.gaussian_random([120], dtype="float32")
         st1 = paddle.get_cuda_rng_state()
         x1 = fluid.layers.gaussian_random([120], dtype="float32")
         paddle.set_cuda_rng_state(st1)
         x2 = fluid.layers.gaussian_random([120], dtype="float32")
-        paddle.manual_seed(12312321111)
+        paddle.seed(12312321111)
         x3 = fluid.layers.gaussian_random([120], dtype="float32")
         x_np = x.numpy()
         x1_np = x1.numpy()
@@ -93,13 +93,13 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.enable_dygraph()
 
-        gen = paddle.manual_seed(12312321111)
+        gen = paddle.seed(12312321111)
         x = paddle.randint(low=10, shape=[10], dtype="int32")
         st1 = gen.get_state()
         x1 = paddle.randint(low=10, shape=[10], dtype="int32")
         gen.set_state(st1)
         x2 = paddle.randint(low=10, shape=[10], dtype="int32")
-        paddle.manual_seed(12312321111)
+        paddle.seed(12312321111)
         x3 = paddle.randint(low=10, shape=[10], dtype="int32")
         x_np = x.numpy()
         x1_np = x1.numpy()
@@ -114,7 +114,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_gen_TruncatedNormal_initializer(self):
         fluid.disable_dygraph()
 
-        gen = paddle.manual_seed(123123143)
+        gen = paddle.seed(123123143)
         cur_state = paddle.get_cuda_rng_state()
 
         startup_program = fluid.Program()
@@ -140,7 +140,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
 
-        paddle.manual_seed(123123143)
+        paddle.seed(123123143)
         with fluid.program_guard(train_program, startup_program):
             exe.run(startup_program)
             out2 = exe.run(train_program,

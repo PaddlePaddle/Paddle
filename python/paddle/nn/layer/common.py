@@ -14,33 +14,24 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
-from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
-from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
+from ...fluid.dygraph import Flatten  # noqa: F401
 from ...fluid.dygraph import layers
+from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
-__all__ = [
-    'BilinearTensorProduct',
-    'Pool2D',
-    'Embedding',
-    'Linear',
-    'Upsample',
-    'Pad1D',
-    'Pad2D',
-    'Pad3D',
-    'CosineSimilarity',
-    'Dropout',
-    'Dropout2d',
-    'Dropout3d',
-    'Bilinear',
-    'AlphaDropout',
-]
+__all__ = []
+
+
+def _npairs(x, n):
+    if isinstance(x, (paddle.Tensor, list)):
+        return x
+    x = [x] * (n * 2)
+    return x
 
 
 class Linear(layers.Layer):
-    """
+    r"""
 
     Fully-connected linear transformation layer. For each input :math:`X` ,
     the equation is:
@@ -121,7 +112,6 @@ class Linear(layers.Layer):
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        self.name = name
         self.weight = self.create_parameter(
             shape=[in_features, out_features],
             attr=self._weight_attr,
@@ -138,6 +128,11 @@ class Linear(layers.Layer):
         out = F.linear(
             x=input, weight=self.weight, bias=self.bias, name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'in_features={}, out_features={}, dtype={}{}'.format(
+            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
 
 
 class Upsample(layers.Layer):
@@ -289,8 +284,8 @@ class Upsample(layers.Layer):
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
-             If a Tensor Variable, its dimensions size should be a 1.
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`. Has to match input size if it is either a list or a tuple or a Tensor.
@@ -334,10 +329,10 @@ class Upsample(layers.Layer):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             input_data = np.random.rand(2,3,6,10).astype("float32")
             upsample_out  = paddle.nn.Upsample(size=[12,12])
@@ -379,15 +374,196 @@ class Upsample(layers.Layer):
 
         return out
 
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
+            main_str, self.mode, self.align_corners, self.align_mode,
+            self.data_format, name_str)
+
+
+class UpsamplingNearest2D(layers.Layer):
+    """
+    This op upsamples a batch of images, using nearest neighbours' pixel values.
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w),
+    where in_w is width of the input tensor, in_h is the height of the input tensor.
+    And the upsampling only applies on the two dimensions(height and width).
+    Nearest neighbor interpolation is to perform nearest neighbor interpolation
+    in both the 3rd dimension(in height direction) and the 4th dimension(in width
+    direction) on input tensor.
+
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+
+    Parameters:
+        x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        size (list|tuple|Tensor|None): Output shape of image resize
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor , its dimensions size should be a 1.
+        scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.
+             Has to match input size if it is either a list or a tuple or a Tensor.
+             Default: None.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
+            upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12,12])
+            input = paddle.to_tensor(input_data)
+            output = upsample_out(x=input)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
+    """
+
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 data_format='NCHW',
+                 name=None):
+        super(UpsamplingNearest2D, self).__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, x):
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode='nearest',
+            align_corners=False,
+            align_mode=0,
+            data_format=self.data_format,
+            name=self.name)
+
+        return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, data_format={}{}'.format(main_str, self.data_format,
+                                             name_str)
+
+
+class UpsamplingBilinear2D(layers.Layer):
+    """
+    This op upsamples a batch of images, using bilinear' pixel values.
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w),
+    where in_w is width of the input tensor, in_h is the height of the input tensor.
+    And the upsampling only applies on the two dimensions(height and width).
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
+    again in the other direction.
+
+    For details of bilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation.
+
+    Parameters:
+        x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        size (list|tuple|Tensor|None): Output shape of image resize
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
+             Default: None. If a list/tuple, each element can be an integer or a Tensor  of shape: [1].
+             If a Tensor , its dimensions size should be a 1.
+        scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.
+             Has to match input size if it is either a list or a tuple or a Tensor.
+             Default: None.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
+            upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12,12])
+            input = paddle.to_tensor(input_data)
+            output = upsample_out(x=input)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
+    """
+
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 data_format='NCHW',
+                 name=None):
+        super(UpsamplingBilinear2D, self).__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, x):
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode='bilinear',
+            align_corners=True,
+            align_mode=0,
+            data_format=self.data_format,
+            name=self.name)
+
+        return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, data_format={}{}'.format(main_str, self.data_format,
+                                             name_str)
+
 
 class Bilinear(layers.Layer):
-    """
+    r"""
 
     This layer performs bilinear on two inputs.
 
     .. math::
 
-      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,size-1
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,outfeatures-1
 
       out = out + b
 
@@ -395,7 +571,7 @@ class Bilinear(layers.Layer):
      - :math:`x1`: the first input contains in1_features elements, shape is [batch_size, in1_features].
      - :math:`x2`: the second input contains in2_features elements, shape is [batch_size, in2_features].
      - :math:`W_{i}`: the i-th learned weight, shape is [in1_features, in2_features], and learned weight's shape is [out_features, in1_features, in2_features].
-     - :math:`out_{i}`: the i-th element of out, shape is [batch_size, out_features].
+     - :math:`out_{i}`: the i-th element of out, shape is [batch_size], and out's shape is [batch_size, out_features].
      - :math:`b`: the learned bias, shape is [1, out_features].
      - :math:`x2^\mathrm{T}`: the transpose of :math:`x2`.
 
@@ -425,7 +601,6 @@ class Bilinear(layers.Layer):
         import paddle
         import numpy
 
-        paddle.disable_static()
         layer1 = numpy.random.random((5, 5)).astype('float32')
         layer2 = numpy.random.random((5, 4)).astype('float32')
         bilinear = paddle.nn.Bilinear(
@@ -469,6 +644,12 @@ class Bilinear(layers.Layer):
     def forward(self, x1, x2):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
+            self._in1_features, self._in2_features, self._out_features,
+            self._dtype, name_str)
+
 
 class Dropout(layers.Layer):
     """
@@ -483,8 +664,8 @@ class Dropout(layers.Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int): Probability of setting units to zero. Default: 0.5
-        axis (int | list): The axis along which the dropout is performed. Default None.
+        p (float|int): Probability of setting units to zero. Default: 0.5
+        axis (int|list|tuple): The axis along which the dropout is performed. Default None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
                                1. upscale_in_train(default), upscale the output at training time
@@ -502,21 +683,22 @@ class Dropout(layers.Layer):
         - input: N-D tensor.
         - output: N-D tensor, the same shape as input.
 
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.Dropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
@@ -537,13 +719,18 @@ class Dropout(layers.Layer):
             name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, axis={}, mode={}{}'.format(self.p, self.axis, self.mode,
+                                                 name_str)
 
-class Dropout2d(layers.Layer):
+
+class Dropout2D(layers.Layer):
     """
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
-    Dropout2d will help promote independence between feature maps as described in the paper:
+    Dropout2D will help promote independence between feature maps as described in the paper:
     `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
     See ``paddle.nn.functional.dropout2d`` for more details.
@@ -552,35 +739,33 @@ class Dropout2d(layers.Layer):
 
     Parameters:
         p (float, optional): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-                                     will be consistent with that of the input. An optional string from:
-                                    `NCHW`, `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is
-                                     stored in the order of: [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 4-D tensor.
         - output: 4-D tensor, the same shape as input.
 
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
             x = paddle.to_tensor(x)
-            m = paddle.nn.Dropout2d(p=0.5)
+            m = paddle.nn.Dropout2D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
-        super(Dropout2d, self).__init__()
+        super(Dropout2D, self).__init__()
 
         self.p = p
         self.data_format = data_format
@@ -595,13 +780,18 @@ class Dropout2d(layers.Layer):
             name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
+                                               name_str)
 
-class Dropout3d(layers.Layer):
+
+class Dropout3D(layers.Layer):
     """
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
-    Dropout3d will help promote independence between feature maps as described in the paper:
+    Dropout3D will help promote independence between feature maps as described in the paper:
     `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
     See ``paddle.nn.functional.dropout3d`` for more details.
@@ -610,35 +800,33 @@ class Dropout3d(layers.Layer):
 
     Parameters:
         p (float | int): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-                                     will be consistent with that of the input. An optional string from:
-                                    `NCDHW`, `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is
-                                     stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCDHW` or `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 5-D tensor.
         - output: 5-D tensor, the same shape as input.
 
+
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
             x = paddle.to_tensor(x)
-            m = paddle.nn.Dropout3d(p=0.5)
+            m = paddle.nn.Dropout3D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
-        super(Dropout3d, self).__init__()
+        super(Dropout3D, self).__init__()
 
         self.p = p
         self.data_format = data_format
@@ -652,6 +840,11 @@ class Dropout3d(layers.Layer):
             data_format=self.data_format,
             name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
+                                               name_str)
 
 
 class AlphaDropout(layers.Layer):
@@ -676,20 +869,20 @@ class AlphaDropout(layers.Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[-1, 1], [-1, 1]]).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.AlphaDropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
+            print(x)
+            print(y_train)
             # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
-            print(y_test.numpy())
+            print(y_test)
    """
 
     def __init__(self, p=0.5, name=None):
@@ -702,6 +895,10 @@ class AlphaDropout(layers.Layer):
             input, p=self.p, training=self.training, name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}{}'.format(self.p, name_str)
+
 
 class Pad1D(layers.Layer):
     """
@@ -710,7 +907,8 @@ class Pad1D(layers.Layer):
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -744,7 +942,6 @@ class Pad1D(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             input_shape = (1, 2, 3)
             pad = [1, 2]
@@ -752,7 +949,7 @@ class Pad1D(layers.Layer):
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad1D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[0. 1. 2. 3. 0. 0.]
             #   [0. 4. 5. 6. 0. 0.]]]
     """
@@ -764,7 +961,7 @@ class Pad1D(layers.Layer):
                  data_format="NCL",
                  name=None):
         super(Pad1D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 1)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -778,6 +975,11 @@ class Pad1D(layers.Layer):
                      data_format=self._data_format,
                      name=self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
+
 
 class Pad2D(layers.Layer):
     """
@@ -787,8 +989,9 @@ class Pad2D(layers.Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
@@ -821,14 +1024,13 @@ class Pad2D(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             mode = "constant"
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad2D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[[0. 0. 0. 0.]
             #    [0. 1. 2. 3.]
             #    [0. 4. 5. 6.]
@@ -843,7 +1045,7 @@ class Pad2D(layers.Layer):
                  data_format="NCHW",
                  name=None):
         super(Pad2D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 2)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -857,6 +1059,11 @@ class Pad2D(layers.Layer):
                      data_format=self._data_format,
                      name=self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
+
 
 class Pad3D(layers.Layer):
     """
@@ -866,7 +1073,8 @@ class Pad3D(layers.Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -906,7 +1114,7 @@ class Pad3D(layers.Layer):
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad3D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[[[0. 0. 0. 0.]
             #     [0. 1. 2. 3.]
             #     [0. 4. 5. 6.]
@@ -921,7 +1129,7 @@ class Pad3D(layers.Layer):
                  data_format="NCDHW",
                  name=None):
         super(Pad3D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 3)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -934,6 +1142,11 @@ class Pad3D(layers.Layer):
                      value=self._value,
                      data_format=self._data_format,
                      name=self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
 
 
 class CosineSimilarity(layers.Layer):
@@ -968,7 +1181,6 @@ class CosineSimilarity(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             np.random.seed(0)
             x1 = np.random.rand(2,3)
@@ -978,7 +1190,7 @@ class CosineSimilarity(layers.Layer):
 
             cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
-            print(result.numpy())
+            print(result)
             # [0.99806249 0.9817672  0.94987036]
     """
 
@@ -990,16 +1202,19 @@ class CosineSimilarity(layers.Layer):
     def forward(self, x1, x2):
         return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
 
+    def extra_repr(self):
+        return 'axis={_axis}, eps={_eps}'.format(**self.__dict__)
+
 
 class Embedding(layers.Layer):
-    """
+    r"""
     **Embedding Layer**
 
     This interface is used to construct a callable object of the ``Embedding`` class.
     For specific usage, refer to code examples. It implements the function of the Embedding Layer.
     This layer is used to lookup embeddings vector of ids provided by :attr:`x` .
     It automatically constructs a 2D embedding matrix based on the
-    input :attr:`num_embeddings` and attr:`embedding_dim`.
+    input :attr:`num_embeddings` and :attr:`embedding_dim`.
 
     The shape of output Tensor is generated by appending an emb_size dimension to the
     last dimension of the input Tensor shape.
@@ -1011,9 +1226,9 @@ class Embedding(layers.Layer):
 
         Case 1:
 
-        input is a Tensor. padding_idx = -1
-            input.data = [[1, 3], [2, 4], [4, 127]
-            input.shape = [3, 2]
+        x is a Tensor. padding_idx = -1
+            x.data = [[1, 3], [2, 4], [4, 127]
+            x.shape = [3, 2]
         Given size = [128, 16]
         output is a Tensor:
             out.shape = [3, 2, 16]
@@ -1031,7 +1246,7 @@ class Embedding(layers.Layer):
     Parameters:
         num_embeddings (int): Just one element which indicate the size
             of the dictionary of embeddings.
-        embedding_dim:  Just one element which indicate the size of each embedding vector respectively.
+        embedding_dim (int):  Just one element which indicate the size of each embedding vector respectively.
         padding_idx(int|long|None): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
@@ -1040,9 +1255,7 @@ class Embedding(layers.Layer):
         sparse(bool): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizer does not support sparse update,
-            such as :ref:`api_optimizer_AdadeltaOptimizer` , :ref:`api_optimizer_AdamaxOptimizer` ,
-            :ref:`api_optimizer_DecayedAdagradOptimizer` , :ref:`api_optimizer_FtrlOptimizer` ,
-            :ref:`api_optimizer_LambOptimizer` and :ref:`api_optimizer_LarsMomentumOptimizer` .
+            such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these case, sparse must be False. Default: False.
         weight_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
@@ -1069,7 +1282,7 @@ class Embedding(layers.Layer):
 
             x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
             y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
-            paddle.disable_static(paddle.CPUPlace())
+
             x = paddle.to_tensor(x_data, stop_gradient=False)
             y = paddle.to_tensor(y_data, stop_gradient=False)
 
@@ -1106,8 +1319,7 @@ class Embedding(layers.Layer):
         self._embedding_dim = embedding_dim
         self._sparse = sparse
         self._is_distributed = False
-        self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-            num_embeddings + padding_idx)
+        self._padding_idx = padding_idx
 
         if self._num_embeddings <= 0:
             raise ValueError("num_embeddings must be gather than 0")
@@ -1115,7 +1327,10 @@ class Embedding(layers.Layer):
         if self._embedding_dim <= 0:
             raise ValueError("embedding_dim must be gather than 0")
 
-        if self._padding_idx >= num_embeddings or self._padding_idx < -num_embeddings:
+        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            num_embeddings + padding_idx)
+
+        if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
             raise ValueError("padding_idx must be within [-{}, {})".format(
                 num_embeddings, num_embeddings))
 
@@ -1131,6 +1346,9 @@ class Embedding(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
+        if in_dygraph_mode() and padding_idx != -1:
+            self.weight[padding_idx] = 0.0
+
     def forward(self, x):
         return F.embedding(
             x,
@@ -1138,3 +1356,82 @@ class Embedding(layers.Layer):
             padding_idx=self._padding_idx,
             sparse=self._sparse,
             name=self._name)
+
+    def extra_repr(self):
+        main_str = '{_num_embeddings}, {_embedding_dim}'
+        if self._padding_idx is not None:
+            main_str += ', padding_idx={_padding_idx}'
+        main_str += ', sparse={_sparse}'
+        if self._name is not None:
+            main_str += ', name={_name}'
+        return main_str.format(**self.__dict__)
+
+
+class Unfold(layers.Layer):
+    """
+    This op returns a col buffer of sliding local blocks of input x, also known
+    as im2col for batched 2D image tensors. For each block under the convolution filter,
+    all element will be rearranged as a column. While the convolution filter sliding over
+    the input feature map, a series of such columns will be formed.
+
+    For each input :math:`x` with shape [N, C, H, W], the output shape [N, Cout, Lout]
+    can be calculated as following.
+
+    See ``paddle.nn.functional.unfold`` for more details.
+
+    
+    Parameters:
+        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        strides(int|list):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [sride, stride].
+                                  For default, strides will be [1, 1].
+        paddings(int|list):       The paddings of each dimension, should be
+                                  [padding_top, padding_left, padding_bottom, padding_right]
+                                  or [padding_h, padding_w] or an integer padding.
+                                  If [padding_h, padding_w] was given, it will expanded to
+                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
+                                  padding was given, [padding, padding, padding, padding] will
+                                  be used. For default, paddings will be [0, 0, 0, 0]
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            x = paddle.randn((100,3,224,224))
+            unfold = nn.Unfold(kernel_sizes=[3, 3])
+            result = unfold(x)
+            print(result)
+   """
+
+    def __init__(self,
+                 kernel_sizes,
+                 dilations=1,
+                 paddings=0,
+                 strides=1,
+                 name=None):
+        super(Unfold, self).__init__()
+
+        self.kernel_sizes = kernel_sizes
+        self.dilations = dilations
+        self.paddings = paddings
+        self.strides = strides
+        self.name = name
+
+    def forward(self, input):
+        return F.unfold(input, self.kernel_sizes, self.dilations, self.paddings,
+                        self.strides, self.name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.\
+                format(self.kernel_sizes, self.dilations, self.paddings, self.strides, name_str)

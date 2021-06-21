@@ -26,7 +26,7 @@ namespace plugin {
 
 class GeluPlugin : public PluginTensorRT {
  public:
-  GeluPlugin() {}
+  explicit GeluPlugin(const bool with_fp16) { with_fp16_ = with_fp16; }
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
@@ -35,7 +35,7 @@ class GeluPlugin : public PluginTensorRT {
   }
 
   ~GeluPlugin() {}
-  GeluPlugin* clone() const override { return new GeluPlugin(); }
+  GeluPlugin* clone() const override { return new GeluPlugin(with_fp16_); }
 
   const char* getPluginType() const override { return "gelu_plugin"; }
   int getNbOutputs() const override { return 1; }
@@ -63,20 +63,26 @@ class GeluPlugin : public PluginTensorRT {
 #if IS_TRT_VERSION_GE(6000)
 class GeluPluginDynamic : public DynamicPluginTensorRT {
  public:
-  GeluPluginDynamic() {}
-  GeluPluginDynamic(void const* serial_data, size_t serial_length) {}
+  explicit GeluPluginDynamic(const bool with_fp16) { with_fp16_ = with_fp16; }
+  GeluPluginDynamic(void const* serial_data, size_t serial_length) {
+    DeserializeValue(&serial_data, &serial_length, &with_fp16_);
+  }
 
   ~GeluPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new GeluPluginDynamic();
+    return new GeluPluginDynamic(with_fp16_);
   }
 
   const char* getPluginType() const override { return "gelu_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override { return 0; }
 
-  size_t getSerializationSize() const override { return 0; }
-  void serialize(void* buffer) const override {}
+  size_t getSerializationSize() const override {
+    return SerializedSize(with_fp16_);
+  }
+  void serialize(void* buffer) const override {
+    SerializeValue(&buffer, with_fp16_);
+  }
 
   nvinfer1::DimsExprs getOutputDimensions(
       int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
@@ -109,9 +115,9 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
   void destroy() override { delete this; }
 };
 
-class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
+class GeluPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  GeluPluginV2Creator() {}
+  GeluPluginDynamicCreator() {}
   const char* getPluginName() const override { return "gelu_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
@@ -147,7 +153,7 @@ class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-REGISTER_TRT_PLUGIN_V2(GeluPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(GeluPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

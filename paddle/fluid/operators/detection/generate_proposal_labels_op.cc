@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
@@ -31,6 +32,28 @@ void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
+}
+
+// Filter the ground-truth in RoIs and the RoIs with non-positive area.
+// The ground-truth has max overlap with itself so the max_overlap is 1
+// and the corresponding RoI will be removed.
+template <typename T>
+void FilterRoIs(const platform::DeviceContext& ctx, const Tensor& rpn_rois,
+                const Tensor& max_overlap, Tensor* keep) {
+  const T* rpn_rois_dt = rpn_rois.data<T>();
+  const T* max_overlap_dt = max_overlap.data<T>();
+  int rois_num = max_overlap.numel();
+  keep->Resize({rois_num});
+  int* keep_data = keep->mutable_data<int>(ctx.GetPlace());
+  int keep_len = 0;
+  for (int i = 0; i < rois_num; ++i) {
+    if ((rpn_rois_dt[i * 4 + 2] - rpn_rois_dt[i * 4 + 0] + 1) > 0 &&
+        (rpn_rois_dt[i * 4 + 3] - rpn_rois_dt[i * 4 + 1] + 1) > 0 &&
+        max_overlap_dt[i] < 1.) {
+      keep_data[keep_len++] = i;
+    }
+  }
+  keep->Resize({keep_len});
 }
 
 class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
@@ -98,12 +121,21 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
                           im_info_dims.size(), im_info_dims));
 
     int class_nums = ctx->Attrs().Get<int>("class_nums");
+    bool is_cascade_rcnn = ctx->Attrs().Get<bool>("is_cascade_rcnn");
+    if (is_cascade_rcnn) {
+      PADDLE_ENFORCE_EQ(
+          ctx->HasInput("MaxOverlap"), true,
+          platform::errors::NotFound(
+              "Input(MaxOverlap) of GenerateProposalLabelsOp "
+              "should not be null when is_cascade_rcnn is True."));
+    }
 
     ctx->SetOutputDim("Rois", {-1, 4});
     ctx->SetOutputDim("LabelsInt32", {-1, 1});
     ctx->SetOutputDim("BboxTargets", {-1, 4 * class_nums});
     ctx->SetOutputDim("BboxInsideWeights", {-1, 4 * class_nums});
     ctx->SetOutputDim("BboxOutsideWeights", {-1, 4 * class_nums});
+    ctx->SetOutputDim("MaxOverlapWithGT", {-1});
   }
 
  protected:
@@ -142,7 +174,6 @@ std::vector<std::vector<int>> SampleFgBgGt(
   int64_t row = iou->dims()[0];
   int64_t col = iou->dims()[1];
   float epsilon = 0.00001;
-  const T* rpn_rois_dt = rpn_rois.data<T>();
   // Follow the Faster RCNN's implementation
   for (int64_t i = 0; i < row; ++i) {
     const T* v = proposal_to_gt_overlaps + i * col;
@@ -150,11 +181,6 @@ std::vector<std::vector<int>> SampleFgBgGt(
     T max_overlap = *std::max_element(v, v + col);
     if ((i < gt_num) && (crowd_data[i])) {
       max_overlap = -1.0;
-    }
-    if (is_cascade_rcnn &&
-        ((rpn_rois_dt[i * 4 + 2] - rpn_rois_dt[i * 4 + 0] + 1) <= 0 ||
-         (rpn_rois_dt[i * 4 + 3] - rpn_rois_dt[i * 4 + 1] + 1) <= 0)) {
-      continue;
     }
     if (max_overlap >= fg_thresh) {
       // fg mapped gt label index
@@ -232,12 +258,13 @@ std::vector<std::vector<int>> SampleFgBgGt(
 
 template <typename T>
 void GatherBoxesLabels(const platform::CPUDeviceContext& context,
-                       const Tensor& boxes, const Tensor& gt_boxes,
-                       const Tensor& gt_classes,
+                       const Tensor& boxes, const Tensor& max_overlap,
+                       const Tensor& gt_boxes, const Tensor& gt_classes,
                        const std::vector<int>& fg_inds,
                        const std::vector<int>& bg_inds,
                        const std::vector<int>& gt_inds, Tensor* sampled_boxes,
-                       Tensor* sampled_labels, Tensor* sampled_gts) {
+                       Tensor* sampled_labels, Tensor* sampled_gts,
+                       Tensor* sampled_max_overlap) {
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
   Tensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
@@ -264,6 +291,13 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
   bg_labels.mutable_data<int>({bg_num}, context.GetPlace());
   math::set_constant(context, &bg_labels, 0);
   Concat<int>(context, fg_labels, bg_labels, sampled_labels);
+
+  Tensor fg_max_overlap, bg_max_overlap;
+  fg_max_overlap.mutable_data<T>({fg_num}, context.GetPlace());
+  CPUGather<T>(context, max_overlap, fg_inds_t, &fg_max_overlap);
+  bg_max_overlap.mutable_data<T>({bg_num}, context.GetPlace());
+  CPUGather<T>(context, max_overlap, bg_inds_t, &bg_max_overlap);
+  Concat<T>(context, fg_max_overlap, bg_max_overlap, sampled_max_overlap);
 }
 
 template <typename T>
@@ -274,43 +308,58 @@ std::vector<Tensor> SampleRoisForOneImage(
     const float fg_thresh, const float bg_thresh_hi, const float bg_thresh_lo,
     const std::vector<float>& bbox_reg_weights, const int class_nums,
     std::minstd_rand engine, bool use_random, bool is_cascade_rcnn,
-    bool is_cls_agnostic) {
+    bool is_cls_agnostic, const Tensor& max_overlap) {
   // 1.1 map to original image
   auto im_scale = im_info.data<T>()[2];
-
   Tensor rpn_rois;
   rpn_rois.mutable_data<T>(rpn_rois_in.dims(), context.GetPlace());
   const T* rpn_rois_in_dt = rpn_rois_in.data<T>();
   T* rpn_rois_dt = rpn_rois.data<T>();
-  int gt_num = gt_boxes.dims()[0] * 4;
+
   for (int i = 0; i < rpn_rois.numel(); ++i) {
-    if (i < gt_num && is_cascade_rcnn) {
-      rpn_rois_dt[i] = rpn_rois_in_dt[i];
-    } else {
-      rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
-    }
+    rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
   }
 
-  // 1.2 compute overlaps
-  int proposals_num = rpn_rois.dims()[0];
-  if (!is_cascade_rcnn) {
-    proposals_num += gt_boxes.dims()[0];
+  int proposals_num = 1;
+
+  if (is_cascade_rcnn) {
+    Tensor keep;
+    FilterRoIs<T>(context, rpn_rois, max_overlap, &keep);
+    Tensor roi_filter;
+    // Tensor box_filter;
+    if (keep.numel() == 0) {
+      math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
+      set_zero(context, &roi_filter, static_cast<T>(0));
+    } else {
+      proposals_num = keep.numel();
+      roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
+      CPUGather<T>(context, rpn_rois, keep, &roi_filter);
+    }
+    T* roi_filter_dt = roi_filter.data<T>();
+    memcpy(rpn_rois_dt, roi_filter_dt, roi_filter.numel() * sizeof(T));
+    rpn_rois.Resize(roi_filter.dims());
+  } else {
+    proposals_num = rpn_rois.dims()[0];
   }
+  // 1.2 compute overlaps
+  proposals_num += gt_boxes.dims()[0];
+
   Tensor proposal_to_gt_overlaps;
   proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes.dims()[0]},
                                           context.GetPlace());
 
   Tensor boxes;
   boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
-  if (!is_cascade_rcnn) {
-    Concat<T>(context, gt_boxes, rpn_rois, &boxes);
-  } else {
-    T* boxes_dt = boxes.data<T>();
-    for (int i = 0; i < boxes.numel(); ++i) {
-      boxes_dt[i] = rpn_rois_dt[i];
-    }
-  }
+  Concat<T>(context, gt_boxes, rpn_rois, &boxes);
   BboxOverlaps<T>(boxes, gt_boxes, &proposal_to_gt_overlaps);
+
+  Tensor proposal_with_max_overlap;
+  proposal_with_max_overlap.mutable_data<T>({proposals_num},
+                                            context.GetPlace());
+
+  MaxIoU<T>(proposal_to_gt_overlaps, &proposal_with_max_overlap);
+
   // Generate proposal index
   std::vector<std::vector<int>> fg_bg_gt =
       SampleFgBgGt<T>(context, &proposal_to_gt_overlaps, is_crowd,
@@ -321,7 +370,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   std::vector<int> mapped_gt_inds = fg_bg_gt[2];  // mapped_gt_labels
 
   // Gather boxes and labels
-  Tensor sampled_boxes, sampled_labels, sampled_gts;
+  Tensor sampled_boxes, sampled_labels, sampled_gts, sampled_max_overlap;
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
   int boxes_num = fg_num + bg_num;
@@ -329,9 +378,11 @@ std::vector<Tensor> SampleRoisForOneImage(
   sampled_boxes.mutable_data<T>(bbox_dim, context.GetPlace());
   sampled_labels.mutable_data<int>({boxes_num}, context.GetPlace());
   sampled_gts.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
-  GatherBoxesLabels<T>(context, boxes, gt_boxes, gt_classes, fg_inds, bg_inds,
-                       mapped_gt_inds, &sampled_boxes, &sampled_labels,
-                       &sampled_gts);
+  sampled_max_overlap.mutable_data<T>({boxes_num}, context.GetPlace());
+  GatherBoxesLabels<T>(context, boxes, proposal_with_max_overlap, gt_boxes,
+                       gt_classes, fg_inds, bg_inds, mapped_gt_inds,
+                       &sampled_boxes, &sampled_labels, &sampled_gts,
+                       &sampled_max_overlap);
 
   // Compute targets
   Tensor bbox_targets_single;
@@ -390,6 +441,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   res.emplace_back(bbox_targets);
   res.emplace_back(bbox_inside_weights);
   res.emplace_back(bbox_outside_weights);
+  res.emplace_back(sampled_max_overlap);
   return res;
 }
 
@@ -409,6 +461,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     auto* bbox_inside_weights = context.Output<LoDTensor>("BboxInsideWeights");
     auto* bbox_outside_weights =
         context.Output<LoDTensor>("BboxOutsideWeights");
+    auto* max_overlap_with_gt = context.Output<LoDTensor>("MaxOverlapWithGT");
 
     int batch_size_per_im = context.Attr<int>("batch_size_per_im");
     float fg_fraction = context.Attr<float>("fg_fraction");
@@ -446,16 +499,21 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
             "received level of LoD is [%d], LoD is [%s].",
             gt_boxes->lod().size(), gt_boxes->lod()));
     int64_t n = static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
+    int64_t rois_num = rpn_rois->dims()[0];
+    int64_t gts_num = gt_boxes->dims()[0];
+    int64_t init_num =
+        is_cascade_rcnn ? rois_num + gts_num : n * batch_size_per_im;
 
-    rois->mutable_data<T>({n * batch_size_per_im, kBoxDim}, context.GetPlace());
-    labels_int32->mutable_data<int>({n * batch_size_per_im, 1},
-                                    context.GetPlace());
-    bbox_targets->mutable_data<T>({n * batch_size_per_im, kBoxDim * class_nums},
+    rois->mutable_data<T>({init_num, kBoxDim}, context.GetPlace());
+    labels_int32->mutable_data<int>({init_num, 1}, context.GetPlace());
+    bbox_targets->mutable_data<T>({init_num, kBoxDim * class_nums},
                                   context.GetPlace());
-    bbox_inside_weights->mutable_data<T>(
-        {n * batch_size_per_im, kBoxDim * class_nums}, context.GetPlace());
-    bbox_outside_weights->mutable_data<T>(
-        {n * batch_size_per_im, kBoxDim * class_nums}, context.GetPlace());
+    bbox_inside_weights->mutable_data<T>({init_num, kBoxDim * class_nums},
+                                         context.GetPlace());
+    bbox_outside_weights->mutable_data<T>({init_num, kBoxDim * class_nums},
+                                          context.GetPlace());
+    max_overlap_with_gt->Resize({init_num});
+    max_overlap_with_gt->mutable_data<T>(context.GetPlace());
 
     std::random_device rnd;
     std::minstd_rand engine;
@@ -486,25 +544,36 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
       Tensor gt_boxes_slice =
           gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
       Tensor im_info_slice = im_info->Slice(i, i + 1);
+      Tensor max_overlap_slice;
+      if (is_cascade_rcnn) {
+        auto* max_overlap = context.Input<Tensor>("MaxOverlap");
+        max_overlap_slice =
+            max_overlap->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
+      } else {
+        max_overlap_slice.mutable_data<T>({rpn_rois_slice.dims()[0]},
+                                          context.GetPlace());
+      }
       std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
           dev_ctx, rpn_rois_slice, gt_classes_slice, is_crowd_slice,
           gt_boxes_slice, im_info_slice, batch_size_per_im, fg_fraction,
           fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums,
-          engine, use_random, is_cascade_rcnn, is_cls_agnostic);
+          engine, use_random, is_cascade_rcnn, is_cls_agnostic,
+          max_overlap_slice);
       Tensor sampled_rois = tensor_output[0];
       Tensor sampled_labels_int32 = tensor_output[1];
       Tensor sampled_bbox_targets = tensor_output[2];
       Tensor sampled_bbox_inside_weights = tensor_output[3];
       Tensor sampled_bbox_outside_weights = tensor_output[4];
+      Tensor sampled_max_overlap = tensor_output[5];
 
       AppendRois<T>(rois, kBoxDim * num_rois, &sampled_rois);
       AppendRois<int>(labels_int32, num_rois, &sampled_labels_int32);
-      AppendRois<T>(bbox_targets, kBoxDim * num_rois * class_nums,
-                    &sampled_bbox_targets);
-      AppendRois<T>(bbox_inside_weights, kBoxDim * num_rois * class_nums,
-                    &sampled_bbox_inside_weights);
-      AppendRois<T>(bbox_outside_weights, kBoxDim * num_rois * class_nums,
+      int64_t offset = kBoxDim * num_rois * class_nums;
+      AppendRois<T>(bbox_targets, offset, &sampled_bbox_targets);
+      AppendRois<T>(bbox_inside_weights, offset, &sampled_bbox_inside_weights);
+      AppendRois<T>(bbox_outside_weights, offset,
                     &sampled_bbox_outside_weights);
+      AppendRois<T>(max_overlap_with_gt, num_rois, &sampled_max_overlap);
 
       num_rois += sampled_rois.dims()[0];
       lod0.emplace_back(num_rois);
@@ -521,6 +590,8 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     bbox_targets->Resize({num_rois, kBoxDim * class_nums});
     bbox_inside_weights->Resize({num_rois, kBoxDim * class_nums});
     bbox_outside_weights->Resize({num_rois, kBoxDim * class_nums});
+    max_overlap_with_gt->Resize({num_rois});
+    max_overlap_with_gt->set_lod(lod);
   }
 };
 
@@ -550,6 +621,12 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor), This input is a 2D Tensor with shape [B, 3]. "
              "B is the number of input images, "
              "each element consists of im_height, im_width, im_scale.");
+    AddInput("MaxOverlap",
+             "(LoDTensor), This input is a 1D LoDTensor with shape [N]."
+             "N is the number of Input(RpnRois), "
+             "each element is the maximum overlap between "
+             "the proposal RoI and ground-truth.")
+        .AsDispensable();
 
     AddOutput(
         "Rois",
@@ -573,6 +650,12 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
         "class_nums], "
         "each element indicates whether a box should contribute to loss.");
+    AddOutput("MaxOverlapWithGT",
+              "(LoDTensor), This output is a 1D LoDTensor with shape [P], "
+              "each element indicates the maxoverlap "
+              "between output RoIs and ground-truth. "
+              "The output RoIs may include ground-truth "
+              "and the output maxoverlap may contain 1.");
 
     AddAttr<int>("batch_size_per_im", "Batch size of rois per images.");
     AddAttr<float>("fg_fraction",
@@ -631,3 +714,16 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(generate_proposal_labels,
                        ops::GenerateProposalLabelsKernel<float>,
                        ops::GenerateProposalLabelsKernel<double>);
+
+REGISTER_OP_VERSION(generate_proposal_labels)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade of output [MaxOverlapWithGT])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewOutput(
+            "MaxOverlapWithGT",
+            "The maxoverlap between output RoIs and ground-truth."))
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade generate_proposal_labels add a new input [MaxOverlap])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "MaxOverlap", "MaxOverlap is dispensable."));

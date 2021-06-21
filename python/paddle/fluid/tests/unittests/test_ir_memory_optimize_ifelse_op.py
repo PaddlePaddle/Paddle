@@ -37,7 +37,7 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
                                   use_cuda=True,
                                   use_mem_opt=False,
                                   iter_num=5):
-        paddle.manual_seed(100)
+        paddle.seed(100)
         paddle.framework.random._manual_program_seed(100)
         prog = Program()
         startup_prog = Program()
@@ -75,7 +75,7 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
             exe = Executor(place)
 
             exec_strategy = fluid.ExecutionStrategy()
-            exec_strategy.use_cuda = use_cuda
+            exec_strategy._use_device = core.DeviceType.CUDA if use_cuda else core.DeviceType.CPU
 
             build_strategy = fluid.BuildStrategy()
             build_strategy.memory_optimize = use_mem_opt

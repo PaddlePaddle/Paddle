@@ -48,7 +48,7 @@ class TestNumelOp2(TestNumelOp):
         self.shape = (0, )
 
 
-class TestNumelOoAPI(unittest.TestCase):
+class TestNumelAPI(unittest.TestCase):
     def test_numel_static(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()

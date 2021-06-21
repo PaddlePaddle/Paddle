@@ -18,10 +18,16 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
+
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -67,7 +73,17 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
           "the filter's dimension is %d.",
           in_dims, in_dims.size(), filter_dims, filter_dims.size()));
 
-  int in_sub_stride_size = in_dims.size() - strides.size();
+  int stride_size = strides.size();
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i], 0,
+        platform::errors::InvalidArgument(
+            "The stride of Op(Conv) should be larget than 0, but received "
+            "stride is %d.",
+            strides[i]));
+  }
+
+  int in_sub_stride_size = in_dims.size() - stride_size;
   PADDLE_ENFORCE_EQ(
       in_dims.size(), strides.size() + 2U,
       platform::errors::InvalidArgument(
@@ -147,14 +163,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       "AnyLayout";  // todo enable data layout when it's ready
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -169,15 +185,29 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       input_data_type != framework::proto::VarType::UINT8 &&
       input_data_type != framework::proto::VarType::BF16) {
     auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
-    PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
-                      platform::errors::InvalidArgument(
-                          "input and filter data type should be consistent"));
+    PADDLE_ENFORCE_EQ(
+        input_data_type, filter_data_type,
+        platform::errors::InvalidArgument(
+            "input and filter data type should be consistent, "
+            "but received input data type is %s and filter type "
+            "is %s",
+            paddle::framework::DataTypeToString(input_data_type),
+            paddle::framework::DataTypeToString(filter_data_type)));
   }
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
                       platform::errors::InvalidArgument(
                           "float16 can only be used when CUDNN is used"));
   }
+#if PADDLE_WITH_CUDA
+  if (input_data_type == framework::proto::VarType::BF16 &&
+      library == framework::LibraryType::kCUDNN) {
+    PADDLE_ENFORCE_GE(
+        platform::CudnnVersion(), 8100,
+        platform::errors::InvalidArgument(
+            "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
+  }
+#endif  // PADDLE_WITH_CUDA
 
   auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                       library, customized_type_value);
@@ -555,15 +585,16 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
     const std::string data_format = ctx.Attr<std::string>("data_format");
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
@@ -571,9 +602,8 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  auto type = framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_, customized_type_value);
+  auto type = framework::OpKernelType(data_type, ctx.GetPlace(), layout_,
+                                      library_, customized_type_value);
   return type;
 }
 
@@ -742,7 +772,7 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
@@ -771,7 +801,10 @@ REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
                   ops::ConvOpInferVarType,
                   ops::Conv2DGradMaker<paddle::framework::OpDesc>,
                   ops::Conv2DGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
+REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad,
+                  ops::Conv2DDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(depthwise_conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
                   ops::ConvOpInferVarType,
@@ -817,3 +850,36 @@ REGISTER_OP_CPU_KERNEL(
     conv3d_grad_grad,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(conv2d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv2d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));
+
+REGISTER_OP_VERSION(depthwise_conv2d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade depthwise_conv2d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));
+
+REGISTER_OP_VERSION(conv3d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv3d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));

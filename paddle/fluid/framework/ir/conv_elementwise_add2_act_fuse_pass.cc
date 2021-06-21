@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/ir/conv_elementwise_add2_act_fuse_pass.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -119,7 +121,7 @@ REGISTER_PASS(conv_elementwise_add2_act_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_elementwise_add2_act_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
-            .EQ("elementwise_add", 0)
+            .LE("conv2d", 1)
+            .LE("elementwise_add", 1)
             .EQ("relu", 0)
             .EQ("identity", 0));

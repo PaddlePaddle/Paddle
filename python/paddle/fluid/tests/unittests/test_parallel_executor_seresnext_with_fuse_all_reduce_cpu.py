@@ -19,7 +19,7 @@ fluid.core._set_fuse_parameter_memory_size(131072)
 
 import unittest
 import seresnext_net
-from seresnext_test_base import TestResnetBase
+from seresnext_test_base import TestResnetBase, DeviceType
 from functools import partial
 
 
@@ -31,7 +31,8 @@ class TestResnetWithFuseAllReduceCPU(TestResnetBase):
             self.check_network_convergence,
             optimizer=seresnext_net.optimizer,
             fuse_all_reduce_ops=True)
-        self._compare_result_with_origin_model(check_func, use_cuda=False)
+        self._compare_result_with_origin_model(
+            check_func, use_device=DeviceType.CPU)
 
 
 if __name__ == '__main__':

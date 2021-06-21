@@ -18,13 +18,21 @@ if(NOT LINUX)
   return()
 endif()
 
-if(XPU_SDK_ROOT)
-  set(LITE_WITH_XPU ON)
-  include_directories("${XPU_SDK_ROOT}/XTDK/include")
-  include_directories("${XPU_SDK_ROOT}/XTCL/include")
-  add_definitions(-DPADDLE_WITH_XPU)
-  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/shlib/")
-  LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/runtime/shlib/")
+if (LITE_WITH_XPU)
+  add_definitions(-DLITE_SUBGRAPH_WITH_XPU)
+  IF(WITH_AARCH64)
+    SET(XPU_SDK_ENV "kylin_aarch64")
+  ELSEIF(WITH_SUNWAY)
+    SET(XPU_SDK_ENV "deepin_sw6_64")
+  ELSEIF(WITH_BDCENTOS)
+    SET(XPU_SDK_ENV "bdcentos_x86_64")
+  ELSEIF(WITH_UBUNTU)
+    SET(XPU_SDK_ENV "ubuntu_x86_64")
+  ELSEIF(WITH_CENTOS)
+    SET(XPU_SDK_ENV "centos7_x86_64")
+  ELSE ()
+    SET(XPU_SDK_ENV "ubuntu_x86_64")
+  ENDIF()
 endif()
 
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
@@ -34,7 +42,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 6d2b2a4028a58715b01887b04eb9bff8432eb184)
+    set(LITE_GIT_TAG d3a3a6931b6d22d504d21ba32b3ae972770e9204)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -57,15 +65,17 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DWITH_TESTING=OFF
                            -DLITE_BUILD_EXTRA=ON
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
-                           -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
+                           -DXPU_SDK_URL=${XPU_BASE_URL}
+                           -DXPU_SDK_ENV=${XPU_SDK_ENV}
+                           -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=ON)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
+      GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_SOURCES_DIR}
-      PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
+      PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
@@ -82,10 +92,8 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                           ${EXTERNAL_OPTIONAL_ARGS}
                           ${LITE_OPTIONAL_ARGS}
     )
-    set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
   else()
     set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
-    set(LITE_OUTPUT_BIN_DIR inference_lite_lib)
     set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
                            -DLITE_WITH_CUDA=${WITH_GPU}
                            -DWITH_MKLDNN=OFF
@@ -100,13 +108,15 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_WITH_STATIC_CUDA=OFF
                            -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
-                           -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
+                           -DXPU_SDK_URL=${XPU_BASE_URL}
+                           -DXPU_SDK_ENV=${XPU_SDK_ENV}
+                           -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=OFF)
 
     ExternalProject_Add(
         ${LITE_PROJECT}
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
+        GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
         GIT_TAG             ${LITE_GIT_TAG}
         PREFIX              ${LITE_SOURCES_DIR}
         UPDATE_COMMAND      ""
@@ -133,10 +143,24 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
 
 endif()
 
+if (WITH_ARM)
+  if(LITE_WITH_XPU)
+    set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
+  else()
+    set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
+  endif()
+else()
+  set(LITE_OUTPUT_BIN_DIR inference_lite_lib)
+endif()
+
 message(STATUS "Paddle-lite BINARY_DIR: ${LITE_BINARY_DIR}")
 message(STATUS "Paddle-lite SOURCE_DIR: ${LITE_SOURCE_DIR}")
 include_directories(${LITE_SOURCE_DIR})
 include_directories(${LITE_BINARY_DIR})
+if(LITE_WITH_XPU)
+  include_directories(${LITE_BINARY_DIR}/third_party/install/xpu/xdnn/include/)
+  include_directories(${LITE_BINARY_DIR}/third_party/install/xpu/xre/include/)
+endif()
 
 function(external_lite_libs alias path)
   add_library(${alias} SHARED IMPORTED GLOBAL)

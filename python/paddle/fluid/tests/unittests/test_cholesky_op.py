@@ -58,7 +58,7 @@ class TestCholeskyOp(OpTest):
 
     def test_check_grad(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
@@ -92,7 +92,10 @@ class TestCholeskyOp2D(TestCholeskyOp):
 
 class TestDygraph(unittest.TestCase):
     def test_dygraph(self):
-        paddle.disable_static()
+        if core.is_compiled_with_rocm():
+            paddle.disable_static(place=fluid.CPUPlace())
+        else:
+            paddle.disable_static()
         a = np.random.rand(3, 3)
         a_t = np.transpose(a, [1, 0])
         x_data = np.matmul(a, a_t) + 1e-03
@@ -103,7 +106,7 @@ class TestDygraph(unittest.TestCase):
 class TestCholeskySingularAPI(unittest.TestCase):
     def setUp(self):
         self.places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
             self.places.append(fluid.CUDAPlace(0))
 
     def check_static_result(self, place, with_out=False):
@@ -118,7 +121,10 @@ class TestCholeskySingularAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": input_np},
                                   fetch_list=[result])
-            except fluid.core.EnforceNotMet as ex:
+            except RuntimeError as ex:
+                print("The mat is singular")
+                pass
+            except ValueError as ex:
                 print("The mat is singular")
                 pass
 
@@ -135,10 +141,14 @@ class TestCholeskySingularAPI(unittest.TestCase):
                 input = fluid.dygraph.to_variable(input_np)
                 try:
                     result = paddle.cholesky(input)
-                except fluid.core.EnforceNotMet as ex:
+                except RuntimeError as ex:
+                    print("The mat is singular")
+                    pass
+                except ValueError as ex:
                     print("The mat is singular")
                     pass
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

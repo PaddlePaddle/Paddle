@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
+import paddle
 import numpy as np
 import sys
+import unittest
 sys.path.append("..")
-import paddle
-import paddle.fluid.core as core
 from op_test import OpTest
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+
+paddle.enable_static()
 
 
 # Situation 1: starts(list, no tensor), ends(list, no tensor)
 # 1.1 without attr(decrease)
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -42,7 +41,7 @@ class TestSliceOp(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [1, 0, 2]
         self.ends = [3, 3, 4]
         self.axes = [0, 1, 2]
@@ -58,9 +57,11 @@ class TestSliceOp(OpTest):
         self.check_grad_with_place(place, ['Input'], 'Out')
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestCase1(TestSliceOp):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-3, 0, 2]
         self.ends = [3, 100, -1]
         self.axes = [0, 1, 2]
@@ -68,9 +69,11 @@ class TestCase1(TestSliceOp):
         self.out = self.input[-3:3, 0:100, 2:-1, :]
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestCase2(TestSliceOp):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-3, 0, 2]
         self.ends = [3, 100, -1]
         self.axes = [0, 1, 3]
@@ -79,6 +82,8 @@ class TestCase2(TestSliceOp):
 
 
 # 1.2 with attr(decrease)
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestSliceOp_decs_dim(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -95,7 +100,7 @@ class TestSliceOp_decs_dim(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [1, 0, 2]
         self.ends = [2, 3, 4]
         self.axes = [0, 1, 2]
@@ -112,9 +117,11 @@ class TestSliceOp_decs_dim(OpTest):
         self.check_grad_with_place(place, ['Input'], 'Out')
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [1, 0, 2]
         self.ends = [2, 1, 4]
         self.axes = [0, 1, 2]
@@ -123,9 +130,11 @@ class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
         self.out = self.input[1, 0, 2:4, :]
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestSliceOp_decs_dim_3(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-1, 0, 2]
         self.ends = [1000000, 1, 4]
         self.axes = [0, 1, 2]
@@ -134,9 +143,11 @@ class TestSliceOp_decs_dim_3(TestSliceOp_decs_dim):
         self.out = self.input[-1, 0, 2:4, :]
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 7]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 7]).astype("float32")
         self.starts = [0, 1, 2, 3]
         self.ends = [1, 2, 3, 4]
         self.axes = [0, 1, 2, 3]
@@ -145,9 +156,11 @@ class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
         self.out = self.input[0, 1, 2, 3:4]
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-1]
         self.ends = [1000000]
         self.axes = [3]
@@ -156,9 +169,11 @@ class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
         self.out = self.input[:, :, :, -1]
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [0, 1, 2, 3]
         self.ends = [1, 2, 3, 4]
         self.axes = [0, 1, 2, 3]

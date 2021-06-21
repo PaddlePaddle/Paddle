@@ -15,18 +15,11 @@
 import six
 import math
 
-__all__ = [
-    'long_type',
-    'to_text',
-    'to_bytes',
-    'round',
-    'floor_division',
-    'get_exception_message',
-]
+__all__ = []
 
 if six.PY2:
     int_type = int
-    long_type = long
+    long_type = long  # noqa: F821
 else:
     int_type = int
     long_type = int
@@ -35,7 +28,8 @@ else:
 #  str and bytes related functions
 def to_text(obj, encoding='utf-8', inplace=False):
     """
-      All string in PaddlePaddle should be represented as a literal string.
+    All string in PaddlePaddle should be represented as a literal string.
+    
     This function will convert object to a literal string without any encoding.
     Especially, if the object type is a list or set container, we will iterate
     all items in the object and convert them to literal string.
@@ -53,6 +47,17 @@ def to_text(obj, encoding='utf-8', inplace=False):
 
     Returns:
         Decoded result of obj
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            data = "paddlepaddle"
+            data = paddle.compat.to_text(data)
+            # paddlepaddle
+
     """
     if obj is None:
         return obj
@@ -119,7 +124,8 @@ def _to_text(obj, encoding):
 
 def to_bytes(obj, encoding='utf-8', inplace=False):
     """
-      All string in PaddlePaddle should be represented as a literal string.
+    All string in PaddlePaddle should be represented as a literal string.
+    
     This function will convert object to a bytes with specific encoding.
     Especially, if the object type is a list or set container, we will iterate
     all items in the object and convert them to bytes.
@@ -138,6 +144,17 @@ def to_bytes(obj, encoding='utf-8', inplace=False):
 
     Returns:
         Decoded result of obj
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            data = "paddlepaddle"
+            data = paddle.compat.to_bytes(data)
+            # b'paddlepaddle'
+
     """
     if obj is None:
         return obj

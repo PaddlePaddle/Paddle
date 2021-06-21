@@ -16,8 +16,10 @@ from __future__ import division
 
 import unittest
 
+import numpy as np
 import paddle.fluid as fluid
-from paddle.io import BatchSampler, Dataset, Sampler, SequenceSampler, RandomSampler
+from paddle.io import BatchSampler, Dataset, Sampler, SequenceSampler, \
+                        RandomSampler, WeightedRandomSampler
 from paddle.io import DistributedBatchSampler
 
 
@@ -195,14 +197,86 @@ class TestBatchSamplerWithSamplerShuffle(unittest.TestCase):
             pass
 
 
-class TestDistributedBatchSamplerWithSampler(TestBatchSampler):
-    def init_batch_sampler(self):
-        dataset = RandomDataset(1000, 10)
-        bs = DistributedBatchSampler(
-            dataset=dataset,
-            batch_size=self.batch_size,
-            drop_last=self.drop_last)
-        return bs
+class TestWeightedRandomSampler(unittest.TestCase):
+    def init_probs(self, total, pos):
+        pos_probs = np.random.random((pos, )).astype('float32')
+        probs = np.zeros((total, )).astype('float32')
+        probs[:pos] = pos_probs
+        np.random.shuffle(probs)
+        return probs
+
+    def test_replacement(self):
+        probs = self.init_probs(20, 10)
+        sampler = WeightedRandomSampler(probs, 30, True)
+        assert len(sampler) == 30
+        for idx in iter(sampler):
+            assert probs[idx] > 0.
+
+    def test_no_replacement(self):
+        probs = self.init_probs(20, 10)
+        sampler = WeightedRandomSampler(probs, 10, False)
+        assert len(sampler) == 10
+        idxs = []
+        for idx in iter(sampler):
+            assert probs[idx] > 0.
+            idxs.append(idx)
+        assert len(set(idxs)) == len(idxs)
+
+    def test_assert(self):
+        # all zeros
+        probs = np.zeros((10, )).astype('float32')
+        sampler = WeightedRandomSampler(probs, 10, True)
+        try:
+            for idx in iter(sampler):
+                pass
+            self.assertTrue(False)
+        except AssertionError:
+            self.assertTrue(True)
+
+        # not enough pos
+        probs = self.init_probs(10, 5)
+        sampler = WeightedRandomSampler(probs, 10, False)
+        try:
+            for idx in iter(sampler):
+                pass
+            self.assertTrue(False)
+        except AssertionError:
+            self.assertTrue(True)
+
+        # neg probs
+        probs = -1.0 * np.ones((10, )).astype('float32')
+        sampler = WeightedRandomSampler(probs, 10, True)
+        try:
+            for idx in iter(sampler):
+                pass
+            self.assertTrue(False)
+        except AssertionError:
+            self.assertTrue(True)
+
+    def test_raise(self):
+        # float num_samples
+        probs = self.init_probs(10, 5)
+        try:
+            sampler = WeightedRandomSampler(probs, 2.3, True)
+            self.assertTrue(False)
+        except ValueError:
+            self.assertTrue(True)
+
+        # neg num_samples
+        probs = self.init_probs(10, 5)
+        try:
+            sampler = WeightedRandomSampler(probs, -1, True)
+            self.assertTrue(False)
+        except ValueError:
+            self.assertTrue(True)
+
+        # no-bool replacement
+        probs = self.init_probs(10, 5)
+        try:
+            sampler = WeightedRandomSampler(probs, 5, 5)
+            self.assertTrue(False)
+        except ValueError:
+            self.assertTrue(True)
 
 
 if __name__ == '__main__':

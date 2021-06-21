@@ -38,14 +38,9 @@ from collections import defaultdict
 
 import paddle
 import paddle.compat as cpt
+import paddle.utils.deprecated as deprecated
 
-__all__ = [
-    "train",
-    "test",
-    "validation",
-    "fetch",
-    "get_dict",
-]
+__all__ = []
 
 DATA_URL = ("http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz")
 DATA_MD5 = "0c38be43600334966403524a40dcd81e"
@@ -144,6 +139,11 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
     return reader
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.WMT16",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(src_dict_size, trg_dict_size, src_lang="en"):
     """
     WMT16 train set reader.
@@ -193,6 +193,11 @@ def train(src_dict_size, trg_dict_size, src_lang="en"):
         src_lang=src_lang)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.WMT16",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(src_dict_size, trg_dict_size, src_lang="en"):
     """
     WMT16 test set reader.
@@ -242,6 +247,11 @@ def test(src_dict_size, trg_dict_size, src_lang="en"):
         src_lang=src_lang)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.WMT16",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def validation(src_dict_size, trg_dict_size, src_lang="en"):
     """
     WMT16 validation set reader.
@@ -289,6 +299,11 @@ def validation(src_dict_size, trg_dict_size, src_lang="en"):
         src_lang=src_lang)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.WMT16",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_dict(lang, dict_size, reverse=False):
     """
     return the word dictionary for the specified language.
@@ -319,6 +334,11 @@ def get_dict(lang, dict_size, reverse=False):
     return __load_dict(tar_file, dict_size, lang, reverse)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.WMT16",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     """download the entire dataset.
     """

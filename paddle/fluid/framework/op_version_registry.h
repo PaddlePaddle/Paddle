@@ -20,8 +20,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include <boost/any.hpp>
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_version_proto.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -29,121 +27,199 @@ namespace paddle {
 namespace framework {
 namespace compatible {
 
-struct OpUpdateRecord {
-  enum class Type {
-    kInvalid = 0,
-    kModifyAttr,
-    kNewAttr,
-    kNewInput,
-    kNewOutput,
-    kBugfixWithBehaviorChanged,
-  };
-  Type type_;
+namespace pb {
+class OpVersionMap;
+}  // namespace pb
+
+using OpAttrVariantT =
+    boost::variant<bool,                     /* AttrType::BOOL */
+                   float,                    /* AttrType::FLOAT */
+                   int32_t,                  /* AttrType::INT */
+                   int64_t,                  /* AttrType::LONG*/
+                   std::string,              /* AttrType::STRING */
+                   std::vector<bool>,        /* AttrType::BOOLS */
+                   std::vector<float>,       /* AttrType::FLOATS */
+                   std::vector<int32_t>,     /* AttrType::INTS */
+                   std::vector<int64_t>,     /* AttrType::LONGS */
+                   std::vector<std::string>, /* AttrType::STRINGS */
+                   boost::none_t             /* None */
+                   >;
+
+struct OpUpdateInfo {
+  virtual ~OpUpdateInfo() = default;
+};
+
+struct OpAttrInfo : OpUpdateInfo {
+  OpAttrInfo(const std::string& name, const std::string& remark,
+             const OpAttrVariantT& default_value = boost::none)
+      : name_{name}, default_value_{default_value}, remark_{remark} {}
+
+  const std::string& name() const { return name_; }
+  const OpAttrVariantT& default_value() const { return default_value_; }
+  const std::string& remark() const { return remark_; }
+
+ private:
+  std::string name_;
+  OpAttrVariantT default_value_;
   std::string remark_;
 };
 
-struct ModifyAttr : OpUpdateRecord {
-  ModifyAttr(const std::string& name, const std::string& remark,
-             const boost::any& default_value)
-      : OpUpdateRecord({Type::kModifyAttr, remark}),
-        name_(name),
-        default_value_(default_value) {
-    // TODO(Shixiaowei02): Check the data type with proto::OpDesc.
-  }
+struct OpInputOutputInfo : OpUpdateInfo {
+  OpInputOutputInfo(const std::string& name, const std::string& remark)
+      : name_{name}, remark_{remark} {}
+
+  const std::string& name() const { return name_; }
+  const std::string& remark() const { return remark_; }
 
  private:
   std::string name_;
-  boost::any default_value_;
+  std::string remark_;
 };
 
-struct NewAttr : OpUpdateRecord {
-  NewAttr(const std::string& name, const std::string& remark,
-          const boost::any& default_value)
-      : OpUpdateRecord({Type::kNewAttr, remark}),
-        name_(name),
-        default_value_(default_value) {}
+struct OpBugfixInfo : OpUpdateInfo {
+  explicit OpBugfixInfo(const std::string& remark) : remark_{remark} {}
+  const std::string& remark() const { return remark_; }
 
  private:
-  std::string name_;
-  boost::any default_value_;
+  std::string remark_;
 };
 
-struct NewInput : OpUpdateRecord {
-  NewInput(const std::string& name, const std::string& remark)
-      : OpUpdateRecord({Type::kNewInput, remark}), name_(name) {}
+enum class OpUpdateType {
+  kInvalid = 0,
+  /* Compatibility upgrade */
+  kModifyAttr,
+  kNewAttr,
+  kNewInput,
+  kNewOutput,
+  kBugfixWithBehaviorChanged,
+  /* Incompatible upgrade, only for existing registration. */
+  kDeleteAttr = 100,
+  kModifyInput,
+  kModifyOutput,
+  kDeleteInput,
+  kDeleteOutput,
+};
+
+class OpUpdateBase {
+ public:
+  virtual const OpUpdateInfo& info() const = 0;
+  virtual OpUpdateType type() const = 0;
+  virtual ~OpUpdateBase() = default;
+};
+
+template <typename InfoType, OpUpdateType type__>
+class OpUpdate : public OpUpdateBase {
+ public:
+  explicit OpUpdate(const InfoType& info) : info_{info}, type_{type__} {}
+  const InfoType& info() const override { return info_; }
+  OpUpdateType type() const override { return type_; }
 
  private:
-  std::string name_;
+  InfoType info_;
+  OpUpdateType type_;
 };
 
-struct NewOutput : OpUpdateRecord {
-  NewOutput(const std::string& name, const std::string& remark)
-      : OpUpdateRecord({Type::kNewOutput, remark}), name_(name) {}
+template <OpUpdateType type__, typename InfoType>
+OpUpdate<InfoType, type__>* new_update(InfoType&& info) {
+  return new OpUpdate<InfoType, type__>(info);
+}
 
- private:
-  std::string name_;
-};
+template <typename T>
+OpAttrVariantT op_attr_wrapper(const T& val) {
+  return OpAttrVariantT{val};
+}
 
-struct BugfixWithBehaviorChanged : OpUpdateRecord {
-  explicit BugfixWithBehaviorChanged(const std::string& remark)
-      : OpUpdateRecord({Type::kBugfixWithBehaviorChanged, remark}) {}
-};
+template <int N>
+OpAttrVariantT op_attr_wrapper(const char (&val)[N]) {
+  PADDLE_ENFORCE_EQ(
+      val[N - 1], 0,
+      platform::errors::InvalidArgument(
+          "The argument of operator register %c is illegal.", val[N - 1]));
+  return OpAttrVariantT{std::string{val}};
+}
 
 class OpVersionDesc {
  public:
-  OpVersionDesc& ModifyAttr(const std::string& name, const std::string& remark,
-                            boost::any default_value) {
-    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
-        new compatible::ModifyAttr(name, remark, default_value)));
-    return *this;
+  /* Compatibility upgrade */
+  template <typename T>
+  OpVersionDesc&& ModifyAttr(const std::string& name, const std::string& remark,
+                             const T& default_value) {
+    infos_.emplace_back(new_update<OpUpdateType::kModifyAttr>(
+        OpAttrInfo(name, remark, op_attr_wrapper(default_value))));
+    return std::move(*this);
   }
 
-  OpVersionDesc& NewAttr(const std::string& name, const std::string& remark,
-                         boost::any default_value) {
-    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
-        new compatible::NewAttr(name, remark, default_value)));
-    return *this;
+  template <typename T>
+  OpVersionDesc&& NewAttr(const std::string& name, const std::string& remark,
+                          const T& default_value) {
+    infos_.emplace_back(new_update<OpUpdateType::kNewAttr>(
+        OpAttrInfo(name, remark, op_attr_wrapper(default_value))));
+    return std::move(*this);
   }
 
-  OpVersionDesc& NewInput(const std::string& name, const std::string& remark) {
-    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
-        new compatible::NewInput(name, remark)));
-    return *this;
-  }
+  OpVersionDesc&& NewInput(const std::string& name, const std::string& remark);
+  OpVersionDesc&& NewOutput(const std::string& name, const std::string& remark);
+  OpVersionDesc&& BugfixWithBehaviorChanged(const std::string& remark);
 
-  OpVersionDesc& NewOutput(const std::string& name, const std::string& remark) {
-    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
-        new compatible::NewOutput(name, remark)));
-    return *this;
-  }
+  /* Incompatible upgrade, only for existing registration. */
+  OpVersionDesc&& DeleteAttr(const std::string& name,
+                             const std::string& remark);
+  OpVersionDesc&& ModifyInput(const std::string& name,
+                              const std::string& remark);
+  OpVersionDesc&& ModifyOutput(const std::string& name,
+                               const std::string& remark);
+  OpVersionDesc&& DeleteInput(const std::string& name,
+                              const std::string& remark);
+  OpVersionDesc&& DeleteOutput(const std::string& name,
+                               const std::string& remark);
 
-  OpVersionDesc& BugfixWithBehaviorChanged(const std::string& remark) {
-    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
-        new compatible::BugfixWithBehaviorChanged(remark)));
-    return *this;
+ public:
+  const std::vector<std::unique_ptr<OpUpdateBase>>& infos() const {
+    return infos_;
   }
+  OpVersionDesc() = default;
+  OpVersionDesc(OpVersionDesc&&) = default;
+  OpVersionDesc& operator=(OpVersionDesc&&) = default;
 
  private:
-  std::vector<std::shared_ptr<OpUpdateRecord>> infos_;
+  std::vector<std::unique_ptr<OpUpdateBase>> infos_;
+};
+
+class OpCheckpoint {
+ public:
+  OpCheckpoint(const std::string& note, OpVersionDesc&& op_version_desc)
+      : note_{note},
+        op_version_desc_{std::forward<OpVersionDesc>(op_version_desc)} {}
+  const std::string& note() const { return note_; }
+  const OpVersionDesc& version_desc() { return op_version_desc_; }
+
+  OpCheckpoint() = default;
+  OpCheckpoint(OpCheckpoint&&) = default;
+  OpCheckpoint& operator=(OpCheckpoint&&) = default;
+
+ private:
+  std::string note_;
+  OpVersionDesc op_version_desc_;
 };
 
 class OpVersion {
  public:
   OpVersion& AddCheckpoint(const std::string& note,
-                           const OpVersionDesc& op_version_desc) {
-    checkpoints_.push_back(Checkpoint({note, op_version_desc}));
+                           OpVersionDesc&& op_version_desc) {
+    checkpoints_.emplace_back(OpCheckpoint{note, std::move(op_version_desc)});
     return *this;
   }
-  uint32_t GetVersionID() const {
+  uint32_t version_id() const {
     return static_cast<uint32_t>(checkpoints_.size());
   }
+  const std::vector<OpCheckpoint>& checkpoints() const { return checkpoints_; }
+
+  OpVersion() = default;
+  OpVersion(OpVersion&&) = default;
+  OpVersion& operator=(OpVersion&&) = default;
 
  private:
-  struct Checkpoint {
-    std::string note_;
-    OpVersionDesc op_version_desc_;
-  };
-  std::vector<Checkpoint> checkpoints_;
+  std::vector<OpCheckpoint> checkpoints_;
 };
 
 class OpVersionRegistrar {
@@ -152,37 +228,30 @@ class OpVersionRegistrar {
     static OpVersionRegistrar instance;
     return instance;
   }
-  OpVersion& Register(const std::string& op_type) {
-    PADDLE_ENFORCE_EQ(
-        op_version_map_.find(op_type), op_version_map_.end(),
-        platform::errors::AlreadyExists(
-            "'%s' is registered in operator version more than once.", op_type));
-    op_version_map_.insert({op_type, OpVersion()});
-    return op_version_map_[op_type];
-  }
+  OpVersion& Register(const std::string& op_type);
   const std::unordered_map<std::string, OpVersion>& GetVersionMap() {
     return op_version_map_;
   }
-  uint32_t GetVersionID(const std::string& op_type) const {
-    auto it = op_version_map_.find(op_type);
-    if (it == op_version_map_.end()) {
-      return 0;
-    }
-    return it->second.GetVersionID();
+  bool Has(const std::string& op_type) const {
+    return op_version_map_.count(op_type);
   }
+  uint32_t version_id(const std::string& op_type) const;
 
  private:
   std::unordered_map<std::string, OpVersion> op_version_map_;
-
   OpVersionRegistrar() = default;
   OpVersionRegistrar& operator=(const OpVersionRegistrar&) = delete;
 };
+
+inline const std::unordered_map<std::string, OpVersion>& get_op_version_map() {
+  return OpVersionRegistrar::GetInstance().GetVersionMap();
+}
 
 inline void SaveOpVersions(
     const std::unordered_map<std::string, OpVersion>& src,
     pb::OpVersionMap* dst) {
   for (const auto& pair : src) {
-    (*dst)[pair.first].SetVersionID(pair.second.GetVersionID());
+    (*dst)[pair.first].SetVersionID(pair.second.version_id());
   }
 }
 
@@ -192,21 +261,30 @@ class OpVersionComparator {
   virtual ~OpVersionComparator() = default;
 };
 
-#define ADD_OP_VERSION_COMPARATOR(cmp_name, cmp_math)                   \
-  class OpVersion##cmp_name##Comparator : public OpVersionComparator {  \
-   public:                                                              \
-    explicit OpVersion##cmp_name##Comparator(const std::string op_name, \
-                                             uint32_t target_version)   \
-        : op_name_(op_name), target_version_(target_version) {}         \
-    virtual bool operator()() {                                         \
-      return OpVersionRegistrar::GetInstance().GetVersionID(op_name_)   \
-          cmp_math target_version_;                                     \
-    }                                                                   \
-    virtual ~OpVersion##cmp_name##Comparator() {}                       \
-                                                                        \
-   private:                                                             \
-    std::string op_name_;                                               \
-    uint32_t target_version_;                                           \
+#define ADD_OP_VERSION_COMPARATOR(cmp_name, cmp_math)                        \
+  class OpVersion##cmp_name##Comparator : public OpVersionComparator {       \
+   public:                                                                   \
+    explicit OpVersion##cmp_name##Comparator(const std::string op_name,      \
+                                             uint32_t target_version)        \
+        : op_name_(op_name), target_version_(target_version) {}              \
+    virtual bool operator()() {                                              \
+      uint32_t version_id = 0;                                               \
+      if (OpVersionRegistrar::GetInstance().Has(op_name_)) {                 \
+        version_id = OpVersionRegistrar::GetInstance().version_id(op_name_); \
+      }                                                                      \
+      bool check_ok = version_id cmp_math target_version_;                   \
+      if (!check_ok) {                                                       \
+        LOG(WARNING) << "Check op version in pass failed. op name:"          \
+                     << op_name_.c_str() << " op_version:" << version_id     \
+                     << "  target_version:" << target_version_;              \
+      }                                                                      \
+      return check_ok;                                                       \
+    }                                                                        \
+    virtual ~OpVersion##cmp_name##Comparator() {}                            \
+                                                                             \
+   private:                                                                  \
+    std::string op_name_;                                                    \
+    uint32_t target_version_;                                                \
   };
 
 ADD_OP_VERSION_COMPARATOR(LE, <=);
@@ -286,12 +364,17 @@ class PassVersionCheckerRegistrar {
     return instance;
   }
   PassVersionCheckers& Register(const std::string& pass_name) {
+    PADDLE_ENFORCE_EQ(pass_version_checkers_map_.find(pass_name),
+                      pass_version_checkers_map_.end(),
+                      platform::errors::AlreadyExists(
+                          "PassVersionCheckers(%s) has alredy been registered.",
+                          pass_name.c_str()));
     return pass_version_checkers_map_[pass_name];
   }
   bool IsPassCompatible(const std::string& fuse_pass_name) const {
     auto iter = pass_version_checkers_map_.find(fuse_pass_name);
     if (iter == pass_version_checkers_map_.end()) {
-      return true;
+      return false;
     }
     return iter->second.IsPassCompatible();
   }
@@ -310,7 +393,7 @@ class PassVersionCheckerRegistrar {
 }  // namespace paddle
 
 #define REGISTER_OP_VERSION(op_type)                                       \
-  static paddle::framework::compatible::OpVersion                          \
+  UNUSED static paddle::framework::compatible::OpVersion&                  \
       RegisterOpVersion__##op_type =                                       \
           paddle::framework::compatible::OpVersionRegistrar::GetInstance() \
               .Register(#op_type)

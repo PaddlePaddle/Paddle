@@ -128,7 +128,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                 else:
                     output_size = self.output_size
 
-                y_var = F.conv_transpose2d(
+                y_var = F.conv2d_transpose(
                     x_var,
                     w_var,
                     None if self.no_bias else b_var,
@@ -155,7 +155,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         else:
             output_size = self.output_size
 
-        conv = nn.ConvTranspose2d(
+        conv = nn.Conv2DTranspose(
             self.num_channels,
             self.num_filters,
             self.filter_size,
@@ -219,6 +219,7 @@ def add_cases(suite):
     suite.addTest(
         Conv2DTransposeTestCase(
             methodName='runTest', padding="valid"))
+    suite.addTest(Conv2DTransposeTestCase(methodName='runTest', padding="same"))
     suite.addTest(
         Conv2DTransposeTestCase(
             methodName='runTest', filter_size=1, padding=(2, 3)))

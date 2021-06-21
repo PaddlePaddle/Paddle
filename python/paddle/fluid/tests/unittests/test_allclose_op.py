@@ -22,19 +22,20 @@ class TestAllcloseOp(OpTest):
     def set_args(self):
         self.input = np.array([10000., 1e-07]).astype("float32")
         self.other = np.array([10000.1, 1e-08]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
     def setUp(self):
         self.set_args()
         self.op_type = "allclose"
-        self.inputs = {'Input': self.input, 'Other': self.other}
-        self.attrs = {
-            'rtol': self.rtol,
-            'atol': self.atol,
-            'equal_nan': self.equal_nan
+        self.inputs = {
+            'Input': self.input,
+            'Other': self.other,
+            "Rtol": self.rtol,
+            "Atol": self.atol
         }
+        self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
             'Out': np.array([
                 np.allclose(
@@ -50,12 +51,43 @@ class TestAllcloseOp(OpTest):
         self.check_output()
 
 
+class TestAllcloseOpException(TestAllcloseOp):
+    def test_check_output(self):
+        def test_rtol_num():
+            self.inputs['Rtol'] = np.array([1e-05, 1e-05]).astype("float64")
+            self.inputs['Atol'] = np.array([1e-08]).astype("float64")
+            self.check_output()
+
+        self.assertRaises(ValueError, test_rtol_num)
+
+        def test_rtol_type():
+            self.inputs['Rtol'] = np.array([5]).astype("int32")
+            self.inputs['Atol'] = np.array([1e-08]).astype("float64")
+            self.check_output()
+
+        self.assertRaises(ValueError, test_rtol_type)
+
+        def test_atol_num():
+            self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
+            self.inputs['Atol'] = np.array([1e-08, 1e-08]).astype("float64")
+            self.check_output()
+
+        self.assertRaises(ValueError, test_atol_num)
+
+        def test_atol_type():
+            self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
+            self.inputs['Atol'] = np.array([8]).astype("int32")
+            self.check_output()
+
+        self.assertRaises(ValueError, test_atol_type)
+
+
 class TestAllcloseOpSmallNum(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([10000., 1e-08]).astype("float32")
         self.other = np.array([10000.1, 1e-09]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
 
@@ -63,8 +95,8 @@ class TestAllcloseOpNanFalse(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
 
@@ -72,8 +104,8 @@ class TestAllcloseOpNanTrue(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = True
 
 
@@ -128,6 +160,34 @@ class TestAllcloseError(unittest.TestCase):
             result = paddle.allclose(x, y, equal_nan=1)
 
         self.assertRaises(TypeError, test_equal_nan)
+
+
+class TestAllcloseOpFloat32(TestAllcloseOp):
+    def set_args(self):
+        self.input = np.array([10.1]).astype("float32")
+        self.other = np.array([10]).astype("float32")
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+
+
+class TestAllcloseOpFloat64(TestAllcloseOp):
+    def set_args(self):
+        self.input = np.array([10.1]).astype("float64")
+        self.other = np.array([10]).astype("float64")
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+
+
+class TestAllcloseOpLargeDimInput(TestAllcloseOp):
+    def set_args(self):
+        self.input = np.array(np.zeros([2048, 1024])).astype("float64")
+        self.other = np.array(np.zeros([2048, 1024])).astype("float64")
+        self.input[-1][-1] = 100
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
+        self.equal_nan = False
 
 
 if __name__ == "__main__":

@@ -564,7 +564,7 @@ def train_bmn(args, place, to_static):
     loss_data = []
 
     with fluid.dygraph.guard(place):
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         global local_random
         local_random = np.random.RandomState(SEED)

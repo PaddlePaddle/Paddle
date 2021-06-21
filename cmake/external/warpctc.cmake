@@ -14,11 +14,17 @@
 
 INCLUDE(ExternalProject)
 
+IF(WITH_ROCM)
+    add_definitions(-DWARPCTC_WITH_HIP)
+ENDIF()
+
 SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
-set(WARPCTC_REPOSITORY  https://github.com/baidu-research/warp-ctc.git)
-set(WARPCTC_TAG         95a461eddeabd51099ef059dcfada1117eb1bfb8)
+# in case of low internet speed  
+#set(WARPCTC_REPOSITORY  https://gitee.com/tianjianhe/warp-ctc.git)
+set(WARPCTC_REPOSITORY  ${GIT_URL}/baidu-research/warp-ctc.git)
+set(WARPCTC_TAG         37ece0e1bbe8a0019a63ac7e6462c36591c66a5b)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -37,38 +43,92 @@ cache_third_party(extern_warpctc
     TAG          ${WARPCTC_TAG}
     DIR          WARPCTC_SOURCE_DIR)
 
-ExternalProject_Add(
-    extern_warpctc
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    ${SHALLOW_CLONE}
-    "${WARPCTC_DOWNLOAD_CMD}"
-    PREFIX          ${WARPCTC_PREFIX_DIR}
-    SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
-    #UPDATE_COMMAND  ""
-    PATCH_COMMAND   ""
-    BUILD_ALWAYS    1
-    CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                    -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-                    -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-                    -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
-                    -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-                    -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
-                    -DWITH_GPU=${WITH_GPU}
-                    -DWITH_OMP=${USE_OMP}
-                    -DWITH_TORCH=OFF
-                    -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
-                    -DBUILD_SHARED=ON
-                    -DBUILD_TESTS=OFF
-                    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-                    ${EXTERNAL_OPTIONAL_ARGS}
-    CMAKE_CACHE_ARGS -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-                     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-                     -DCMAKE_INSTALL_PREFIX:PATH=${WARPCTC_INSTALL_DIR}
-)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
+    ExternalProject_Add(
+        extern_warpctc
+        ${EXTERNAL_PROJECT_LOG_ARGS}
+        ${SHALLOW_CLONE}
+        "${WARPCTC_DOWNLOAD_CMD}"
+        PREFIX          ${WARPCTC_PREFIX_DIR}
+        SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
+        #UPDATE_COMMAND  ""
+        PATCH_COMMAND   ""
+        BUILD_ALWAYS    1
+        CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                        -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                        -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+                    "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+                        -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                        -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                        -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
+                        -DWITH_GPU=${WITH_GPU}
+                        -DWITH_ROCM=${WITH_ROCM}
+                        -DWITH_OMP=${USE_OMP}
+                        -DWITH_TORCH=OFF
+                        -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
+                        -DBUILD_SHARED=ON
+                        -DBUILD_TESTS=OFF
+                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                        ${EXTERNAL_OPTIONAL_ARGS}
+        CMAKE_CACHE_ARGS -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                         -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                         -DCMAKE_INSTALL_PREFIX:PATH=${WARPCTC_INSTALL_DIR}
+    )
+else()
+    if(WIN32)
+        set(WARPCTC_C_FLAGS $<FILTER:${CMAKE_C_FLAGS},EXCLUDE,/Zc:inline>)
+        set(WARPCTC_C_FLAGS_DEBUG $<FILTER:${CMAKE_C_FLAGS_DEBUG},EXCLUDE,/Zc:inline>)
+        set(WARPCTC_C_FLAGS_RELEASE $<FILTER:${CMAKE_C_FLAGS_RELEASE},EXCLUDE,/Zc:inline>)
+        set(WARPCTC_CXX_FLAGS $<FILTER:${CMAKE_CXX_FLAGS},EXCLUDE,/Zc:inline>)
+        set(WARPCTC_CXX_FLAGS_RELEASE $<FILTER:${CMAKE_CXX_FLAGS_RELEASE},EXCLUDE,/Zc:inline>)
+        set(WARPCTC_CXX_FLAGS_DEBUG $<FILTER:${CMAKE_CXX_FLAGS_DEBUG},EXCLUDE,/Zc:inline>)
+    else()
+        set(WARPCTC_C_FLAGS ${CMAKE_C_FLAGS})
+        set(WARPCTC_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
+        set(WARPCTC_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
+        set(WARPCTC_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        set(WARPCTC_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+        set(WARPCTC_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    endif()
+    ExternalProject_Add(
+        extern_warpctc
+        ${EXTERNAL_PROJECT_LOG_ARGS}
+        ${SHALLOW_CLONE}
+        "${WARPCTC_DOWNLOAD_CMD}"
+        PREFIX          ${WARPCTC_PREFIX_DIR}
+        SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
+        UPDATE_COMMAND  ""
+        PATCH_COMMAND   ""
+        #BUILD_ALWAYS    1
+        CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                        -DCMAKE_C_FLAGS=${WARPCTC_C_FLAGS}
+                        -DCMAKE_C_FLAGS_DEBUG=${WARPCTC_C_FLAGS_DEBUG}
+                        -DCMAKE_C_FLAGS_RELEASE=${WARPCTC_C_FLAGS_RELEASE}
+                        -DCMAKE_CXX_FLAGS=${WARPCTC_CXX_FLAGS}
+                        -DCMAKE_CXX_FLAGS_RELEASE=${WARPCTC_CXX_FLAGS_RELEASE}
+                        -DCMAKE_CXX_FLAGS_DEBUG=${WARPCTC_CXX_FLAGS_DEBUG}
+                        -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
+                        -DWITH_GPU=${WITH_GPU}
+                        -DWITH_ROCM=${WITH_ROCM}
+                        -DWITH_OMP=${USE_OMP}
+                        -DWITH_TORCH=OFF
+                        -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
+                        -DBUILD_SHARED=ON
+                        -DBUILD_TESTS=OFF
+                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                        ${EXTERNAL_OPTIONAL_ARGS}
+        CMAKE_CACHE_ARGS -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                         -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                         -DCMAKE_INSTALL_PREFIX:PATH=${WARPCTC_INSTALL_DIR}
+    )
+endif()
+
+
 IF(WIN32)
     SET(WARPCTC_LIBRARIES "${WARPCTC_INSTALL_DIR}/bin/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}"
             CACHE FILEPATH "Warp-ctc Library" FORCE)

@@ -20,10 +20,10 @@ import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
-from test_conv3d_transpose_op import conv3dtranspose_forward_naive, TestConv3dTransposeOp
+from test_conv3d_transpose_op import TestConv3DTransposeOp
 
 
-class TestWithSymmetricPad_NHWC(TestConv3dTransposeOp):
+class TestWithSymmetricPad_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -35,7 +35,7 @@ class TestWithSymmetricPad_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithAsymmetricPad_NHWC(TestConv3dTransposeOp):
+class TestWithAsymmetricPad_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 0, 1, 0, 1, 2]
         self.stride = [1, 1, 1]
@@ -47,7 +47,7 @@ class TestWithAsymmetricPad_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithGroups_NHWC(TestConv3dTransposeOp):
+class TestWithGroups_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.check_no_filter = True
         self.pad = [1, 1, 1]
@@ -60,7 +60,7 @@ class TestWithGroups_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithStride_NHWC(TestConv3dTransposeOp):
+class TestWithStride_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [2, 2, 2]
@@ -72,7 +72,7 @@ class TestWithStride_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithDilation_NHWC(TestConv3dTransposeOp):
+class TestWithDilation_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.check_no_input = True
         self.pad = [1, 1, 1]
@@ -85,7 +85,7 @@ class TestWithDilation_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestConv3dTransposeAPI(unittest.TestCase):
+class TestConv3DTransposeAPI(unittest.TestCase):
     def test_case1(self):
         data1 = fluid.layers.data(
             name='data1', shape=[3, 5, 5, 5], dtype='float32')
@@ -164,7 +164,7 @@ class TestConv3dTransposeAPI(unittest.TestCase):
         self.assertIsNotNone(results[6])
 
 
-class TestConv3dTransposeOpException(unittest.TestCase):
+class TestConv3DTransposeOpException(unittest.TestCase):
     def test_exception(self):
         data = fluid.layers.data(
             name='data', shape=[3, 5, 5, 5], dtype="float32")

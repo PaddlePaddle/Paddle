@@ -17,11 +17,13 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
+using framework::Tensor;
 
 static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
   if (x_dim.size() > 1) {
@@ -96,6 +98,108 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
 }
 
+template <typename T, typename FCT>
+static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
+                              bool trans_x, bool trans_y,
+                              const paddle::framework::ExecutionContext &ctx) {
+  const auto &x_dims = x->dims();
+  const auto &y_dims = y->dims();
+  auto &dev_ctx =
+      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+
+  auto mat_dim_a =
+      math::CreateMatrixDescriptor(RowMatrixFromVector(x_dims), 0, trans_x);
+  auto mat_dim_b =
+      math::CreateMatrixDescriptor(ColumnMatrixFromVector(y_dims), 0, trans_y);
+
+  if (x_dims.size() == 3 && y_dims.size() <= 2) {
+    // if transpose_X is true, the transpose cost much time
+    if (!trans_x) {
+      mat_dim_a.height_ *= mat_dim_a.batch_size_;
+      mat_dim_a.batch_size_ = 0;
+    } else {
+      mat_dim_b.batch_size_ = mat_dim_a.batch_size_;
+      mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
+    }
+  }
+
+  if (mat_dim_a.width_ == mat_dim_b.height_) {
+    if (mat_dim_a.batch_size_ == 0 && mat_dim_b.batch_size_ == 1) {
+      mat_dim_a.batch_size_ = mat_dim_b.batch_size_ = 0;
+    }
+    if (mat_dim_a.batch_size_ == 1 && mat_dim_b.batch_size_ == 0) {
+      mat_dim_a.batch_size_ = mat_dim_b.batch_size_ = 0;
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(mat_dim_a.width_, mat_dim_b.height_,
+                    platform::errors::InvalidArgument(
+                        "Shape mistake in matmul_op, the "
+                        "first tensor width must be same as "
+                        "second tensor height, but received "
+                        "width:%d, height:%d x_dims = %s , y_dims = %s",
+                        mat_dim_a.width_, mat_dim_b.height_,
+                        x_dims.to_str().c_str(), y_dims.to_str().c_str()));
+  PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_,
+                    platform::errors::InvalidArgument(
+                        "Shape mistake in matmul_op, the two input"
+                        "tensor batch_size must be same, but received first "
+                        "tensor batch_size:%d, second "
+                        "tensor batch_size:%d, x_dims = %s , y_dims = %s",
+                        mat_dim_a.batch_size_, mat_dim_b.batch_size_,
+                        x_dims.to_str().c_str(), y_dims.to_str().c_str()));
+
+  float alpha = static_cast<T>(ctx.Attr<float>("alpha"));
+
+  T *data_c = out->data<T>();
+  int m = mat_dim_a.height_;
+  int n = mat_dim_b.width_;
+  int k = mat_dim_a.width_;
+  int batch_size = mat_dim_a.batch_size_;
+
+  int ldx = mat_dim_a.trans_ ? m : k;
+  int ldy = mat_dim_b.trans_ ? k : n;
+  int ldout = n;
+  if (batch_size <= 1) {
+    int r = 0;
+    r = xpu::fc_fusion<T, T, T, FCT>(
+        dev_ctx.x_context(), x->data<T>(), y->data<T>(), data_c, m, n, k,
+        mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx, ldy,
+        ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External(
+                          "XPU fc_fusion kernel return wrong value[%d %s]", r,
+                          XPUAPIErrorMsg[r]));
+  } else {
+    // batch matmul
+    int r = xpu::fc_batched<T, T, T, FCT>(
+        dev_ctx.x_context(),                        // Context* ctx,
+        batch_size,                                 // int batch_size,
+        mat_dim_a.trans_,                           // bool x_trans,
+        mat_dim_b.trans_,                           // bool w_trans,
+        m,                                          // int m,
+        n,                                          // int n,
+        k,                                          // int k,
+        alpha,                                      // float alpha,
+        reinterpret_cast<const T *>(x->data<T>()),  // const TX* x,
+        mat_dim_a.stride_,                          // int stride_a,
+        reinterpret_cast<const T *>(y->data<T>()),  // const TW* w,
+        mat_dim_b.stride_,                          // int stride_b,
+        0.0,                                        // float beta,
+        reinterpret_cast<T *>(data_c),              // TY* y,
+        m * n,                                      // int stride_c,
+        nullptr,                                    // const float* x_maxptr,
+        nullptr);                                   // const float* w_maxptr
+
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External(
+                          "XPU fc_batched kernel return wrong value[%d %s] "
+                          "x_dims = %s , y_dims = %s",
+                          r, XPUAPIErrorMsg[r], x_dims.to_str().c_str(),
+                          y_dims.to_str().c_str()));
+  }
+}
+
 template <typename DeviceContext, typename T>
 class MatMulXPUKernel : public framework::OpKernel<T> {
  public:
@@ -104,46 +208,12 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
     auto *y = context.Input<framework::Tensor>("Y");
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-
-    auto mat_dim_a = math::CreateMatrixDescriptor(
-        RowMatrixFromVector(x->dims()), 0, context.Attr<bool>("transpose_X"));
-    auto mat_dim_b =
-        math::CreateMatrixDescriptor(ColumnMatrixFromVector(y->dims()), 0,
-                                     context.Attr<bool>("transpose_Y"));
-    PADDLE_ENFORCE_EQ(
-        mat_dim_a.width_, mat_dim_b.height_,
-        platform::errors::InvalidArgument("Shape mistake in matmul_op"));
-    PADDLE_ENFORCE_EQ(
-        mat_dim_a.batch_size_, mat_dim_b.batch_size_,
-        platform::errors::InvalidArgument("Shape mistake in matmul_op"));
-    T alpha = static_cast<T>(context.Attr<float>("alpha"));
-
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    float *data_c = out->data<T>();
-    if (mat_dim_a.batch_size_ == 0 || mat_dim_a.batch_size_ == 1) {
-      int r =
-          xpu::fc_int16(dev_ctx.x_context(), mat_dim_a.trans_, mat_dim_b.trans_,
-                        mat_dim_a.height_, mat_dim_b.width_, mat_dim_a.width_,
-                        alpha, x->data<T>(), y->data<T>(), 0.0f, data_c);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+    bool trans_x = context.Attr<bool>("transpose_X");
+    bool trans_y = context.Attr<bool>("transpose_Y");
+    if (std::getenv("XPU_PADDLE_MAT_MUL_FCINT32") != nullptr) {
+      MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, context);
     } else {
-      // batch matmul
-      int r = xpu::batched_gemm_int16(dev_ctx.x_context(), mat_dim_a.trans_,
-                                      mat_dim_b.trans_, mat_dim_a.batch_size_,
-                                      mat_dim_a.height_, mat_dim_b.width_,
-                                      mat_dim_a.width_, alpha, x->data<T>(),
-                                      y->data<T>(), data_c, nullptr, nullptr);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, context);
     }
   }
 };
@@ -166,14 +236,12 @@ static framework::Tensor XPUFoldHeadAndLastDims(
                                     static_cast<int>(in_dims[1]),
                                     static_cast<int>(in_dims[2])};
   std::vector<int> axis_host = {1, 0, 2};
-
   int r = xpu::transpose(context.x_context(), input.data<T>(), output.data<T>(),
-                         in_shape_host.data(), axis_host.data(), /*ndims=*/3);
+                         in_shape_host, axis_host);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        r));
+                        "XPU transpose kernel return wrong value[%d %s]", r,
+                        XPUAPIErrorMsg[r]));
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
   return output;
@@ -212,42 +280,10 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
-    PADDLE_ENFORCE_EQ(
-        mat_dim_a.width_, mat_dim_b.height_,
-        platform::errors::InvalidArgument("Shape mistake in matmul_grad_op"));
-    PADDLE_ENFORCE_EQ(
-        mat_dim_a.batch_size_, mat_dim_b.batch_size_,
-        platform::errors::InvalidArgument("Shape mistake in matmul_grad_op"));
-    T alpha = static_cast<T>(context.Attr<float>("alpha"));
-
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    float *data_c = out->data<T>();
-    if (mat_dim_a.batch_size_ == 0 || mat_dim_a.batch_size_ == 1) {
-      int r =
-          xpu::fc_int16(dev_ctx.x_context(), mat_dim_a.trans_, mat_dim_b.trans_,
-                        mat_dim_a.height_, mat_dim_b.width_, mat_dim_a.width_,
-                        alpha, a.data<T>(), b.data<T>(), 0.0f, data_c);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+    if (std::getenv("XPU_PADDLE_MAT_MUL_GRAD_FCINT32") != nullptr) {
+      MatMulXPUFunction<T, int32_t>(&a, &b, out, trans_a, trans_b, context);
     } else {
-      // batch matmul
-      int r = xpu::batched_gemm_int16(dev_ctx.x_context(), mat_dim_a.trans_,
-                                      mat_dim_b.trans_, mat_dim_a.batch_size_,
-                                      mat_dim_a.height_, mat_dim_b.width_,
-                                      mat_dim_a.width_, alpha, a.data<T>(),
-                                      b.data<T>(), data_c, nullptr, nullptr);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      MatMulXPUFunction<T, int16_t>(&a, &b, out, trans_a, trans_b, context);
     }
   }
 

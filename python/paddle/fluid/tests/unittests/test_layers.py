@@ -57,7 +57,7 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            paddle.manual_seed(self.seed)
+            paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
             yield
 
@@ -77,7 +77,7 @@ class LayerTest(unittest.TestCase):
     def dynamic_graph(self, force_to_use_cpu=False):
         with fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=force_to_use_cpu)):
-            paddle.manual_seed(self.seed)
+            paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
             yield
 
@@ -3683,5 +3683,71 @@ class TestMetricsDetectionMap(unittest.TestCase):
         print(str(program))
 
 
+class ExampleNet(paddle.nn.Layer):
+    def __init__(self):
+        super(ExampleNet, self).__init__()
+        self.weight = self.create_parameter(
+            shape=[1, 1], attr=paddle.ParamAttr(trainable=False))
+
+    def forward(self):
+        # only for test parameter trainable attr
+        pass
+
+
+class TestLayerParameterTrainableSet(unittest.TestCase):
+    def test_layer_parameter_set(self):
+        with fluid.dygraph.guard():
+            net = ExampleNet()
+            self.assertFalse(net.weight.trainable)
+
+
+class TestLayerTrainingAttribute(unittest.TestCase):
+    def test_set_train_eval_in_dynamic_mode(self):
+        with fluid.dygraph.guard():
+            net = paddle.nn.Dropout()
+            net.train()
+            self.assertTrue(net.training)
+            net.eval()
+            self.assertFalse(net.training)
+
+    def test_set_train_eval_in_static_mode(self):
+        net = paddle.nn.Dropout()
+        net.train()
+        self.assertTrue(net.training)
+        net.eval()
+        self.assertFalse(net.training)
+
+
+class MyLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(MyLayer, self).__init__()
+        self._linear = paddle.nn.Linear(1, 1)
+        self._dropout = paddle.nn.Dropout(p=0.5)
+
+    def forward(self, input):
+        temp = self._linear(input)
+        temp = self._dropout(temp)
+        return temp
+
+
+class MySuperLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(MySuperLayer, self).__init__()
+        self._mylayer = MyLayer()
+
+    def forward(self, input):
+        temp = self._mylayer(input)
+        return temp
+
+
+class TestSubLayerCount(unittest.TestCase):
+    def test_sublayer(self):
+        with fluid.dygraph.guard():
+            mySuperlayer = MySuperLayer()
+            self.assertTrue(len(mySuperlayer.sublayers()) == 3)
+            self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

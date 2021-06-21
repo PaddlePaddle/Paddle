@@ -214,7 +214,8 @@ class FakeDataReader(object):
         self.img_std = np.array(cfg.MODEL.image_std).reshape(
             [3, 1, 1]).astype(np.float32)
 
-        self.batch_size = cfg[mode.upper()]['batch_size']
+        self.batch_size = 1 if sys.platform == 'darwin' or os.name == 'nt' else cfg[
+            mode.upper()]['batch_size']
         self.generator_out = []
         self.total_iter = 3
         for i in range(self.total_iter):
@@ -240,7 +241,8 @@ class FakeDataReader(object):
 
 def create_optimizer(cfg, params):
     total_videos = cfg.total_videos
-    step = int(total_videos / cfg.batch_size + 1)
+    batch_size = 1 if sys.platform == 'darwin' or os.name == 'nt' else cfg.batch_size
+    step = int(total_videos / batch_size + 1)
     bd = [e * step for e in cfg.decay_epochs]
     base_lr = cfg.learning_rate
     lr_decay = cfg.learning_rate_decay
@@ -272,7 +274,7 @@ def train(args, fake_data_reader, to_static):
     random.seed(0)
     np.random.seed(0)
     with fluid.dygraph.guard(place):
-        paddle.manual_seed(1000)
+        paddle.seed(1000)
         paddle.framework.random._manual_program_seed(1000)
 
         video_model = TSM_ResNet("TSM", train_config, 'Train')

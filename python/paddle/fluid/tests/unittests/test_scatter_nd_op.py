@@ -78,7 +78,7 @@ class TestScatterNdAddSimpleOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Updates'], 'Out', in_place=True)
+        self.check_grad(['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithEmptyIndex(OpTest):
@@ -101,7 +101,7 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithHighRankSame(OpTest):
@@ -111,11 +111,11 @@ class TestScatterNdAddWithHighRankSame(OpTest):
 
     def setUp(self):
         self.op_type = "scatter_nd_add"
-        shape = (10, 9, 8, 1, 15)
+        shape = (3, 2, 2, 1, 10)
         ref_np = np.random.rand(*shape).astype("float64")
         index_np = np.vstack(
             [np.random.randint(
-                0, s, size=150) for s in shape]).T.astype("int32")
+                0, s, size=100) for s in shape]).T.astype("int32")
         update_shape = judge_update_shape(ref_np, index_np)
         updates_np = np.random.rand(*update_shape).astype("float64")
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
@@ -127,7 +127,7 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Updates'], 'Out', in_place=True)
+        self.check_grad(['X', 'Updates'], 'Out')
 
 
 class TestScatterNdAddWithHighRankDiff(OpTest):
@@ -137,7 +137,7 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
 
     def setUp(self):
         self.op_type = "scatter_nd_add"
-        shape = (10, 9, 8, 1, 15)
+        shape = (8, 2, 2, 1, 10)
         ref_np = np.random.rand(*shape).astype("double")
         index = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
         index_np = index.reshape([10, 5, 10, 5]).astype("int64")
@@ -152,7 +152,7 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Updates'], 'Out', in_place=True)
+        self.check_grad(['X', 'Updates'], 'Out')
 
 
 #Test Python API
@@ -242,7 +242,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 output5 = fluid.layers.scatter_nd_add(ref5, index5, updates5)
             except Exception as e:
                 t = \
-                "Input(Index).shape[-1] should be no greater than Input(X).rank"
+                "The last dimension of Input(Index)'s shape should be no greater "
                 if t in str(e):
                     raise IndexError
 

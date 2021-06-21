@@ -18,13 +18,15 @@ import paddle.dataset.imdb
 import unittest
 import re
 
-TRAIN_POS_PATTERN = re.compile("aclImdb/train/pos/.*\.txt$")
-TRAIN_NEG_PATTERN = re.compile("aclImdb/train/neg/.*\.txt$")
-TRAIN_PATTERN = re.compile("aclImdb/train/.*\.txt$")
+__all__ = []
 
-TEST_POS_PATTERN = re.compile("aclImdb/test/pos/.*\.txt$")
-TEST_NEG_PATTERN = re.compile("aclImdb/test/neg/.*\.txt$")
-TEST_PATTERN = re.compile("aclImdb/test/.*\.txt$")
+TRAIN_POS_PATTERN = re.compile(r"aclImdb/train/pos/.*\.txt$")
+TRAIN_NEG_PATTERN = re.compile(r"aclImdb/train/neg/.*\.txt$")
+TRAIN_PATTERN = re.compile(r"aclImdb/train/.*\.txt$")
+
+TEST_POS_PATTERN = re.compile(r"aclImdb/test/pos/.*\.txt$")
+TEST_NEG_PATTERN = re.compile(r"aclImdb/test/neg/.*\.txt$")
+TEST_PATTERN = re.compile(r"aclImdb/test/.*\.txt$")
 
 
 class TestIMDB(unittest.TestCase):

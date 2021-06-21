@@ -41,6 +41,8 @@ def max_pool2D_forward_naive(x,
                              exclusive=True,
                              adaptive=False,
                              data_type=np.float64):
+    if data_type == np.float64 and core.is_compiled_with_rocm():
+        data_type = np.float32
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -81,6 +83,8 @@ def avg_pool2D_forward_naive(x,
                              exclusive=True,
                              adaptive=False,
                              data_type=np.float64):
+    if data_type == np.float64 and core.is_compiled_with_rocm():
+        data_type = np.float32
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -340,7 +344,7 @@ class TestPool2D_Op(OpTest):
         self.use_cudnn = False
 
     def init_data_type(self):
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -475,12 +479,54 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
     globals()[cls_name] = TestCUDNNFp16Case
 
 
+def create_test_fp16_class(parent, check_grad=True):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestFp16Case(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = False
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(
+                        place,
+                        atol=1e-3,
+                        check_dygraph=(self.use_mkldnn == False))
+
+        def test_check_grad(self):
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(
+                    place) and self.pool_type != "max" and check_grad:
+                self.check_grad_with_place(
+                    place,
+                    set(['X']),
+                    'Out',
+                    max_relative_error=0.07,
+                    check_dygraph=(self.use_mkldnn == False))
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    TestFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestFp16Case
+
+
 create_test_cudnn_fp16_class(TestPool2D_Op)
 create_test_cudnn_fp16_class(TestCase1, check_grad=False)
 create_test_cudnn_fp16_class(TestCase2)
 create_test_cudnn_fp16_class(TestCase3)
 create_test_cudnn_fp16_class(TestCase4)
 create_test_cudnn_fp16_class(TestCase5)
+
+create_test_fp16_class(TestPool2D_Op)
+create_test_fp16_class(TestCase1, check_grad=False)
+create_test_fp16_class(TestCase2)
+create_test_fp16_class(TestCase3)
+create_test_fp16_class(TestCase4)
+create_test_fp16_class(TestCase5)
 
 #--------------------test pool2d use ceil mode--------------------
 
@@ -1018,7 +1064,7 @@ create_test_cudnn_padding_SAME_class(TestCase1_strides)
 
 
 # ----- test API
-class TestPool2dAPI(unittest.TestCase):
+class TestPool2DAPI(unittest.TestCase):
     def test_api(self):
         x_NHWC = np.random.random([2, 5, 5, 3]).astype("float32")
         x_NCHW = np.random.random([2, 3, 5, 5]).astype("float32")
@@ -1237,7 +1283,7 @@ class TestPool2dAPI(unittest.TestCase):
                 data_format="NHWC"))
 
 
-class TestPool2dAPI_Error(unittest.TestCase):
+class TestPool2DAPI_Error(unittest.TestCase):
     def test_api(self):
         input_NHWC = fluid.layers.data(
             name="input_NHWC",

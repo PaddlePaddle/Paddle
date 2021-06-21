@@ -23,7 +23,7 @@ import itertools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import MomentumOptimizer, LarsMomentumOptimizer, AdagradOptimizer, AdamaxOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, AdadeltaOptimizer, RMSPropOptimizer, FtrlOptimizer, LambOptimizer
+from paddle.fluid.optimizer import MomentumOptimizer, LarsMomentumOptimizer, AdagradOptimizer, AdamaxOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, AdadeltaOptimizer, RMSPropOptimizer, FtrlOptimizer
 from paddle.fluid.optimizer import ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
@@ -74,7 +74,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         try:
             paddle.disable_static()
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             mlp = MLP()
             optimizer = self.get_optimizer_dygraph(
@@ -93,7 +93,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             ) else fluid.CUDAPlace(0)
 
         paddle.disable_static(place)
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         mlp = MLP()
@@ -142,7 +142,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         paddle.enable_static()
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             if place == None:
@@ -207,10 +207,18 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         for key, value in six.iteritems(static_param_init_value):
             self.assertTrue(np.allclose(value, dy_param_init_value[key]))
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        if core.is_compiled_with_rocm():
+            self.assertTrue(np.allclose(static_out, dy_out, atol=1e-3))
+        else:
+            self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+            if core.is_compiled_with_rocm():
+                self.assertTrue(
+                    np.allclose(
+                        value, dy_param_value[key], atol=1e-3))
+            else:
+                self.assertTrue(np.allclose(value, dy_param_value[key]))
 
 
 class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
@@ -702,14 +710,14 @@ def exclude_fn(param):
 
 class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = LambOptimizer(
+        optimizer = paddle.optimizer.Lamb(
             learning_rate=0.002,
             exclude_from_weight_decay_fn=exclude_fn,
-            parameter_list=parameter_list)
+            parameters=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = LambOptimizer(
+        optimizer = paddle.optimizer.Lamb(
             learning_rate=0.002, exclude_from_weight_decay_fn=exclude_fn)
         return optimizer
 

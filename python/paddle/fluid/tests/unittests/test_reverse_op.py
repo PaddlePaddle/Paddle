@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 
@@ -107,7 +108,7 @@ class TestCase4(unittest.TestCase):
             x = np.random.random(size=(10, 1, 1, 1, 1, 1, 1)).astype('int64')
             exe.run(train_program, feed={"label": x})
 
-        self.assertRaises(core.EnforceNotMet, _run_program)
+        self.assertRaises(IndexError, _run_program)
 
 
 class TestReverseLoDTensorArray(unittest.TestCase):
@@ -182,4 +183,5 @@ class TestReverseLoDTensorArray(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

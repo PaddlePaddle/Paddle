@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <vector>
 
 namespace paddle {
 namespace platform {
@@ -29,6 +28,11 @@ namespace framework {
 namespace {  // NOLINT
 template <typename T>
 constexpr uint8_t GetDLDataTypeCode() {
+  if (std::is_same<T, platform::complex<float>>::value ||
+      std::is_same<T, platform::complex<double>>::value) {
+    return static_cast<uint8_t>(5);
+  }
+
   return std::is_same<platform::float16, T>::value ||
                  std::is_floating_point<T>::value
              ? static_cast<uint8_t>(kDLFloat)
@@ -104,7 +108,7 @@ void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
 
 template <typename T>
 void TestMainLoop() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::vector<platform::Place> places{platform::CPUPlace(),
                                       platform::CUDAPlace(0),
                                       platform::CUDAPinnedPlace()};

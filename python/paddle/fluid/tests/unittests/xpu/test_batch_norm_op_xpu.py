@@ -159,13 +159,15 @@ class TestXPUBatchNormOp(unittest.TestCase):
     def test_infer(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
-            scale = paddle.data('Scale', self.scale_np.shape,
-                                self.scale_np.dtype)
-            bias = paddle.data('Bias', self.bias_np.shape, self.bias_np.dtype)
-            mean = paddle.data('Mean', self.mean_np.shape, self.mean_np.dtype)
-            variance = paddle.data('Variance', self.variance_np.shape,
-                                   self.variance_np.dtype)
+            x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            scale = paddle.fluid.data('Scale', self.scale_np.shape,
+                                      self.scale_np.dtype)
+            bias = paddle.fluid.data('Bias', self.bias_np.shape,
+                                     self.bias_np.dtype)
+            mean = paddle.fluid.data('Mean', self.mean_np.shape,
+                                     self.mean_np.dtype)
+            variance = paddle.fluid.data('Variance', self.variance_np.shape,
+                                         self.variance_np.dtype)
             y = F.batch_norm(x, mean, variance, scale, bias, False,
                              self.momentum, self.epsilon, self.data_layout)
             exe = paddle.static.Executor(self.place)

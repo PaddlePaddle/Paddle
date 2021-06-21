@@ -16,11 +16,27 @@ limitations under the License. */
 #include <stdio.h>
 #include <cstdio>
 #include <vector>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+#endif
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
+#ifdef __HIPCC__
+namespace rocprim {
+namespace detail {
+template <>
+struct radix_key_codec_base<paddle::platform::float16>
+    : radix_key_codec_integral<paddle::platform::float16, uint16_t> {};
+}  // namespace detail
+}  // namespace rocprim
+namespace cub = hipcub;
+#else
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
@@ -28,6 +44,7 @@ struct NumericTraits<paddle::platform::float16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t,
                  paddle::platform::float16> {};
 }  // namespace cub
+#endif
 
 namespace paddle {
 namespace operators {
@@ -335,6 +352,7 @@ __global__ void AssignGrad(T* x_grad, const int64_t* indices, const T* out_grad,
     for (size_t j = 0; j < cols; ++j) {
       x_grad[i * cols + j] = 0;
     }
+    __syncthreads();
     for (size_t j = 0; j < k; ++j) {
       size_t idx = indices[i * k + j];
       x_grad[i * cols + idx] = out_grad[i * k + j];
@@ -349,15 +367,16 @@ __global__ void AssignGradWithAxis(const T* grad_out, const int64_t* indices,
                                    int raw_height, int k) {
   // raw_height is the length of topk axis
   for (int i = blockIdx.x; i < pre; i += gridDim.x) {
-    const int& base_index = i * post * k;
-    const int& base_grad = i * post * raw_height;
+    int base_index = i * post * k;
+    int base_grad = i * post * raw_height;
     for (int j = threadIdx.x; j < raw_height * post; j += blockDim.x) {
       grad_in[base_grad + j] = static_cast<T>(0);
     }
+    __syncthreads();
     for (int j = threadIdx.x; j < k * post; j += blockDim.x) {
-      const int64_t idx_ij = indices[base_index + j];
-      const int64_t in_ij = base_grad + (idx_ij * post) + (j % post);
-      grad_in[in_ij] = grad_out[idx_ij];
+      int64_t idx_ij = indices[base_index + j];
+      int64_t in_ij = base_grad + (idx_ij * post) + (j % post);
+      grad_in[in_ij] = grad_out[base_index + j];
     }
   }
 }
@@ -437,6 +456,16 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
         input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
         num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
         cu_stream);
+#ifdef __HIPCC__
+    if (err != hipSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "hipcub::DeviceSegmentedRadixSort::SortPairsDescending to "
+                    "calculate "
+                    "temp_storage_bytes, status: "
+                 << hipGetErrorString(err);
+      return false;
+    }
+#else
     if (err != cudaSuccess) {
       LOG(ERROR)
           << "TopKOP failed as could not launch "
@@ -445,12 +474,22 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
           << cudaGetErrorString(err);
       return false;
     }
+#endif
   } else {
     auto err = cub::DeviceSegmentedRadixSort::SortPairs(
         nullptr, temp_storage_bytes, input, sorted_values_ptr,
         input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
         num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
         cu_stream);
+#ifdef __HIPCC__
+    if (err != hipSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "hipcub::DeviceSegmentedRadixSort::SortPairs to calculate "
+                    "temp_storage_bytes, status: "
+                 << hipGetErrorString(err);
+      return false;
+    }
+#else
     if (err != cudaSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
                     "cub::DeviceSegmentedRadixSort::SortPairs to calculate "
@@ -458,6 +497,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
                  << cudaGetErrorString(err);
       return false;
     }
+#endif
   }
   Tensor temp_storage;
   temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
@@ -468,6 +508,17 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
         sorted_values_ptr, input_indices.data<int64_t>(), sorted_indices_ptr,
         num_cols * num_rows, num_rows, segment_offsets_t, segment_offsets_t + 1,
         0, sizeof(T) * 8, cu_stream);
+#ifdef __HIPCC__
+    if (err != hipSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "hipcub::DeviceSegmentedRadixSort::SortPairsDescending to "
+                    "sort input, "
+                    "temp_storage_bytes: "
+                 << temp_storage_bytes
+                 << ", status: " << hipGetErrorString(err);
+      return false;
+    }
+#else
     if (err != cudaSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
                     "cub::DeviceSegmentedRadixSort::SortPairsDescending to "
@@ -477,12 +528,24 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
                  << ", status: " << cudaGetErrorString(err);
       return false;
     }
+#endif
   } else {
     auto err = cub::DeviceSegmentedRadixSort::SortPairs(
         temp_storage.data<uint8_t>(), temp_storage_bytes, input,
         sorted_values_ptr, input_indices.data<int64_t>(), sorted_indices_ptr,
         num_cols * num_rows, num_rows, segment_offsets_t, segment_offsets_t + 1,
         0, sizeof(T) * 8, cu_stream);
+#ifdef __HIPCC__
+    if (err != hipSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "hipcub::DeviceSegmentedRadixSort::SortPairs to "
+                    "sort input, "
+                    "temp_storage_bytes: "
+                 << temp_storage_bytes
+                 << ", status: " << hipGetErrorString(err);
+      return false;
+    }
+#else
     if (err != cudaSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
                     "cub::DeviceSegmentedRadixSort::SortPairs to "
@@ -492,22 +555,28 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
                  << ", status: " << cudaGetErrorString(err);
       return false;
     }
+#endif
   }
   auto& dev = *ctx.eigen_device();
   if (k < num_cols) {
     // copy sliced data to output.
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
-    auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
-    auto e_tmp_indices = EigenMatrix<int64_t>::From(temp_indices);
+    auto e_indices =
+        framework::EigenMatrix<int64_t>::From(*indices_tensor, dim);
+    auto e_tmp_indices = framework::EigenMatrix<int64_t>::From(
+        static_cast<const Tensor>(temp_indices));
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
     auto dim = framework::make_ddim(odims);
-    auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
-    auto e_tmp_values = EigenMatrix<T>::From(temp_values);
+    auto e_values = framework::EigenMatrix<T>::From(*out_tensor, dim);
+    auto e_tmp_values =
+        framework::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));
 
-    e_indices.device(dev) = e_tmp_indices.slice(slice_indices, slice_sizes);
-    e_values.device(dev) = e_tmp_values.slice(slice_indices, slice_sizes);
+    EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
+        dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
+    EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
+        dev, e_values, e_tmp_values, slice_indices, slice_sizes);
   }
   return true;
 }

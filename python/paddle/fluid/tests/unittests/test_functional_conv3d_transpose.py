@@ -113,7 +113,7 @@ class TestFunctionalConv3DTranspose(TestCase):
                     "weight", self.weight.shape, dtype=self.dtype)
                 if not self.no_bias:
                     bias = fluid.data("bias", self.bias.shape, dtype=self.dtype)
-                y = F.conv_transpose3d(
+                y = F.conv3d_transpose(
                     x,
                     weight,
                     None if self.no_bias else bias,
@@ -138,7 +138,7 @@ class TestFunctionalConv3DTranspose(TestCase):
             x = dg.to_variable(self.input)
             weight = dg.to_variable(self.weight)
             bias = None if self.no_bias else dg.to_variable(self.bias)
-            y = F.conv_transpose3d(
+            y = F.conv3d_transpose(
                 x,
                 weight,
                 bias,
@@ -222,7 +222,7 @@ class TestFunctionalConv3DTransposeError(TestCase):
                     "weight", self.weight_shape, dtype=self.dtype)
                 if not self.no_bias:
                     bias = fluid.data("bias", self.bias_shape, dtype=self.dtype)
-                y = F.conv_transpose3d(
+                y = F.conv3d_transpose(
                     x,
                     weight,
                     None if self.no_bias else bias,

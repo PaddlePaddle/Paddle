@@ -103,6 +103,7 @@ class TestCollectiveRunnerBase(object):
         nranks = 2
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
+        self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(
@@ -268,6 +269,16 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+        elif col_type == "sendrecv":
+            need_result = input1
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "identity":
+            need_result1 = input1
+            need_result2 = input2
+            self.assertTrue(np.allclose(tr0_out, need_result1, rtol=0, atol=0))
+            self.assertTrue(np.allclose(tr1_out, need_result2, rtol=0, atol=0))
         elif col_type == "reduce_slicegather":
             slicesize = input1.shape[0] // 2
             tmp10 = input1[0:slicesize]
@@ -278,5 +289,22 @@ class TestDistBase(unittest.TestCase):
             need_result2 = np.concatenate((tmp20, tmp21), axis=1)
             self.assertTrue(np.allclose(tr0_out, need_result1))
             self.assertTrue(np.allclose(tr1_out, need_result2))
+        elif col_type == "concat":
+            need_result = np.concatenate((input1, input2), axis=1)
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "split":
+            need_result1 = np.split(input1, 2, axis=1)[0]
+            need_result2 = np.split(input2, 2, axis=1)[1]
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
         else:
             pass

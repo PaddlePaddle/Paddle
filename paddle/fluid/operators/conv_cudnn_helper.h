@@ -19,9 +19,11 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
 namespace paddle {
 namespace operators {
@@ -57,8 +59,8 @@ static void RemovePaddingSlice(const framework::ExecutionContext& context,
       *context.template device_context<DeviceContext>().eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
+  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = new_out_dims[i];
@@ -80,7 +82,8 @@ static void RemovePaddingSlice(const framework::ExecutionContext& context,
   auto out_t =
       framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
           *out, new_out_dims);
-  out_t.device(place) = in_t.slice(offsets, extents);
+  EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(place, out_t, in_t,
+                                                        offsets, extents);
 }
 
 template <typename T>
@@ -99,6 +102,24 @@ inline int MaxBwdFilterAlgos(cudnnHandle_t cudnn_handle) {
           cudnn_handle, &max_algos));
 #endif
   return max_algos;
+}
+
+template <typename PerfType, typename AlgoType>
+void ChooseAlgoByWorkspace(PerfType* perf_results, size_t perf_num,
+                           size_t workspace_byte, AlgoType* algo) {
+  for (size_t i = 0; i < perf_num; ++i) {
+    auto result = perf_results[i];
+    if (result.status == CUDNN_STATUS_SUCCESS &&
+        result.memory < workspace_byte) {
+      *algo = result.algo;
+      VLOG(3) << "    algo: " << result.algo << ", time: " << result.time
+              << " ms, wksp = " << result.memory
+              << ", status = " << result.status;
+      return;
+    }
+  }
+  VLOG(3) << "Can not find alog that requires memory < "
+          << static_cast<double>(workspace_byte) / (1 << 20) << " MB";
 }
 
 template <typename PerfType, typename AlgoType>
@@ -184,7 +205,6 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool has_got_workspace_size = true;
-    bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
     algo_t algo;
@@ -196,15 +216,30 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
                                                          CUDNN_TENSOR_OP_MATH));
       VLOG(5) << "use cudnn_tensor_op_math";
+#if CUDA_VERSION >= 11000
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    } else if (dev_ctx.GetComputeCapability() >= 80 &&
+               dtype == CUDNN_DATA_BFLOAT16) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
+                                                         CUDNN_TENSOR_OP_MATH));
+      VLOG(5) << "use cudnn_tensor_op_math";
+#endif  // CUDNN_VERSION >= 8100
+    } else if (dtype == CUDNN_DATA_FLOAT && !args.cdesc.allow_tf32_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
+                                                         CUDNN_FMA_MATH));
+      VLOG(5) << "use cudnn_fma_math";
+#endif  // CUDA_VERSION >= 11000
     } else {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
                                                          CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
+      VLOG(5) << "use cudnn_default_math";
     }
 #endif
 
-    if (!exhaustive && !deterministic) {
+    if (!exhaustive_search && !deterministic) {
 #if CUDNN_VERSION >= 7001
       int perf_count;
       int best_algo_idx = 0;
@@ -219,7 +254,10 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 
       if (workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
-        workspace_size_limit = workspace_size;
+        // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
+        ChooseAlgoByWorkspace<perf_t, algo_t>(perf_results.get(),
+                                              kNUM_CUDNN_FWD_ALGS,
+                                              workspace_size_limit, &algo);
 #else
         VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
                    "the workspace size request("
@@ -311,28 +349,30 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                      bool deterministic,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
-    bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
     bool has_got_workspace_size = true;
     algo_t algo;
-
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+        args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+    VLOG(5) << "NOT use cudnn_tensor_op_math";
     if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
                                                          CUDNN_TENSOR_OP_MATH));
       VLOG(5) << "use cudnn_tensor_op_math";
-    } else {
+    } else if (dtype == CUDNN_DATA_FLOAT && !args.cdesc.allow_tf32_) {
+#if CUDA_VERSION >= 11000
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
-                                                         CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
+                                                         CUDNN_FMA_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
 #endif
 
-    if (!exhaustive && !deterministic) {
+    if (!exhaustive_search && !deterministic) {
 #if CUDNN_VERSION >= 7001
       int perf_count;
       int best_algo_idx = 0;
@@ -362,9 +402,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       if (workspace_size > workspace_size_limit) {
         has_got_workspace_size = false;
 #if CUDNN_VERSION >= 8000
-        // There is no cudnnGetConvolutionBackwardDataAlgorithm in CUDNN 8
-        // version.
-        workspace_size_limit = workspace_size;
+        // cudnnGetConvolutionBackwardDataAlgorithm is removed in CUDNN-8
+        ChooseAlgoByWorkspace<perf_t, algo_t>(perf_results.get(),
+                                              kNUM_CUDNN_BWD_DATA_ALGS,
+                                              workspace_size_limit, &algo);
 #else
         VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
                    "the workspace size request("
@@ -407,7 +448,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
           x_dims, w_dims, args.s, args.p, args.d, 0,
           static_cast<int64_t>(args.cudnn_dtype), [&]() {
             int returned_algo_count;
-            std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_stat;
+            std::array<perf_t, kNUM_CUDNN_BWD_DATA_ALGS> perf_stat;
 
             auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
               PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -463,16 +504,20 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+        args.cdesc.desc(), CUDNN_DEFAULT_MATH));
+    VLOG(5) << "NOT use cudnn_tensor_op_math";
     if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
                                                          CUDNN_TENSOR_OP_MATH));
       VLOG(5) << "use cudnn_tensor_op_math";
-    } else {
+    } else if (dtype == CUDNN_DATA_FLOAT && !args.cdesc.allow_tf32_) {
+#if CUDA_VERSION >= 11000
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(args.cdesc.desc(),
-                                                         CUDNN_DEFAULT_MATH));
-      VLOG(5) << "NOT use cudnn_tensor_op_math";
+                                                         CUDNN_FMA_MATH));
+#endif  // CUDA_VERSION >= 11000
     }
 #endif
 
@@ -493,6 +538,23 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       workspace_size = GetWorkspaceSize(args, algo);
       if (workspace_size > workspace_size_limit) {
         workspace_size = workspace_size_limit;
+#if CUDNN_VERSION >= 8000
+        // cudnnGetConvolutionBackwardFilterAlgorithm is removed in CUDNN-8
+        ChooseAlgoByWorkspace<perf_t, algo_t>(perf_results.get(),
+                                              kNUM_CUDNN_BWD_FILTER_ALGS,
+                                              workspace_size_limit, &algo);
+#else
+        VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+                   "the workspace size request("
+                << workspace_size << ") exceeds the limit("
+                << workspace_size_limit << ")";
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
+                args.handle, args.idesc.desc(), args.odesc.desc(),
+                args.cdesc.desc(), args.wdesc.desc(),
+                CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
+                workspace_size_limit, &algo));
+#endif
       }
 #else
       PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -522,7 +584,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
             x_dims, w_dims, args.s, args.p, args.d, 0,
             static_cast<int64_t>(args.cudnn_dtype), [&]() {
               int returned_algo_count;
-              std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_stat;
+              std::array<perf_t, kNUM_CUDNN_BWD_FILTER_ALGS> perf_stat;
               auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
                 PADDLE_ENFORCE_CUDA_SUCCESS(
                     platform::dynload::

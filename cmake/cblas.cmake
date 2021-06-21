@@ -69,15 +69,21 @@ if(NOT DEFINED CBLAS_PROVIDER)
     PATHS ${OPENBLAS_LIB_SEARCH_PATHS})
 
   if(OPENBLAS_LAPACKE_INC_DIR AND OPENBLAS_INC_DIR AND OPENBLAS_LIB)
-    set(CBLAS_PROVIDER OPENBLAS)
-    set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
-    set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
+    file(READ "${OPENBLAS_INC_DIR}/openblas_config.h" config_file)
+    string(REGEX MATCH "OpenBLAS ([0-9]+\.[0-9]+\.[0-9]+)" tmp ${config_file})
+    string(REGEX MATCH "([0-9]+\.[0-9]+\.[0-9]+)" ver ${tmp})
+    
+    if (${ver} VERSION_GREATER_EQUAL "0.3.7")
+      set(CBLAS_PROVIDER OPENBLAS)
+      set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
+      set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
 
-    add_definitions(-DPADDLE_USE_OPENBLAS)
-    add_definitions(-DLAPACK_FOUND)
+      add_definitions(-DPADDLE_USE_OPENBLAS)
+      add_definitions(-DLAPACK_FOUND)
 
-    message(STATUS "Found OpenBLAS (include: ${OPENBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
-    message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
+      message(STATUS "Found OpenBLAS (include: ${OPENBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+      message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
+    endif()
   endif()
 endif()
 
@@ -100,6 +106,8 @@ if(NOT DEFINED CBLAS_PROVIDER AND WITH_SYSTEM_BLAS)
   find_path(REFERENCE_CBLAS_INCLUDE_DIR NAMES cblas.h PATHS
         ${REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS})
   find_library(REFERENCE_CBLAS_LIBRARY NAMES cblas PATHS
+        ${REFERENCE_CBLAS_LIB_SEARCH_PATHS})
+  find_library(REFERENCE_BLAS_LIBRARY NAMES blas PATHS
         ${REFERENCE_CBLAS_LIB_SEARCH_PATHS})
 
   if(REFERENCE_CBLAS_INCLUDE_DIR AND REFERENCE_CBLAS_LIBRARY)
@@ -125,7 +133,9 @@ endif()
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
 
 include_directories(${CBLAS_INC_DIR})
-if(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
+if(${CBLAS_PROVIDER} STREQUAL REFERENCE_CBLAS)
+  target_link_libraries(cblas gfortran ${CBLAS_LIBRARIES} ${REFERENCE_BLAS_LIBRARY})
+elseif(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
   target_link_libraries(cblas ${CBLAS_LIBRARIES})
 endif()
 

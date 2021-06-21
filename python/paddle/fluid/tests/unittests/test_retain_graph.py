@@ -20,13 +20,13 @@ import unittest
 paddle.disable_static()
 SEED = 2020
 np.random.seed(SEED)
-paddle.manual_seed(SEED)
+paddle.seed(SEED)
 
 
 class Generator(fluid.dygraph.Layer):
     def __init__(self):
         super(Generator, self).__init__()
-        self.conv1 = paddle.nn.Conv2d(3, 3, 3, padding=1)
+        self.conv1 = paddle.nn.Conv2D(3, 3, 3, padding=1)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -37,7 +37,7 @@ class Generator(fluid.dygraph.Layer):
 class Discriminator(fluid.dygraph.Layer):
     def __init__(self):
         super(Discriminator, self).__init__()
-        self.convd = paddle.nn.Conv2d(6, 3, 1)
+        self.convd = paddle.nn.Conv2D(6, 3, 1)
 
     def forward(self, x):
         x = self.convd(x)
@@ -136,8 +136,7 @@ class TestRetainGraph(unittest.TestCase):
 
     def test_retain(self):
         self.run_retain(need_retain=True)
-        self.assertRaises(
-            fluid.core.EnforceNotMet, self.run_retain, need_retain=False)
+        self.assertRaises(RuntimeError, self.run_retain, need_retain=False)
 
 
 if __name__ == '__main__':

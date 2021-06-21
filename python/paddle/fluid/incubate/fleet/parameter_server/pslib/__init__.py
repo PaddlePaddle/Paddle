@@ -101,15 +101,16 @@ class PSLib(Fleet):
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-            if self._role_maker.is_worker():
-                info = self._fleet_ptr.get_clients_info()
-                all_info = self._role_maker._worker_gather(info[0])
-                self._fleet_ptr.gather_clients(all_info)
-                self._fleet_ptr.set_client2client_config(
-                    self._client2client_request_timeout_ms,
-                    self._client2client_connect_timeout_ms,
-                    self._client2client_max_retry)
-                self._fleet_ptr.create_client2client_connection()
+            if not self._opt_info["use_ps_gpu"]:
+                if self._role_maker.is_worker():
+                    info = self._fleet_ptr.get_clients_info()
+                    all_info = self._role_maker._worker_gather(info[0])
+                    self._fleet_ptr.gather_clients(all_info)
+                    self._fleet_ptr.set_client2client_config(
+                        self._client2client_request_timeout_ms,
+                        self._client2client_connect_timeout_ms,
+                        self._client2client_max_retry)
+                    self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
@@ -137,9 +138,10 @@ class PSLib(Fleet):
                                     "var " + var_name + " not found in scope, "
                                     + "you should run startup program first")
                             var_name_list.append(var_name)
-                        self._fleet_ptr.init_model(scope,
-                                                   int(table.table_id),
-                                                   var_name_list)
+                        if not self._opt_info["use_ps_gpu"]:
+                            self._fleet_ptr.init_model(scope,
+                                                       int(table.table_id),
+                                                       var_name_list)
             # barrier for init model done
             self._role_maker._barrier_worker()
         else:
@@ -381,6 +383,28 @@ class PSLib(Fleet):
         if self._role_maker.is_first_worker():
             self._fleet_ptr.save_model_with_whitelist(table_id, dirname, mode,
                                                       whitelist_path)
+        self._role_maker._barrier_worker()
+
+    def save_multi_table_one_path(self, table_ids, model_dir, **kwargs):
+        """
+        save pslib multi sparse table in one path.
+        Args:
+            table_ids(list): table ids
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+                          prefix(str): the parts to save can have prefix,
+                                       for example, part-prefix-000-00000
+        Examples:
+            .. code-block:: python
+              fleet.save_multi_table_one_path("[0, 1]", "afs:/user/path/")
+        """
+        mode = kwargs.get("mode", 0)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_multi_table_one_path(table_ids, model_dir,
+                                                      mode)
         self._role_maker._barrier_worker()
 
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
@@ -987,11 +1011,63 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         raise NotImplementedError()
 
+    def _remove_collective_ops(self, program, name):
+        """
+        colective init op should call once, so remove other call.
+        """
+        block = program.global_block()
+        for ids, op in list(enumerate(block.ops)):
+            if op.type == name:
+                block._remove_op(ids)
+                return
+
     def apply_gradients(self, params_grads):
         """
         Currently, apply_gradients function can not be called through DistributedOptimizer
         """
         raise NotImplementedError()
+
+    def get_dist_env(self):
+        trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
+        trainer_endpoints = ''
+        current_endpoint = ''
+        num_trainers = 0
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS') and os.getenv(
+                'PADDLE_CURRENT_ENDPOINT'):
+            trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+            current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
+            num_trainers = len(trainer_endpoints.split(','))
+
+        return {
+            'trainer_id': trainer_id,
+            'num_trainers': num_trainers,
+            'current_endpoint': current_endpoint,
+            'trainer_endpoints': trainer_endpoints
+        }
+
+    def _remove_collective_op_for_embedding(self, loss, table_name):
+        """
+        find multi-sparse-table
+        """
+        table_name = [name + "@GRAD" for name in table_name]
+        need_remove_op_index = []
+        block = loss.block.program.global_block()
+        collective_ops = ["c_sync_calc_stream", "c_allreduce_sum"]
+        for ids, op in list(enumerate(block.ops)):
+            if op.type in collective_ops:
+                if op.input("X")[0] in table_name:
+                    need_remove_op_index.append(ids)
+            if op.type == "lookup_table_grad":
+                need_remove_op_index.append(ids)
+            try:
+                if op.output("Out")[0] in table_name:
+                    need_remove_op_index.append(ids)
+            except:
+                pass
+
+        need_remove_op_index.sort(reverse=True)
+        for index in need_remove_op_index:
+            block._remove_op(index)
 
     def minimize(self,
                  losses,
@@ -1043,5 +1119,31 @@ class DownpourOptimizer(DistributedOptimizer):
 
         fleet._main_programs = programs
         fleet._scopes = scopes
+        if opt_info["use_ps_gpu"]:
+            from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+            # check start program
+
+            env = self.get_dist_env()
+            if not isinstance(losses, list):
+                startup_programs = [startup_programs]
+            for i in range(0, len(startup_programs)):
+                t = SingleProcessMultiThread()
+                start_program = startup_programs[i]
+                main_program = programs[i]
+                t.transpile(
+                    startup_program=start_program,
+                    main_program=main_program,
+                    rank=env["trainer_id"],
+                    endpoints=env["trainer_endpoints"],
+                    current_endpoint=env['current_endpoint'],
+                    wait_port=False)
+                if i > 0:
+                    self._remove_collective_ops(start_program,
+                                                "c_comm_init_all")
+            for i in range(0, len(losses)):
+                loss = losses[i]
+                embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table(
+                    [loss])
+                self._remove_collective_op_for_embedding(loss, embedding_table)
 
         return [optimize_ops, param_grads]

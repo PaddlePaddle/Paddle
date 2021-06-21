@@ -16,7 +16,10 @@ from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import array_length, array_read, array_write, create_array
+from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce_any
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
+from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -24,12 +27,12 @@ def convert_while_loop(cond, body, loop_vars):
     A function representation of a Python ``while`` statement.
 
     Args:
-        cond(Callable): A callable object that returns a boolean variable to control whether to  execute the loop body.  It takes  ``loop_vars`` as arguments.
+        cond(Callable): A callable object that returns a boolean variable to control whether to execute the loop body. It takes ``loop_vars`` as arguments.
         body(Callable): A callable object that returns a tuple or list of variables with the same arguments ``loops_vars`` as ``cond`` .
         loop_vars(list|tuple): A list or tuple of variables passed to ``cond`` and ``body`` .
 
     Returns:
-        A list or tuple of variables which returned by ``body`` .
+        A list or tuple of variables which returned by ``body``.
     """
 
     # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
@@ -44,7 +47,7 @@ def convert_while_loop(cond, body, loop_vars):
 
 
 def _run_paddle_while_loop(cond, body, loop_vars):
-    # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Variable.
+    # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
     loop_vars = [to_static_variable(var) for var in loop_vars]
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
     return loop_vars
@@ -56,25 +59,39 @@ def _run_py_while(cond, body, loop_vars):
     return loop_vars
 
 
-def convert_logical_and(x, y):
+def convert_logical_and(x_func, y_func):
     """
     A function representation of a Python ``and`` statement.
 
     Args:
-        x(bool|Variable): Left hand operand of ``and`` operator.
-        y(bool|Variable): Right hand operand of ``and`` operator.
+        x_func(callable): x_func() is the left hand operand of ``and`` operator. x_func() is bool or Tensor.
+        y_func(callable): y_func() is the right hand operand of ``and`` operator.  y_func() is bool or Tensor.
 
     Returns:
         A python bool variable or a bool Tensor.
+
+    NOTE(liym27):
+        1) The operands are executed sequentially according to the running logic of Python. So here the arguments
+        should be callable.
+        2) If the left hand operand is False, the right hand operand should be executed.
+
+        For example:
+            a = x > 1 and y < 1
+        Transformed code:
+            a = paddle.jit.dy2static.convert_logical_and(lambda:x>1, lambda:y<1)
+
+          In `convert_logical_and(lambda:x>1, lambda:y<1)`, `lambda:y<1` must be run after `lambda:x>1`. And
+        if `x>1` is False, `y<1` should NOT be run.
     """
+    x_value = x_func()
+    if not isinstance(x_value, Variable):
+        return _run_py_logical_and(lambda: x_value, y_func)
 
-    if isinstance(x, Variable) and isinstance(y, Variable):
-        return _run_paddle_logical_and(x, y)
+    y_value = y_func()
+    if not isinstance(y_value, Variable):
+        return _run_py_logical_and(lambda: y_value, lambda: x_value)
 
-    if not isinstance(x, Variable):
-        return _run_py_logical_and(x, y)
-
-    return _run_py_logical_and(y, x)
+    return _run_paddle_logical_and(x_value, y_value)
 
 
 def _run_paddle_logical_and(x, y):
@@ -83,31 +100,49 @@ def _run_paddle_logical_and(x, y):
     return logical_and(x, y)
 
 
-def _run_py_logical_and(x, y):
-    assert not isinstance(x, Variable)
-    # NOTE: Returns y if x is True
-    return x and y
+def _run_py_logical_and(x_func, y_func):
+    x_value = x_func()
+    assert not isinstance(x_value, Variable)
+
+    # NOTE(liym27):
+    #  1. Returns y_func() if x_value is False;
+    #  2. If x_value is False, y_func() should not be run.
+    return x_value and y_func()
 
 
-def convert_logical_or(x, y):
+def convert_logical_or(x_func, y_func):
     """
     A function representation of a Python ``or`` statement.
 
     Args:
-        x(bool|Variable): Left hand operand of ``or`` operator.
-        y(bool|Variable): Right hand operand of ``or`` operator.
+        x_func(callable): x_func() is the left hand operand of ``or`` operator. x_func() is bool or Tensor.
+        y_func(callable): y_func() is the right hand operand of ``or`` operator.  y_func() is bool or Tensor.
 
     Returns:
         A python bool variable or a bool Tensor.
+
+    NOTE(liym27):
+        1) The operands are executed sequentially according to the running logic of Python. So here the arguments
+        should be callable.
+        2) If the left hand operand is True, the right hand operand should be executed.
+
+        For example:
+            a = x > 1 or y < 1
+        Transformed code:
+            a = paddle.jit.dy2static.convert_logical_or(lambda:x>1, lambda:y<1)
+
+        In `convert_logical_or(lambda:x>1, lambda:y<1)`, `lambda:y<1` must be run after `lambda:x>1`. And
+        if `x>1` is True, `y<1` should NOT be run.
     """
+    x_value = x_func()
+    if not isinstance(x_value, Variable):
+        return _run_py_logical_or(lambda: x_value, y_func)
 
-    if isinstance(x, Variable) and isinstance(y, Variable):
-        return _run_paddle_logical_or(x, y)
+    y_value = y_func()
+    if not isinstance(y_value, Variable):
+        return _run_py_logical_or(lambda: y_value, lambda: x_value)
 
-    if not isinstance(x, Variable):
-        return _run_py_logical_or(x, y)
-
-    return _run_py_logical_or(y, x)
+    return _run_paddle_logical_or(x_value, y_value)
 
 
 def _run_paddle_logical_or(x, y):
@@ -116,10 +151,14 @@ def _run_paddle_logical_or(x, y):
     return logical_or(x, y)
 
 
-def _run_py_logical_or(x, y):
-    assert not isinstance(x, Variable)
-    # NOTE: Returns y if x is False
-    return x or y
+def _run_py_logical_or(x_func, y_func):
+    x_value = x_func()
+    assert not isinstance(x_value, Variable)
+
+    # NOTE(liym27):
+    #  1. Returns y_func() if x_value is False;
+    #  2. If x_value is True, y_func() should not be run.
+    return x_value or y_func()
 
 
 def convert_logical_not(x):
@@ -127,7 +166,7 @@ def convert_logical_not(x):
     A function representation of a Python ``not`` statement.
 
     Args:
-        x(bool|Variable): Operand of of ``not`` operator.
+        x(bool|Tensor): Operand of of ``not`` operator.
 
     Returns:
         A python bool variable or a bool Tensor.
@@ -153,7 +192,7 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
     A function representation of a Python ``if/else`` statement.
 
     Args:
-        pred(bool|Variable): A boolean variable which determines whether to return the result of ``true_fn`` or ``false_fn`` .
+        pred(bool|Tensor): A boolean Tensor which determines whether to return the result of ``true_fn`` or ``false_fn`` .
         true_fn(callable): A callable to be performed if ``pred`` is true.
         false_fn(callable): A callable to be performed if ``pred`` is false.
         true_args(tuple): Parameters of ``true_fn``.
@@ -175,7 +214,7 @@ def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
                      return_vars):
 
     return_var_ids = [id(var) for var in return_vars]
-    # NOTE 1: return vars of Paddle op `control_flow.cond` must be Paddle Variable
+    # NOTE 1: Returned vars of Paddle op `control_flow.cond` must be Paddle Tensors
     # NOTE 2: Here uses id(var) not var, because `if var in return_var` use operator `==`,
     #  which will call `fluid.layers.equal` and causes error when var in return_vars is not initialized.
     true_args = [
@@ -193,7 +232,6 @@ def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
 
 
 def _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args):
-
     return true_fn(*true_args) if pred else false_fn(*false_args)
 
 
@@ -224,7 +262,37 @@ def convert_len(var):
         return len(var)
 
 
-def convert_var_shape(x):
+def convert_var_shape(x, idx=None, in_control_flow=False):
+    """
+    A function representation of the shape of variable.
+    """
+
+    def has_negative(list_shape, idx=None):
+        if idx is not None:
+            return list_shape[idx] < 0
+
+        num_negative = sum([1 if i < 0 else 0 for i in list_shape])
+        return num_negative > 0
+
+    # When `x` is Variable, call nn.shape(x) in following cases:
+    #  (1) The shape of `x` is used in control flow condition.
+    #      ```
+    #      if x.shape[0] == 1:
+    #          y = XX
+    #      ```
+    #  (2) The dim to be used is negative
+    #      ```
+    #      # Assume x.shape=[3, -1] in static mode
+    #      y = paddle.reshape(x, shape=[1, x.shape[1]])
+    #      ```
+    if isinstance(x, Variable) and (in_control_flow or has_negative(x.shape,
+                                                                    idx)):
+        return nn.shape(x) if idx is None else nn.shape(x)[idx]
+    else:
+        return x.shape if idx is None else x.shape[idx]
+
+
+def convert_var_shape_simple(x):
     """
     A function representation of the shape of variable.
     """
@@ -232,6 +300,111 @@ def convert_var_shape(x):
         return nn.shape(x)
     else:
         return x.shape
+
+
+def eval_if_exist_else_none(name, global_symbol_table):
+    """
+    Args:
+        name([str]): Expression passed into `eval`.
+        local_symbol_table(dict): Specified from `globals()`. DO NOT use `locals()`,
+                                  because all STATIC_CONVERT_VAR_SHAPE_SUFFIX vars is
+                                  declared with keyword `global`.
+    
+    Returns:
+        Return the variable if found in global_symbol_table else None.
+    """
+    try:
+        return eval(name, global_symbol_table)
+    except:
+        return None
+
+
+def choose_shape_attr_or_api(attr_shape, api_shape, idx=None):
+    """
+    Input can be attribute `x.shape` or api `shape(x)`, this function
+    chooses which one to return to use in dy2stat.
+
+    Note: sometimes users write `x.shape[3]`, so attr_shape can be an integer.
+    """
+    if api_shape is None:
+        return attr_shape if idx is None else attr_shape[idx]
+    if not isinstance(attr_shape, (list, tuple)):
+        # some variables like x.shape[0] is no longer a list or tuple
+        if isinstance(attr_shape, int) and attr_shape < 0:
+            return api_shape if idx is None else api_shape[idx]
+        return attr_shape if idx is None else attr_shape[idx]
+
+    def has_negative(list_shape, idx=None):
+        if idx is not None:
+            return list_shape[idx] < 0
+
+        num_negative = sum([1 if i < 0 else 0 for i in list_shape])
+        return num_negative > 0
+
+    if has_negative(attr_shape, idx):
+        return api_shape if idx is None else api_shape[idx]
+    return attr_shape if idx is None else attr_shape[idx]
+
+
+def convert_shape_compare(left, *args):
+    """
+    A function handles comparison difference between Paddle and Python.
+    For example, if x and y are Tensors, x.shape == y.shape will return single
+    boolean Value (True/False). However, paddle.shape(x) == paddle.shape(y) is
+    an element-wise comparison. The difference can cause dy2stat error. So we
+    create this function to handle the difference.
+
+    Args:
+        left: variable
+        *args: compare_op(str), variable, compare_op(str), variable, where
+            compare_op means "<", ">", "==", "!=", etc.
+    Returns:
+        If the variables to compare are NOT Paddle Variables, we will return as
+        Python like "a op1 b and b op2 c and ... ".
+        If the variables to compare are Paddle Variables, we will do elementwise
+        comparsion first and then reduce to a boolean whose numel is 1.
+        
+    """
+    args_len = len(args)
+    assert args_len >= 2, "convert_shape_compare needs at least one right compare variable"
+    assert args_len % 2 == 0, "Illegal input for convert_shape_compare, *args should be op(str), var, op(str), var ..."
+    num_cmp = args_len // 2
+    if isinstance(left, Variable):
+
+        def reduce_compare(x, op_str, y):
+            element_wise_result = eval("x " + op_str + " y")
+            if op_str == "!=":
+                return reduce_any(element_wise_result)
+            elif op_str == "is" or op_str == "is not" or op_str == "in" or op_str == "not in":
+                return element_wise_result
+            else:
+                return reduce_all(element_wise_result)
+
+        final_result = reduce_compare(left, args[0], args[1])
+        for i in range(1, num_cmp):
+            cmp_left = args[i * 2 - 1]
+            cmp_op = args[i * 2]
+            cmp_right = args[i * 2 + 1]
+            cur_result = reduce_compare(cmp_left, cmp_op, cmp_right)
+            final_result = convert_logical_and(lambda: final_result,
+                                               lambda: cur_result)
+        return final_result
+    else:
+        cmp_left = left
+        final_result = None
+        for i in range(num_cmp):
+            cmp_op = args[i * 2]
+            cmp_right = args[i * 2 + 1]
+            cur_result = eval("cmp_left " + cmp_op + " cmp_right")
+            if final_result is None:
+                final_result = cur_result
+            else:
+                final_result = final_result and cur_result
+
+            if final_result is False:
+                return False
+            cmp_left = cmp_right
+        return final_result
 
 
 def cast_bool_if_necessary(var):
@@ -285,3 +458,85 @@ def convert_print(*args):
             var = Print(var)
         else:
             print(var)
+
+
+def convert_pop(target, *args):
+    """
+    A function representation of a Python pop statement for a list or dict.
+
+    Args:
+        target(list|dict|Tensor): A variable to pop item from.
+        *args(tuple): index or default value to parse.
+
+    Returns:
+        A item poped from target.
+    """
+
+    is_variable = isinstance(target, Variable)
+    if is_variable:
+        is_tensor_array = target.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+
+    if is_variable and is_tensor_array:
+        return _run_paddle_pop(target, *args)
+    else:
+        return _run_python_pop(target, *args)
+
+
+def _run_paddle_pop(array, *args):
+    if len(args) == 0:
+        idx = -1
+    else:
+        idx = args[0]
+
+    assert isinstance(idx, int)
+
+    def cond(i, new_array):
+        return less_than(i, arr_len)
+
+    def body(i, new_array):
+        item = array_read(array=array, i=i)
+        array_write(item, array_length(new_array), new_array)
+        i = increment(i)
+        return i, new_array
+
+    arr_len = array_length(array)
+    if idx < 0:
+        idx = idx + arr_len
+    else:
+        idx = fill_constant(shape=[1], dtype="int64", value=idx)
+
+    pop_item = array_read(array, idx)
+
+    new_array = _slice_tensor_array(array, 0, idx)
+    i = idx + 1
+    _, new_array = while_loop(cond, body, [i, new_array])
+    assign(input=new_array, output=array)
+
+    return pop_item
+
+
+# TODO(liym27): A better way to slice tensor array.
+#  Maybe support start == end for slice op.
+def _slice_tensor_array(array, start, end):
+    def true_fn():
+        null_array = create_array("float32")
+        return null_array
+
+    def false_fn(array, start, end):
+        new_array = slice(array, starts=[start], ends=[end], axes=[0])
+        return new_array
+
+    new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))
+    return new_array
+
+
+def _run_python_pop(target, *args):
+    # 1. pop for a dict
+    if len(args) == 2:
+        idx, default = args
+        return target.pop(idx, default)
+
+    # 2. pop for a list or dict
+    else:
+        idx = args[0] if args else -1
+        return target.pop(idx)

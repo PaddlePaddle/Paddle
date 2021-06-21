@@ -119,7 +119,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     "weight", self.weight_shape, dtype=self.dtype)
                 b_var = fluid.data(
                     "bias", (self.num_filters, ), dtype=self.dtype)
-                y_var = F.conv_transpose3d(
+                y_var = F.conv3d_transpose(
                     x_var,
                     w_var,
                     None if self.no_bias else b_var,
@@ -139,7 +139,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = dg.to_variable(self.input)
-        conv = nn.ConvTranspose3d(
+        conv = nn.Conv3DTranspose(
             self.num_channels,
             self.num_filters,
             self.filter_size,
@@ -238,6 +238,9 @@ def add_error_cases(suite):
     suite.addTest(
         Conv3DTransposeErrorTestCase(
             methodName='runTest', output_size="not_valid"))
+    suite.addTest(
+        Conv3DTransposeErrorTestCase(
+            methodName='runTest', num_channels=5, groups=2, padding=[-1, 1, 3]))
 
 
 def load_tests(loader, standard_tests, pattern):

@@ -37,6 +37,56 @@ class TestSumOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestSumOp_fp16(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {
+            'X': np.random.uniform(0, 0.1, (5, 6, 10)).astype("float16")
+        }
+        self.attrs = {'dim': [0, 1, 2]}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+        self.gradient = self.calc_gradient()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return grad,
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+class TestSumOp_fp16_withInt(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {
+            # ref to https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+            # Precision limitations on integer values between 0 and 2048 can be exactly represented
+            'X': np.random.randint(0, 30, (10, 10)).astype("float16")
+        }
+        self.attrs = {'dim': [0, 1]}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+        self.gradient = self.calc_gradient()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return grad,
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
 class TestSumOp5D(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -156,8 +206,13 @@ class TestMin8DOp(OpTest):
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.init_data_type()
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
+
+    def init_data_type(self):
+        self.data_type = "float32" if core.is_compiled_with_rocm(
+        ) else "float64"
 
     def test_check_output(self):
         self.check_output()
@@ -169,13 +224,18 @@ class TestProdOp(OpTest):
 class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.init_data_type()
         self.inputs = {
-            'X': np.random.random((5, 6, 2, 3, 4, 2)).astype("float64")
+            'X': np.random.random((5, 6, 2, 3, 4, 2)).astype(self.data_type)
         }
         self.attrs = {'dim': [2, 3, 4]}
         self.outputs = {
             'Out': self.inputs['X'].prod(axis=tuple(self.attrs['dim']))
         }
+
+    def init_data_type(self):
+        self.data_type = "float32" if core.is_compiled_with_rocm(
+        ) else "float64"
 
     def test_check_output(self):
         self.check_output()
@@ -187,13 +247,19 @@ class TestProd6DOp(OpTest):
 class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
+        self.init_data_type()
         self.inputs = {
-            'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype("float64")
+            'X': np.random.random(
+                (2, 5, 3, 2, 2, 3, 4, 2)).astype(self.data_type)
         }
         self.attrs = {'dim': [2, 3, 4]}
         self.outputs = {
             'Out': self.inputs['X'].prod(axis=tuple(self.attrs['dim']))
         }
+
+    def init_data_type(self):
+        self.data_type = "float32" if core.is_compiled_with_rocm(
+        ) else "float64"
 
     def test_check_output(self):
         self.check_output()
@@ -767,5 +833,117 @@ class API_TestSumOp(unittest.TestCase):
         self.assertTrue((out3 == np.sum(np_x, axis=(0, 1, 2))).all())
 
 
+class TestAllAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[4, 4], dtype="bool")
+            result = paddle.all(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            self.assertTrue(np.allclose(fetches[0], np.all(input_np)))
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool)
+                x = fluid.layers.assign(np_x)
+                x = fluid.layers.cast(x, 'bool')
+
+                out1 = paddle.all(x)
+                np_out1 = out1.numpy()
+                expect_res1 = np.all(np_x)
+                self.assertTrue((np_out1 == expect_res1).all())
+
+                out2 = paddle.all(x, axis=0)
+                np_out2 = out2.numpy()
+                expect_res2 = np.all(np_x, axis=0)
+                self.assertTrue((np_out2 == expect_res2).all())
+
+                out3 = paddle.all(x, axis=-1)
+                np_out3 = out3.numpy()
+                expect_res3 = np.all(np_x, axis=-1)
+                self.assertTrue((np_out3 == expect_res3).all())
+
+                out4 = paddle.all(x, axis=1, keepdim=True)
+                np_out4 = out4.numpy()
+                expect_res4 = np.all(np_x, axis=1, keepdims=True)
+                self.assertTrue((np_out4 == expect_res4).all())
+
+        paddle.enable_static()
+
+
+class TestAnyAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[4, 4], dtype="bool")
+            result = paddle.any(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            self.assertTrue(np.allclose(fetches[0], np.any(input_np)))
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool)
+                x = fluid.layers.assign(np_x)
+                x = fluid.layers.cast(x, 'bool')
+
+                out1 = paddle.any(x)
+                np_out1 = out1.numpy()
+                expect_res1 = np.any(np_x)
+                self.assertTrue((np_out1 == expect_res1).all())
+
+                out2 = paddle.any(x, axis=0)
+                np_out2 = out2.numpy()
+                expect_res2 = np.any(np_x, axis=0)
+                self.assertTrue((np_out2 == expect_res2).all())
+
+                out3 = paddle.any(x, axis=-1)
+                np_out3 = out3.numpy()
+                expect_res3 = np.any(np_x, axis=-1)
+                self.assertTrue((np_out3 == expect_res3).all())
+
+                out4 = paddle.any(x, axis=1, keepdim=True)
+                np_out4 = out4.numpy()
+                expect_res4 = np.any(np_x, axis=1, keepdims=True)
+                self.assertTrue((np_out4 == expect_res4).all())
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()

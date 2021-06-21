@@ -35,7 +35,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.enable_dygraph()
 
-        gen = paddle.manual_seed(12312321111)
+        gen = paddle.seed(12312321111)
         x = fluid.layers.uniform_random([10], dtype="float32", min=0.0, max=1.0)
 
         st1 = gen.get_state()
@@ -47,7 +47,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x2 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0)
 
-        paddle.manual_seed(12312321111)
+        paddle.seed(12312321111)
         x3 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0)
 
@@ -63,7 +63,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_generator_uniform_random_static(self):
         fluid.disable_dygraph()
 
-        gen = paddle.manual_seed(123123143)
+        gen = paddle.seed(123123143)
 
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -97,7 +97,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_gen_dropout_dygraph(self):
         fluid.enable_dygraph()
 
-        gen = paddle.manual_seed(111111111)
+        gen = paddle.seed(111111111)
         st = gen.get_state()
         # x = np.arange(1,101).reshape(2,50).astype("float32")
         x = fluid.layers.uniform_random(
@@ -118,7 +118,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_gen_dropout_static(self):
         fluid.disable_dygraph()
 
-        gen = paddle.manual_seed(123123143)
+        gen = paddle.seed(123123143)
 
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -144,7 +144,7 @@ class TestGeneratorSeed(unittest.TestCase):
         """Test Generator seed."""
         fluid.enable_dygraph()
 
-        gen = paddle.manual_seed(12312321111)
+        gen = paddle.seed(12312321111)
         x = fluid.layers.gaussian_random([10], dtype="float32")
         st1 = gen.get_state()
         x1 = fluid.layers.gaussian_random([10], dtype="float32")
@@ -165,7 +165,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_generator_gaussian_random_static(self):
         fluid.disable_dygraph()
 
-        gen = paddle.manual_seed(123123143)
+        gen = paddle.seed(123123143)
 
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -203,7 +203,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.enable_dygraph()
 
-        gen = paddle.manual_seed(12312321111)
+        gen = paddle.seed(12312321111)
         x = paddle.randint(low=10, shape=[10], dtype="int32")
         st1 = gen.get_state()
         x1 = paddle.randint(low=10, shape=[10], dtype="int32")
@@ -224,7 +224,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_generator_uniform_random_static(self):
         fluid.disable_dygraph()
 
-        gen = paddle.manual_seed(123123143)
+        gen = paddle.seed(123123143)
 
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -259,7 +259,7 @@ class TestGeneratorSeed(unittest.TestCase):
         """Test Generator seed."""
         fluid.enable_dygraph()
 
-        gen = paddle.manual_seed(12312321111)
+        gen = paddle.seed(12312321111)
         x = paddle.randint(low=1)
         st1 = gen.get_state()
         x1 = paddle.randint(low=1)
@@ -278,7 +278,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_generator_ranint_static(self):
         fluid.disable_dygraph()
 
-        gen = paddle.manual_seed(123123143)
+        gen = paddle.seed(123123143)
 
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -315,7 +315,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.enable_dygraph()
 
-        gen = paddle.manual_seed(12312321111)
+        gen = paddle.seed(12312321111)
         x = paddle.randperm(10)
         st1 = gen.get_state()
         x1 = paddle.randperm(10)
@@ -337,7 +337,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.disable_dygraph()
 
-        paddle.manual_seed(123123143)
+        paddle.seed(123123143)
 
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -353,7 +353,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
 
-            paddle.manual_seed(123123143)
+            paddle.seed(123123143)
             out2 = exe.run(train_program,
                            feed={},
                            fetch_list=[result_1, result_2])
@@ -371,7 +371,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
     def test_generator_sampling_id_dygraph(self):
         """Test Generator seed."""
-        gen = paddle.manual_seed(12312321111)
+        gen = paddle.seed(12312321111)
 
         fluid.enable_dygraph()
 
@@ -409,7 +409,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.disable_dygraph()
 
-        paddle.manual_seed(123123143)
+        paddle.seed(123123143)
 
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -426,7 +426,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
 
-            paddle.manual_seed(123123143)
+            paddle.seed(123123143)
             out2 = exe.run(train_program,
                            feed={},
                            fetch_list=[result_1, result_2])
@@ -445,7 +445,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_gen_TruncatedNormal_initializer(self):
         fluid.disable_dygraph()
 
-        gen = paddle.manual_seed(123123143)
+        gen = paddle.seed(123123143)
         cur_state = gen.get_state()
 
         startup_program = fluid.Program()

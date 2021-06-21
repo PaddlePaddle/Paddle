@@ -448,6 +448,9 @@ template struct MergeAdd<platform::CUDADeviceContext, double>;
 template struct MergeAdd<platform::CUDADeviceContext, int>;
 template struct MergeAdd<platform::CUDADeviceContext, int64_t>;
 template struct MergeAdd<platform::CUDADeviceContext, platform::float16>;
+template struct MergeAdd<platform::CUDADeviceContext, platform::complex<float>>;
+template struct MergeAdd<platform::CUDADeviceContext,
+                         platform::complex<double>>;
 
 template <typename T, int block_size>
 __global__ void UpdateToTensorKernel(const T* selected_rows,

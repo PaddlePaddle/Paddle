@@ -106,6 +106,20 @@ class TestAutoCast(unittest.TestCase):
 
         self.assertRaises(ValueError, func)
 
+    def test_amp_guard_upsupported_fp16_op(self):
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard(True):
+                out_fp16 = conv2d(data)
+                out_fp32 = paddle.expand_as(
+                    out_fp16, out_fp16)  # expand_as_v2 has no fp16 kernel
+
+        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
+        self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+
 
 class TestAmpScaler(unittest.TestCase):
     def test_scale(self):
@@ -120,7 +134,7 @@ class TestAmpScaler(unittest.TestCase):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
 
         def run_simple_conv(inp_np, use_scaler=True):
-            paddle.manual_seed(10)
+            paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
             with fluid.dygraph.guard():
                 model = SimpleConv(
@@ -196,16 +210,28 @@ class TestAmpScaler(unittest.TestCase):
                     np.array_equal(param.numpy(), params_init[param.name]))
 
 
+def reader_decorator(reader):
+    def __reader__():
+        for item in reader():
+            img = np.array(item[0]).astype('float32').reshape(3, 224, 224)
+            label = np.array(item[1]).astype('int64').reshape(1)
+            yield img, label
+
+    return __reader__
+
+
 class TestResnet2(unittest.TestCase):
-    def train_resnet(self, enable_amp=True):
+    """
+    Use paddle-2.0 API
+    """
+
+    def train_resnet(self, enable_amp=True, use_data_loader=False):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
         batch_num = 1
 
-        paddle.disable_static()
-
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         resnet = ResNet(use_cudnn=True)
@@ -223,18 +249,35 @@ class TestResnet2(unittest.TestCase):
         scaler = paddle.amp.GradScaler(
             enable=enable_amp, init_loss_scaling=2.**10)
 
+        if use_data_loader:
+            train_reader = paddle.batch(
+                reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
+                batch_size=batch_size,
+                drop_last=True)
+            train_loader = fluid.io.DataLoader.from_generator(
+                capacity=4,
+                use_double_buffer=True,
+                iterable=True,
+                return_list=True)
+            train_loader.set_sample_list_generator(train_reader)
+            train_reader = train_loader
+
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:
                 break
-            dy_x_data = np.array(
-                [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-            if len(np.array([x[1]
-                             for x in data]).astype('int64')) != batch_size:
-                continue
-            y_data = np.array([x[1] for x in data]).astype('int64').reshape(-1,
-                                                                            1)
-            img = paddle.to_tensor(dy_x_data)
-            label = paddle.to_tensor(y_data)
+            if use_data_loader:
+                img, label = data
+            else:
+                dy_x_data = np.array(
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    -1, 1)
+
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
             label.stop_gradient = True
 
             with paddle.amp.auto_cast(enable=enable_amp):
@@ -262,19 +305,30 @@ class TestResnet2(unittest.TestCase):
             dy_param_value = {}
             for param in resnet.parameters():
                 dy_param_value[param.name] = param.numpy()
-
-            paddle.enable_static()
-
+        if use_data_loader:
+            train_reader._reset()
         return dy_out, dy_param_value, dy_grad_value
 
     def test_resnet(self):
-        out_fp32 = self.train_resnet(enable_amp=False)
-        out_amp = self.train_resnet(enable_amp=True)
+        with fluid.dygraph.guard():
+            out_fp32 = self.train_resnet(enable_amp=False)
+            out_amp = self.train_resnet(enable_amp=True)
+        print(out_fp32[0], out_amp[0])
+        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+
+    def test_with_data_loader(self):
+        with fluid.dygraph.guard():
+            out_fp32 = self.train_resnet(enable_amp=False, use_data_loader=True)
+            out_amp = self.train_resnet(enable_amp=True, use_data_loader=True)
         print(out_fp32[0], out_amp[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
 
 
 class TestResnet(unittest.TestCase):
+    """
+    Use paddle-1.x API
+    """
+
     def train_resnet(self, enable_amp=True):
         seed = 90
 
@@ -282,7 +336,7 @@ class TestResnet(unittest.TestCase):
         batch_num = 1
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet(use_cudnn=True)
@@ -347,6 +401,22 @@ class TestResnet(unittest.TestCase):
         out_amp = self.train_resnet(enable_amp=True)
         print(out_fp32[0], out_amp[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+
+
+class TestLayerNormFp16(unittest.TestCase):
+    r''' layer_norm and batch_norm support mixed inputs, i.e., only input x is fp16
+    and other params are fp32.
+    '''
+
+    def test_layer_norm_fp16(self):
+        if fluid.is_compiled_with_cuda():
+            with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+                x = paddle.rand([2, 2, 2, 3])
+                layer_norm = paddle.nn.LayerNorm(x.shape[1:])
+                with paddle.amp.auto_cast(custom_white_list=['layer_norm']):
+                    out = layer_norm(x)
+
+                self.assertTrue(out.dtype == fluid.core.VarDesc.VarType.FP16)
 
 
 if __name__ == '__main__':

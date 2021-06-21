@@ -15,11 +15,8 @@
 #include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
 
 #include <string>
-#include <vector>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -95,13 +92,28 @@ void recompute_bias_and_weights(const Scope* scope,
   variance_array += epsilon;
   variance_array = variance_array.sqrt();
   variance_array = scale_array / variance_array;
-
+  for (int i = 0; i < variance_tensor->numel(); i++) {
+    PADDLE_ENFORCE_EQ(std::isfinite(variance_array[i]), true,
+                      platform::errors::InvalidArgument(
+                          "The inverse of Fused batch norm variance "
+                          "should be finite. Found nonfinite values! "
+                          "Please check %s ",
+                          bn_variance.Name()));
+  }
   EigenVectorArrayMap eltwise_y_in_array(
       eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
       eltwise_y_in_tensor->numel(), 1);
 
   eltwise_y_in_array =
       ((eltwise_y_in_array - mean_array) * variance_array) + bn_bias_array;
+  for (int i = 0; i < eltwise_y_in_tensor->numel(); i++) {
+    PADDLE_ENFORCE_EQ(std::isfinite(eltwise_y_in_array[i]), true,
+                      platform::errors::InvalidArgument(
+                          "Fused batch norm bias should be "
+                          "finite. Found nonfinite values! "
+                          "Please check %s and related variables.",
+                          bn_variance.Name()));
+  }
 
   // Re-compute weight of conv2d from BN
   auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
@@ -171,7 +183,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
-        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+        patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
     eltwise_y_in_desc.SetShape(framework::vectorize(bn_bias_tensor->dims()));
     eltwise_y_in_desc.SetDataType(bn_bias_tensor->type());
     eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
@@ -383,11 +395,11 @@ REGISTER_PASS(depthwise_conv_eltwiseadd_bn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_bn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("batch_norm", 0));
 REGISTER_PASS_CAPABILITY(conv_eltwiseadd_bn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
-            .EQ("elementwise_add", 0)
+            .LE("conv2d", 1)
+            .LE("elementwise_add", 1)
             .EQ("batch_norm", 0));

@@ -101,7 +101,7 @@ def prepare_places(with_data_parallel, with_cpu=False, with_gpu=True):
 
 
 class TestStaticDataLoader(unittest.TestCase):
-    def run_main(self, num_workers, places):
+    def run_main(self, num_workers, places, use_pe=True):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, image, label, loss = simple_fc_net_static()
@@ -113,16 +113,20 @@ class TestStaticDataLoader(unittest.TestCase):
                 places=places,
                 num_workers=num_workers,
                 batch_size=BATCH_SIZE,
+                return_list=False,
                 drop_last=True)
             assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)
 
-            prog = fluid.CompiledProgram(main_prog)
-            if len(places) > 1:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places)
+            if use_pe:
+                prog = fluid.CompiledProgram(main_prog)
+                if len(places) > 1:
+                    prog = prog.with_data_parallel(
+                        loss_name=loss.name, places=places)
+            else:
+                prog = main_prog
 
             step_list = []
             loss_list = []
@@ -168,6 +172,130 @@ class TestStaticDataLoader(unittest.TestCase):
                 np.abs(results[0]['loss'] - results[1]['loss']) /
                 np.abs(results[0]['loss']))
             self.assertLess(diff, 1e-2)
+
+
+class TestStaticDataLoaderReturnList(unittest.TestCase):
+    def test_single_place(self):
+        scope = fluid.Scope()
+        image = fluid.data(
+            name='image', shape=[None, IMAGE_SIZE], dtype='float32')
+        label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+        with fluid.scope_guard(scope):
+            dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
+            dataloader = DataLoader(
+                dataset,
+                feed_list=[image, label],
+                num_workers=0,
+                batch_size=BATCH_SIZE,
+                drop_last=True,
+                return_list=True)
+
+            for d in dataloader:
+                assert isinstance(d, list)
+                assert len(d) == 2
+                assert not isinstance(d[0], list)
+                assert not isinstance(d[1], list)
+
+    def test_multi_place(self):
+        scope = fluid.Scope()
+        image = fluid.data(
+            name='image', shape=[None, IMAGE_SIZE], dtype='float32')
+        label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+        with fluid.scope_guard(scope):
+            dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
+            dataloader = DataLoader(
+                dataset,
+                feed_list=[image, label],
+                num_workers=0,
+                batch_size=BATCH_SIZE,
+                places=[fluid.CPUPlace()] * 2,
+                drop_last=True,
+                return_list=True)
+
+            for d in dataloader:
+                assert isinstance(d, list)
+                assert len(d) == 2
+                assert isinstance(d[0], list)
+                assert isinstance(d[1], list)
+
+
+class RandomBatchedDataset(Dataset):
+    def __init__(self, sample_num, class_num):
+        self.sample_num = int(sample_num / BATCH_SIZE)
+        self.class_num = class_num
+
+    def __getitem__(self, idx):
+        np.random.seed(idx)
+        images = []
+        labels = []
+        for _ in range(BATCH_SIZE):
+            image = np.random.random([IMAGE_SIZE]).astype('float32')
+            label = np.random.randint(0, self.class_num - 1,
+                                      (1, )).astype('int64')
+            images.append(image)
+            labels.append(label)
+        return np.stack(images, axis=0), np.stack(labels, axis=0)
+
+    def __len__(self):
+        return self.sample_num
+
+
+class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
+    def run_main(self, num_workers, places):
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            startup_prog, main_prog, image, label, loss = simple_fc_net_static()
+
+            dataset = RandomBatchedDataset(SAMPLE_NUM, CLASS_NUM)
+            dataloader = DataLoader(
+                dataset,
+                feed_list=[image, label],
+                places=places,
+                num_workers=num_workers,
+                batch_size=None,
+                return_list=False,
+                drop_last=True)
+            assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
+
+            exe = fluid.Executor(place=places[0])
+            exe.run(startup_prog)
+
+            prog = fluid.CompiledProgram(main_prog)
+            if len(places) > 1:
+                prog = prog.with_data_parallel(
+                    loss_name=loss.name, places=places)
+
+            step_list = []
+            loss_list = []
+            start_t = time.time()
+            for _ in six.moves.range(EPOCH_NUM):
+                step = 0
+                for d in dataloader:
+                    assert len(d) == len(places), "{} != {}".format(
+                        len(d), len(places))
+                    for i, item in enumerate(d):
+                        image = item['image']
+                        label = item['label']
+                        assert image.shape() == [BATCH_SIZE, IMAGE_SIZE]
+                        assert label.shape() == [BATCH_SIZE, 1]
+                        assert image._place()._equals(places[i])
+                        assert label._place()._equals(places[i])
+                    L, = exe.run(program=prog,
+                                 feed=d,
+                                 fetch_list=[loss],
+                                 use_program_cache=True)
+                    loss_list.append(np.mean(L))
+                    step += 1
+                step_list.append(step)
+
+        end_t = time.time()
+        ret = {
+            "time": end_t - start_t,
+            "step": step_list,
+            "loss": np.array(loss_list)
+        }
+        print("time cost", ret['time'], 'step_list', ret['step'])
+        return ret
 
 
 if __name__ == '__main__':

@@ -451,7 +451,7 @@ def train_mobilenet(args, to_static):
     with fluid.dygraph.guard(args.place):
 
         np.random.seed(SEED)
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         if args.model == "MobileNetV1":

@@ -40,7 +40,7 @@ struct ForRange<CPUDeviceContext> {
   size_t limit_;
 };
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename Function>
 __global__ static void ForRangeElemwiseOpGridIsOne(Function func) {
   size_t idx = static_cast<size_t>(threadIdx.x);
@@ -48,7 +48,7 @@ __global__ static void ForRangeElemwiseOpGridIsOne(Function func) {
 }
 
 template <typename Function>
-__global__ static void ForRangeElemwiseOp(Function func, int limit) {
+__global__ static void ForRangeElemwiseOp(Function func, size_t limit) {
   size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
   if (idx < limit) {
     func(idx);
@@ -58,13 +58,18 @@ __global__ static void ForRangeElemwiseOp(Function func, int limit) {
 template <>
 struct ForRange<CUDADeviceContext> {
   ForRange(const CUDADeviceContext& dev_ctx, size_t limit)
-      : dev_ctx_(dev_ctx), limit_(static_cast<int>(limit)) {}
+      : dev_ctx_(dev_ctx), limit_(static_cast<size_t>(limit)) {}
 
   template <typename Function>
   inline void operator()(Function func) const {
+#ifdef __HIPCC__
+    // HIP will throw core dump when threads > 256
+    constexpr int num_threads = 256;
+#else
     constexpr int num_threads = 1024;
-    int block_size = limit_ <= num_threads ? limit_ : num_threads;
-    int grid_size = (limit_ + num_threads - 1) / num_threads;
+#endif
+    size_t block_size = limit_ <= num_threads ? limit_ : num_threads;
+    size_t grid_size = (limit_ + num_threads - 1) / num_threads;
 
     if (grid_size == 1) {
       ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
@@ -76,7 +81,7 @@ struct ForRange<CUDADeviceContext> {
   }
 
   const CUDADeviceContext& dev_ctx_;
-  int limit_;
+  size_t limit_;
 };
 
 #endif

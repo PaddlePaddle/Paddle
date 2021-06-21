@@ -13,13 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_call_stack.h"
+
 #include <string>
-#include <vector>
-#include "paddle/fluid/framework/attribute.h"
+
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
+
+std::string InsertIndentationIntoEachLine(const std::string &str) {
+  std::ostringstream sout;
+  size_t start_pos = 0;
+  size_t end_pos = 0;
+  while ((end_pos = str.find_first_of("\n", start_pos)) != std::string::npos) {
+    sout << "    " << str.substr(start_pos, end_pos - start_pos + 1);
+    start_pos = end_pos + 1;
+  }
+  sout << "    " << str.substr(start_pos, end_pos - start_pos + 1);
+  return sout.str();
+}
 
 void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
                          platform::EnforceNotMet *exception) {
@@ -37,23 +49,38 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   std::ostringstream sout;
   // Step 1. Construct python call stack string
   if (callstack) {
-    sout << "\n\n  Compile Traceback (most recent call last):";
+    if (FLAGS_call_stack_level > 1) {
+      sout << "\n\n  Compile Traceback (most recent call last):";
+    } else {
+      sout << "In user code:\n";
+    }
     for (auto &line : *callstack) {
       sout << "\n  " << line;
     }
   }
+  VLOG(1) << exception->error_str();
   // Step 2. Construct final call stack & append error op name
-  sout << exception->err_str_;
+  if (FLAGS_call_stack_level > 1) {
+    sout << exception->what();
+  } else {
+    // If callstack exists, use err_str_ instead sub_err_str_
+    if (callstack) {
+      sout << "\n\n";
+      sout << InsertIndentationIntoEachLine(exception->error_str());
+    } else {
+      sout << exception->simple_error_str();
+    }
+  }
   sout << "  [operator < " << type << " > error]";
-  exception->err_str_ = sout.str();
+  exception->set_error_str(sout.str());
 }
 
 void AppendErrorOpHint(const std::string &type,
                        platform::EnforceNotMet *exception) {
   std::ostringstream sout;
-  sout << exception->err_str_;
+  sout << exception->what();
   sout << "  [operator < " << type << " > error]";
-  exception->err_str_ = sout.str();
+  exception->set_error_str(sout.str());
 }
 
 }  // namespace framework

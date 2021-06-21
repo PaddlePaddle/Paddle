@@ -30,12 +30,19 @@ class gru_resetOutput {
  public:
   HOSTDEVICE void operator()(T *value_update_gate, T *value_reset_gate,
                              T *prev_out, T *value_reset_output,
-                             ActivationType act_gate) {
+                             ActivationType act_gate,
+                             T *value_reset_bias = nullptr,
+                             bool old_version = true) {
     *value_update_gate = activation(*value_update_gate, act_gate);
     *value_reset_gate = activation(*value_reset_gate, act_gate);
-    *value_reset_output = (*prev_out) * (*value_reset_gate);
+    if (old_version) {
+      *value_reset_output = (*prev_out) * (*value_reset_gate);
+    } else {
+      *value_reset_output =
+          (*value_reset_output + *value_reset_bias) * (*value_reset_gate);
+    }
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU reset output
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -43,13 +50,22 @@ class gru_resetOutput {
   HOSTDEVICE void operator()(__m256 *value_update_gate,
                              __m256 *value_reset_gate, __m256 *prev_out,
                              __m256 *value_reset_output,
-                             ActivationType act_gate) {
+                             ActivationType act_gate,
+                             __m256 *value_reset_bias = nullptr,
+                             bool old_version = true) {
     *value_update_gate = activation(*value_update_gate, act_gate);
     *value_reset_gate = activation(*value_reset_gate, act_gate);
-    *value_reset_output = _mm256_mul_ps(*prev_out, *value_reset_gate);
+    if (old_version) {
+      *value_reset_output = _mm256_mul_ps(*prev_out, *value_reset_gate);
+    } else {
+      *value_reset_output =
+          _mm256_add_ps(*value_reset_output, *value_reset_bias);
+      *value_reset_output =
+          _mm256_mul_ps(*value_reset_output, *value_reset_gate);
+    }
   }
 #endif
-#endif
+#endif  // @} End Group GRU reset output
 };
 
 template <typename T>
@@ -68,7 +84,7 @@ class gru_finalOutput {
                       ((*value_update_gate) * (*value_frame_state));
     }
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU final output
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -91,7 +107,7 @@ class gru_finalOutput {
     }
   }
 #endif
-#endif
+#endif  // @} End Group GRU final output
 };
 }  // namespace forward
 
@@ -121,7 +137,7 @@ class gru_stateGrad {
                                      *value_frame_state, act_input);
     }
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU state grad
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -154,7 +170,7 @@ class gru_stateGrad {
     }
   }
 #endif
-#endif
+#endif  // @} End Group GRU state grad
 };
 
 template <typename T>
@@ -171,7 +187,7 @@ class gru_resetGrad {
     *grad_reset_gate =
         activation(*grad_reset_gate, *value_reset_gate, act_gate);
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU reset grad
 #ifndef __AVX__
   static const bool avx = false;
 #else
@@ -190,7 +206,62 @@ class gru_resetGrad {
         activation(*grad_reset_gate, *value_reset_gate, act_gate);
   }
 #endif
+#endif  // @} End Group GRU reset grad
+};
+template <typename T>
+class gru {
+ public:
+  HOSTDEVICE void operator()(T *value_reset_gate, T *grad_reset_gate,
+                             T *value_update_gate, T *grad_update_gate,
+                             T *value_frame_state, T *grad_frame_state,
+                             T *value_prev_out, T *grad_prev_out,
+                             T *grad_output, T *value_reset_output,
+                             T *grad_reset_output, ActivationType act_node,
+                             ActivationType act_gate) {
+    *grad_update_gate =
+        activation((*grad_output) * ((*value_prev_out) - (*value_frame_state)),
+                   (*value_update_gate), act_gate);
+    *grad_prev_out += (*grad_output * (*value_update_gate));
+    *grad_frame_state =
+        activation(*grad_output * (static_cast<T>(1.0) - (*value_update_gate)),
+                   *value_frame_state, act_node);
+    T reset_output = (*value_reset_output) / (*value_reset_gate);
+    *grad_reset_gate = activation(reset_output * (*grad_frame_state),
+                                  *value_reset_gate, act_gate);
+    *grad_reset_output = (*value_reset_gate) * (*grad_frame_state);
+  }
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group GRU CPU
+#ifndef __AVX__
+  static const bool avx = false;
+#else
+  static const bool avx = true;
+  HOSTDEVICE void operator()(__m256 *value_reset_gate, __m256 *grad_reset_gate,
+                             __m256 *value_update_gate,
+                             __m256 *grad_update_gate,
+                             __m256 *value_frame_state,
+                             __m256 *grad_frame_state, __m256 *value_prev_out,
+                             __m256 *grad_prev_out, __m256 *grad_output,
+                             __m256 *value_reset_output,
+                             __m256 *grad_reset_output, ActivationType act_node,
+                             ActivationType act_gate) {
+    *grad_update_gate = activation(
+        _mm256_mul_ps(*grad_output,
+                      _mm256_sub_ps(*value_prev_out, *value_frame_state)),
+        *value_update_gate, act_gate);
+    *grad_prev_out = _mm256_add_ps(
+        *grad_prev_out, _mm256_mul_ps(*grad_output, *value_update_gate));
+    *grad_frame_state = activation(
+        _mm256_mul_ps(*grad_output,
+                      _mm256_sub_ps(_mm256_set1_ps(1.0f), *value_update_gate)),
+        *value_frame_state, act_node);
+    __m256 reset_output = _mm256_div_ps(*value_reset_output, *value_reset_gate);
+    *grad_reset_gate =
+        activation(_mm256_mul_ps(reset_output, *grad_frame_state),
+                   *value_reset_gate, act_gate);
+    *grad_reset_output = _mm256_mul_ps(*value_reset_gate, *grad_frame_state);
+  }
 #endif
+#endif  // @} End Group GRU CPU
 };
 
 }  // namespace backward

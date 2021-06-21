@@ -96,7 +96,7 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
             exception = None
             try:
                 _reader_process_loop(loader._batch_reader, loader._data_queue)
-            except core.EnforceNotMet as ex:
+            except ValueError as ex:
                 exception = ex
             self.assertIsNotNone(exception)
 

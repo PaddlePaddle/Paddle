@@ -16,12 +16,13 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, check_out_dtype
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.compat as cpt
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle.nn.functional as F
 
 
 class TestLookupTableOp(OpTest):
@@ -313,6 +314,16 @@ class TestLookupTableWithTensorIdsWIsSelectedRowsInt8(
     def check_result(self, ids_array, result_array):
         for idx, row in np.ndenumerate(ids_array):
             assert (row == result_array[idx]).all()
+
+
+class TestOutDtype(unittest.TestCase):
+    def test_dtype(self):
+        api_fn = F.embedding
+        check_out_dtype(
+            api_fn,
+            in_specs=[([10, 16], 'int64'), ([100, 64], )],
+            expect_dtypes=['float32', 'float64'],
+            target_index=1)
 
 
 if __name__ == "__main__":

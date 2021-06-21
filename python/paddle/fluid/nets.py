@@ -16,6 +16,7 @@ from __future__ import print_function
 import six
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
+from ..utils import deprecated
 
 __all__ = [
     "simple_img_conv_pool",
@@ -42,7 +43,7 @@ def simple_img_conv_pool(input,
                          bias_attr=None,
                          act=None,
                          use_cudnn=True):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
@@ -106,6 +107,8 @@ def simple_img_conv_pool(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             img = fluid.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.simple_img_conv_pool(input=img,
                                                         filter_size=5,
@@ -154,34 +157,34 @@ def img_conv_group(input,
 	:api_attr: Static Graph
 
     The Image Convolution Group is composed of Convolution2d, BatchNorm, DropOut,
-    and Pool2d. According to the input arguments, img_conv_group will do serials of
+    and Pool2D. According to the input arguments, img_conv_group will do serials of
     computation for Input using Convolution2d, BatchNorm, DropOut, and pass the last
-    result to Pool2d.
+    result to Pool2D.
 
     Args:
         input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type of input is float32 or float64.
         conv_num_filter(list|tuple): Indicates the numbers of filter of this group.
-        pool_size (int|list|tuple): The pooling size of Pool2d Layer. If pool_size
+        pool_size (int|list|tuple): The pooling size of Pool2D Layer. If pool_size
             is a list or tuple, it must contain two integers, (pool_size_height, pool_size_width).
             Otherwise, the pool_size_height = pool_size_width = pool_size.
-        conv_padding (int|list|tuple): The padding size of the Conv2d Layer. If padding is
+        conv_padding (int|list|tuple): The padding size of the Conv2D Layer. If padding is
             a list or tuple, its length must be equal to the length of conv_num_filter.
-            Otherwise the conv_padding of all Conv2d Layers are the same. Default 1.
+            Otherwise the conv_padding of all Conv2D Layers are the same. Default 1.
         conv_filter_size (int|list|tuple): The filter size. If filter_size is a list or
             tuple, its length must be equal to the length of conv_num_filter.
-            Otherwise the conv_filter_size of all Conv2d Layers are the same. Default 3.
-        conv_act (str): Activation type for Conv2d Layer that is not followed by BatchNorm.
+            Otherwise the conv_filter_size of all Conv2D Layers are the same. Default 3.
+        conv_act (str): Activation type for Conv2D Layer that is not followed by BatchNorm.
             Default: None.
-        param_attr (ParamAttr): The parameters to the Conv2d Layer. Default: None
-        conv_with_batchnorm (bool|list): Indicates whether to use BatchNorm after Conv2d Layer.
+        param_attr (ParamAttr): The parameters to the Conv2D Layer. Default: None
+        conv_with_batchnorm (bool|list): Indicates whether to use BatchNorm after Conv2D Layer.
             If conv_with_batchnorm is a list, its length must be equal to the length of
             conv_num_filter. Otherwise, conv_with_batchnorm indicates whether all the
-            Conv2d Layer follows a BatchNorm. Default False.
+            Conv2D Layer follows a BatchNorm. Default False.
         conv_batchnorm_drop_rate (float|list): Indicates the drop_rate of Dropout Layer
             after BatchNorm. If conv_batchnorm_drop_rate is a list, its length must be
             equal to the length of conv_num_filter. Otherwise, drop_rate of all Dropout
             Layers is conv_batchnorm_drop_rate. Default 0.0.
-        pool_stride (int|list|tuple): The pooling stride of Pool2d layer. If pool_stride
+        pool_stride (int|list|tuple): The pooling stride of Pool2D layer. If pool_stride
             is a list or tuple, it must contain two integers, (pooling_stride_H,
             pooling_stride_W). Otherwise, the pooling_stride_H = pooling_stride_W = pool_stride.
             Default 1.
@@ -192,12 +195,15 @@ def img_conv_group(input,
 
     Return:
         A Variable holding Tensor representing the final result after serial computation using Convolution2d,
-        BatchNorm, DropOut, and Pool2d, whose data type is the same with input.
+        BatchNorm, DropOut, and Pool2D, whose data type is the same with input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            
             img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
@@ -300,6 +306,8 @@ def sequence_conv_pool(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             input_dim = 100 #len(word_dict)
             emb_dim = 128
             hid_dim = 512
@@ -325,8 +333,9 @@ def sequence_conv_pool(input,
     return pool_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.glu")
 def glu(input, dim=-1):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
@@ -356,6 +365,9 @@ def glu(input, dim=-1):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            
             data = fluid.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
@@ -374,7 +386,7 @@ def scaled_dot_product_attention(queries,
                                  values,
                                  num_heads=1,
                                  dropout_rate=0.):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This interface Multi-Head Attention using scaled dot product.
@@ -435,7 +447,9 @@ def scaled_dot_product_attention(queries,
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+            import paddle
+            paddle.enable_static()
+            
             queries = fluid.data(name="queries", shape=[3, 5, 9], dtype="float32")
             keys = fluid.data(name="keys", shape=[3, 6, 9], dtype="float32")
             values = fluid.data(name="values", shape=[3, 6, 10], dtype="float32")

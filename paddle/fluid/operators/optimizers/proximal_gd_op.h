@@ -20,9 +20,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class ProximalGDOpKernel : public framework::OpKernel<T> {
@@ -37,11 +34,12 @@ class ProximalGDOpKernel : public framework::OpKernel<T> {
     auto l1 = static_cast<T>(ctx.Attr<float>("l1"));
     auto l2 = static_cast<T>(ctx.Attr<float>("l2"));
 
-    auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
-    auto g = EigenVector<T>::Flatten(*grad);
-    auto lr = EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
+    auto p = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
+    auto g = framework::EigenVector<T>::Flatten(*grad);
+    auto lr =
+        framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
 
-    auto p_out = EigenVector<T>::Flatten(*param_out);
+    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
@@ -52,10 +50,10 @@ class ProximalGDOpKernel : public framework::OpKernel<T> {
           prox_param.sign() *
           (((prox_param.abs() - (lr * l1).broadcast(grad_dsize))
                 .cwiseMax(T(0.0))) /
-           (1.0 + (lr * l2).broadcast(grad_dsize)));
+           (1.0f + (lr * l2).broadcast(grad_dsize)));
     } else {
       p_out.device(place) =
-          prox_param / (1.0 + (lr * l2).broadcast(grad_dsize));
+          prox_param / (1.0f + (lr * l2).broadcast(grad_dsize));
     }
   }
 };

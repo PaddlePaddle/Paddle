@@ -76,6 +76,54 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
           model_input_shape_str, runtime_input_shape_str));
 }
 
+static void RuntimeDynamicShapeCheck(
+    const std::string &x, const std::vector<int64_t> &runtime_input_shape,
+    const std::vector<int> &min_input_shape,
+    const std::vector<int> &max_input_shape) {
+  PADDLE_ENFORCE_EQ(runtime_input_shape.size(), min_input_shape.size(),
+                    platform::errors::InvalidArgument(
+                        "TRT engine runtime input dims size(%d) inconsistent "
+                        "with the dynamic shape size(%d)",
+                        runtime_input_shape.size(), min_input_shape.size()));
+  auto is_input_shape_valid = [&](
+      const std::vector<int64_t> &runtime_input_shape,
+      const std::vector<int> &min_input_shape,
+      const std::vector<int> &max_input_shape) -> bool {
+    for (size_t i = 0; i < runtime_input_shape.size(); i++) {
+      if (runtime_input_shape[i] <= max_input_shape[i] &&
+          runtime_input_shape[i] >= min_input_shape[i]) {
+        continue;
+      } else {
+        return false;
+      }
+    }
+    return true;
+  };
+  auto comma_fold = [](std::string a, int b) {
+    return std::move(a) + ", " + std::to_string(b);
+  };
+  std::string runtime_input_shape_str = std::accumulate(
+      std::next(runtime_input_shape.begin()), runtime_input_shape.end(),
+      std::to_string(runtime_input_shape[0]), comma_fold);
+  std::string min_input_shape_str =
+      std::accumulate(std::next(min_input_shape.begin()), min_input_shape.end(),
+                      std::to_string(min_input_shape[0]), comma_fold);
+  std::string max_input_shape_str =
+      std::accumulate(std::next(max_input_shape.begin()), max_input_shape.end(),
+                      std::to_string(max_input_shape[0]), comma_fold);
+  PADDLE_ENFORCE_EQ(is_input_shape_valid(runtime_input_shape, min_input_shape,
+                                         max_input_shape),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "TRT runtime input shape of %s is invalid. Expect "
+                        "runtime input shape to be within min/max input shape "
+                        "configured in SetTRTDynamicShapeInfo(),"
+                        "but got runtime input shape = [%s], min input shape = "
+                        "[%s], max input shape = [%s].",
+                        x, runtime_input_shape_str, min_input_shape_str,
+                        max_input_shape_str));
+}
+
 class TensorRTEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> input_names_;
@@ -89,6 +137,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool use_calib_mode_;
   std::string calibration_data_;
   std::string engine_key_;
+  std::string calibration_engine_key_;
   bool calibration_mode_;
   int predictor_id_;
   int device_id_;
@@ -109,6 +158,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     use_calib_mode_ = Attr<bool>("use_calib_mode");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
+    calibration_engine_key_ = Attr<std::string>("calibration_engine_key");
     predictor_id_ = Attr<int>("predictor_id");
 
     auto params = Attr<std::vector<std::string>>("parameters");
@@ -172,9 +222,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "Paddle TRT int8...";
 
     int runtime_batch = 1;
-    if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_key_)) {
+    if (!Singleton<TRTCalibratorEngineManager>::Global().Has(
+            calibration_engine_key_)) {
       TRTCalibratorEngine *calib_res =
-          Singleton<TRTCalibratorEngineManager>::Global().Create(engine_key_);
+          Singleton<TRTCalibratorEngineManager>::Global().Create(
+              calibration_engine_key_);
       std::unordered_map<std::string, size_t> calib_buffers;
       for (auto &x : input_names_) {
         if (param_names_.count(x)) continue;
@@ -185,7 +237,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         runtime_batch = t_shape[0];
       }
       calib_res->calib_.reset(new TRTInt8Calibrator(
-          calib_buffers, runtime_batch, engine_key_, dev_place));
+          calib_buffers, runtime_batch, calibration_engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
             max_batch_size_, workspace_size_, precision_mode_,
@@ -198,7 +250,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     TRTInt8Calibrator *temp_calibrator =
         Singleton<TRTCalibratorEngineManager>::Global()
-            .Get(engine_key_)
+            .Get(calibration_engine_key_)
             ->calib_.get();
     std::unordered_map<std::string, void *> calib_data;
 
@@ -268,6 +320,22 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+        std::map<std::string, std::vector<int>> min_input_shape =
+            engine->min_input_shape();
+        std::map<std::string, std::vector<int>> max_input_shape =
+            engine->max_input_shape();
+        PADDLE_ENFORCE_EQ(
+            min_input_shape.count(x), true,
+            platform::errors::InvalidArgument(
+                "Input %s not found in TRT engine min_input_shape.", x));
+        PADDLE_ENFORCE_EQ(
+            max_input_shape.count(x), true,
+            platform::errors::InvalidArgument(
+                "Input %s not found in TRT engine max_input_shape.", x));
+        auto x_min_input_shape = min_input_shape[x];
+        auto x_max_input_shape = max_input_shape[x];
+        RuntimeDynamicShapeCheck(x, t_shape, x_min_input_shape,
+                                 x_max_input_shape);
         auto *trt_context = engine->context();
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
@@ -278,14 +346,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
         buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+      } else if (type == framework::proto::VarType::INT32) {
+        buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else {
         PADDLE_THROW(platform::errors::Fatal(
-            "The TRT Engine OP only support float and int64_t input."));
+            "The TRT Engine OP only support float/int32_t/int64_t input."));
       }
     }
 
     // Bind output tensor to TRT.
     int output_index = 0;
+    std::vector<int> origin_output_dims =
+        Attr<std::vector<int>>("origin_output_dims");
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
       const int bind_index =
@@ -304,7 +376,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
-          if (dims.d[nb_dims - 1] != 1) break;
+          // some 'x 1' of shape is normal, no need to remove it
+          if (dims.d[nb_dims - 1] != 1 ||
+              nb_dims == origin_output_dims[output_index])
+            break;
         }
         for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
 #endif

@@ -20,6 +20,8 @@ from test_declarative import foo_func
 
 import unittest
 
+paddle.enable_static()
+
 
 class TestFunctionSpec(unittest.TestCase):
     def test_constructor(self):
@@ -36,10 +38,6 @@ class TestFunctionSpec(unittest.TestCase):
         # type(input_spec) should be list or tuple
         with self.assertRaises(TypeError):
             foo_spec = FunctionSpec(foo_func, input_spec=a_spec)
-
-        # each element of input_spec should be `InputSpec`
-        with self.assertRaises(ValueError):
-            foo_spec = FunctionSpec(foo_func, input_spec=[a_spec, 10])
 
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec, b_spec])
         self.assertTrue(len(foo_spec.flat_input_spec) == 2)
@@ -82,8 +80,9 @@ class TestFunctionSpec(unittest.TestCase):
 
         # case 1
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec, b_spec])
-        input_with_spec = foo_spec.args_to_input_spec(
+        input_with_spec, _ = foo_spec.args_to_input_spec(
             (a_tensor, b_tensor, 1, 2), {})
+
         self.assertTrue(len(input_with_spec) == 4)
         self.assertTrue(input_with_spec[0] == a_spec)  # a
         self.assertTrue(input_with_spec[1] == b_spec)  # b
@@ -92,7 +91,8 @@ class TestFunctionSpec(unittest.TestCase):
 
         # case 2
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec])
-        input_with_spec = foo_spec.args_to_input_spec((a_tensor, b_tensor), {})
+        input_with_spec, _ = foo_spec.args_to_input_spec((a_tensor, b_tensor),
+                                                         {})
         self.assertTrue(len(input_with_spec) == 2)
         self.assertTrue(input_with_spec[0] == a_spec)  # a
         self.assertTupleEqual(input_with_spec[1].shape, (4, 10))  # b.shape

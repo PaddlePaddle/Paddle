@@ -165,11 +165,18 @@ PADDLE_CAPI_EXPORT extern void PD_EnableUseGpu(PD_AnalysisConfig* config,
                                                int memory_pool_init_size_mb,
                                                int device_id);
 
+PADDLE_CAPI_EXPORT extern void PD_EnableXpu(PD_AnalysisConfig* config,
+                                            int l3_workspace_size);
+
 PADDLE_CAPI_EXPORT extern void PD_DisableGpu(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern bool PD_UseGpu(const PD_AnalysisConfig* config);
 
+PADDLE_CAPI_EXPORT extern bool PD_UseXpu(const PD_AnalysisConfig* config);
+
 PADDLE_CAPI_EXPORT extern int PD_GpuDeviceId(const PD_AnalysisConfig* config);
+
+PADDLE_CAPI_EXPORT extern int PD_XpuDeviceId(const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern int PD_MemoryPoolInitSizeMb(
     const PD_AnalysisConfig* config);

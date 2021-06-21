@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <stdint.h>
 #include <algorithm>
 #include <mutex>  // NOLINT
 #include <unordered_map>
@@ -35,6 +36,7 @@ class NaiveBestFitAllocator : public Allocator {
  protected:
   Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(Allocation *allocation) override;
+  uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
   platform::Place place_;

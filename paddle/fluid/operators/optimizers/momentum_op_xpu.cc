@@ -48,8 +48,24 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
         dev_ctx.x_context(), param->data<float>(), velocity->data<float>(),
         grad->data<float>(), lr, use_nesterov, mu, param_out->numel(),
         param_out->data<float>(), velocity_out->data<float>());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::PermissionDenied("XPU kernel error!"));
+    if (r == xpu::Error_t::INVALID_PARAM) {
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::InvalidArgument(
+              "XPU kernel error of MomentumOp, error message: INVALID_PARAM, "
+              "please check your input & output."));
+    } else if (r == xpu::Error_t::RUNTIME_ERROR) {
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::Unavailable(
+              "XPU kernel error of MomentumOp, error message: RUNTIME_ERROR, "
+              "please check whether Baidu Kunlun card is properly installed."));
+    } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
+      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                        platform::errors::ResourceExhausted(
+                            "XPU kernel error of MomentumOp, error message: "
+                            "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
+    }
   }
 };
 }  // namespace operators

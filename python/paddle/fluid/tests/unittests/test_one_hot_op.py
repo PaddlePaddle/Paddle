@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import math
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
@@ -172,7 +173,7 @@ class TestOneHotOp_exception(unittest.TestCase):
                         fetch_list=[one_hot_out],
                         return_numpy=False)
 
-            self.assertRaises(core.EnforceNotMet, run)
+            self.assertRaises(ValueError, run)
 
 
 class TestOneHotOpError(unittest.TestCase):
@@ -200,4 +201,5 @@ class TestOneHotOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

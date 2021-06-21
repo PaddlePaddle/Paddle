@@ -17,33 +17,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename Functor>
-class CompareOpKernel<platform::CPUDeviceContext, Functor>
-    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    using T = typename Functor::ELEM_TYPE;
-    using Tensor = framework::Tensor;
-
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
-    auto* z = context.Output<Tensor>("Out");
-    int axis = context.Attr<int>("axis");
-
-    if (x->numel() == 1 && y->numel() == 1) {
-      bool* z_data = z->mutable_data<bool>(context.GetPlace());
-      z_data[0] = Functor()(x->data<T>()[0], y->data<T>()[0]);
-    } else {
-      ElementwiseComputeEx<Functor, platform::CPUDeviceContext, T, bool>(
-          context, x, y, axis, Functor(), z);
-    }
-  }
-};
 
 template <typename OpComment>
 class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -128,30 +106,46 @@ class CompareOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_COMPARE_OP(op_type, _equation)                         \
-  struct _##op_type##Comment {                                          \
-    static char type[];                                                 \
-    static char equation[];                                             \
-  };                                                                    \
-  char _##op_type##Comment::type[]{#op_type};                           \
-  char _##op_type##Comment::equation[]{_equation};                      \
-  REGISTER_OPERATOR(                                                    \
-      op_type, ::paddle::operators::CompareOp<_##op_type##Comment>,     \
-      ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>,    \
-      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
-      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+#define REGISTER_COMPARE_OP_VERSION(op_type)                               \
+  REGISTER_OP_VERSION(op_type)                                             \
+      .AddCheckpoint(                                                      \
+          R"ROC(Upgrade compare ops, add a new attribute [force_cpu])ROC", \
+          paddle::framework::compatible::OpVersionDesc().ModifyAttr(       \
+              "force_cpu",                                                 \
+              "In order to force fill output variable to gpu memory.",     \
+              false));
+
+#define REGISTER_COMPARE_OP(op_type, _equation)                           \
+  struct _##op_type##Comment {                                            \
+    static char type[];                                                   \
+    static char equation[];                                               \
+  };                                                                      \
+  char _##op_type##Comment::type[]{#op_type};                             \
+  char _##op_type##Comment::equation[]{_equation};                        \
+  REGISTER_OPERATOR(                                                      \
+      op_type, ::paddle::operators::CompareOp<_##op_type##Comment>,       \
+      ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>,      \
+      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>); \
+  REGISTER_COMPARE_OP_VERSION(op_type);
 
 REGISTER_COMPARE_OP(less_than, "Out = X < Y");
-REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor);
+REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor,
+                        paddle::operators::GreaterThanFunctor);
 REGISTER_COMPARE_OP(less_equal, "Out = X <= Y");
-REGISTER_COMPARE_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor);
+REGISTER_COMPARE_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor,
+                        paddle::operators::GreaterEqualFunctor);
 REGISTER_COMPARE_OP(greater_than, "Out = X > Y");
 REGISTER_COMPARE_KERNEL(greater_than, CPU,
-                        paddle::operators::GreaterThanFunctor);
+                        paddle::operators::GreaterThanFunctor,
+                        paddle::operators::LessThanFunctor);
 REGISTER_COMPARE_OP(greater_equal, "Out = X >= Y");
 REGISTER_COMPARE_KERNEL(greater_equal, CPU,
-                        paddle::operators::GreaterEqualFunctor);
+                        paddle::operators::GreaterEqualFunctor,
+                        paddle::operators::LessEqualFunctor);
 REGISTER_COMPARE_OP(equal, "Out = X == Y");
-REGISTER_COMPARE_KERNEL(equal, CPU, paddle::operators::EqualFunctor);
+REGISTER_COMPARE_KERNEL(equal, CPU, paddle::operators::EqualFunctor,
+                        paddle::operators::EqualFunctor);
 REGISTER_COMPARE_OP(not_equal, "Out = X != Y");
-REGISTER_COMPARE_KERNEL(not_equal, CPU, paddle::operators::NotEqualFunctor);
+REGISTER_COMPARE_KERNEL(not_equal, CPU, paddle::operators::NotEqualFunctor,
+                        paddle::operators::NotEqualFunctor);

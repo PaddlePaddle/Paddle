@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/extension/include/ext_op_meta_info.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -103,8 +104,11 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
                 pt.data.length());
-  } else {
-#ifdef PADDLE_WITH_CUDA
+  } else if (platform::is_gpu_place(place)) {
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), false,
+                      platform::errors::InvalidArgument(
+                          "Only one choice can be made between CPU and XPU."));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
@@ -116,6 +120,18 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Not compile with CUDA, should not reach here."));
 #endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place);
+    memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
+                 platform::CPUPlace(), pt.data.data(), pt.data.length());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with XPU, should not reach here."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU and XPU now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
   framework::LoD lod;
@@ -174,7 +190,8 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitDevices(false);
+    paddle::framework::InitDevices();
+    // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -210,9 +227,11 @@ bool AnalysisPredictor::PrepareProgram(
 }
 bool AnalysisPredictor::CreateExecutor() {
   if (config_.use_gpu()) {
-    status_use_gpu_ = true;
+    PADDLE_ENFORCE_EQ(config_.use_xpu(), false,
+                      platform::errors::InvalidArgument(
+                          "Only one choice can be made between CPU and XPU."));
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (config_.thread_local_stream_enabled()) {
       auto *ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(place_));
@@ -221,13 +240,78 @@ bool AnalysisPredictor::CreateExecutor() {
       ctx->ResetThreadContext(platform::stream::Priority::kNormal);
     }
 #endif
+  } else if (config_.use_xpu()) {
+    if (config_.lite_engine_enabled()) {
+#ifdef LITE_SUBGRAPH_WITH_XPU
+      // Currently, Paddle-Lite's XPU user interface only supports the transfer
+      // of Host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      place_ = paddle::platform::CPUPlace();
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "You tried to use an XPU lite engine, but Paddle was not compiled "
+          "with it."));
+#endif  // LITE_SUBGRAPH_WITH_XPU
+    } else {
+#ifdef PADDLE_WITH_XPU
+      place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "You tried to use XPU forward propagation (inference without lite "
+          "engine), but Paddle was not compiled "
+          "with WITH_XPU."));
+#endif  // PADDLE_WITH_XPU
+    }
   } else {
     place_ = paddle::platform::CPUPlace();
   }
   executor_.reset(new paddle::framework::NaiveExecutor(place_));
   return true;
 }
+
+static bool IsPrepareDataOptTargetOp(framework::OpDesc *op) {
+  // here is prepare data optimization related bad cases:
+  // let's assume an op behind conditional_block and if conditional_block
+  // chooses branch 1, the op need to call prepare data. else the op don't need
+  // to call prepare data. In running, if predictor chooses branch 2, then
+  // optimization takes effect, later issue is followed if predictor chooses
+  // branch 1, because the op lost chance to prepare data.
+  std::vector<std::string> op_type = {"conditional_block_infer",
+                                      "select_input"};
+  for (const auto &type : op_type) {
+    if (op->Type() == type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void DisablePrepareDataOpt(
+    std::shared_ptr<framework::ProgramDesc> inference_program, int block,
+    bool pre_disable_opt) {
+  bool disable_opt = false;
+  auto &infer_block = inference_program->Block(block);
+  for (auto *op : infer_block.AllOps()) {
+    if (disable_opt || pre_disable_opt) {
+      op->SetAttr("inference_force_prepare_data", true);
+    }
+    if (op->HasAttr("sub_block")) {
+      int blockID = op->GetBlockAttrId("sub_block");
+      DisablePrepareDataOpt(inference_program, blockID,
+                            disable_opt || pre_disable_opt);
+    }
+    // disable prepare data if unfriendly op is found
+    if (!disable_opt) {
+      disable_opt = IsPrepareDataOptTargetOp(op);
+    }
+  }
+}
+
 bool AnalysisPredictor::PrepareExecutor() {
+  DisablePrepareDataOpt(inference_program_, 0, false);
+
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops_);
 
@@ -259,8 +343,6 @@ void AnalysisPredictor::MkldnnPreSet(
     platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
         platform::MKLDNNDeviceContextThreadLocals::
             kMKLDNNSessionID_CacheClearing);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
-        config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (size_t i = 0; i < inputs_shape.size(); ++i) {
@@ -271,6 +353,9 @@ void AnalysisPredictor::MkldnnPreSet(
     VLOG(2) << "Set input shape=" << ss.str();
     platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str(ss.str());
   }
+  platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
+      config_.mkldnn_cache_capacity_);
+
 #endif
 }
 
@@ -286,10 +371,9 @@ void AnalysisPredictor::MkldnnPostReset() {
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
     }
-    paddle::platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(0);
-    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str("");
+    // We cannot reset to the default cache settings
+    // as there maybe CopyToCPU method used and oneDNN
+    // primitives are used there so cache would grow
   }
 #endif
 }
@@ -467,13 +551,23 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
+    argument_.SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
+    argument_.SetTensorRtUseDLA(config_.trt_use_dla_);
+    argument_.SetTensorRtDLACore(config_.trt_dla_core_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
+  }
+
+  if (config_.dlnne_enabled()) {
+    LOG(INFO) << "Dlnne subgraph is enabled";
+    argument_.SetUseDlnne(true);
+    argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
   }
 
   if (config_.lite_engine_enabled()) {
@@ -485,6 +579,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetLiteZeroCopy(config_.lite_zero_copy_);
     argument_.SetUseXpu(config_.use_xpu_);
     argument_.SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
+    argument_.SetXpuLocked(config_.xpu_locked_);
+    argument_.SetXpuAutotune(config_.xpu_autotune_);
+    argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
+    argument_.SetXpuPrecision(config_.xpu_precision_);
+    argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
@@ -552,6 +651,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       platform::errors::InvalidArgument(
           "Note: Each config can only be used for one predictor."));
 
+  // Register custom operators compiled by the user.
+  // This function can only be executed once per process.
+  static std::once_flag custom_operators_registered;
+  std::call_once(custom_operators_registered,
+                 []() { inference::RegisterAllCustomOperator(); });
+
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;
     static bool process_level_allocator_enabled;
@@ -586,11 +691,19 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--cudnn_deterministic=True");
       }
 
+// TODO(wilber): jetson tx2 may fail to run the model due to insufficient memory
+// under the native_best_fit strategy. Modify the default allocation strategy to
+// auto_growth. todo, find a more appropriate way to solve the problem.
+#ifdef WITH_NV_JETSON
+      gflags.push_back("--allocator_strategy=auto_growth");
+#endif
+
+      // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
+      // allocator when multi-stream is enabled.
       if (config.thread_local_stream_enabled()) {
         gflags.push_back("--allocator_strategy=thread_local");
         process_level_allocator_enabled = false;
       } else {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
         process_level_allocator_enabled = true;
       }
 
@@ -722,11 +835,22 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_xpu_place(place_)) {
+    if (config_.lite_engine_enabled()) {
+      // Currently, Paddle-Lite's XPU user interface only supports the transfer
+      // of host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      res->SetPlace(PaddlePlace::kCPU);
+    } else {
+      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    }
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
-
   return res;
 }
 
@@ -743,6 +867,18 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_xpu_place(place_)) {
+    if (config_.lite_engine_enabled()) {
+      // Currently, Paddle-Lite's XPU user interface only supports the transfer
+      // of host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      res->SetPlace(PaddlePlace::kCPU);
+    } else {
+      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    }
   } else {
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -889,6 +1025,11 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+uint64_t AnalysisPredictor::TryShrinkMemory() {
+  ClearIntermediateTensor();
+  return paddle::memory::Release(place_);
+}
+
 void AnalysisPredictor::ClearIntermediateTensor() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           platform::errors::PreconditionNotMet(
@@ -916,8 +1057,8 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   auto &block = inference_program_->Block(0);
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
-      std::string engine_name =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+      std::string engine_name = BOOST_GET_CONST(
+          std::string, op_desc->GetAttr("calibration_engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
                       "to generate calibration info";
@@ -984,6 +1125,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     mkldnn_quantizer_ = nullptr;
   }
 #endif
+
+  memory::Release(place_);
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
@@ -1055,7 +1198,9 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
-USE_TRT_CONVERTER(mul);
+USE_TRT_CONVERTER(transpose);
+USE_TRT_CONVERTER(flatten);
+USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);
@@ -1075,6 +1220,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
+USE_TRT_CONVERTER(group_norm);
 USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
@@ -1084,23 +1230,20 @@ USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
 USE_TRT_CONVERTER(stack);
+USE_TRT_CONVERTER(clip);
+USE_TRT_CONVERTER(gather);
+USE_TRT_CONVERTER(anchor_generator);
+USE_TRT_CONVERTER(yolo_box);
+USE_TRT_CONVERTER(roi_align);
+USE_TRT_CONVERTER(affine_channel);
+USE_TRT_CONVERTER(multiclass_nms);
+USE_TRT_CONVERTER(nearest_interp);
+USE_TRT_CONVERTER(reshape);
+USE_TRT_CONVERTER(reduce_sum);
+USE_TRT_CONVERTER(gather_nd);
 #endif
 
 namespace paddle_infer {
-
-void Tensor::Reshape(const std::vector<int> &shape) { tensor_->Reshape(shape); }
-
-std::vector<int> Tensor::shape() const { return tensor_->shape(); }
-
-void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
-  return tensor_->SetLoD(x);
-}
-
-std::vector<std::vector<size_t>> Tensor::lod() const { return tensor_->lod(); }
-
-const std::string &Tensor::name() const { return tensor_->name(); }
-
-DataType Tensor::type() const { return tensor_->type(); }
 
 Predictor::Predictor(const Config &config) {
   const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
@@ -1114,9 +1257,7 @@ std::vector<std::string> Predictor::GetInputNames() {
 }
 
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
-  auto zero_copy_tensor = predictor_->GetInputTensor(name);
-  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
-  return tensor;
+  return predictor_->GetInputTensor(name);
 }
 
 std::vector<std::string> Predictor::GetOutputNames() {
@@ -1124,9 +1265,7 @@ std::vector<std::string> Predictor::GetOutputNames() {
 }
 
 std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
-  auto zero_copy_tensor = predictor_->GetOutputTensor(name);
-  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
-  return tensor;
+  return predictor_->GetOutputTensor(name);
 }
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
@@ -1140,6 +1279,8 @@ std::unique_ptr<Predictor> Predictor::Clone() {
 void Predictor::ClearIntermediateTensor() {
   predictor_->ClearIntermediateTensor();
 }
+
+uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

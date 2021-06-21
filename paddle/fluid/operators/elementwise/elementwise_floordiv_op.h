@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
@@ -25,10 +24,14 @@ namespace operators {
 template <typename T>
 struct FloorDivFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
-#ifdef __CUDA_ARCH__
+#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
     if (b == 0) {
       printf("Error: Divide by zero encounter in floor_divide\n");
+#ifdef __HIPCC__
+      abort();
+#else
       asm("trap;");
+#endif
     }
 #else
     if (b == 0)
@@ -42,10 +45,14 @@ struct FloorDivFunctor {
 template <typename T>
 struct InverseFloorDivFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
-#ifdef __CUDA_ARCH__
+#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
     if (a == 0) {
       printf("Error: Divide by zero encounter in floor_divide\n");
+#ifdef __HIPCC__
+      abort();
+#else
       asm("trap;");
+#endif
     }
 #else
     if (a == 0)

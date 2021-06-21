@@ -16,6 +16,7 @@ limitations under the License. */
 #include <thrust/execution_policy.h>
 #include <thrust/functional.h>
 #include <thrust/scatter.h>
+#include <thrust/sequence.h>
 #include <thrust/unique.h>
 #include <iostream>
 #include <vector>
@@ -177,7 +178,7 @@ static void UniqueFlattendCUDATensor(const framework::ExecutionContext& context,
   thrust::sort_by_key(thrust::device, in_data_hat, in_data_hat + num_input,
                       sorted_indices_data);
 
-  // 1. Calculate op result: 'out'：
+  // 1. Calculate op result: 'out'
   Tensor range;
   range.Resize(framework::make_ddim({num_input + 1}));
   auto range_data_ptr = range.mutable_data<IndexT>(context.GetPlace());

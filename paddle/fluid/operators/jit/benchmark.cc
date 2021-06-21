@@ -14,8 +14,7 @@
 
 #include <iostream>
 #include <random>
-#include <string>
-#include <vector>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -23,7 +22,6 @@
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/variant.h"  // for UNUSED
 
 DEFINE_int32(burning, 10, "Burning times.");
@@ -332,7 +330,10 @@ void BenchKernelSgd() {
     for (int i = 0; i < n; ++i) {
       all.push_back(i);
     }
-    std::random_shuffle(all.begin(), all.end());
+    std::random_device rnd;
+    int64_t seed_tmp = rnd();
+    std::default_random_engine rng(seed_tmp);
+    std::shuffle(all.begin(), all.end(), rng);
     out.insert(out.begin(), all.begin(), all.begin() + n);
     return out;
   };
@@ -567,7 +568,7 @@ BENCH_FP32_CPU(VBroadcast);
 //     --max_size: the max size would be tested
 //     --filter: the bench name would be run
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   LOG(INFO) << "Burning " << FLAGS_burning << " times, Repeat " << FLAGS_repeat
             << " times.";

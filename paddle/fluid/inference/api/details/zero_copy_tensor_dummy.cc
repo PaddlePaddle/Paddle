@@ -12,37 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
+#include "paddle/fluid/inference/api/paddle_infer_declare.h"
 
-namespace paddle {
+namespace paddle_infer {
 
-void ZeroCopyTensor::Reshape(const std::vector<int> &shape) {}
+void Tensor::Reshape(const std::vector<int> &shape) {}
 
 template <typename T>
-T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
+T *Tensor::mutable_data(PlaceType place) {
   return nullptr;
 }
 
 template <typename T>
-T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
+T *Tensor::data(PlaceType *place, int *size) const {
   return nullptr;
 }
 
-template PD_INFER_DECL float *ZeroCopyTensor::data<float>(PaddlePlace *place,
-                                                          int *size) const;
-template PD_INFER_DECL int64_t *ZeroCopyTensor::data<int64_t>(
-    PaddlePlace *place, int *size) const;
-template float *ZeroCopyTensor::mutable_data(PaddlePlace place);
-template int64_t *ZeroCopyTensor::mutable_data(PaddlePlace place);
+template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
+                                                  int *size) const;
+template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PlaceType *place,
+                                                      int *size) const;
+template float *Tensor::mutable_data(PlaceType place);
+template int64_t *Tensor::mutable_data(PlaceType place);
 
-void *ZeroCopyTensor::FindTensor() const { return nullptr; }
+void *Tensor::FindTensor() const { return nullptr; }
 
-std::vector<int> ZeroCopyTensor::shape() const { return {}; }
+std::vector<int> Tensor::shape() const { return {}; }
 
-void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {}
+void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {}
 
-std::vector<std::vector<size_t>> ZeroCopyTensor::lod() const {
+std::vector<std::vector<size_t>> Tensor::lod() const {
   return std::vector<std::vector<size_t>>();
 }
 
-}  // namespace paddle
+}  // namespace paddle_infer

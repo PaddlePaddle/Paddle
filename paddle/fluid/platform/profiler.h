@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 namespace paddle {
@@ -126,11 +126,13 @@ struct MemEvenRecorder {
 
 struct RecordEvent {
   RecordEvent(const std::string& name,
-              const EventRole role = EventRole::kOrdinary);
+              const EventRole role = EventRole::kOrdinary,
+              const std::string attr = "none");
 
   ~RecordEvent();
 
   bool is_enabled_{false};
+  bool is_pushed_{false};
   uint64_t start_ns_;
   // Event name
   std::string name_;
@@ -199,8 +201,10 @@ void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                   const Place& place, const std::string& annotation);
 void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                  const Place& place, const std::string& annotation);
-Event* PushEvent(const std::string& name, const EventRole role);
-void PopEvent(const std::string& name, const EventRole role);
+Event* PushEvent(const std::string& name, const EventRole role,
+                 const std::string attr = "none");
+void PopEvent(const std::string& name, const EventRole role,
+              const std::string attr = "none");
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();
@@ -219,13 +223,16 @@ std::string OpName(const framework::VariableNameMap& name_map,
                    const std::string& type_name);
 void SetTracerOption(TracerOption option);
 platform::TracerOption GetTracerOption();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void DummyKernelAndEvent();
 #endif
 
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();
 int64_t ListenerId();
+
+void NvprofEnableRecordEvent();
+void NvprofDisableRecordEvent();
 
 }  // namespace platform
 }  // namespace paddle

@@ -32,6 +32,9 @@ class TestVOC2012Train(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 3)
         image, label = voc2012[idx]
+        image = np.array(image)
+        label = np.array(label)
+
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
 
@@ -45,6 +48,9 @@ class TestVOC2012Valid(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1)
         image, label = voc2012[idx]
+        image = np.array(image)
+        label = np.array(label)
+
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
 
@@ -58,8 +64,26 @@ class TestVOC2012Test(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1)
         image, label = voc2012[idx]
+        image = np.array(image)
+        label = np.array(label)
+
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
+
+        # test cv2 backend
+        voc2012 = VOC2012(mode='test', backend='cv2')
+        self.assertTrue(len(voc2012) == 2)
+
+        # traversal whole dataset may cost a
+        # long time, randomly check 1 sample
+        idx = np.random.randint(0, 1)
+        image, label = voc2012[idx]
+
+        self.assertTrue(len(image.shape) == 3)
+        self.assertTrue(len(label.shape) == 2)
+
+        with self.assertRaises(ValueError):
+            voc2012 = VOC2012(mode='test', backend=1)
 
 
 if __name__ == '__main__':

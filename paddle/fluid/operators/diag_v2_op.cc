@@ -32,16 +32,28 @@ class DiagV2Op : public framework::OperatorWithKernel {
     auto offset = ctx->Attrs().Get<int>("offset");
 
     if (x_dims.size() == 1UL) {
-      int64_t size = x_dims[0] + std::abs(offset);
-      ctx->SetOutputDim("Out", {size, size});
+      int64_t size_ = x_dims[0] + std::abs(offset);
+      ctx->SetOutputDim("Out", {size_, size_});
     } else if (x_dims.size() == 2UL) {
-      int64_t size;
+      int64_t size_ = 0;
       if (offset >= 0) {
-        size = std::min(x_dims[0], x_dims[1] - offset);
+        // Note(LutaoChu): Do not use std::min here, otherwise the calculation
+        // of `size_` will have unexpected result on Windows Python3.8
+        if (x_dims[0] < x_dims[1] - offset) {
+          size_ = x_dims[0];
+        } else {
+          size_ = x_dims[1] - offset;
+        }
       } else {
-        size = std::min(x_dims[0] + offset, x_dims[1]);
+        // Note(LutaoChu): Do not use std::min here, otherwise the calculation
+        // of `size_` will have unexpected result on Windows Python3.8
+        if (x_dims[0] + offset < x_dims[1]) {
+          size_ = x_dims[0] + offset;
+        } else {
+          size_ = x_dims[1];
+        }
       }
-      ctx->SetOutputDim("Out", {size});
+      ctx->SetOutputDim("Out", {size_});
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The input tensor X's dimensions of DiagV2Op should be either 1 or "

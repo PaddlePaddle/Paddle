@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 import copy
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -171,6 +172,9 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
     lod = []
     head = 0
     for n in range(len(box_lod[0])):
+        if box_lod[0][n] == 0:
+            lod.append(0)
+            continue
         box = boxes[head:head + box_lod[0][n]]
         score = scores[head:head + box_lod[0][n]]
         offset = head
@@ -357,6 +361,53 @@ class TestMulticlassNMSLoDInput(OpTest):
         self.check_output()
 
 
+class TestMulticlassNMSNoBox(TestMulticlassNMSLoDInput):
+    def setUp(self):
+        self.set_argument()
+        M = 1200
+        C = 21
+        BOX_SIZE = 4
+        box_lod = [[0, 1200, 0]]
+        background = 0
+        nms_threshold = 0.3
+        nms_top_k = 400
+        keep_top_k = 200
+        score_threshold = self.score_threshold
+        normalized = False
+
+        scores = np.random.random((M, C)).astype('float32')
+
+        scores = np.apply_along_axis(softmax, 1, scores)
+
+        boxes = np.random.random((M, C, BOX_SIZE)).astype('float32')
+        boxes[:, :, 0] = boxes[:, :, 0] * 10
+        boxes[:, :, 1] = boxes[:, :, 1] * 10
+        boxes[:, :, 2] = boxes[:, :, 2] * 10 + 10
+        boxes[:, :, 3] = boxes[:, :, 3] * 10 + 10
+
+        det_outs, lod = lod_multiclass_nms(
+            boxes, scores, background, score_threshold, nms_threshold,
+            nms_top_k, keep_top_k, box_lod, normalized)
+        det_outs = np.array(det_outs).astype('float32')
+        nmsed_outs = det_outs[:, :-1].astype('float32') if len(
+            det_outs) else det_outs
+        self.op_type = 'multiclass_nms'
+        self.inputs = {
+            'BBoxes': (boxes, box_lod),
+            'Scores': (scores, box_lod),
+        }
+        self.outputs = {'Out': (nmsed_outs, [lod])}
+        self.attrs = {
+            'background_label': 0,
+            'nms_threshold': nms_threshold,
+            'nms_top_k': nms_top_k,
+            'keep_top_k': keep_top_k,
+            'score_threshold': score_threshold,
+            'nms_eta': 1.0,
+            'normalized': normalized,
+        }
+
+
 class TestIOU(unittest.TestCase):
     def test_iou(self):
         box1 = np.array([4.0, 3.0, 7.0, 5.0]).astype('float32')
@@ -520,5 +571,128 @@ class TestMulticlassNMSError(unittest.TestCase):
             self.assertRaises(TypeError, test_scores_Variable)
 
 
+class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
+    def setUp(self):
+        self.set_argument()
+        N = 7
+        M = 1200
+        C = 21
+        BOX_SIZE = 4
+        background = 0
+        nms_threshold = 0.3
+        nms_top_k = 400
+        keep_top_k = 200
+        score_threshold = self.score_threshold
+
+        scores = np.random.random((N * M, C)).astype('float32')
+
+        scores = np.apply_along_axis(softmax, 1, scores)
+        scores = np.reshape(scores, (N, M, C))
+        scores = np.transpose(scores, (0, 2, 1))
+
+        boxes = np.random.random((N, M, BOX_SIZE)).astype('float32')
+        boxes[:, :, 0:2] = boxes[:, :, 0:2] * 0.5
+        boxes[:, :, 2:4] = boxes[:, :, 2:4] * 0.5 + 0.5
+
+        det_outs, lod = batched_multiclass_nms(boxes, scores, background,
+                                               score_threshold, nms_threshold,
+                                               nms_top_k, keep_top_k)
+        det_outs = np.array(det_outs)
+
+        nmsed_outs = det_outs[:, :-1].astype('float32') if len(
+            det_outs) else det_outs
+        index_outs = det_outs[:, -1:].astype('int') if len(
+            det_outs) else det_outs
+        self.op_type = 'multiclass_nms3'
+        self.inputs = {'BBoxes': boxes, 'Scores': scores}
+        self.outputs = {
+            'Out': (nmsed_outs, [lod]),
+            'Index': (index_outs, [lod]),
+            'NmsRoisNum': np.array(lod).astype('int32')
+        }
+        self.attrs = {
+            'background_label': 0,
+            'nms_threshold': nms_threshold,
+            'nms_top_k': nms_top_k,
+            'keep_top_k': keep_top_k,
+            'score_threshold': score_threshold,
+            'nms_eta': 1.0,
+            'normalized': True,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
+    def set_argument(self):
+        # Here set 2.0 to test the case there is no outputs.
+        # In practical use, 0.0 < score_threshold < 1.0
+        self.score_threshold = 2.0
+
+
+class TestMulticlassNMS3LoDInput(TestMulticlassNMS2LoDInput):
+    def setUp(self):
+        self.set_argument()
+        M = 1200
+        C = 21
+        BOX_SIZE = 4
+        box_lod = [[1200]]
+        background = 0
+        nms_threshold = 0.3
+        nms_top_k = 400
+        keep_top_k = 200
+        score_threshold = self.score_threshold
+        normalized = False
+
+        scores = np.random.random((M, C)).astype('float32')
+
+        scores = np.apply_along_axis(softmax, 1, scores)
+
+        boxes = np.random.random((M, C, BOX_SIZE)).astype('float32')
+        boxes[:, :, 0] = boxes[:, :, 0] * 10
+        boxes[:, :, 1] = boxes[:, :, 1] * 10
+        boxes[:, :, 2] = boxes[:, :, 2] * 10 + 10
+        boxes[:, :, 3] = boxes[:, :, 3] * 10 + 10
+
+        det_outs, lod = lod_multiclass_nms(
+            boxes, scores, background, score_threshold, nms_threshold,
+            nms_top_k, keep_top_k, box_lod, normalized)
+
+        det_outs = np.array(det_outs)
+        nmsed_outs = det_outs[:, :-1].astype('float32') if len(
+            det_outs) else det_outs
+        self.op_type = 'multiclass_nms3'
+        self.inputs = {
+            'BBoxes': (boxes, box_lod),
+            'Scores': (scores, box_lod),
+            'RoisNum': np.array(box_lod).astype('int32')
+        }
+        self.outputs = {
+            'Out': (nmsed_outs, [lod]),
+            'NmsRoisNum': np.array(lod).astype('int32')
+        }
+        self.attrs = {
+            'background_label': 0,
+            'nms_threshold': nms_threshold,
+            'nms_top_k': nms_top_k,
+            'keep_top_k': keep_top_k,
+            'score_threshold': score_threshold,
+            'nms_eta': 1.0,
+            'normalized': normalized,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestMulticlassNMS3LoDNoOutput(TestMulticlassNMS3LoDInput):
+    def set_argument(self):
+        # Here set 2.0 to test the case there is no outputs.
+        # In practical use, 0.0 < score_threshold < 1.0
+        self.score_threshold = 2.0
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

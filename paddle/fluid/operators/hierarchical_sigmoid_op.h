@@ -28,10 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include "paddle/fluid/platform/transform.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/parameter_prefetch.h"
-#endif
-
 namespace paddle {
 namespace operators {
 

@@ -126,10 +126,10 @@ struct VarHandle : public VarHandleBase {
         name_(std::move(name)),
         place_(std::move(place)) {}
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool HasEvent() { return has_event_; }
 
-  const cudaEvent_t& GetEvent() {
+  const gpuEvent_t& GetEvent() {
     PADDLE_ENFORCE_EQ(
         HasEvent(), true,
         platform::errors::PreconditionNotMet(
@@ -137,7 +137,7 @@ struct VarHandle : public VarHandleBase {
     return event_;
   }
 
-  void SetGenerateEvent(const cudaEvent_t& event) {
+  void SetGenerateEvent(const gpuEvent_t& event) {
     has_event_ = true;
     event_ = event;
   }
@@ -150,9 +150,9 @@ struct VarHandle : public VarHandleBase {
   size_t scope_idx_;
   std::string name_;
   platform::Place place_;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Only when this event is triggered, var is generated.
-  cudaEvent_t event_;
+  gpuEvent_t event_;
   bool has_event_{false};
 #endif
 

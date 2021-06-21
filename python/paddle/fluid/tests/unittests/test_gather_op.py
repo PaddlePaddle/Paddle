@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from paddle.framework import core
 
 
 def gather_numpy(x, index, axis):
@@ -181,6 +182,7 @@ class TestGatherOp4(TestGatherOp1):
         self.index_type = "int64"
         self.axis = [0]
         self.axis_type = "int32"
+        self.attrs = {'overwrite': False}
 
 
 class API_TestGather(unittest.TestCase):
@@ -296,6 +298,14 @@ class TestGathertError(unittest.TestCase):
                 paddle.fluid.layers.gather(x, index_float)
 
             self.assertRaises(TypeError, test_index_type)
+
+
+class TestCheckOutType(unittest.TestCase):
+    def test_out_type(self):
+        data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
+        index = paddle.static.data(shape=[4], dtype='int64', name='index')
+        out = paddle.gather(data, index)
+        self.assertTrue(out.dtype == core.VarDesc.VarType.INT64)
 
 
 if __name__ == "__main__":

@@ -13,13 +13,15 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-import paddle
 from op_test import OpTest
+
 paddle.enable_static()
 
 
@@ -81,27 +83,36 @@ class TestSqueezeOp4(TestSqueezeOp):
 
 class TestSqueezeOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.
             x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.squeeze, x1)
+                np.array([[-1]]), [[1]], paddle.CPUPlace())
+            self.assertRaises(TypeError, paddle.squeeze, x1)
             # The input axes of squeeze must be list.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.squeeze, x2, axes=0)
+            x2 = paddle.static.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, paddle.squeeze, x2, axes=0)
             # The input dtype of squeeze not support float16.
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="float16")
-            self.assertRaises(TypeError, fluid.layers.squeeze, x3, axes=0)
+            x3 = paddle.static.data(name='x3', shape=[4], dtype="float16")
+            self.assertRaises(TypeError, paddle.squeeze, x3, axes=0)
 
 
 class API_TestSqueeze(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.squeeze = paddle.squeeze
+
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data(
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data1 = paddle.static.data(
                 'data1', shape=[-1, 1, 10], dtype='float64')
-            result_squeeze = paddle.squeeze(data1, axis=[1])
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            result_squeeze = self.squeeze(data1, axis=[1])
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
             result, = exe.run(feed={"data1": input1},
                               fetch_list=[result_squeeze])
@@ -109,33 +120,67 @@ class API_TestSqueeze(unittest.TestCase):
             self.assertTrue(np.allclose(expected_result, result))
 
 
+class API_TestStaticSqueeze_(API_TestSqueeze):
+    def executed_api(self):
+        self.squeeze = paddle.squeeze_
+
+
 class API_TestDygraphSqueeze(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.squeeze = paddle.squeeze
+
     def test_out(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("int32")
-            input = fluid.dygraph.to_variable(input_1)
-            output = paddle.squeeze(input, axis=[1])
-            out_np = output.numpy()
-            expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int32")
+        input = paddle.to_tensor(input_1)
+        output = self.squeeze(input, axis=[1])
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_int8(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int8")
+        input = paddle.to_tensor(input_1)
+        output = self.squeeze(input, axis=[1])
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_uint8(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("uint8")
+        input = paddle.to_tensor(input_1)
+        output = self.squeeze(input, axis=[1])
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_axis_not_list(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("int32")
-            input = fluid.dygraph.to_variable(input_1)
-            output = paddle.squeeze(input, axis=1)
-            out_np = output.numpy()
-            expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int32")
+        input = paddle.to_tensor(input_1)
+        output = self.squeeze(input, axis=1)
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_dimension_not_1(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("int32")
-            input = fluid.dygraph.to_variable(input_1)
-            output = paddle.squeeze(input, axis=(1, 2))
-            out_np = output.numpy()
-            expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int32")
+        input = paddle.to_tensor(input_1)
+        output = self.squeeze(input, axis=(1, 0))
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+
+class API_TestDygraphSqueezeInplace(API_TestDygraphSqueeze):
+    def executed_api(self):
+        self.squeeze = paddle.squeeze_
 
 
 if __name__ == "__main__":

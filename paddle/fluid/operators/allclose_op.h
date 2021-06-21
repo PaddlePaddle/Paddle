@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
@@ -23,37 +25,61 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
+struct GetTensorValue {
+  T operator()(const platform::DeviceContext& ctx,
+               const framework::Tensor& tensor) const;
+};
+
+template <typename DeviceContext, typename T>
+struct AllcloseFunctor {
+  void operator()(const DeviceContext& ctx, const framework::Tensor& in,
+                  const framework::Tensor& other, const float rtol,
+                  const float atol, bool equal_nan, framework::Tensor* output);
+};
+
+template <typename DeviceContext, typename T>
 class AllcloseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // get attrs
-    float rtol = ctx.Attr<float>("rtol");
-    float atol = ctx.Attr<float>("atol");
     bool equal_nan = ctx.Attr<bool>("equal_nan");
     // get input/output
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* other = ctx.Input<Tensor>("Other");
+    const auto* input = ctx.Input<Tensor>("Input");
+    const auto* other = ctx.Input<Tensor>("Other");
     auto* out = ctx.Output<Tensor>("Out");
-    out->mutable_data<bool>(ctx.GetPlace());
-    // get place
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
-    auto input_v = framework::EigenVector<T>::Flatten(*input);
-    auto other_v = framework::EigenVector<T>::Flatten(*other);
-    auto out_v = framework::EigenScalar<bool>::From(*out);
+    double rtol_v = std::stod(ctx.Attr<std::string>("rtol"));
+    double atol_v = std::stod(ctx.Attr<std::string>("atol"));
 
-    auto left = (input_v - other_v).abs();
-    auto right = static_cast<T>(atol) + static_cast<T>(rtol) * other_v.abs();
-    auto compare_res = left <= right;
-
-    if (equal_nan) {
-      auto input_nan = input_v.isnan();
-      auto other_nan = other_v.isnan();
-      out_v.device(place) =
-          (input_nan == other_nan).all() && (compare_res != input_nan).all();
-    } else {
-      out_v.device(place) = compare_res.all();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    GetTensorValue<DeviceContext, double> get_tensor_value;
+    if (ctx.HasInput("Rtol")) {
+      const auto* rtol = ctx.Input<Tensor>("Rtol");
+      PADDLE_ENFORCE_EQ(
+          rtol->numel(), 1,
+          platform::errors::InvalidArgument(
+              "Input(Rtol) size must be 1, but get %d.", rtol->numel()));
+      PADDLE_ENFORCE_EQ(rtol->type(), framework::proto::VarType::FP64,
+                        platform::errors::InvalidArgument(
+                            "Input(Rtol) type must be double, but get %s.",
+                            framework::DataTypeToString(rtol->type())));
+      rtol_v = get_tensor_value(dev_ctx, *rtol);
     }
+    if (ctx.HasInput("Atol")) {
+      const auto* atol = ctx.Input<Tensor>("Atol");
+      PADDLE_ENFORCE_EQ(
+          atol->numel(), 1,
+          platform::errors::InvalidArgument(
+              "Input(Atol) size must be 1, but get %d", atol->numel()));
+      PADDLE_ENFORCE_EQ(atol->type(), framework::proto::VarType::FP64,
+                        platform::errors::InvalidArgument(
+                            "Input(Atol) type must be double, but get %s",
+                            framework::DataTypeToString(atol->type())));
+      atol_v = get_tensor_value(dev_ctx, *atol);
+    }
+
+    AllcloseFunctor<DeviceContext, T>()(dev_ctx, *input, *other, rtol_v, atol_v,
+                                        equal_nan, out);
   }
 };
 

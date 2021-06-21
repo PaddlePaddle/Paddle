@@ -137,7 +137,8 @@ class TestFCOpWithPadding(TestFCOp):
 class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
     def test_api(self):
         def run_program(num_flatten_dims):
-            paddle.manual_seed(SEED)
+            paddle.seed(SEED)
+            np.random.seed(SEED)
             startup_program = Program()
             main_program = Program()
 
@@ -158,6 +159,7 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
             exe = fluid.Executor(place=place)
             exe.run(startup_program)
             out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
+            return out
 
         res_1 = run_program(-1)
         res_2 = run_program(2)

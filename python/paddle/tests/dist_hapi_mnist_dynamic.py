@@ -61,7 +61,6 @@ class TestDistTraning(unittest.TestCase):
     def test_static_multiple_gpus(self):
         device = set_device('gpu')
 
-        fluid.enable_dygraph(device)
         im_shape = (-1, 1, 28, 28)
         batch_size = 128
 

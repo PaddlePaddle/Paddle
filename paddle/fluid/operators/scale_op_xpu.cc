@@ -46,10 +46,13 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
                                           in->dims().to_str().c_str(),
                                           out->dims().to_str().c_str()));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::scale(dev_ctx.x_context(), in->numel(), scale, bias,
-                       bias_after_scale, in->data<float>(), out->data<float>());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::Fatal("XPU scale kernel error!"));
+    int r =
+        xpu::scale(dev_ctx.x_context(), in->data<float>(), out->data<float>(),
+                   in->numel(), bias_after_scale, scale, bias);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU scale kernel return wrong value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 

@@ -219,7 +219,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -305,7 +305,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -414,7 +414,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -521,7 +521,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -711,7 +711,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -802,7 +802,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
 

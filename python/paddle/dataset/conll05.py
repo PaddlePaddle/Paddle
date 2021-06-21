@@ -27,9 +27,10 @@ import gzip
 import itertools
 import paddle.dataset.common
 import paddle.compat as cpt
+import paddle.utils.deprecated as deprecated
 from six.moves import zip, range
 
-__all__ = ['test, get_dict', 'get_embedding']
+__all__ = []
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
@@ -202,6 +203,11 @@ def reader_creator(corpus_reader,
     return reader
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Conll05st",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_dict():
     """
     Get the word, verb and label dictionary of Wikipedia corpus.
@@ -215,6 +221,11 @@ def get_dict():
     return word_dict, verb_dict, label_dict
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Conll05st",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_embedding():
     """
     Get the trained word vector based on Wikipedia corpus.
@@ -222,6 +233,11 @@ def get_embedding():
     return paddle.dataset.common.download(EMB_URL, 'conll05st', EMB_MD5)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Conll05st",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
     """
     Conll05 test set creator.
@@ -242,6 +258,11 @@ def test():
     return reader_creator(reader, word_dict, verb_dict, label_dict)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Conll05st",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(WORDDICT_URL, 'conll05st', WORDDICT_MD5)
     paddle.dataset.common.download(VERBDICT_URL, 'conll05st', VERBDICT_MD5)

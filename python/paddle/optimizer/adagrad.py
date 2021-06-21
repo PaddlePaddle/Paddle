@@ -17,11 +17,11 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
-__all__ = ["Adagrad"]
+__all__ = []
 
 
 class Adagrad(Optimizer):
-    """
+    r"""
     The Adaptive Gradient optimizer (Adagrad for short) use an optimization described 
     in paper: `Adaptive Subgradient Methods for Online Learning and
     Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
@@ -45,13 +45,16 @@ class Adagrad(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. \
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+	    This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
 	    It canbe a float value as coeff of L2 regularization or \
-	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+	    :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+	    If a parameter has set regularizer using :ref:`api_paddle_fluid_param_attr_aramAttr` already, \
 	    the regularization setting here in optimizer will be ignored for this parameter. \
 	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
@@ -71,13 +74,33 @@ class Adagrad(Optimizer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             inp = paddle.rand(shape=[10, 10])
             linear = paddle.nn.Linear(10, 10)
             out = linear(inp)
             loss = paddle.mean(out)
             adagrad = paddle.optimizer.Adagrad(learning_rate=0.1,
                     parameters=linear.parameters())
+            out.backward()
+            adagrad.step()
+            adagrad.clear_grad()
+
+            #Note that the learning_rate of linear_2 is 0.01.
+            linear_1 = paddle.nn.Linear(10, 10)
+            linear_2 = paddle.nn.Linear(10, 10)
+            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            out = linear_1(inp)
+            out = linear_2(out)
+            loss = paddle.mean(out)
+            adagrad = paddle.optimizer.Adagrad(
+                learning_rate=0.1,
+                parameters=[{
+                    'params': linear_1.parameters()
+                }, {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1,
+                }],
+                weight_decay=0.01)                   
             out.backward()
             adagrad.step()
             adagrad.clear_grad()
@@ -104,9 +127,16 @@ class Adagrad(Optimizer):
         self.type = "adagrad"
         self._epsilon = epsilon
         self.initial_accumulator_value = initial_accumulator_value
+        self._default_dict = {
+            'epsilon': epsilon,
+            'initial_accumulator_value': initial_accumulator_value,
+        }
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
+
+        if isinstance(parameters, dict):
+            parameters = self._update_param_group(parameters)
 
         for p in parameters:
             self._add_accumulator(
@@ -116,6 +146,9 @@ class Adagrad(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
@@ -134,3 +167,11 @@ class Adagrad(Optimizer):
             stop_gradient=True)
 
         return adagrad_op
+
+    def _update_param_group(self, parameters):
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
+        self.initial_accumulator_value = parameters.get(
+            'initial_accumulator_value',
+            self._default_dict['initial_accumulator_value'])
+        parameters = parameters.get('params')
+        return parameters

@@ -57,7 +57,7 @@ class RandpermKernel : public framework::OpKernel<T> {
       tmp_tensor.Resize(framework::make_ddim({n}));
       T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
       random_permate<T>(tmp_data, n, seed);
-      framework::TensorCopy(tmp_tensor, platform::CUDAPlace(), out_tensor);
+      framework::TensorCopy(tmp_tensor, ctx.GetPlace(), out_tensor);
     }
   }
 };

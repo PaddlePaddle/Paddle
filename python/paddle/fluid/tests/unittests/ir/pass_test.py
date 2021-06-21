@@ -36,6 +36,7 @@ class PassTest(unittest.TestCase):
         self.fetch_list = None
         self.pass_names = None
         self.pass_attrs = {}
+        self.graph_attrs = {}
         self.fused_op_type = None
         self.num_fused_ops = -1
 
@@ -85,6 +86,8 @@ class PassTest(unittest.TestCase):
     def _apply_ir_passes(self):
         graph = core.Graph(self.main_program.desc)
         graph.set_not_owned("__param_scope__", fluid.global_scope())
+        for attr_name, attr_value in self.graph_attrs.items():
+            graph.set(attr_name, attr_value)
 
         if not isinstance(self.pass_names, list):
             self.pass_names = [self.pass_names]

@@ -14,6 +14,17 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
+#ifdef __HIPCC__
+// Eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h:922
+// do not support double in HIPCC platform (Eigen3 to be fixed)
+REGISTER_OP_CUDA_KERNEL(reduce_prod,
+                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
+                                          float, ops::ProdFunctor>,
+                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
+                                          int, ops::ProdFunctor>,
+                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
+                                          int64_t, ops::ProdFunctor>);
+#else
 REGISTER_OP_CUDA_KERNEL(reduce_prod,
                         ops::ReduceKernel<paddle::platform::CUDADeviceContext,
                                           float, ops::ProdFunctor>,
@@ -23,3 +34,4 @@ REGISTER_OP_CUDA_KERNEL(reduce_prod,
                                           int, ops::ProdFunctor>,
                         ops::ReduceKernel<paddle::platform::CUDADeviceContext,
                                           int64_t, ops::ProdFunctor>);
+#endif

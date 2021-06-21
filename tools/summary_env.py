@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import sys
+import distro
 import platform
 import subprocess
 
@@ -47,8 +48,8 @@ def get_os_info():
         plat = "macOs"
         ver = platform.mac_ver()[0]
     elif platform.system() == "Linux":
-        plat = platform.linux_distribution()[0]
-        ver = platform.linux_distribution()[1]
+        plat = distro.linux_distribution()[0]
+        ver = distro.linux_distribution()[1]
     elif platform.system() == "Windows":
         plat = "Windows"
         ver = platform.win32_ver()[0]
@@ -92,7 +93,7 @@ def get_cudnn_info():
         cudnn_dll_path = run_shell_command('where cudnn*')
         if cudnn_dll_path:
             cudnn_header_path = cudnn_dll_path.split('bin')[
-                0] + 'include\cudnn.h'
+                0] + r'include\cudnn.h'
             cmd = 'type "{0}" | findstr "{1}" | findstr /v "CUDNN_VERSION"'
         else:
             envs['cudnn_version'] = None

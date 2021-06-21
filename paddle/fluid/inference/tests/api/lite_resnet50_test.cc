@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
 #include <cmath>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -40,7 +39,7 @@ TEST(AnalysisPredictor, use_gpu) {
   std::vector<float> input(input_num, 1);
 
   PaddleTensor in;
-  in.shape = {1, 3, 318, 318};
+  in.shape = {batch, channel, height, width};
   in.data =
       PaddleBuf(static_cast<void*>(input.data()), input_num * sizeof(float));
   in.dtype = PaddleDType::FLOAT32;
@@ -82,6 +81,7 @@ TEST(Predictor, use_gpu) {
   config.EnableLiteEngine(PrecisionType::kFloat32);
 
   auto predictor = CreatePredictor(config);
+
   const int batch = 1;
   const int channel = 3;
   const int height = 318;
@@ -92,7 +92,7 @@ TEST(Predictor, use_gpu) {
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputHandle(input_names[0]);
 
-  input_t->Reshape({1, 3, 318, 318});
+  input_t->Reshape({batch, channel, height, width});
   input_t->CopyFromCpu(input.data());
   predictor->Run();
 
