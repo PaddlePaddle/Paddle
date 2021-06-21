@@ -1014,6 +1014,27 @@ def _c_softmax_with_cross_entropy(logits,
         else:
             return loss, softmax
 
+    attrs = {
+        'ring_id': ring_id,
+        'rank': rank,
+        'nranks': nranks,
+    }
+    helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    helper.append_op(
+        type='c_softmax_with_cross_entropy',
+        inputs={'Logits': logits,
+                'Label': label},
+        outputs={'Softmax': softmax,
+                 'Loss': loss},
+        attrs=attrs)
+
+    if return_softmax:
+        return loss, softmax
+
+    return loss
+
 
 def _linear(x, weight, bias=None, name=None):
     """
