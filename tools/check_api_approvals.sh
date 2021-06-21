@@ -84,8 +84,6 @@ if [ -n "${echo_list}" ];then
   echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
   echo "****************"
-fi
 
-if [ -n "${echo_list}" ]; then
   exit 6
 fi
