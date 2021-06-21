@@ -209,19 +209,19 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 class AttrReader {
  public:
   explicit AttrReader(const AttributeMap& attrs)
-      : attrs_(attrs), attrs_default_(nullptr) {}
+      : attrs_(attrs), default_attrs_(nullptr) {}
 
-  AttrReader(const AttributeMap& attrs, const AttributeMap& attrs_default)
-      : attrs_(attrs), attrs_default_(&attrs_default) {}
+  AttrReader(const AttributeMap& attrs, const AttributeMap& default_attrs)
+      : attrs_(attrs), default_attrs_(&default_attrs) {}
 
   template <typename T>
   inline const T& Get(const std::string& name) const {
     auto it = attrs_.find(name);
     bool found = it != attrs_.end();
-    if (it == attrs_.end()) {
-      if (attrs_default_ != nullptr) {
-        it = attrs_default_->find(name);
-        found = it != attrs_default_->end();
+    if (!found) {
+      if (default_attrs_ != nullptr) {
+        it = default_attrs_->find(name);
+        found = it != default_attrs_->end();
       }
     }
     PADDLE_ENFORCE_EQ(found, true,
@@ -236,7 +236,7 @@ class AttrReader {
 
  private:
   const AttributeMap& attrs_;
-  const AttributeMap* attrs_default_;
+  const AttributeMap* default_attrs_;
 };
 
 // check whether a value(attribute) fit a certain limit
@@ -359,7 +359,7 @@ class TypedAttrChecker {
   }
 
   void operator()(AttributeMap* attr_map, bool get_default_value_only = false,
-                  bool without_default_value = false) const {
+                  bool only_check_exist_value = false) const {
     if (get_default_value_only) {
       if (!default_value_setter_.empty()) {
         attr_map->emplace(attr_name_, default_value_setter_[0]());
@@ -367,7 +367,7 @@ class TypedAttrChecker {
       return;
     }
 
-    if (without_default_value) {
+    if (only_check_exist_value) {
       auto it = attr_map->find(attr_name_);
       if (it != attr_map->end()) {
         ExtractAttribute<T> extract_attr(attr_name_);
@@ -415,11 +415,11 @@ class OpAttrChecker {
   }
 
   void Check(AttributeMap* attr_map, bool explicit_only = false,
-             bool without_default_value = false) const {
+             bool only_check_exist_value = false) const {
     auto checker_num = attr_checkers_.size();
     if (explicit_only) checker_num = explicit_checker_num_;
     for (size_t i = 0; i < checker_num; ++i) {
-      attr_checkers_[i](attr_map, false, without_default_value);
+      attr_checkers_[i](attr_map, false, only_check_exist_value);
     }
   }
 
@@ -435,18 +435,18 @@ class OpAttrChecker {
     explicit_checker_num_ = attr_checkers_.size();
   }
 
-  void InitDefaultMap() {
+  void InitDefaultAttributeMap() {
     for (const auto& checker : attr_checkers_) {
-      checker(&attrs_default_, true, false);
+      checker(&default_attrs_, true, false);
     }
   }
 
-  const AttributeMap& GetAttrDefaultMap() const { return attrs_default_; }
+  const AttributeMap& GetDefaultAttrMap() const { return default_attrs_; }
 
  private:
   std::vector<AttrChecker> attr_checkers_;
 
-  AttributeMap attrs_default_;
+  AttributeMap default_attrs_;
 
   // in order to improve the efficiency of dynamic graph mode,
   // we divede the attribute into explicit type and implicit type.

@@ -38,7 +38,7 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
         inputs_(inputs),
         outputs_(outputs),
         attrs_(attrs_map),
-        attrs_default_(attrs_map_default) {}
+        default_attrs_(attrs_map_default) {}
 
   virtual ~RuntimeInferVarTypeContext() {}
 
@@ -46,10 +46,10 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     auto it = attrs_.find(name);
 
     if (it == attrs_.end()) {
-      it = attrs_default_.find(name);
-      if (it == attrs_default_.end()) {
-        PADDLE_THROW(
-            platform::errors::NotFound("Can not find [%s] in attrs", name));
+      it = default_attrs_.find(name);
+      if (it == default_attrs_.end()) {
+        PADDLE_THROW(platform::errors::NotFound(
+            "Can not find [%s] in attributes.", name));
       }
     }
 
@@ -241,7 +241,7 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   const NameVarMap<VarType>& inputs_;
   const NameVarMap<VarType>& outputs_;
   const framework::AttributeMap& attrs_;
-  const framework::AttributeMap& attrs_default_;
+  const framework::AttributeMap& default_attrs_;
 };
 
 }  // namespace imperative

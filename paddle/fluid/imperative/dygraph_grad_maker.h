@@ -114,12 +114,12 @@ class GradOpBaseMakerBase {
   }
 
   // Only for dygraph
-  void SetDygraphAttrsDefaultMap(const framework::AttributeMap& attrs_default) {
-    attrs_default_ = &attrs_default;
+  void SetDygraphDefaultAttrsMap(const framework::AttributeMap& default_attrs) {
+    default_attrs_ = &default_attrs;
   }
 
-  const framework::AttributeMap& AttrsDefault() const {
-    return *attrs_default_;
+  const framework::AttributeMap& DefaultAttrsMap() const {
+    return *default_attrs_;
   }
 
   const framework::AttributeMap& Attrs() const { return attrs_; }
@@ -208,7 +208,7 @@ class GradOpBaseMakerBase {
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
   const framework::AttributeMap& attrs_;
-  const framework::AttributeMap* attrs_default_;
+  const framework::AttributeMap* default_attrs_;
   const std::map<std::string, std::string>& inplace_map_;
 };
 

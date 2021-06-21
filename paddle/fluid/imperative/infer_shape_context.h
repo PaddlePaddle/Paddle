@@ -40,7 +40,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       : var_base_map_in_(in),
         var_base_map_out_(out),
         attrs_(attr),
-        attrs_default_(attr_default),
+        default_attrs_(attr_default),
         op_type_(op_type) {}
 
   bool HasInput(const std::string& name) const override {
@@ -103,7 +103,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   framework::AttrReader Attrs() const override {
-    return framework::AttrReader(*attrs_, *attrs_default_);
+    return framework::AttrReader(*attrs_, *default_attrs_);
   }
 
   std::vector<std::string> Inputs(const std::string& name) const override {
@@ -397,7 +397,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const NameVarMap<VarType>* var_base_map_in_;
   const NameVarMap<VarType>* var_base_map_out_;
   const framework::AttributeMap* attrs_;
-  const framework::AttributeMap* attrs_default_;
+  const framework::AttributeMap* default_attrs_;
   const std::string op_type_;
 };
 

@@ -36,12 +36,12 @@ class DygraphExecutionContext : public framework::ExecutionContext {
                           const NameVarMap<VarType>& var_base_map_in,
                           const NameVarMap<VarType>& var_base_map_out,
                           const framework::AttributeMap& attrs,
-                          const framework::AttributeMap& attrs_default)
+                          const framework::AttributeMap& default_attrs)
       : ExecutionContext(op, scope, device_context, ctx),
         var_base_map_in_(var_base_map_in),
         var_base_map_out_(var_base_map_out),
         attrs_(attrs),
-        attrs_default_(attrs_default) {}
+        default_attrs_(default_attrs) {}
 
   std::string InputName(const std::string& name) const override {
     auto it = var_base_map_in_.find(name);
@@ -94,7 +94,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   }
 
   bool HasAttr(const std::string& name) const override {
-    return attrs_.count(name) != 0 || attrs_default_.count(name) != 0;
+    return attrs_.count(name) != 0 || default_attrs_.count(name) != 0;
   }
 
   const framework::AttributeMap& Attrs() const override { return attrs_; }
@@ -103,10 +103,11 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     auto it = attrs_.find(name);
 
     if (it == attrs_.end()) {
-      it = attrs_default_.find(name);
-      if (it == attrs_default_.end()) {
-        PADDLE_THROW(
-            platform::errors::NotFound("Can not find [%s] in attrs", name));
+      it = default_attrs_.find(name);
+      if (it == default_attrs_.end()) {
+        PADDLE_THROW(platform::errors::NotFound(
+            "Can not find [%s] in attributes of op %s.", name,
+            this->GetOp().Type()));
       }
     }
 
@@ -198,7 +199,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   const NameVarMap<VarType>& var_base_map_in_;
   const NameVarMap<VarType>& var_base_map_out_;
   const framework::AttributeMap& attrs_;
-  const framework::AttributeMap& attrs_default_;
+  const framework::AttributeMap& default_attrs_;
 };
 
 }  // namespace imperative

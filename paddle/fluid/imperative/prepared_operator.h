@@ -152,23 +152,23 @@ class PreparedOp {
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place,
                             const framework::AttributeMap& attrs,
-                            const framework::AttributeMap& attrs_default);
+                            const framework::AttributeMap& default_attrs);
 
   static PreparedOp Prepare(const NameVarMap<VariableWrapper>& ins,
                             const NameVarMap<VariableWrapper>& outs,
                             const framework::OperatorWithKernel& op,
                             const platform::Place& place,
                             const framework::AttributeMap& attrs,
-                            const framework::AttributeMap& attrs_default);
+                            const framework::AttributeMap& default_attrs);
 
   void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs,
-           const framework::AttributeMap& attrs_default);
+           const framework::AttributeMap& default_attrs);
 
   void Run(const NameVarMap<VariableWrapper>& ins,
            const NameVarMap<VariableWrapper>& outs,
            const framework::AttributeMap& attrs,
-           const framework::AttributeMap& attrs_default);
+           const framework::AttributeMap& default_attrs);
 
   const framework::OpKernelType& kernel_type() const { return kernel_type_; }
 

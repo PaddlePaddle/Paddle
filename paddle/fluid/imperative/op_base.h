@@ -50,8 +50,8 @@ class OpBase {
 
   const framework::AttributeMap& Attrs() const { return attrs_; }
 
-  const framework::AttributeMap& AttrsDefault() const {
-    return *attrs_default_;
+  const framework::AttributeMap& DefaultAttrsMap() const {
+    return *default_attrs_;
   }
 
   const framework::OpInfo& Info() const {
@@ -103,8 +103,8 @@ class OpBase {
 
   void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
 
-  void SetAttrDefaultMap(const framework::AttributeMap& attrs_default) {
-    attrs_default_ = &attrs_default;
+  void SetAttrDefaultMap(const framework::AttributeMap& default_attrs) {
+    default_attrs_ = &default_attrs;
   }
 
   void SetAttr(const std::string& name, const framework::Attribute& v) {
@@ -118,10 +118,10 @@ class OpBase {
 
   const framework::AttributeMap& Attrs() { return attrs_; }
 
-  const framework::AttributeMap& AttrsDefault() { return *attrs_default_; }
+  const framework::AttributeMap& DefaultAttrsMap() { return *default_attrs_; }
 
   bool HasAttr(const std::string& name) const {
-    return attrs_.count(name) > 0 || attrs_default_->count(name) > 0;
+    return attrs_.count(name) > 0 || default_attrs_->count(name) > 0;
   }
 
   const framework::Attribute& GetAttr(const std::string& name) const {
@@ -129,9 +129,9 @@ class OpBase {
     if (it != attrs_.end()) {
       return it->second;
     } else {
-      auto it_default = attrs_default_->find(name);
+      auto it_default = default_attrs_->find(name);
       PADDLE_ENFORCE_NE(
-          it_default, attrs_default_->end(),
+          it_default, default_attrs_->end(),
           platform::errors::NotFound("can not find attribute [%s]", name));
       return it_default->second;
     }
@@ -173,14 +173,14 @@ class OpBase {
                   const NameVarMap<VarBase>& ins,
                   const NameVarMap<VarBase>& outs,
                   const framework::AttributeMap& attrs,
-                  const framework::AttributeMap& attrs_default,
+                  const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
   static void Run(const framework::OperatorBase& op,
                   const NameVarMap<VariableWrapper>& ins,
                   const NameVarMap<VariableWrapper>& outs,
                   const framework::AttributeMap& attrs,
-                  const framework::AttributeMap& attrs_default,
+                  const framework::AttributeMap& default_attrs,
                   const platform::Place& place);
 
  private:
@@ -193,7 +193,7 @@ class OpBase {
   NameVarMap<VariableWrapper> ins_;
   NameVarMap<VariableWrapper> outs_;
   framework::AttributeMap attrs_;
-  const framework::AttributeMap* attrs_default_;
+  const framework::AttributeMap* default_attrs_;
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
