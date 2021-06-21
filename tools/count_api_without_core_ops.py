@@ -20,7 +20,6 @@ import collections
 import sys
 import pydoc
 import hashlib
-import six
 import functools
 import platform
 
@@ -104,7 +103,7 @@ def visit_member(parent_name, member, func):
 
 
 def is_primitive(instance):
-    int_types = (int, long) if six.PY2 else (int, )
+    int_types = (int, )
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True
