@@ -30,12 +30,6 @@ namespace distributed {
 using framework::LoDTensor;
 using framework::SelectedRows;
 
-inline double GetCurrentUS() {
-  struct timeval time;
-  gettimeofday(&time, NULL);
-  return 1e+6 * time.tv_sec + time.tv_usec;
-}
-
 Communicator::Communicator() {}
 
 void Communicator::init_gflag(const std::string &gflags) {
