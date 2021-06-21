@@ -38,10 +38,7 @@ import multiprocessing
 import signal
 
 # NOTE: queue has a different name in python2 and python3
-if six.PY2:
-    import Queue as queue
-else:
-    import queue
+import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60

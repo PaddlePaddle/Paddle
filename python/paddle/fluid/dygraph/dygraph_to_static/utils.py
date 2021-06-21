@@ -60,10 +60,7 @@ class BaseNodeVisitor(gast.NodeVisitor):
 
 
 # imp is deprecated in python3
-if six.PY2:
-    import imp
-else:
-    from importlib.machinery import SourceFileLoader
+from importlib.machinery import SourceFileLoader
 
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
@@ -491,12 +488,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     import_fluid = "import paddle\nimport paddle.fluid as fluid\n"
     source = import_fluid + source
 
-    if six.PY2:
-        source = source.encode('utf-8')
-        f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
-    else:
-        f = tempfile.NamedTemporaryFile(
-            mode='w', suffix='.py', delete=False, encoding='utf-8')
+    f = tempfile.NamedTemporaryFile(
+        mode='w', suffix='.py', delete=False, encoding='utf-8')
     with f:
         module_name = os.path.basename(f.name[:-3])
         f.write(source)
@@ -505,10 +498,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         atexit.register(lambda: remove_if_exit(f.name))
         atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
 
-    if six.PY2:
-        module = imp.load_source(module_name, f.name)
-    else:
-        module = SourceFileLoader(module_name, f.name).load_module()
+    module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
     # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
     # through 'func_name'. So set the special function name '__i_m_p_l__'.

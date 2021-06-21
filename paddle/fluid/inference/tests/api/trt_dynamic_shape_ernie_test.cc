@@ -29,11 +29,6 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   int run_batch = 1;
   const int run_seq_len = 128;
 
-  std::vector<int64_t> tmp_input;
-  std::vector<float> tmp_four_input;
-  tmp_input.reserve(run_batch * run_seq_len);
-  tmp_four_input.reserve(run_batch * run_seq_len);
-
   int64_t i0[run_seq_len] = {
       1,    3558, 4,   75,  491, 89, 340, 313, 93,   4,   255,   10, 75,    321,
       4095, 1902, 4,   134, 49,  75, 311, 14,  44,   178, 543,   15, 12043, 2,
