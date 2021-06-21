@@ -18,7 +18,7 @@ decorator to deprecate a function or class
 import warnings
 import functools
 import paddle
-import sys, os
+import sys, subprocess
 
 __all__ = []
 
@@ -101,7 +101,7 @@ def deprecated(update_to="", since="", reason="", level=0):
 
             # ensure ANSI escape sequences print correctly in cmd and powershell
             if sys.platform.lower() == 'win32':
-                os.system('')
+                subprocess.call('', shell=True)
 
             warningmsg = "\033[93m\nWarning:\n%s \033[0m" % (msg)
             v_current = [int(i) for i in paddle.__version__.split(".")]
