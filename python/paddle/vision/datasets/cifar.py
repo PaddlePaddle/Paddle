@@ -141,10 +141,7 @@ class Cifar10(Dataset):
                      if self.flag in each_item.name)
 
             for name in names:
-                if six.PY2:
-                    batch = pickle.load(f.extractfile(name))
-                else:
-                    batch = pickle.load(f.extractfile(name), encoding='bytes')
+                batch = pickle.load(f.extractfile(name), encoding='bytes')
 
                 data = batch[six.b('data')]
                 labels = batch.get(
