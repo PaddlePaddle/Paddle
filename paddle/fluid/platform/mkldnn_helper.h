@@ -43,6 +43,48 @@ typedef std::unique_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
 typedef std::unique_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
 typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
 
+enum class key_suffix {
+  fwd_p,
+  fwd_pd,
+  bwd_p,
+  bwd_pd,
+  src_mem_p,
+  dst_mem_p,
+  bwd_src_mem_p,
+  bwd_dst_mem_p,
+  bwd_w_p,
+  reorder_p,  // here ends 1 digit
+  bwd_w_pd,
+  bias_mem_p,
+  conv_bwd_data_p,
+  conv_bwd_weights_p,
+  conv_p,
+  conv_pd,
+  custom_reorder,
+  data_diff_dst_mem_p,
+  data_weights_mem_p,
+  diff_dst_mem_p,
+  diff_src_mem_p,
+  diff_wei_mem_p,
+  diff_weights_mem_p,
+  residual_data_mem_p,
+  src0_mem_p,
+  src1_mem_p,
+  submem_p,
+  transpose_p,
+  user,
+  user_bias_mem_p,
+  user_diff_dst_mem_p,
+  user_diff_src_mem_p,
+  user_dst_mem_p,
+  user_residual_data_mem_p,
+  user_src_mem_p,
+  user_weights_mem_p,
+  weights_diff_dst_mem_p,
+  weights_mem_p,
+  weights_src_mem_p
+};
+
 template <typename Type>
 void* to_void_cast(const Type* t) {
   return static_cast<void*>(const_cast<Type*>(t));
@@ -438,6 +480,14 @@ inline void AppendKey(std::string* key,
                       const mkldnn::normalization_flags& flags) {
   key->append(
       platform::MKLDNNDeviceContext::cached_numbers[static_cast<int>(flags)]);
+  // key->append(std::to_string(static_cast<int>(flags)));
+}
+
+template <>
+inline void AppendKey(std::string* key,
+                      const key_suffix& suffix) {
+  key->append(
+      platform::MKLDNNDeviceContext::cached_numbers[static_cast<int>(suffix)]);
   // key->append(std::to_string(static_cast<int>(flags)));
 }
 

@@ -144,7 +144,7 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
               dev_ctx, framework::vectorize(output_dx->dims()),
               ctx.InputName("X"),
               (std::to_string(static_cast<int>(reduction_type)))) +
-          "@fwd_pd";
+          suffix_to_cached_string(platform::key_suffix::fwd_pd);
       std::shared_ptr<dnnl::reduction::primitive_desc> fwd_pd =
           std::static_pointer_cast<dnnl::reduction::primitive_desc>(
               dev_ctx.GetBlob(key_pd));
