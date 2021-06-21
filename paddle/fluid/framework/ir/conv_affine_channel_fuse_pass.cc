@@ -94,6 +94,60 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   }
 }
 
+ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC"})
+      .End();
+
+  AddOpCompat(OpCompat("affine_channel"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("data_layout")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+}
+
 void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));

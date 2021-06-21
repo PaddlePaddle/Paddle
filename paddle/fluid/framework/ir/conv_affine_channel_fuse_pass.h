@@ -31,6 +31,7 @@ class Graph;
 
 class ConvAffineChannelFusePass : public FusePassBase {
  public:
+  ConvAffineChannelFusePass();
   virtual ~ConvAffineChannelFusePass() {}
 
  protected:
