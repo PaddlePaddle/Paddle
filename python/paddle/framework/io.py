@@ -233,13 +233,9 @@ def _pickle_save(obj, f, protocol):
         raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
                          format(protocol))
 
-    list_params = set()
-
     def reduce_varbase(self):
         data = self.numpy()
         name = self.name
-        if name in list_params:
-            return self.__reduce__()
 
         return (tuple, ((name, data), ))
 
@@ -249,19 +245,7 @@ def _pickle_save(obj, f, protocol):
         return (eval, ('data', {'data': data}))
 
     def reduce_Layer(self):
-        is_param_or_layer = lambda v: isinstance(v, ParamBase) or isinstance(v, core.Layer)
-
-        def collect_params(param_or_layer):
-            if isinstance(param_or_layer, ParamBase):
-                list_params.add(param_or_layer.name)
-            else:
-                # param_or_layer is layer
-                _parse_every_object(param_or_layer.__dict__, is_param_or_layer,
-                                    collect_params)
-            return param_or_layer
-
-        _parse_every_object(self.__dict__, is_param_or_layer, collect_params)
-        return self.__reduce_ex__(protocol)
+        raise ValueError("paddle do not support saving layer object.")
 
     dispatch_table_layer = dict()
 
