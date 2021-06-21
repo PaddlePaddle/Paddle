@@ -152,8 +152,8 @@ bool AnalysisPredictor::Init(
                                              : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
   } else {
-    LOG(INFO) << "Profiler is deactivated, and no profiling report will be "
-                 "generated.";
+    VLOG(2) << "Profiler is deactivated, and no profiling report will be "
+               "generated.";
   }
 
   // no matter with or without MKLDNN
