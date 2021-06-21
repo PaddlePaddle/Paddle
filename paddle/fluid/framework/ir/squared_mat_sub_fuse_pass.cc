@@ -463,7 +463,7 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .End()
       .AddAttr("shape")
       .End()
-      // type:float，no restrictions
+      // type:float，there is no restriction
       .AddAttr("value")
       .End();
 }
