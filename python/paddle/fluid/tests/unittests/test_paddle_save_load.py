@@ -42,7 +42,7 @@ CLASS_NUM = 10
 if six.PY2:
     LARGE_PARAM = 2**2
 else:
-    LARGE_PARAM = 2**2
+    LARGE_PARAM = 2**26
 
 
 def random_batch_reader():
@@ -68,10 +68,6 @@ class LinearNet(nn.Layer):
     def __init__(self):
         super(LinearNet, self).__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-        var1 = paddle.to_tensor([3, 4], stop_gradient=False)
-        var1.name = 'test_save_load_layer_with_varbase'
-        var2 = paddle.to_tensor([3, 4], stop_gradient=True)
-        self._vars = [var1, var2]
 
     def forward(self, x):
         return self._linear(x)
@@ -955,6 +951,11 @@ class TestSaveLoadLayer(unittest.TestCase):
     def test_save_load_layer_with_varbase(self):
         paddle.disable_static()
         layer = LinearNet()
+        var1 = paddle.to_tensor([3, 4], stop_gradient=False)
+        var1.name = 'test_save_load_layer_with_varbase'
+        var2 = paddle.to_tensor([3, 4], stop_gradient=True)
+        layer._vars = [var1, var2]
+
         path = "test_save_load_layer_with_varbase_/layer.pdmodel"
         paddle.save(layer, path)
         loaded_layer = paddle.load(path)
