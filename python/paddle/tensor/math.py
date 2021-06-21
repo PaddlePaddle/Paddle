@@ -1758,9 +1758,6 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             #        [0.39408177, 0.34103420]])
             
     """
-    inputs = {'Input': [x]}
-    attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
-
     def __check_input(input, offset, dim1, dim2):
         check_dtype(x.dtype, 'Input',
                     ['int32', 'int64', 'float32', 'float64'],
@@ -1790,10 +1787,8 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     if in_dygraph_mode():
         return core.ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
-    if not in_dygraph_mode():
-        __check_input(input, offset, axis1, axis2)
+    __check_input(input, offset, axis1, axis2)
     helper = LayerHelper('diagonal', **locals())
-
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
@@ -1802,7 +1797,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         attrs={'offset': offset,
                'axis1': axis1,
                'axis2': axis2},
-        outputs={'Out': [out]})
+               outputs={'Out': [out]})
     return out
 
 
