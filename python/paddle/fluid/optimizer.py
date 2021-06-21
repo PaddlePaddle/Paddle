@@ -1564,7 +1564,7 @@ class DGCMomentumOptimizer(Optimizer):
             assert isinstance(
                 num_trainers, int
             ), "The type of num_trainers should be 'int', but received %s" % type(
-                value)
+                num_trainers)
             assert num_trainers > 0, "The value of num_trainers should be greater than 0!"
 
             self._num_trainers = num_trainers
