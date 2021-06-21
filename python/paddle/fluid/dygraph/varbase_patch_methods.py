@@ -16,7 +16,7 @@ import inspect
 import numpy as np
 import warnings
 import weakref
-import sys, subprocess
+import sys
 
 import paddle
 from .. import framework

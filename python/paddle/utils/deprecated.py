@@ -18,7 +18,7 @@ decorator to deprecate a function or class
 import warnings
 import functools
 import paddle
-import sys, subprocess
+import sys
 
 __all__ = []
 
