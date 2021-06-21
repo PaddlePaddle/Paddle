@@ -113,13 +113,12 @@ class TestFP16DiagonalOp(TestDiagonalOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=2e-3)
+            self.check_output_with_place(place)
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ['Input'], 'Out', max_relative_error=0.8)
+            self.check_grad_with_place(place, ['Input'], 'Out')
 
 
 class TestDiagonalAPI(unittest.TestCase):
