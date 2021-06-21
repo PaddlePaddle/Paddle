@@ -253,6 +253,40 @@ class Fleet(object):
                 warnings.warn(
                     "The dygraph hybrid parallel environment has been initialized."
                 )
+        elif self._is_collective:
+            use_sharding = self._user_defined_strategy.sharding
+
+            # global group
+            global_rank = self.worker_index()
+            global_world_size = self.worker_num()
+            # NOTE(wangxi): see sharding_optimizer
+            global_ring_id = 3 if use_sharding else 0
+            global_ranks = list(range(global_world_size))
+
+            if tp._HYBRID_PARALLEL_GROUP is None: tp.CommunicateGroup()
+            cg = tp._HYBRID_PARALLEL_GROUP
+            self._hcg = cg
+            cg.set_comm_group('global', global_rank, global_world_size,
+                              global_ring_id, global_ranks)
+
+            # hybrid group
+            if use_sharding is False: return
+
+            sharding_configs = self._user_defined_strategy.sharding_configs
+            mp_degree = int(sharding_configs['mp_degree'])
+
+            if mp_degree > 1:
+                assert global_world_size % mp_degree == 0
+                # NOTE(wangxi): mp_ring_id sync with sharding_optimizer.py _build_groups
+                mp_ring_id = 0
+                mp_rank = global_rank % mp_degree
+                mp_group_id = global_rank // mp_degree
+                mp_group_ranks = [
+                    idx for idx in global_ranks
+                    if idx // mp_degree == mp_group_id
+                ]
+                cg.set_comm_group('model', mp_rank, mp_degree, mp_ring_id,
+                                  mp_group_ranks)
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment
