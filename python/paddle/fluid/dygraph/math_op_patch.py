@@ -20,7 +20,6 @@ from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 
 import numpy as np
-import six
 import warnings
 
 _supported_int_dtype_ = [
@@ -121,10 +120,7 @@ def monkey_patch_math_varbase():
         assert numel == 1, "only one element variable can be converted to long."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        if six.PY2:
-            return long(var.numpy().flatten()[0])
-        else:
-            return int(var.numpy().flatten()[0])
+        return int(var.numpy().flatten()[0])
 
     def _int_(var):
         numel = np.prod(var.shape)
@@ -141,10 +137,7 @@ def monkey_patch_math_varbase():
         assert numel == 1, "only one element variable can be converted to python index."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        if six.PY2:
-            return long(var.numpy().flatten()[0])
-        else:
-            return int(var.numpy().flatten()[0])
+        return int(var.numpy().flatten()[0])
 
     @property
     def _ndim_(var):
