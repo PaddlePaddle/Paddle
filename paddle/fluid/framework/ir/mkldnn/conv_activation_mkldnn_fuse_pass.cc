@@ -136,7 +136,8 @@ ConvActivationFusePass::ConvActivationFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NHWC", "NCHW"})
+      .IsOptional()
+      // .IsStringIn({"NHWC", "NCHW"})
       .End();
 
   AddOpCompat(OpCompat("relu"))
