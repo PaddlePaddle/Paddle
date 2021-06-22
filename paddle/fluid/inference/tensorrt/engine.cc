@@ -42,7 +42,6 @@ void TensorRTEngine::InitNetwork() {
   }
 
   infer_builder_config_.reset(infer_builder_->createBuilderConfig());
-  infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
   optim_profile_ = infer_builder_->createOptimizationProfile();
 }
 
