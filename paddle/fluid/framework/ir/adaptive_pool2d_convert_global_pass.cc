@@ -58,7 +58,7 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
       .IsStringIn({"NHWC", "NCHW"})
       .End()
       .AddAttr("padding_algorithm")
-      .IsStringIn("EXPLICIT", "SAME", "VALID")
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End();
 }
 
