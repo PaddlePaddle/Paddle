@@ -71,21 +71,6 @@ class EmbeddingNet(fluid.dygraph.Layer):
         return output
 
 
-class SimpleEmbedding(fluid.dygraph.Layer):
-    def __init__(self, vocab_size, hidden_size, weight):
-        super(SimpleEmbedding, self).__init__()
-        self.embedding = paddle.nn.Embedding(
-            vocab_size,
-            hidden_size,
-            weight_attr=paddle.framework.ParamAttr(
-                name="origin_embedding",
-                initializer=paddle.nn.initializer.Assign(weight)))
-
-    def forward(self, x):
-        output = self.embedding(x)
-        return output
-
-
 class TestDistTraning(unittest.TestCase):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
@@ -101,31 +86,55 @@ class TestDistTraning(unittest.TestCase):
         }
         fleet.init(is_collective=True, strategy=strategy)
 
+    def get_program(self):
+        return paddle.static.Program(), paddle.static.Program()
+
     def test_column_parallel_layer(self):
-        main_program, startup_program = paddle.static.Program(
-        ), paddle.static.Program()
+        main_program, startup_program = self.get_program()
         with paddle.static.program_guard(main_program, startup_program):
             input_size, output_size = 28, 64
             model_a = ColumnLinearNet(input_size, output_size)
 
             x = paddle.static.data(name='x', shape=[None, input_size])
             y = model_a(x)
-            print(y)
+
+            #print(main_program)
+            ops = main_program.global_block().ops
+            ops = [op.type for op in ops]
+            self.assertEqual(
+                ops, ['c_identity', 'matmul', 'elementwise_add', 'c_concat'])
+
+            weight = model_a.parallel_linear.weight
+            bias = model_a.parallel_linear.bias
+            self.assertEqual(weight.shape, (input_size, output_size //
+                                            self.model_parallel_size))
+            self.assertEqual(bias.shape,
+                             (output_size // self.model_parallel_size, ))
 
     def test_row_parallel_layer(self):
-        main_program, startup_program = paddle.static.Program(
-        ), paddle.static.Program()
+        main_program, startup_program = self.get_program()
         with paddle.static.program_guard(main_program, startup_program):
             input_size, output_size = 28, 64
             model_a = RowLinearNet(input_size, output_size)
 
             x = paddle.static.data(name='x', shape=[None, input_size])
             y = model_a(x)
-            print(y)
+
+            #print(main_program)
+            ops = main_program.global_block().ops
+            ops = [op.type for op in ops]
+            self.assertEqual(
+                ops,
+                ['c_split', 'matmul', 'c_allreduce_sum', 'elementwise_add'])
+
+            weight = model_a.parallel_linear.weight
+            bias = model_a.parallel_linear.bias
+            self.assertEqual(weight.shape, (
+                input_size // self.model_parallel_size, output_size))
+            self.assertEqual(bias.shape, (output_size, ))
 
     def test_parallel_embedding(self):
-        main_program, startup_program = paddle.static.Program(
-        ), paddle.static.Program()
+        main_program, startup_program = self.get_program()
         with paddle.static.program_guard(main_program, startup_program):
             vocab_size, hidden_size = 1000, 512
             seq_len = 128
@@ -136,17 +145,23 @@ class TestDistTraning(unittest.TestCase):
             x = paddle.static.data(
                 name='x', shape=[None, seq_len], dtype='int64')
             y = model_a(x)
-            print(y)
+
+            #print(main_program)
+            ops = main_program.global_block().ops
+            ops = [op.type for op in ops]
+            self.assertEqual(ops, ['c_embedding', 'c_allreduce_sum'])
+
+            weight = model_a.embedding.weight
+            self.assertEqual(weight.shape, (
+                vocab_size // self.model_parallel_size, hidden_size))
 
     def test_parallel_cross_entropy(self):
-        main_program, startup_program = paddle.static.Program(
-        ), paddle.static.Program()
+        main_program, startup_program = self.get_program()
         with paddle.static.program_guard(main_program, startup_program):
             batch_size = 8
             seq_length = 16
-            class_size_per_card = 2
-            vocab_size = class_size_per_card * self.model_parallel_size
-            seed = 1025
+            class_size = 1000
+            class_size_per_card = class_size // self.model_parallel_size
 
             # model_a
             model_a = fleet.meta_parallel.ParallelCrossEntropy()
@@ -156,7 +171,12 @@ class TestDistTraning(unittest.TestCase):
             label = paddle.static.data(
                 name='label', shape=[batch_size, seq_length], dtype='int64')
             loss_a = model_a(x, label)
-            print(loss_a)
+
+            #print(main_program)
+            ops = main_program.global_block().ops
+            ops = [op.type for op in ops]
+            self.assertEqual(ops,
+                             ['unsqueeze2', 'c_softmax_with_cross_entropy'])
 
 
 if __name__ == '__main__':
