@@ -61,8 +61,10 @@ SeqPoolCVMConcatFusePass::SeqPoolCVMConcatFusePass() {
       .IsTensor()
       .End()
       .AddOutput("MaxIndex")
+      .IsOptional()
       .End()
       .AddAttr("pooltype")
+      .IsStringIn({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"})
       .End()
       .AddAttr("pad_value")
       .End();
@@ -85,6 +87,7 @@ SeqPoolCVMConcatFusePass::SeqPoolCVMConcatFusePass() {
       .End()
       .AddInput("AxisTensor")
       .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Out")
       .IsTensor()
