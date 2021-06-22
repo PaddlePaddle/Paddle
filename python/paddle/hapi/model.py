@@ -1032,7 +1032,8 @@ class Model(object):
                 a numpy array or paddle.Tensor, or a list of arrays or tensors 
                 (in case the model has multiple labels). If has no labels, 
                 set None. Default is None.
-            update (bool): Whether update parameters after loss.backward() computing. Using it to accumulate gradients. Default is True.
+            update (bool): Whether update parameters after loss.backward() computing.
+                Using it to accumulate gradients. Default is True.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
