@@ -97,30 +97,6 @@ class TestDiagonalOpCase3(TestDiagonalOp):
         pass
 
 
-#@unittest.skipIf(not core.is_compiled_with_cuda(),
-#                 "core is not compiled with CUDA")
-class TestFP16DiagonalOp(TestDiagonalOp):
-    def init_config(self):
-        self.case = np.random.randn(100, 100).astype('float16')
-        self.inputs = {'Input': self.case}
-        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
-        self.target = np.diagonal(
-            self.inputs['Input'],
-            offset=self.attrs['offset'],
-            axis1=self.attrs['axis1'],
-            axis2=self.attrs['axis2'])
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place)
-
-    def test_checkout_grad(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(place, ['Input'], 'Out')
-
-
 class TestDiagonalAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [10, 3, 4]
