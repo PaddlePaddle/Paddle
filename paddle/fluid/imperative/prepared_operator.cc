@@ -15,7 +15,10 @@
 #include "paddle/fluid/imperative/prepared_operator.h"
 
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
+
+DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace imperative {
@@ -174,6 +177,11 @@ static void PreparedOpRunImpl(
 
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                         attrs));
+
+  if (FLAGS_check_nan_inf) {
+    framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
+        op.Type(), outs, dev_ctx->GetPlace());
+  }
 
   /**
    * [ Why need handle complex gradient to real gradient? ]

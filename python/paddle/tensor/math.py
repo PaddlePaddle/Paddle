@@ -45,6 +45,7 @@ from ..fluid.layers import sinh    # noqa: F401
 from ..fluid.layers import cosh    # noqa: F401
 from ..fluid.layers import exp    # noqa: F401
 from ..fluid.layers import exp_    # noqa: F401
+from ..fluid.layers import expm1    # noqa: F401
 from ..fluid.layers import floor    # noqa: F401
 from ..fluid.layers import floor_    # noqa: F401
 from ..fluid.layers import log    # noqa: F401
@@ -62,6 +63,7 @@ from ..fluid.layers import erf    # noqa: F401
 from ..fluid.layers import sqrt    # noqa: F401
 from ..fluid.layers import sqrt_    # noqa: F401
 from ..fluid.layers import sin    # noqa: F401
+from ..fluid.layers import lgamma    # noqa: F401
 
 from ..fluid.layers import multiplex    # noqa: F401
 from ..fluid import layers
@@ -853,6 +855,50 @@ def add_n(inputs, name=None):
         attrs={'use_mkldnn': False})
 
     return out
+
+
+def trunc(input, name=None):
+    '''
+    This API is used to returns a new tensor with the truncated integer values of input.
+    
+    Args:
+        input (Tensor): The input tensor, it's data type should be int32, int64, float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: The output Tensor of trunc.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input = paddle.rand([2,2],'float32')
+            print(input)
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [[0.02331470, 0.42374918],
+            #         [0.79647720, 0.74970269]])
+
+            output = paddle.trunc(input)
+            print(output)
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         [[0., 0.],
+            #         [0., 0.]]))
+    '''
+    if in_dygraph_mode():
+        return core.ops.trunc(input)
+    else:
+        inputs = {"X": input}
+        attrs = {}
+
+        helper = LayerHelper("trunc", **locals())
+        check_variable_and_dtype(input, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc')
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+        helper.append_op(
+            type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": out})
+        return out
+
 
 
 def mm(input, mat2, name=None):
@@ -2280,3 +2326,119 @@ def conj(x, name=None):
 
     helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
     return out
+
+def digamma(x, name=None):
+    r"""
+    Calculates the digamma of the given input tensor, element-wise.
+
+    .. math::
+        Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Tensor, the digamma of the input Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
+            res = paddle.digamma(data)
+            print(res)
+            # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[-0.57721591,  0.03648996],
+            #        [ nan       ,  5.32286835]])
+    """
+
+    if in_dygraph_mode():
+        return core.ops.digamma(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
+    helper = LayerHelper('digamma', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+def neg(x, name=None):
+    """
+    This function computes the negative of the Tensor elementwisely.
+
+    Args:
+        x (Tensor): Input of neg operator, an N-D Tensor, with data type float32, float64, int8, int16, int32, or int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The negative of input Tensor. The shape and data type are the same with input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.neg(x)
+            print(out)
+            # [0.4 0.2 -0.1 -0.3]
+    """
+
+    return layers.scale(x, scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name)
+
+def atan2(y, x, name=None):
+    r"""
+    Element-wise arctangent of y/x with consideration of the quadrant.
+
+    Equation:
+        .. math::
+
+          atan2(y,x)=\left\{\begin{matrix}
+          & tan^{-1}(\frac{y}{x}) & x > 0 \\
+          & tan^{-1}(\frac{y}{x}) + \pi & y>=0, x < 0 \\
+          & tan^{-1}(\frac{y}{x}) - \pi & y<0, x < 0 \\
+          & +\frac{\pi}{2} & y>0, x = 0 \\
+          & -\frac{\pi}{2} & y<0, x = 0 \\
+          &\text{undefined} & y=0, x = 0
+          \end{matrix}\right.
+
+    Args:
+        y (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
+        x (Tensor): An N-D Tensor, must have the same type as `x`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          y = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
+          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+          #       [-1,  1,  1, -1])
+
+          x = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
+          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+          #       [-1,  -1,  1, 1])
+
+          out = paddle.atan2(y, x)
+          #Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+          #       [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
+
+    """
+
+    if in_dygraph_mode():
+        return core.ops.atan2(y, x)
+    else:
+        check_variable_and_dtype(y, 'y', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+        check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'atan2')
+
+        helper = LayerHelper('atan2', **locals())
+        inputs = {'X1' : y, 'X2' : x}
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+                type='atan2', inputs=inputs, outputs={'Out': out})
+        return out

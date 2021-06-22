@@ -202,7 +202,15 @@ class TensorRTEngine {
     dy::initLibNvInferPlugins(&logger, "");
   }
 
-  ~TensorRTEngine() {}
+  ~TensorRTEngine() {
+    for (auto& attr : attrs_) {
+      if (attr_dels_.find(attr.first) != attr_dels_.end()) {
+        attr_dels_[attr.first]();
+      }
+    }
+    attrs_.clear();
+    attr_dels_.clear();
+  }
 
   // Add an input and set its name, data type and dimension.
   nvinfer1::ITensor* DeclareInput(const std::string& name,
@@ -386,6 +394,82 @@ class TensorRTEngine {
   }
 #endif
 
+  bool Has(const std::string& attr_name) const {
+    return attrs_.count(attr_name) > 0;
+  }
+
+  void Erase(const std::string& attr_name) {
+    if (!Has(attr_name)) {
+      return;
+    }
+    if (attr_dels_.find(attr_name) != attr_dels_.end()) {
+      attr_dels_[attr_name]();
+      attr_dels_.erase(attr_name);
+    }
+    attrs_.erase(attr_name);
+  }
+
+  // Set a pointer to the attribute. Engine takes ownership of the attribute.
+  template <typename AttrType>
+  void Set(const std::string& attr_name, AttrType* attr) {
+    if (attrs_.count(attr_name) == 0) {
+      PADDLE_ENFORCE_EQ(
+          attrs_.count(attr_name), 0,
+          platform::errors::AlreadyExists(
+              "Attribute %s already set in trt engine.", attr_name));
+    } else {
+      VLOG(3) << "Setting the attribute " << attr_name << " for trt engine "
+              << this;
+    }
+    attrs_[attr_name] = attr;
+    attr_dels_[attr_name] = [attr, attr_name]() {
+      VLOG(3) << "deleting " << attr_name;
+      delete attr;
+    };
+  }
+
+  // Set a pointer to the attribute. Engine doesn't take ownership. Caller
+  // should delete the attribute.
+  template <typename AttrType>
+  void SetNotOwned(const std::string& attr_name, AttrType* attr) {
+    PADDLE_ENFORCE_EQ(
+        attrs_.count(attr_name), 0,
+        platform::errors::AlreadyExists(
+            "Attribute %s already set in trt engine.", attr_name));
+    attrs_[attr_name] = attr;
+  }
+
+  // Get a reference to the attributed previously set.
+  template <typename AttrType>
+  AttrType& Get(const std::string& attr_name) const {
+    PADDLE_ENFORCE_NE(attrs_.find(attr_name), attrs_.end(),
+                      platform::errors::InvalidArgument(
+                          "Attribute %s not found in trt engine.", attr_name));
+    try {
+      return *boost::any_cast<AttrType*>(attrs_.at(attr_name));
+    } catch (boost::bad_any_cast&) {
+      auto TypeToString = [](const std::type_info& info) -> std::string {
+        if (std::type_index(info) == std::type_index(typeid(bool*))) {
+          return "bool";
+        } else if (std::type_index(info) == std::type_index(typeid(int*))) {
+          return "int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(const int*))) {
+          return "const int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(std::string*))) {
+          return "std::string";
+        }
+        return info.name();
+      };
+
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid type for attritube %s, expected: %s, actual: %s.", attr_name,
+          TypeToString(typeid(AttrType*)),
+          TypeToString(attrs_.at(attr_name).type())));
+    }
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -440,6 +524,9 @@ class TensorRTEngine {
       infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
+
+  std::unordered_map<std::string, boost::any> attrs_;
+  std::unordered_map<std::string, std::function<void(void)>> attr_dels_;
 
   // For dynamic shape
   bool with_dynamic_shape_{false};
