@@ -41,7 +41,11 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
         self.num = 0
         self.init_data()
         self.inputs = {'X': self.x}
-        self.attrs = {'use_mkldnn': True, 'num': self.num}
+        self.attrs = {
+            'use_mkldnn': True,
+            'num': self.num,
+            'mkldnn_data_type': "bfloat16"
+        }
 
         if self.axis is not None:
             self.attrs['axis'] = self.axis
@@ -56,7 +60,7 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
             for i in range(len(self.out))]}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output_with_place(core.CPUPlace())
 
 
 # TODO jakpiase enable grad check(concat op)
