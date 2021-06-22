@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,30 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from . import quant_nn
-from .quant_nn import *
-
-from . import qat
-from .qat import *
-
-from . import ptq
-from .ptq import *
-
+import paddle
+import math
+import numpy as np
 from . import ptq_config
-from .ptq_config import *
 
-from . import ptq_quantizer
-from .ptq_quantizer import *
 
-from . import ptq_registry
-from .ptq_registry import *
-
-__all__ = []
-__all__ += quant_nn.__all__
-__all__ += qat.__all__
-__all__ += ptq.__all__
-__all__ += ptq_config.__all__
-__all__ += ptq_quantizer.__all__
-__all__ += ptq_registry.__all__
+def quant_forward_post_hook(layer, inputs, outputs):
+    """
+    The forward_post_hook for PTQ.
+    """
+    assert hasattr(layer, '_quant_config'), \
+        "The layer should have _quant_config attr"
+    layer._quant_config.in_act_quantizer.sample_data(layer, inputs)
+    layer._quant_config.out_act_quantizer.sample_data(layer, (outputs, ))
