@@ -25,23 +25,18 @@ import warnings
 import time
 import socket
 import contextlib
-from collections import Iterable
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Variable
-from paddle.fluid.framework import ParamBase
-from paddle.fluid.framework import _current_expected_place
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
 from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
 from paddle.fluid.layers.utils import flatten
@@ -50,9 +45,6 @@ from paddle.fluid.layers import collective
 from paddle.io import DataLoader
 from paddle.io import Dataset
 from paddle.io import DistributedBatchSampler
-from paddle.fluid.executor import scope_guard
-from paddle.fluid.executor import Executor
-from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 import paddle.distributed as dist
@@ -1022,7 +1014,8 @@ class Model(object):
 
     def train_batch(self, inputs, labels=None, update=True):
         """
-        Run one training step on a batch of data.
+        Run one training step on one batch of data. And using `update` indicates
+        whether optimizer update gradients computing by this batch.
 
         Args:
             inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
@@ -1542,7 +1535,7 @@ class Model(object):
             shuffle=True,
             num_workers=0,
             callbacks=None,
-            accumulate=1, ):
+            accumulate_grad_batches=1, ):
         """
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
@@ -1585,8 +1578,8 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-            accumulate (int): The number of steps to accumulate gradident during 
-                training process before optimizer updates. It can mimic large batch
+            accumulate_grad_batches (int): The number of batches to accumulate gradident 
+                during training process before optimizer updates. It can mimic large batch
                 size. Default: 1.
             
         Returns:
@@ -1709,7 +1702,7 @@ class Model(object):
         do_eval = eval_loader is not None
         self._test_dataloader = eval_loader
 
-        self._accumulate = accumulate
+        self._accumulate = accumulate_grad_batches
 
         steps = self._len_data_loader(train_loader)
         cbks = config_callbacks(
