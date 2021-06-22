@@ -68,7 +68,7 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
 #        self.check_grad_with_place(
 #            core.CPUPlace(), ["X"],
 #            "Out",
-#            check_dygraph=False,
+#            check_dygraph=,
 #            user_defined_grads=[self.inputs['X']],
 #            user_defined_grad_outputs=self.out[0])
 
