@@ -30,6 +30,7 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
       .IsTensor()
       .End()
       .AddOutput("Out")
+      .IsTensor()
       .End()
       .AddAttr("pooling_type")
       .IsStringIn({"max", "avg"})
@@ -57,7 +58,7 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
       .IsStringIn({"NHWC", "NCHW"})
       .End()
       .AddAttr("padding_algorithm")
-      .IsOptional()
+      .IsStringIn("EXPLICIT", "SAME", "VALID")
       .End();
 }
 
