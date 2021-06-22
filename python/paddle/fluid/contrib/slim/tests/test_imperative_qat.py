@@ -64,11 +64,11 @@ class TestImperativeQat(unittest.TestCase):
             print("Failed to delete {} due to {}".format(cls.root_path, str(e)))
 
     def set_vars(self):
-        self.weight_quantize_type = None
-        self.activation_quantize_type = None
+        self.weight_quantize_type = 'abs_max'
+        self.activation_quantize_type = 'moving_average_abs_max'
         print('weight_quantize_type', self.weight_quantize_type)
 
-    def run_qat_save(self):
+    def test_qat(self):
         self.set_vars()
 
         imperative_qat = ImperativeQuantAware(
@@ -198,16 +198,6 @@ class TestImperativeQat(unittest.TestCase):
         self.assertTrue(
             np.allclose(after_save, before_save.numpy()),
             msg='Failed to save the inference quantized model.')
-
-
-class TestImperativeQatAbsMax(TestImperativeQat):
-    def set_vars(self):
-        self.weight_quantize_type = 'abs_max'
-        self.activation_quantize_type = 'moving_average_abs_max'
-        print('weight_quantize_type', self.weight_quantize_type)
-
-    def test_qat(self):
-        self.run_qat_save()
 
 
 if __name__ == '__main__':

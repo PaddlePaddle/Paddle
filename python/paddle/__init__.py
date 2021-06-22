@@ -108,6 +108,10 @@ from .tensor.logic import logical_and  # noqa: F401
 from .tensor.logic import logical_not  # noqa: F401
 from .tensor.logic import logical_or  # noqa: F401
 from .tensor.logic import logical_xor  # noqa: F401
+from .tensor.logic import bitwise_and  # noqa: F401
+from .tensor.logic import bitwise_not  # noqa: F401
+from .tensor.logic import bitwise_or  # noqa: F401
+from .tensor.logic import bitwise_xor  # noqa: F401
 from .tensor.logic import not_equal  # noqa: F401
 from .tensor.logic import allclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
@@ -148,6 +152,7 @@ from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
 from .tensor.math import atan  # noqa: F401
+from .tensor.math import atan2  # noqa: F401
 from .tensor.math import ceil  # noqa: F401
 from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
@@ -205,6 +210,7 @@ from .tensor.math import isnan  # noqa: F401
 from .tensor.math import prod  # noqa: F401
 from .tensor.math import broadcast_shape  # noqa: F401
 from .tensor.math import conj  # noqa: F401
+from .tensor.math import trunc  # noqa: F401
 from .tensor.math import digamma  # noqa: F401
 from .tensor.math import neg  # noqa: F401
 from .tensor.math import lgamma  # noqa: F401
@@ -370,6 +376,10 @@ __all__ = [  # noqa
            'max',
            'norm',
            'logical_or',
+           'bitwise_and',
+           'bitwise_or',
+           'bitwise_xor',
+           'bitwise_not',
            'mm',
            'flip',
            'histogram',
@@ -425,6 +435,7 @@ __all__ = [  # noqa
            'divide',
            'ceil',
            'atan',
+           'atan2',
            'expand',
            'broadcast_to',
            'ones_like',
@@ -490,6 +501,7 @@ __all__ = [  # noqa
            'log10',
            'concat',
            'check_shape',
+           'trunc',
            'digamma',
            'standard_normal'
 ]
