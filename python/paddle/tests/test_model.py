@@ -727,8 +727,16 @@ class TestModelFunction(unittest.TestCase):
                                     parameter_list=net.parameters())
         inputs = [InputSpec([None, dim], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
+
         model = Model(net, inputs, labels)
         model.prepare(optim, loss=CrossEntropyLoss(reduction="sum"))
+        loss1, = model.train_batch([data], [label], update=False)
+        loss2, = model.train_batch([data], [label], update=True)
+        np.testing.assert_almost_equal(loss1, loss2, decimal=4)
+
+        model = Model(net, inputs, labels)
+        model.prepare(
+            optim, loss=CrossEntropyLoss(reduction="sum"), amp_configs='O1')
         loss1, = model.train_batch([data], [label], update=False)
         loss2, = model.train_batch([data], [label], update=True)
         np.testing.assert_almost_equal(loss1, loss2, decimal=4)

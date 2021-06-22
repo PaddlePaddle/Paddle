@@ -1584,7 +1584,9 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-            accumulate (int): The number of steps to accumulate gradident during training process before optimizer updates. It can mimic large batch size. Default: 1.
+            accumulate (int): The number of steps to accumulate gradident during 
+                training process before optimizer updates. It can mimic large batch
+                size. Default: 1.
             
         Returns:
             None
@@ -2044,7 +2046,8 @@ class Model(object):
 
                 _inputs = [data[:len(self._inputs)], data[len(self._inputs):]]
                 if mode == 'train':
-                    _inputs.append((step + 1) % self._accumulate == 0)
+                    _inputs.append((step + 1) % self._accumulate == 0 or
+                                   step + 1 == len(data_loader))
 
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
