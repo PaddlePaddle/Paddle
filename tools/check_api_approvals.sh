@@ -51,9 +51,9 @@ if [ "$api_doc_spec_diff" != "" ]; then
     check_approval 1 2870059 29231 23093488 28379894 11935832
 fi
 
-api_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
-if [ "$api_spec_diff" != "" ]; then
-    echo_line="APIs without core.ops: \n${api_spec_diff}\n"
+api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
+if [ "$api_src_spec_diff" != "" ]; then
+    echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"
     echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without 'core.ops'.\n"
     echo_line="${echo_line}For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/paddle_api_development_manual.md]\n"
     check_approval 1 6888866 43953930
@@ -86,9 +86,14 @@ if [ -n "${echo_list}" ];then
   echo "****************"
 
   # L40 L48 L62 has fetch the result out.
-  echo "api_spec_diff: ${api_spec_diff}"
-  echo "api_doc_spec_diff: ${api_doc_spec_diff}"
-  echo "op_type_spec_diff: ${op_type_spec_diff}"
- 
+  if [ "${api_spec_diff}" != "" ] ; then
+    echo "api_spec_diff: ${api_spec_diff}"
+  fi
+  if [ "${api_doc_spec_diff}" != "" ] ; then
+    echo "api_doc_spec_diff: ${api_doc_spec_diff}"
+  fi
+  if [ "${op_type_spec_diff}" != "" ] ; then
+    echo "op_type_spec_diff: ${op_type_spec_diff}"
+  fi 
   exit 6
 fi
