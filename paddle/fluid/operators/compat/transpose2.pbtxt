@@ -1,10 +1,13 @@
-type: "transpose"
+type: "transpose2"
 def {
   inputs {
     name: "X"
   }
   outputs {
     name: "Out"
+  }
+  outputs {
+    name: "XShape"
   }
   attrs {
     name: "axis"
@@ -16,9 +19,6 @@ def {
   }
 }
 extra {
-  outputs {
-    name: "XShape"
-  }
   attrs {
     name: "use_mkldnn"
     type: BOOLEAN
@@ -52,4 +52,3 @@ extra {
     type: STRING
   }
 }
-

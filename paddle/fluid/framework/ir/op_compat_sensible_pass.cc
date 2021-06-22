@@ -117,7 +117,7 @@ InputOrOutputCompat& InputOrOutputCompat::IsOptional() {
 
 bool InputOrOutputCompat::operator()(
     const std::vector<std::string>& input) const {
-  if (input.empty()) return false;
+  if (input.empty()) return optional_;
   for (auto& func : conditions_) {
     if (!func(input)) {
       return false;
