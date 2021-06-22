@@ -80,11 +80,7 @@ def is_primitive(instance):
 
 ErrorSet = set()
 IdSet = set()
-skiplist = [
-    'paddle.vision.datasets.DatasetFolderImageFolder',
-    'paddle.truncdigamma',
-    'paddle.fluid.layers.ops.func',
-]
+skiplist = []
 
 
 def visit_all_module(mod):
