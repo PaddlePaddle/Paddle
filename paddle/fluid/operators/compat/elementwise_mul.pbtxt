@@ -1,43 +1,51 @@
-type: "fill_constant"
+type: "elementwise_mul"
 def {
   inputs {
-    name: "ValueTensor"
+    name: "X"
   }
   inputs {
-    name: "ShapeTensor"
-  }
-  inputs {
-    name: "ShapeTensorList"
+    name: "Y"
   }
   outputs {
     name: "Out"
   }
   attrs {
-    name: "dtype"
+    name: "axis"
     type: INT
   }
-  attrs {
-    name: "shape"
-    type: LONGS
-  }
-  attrs {
-    name: "value"
-    type: FLOAT
-  }
-
 }
 extra {
-    attrs {
-    name: "str_value"
-    type: STRING
-  }
-  attrs {
-    name: "force_cpu"
+ attrs {
+    name: "use_mkldnn"
     type: BOOLEAN
   }
   attrs {
-    name: "place_type"
-    type: INT
+    name: "x_data_format"
+    type: STRING
+  }
+  attrs {
+    name: "y_data_format"
+    type: STRING
+  }
+  attrs {
+    name: "use_quantizer"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "mkldnn_data_type"
+    type: STRING
+  }
+  attrs {
+    name: "Scale_x"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_y"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_out"
+    type: FLOAT
   }
   attrs {
     name: "op_role"
