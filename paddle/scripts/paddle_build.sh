@@ -1427,7 +1427,6 @@ EOF
 function insert_pile_to_h_cu_diff {
     # TODO get develop h/cu md5
     cd ${PADDLE_ROOT}
-    find ${PADDLE_ROOT} -name '*.h'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
     find ${PADDLE_ROOT} -name '*.cu'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'get_h_file_md5' ${PADDLE_ROOT}
     
@@ -1447,8 +1446,8 @@ function precise_card_test_single {
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
         # c++ 
-        if [ -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
-            rm -rf ${PADDLE_ROOT}/build/ut_map/$case
+        if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
+            mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
         mkdir ${PADDLE_ROOT}/build/ut_map/$case
@@ -1460,7 +1459,9 @@ function precise_card_test_single {
         ls python-coverage.data.*
         if [[ $? == 0 ]]
         then
-            mkdir -p ${PADDLE_ROOT}/build/pytest/$case
+            if [ ! -d "${PADDLE_ROOT}/build/pytest/$case" ];then
+                mkdir -p ${PADDLE_ROOT}/build/pytest/$case
+            fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
         find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
@@ -1571,26 +1572,38 @@ set -x
     precise_card_test_single "$single_card_tests_1" 1
     precise_card_test_single "$multiple_card_tests" 2
     precise_card_test_single "$exclusive_tests"
-
+    wait;
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
     
-    if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
-        rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
-        precise_card_test_single "$rerun_tests"
-    fi
+    #analy h/cu to Map file
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
+
     wait;
+    get_failedUts_precise_map_file
 
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
+    wait;
 
-    #analy h/cu to Map file
-    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
     #generate ut map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
-    wait;
 }
 
-
+function get_failedUts_precise_map_file {
+    if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
+        rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
+        #remove pile to full h/cu file
+        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
+        cd ${PADDLE_ROOT}/build
+        cmake_base ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        pip uninstall -y paddlepaddle-gpu
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+        precise_card_test_single "$rerun_tests"
+        wait;
+        
+    fi
+}
 
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -1985,6 +1998,26 @@ EOF
     fi
 }
 
+function test_go_inference_api() {
+    cat <<EOF
+    ========================================
+    Testing go inference api ...
+    ========================================
+EOF
+
+    # ln paddle_inference_c lib
+    cd ${PADDLE_ROOT}/build
+    ln -s ${PADDLE_ROOT}/build/paddle_inference_c_install_dir/ ${PADDLE_ROOT}/paddle/fluid/inference/goapi/paddle_inference_c
+
+    # run go test
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
+    bash test.sh
+    EXIT_CODE=$?
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
 function test_fluid_lib_train() {
     cat <<EOF
     ========================================
@@ -2226,6 +2259,8 @@ function main() {
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train
+        #go inference test
+        test_go_inference_api
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}

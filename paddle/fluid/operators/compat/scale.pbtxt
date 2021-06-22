@@ -21,6 +21,14 @@ def {
 }
 extra {
   attrs {
+    name: "name"
+    type: STRING
+  }
+  attrs {
+    name: "use_mkldnn"
+    type: BOOLEAN
+  }
+  attrs {
     name: "op_role"
     type: INT
   }
