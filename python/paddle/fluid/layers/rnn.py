@@ -881,7 +881,7 @@ class BeamSearchDecoder(Decoder):
     for this is the encoder output in attention mechanism.
 
     Returns:
-        BeamSearchDecoder: An instance of decoder which can be used in
+        BeamSearchDecoder: An instance of decoder which can be used in \
             `paddle.nn.dynamic_decode` to implement decoding. 
 
     Examples:
