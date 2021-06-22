@@ -6,6 +6,9 @@ def {
   outputs {
     name: "Out"
   }
+  outputs {
+    name: "XShape"
+  }
   attrs {
     name: "axis"
     type: INTS
