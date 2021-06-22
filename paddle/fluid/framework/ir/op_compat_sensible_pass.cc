@@ -260,7 +260,7 @@ bool OpCompatSensiblePass::IsCompat(
     auto op_type = node_pair.second->Op()->Type();
     if (!op_compat_judgers_.count(op_type)) {
       if (HasOpDef(op_type)) {
-        LOG(WARNING) << op_type << "compat not registered!";
+        LOG(WARNING) << op_type << " compat not registered!";
         return false;
       }
       continue;
