@@ -192,7 +192,7 @@ class TestVarBase(unittest.TestCase):
 
                 x = paddle.to_tensor(1, dtype='int64')
                 self.assertEqual(x.item(), 1)
-                self.assertTrue(isinstance(x.item(), long if six.PY2 else int))
+                self.assertTrue(isinstance(x.item(), int))
 
                 x = paddle.to_tensor(True)
                 self.assertEqual(x.item(), True)

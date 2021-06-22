@@ -315,7 +315,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// workspace.
   /// \param max_batch_size The maximum batch size of this prediction task,
   /// better set as small as possible for less performance loss.
-  /// \param min_subgrpah_size The minimum TensorRT subgraph size needed, if a
+  /// \param min_subgraph_size The minimum TensorRT subgraph size needed, if a
   /// subgraph is smaller than this, it will not be transferred to TensorRT
   /// engine.
   /// \param precision The precision used in TensorRT.
