@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_all_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 // reduce_prod
 REGISTER_OP_CUDA_KERNEL(
