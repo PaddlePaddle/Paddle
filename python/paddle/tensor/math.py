@@ -1711,7 +1711,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset < 0, it is below the main diagonal.
     
     Args:
-        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be int32, int64, float32, float64, float16, bool.
+        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32, int64, float16, float32, float64.
         offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
         axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
         axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
@@ -1763,7 +1763,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     """
     def __check_input(input, offset, dim1, dim2):
         check_dtype(x.dtype, 'Input',
-                    ['int32', 'int64', 'float32', 'float64', 'float16', 'bool'],
+                    ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
                     'diagonal')
 
         input_shape = list(x.shape)
