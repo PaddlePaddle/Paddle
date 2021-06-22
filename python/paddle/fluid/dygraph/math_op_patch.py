@@ -20,7 +20,6 @@ from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 
 import numpy as np
-import six
 import warnings
 
 _supported_int_dtype_ = [
@@ -121,10 +120,7 @@ def monkey_patch_math_varbase():
         assert numel == 1, "only one element variable can be converted to long."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        if six.PY2:
-            return long(var.numpy().flatten()[0])
-        else:
-            return int(var.numpy().flatten()[0])
+        return int(var.numpy().flatten()[0])
 
     def _int_(var):
         numel = np.prod(var.shape)
@@ -141,10 +137,7 @@ def monkey_patch_math_varbase():
         assert numel == 1, "only one element variable can be converted to python index."
         tensor = var.value().get_tensor()
         assert tensor._is_initialized(), "variable's tensor is not initialized"
-        if six.PY2:
-            return long(var.numpy().flatten()[0])
-        else:
-            return int(var.numpy().flatten()[0])
+        return int(var.numpy().flatten()[0])
 
     @property
     def _ndim_(var):
@@ -319,10 +312,13 @@ def monkey_patch_math_varbase():
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
-        tensor_methods = paddle.tensor.tensor_method_func
-        for method_name in tensor_methods:
+        for method_name in paddle.tensor.tensor_method_func:
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)
+
+        for magic_method, origin_method in paddle.tensor.magic_method_func:
+            impl = getattr(paddle.tensor, origin_method, None)
+            if impl: setattr(core.VarBase, magic_method, impl)
 
     _already_patch_varbase = True
