@@ -34,7 +34,7 @@ export POD_IP=10.10.10.1
 export PADDLE_TRAINER_ID=0
 export PADDLE_TRAINERS_NUM=2
 
-python -m paddle.distributed.launch test_elastic_demo.py &> log_0.log &
+python -m paddle.distributed.launch elastic_demo.py &> log_0.log &
 p0=$!
 
 for i in {1..10}
@@ -61,7 +61,7 @@ export POD_IP=10.10.10.2
 export PADDLE_TRAINER_ID=1
 export PADDLE_TRAINERS_NUM=2
 
-python -m paddle.distributed.launch test_elastic_demo.py &> log_1.log &
+python -m paddle.distributed.launch elastic_demo.py &> log_1.log &
 p1=$!
 
 for i in {1..10}
@@ -125,7 +125,7 @@ export POD_IP=10.10.10.3
 export PADDLE_TRAINER_ID=1
 export PADDLE_TRAINERS_NUM=2
 
-python -m paddle.distributed.launch test_elastic_demo.py &> log_1.log &
+python -m paddle.distributed.launch elastic_demo.py &> log_1.log &
 p1=$!
 
 for i in {1..10}
