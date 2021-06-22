@@ -443,7 +443,7 @@ def get_filenames(full_test=False):
     import paddle
     whl_error = []
     if full_test:
-        get_full_api()
+        get_full_api_from_pr_spec()
     else:
         get_incrementapi()
     all_sample_code_filenames = {}
@@ -513,7 +513,20 @@ def get_full_api_by_walk():
     from print_signatures import get_all_api
     apilist = get_all_api()
     with open(API_DIFF_SPEC_FN, 'w') as f:
-        f.write("\n".join(apilist))
+        f.write("\n".join([ai[0] for ai in apilist]))
+
+
+def get_full_api_from_pr_spec():
+    """
+    get all the apis
+    """
+    global API_PR_SPEC_FN, API_DIFF_SPEC_FN  ## readonly
+    pr_api = get_api_md5(API_PR_SPEC_FN)
+    if len(pr_api):
+        with open(API_DIFF_SPEC_FN, 'w') as f:
+            f.write("\n".join(pr_api.keys()))
+    else:
+        get_full_api_by_walk()
 
 
 def get_incrementapi():
