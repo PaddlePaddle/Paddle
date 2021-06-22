@@ -74,8 +74,8 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
 class TestElementwiseMulBroadcastingBf16MklDNNOp(
         TestElementwiseMulBf16MklDNNOp):
     def generate_data(self):
-        self.x = np.random.uniform(1, 2, [1, 2, 3, 100]).astype(np.float32)
-        self.y = np.random.uniform(1, 2, [100]).astype(np.float32)
+        self.x = np.random.uniform(1, 100, [1, 2, 3, 100]).astype(np.float32)
+        self.y = np.random.uniform(1, 100, [100]).astype(np.float32)
         self.out = np.multiply(self.x, self.y)
 
     # Compute partial sums along all axes but last one
@@ -90,7 +90,7 @@ class TestElementwiseMulBroadcastingBf16MklDNNOp(
             core.CPUPlace(), ["X", "Y"],
             "Out",
             check_dygraph=False,
-            max_relative_error=0.4,
+            max_relative_error=0.5,
             user_defined_grads=[
                 np.multiply(self.x, self.y),
                 self.compute_reduced_gradients(np.multiply(self.x, self.x))
@@ -102,7 +102,7 @@ class TestElementwiseMulBroadcastingBf16MklDNNOp(
             core.CPUPlace(), ["Y"],
             "Out",
             check_dygraph=False,
-            max_relative_error=0.4,
+            max_relative_error=0.5,
             user_defined_grads=[
                 self.compute_reduced_gradients(np.multiply(self.x, self.x))
             ],
