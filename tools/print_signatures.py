@@ -81,7 +81,9 @@ def is_primitive(instance):
 ErrorSet = set()
 IdSet = set()
 skiplist = [
-    'paddle.vision.datasets.DatasetFolderImageFolder', 'paddle.truncdigamma'
+    'paddle.vision.datasets.DatasetFolderImageFolder',
+    'paddle.truncdigamma',
+    'paddle.fluid.layers.ops.func',
 ]
 
 
