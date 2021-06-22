@@ -164,12 +164,21 @@ Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
       .AddInput("X")
       .IsTensor()
       .End()
-      .AddInput("Y")
+      .AddInput("Shape")
       .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ShapeTensor")
+      .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Out")
+      .IsTensor()
       .End()
-      .AddAttr("Shape")
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("shape")  // ints
       .End();
 
   AddOpCompat(OpCompat("matmul"))
