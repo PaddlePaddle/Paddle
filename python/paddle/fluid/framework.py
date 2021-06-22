@@ -1820,7 +1820,6 @@ class Variable(object):
 
         t.set(value, place)
 
-
     def size(self):
         """
         Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
