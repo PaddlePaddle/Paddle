@@ -85,5 +85,10 @@ if [ -n "${echo_list}" ];then
   echo "There are ${failed_num} approved errors."
   echo "****************"
 
+  # L40 L48 L62 has fetch the result out.
+  echo "api_spec_diff: ${api_spec_diff}"
+  echo "api_doc_spec_diff: ${api_doc_spec_diff}"
+  echo "op_type_spec_diff: ${op_type_spec_diff}"
+ 
   exit 6
 fi
