@@ -293,7 +293,8 @@ class CollectiveLauncher(LauncherInterface):
 
     def stop(self):
         logger.info("collective lauchner stop ...")
-        self._terminate_procs()
+        if not self._terminate_procs():
+            logger.error("kill process failed")
         if os.path.exists(self.gloo_rendezvous_dir):
             shutil.rmtree(self.gloo_rendezvous_dir)
 
