@@ -18,7 +18,6 @@ from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
-import paddle
 
 import numpy as np
 import six
@@ -211,7 +210,7 @@ def monkey_patch_math_varbase():
             lhs_dtype = self.dtype
             if not isinstance(other_var, core.VarBase):
                 if isinstance(other_var, complex):
-                    global paddle
+                    import paddle
                     other_var = paddle.to_tensor(other_var, dtype='complex64')
                 else:
                     if reverse:
