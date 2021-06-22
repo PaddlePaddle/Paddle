@@ -92,8 +92,6 @@ class Group():
         return True
 
     def get_group_rank(self, rank):
-        if self.id == 0:
-            return rank
         if self.is_member() and rank in self.ranks:
             return self.ranks.index(rank)
         else:
@@ -126,7 +124,8 @@ def _get_group_map():
     global _group_map
     if not _group_map:
         genv = _get_global_env()
-        _group_map[0] = Group(genv.rank, genv.world_size, 0)
+        _group_map[0] = Group(genv.rank, genv.world_size,
+                              list(range(genv.world_size)))
     return _group_map
 
 
