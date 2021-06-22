@@ -171,6 +171,7 @@ from .math import trunc  # noqa: F401
 from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
+from .math import diagonal  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -355,8 +356,9 @@ tensor_method_func  = [ #noqa
            'shape',
            'real',
            'imag',
+           'digamma',
+           'diagonal'
            'trunc'
-           'digamma'
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',

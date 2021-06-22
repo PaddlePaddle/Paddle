@@ -203,6 +203,7 @@ from .tensor.math import erf  # noqa: F401
 from .tensor.math import addmm  # noqa: F401
 from .tensor.math import clip  # noqa: F401
 from .tensor.math import trace  # noqa: F401
+from .tensor.math import diagonal  # noqa: F401
 from .tensor.math import kron  # noqa: F401
 from .tensor.math import isfinite  # noqa: F401
 from .tensor.math import isinf  # noqa: F401
@@ -503,5 +504,6 @@ __all__ = [  # noqa
            'check_shape',
            'trunc',
            'digamma',
-           'standard_normal'
+           'standard_normal',
+           'diagonal'
 ]
