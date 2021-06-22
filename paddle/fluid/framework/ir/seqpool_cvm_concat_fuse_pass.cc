@@ -61,6 +61,7 @@ SeqPoolCVMConcatFusePass::SeqPoolCVMConcatFusePass() {
       .IsTensor()
       .End()
       .AddOutput("MaxIndex")
+      .IsTensor()
       .IsOptional()
       .End()
       .AddAttr("pooltype")
