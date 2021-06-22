@@ -95,8 +95,6 @@ class Graph {
   bool Has(const std::string &attr_name) const {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function Has() on the 1st sub_graph";
         return GetSubGraph(0)->Has(attr_name);
       }
     }
@@ -107,9 +105,6 @@ class Graph {
   AttrType &GetOrInit(const std::string &attr_name) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function GetOrInit() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->GetOrInit<AttrType>(attr_name);
       }
     }
@@ -123,8 +118,6 @@ class Graph {
   AttrType &Get(const std::string &attr_name) const {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function Get() on the 1st sub_graph";
         return GetSubGraph(0)->Get<AttrType>(attr_name);
       }
     }
@@ -146,8 +139,6 @@ class Graph {
   void Set(const std::string &attr_name, AttrType *attr) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function Set() on the 1st sub_graph";
         return GetSubGraph(0)->Set<AttrType>(attr_name, attr);
       }
     }
@@ -167,9 +158,6 @@ class Graph {
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function SetNotOwned() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->SetNotOwned<AttrType>(attr_name, attr);
       }
     }
@@ -185,8 +173,6 @@ class Graph {
   void Erase(const std::string &attr_name) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function Erase() on the 1st sub_graph";
         return GetSubGraph(0)->Erase(attr_name);
       }
     }
@@ -203,8 +189,6 @@ class Graph {
   const std::unordered_set<ir::Node *> &Nodes() const {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function Nodes() on the 1st sub_graph";
         return GetSubGraph(0)->Nodes();
       }
     }
@@ -215,9 +199,6 @@ class Graph {
   ir::Node *CreateVarNode(VarDesc *var_desc) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function CreateVarNode() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->CreateVarNode(var_desc);
       }
     }
@@ -233,9 +214,6 @@ class Graph {
   ir::Node *CreateOpNode(OpDesc *op_desc) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function CreateOpNode() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->CreateOpNode(op_desc);
       }
     }
@@ -253,9 +231,6 @@ class Graph {
   ir::Node *CreateControlDepVar() {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function CreateControlDepVar() on the "
-                        "1st sub_graph";
         return GetSubGraph(0)->CreateControlDepVar();
       }
     }
@@ -273,9 +248,6 @@ class Graph {
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function CreateEmptyNode() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->CreateEmptyNode(name, type);
       }
     }
@@ -289,9 +261,6 @@ class Graph {
   std::vector<std::unique_ptr<ir::Node>> ReleaseNodes() {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function ReleaseNodes() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->ReleaseNodes();
       }
     }
@@ -307,9 +276,6 @@ class Graph {
   std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function RemoveNode() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->RemoveNode(node);
       }
     }
@@ -327,9 +293,6 @@ class Graph {
   Node *RetrieveNode(int id) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function RetrieveNode() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->RetrieveNode(id);
       }
     }
@@ -348,8 +311,6 @@ class Graph {
   const ProgramDesc &OriginProgram() const {
     if (FLAGS_convert_all_blocks) {
       if (!IsMainGraph()) {
-        LOG(WARNING) << "This graph is sub_graph, will return the program_ of "
-                        "main_graph";
         return main_graph_->OriginProgram();
       }
     }
@@ -360,9 +321,6 @@ class Graph {
   ir::Node *AddNode(ir::Node *node) {
     if (FLAGS_convert_all_blocks) {
       if (IsMainGraph()) {
-        LOG(WARNING) << "This graph is main_graph, which doesn't have nodes or "
-                        "attrs. Applying function AddNode() on the 1st "
-                        "sub_graph";
         return GetSubGraph(0)->AddNode(node);
       }
     }
