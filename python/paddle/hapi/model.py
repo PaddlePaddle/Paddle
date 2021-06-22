@@ -1296,8 +1296,7 @@ class Model(object):
             if not os.path.exists(path):
                 return
             with open(path, 'rb') as f:
-                return pickle.load(f) if six.PY2 else pickle.load(
-                    f, encoding='latin1')
+                return pickle.load(f, encoding='latin1')
 
         def _check_match(key, param):
             state = param_state.get(key, None)

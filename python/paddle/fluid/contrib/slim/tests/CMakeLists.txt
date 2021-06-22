@@ -127,6 +127,7 @@ if(WIN32)
 	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_lstm_model)
 	list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
 	list(REMOVE_ITEM TEST_OPS test_quantize_transpiler_v2)
+	list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
 endif()
 
 if(LINUX AND WITH_MKLDNN)
