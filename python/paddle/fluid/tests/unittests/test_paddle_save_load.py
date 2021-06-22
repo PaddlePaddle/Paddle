@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import os
 import sys
-import six
 from io import BytesIO
 
 import paddle
@@ -38,10 +37,7 @@ SEED = 10
 IMAGE_SIZE = 784
 CLASS_NUM = 10
 
-if six.PY2:
-    LARGE_PARAM = 2**2
-else:
-    LARGE_PARAM = 2**26
+LARGE_PARAM = 2**26
 
 
 def random_batch_reader():
@@ -105,10 +101,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
         path = os.path.join("test_paddle_save_load_large_param_save",
                             "layer.pdparams")
-        if six.PY2:
-            protocol = 2
-        else:
-            protocol = 4
+        protocol = 4
         paddle.save(save_dict, path, protocol=protocol)
         dict_load = paddle.load(path)
         # compare results before and after saving
@@ -926,30 +919,23 @@ class TestSaveLoadProgram(unittest.TestCase):
 
 class TestSaveLoadLayer(unittest.TestCase):
     def test_save_load_layer(self):
-        if six.PY2:
-            return
-
         paddle.disable_static()
         inps = paddle.randn([1, IMAGE_SIZE], dtype='float32')
         layer1 = LinearNet()
         layer2 = LinearNet()
         layer1.eval()
         layer2.eval()
+        origin_layer = (layer1, layer2)
         origin = (layer1(inps), layer2(inps))
         path = "test_save_load_layer_/layer.pdmodel"
-        paddle.save((layer1, layer2), path)
-
-        # static
-        paddle.enable_static()
-        with self.assertRaises(ValueError):
-            paddle.load(path)
-        # dygraph
-        paddle.disable_static()
+        paddle.save(origin_layer, path)
 
         loaded_layer = paddle.load(path)
         loaded_result = [l(inps) for l in loaded_layer]
         for i in range(len(origin)):
             self.assertTrue((origin[i] - loaded_result[i]).abs().max() < 1e-10)
+            for k, v in origin_layer[i]._linear.weight.__dict__.items():
+                self.assertTrue(v == loaded_layer[i]._linear.weight.__dict__[k])
 
 
 if __name__ == '__main__':

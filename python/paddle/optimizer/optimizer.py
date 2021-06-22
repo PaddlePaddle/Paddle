@@ -309,11 +309,11 @@ class Optimizer(object):
 
                 assert model_np.shape == load_para_np.shape,  \
                                           "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                                                 item.name, model_np.shape, load_para_np.shape)
+                                                 model_np.name, model_np.shape, load_para_np.shape)
 
                 assert model_np.dtype == load_para_np.dtype, \
                                           "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                                                item.name, model_np.dtype, load_para_np.dtype)
+                                                model_np.name, model_np.dtype, load_para_np.dtype)
 
                 tensor.set(load_para_np, framework._current_expected_place())
 
