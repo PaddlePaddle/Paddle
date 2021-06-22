@@ -287,9 +287,7 @@ TEST(GraphTest, TestMultiBlock) {
   prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::SELECTED_ROWS);
   prog.MutableBlock(0)->Var("test_c")->SetType(proto::VarType::SELECTED_ROWS);
   prog.MutableBlock(0)->Var("test_out");
-
   op->InferVarType(prog.MutableBlock(0));
-
   ASSERT_EQ(proto::VarType::SELECTED_ROWS,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
