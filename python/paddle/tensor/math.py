@@ -1728,34 +1728,37 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             x = paddle.rand([2,2,3],'float32')
             print(x)
             # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [[[0.03550689, 0.95332026, 0.72263676],
-            #         [0.39929324, 0.28395978, 0.02209182]],
+            #        [[[0.45661032, 0.03751532, 0.90191704],
+            #          [0.43760979, 0.86177313, 0.65221709]],
 
-            #        [[0.39408177, 0.72126228, 0.05123695],
-            #         [0.25892028, 0.34103420, 0.06237243]]])
+            #         [[0.17020577, 0.00259554, 0.28954273],
+            #          [0.51795638, 0.27325270, 0.18117726]]])
 
             out1 = paddle.diagonal(x)
             print(out1)
             #Tensor(shape=[3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #       [[0.03550689, 0.25892028],
-            #        [0.95332026, 0.34103420],
-            #        [0.72263676, 0.06237243]])
+            #       [[0.45661032, 0.51795638],
+            #        [0.03751532, 0.27325270],
+            #        [0.90191704, 0.18117726]])
 
-            out2 = paddle.diagonal(x,0,1,1)
-            # [Hint: Expected axis1_ != axis2_, but received axis1_:1 == axis2_:1.]
+            out2 = paddle.diagonal(x,0,2,1)
+            print(out2)
+            #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [[0.45661032, 0.86177313],
+            #        [0.17020577, 0.27325270]])
 
             out3 = paddle.diagonal(x,1,0,1)
             print(out3)
             #Tensor(shape=[3, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #       [[0.39929324],
-            #        [0.28395978],
-            #        [0.02209182]])
+            #       [[0.43760979],
+            #        [0.86177313],
+            #        [0.65221709]])
 
             out4 = paddle.diagonal(x,0,1,2)
             print(out4)
             #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #       [[0.03550689, 0.28395978],
-            #        [0.39408177, 0.34103420]])
+            #       [[0.45661032, 0.86177313],
+            #        [0.17020577, 0.27325270]])
             
     """
     def __check_input(input, offset, dim1, dim2):

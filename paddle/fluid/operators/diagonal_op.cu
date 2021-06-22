@@ -270,5 +270,4 @@ REGISTER_OP_CUDA_KERNEL(diagonal_grad, ops::DiagonalGradCUDAKernel<int>,
                         ops::DiagonalGradCUDAKernel<int64_t>,
                         ops::DiagonalGradCUDAKernel<float>,
                         ops::DiagonalGradCUDAKernel<double>,
-                        ops::DiagonalGradCUDAKernel<plat::float16>,
-                        ops::DiagonalGradCUDAKernel<bool>);
+                        ops::DiagonalGradCUDAKernel<plat::float16>);
