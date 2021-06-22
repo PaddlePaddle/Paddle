@@ -21,7 +21,6 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 import numpy as np
-import six
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  # noqa: F401
 from ..fluid.layers import slice  # noqa: F401
@@ -862,34 +861,39 @@ def gather(x, index, axis=None, name=None):
     """
     if axis is None:
         axis = 0
-    axis_tensor = axis
-    if not isinstance(axis, Variable) and axis == 0:
-        return paddle.fluid.layers.gather(input=x, index=index, overwrite=False)
-    if not isinstance(axis, Variable):
-        with device_guard("cpu"):
-            axis_tensor = fill_constant(
-                shape=[1], dtype='int64', value=axis, force_cpu=True)
+
     if in_dygraph_mode():
-        return core.ops.gather(x, index, axis_tensor)
+        axis = axis.item() if isinstance(axis, paddle.Tensor) else axis
+        return core.ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
         'gather')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
+
     if isinstance(axis, Variable):
         check_variable_and_dtype(axis, 'axis', ['int32', 'int64'], 'gather')
-    else:
-        check_type(axis, 'axis', (int), 'gather')
 
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype('x')
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="gather",
-        inputs={"X": x,
-                "Index": index,
-                "Axis": axis_tensor},
-        outputs={"Out": out})
+    if not isinstance(axis, Variable):
+        helper.append_op(
+            type="gather",
+            inputs={"X": x,
+                    "Index": index},
+            attrs={'axis': axis,
+                   'overwrite': False},
+            outputs={"Out": out})
+    else:
+        helper.append_op(
+            type="gather",
+            inputs={"X": x,
+                    "Index": index,
+                    "Axis": axis},
+            attrs={"overwrite": False},
+            outputs={"Out": out})
+
     return out
 
 
@@ -1213,10 +1217,7 @@ def tile(x, repeat_times, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
 
@@ -1352,10 +1353,7 @@ def broadcast_to(x, shape, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in shape must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in shape must be 1-D Tensors or integers.')
 
@@ -1442,10 +1440,7 @@ def expand(x, shape, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in shape must be 1-D Tensors or integers.')
             else:
-                if six.PY3:
-                    type_tuple = (int, np.int32, np.int64)
-                elif six.PY2:
-                    type_tuple = (int, long, np.int32, np.int64)
+                type_tuple = (int, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in shape must be 1-D Tensors or integers.')
 

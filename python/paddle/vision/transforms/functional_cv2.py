@@ -33,6 +33,8 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
+__all__ = []
+
 
 def to_tensor(pic, data_format='CHW'):
     """Converts a ``numpy.ndarray`` to paddle.Tensor.
@@ -49,7 +51,7 @@ def to_tensor(pic, data_format='CHW'):
 
     """
 
-    if not data_format in ['CHW', 'HWC']:
+    if data_format not in ['CHW', 'HWC']:
         raise ValueError('data_format should be CHW or HWC. Got {}'.format(
             data_format))
 

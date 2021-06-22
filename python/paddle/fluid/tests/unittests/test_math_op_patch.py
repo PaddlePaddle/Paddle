@@ -19,6 +19,7 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import numpy
+import numpy as np
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -269,6 +270,71 @@ class TestMathOpPatches(unittest.TestCase):
                        feed={"a": a_np},
                        fetch_list=[b])
         self.assertTrue(numpy.allclose(a_np.astype('float32'), b_np))
+
+    @prog_scope()
+    def test_bitwise_and(self):
+        x_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+        y_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+        out_np = x_np & y_np
+
+        x = paddle.static.data(name="x", shape=[2, 3, 5], dtype="int32")
+        y = paddle.static.data(name="y", shape=[2, 3, 5], dtype="int32")
+        z = x & y
+
+        exe = fluid.Executor()
+        out = exe.run(fluid.default_main_program(),
+                      feed={"x": x_np,
+                            "y": y_np},
+                      fetch_list=[z])
+        self.assertTrue(np.array_equal(out[0], out_np))
+
+    @prog_scope()
+    def test_bitwise_or(self):
+        x_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+        y_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+        out_np = x_np | y_np
+
+        x = paddle.static.data(name="x", shape=[2, 3, 5], dtype="int32")
+        y = paddle.static.data(name="y", shape=[2, 3, 5], dtype="int32")
+        z = x | y
+
+        exe = fluid.Executor()
+        out = exe.run(fluid.default_main_program(),
+                      feed={"x": x_np,
+                            "y": y_np},
+                      fetch_list=[z])
+        self.assertTrue(np.array_equal(out[0], out_np))
+
+    @prog_scope()
+    def test_bitwise_xor(self):
+        x_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+        y_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+        out_np = x_np ^ y_np
+
+        x = paddle.static.data(name="x", shape=[2, 3, 5], dtype="int32")
+        y = paddle.static.data(name="y", shape=[2, 3, 5], dtype="int32")
+        z = x ^ y
+
+        exe = fluid.Executor()
+        out = exe.run(fluid.default_main_program(),
+                      feed={"x": x_np,
+                            "y": y_np},
+                      fetch_list=[z])
+        self.assertTrue(np.array_equal(out[0], out_np))
+
+    @prog_scope()
+    def test_bitwise_not(self):
+        x_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+        out_np = ~x_np
+
+        x = paddle.static.data(name="x", shape=[2, 3, 5], dtype="int32")
+        z = ~x
+
+        exe = fluid.Executor()
+        out = exe.run(fluid.default_main_program(),
+                      feed={"x": x_np},
+                      fetch_list=[z])
+        self.assertTrue(np.array_equal(out[0], out_np))
 
 
 if __name__ == '__main__':

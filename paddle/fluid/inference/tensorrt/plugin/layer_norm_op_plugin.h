@@ -114,22 +114,14 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
       : begin_norm_axis_(begin_norm_axis),
         eps_(eps),
         mean_shape_(mean_shape),
-        variance_shape_(variance_shape),
-        scale_gpu_half_d_(nullptr),
-        bias_gpu_half_d_(nullptr),
-        mean_gpu_half_d_(nullptr),
-        variance_gpu_half_d_(nullptr) {
+        variance_shape_(variance_shape) {
     bias_.resize(bias_num);
     scale_.resize(scale_num);
     std::copy(bias, bias + bias_num, bias_.data());
     std::copy(scale, scale + scale_num, scale_.data());
   }
 
-  LayerNormPluginDynamic(void const* serialData, size_t serialLength)
-      : scale_gpu_half_d_(nullptr),
-        bias_gpu_half_d_(nullptr),
-        mean_gpu_half_d_(nullptr),
-        variance_gpu_half_d_(nullptr) {
+  LayerNormPluginDynamic(void const* serialData, size_t serialLength) {
     DeserializeValue(&serialData, &serialLength, &bias_);
     DeserializeValue(&serialData, &serialLength, &scale_);
     DeserializeValue(&serialData, &serialLength, &begin_norm_axis_);
@@ -190,21 +182,6 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
                                        const nvinfer1::DataType* inputTypes,
                                        int nbInputs) const override;
 
-  ~LayerNormPluginDynamic() {
-    if (scale_gpu_half_d_) {
-      cudaFree(scale_gpu_half_d_);
-    }
-    if (bias_gpu_half_d_) {
-      cudaFree(bias_gpu_half_d_);
-    }
-    if (mean_gpu_half_d_) {
-      cudaFree(mean_gpu_half_d_);
-    }
-    if (variance_gpu_half_d_) {
-      cudaFree(variance_gpu_half_d_);
-    }
-  }
-
   void destroy() override { delete this; }
 
  private:
@@ -218,10 +195,6 @@ class LayerNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
-  half* scale_gpu_half_d_;
-  half* bias_gpu_half_d_;
-  half* mean_gpu_half_d_;
-  half* variance_gpu_half_d_;
 };
 
 class LayerNormPluginDynamicCreator : public nvinfer1::IPluginCreator {

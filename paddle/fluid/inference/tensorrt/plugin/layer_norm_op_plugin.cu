@@ -182,69 +182,9 @@ int LayerNormPluginDynamic::enqueue(
     paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
     layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
                variance_d, begin_norm_axis, eps);
-  } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
-    VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp16";
-    const half *input = reinterpret_cast<const half *>(inputs[0]);
-    half *output = static_cast<half *>(outputs[0]);
-    size_t mean_shape_product = 1;
-    for (auto s : mean_shape_) {
-      mean_shape_product *= s;
-    }
-    size_t variance_shape_product = 1;
-    for (auto s : variance_shape_) {
-      variance_shape_product *= s;
-    }
-    if (!scale_gpu_half_d_) {
-      cudaMalloc(&scale_gpu_half_d_, feature_size * sizeof(half));
-    }
-    if (!bias_gpu_half_d_) {
-      cudaMalloc(&bias_gpu_half_d_, feature_size * sizeof(half));
-    }
-    if (!mean_gpu_half_d_) {
-      cudaMalloc(&mean_gpu_half_d_, mean_shape_product * sizeof(half));
-    }
-    if (!variance_gpu_half_d_) {
-      cudaMalloc(&variance_gpu_half_d_, variance_shape_product * sizeof(half));
-    }
-
-    half *scale_cpu_half =
-        static_cast<half *>(malloc(feature_size * sizeof(half)));
-    half *bias_cpu_half =
-        static_cast<half *>(malloc(feature_size * sizeof(half)));
-    PADDLE_ENFORCE_EQ(
-        scale_cpu_half && bias_cpu_half, true,
-        platform::errors::Unavailable("Out of memory, malloc size %d.",
-                                      feature_size * sizeof(half)));
-
-    for (int i = 0; i < feature_size; i++) {
-      scale_cpu_half[i] = static_cast<half>(scale_[i]);
-      bias_cpu_half[i] = static_cast<half>(bias_[i]);
-    }
-    cudaMemcpyAsync(scale_gpu_half_d_, scale_cpu_half,
-                    sizeof(half) * feature_size, cudaMemcpyHostToDevice,
-                    stream);
-    cudaMemcpyAsync(bias_gpu_half_d_, bias_cpu_half,
-                    sizeof(half) * feature_size, cudaMemcpyHostToDevice,
-                    stream);
-    free(scale_cpu_half);
-    free(bias_cpu_half);
-
-    paddle::operators::LayerNormDirectCUDAFunctor<half> layer_norm;
-    layer_norm(stream, input, input_shape, bias_gpu_half_d_, scale_gpu_half_d_,
-               output, mean_gpu_half_d_, variance_gpu_half_d_, begin_norm_axis,
-               eps);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The layer_norm tensorRT plugin should be "
-        "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recomplie it or try to use fp32 by set "
-        "config.SetTRTDynamicShapeInfo(min_input_shape, "
-        "max_input_shape, opt_input_shape, true"));
-#endif
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "The LayerNorm TRT Plugin's input type should be float or half."));
+        "The LayerNorm TRT Plugin's input type should be float."));
   }
   return cudaGetLastError() != cudaSuccess;
 }

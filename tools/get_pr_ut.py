@@ -179,7 +179,7 @@ class PRChecker(object):
     def get_comment_of_file(self, f):
         #content = self.repo.get_contents(f.replace(PADDLE_ROOT, ''), 'pull/').decoded_content
         #todo: get file from github
-        with open(f) as fd:
+        with open(f, encoding="utf-8") as fd:
             lines = fd.readlines()
         lineno = 1
         inputs = ''

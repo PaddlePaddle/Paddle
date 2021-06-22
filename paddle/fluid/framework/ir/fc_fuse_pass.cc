@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include <string>
-#include "paddle/fluid/framework/op_proto_maker.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -38,6 +37,7 @@ FCFusePass::FCFusePass() {
       .IsNumGE(1)
       .End()
       .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -51,6 +51,7 @@ FCFusePass::FCFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
+      .IsNumGE(1)
       .End();
 
   AddOpCompat(OpCompat("relu"))
