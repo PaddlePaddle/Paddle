@@ -1741,20 +1741,20 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             #        [0.03751532, 0.27325270],
             #        [0.90191704, 0.18117726]])
 
-            out2 = paddle.diagonal(x,0,2,1)
+            out2 = paddle.diagonal(x, offset=0, axis1=2, axis2=1)
             print(out2)
             #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #       [[0.45661032, 0.86177313],
             #        [0.17020577, 0.27325270]])
 
-            out3 = paddle.diagonal(x,1,0,1)
+            out3 = paddle.diagonal(x, offset=1, axis1=0, axis2=1)
             print(out3)
             #Tensor(shape=[3, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #       [[0.43760979],
             #        [0.86177313],
             #        [0.65221709]])
 
-            out4 = paddle.diagonal(x,0,1,2)
+            out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
             print(out4)
             #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #       [[0.45661032, 0.86177313],
