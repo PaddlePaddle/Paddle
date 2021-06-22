@@ -103,9 +103,11 @@ def visit_all_module(mod):
     if hasattr(mod, "__all__"):
         member_names += mod.__all__
     for member_name in member_names:
-        if member_name.startswith('__'):
+        if member_name.startswith('_'):
             continue
         cur_name = mod_name + '.' + member_name
+        if cur_name in skiplist:
+            continue
         try:
             instance = getattr(mod, member_name)
             if inspect.ismodule(instance):
