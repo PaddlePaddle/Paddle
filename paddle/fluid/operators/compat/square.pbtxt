@@ -1,43 +1,25 @@
-type: "fill_constant"
+type: "square"
 def {
   inputs {
-    name: "ValueTensor"
-  }
-  inputs {
-    name: "ShapeTensor"
-  }
-  inputs {
-    name: "ShapeTensorList"
+    name: "X"
   }
   outputs {
     name: "Out"
   }
-  attrs {
-    name: "dtype"
-    type: INT
-  }
-  attrs {
-    name: "shape"
-    type: LONGS
-  }
-  attrs {
-    name: "value"
-    type: FLOAT
-  }
-
 }
+
 extra {
-    attrs {
-    name: "str_value"
-    type: STRING
-  }
   attrs {
-    name: "force_cpu"
+    name: "is_test"
     type: BOOLEAN
   }
   attrs {
-    name: "place_type"
-    type: INT
+    name: "use_mkldnn"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "use_cudnn"
+    type: BOOLEAN
   }
   attrs {
     name: "op_role"
