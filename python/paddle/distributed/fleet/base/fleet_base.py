@@ -263,7 +263,7 @@ class Fleet(object):
             global_ring_id = 3 if use_sharding else 0
             global_ranks = list(range(global_world_size))
 
-            if tp._HYBRID_PARALLEL_GROUP is None: tp.CommunicateGroup()
+            if tp._HYBRID_PARALLEL_GROUP is None: tp._CommunicateGroup()
             cg = tp._HYBRID_PARALLEL_GROUP
             self._hcg = cg
             cg.set_comm_group('global', global_rank, global_world_size,

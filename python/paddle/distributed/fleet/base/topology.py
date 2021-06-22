@@ -264,7 +264,7 @@ class HybridCommunicateGroup(object):
             self.global_rank, pipe=stage_id, **kwargs)
 
 
-class CommunicateGroup(object):
+class _CommunicateGroup(object):
     """ tmp for static """
 
     def __init__(self):
