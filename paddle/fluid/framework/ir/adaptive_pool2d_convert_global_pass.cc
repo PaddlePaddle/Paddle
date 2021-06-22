@@ -52,7 +52,6 @@ AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
       .IsBoolEQ(false)
       .End()
       .AddAttr("ceil_mode")
-      .IsOptional()
       .End()
       .AddAttr("data_format")
       .IsStringIn({"NHWC", "NCHW"})
