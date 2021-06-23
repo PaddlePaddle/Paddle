@@ -40,7 +40,7 @@ class TestPipeline(TestDistBase):
             # non-pipeline one.
             self.check_with_place(
                 "pipeline_mnist.py",
-                delta=1e1,
+                delta=1e0,
                 check_error_log=True,
                 log_name=flag_name)
 
@@ -50,7 +50,7 @@ class TestPipeline(TestDistBase):
             self.check_with_place(
                 "pipeline_mnist_multi_device.py",
                 check_error_log=True,
-                delta=1e1,
+                delta=1e0,
                 log_name=flag_name)
 
     def test_dist_train_one_device(self):
