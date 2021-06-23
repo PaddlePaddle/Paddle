@@ -35,15 +35,15 @@ class MatMulV2MKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
  public:
   MatMulV2MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                         const mkldnn::engine engine, platform::Place cpu_place,
-                        std::vector<int64_t>& x_dims, bool trans_x, std::vector<int64_t>& y_dims,
-                        bool trans_y, const std::string& uniq_name)
+                        std::vector<int64_t>& x_dims, bool trans_x,
+                        std::vector<int64_t>& y_dims, bool trans_y,
+                        const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::matmul>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, x_dims, uniq_name)) {
     if (!this->isCached()) {
-
-      //M X K * K X N
-      const int MB_idx= x_dims.size() - 3;
+      // M X K * K X N
+      const int MB_idx = x_dims.size() - 3;
       const int H_idx = x_dims.size() - 2;
       const int W_idx = x_dims.size() - 1;
 
@@ -63,31 +63,33 @@ class MatMulV2MKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
       y_strides.reserve(x_dims.size());
       out_strides.reserve(x_dims.size());
 
-      if (!trans_x){
+      if (!trans_x) {
         x_strides.insert(x_strides.end(), {M * K, K, 1});
       } else {
-        x_strides.insert(x_strides.end(), {M * K, 1, M});   
+        x_strides.insert(x_strides.end(), {M * K, 1, M});
       }
 
-      if (!trans_y){
+      if (!trans_y) {
         y_strides.insert(y_strides.end(), {N * K, N, 1});
       } else {
-        y_strides.insert(y_strides.end(), {N * K, 1, K});   
+        y_strides.insert(y_strides.end(), {N * K, 1, K});
       }
-      
-      out_strides.insert(out_strides.end(), {M * N, N, 1});
-      out_ddims.insert(out_ddims.end(), {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
 
-      for(int i=x_dims.size() - 4; i >= 0;--i){
+      out_strides.insert(out_strides.end(), {M * N, N, 1});
+      out_ddims.insert(out_ddims.end(),
+                       {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
+
+      for (int i = x_dims.size() - 4; i >= 0; --i) {
         out_ddims[i] = std::max(x_dims[i], y_dims[i]);
-        x_strides[i]= x_dims[i + 1] * x_strides[i + 1];
+        x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
         y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
         out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
       }
 
       auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
       auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
-      auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
+      auto out_md =
+          memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
 
       this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
     }
@@ -104,9 +106,7 @@ class MatMulV2MKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::matmul> {
 template <typename T>
 class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const ExecutionContext& ctx) const override {
-    RunKernel(ctx); 
-  }
+  void Compute(const ExecutionContext& ctx) const override { RunKernel(ctx); }
 
  private:
   void CalculateMatrixDims(const ExecutionContext& ctx,
@@ -114,30 +114,29 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
                            const std::vector<int64_t>& y_dims,
                            std::vector<int64_t>& x_bd_dims,
                            std::vector<int64_t>& y_bd_dims,
-                           std::vector<int64_t>& out_dims,
-                           Tensor* out) const {
-      if(x_dims.size() == 1){
-        x_bd_dims[x_bd_dims.size() - 1] = x_dims[0];
-      } else {
-        for(size_t i=0;i<x_dims.size();++i){
-          x_bd_dims[i] = x_dims[i];
-        }
-      }
-      if(y_dims.size() == 1){
-        y_bd_dims[x_bd_dims.size() - 2] = y_dims[0];
-      } else {
-        for(size_t i=0;i<y_dims.size();++i){
-          y_bd_dims[i] = y_dims[i];
-        }
-      }
-
-      if((y_dims.size() == x_dims.size()) && y_dims.size() > 2){
-          for(size_t i=0;i < x_dims.size() - 2;++i){
-            out_dims[i] = std::max(x_dims[i], y_dims[i]);
-          }
-          out->Resize(framework::make_ddim(out_dims));
+                           std::vector<int64_t>& out_dims, Tensor* out) const {
+    if (x_dims.size() == 1) {
+      x_bd_dims[x_bd_dims.size() - 1] = x_dims[0];
+    } else {
+      for (size_t i = 0; i < x_dims.size(); ++i) {
+        x_bd_dims[i] = x_dims[i];
       }
     }
+    if (y_dims.size() == 1) {
+      y_bd_dims[x_bd_dims.size() - 2] = y_dims[0];
+    } else {
+      for (size_t i = 0; i < y_dims.size(); ++i) {
+        y_bd_dims[i] = y_dims[i];
+      }
+    }
+
+    if ((y_dims.size() == x_dims.size()) && y_dims.size() > 2) {
+      for (size_t i = 0; i < x_dims.size() - 2; ++i) {
+        out_dims[i] = std::max(x_dims[i], y_dims[i]);
+      }
+      out->Resize(framework::make_ddim(out_dims));
+    }
+  }
 
   void RunKernel(const ExecutionContext& ctx) const {
     const auto& dev_ctx =
@@ -160,11 +159,12 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
     std::vector<int64_t> x_bd_dims(ndims, 1);
     std::vector<int64_t> y_bd_dims(ndims, 1);
 
-    CalculateMatrixDims(ctx, x_dims, y_dims, x_bd_dims, y_bd_dims, out_dims, out);
+    CalculateMatrixDims(ctx, x_dims, y_dims, x_bd_dims, y_bd_dims, out_dims,
+                        out);
 
-    MatMulV2MKLDNNHandler<T> handler(
-        dev_ctx, onednn_engine, ctx.GetPlace(), x_bd_dims, trans_x, y_bd_dims, trans_y,
-        ctx.InputName("X"));
+    MatMulV2MKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(),
+                                     x_bd_dims, trans_x, y_bd_dims, trans_y,
+                                     ctx.InputName("X"));
 
     const auto src_memory_p = handler.AcquireSrcMemory(x);
     const auto weights_memory_p = handler.AcquireWeightsMemory(y);
@@ -182,7 +182,8 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(out_dims)));
+    out->set_format(
+        platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(out_dims)));
   }
 };
 }  // namespace operators
