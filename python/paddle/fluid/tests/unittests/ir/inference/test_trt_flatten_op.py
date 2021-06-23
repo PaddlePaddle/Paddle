@@ -54,22 +54,17 @@ class TRTFlattenDynamicTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32")
-            flatten_out = self.append_flatten(data)
-            out = fluid.layers.batch_norm(flatten_out, is_test=True)
+            conv = fluid.layers.conv2d(data, 3, 3, padding=1)
+            out = self.append_flatten(conv)
         self.feeds = {
-            "data": np.random.random([2, 6, 64, 64]).astype("float32"),
+            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TRTFlattenDynamicTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTFlattenDynamicTest.DynamicShapeParam({
-            'data': [1, 6, 8, 8],
-            'flatten_0.tmp_0': [1, 6 * 8 * 8]
-        }, {'data': [3, 6, 128, 128],
-            'flatten_0.tmp_0': [3, 6 * 128 * 128]}, {
-                'data': [2, 6, 64, 64],
-                'flatten_0.tmp_0': [2, 6 * 64 * 64]
-            }, False)
+            'data': [1, 6, 8, 8]
+        }, {'data': [3, 6, 128, 128]}, {'data': [2, 6, 64, 64]}, False)
         self.fetch_list = [out]
 
     def append_flatten(self, data):

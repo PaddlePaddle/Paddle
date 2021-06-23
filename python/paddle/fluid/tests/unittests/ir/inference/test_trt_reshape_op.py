@@ -91,7 +91,8 @@ class TRTReshapeTest2(TRTReshapeTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data', shape=self.data_shape, dtype='float32')
-            bn_out = fluid.layers.batch_norm(data, is_test=True)
+            conv = fluid.layers.conv2d(data, 14, 3, padding=1)
+            bn_out = fluid.layers.batch_norm(conv, is_test=True)
             out = self.append_reshape(bn_out, self.reshape)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
@@ -100,8 +101,8 @@ class TRTReshapeTest2(TRTReshapeTest):
         self.trt_parameters = TRTReshapeTest.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTReshapeTest.DynamicShapeParam({
-            'data': [1, 3, 8, 8]
-        }, {'data': [5, 100, 100, 100]}, {'data': [1, 3, 16, 16]}, False)
+            'data': [1, 14, 8, 8]
+        }, {'data': [5, 14, 100, 100]}, {'data': [1, 14, 16, 16]}, False)
         self.fetch_list = [out]
 
 
