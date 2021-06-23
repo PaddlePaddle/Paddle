@@ -103,7 +103,7 @@ class OpBase {
 
   void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
 
-  void SetAttrDefaultMap(const framework::AttributeMap& default_attrs) {
+  void SetDefaultAttrsMap(const framework::AttributeMap& default_attrs) {
     default_attrs_ = &default_attrs;
   }
 

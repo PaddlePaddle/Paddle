@@ -295,8 +295,8 @@ class TracedGradOp {
     return op_->SetAttrMap(attrs);
   }
 
-  void SetAttrDefaultMap(const framework::AttributeMap& attrs) {
-    return op_->SetAttrDefaultMap(attrs);
+  void SetDefaultAttrsMap(const framework::AttributeMap& attrs) {
+    return op_->SetDefaultAttrsMap(attrs);
   }
 
   void SetAttr(const std::string& name, const framework::Attribute& v) {

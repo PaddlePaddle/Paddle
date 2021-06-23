@@ -33,12 +33,12 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   RuntimeInferVarTypeContext(const NameVarMap<VarType>& inputs,
                              const NameVarMap<VarType>& outputs,
                              const framework::AttributeMap& attrs_map,
-                             const framework::AttributeMap& attrs_map_default)
+                             const framework::AttributeMap& default_attrs_map)
       : InferVarTypeContext(nullptr, nullptr),
         inputs_(inputs),
         outputs_(outputs),
         attrs_(attrs_map),
-        default_attrs_(attrs_map_default) {}
+        default_attrs_(default_attrs_map) {}
 
   virtual ~RuntimeInferVarTypeContext() {}
 

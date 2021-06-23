@@ -61,7 +61,7 @@ AttrCompat& AttrCompat::IsLeftDefault() {
     return *this;
   }
   const OpInfo& op_info = OpInfoMap::Instance().Get(op_name);
-  const AttributeMap attrs = op_info.Checker()->GetAttrsDefaultValuesMap();
+  const AttributeMap attrs = op_info.Checker()->GetDefaultAttrsMap();
   if (attrs.find(attr_name_) == attrs.end()) {
     LOG(WARNING) << "Op (" << op_name << ") has no default attr:" << attr_name_;
     conditions_.emplace_back([](const Attribute& attr) { return false; });

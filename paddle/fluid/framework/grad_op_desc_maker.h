@@ -241,7 +241,7 @@ class SingleGradOpMaker<imperative::OpBase>
     {
       imperative::TracedGradOp traced_grad_op(node);
       try {
-        traced_grad_op.SetAttrDefaultMap(this->DefaultAttrsMap());
+        traced_grad_op.SetDefaultAttrsMap(this->DefaultAttrsMap());
         this->Apply(&traced_grad_op);
       } catch (platform::EnforceNotMet& exception) {
         framework::AppendErrorOpHint(traced_grad_op.Type(), &exception);

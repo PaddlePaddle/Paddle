@@ -46,9 +46,9 @@ class TestRuntimeInferVarTypeContext
   TestRuntimeInferVarTypeContext(
       const NameVarMap<VarType>& inputs, const NameVarMap<VarType>& outputs,
       const framework::AttributeMap& attrs_map,
-      const framework::AttributeMap& attrs_map_default)
+      const framework::AttributeMap& default_attrs_map)
       : RuntimeInferVarTypeContext<VarType>(inputs, outputs, attrs_map,
-                                            attrs_map_default) {}
+                                            default_attrs_map) {}
 
   bool HasVar(const std::string& name) const {
     return RuntimeInferVarTypeContext<VarType>::HasVar(name);

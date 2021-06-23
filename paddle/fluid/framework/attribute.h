@@ -423,7 +423,7 @@ class OpAttrChecker {
     }
   }
 
-  AttributeMap GetAttrsDefaultValuesMap() const {
+  AttributeMap GetDefaultAttrsMap() const {
     AttributeMap default_values_map;
     for (const auto& checker : attr_checkers_) {
       checker(&default_values_map, true, false);
