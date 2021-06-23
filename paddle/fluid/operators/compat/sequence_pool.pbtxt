@@ -1,42 +1,27 @@
-type: "fill_constant"
+type: "sequence_pool"
 def {
   inputs {
-    name: "ValueTensor"
-  }
-  inputs {
-    name: "ShapeTensor"
-  }
-  inputs {
-    name: "ShapeTensorList"
+    name: "X"
   }
   outputs {
     name: "Out"
   }
-  attrs {
-    name: "dtype"
-    type: INT
+  outputs {
+    name: "MaxIndex"
   }
   attrs {
-    name: "shape"
-    type: LONGS
+    name: "pooltype"
+    type: STRING
   }
   attrs {
-    name: "value"
+    name: "pad_value"
     type: FLOAT
   }
 }
 extra {
-    attrs {
-    name: "str_value"
-    type: STRING
-  }
   attrs {
-    name: "force_cpu"
+    name: "is_test"
     type: BOOLEAN
-  }
-  attrs {
-    name: "place_type"
-    type: INT
   }
   attrs {
     name: "op_role"
@@ -59,3 +44,4 @@ extra {
     type: STRING
   }
 }
+
