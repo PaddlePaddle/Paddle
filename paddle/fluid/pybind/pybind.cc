@@ -1308,7 +1308,7 @@ All parameter, weight, gradient are variables in Paddle.
           if (info != nullptr) {
             if (info->HasOpProtoAndChecker()) {
               auto op_checker = info->Checker();
-              res = op_checker->GetAttrsDefaultValuesMap();
+              res = op_checker->GetDefaultAttrsMap();
             }
           }
           return res;
