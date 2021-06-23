@@ -515,6 +515,8 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
       weight_to_tensor<T>(place, stream, weight_list, &weight_whole);
 #endif
       w_data = weight_whole.data<T>();
+#ifndef PADDLE_WITH_HIP
+      // MIOPEN need to permute weight, do not share with weight_grad
       if (is_test) {  // maybe also reset small weights' ptr for training
         int offset = 0;
         for (size_t i = 0; i < weight_list.size(); ++i) {
@@ -528,6 +530,7 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
           offset += len;
         }
       }
+#endif
     } else {
       w_data = const_cast<T *>(weight_list[0]->data<T>());
     }
