@@ -61,7 +61,7 @@ AttrCompat& AttrCompat::IsLeftDefault() {
     return *this;
   }
   const OpInfo& op_info = OpInfoMap::Instance().Get(op_name);
-  const AttributeMap attrs = op_info.Checker()->GetAttrsDefaultValuesMap();
+  const AttributeMap attrs = op_info.Checker()->GetDefaultAttrsMap();
   if (attrs.find(attr_name_) == attrs.end()) {
     LOG(WARNING) << "Op (" << op_name << ") has no default attr:" << attr_name_;
     conditions_.emplace_back([](const Attribute& attr) { return false; });
@@ -260,7 +260,7 @@ bool OpCompatSensiblePass::IsCompat(
     auto op_type = node_pair.second->Op()->Type();
     if (!op_compat_judgers_.count(op_type)) {
       if (HasOpDef(op_type)) {
-        LOG(WARNING) << op_type << "compat not registered!";
+        LOG(WARNING) << op_type << " compat not registered!";
         return false;
       }
       continue;
