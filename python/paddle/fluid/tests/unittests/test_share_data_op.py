@@ -46,7 +46,7 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
         x.set(np_array, place)
         out = scope.var("Out").get_tensor()
 
-        op = Operator("share_data", Input="X", Out="Out")
+        op = Operator("share_data", X="X", Out="Out")
         op.run(scope, place)
         self.assertTrue(np.allclose(np_array, out))
 
@@ -68,7 +68,7 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
         out = scope.var("Out").get_selected_rows()
         out_tensor = out.get_tensor()
 
-        op = Operator("share_data", Input="X", Out="Out")
+        op = Operator("share_data", X="X", Out="Out")
         op.run(scope, place)
 
         out_height = out.height()
