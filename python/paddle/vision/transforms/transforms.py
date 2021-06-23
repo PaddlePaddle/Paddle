@@ -69,7 +69,7 @@ def _check_input(value,
     else:
         raise TypeError(
             "{} should be a single number or a list/tuple with lenght 2.".
-            format(name))
+                format(name))
 
     if value[0] == value[1] == center:
         value = None
@@ -237,7 +237,7 @@ class BaseTransform(object):
 
     def __init__(self, keys=None):
         if keys is None:
-            keys = ("image", )
+            keys = ("image",)
         elif not isinstance(keys, Sequence):
             raise ValueError(
                 "keys should be a sequence, but got keys={}".format(keys))
@@ -256,7 +256,7 @@ class BaseTransform(object):
     def __call__(self, inputs):
         """Apply transform on single input data"""
         if not isinstance(inputs, tuple):
-            inputs = (inputs, )
+            inputs = (inputs,)
 
         self.params = self._get_params(inputs)
 
@@ -555,6 +555,7 @@ class RandomHorizontalFlip(BaseTransform):
 
     def __init__(self, prob=0.5, keys=None):
         super(RandomHorizontalFlip, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
     def _apply_image(self, img):
@@ -589,6 +590,7 @@ class RandomVerticalFlip(BaseTransform):
 
     def __init__(self, prob=0.5, keys=None):
         super(RandomVerticalFlip, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
     def _apply_image(self, img):
