@@ -23,10 +23,8 @@ sample lines from API_DEV.spec:
 """
 import unittest
 import hashlib
-import inspect
 import functools
 from print_signatures import md5
-from print_signatures import member_dict
 from print_signatures import is_primitive
 
 
