@@ -43,8 +43,10 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .End()
       .AddAttr("window_size")
       .IsNumGT(0)
+      .End()
+      .AddAttr("bit_length")
+      .IsIntIn({8, 16})
       .End();
-  .AddAttr("bit_length").IsIntIn({8, 16}).End();
   AddOpCompat(OpCompat("fake_quantize_moving_average_abs_max"))
       .AddInput("X")
       .IsTensor()
@@ -72,8 +74,10 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .End()
       .AddAttr("moving_rate")
       .IsNumGT(0)
+      .End()
+      .AddAttr("bit_length")
+      .IsIntIn({8, 16})
       .End();
-  .AddAttr("bit_length").IsIntIn({8, 16}).End();
   AddOpCompat(OpCompat("fake_dequantize_max_abs"))
       .AddInput("X")
       .IsTensor()
@@ -85,6 +89,7 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .IsTensor()
       .End()
       .AddAttr("max_range")
+      .IsType<std::vector>()
       .IsNumGT(0)
       .End();
   AddOpCompat(OpCompat("fake_channel_wise_dequantize_max_abs"))
@@ -98,6 +103,7 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .IsTensor()
       .End()
       .AddAttr("quant_bits")
+      .IsType<std::float>()
       .End()
       .AddAttr("quant_axis")
       .IsIntIn({0, 1})
