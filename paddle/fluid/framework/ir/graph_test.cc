@@ -394,7 +394,7 @@ TEST(GraphTest, TestMultiBlock) {
   ASSERT_NE(control_dep2, nullptr);
   ASSERT_EQ(control_dep1, control_dep2);
 
-  // Step3: Colne graph.
+  // Step3: Clone graph.
   std::shared_ptr<ir::Graph> clone_g = g->Clone();
   ASSERT_EQ(clone_g->IsMainGraph(), true);
 
