@@ -17,16 +17,11 @@ Print all signature of a python module in alphabet order.
 Usage:
     ./print_signature  "paddle.fluid" > signature.txt
 """
-from __future__ import print_function
 
-import importlib
 import inspect
 import collections
 import sys
-import pydoc
 import hashlib
-import platform
-import functools
 import pkgutil
 import logging
 import argparse
