@@ -43,9 +43,6 @@ class TestImperativeQatChannelWise(TestImperativeQat):
         self.activation_quantize_type = 'moving_average_abs_max'
         print('weight_quantize_type', self.weight_quantize_type)
 
-    def test_qat(self):
-        self.run_qat_save()
-
 
 if __name__ == '__main__':
     unittest.main()

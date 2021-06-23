@@ -91,7 +91,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        const NameVarMap<VarType>& outs,
                        const framework::OperatorWithKernel& op,
                        const platform::Place& place,
-                       const framework::AttributeMap& attrs) {
+                       const framework::AttributeMap& attrs,
+                       const framework::AttributeMap& default_attrs) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -108,9 +109,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
   // 1. get expected kernel key
-  auto expected_kernel_key =
-      op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
-          op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs));
+  auto expected_kernel_key = op.GetExpectedKernelType(
+      DygraphExecutionContext<VarType>(op, framework::Scope(), *dev_ctx, ctx,
+                                       ins, outs, attrs, default_attrs));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   // 2. check if op[type] has kernel registered.
@@ -148,16 +149,19 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
                                const NameVarMap<VarBase>& outs,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
-                               const framework::AttributeMap& attrs) {
-  return PrepareImpl<VarBase>(ins, outs, op, place, attrs);
+                               const framework::AttributeMap& attrs,
+                               const framework::AttributeMap& default_attrs) {
+  return PrepareImpl<VarBase>(ins, outs, op, place, attrs, default_attrs);
 }
 
 PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                const NameVarMap<VariableWrapper>& outs,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
-                               const framework::AttributeMap& attrs) {
-  return PrepareImpl<VariableWrapper>(ins, outs, op, place, attrs);
+                               const framework::AttributeMap& attrs,
+                               const framework::AttributeMap& default_attrs) {
+  return PrepareImpl<VariableWrapper>(ins, outs, op, place, attrs,
+                                      default_attrs);
 }
 
 template <typename VarType>
@@ -166,17 +170,18 @@ static void PreparedOpRunImpl(
     const framework::OpKernelType& kernel_type,
     const framework::OperatorWithKernel::OpKernelFunc& func,
     platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
-    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs) {
+    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs) {
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
 
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
-                                                    op.Type());
+                                                    &default_attrs, op.Type());
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
-                                        attrs));
+                                        attrs, default_attrs));
 
   if (FLAGS_check_nan_inf) {
     framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
@@ -202,16 +207,18 @@ static void PreparedOpRunImpl(
 
 void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
-                     const framework::AttributeMap& attrs) {
+                     const framework::AttributeMap& attrs,
+                     const framework::AttributeMap& default_attrs) {
   PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
-                             outs, attrs);
+                             outs, attrs, default_attrs);
 }
 
 void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
-                     const framework::AttributeMap& attrs) {
+                     const framework::AttributeMap& attrs,
+                     const framework::AttributeMap& default_attrs) {
   PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
-                                     ins, outs, attrs);
+                                     ins, outs, attrs, default_attrs);
 }
 
 }  // namespace imperative

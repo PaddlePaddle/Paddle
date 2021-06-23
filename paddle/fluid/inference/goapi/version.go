@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,29 +14,13 @@
 
 package paddle
 
-// #cgo CFLAGS: -I${SRCDIR}/../paddle_c/paddle/include
-// #cgo LDFLAGS: -L${SRCDIR}/../paddle_c/paddle/lib -lpaddle_inference_c
-// #include <stdbool.h>
-// #include <paddle_c_api.h>
+// #include "pd_common.h"
+// #include "pd_predictor.h"
+// #include "pd_types.h"
+// #include "pd_utils.h"
 import "C"
-import "fmt"
 
-func ConvertCBooleanToGo(b C.bool) bool {
-	var c_false C.bool
-	if b != c_false {
-		return true
-	}
-	return false
-}
-
-func numel(shape []int32) int32 {
-	n := int32(1)
-	for _, d := range shape {
-		n *= d
-	}
-	return n
-}
-
-func bug(format string, args ...interface{}) error {
-	return fmt.Errorf("Bug %v", fmt.Sprintf(format, args...))
+func Version() string {
+	cVersion := C.PD_GetVersion()
+	return C.GoString(cVersion)
 }

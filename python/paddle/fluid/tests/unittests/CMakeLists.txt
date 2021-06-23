@@ -718,6 +718,7 @@ if (WITH_DISTRIBUTE)
     set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
     set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
     set_tests_properties(test_dist_fleet_raw_program_optimizer PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce PROPERTIES TIMEOUT 60)
 endif()
 
 if (WITH_DISTRIBUTE AND NOT APPLE)
