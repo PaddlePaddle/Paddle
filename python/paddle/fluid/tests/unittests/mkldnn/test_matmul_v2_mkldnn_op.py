@@ -110,15 +110,6 @@ class TestMatMulV2MatrixXVectorTransposeXOneDNNOp(
         self.trans_y = False
 
 
-class TestMatMulV2MatrixXVectorTransposeX2OneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-    def config(self):
-        self.x_shape = (1, 2, 102, 1)
-        self.y_shape = (102, )
-        self.trans_x = True
-        self.trans_y = False
-
-
 class TestMatMulV2MatrixXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
         self.x_shape = (1, 2, 1, 100)
@@ -130,7 +121,7 @@ class TestMatMulV2MatrixXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 class TestMatMulV2MatrixXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
         self.x_shape = (1, 1, 2, 100)
-        self.y_shape = (1, 1, 100, 2)
+        self.y_shape = (1, 1, 100, 1)
         self.trans_x = False
         self.trans_y = False
 
@@ -146,8 +137,8 @@ class TestMatMulV2MatrixXMatrixTransposeYOneDNNOp(
 
 class TestMatMulV2MatrixXMatrix2OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
-        self.x_shape = (1, 1, 25, 4)
-        self.y_shape = (1, 2, 4, 25)
+        self.x_shape = (1, 1, 12, 4)
+        self.y_shape = (1, 2, 4, 12)
         self.trans_x = False
         self.trans_y = False
 
@@ -172,8 +163,8 @@ class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
 class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
         TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
-        self.x_shape = (2, 2, 10, 10)
-        self.y_shape = (2, 2, 10, 10)
+        self.x_shape = (2, 2, 5, 5)
+        self.y_shape = (2, 2, 5, 5)
         self.trans_x = True
         self.trans_y = False
 
@@ -205,8 +196,8 @@ class TestMatMulV2VectorXMatrix5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 class TestMatMulV2Matrix3DXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
-        self.x_shape = (2, 1, 100)
-        self.y_shape = (100)
+        self.x_shape = (2, 1, 40)
+        self.y_shape = (40)
         self.trans_x = False
         self.trans_y = False
 
@@ -233,7 +224,7 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
         TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
         self.x_shape = (1, 3, 1, 10, 10)
-        self.y_shape = (15, 1, 2, 10, 10)
+        self.y_shape = (3, 1, 2, 10, 10)
         self.trans_x = False
         self.trans_y = True
 
