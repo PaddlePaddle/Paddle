@@ -958,9 +958,9 @@ class Variable(object):
 
         Examples:
             .. code-block:: python
-            :name: code-example1
 
                 import paddle
+
                 paddle.enable_static()
 
                 # create a static Variable
@@ -968,8 +968,8 @@ class Variable(object):
 
                 # create a detached Variable
                 y = x.detach()
-
         """
+
         assert self.type == core.VarDesc.VarType.SELECTED_ROWS or \
             self.type == core.VarDesc.VarType.LOD_TENSOR, \
             "only support a variable with SELECTED_ROWS or LOD_TENSOR to be detached"
@@ -1829,9 +1829,9 @@ class Variable(object):
 
         Examples:
             .. code-block:: python
-            :name: code-example1
 
                 import paddle
+
                 paddle.enable_static()
 
                 # create a static Variable
@@ -1839,8 +1839,8 @@ class Variable(object):
 
                 # get the number of elements of the Variable
                 y = x.size()
-
         """
+
         output = self.block.create_var(
             name=unique_name.generate_with_ignorable_key(self.name + "_size"),
             dtype=core.VarDesc.VarType.INT64)
