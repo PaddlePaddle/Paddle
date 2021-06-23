@@ -75,9 +75,6 @@ AttrCompat& AttrCompat::IsLeftDefault() {
 }
 
 bool AttrCompat::operator()(const OpDesc& op_desc) {
-  if (conditions_.empty()) {
-    return true;
-  }
   if (!op_desc.HasAttr(attr_name_)) {
     if (!optional_) {
       LOG(WARNING) << "The non-optional Attr(" << attr_name_ << ") of Op ("
@@ -120,7 +117,7 @@ InputOrOutputCompat& InputOrOutputCompat::IsOptional() {
 
 bool InputOrOutputCompat::operator()(
     const std::vector<std::string>& input) const {
-  if (input.empty()) return false;
+  if (input.empty()) return optional_;
   for (auto& func : conditions_) {
     if (!func(input)) {
       return false;
@@ -263,7 +260,7 @@ bool OpCompatSensiblePass::IsCompat(
     auto op_type = node_pair.second->Op()->Type();
     if (!op_compat_judgers_.count(op_type)) {
       if (HasOpDef(op_type)) {
-        LOG(WARNING) << op_type << "compat not registered!";
+        LOG(WARNING) << op_type << " compat not registered!";
         return false;
       }
       continue;

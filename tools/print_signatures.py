@@ -29,6 +29,7 @@ import platform
 import functools
 import pkgutil
 import logging
+import argparse
 import paddle
 
 member_dict = collections.OrderedDict()
@@ -50,10 +51,7 @@ console.setFormatter(
 def md5(doc):
     try:
         hashinst = hashlib.md5()
-        if platform.python_version()[0] == "2":
-            hashinst.update(str(doc))
-        else:
-            hashinst.update(str(doc).encode('utf-8'))
+        hashinst.update(str(doc).encode('utf-8'))
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
@@ -65,98 +63,8 @@ def md5(doc):
     return md5sum
 
 
-def get_functools_partial_spec(func):
-    func_str = func.func.__name__
-    args = func.args
-    keywords = func.keywords
-    return '{}(args={}, keywords={})'.format(func_str, args, keywords)
-
-
-def format_spec(spec):
-    args = spec.args
-    varargs = spec.varargs
-    keywords = spec.keywords
-    defaults = spec.defaults
-    if defaults is not None:
-        defaults = list(defaults)
-        for idx, item in enumerate(defaults):
-            if not isinstance(item, functools.partial):
-                continue
-
-            defaults[idx] = get_functools_partial_spec(item)
-
-        defaults = tuple(defaults)
-
-    return 'ArgSpec(args={}, varargs={}, keywords={}, defaults={})'.format(
-        args, varargs, keywords, defaults)
-
-
-def queue_dict(member, cur_name):
-    if cur_name != 'paddle':
-        try:
-            eval(cur_name)
-        except (AttributeError, NameError, SyntaxError) as e:
-            print(
-                "Error({}) occurred when `eval({})`, discard it.".format(
-                    str(e), cur_name),
-                file=sys.stderr)
-            return
-
-    if (inspect.isclass(member) or inspect.isfunction(member) or
-            inspect.ismethod(member)) and hasattr(
-                member, '__module__') and hasattr(member, '__name__'):
-        args = member.__module__ + "." + member.__name__
-        try:
-            eval(args)
-        except (AttributeError, NameError, SyntaxError) as e:
-            print(
-                "Error({}) occurred when `eval({})`, discard it for {}.".format(
-                    str(e), args, cur_name),
-                file=sys.stderr)
-            return
-    else:
-        try:
-            args = inspect.getargspec(member)
-            has_type_error = False
-        except TypeError:  # special for PyBind method
-            args = "  ".join([
-                line.strip() for line in pydoc.render_doc(member).split('\n')
-                if "->" in line
-            ])
-            has_type_error = True
-
-        if not has_type_error:
-            args = format_spec(args)
-
-    doc_md5 = md5(member.__doc__)
-    member_dict[cur_name] = "({}, ('document', '{}'))".format(args, doc_md5)
-
-
-def visit_member(parent_name, member, member_name=None):
-    if member_name:
-        cur_name = ".".join([parent_name, member_name])
-    else:
-        cur_name = ".".join([parent_name, member.__name__])
-    if inspect.isclass(member):
-        queue_dict(member, cur_name)
-        for name, value in inspect.getmembers(member):
-            if hasattr(value, '__name__') and not name.startswith("_"):
-                visit_member(cur_name, value)
-    elif inspect.ismethoddescriptor(member):
-        return
-    elif inspect.isbuiltin(member):
-        return
-    elif callable(member):
-        queue_dict(member, cur_name)
-    elif inspect.isgetsetdescriptor(member):
-        return
-    else:
-        raise RuntimeError("Unsupported generate signature of member, type {0}".
-                           format(str(type(member))))
-
-
 def is_primitive(instance):
-    int_types = (int, long) if platform.python_version()[0] == "2" else (int, )
+    int_types = (int, )
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True
@@ -170,6 +78,15 @@ def is_primitive(instance):
         return False
 
 
+ErrorSet = set()
+IdSet = set()
+skiplist = [
+    'paddle.vision.datasets.DatasetFolderImageFolder',
+    'paddle.truncdigamma',
+    'paddle.fluid.layers.ops.func',
+]
+
+
 def visit_all_module(mod):
     mod_name = mod.__name__
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
@@ -180,37 +97,38 @@ def visit_all_module(mod):
 
     if mod in visited_modules:
         return
-
     visited_modules.add(mod)
+
+    member_names = dir(mod)
     if hasattr(mod, "__all__"):
-        member_names = (name for name in mod.__all__
-                        if not name.startswith("_"))
-    elif mod_name == 'paddle':
-        member_names = dir(mod)
-    else:
-        return
+        member_names += mod.__all__
     for member_name in member_names:
-        instance = getattr(mod, member_name, None)
-        if instance is None:
+        if member_name.startswith('_'):
             continue
-
-        if is_primitive(instance):
+        cur_name = mod_name + '.' + member_name
+        if cur_name in skiplist:
             continue
-
-        if not hasattr(instance, "__name__"):
-            continue
-
-        if inspect.ismodule(instance):
-            visit_all_module(instance)
-        else:
-            if member_name != instance.__name__:
-                print(
-                    "Found alias API, alias name is: {}, original name is: {}".
-                    format(member_name, instance.__name__),
-                    file=sys.stderr)
-                visit_member(mod.__name__, instance, member_name)
+        try:
+            instance = getattr(mod, member_name)
+            if inspect.ismodule(instance):
+                visit_all_module(instance)
             else:
-                visit_member(mod.__name__, instance)
+                doc_md5 = md5(instance.__doc__)
+                instance_id = id(instance)
+                if instance_id in IdSet:
+                    continue
+                IdSet.add(instance_id)
+                member_dict[cur_name] = "({}, ('document', '{}'))".format(
+                    cur_name, doc_md5)
+                if hasattr(instance,
+                           '__name__') and member_name != instance.__name__:
+                    print(
+                        "Found alias API, alias name is: {}, original name is: {}".
+                        format(member_name, instance.__name__),
+                        file=sys.stderr)
+        except:
+            if not cur_name in ErrorSet and not cur_name in skiplist:
+                ErrorSet.add(cur_name)
 
 
 # all from gen_doc.py
@@ -244,7 +162,8 @@ def get_all_api(root_path='paddle', attr="__all__"):
     logger.info('%s: collected %d apis, %d distinct apis.', attr, api_counter,
                 len(api_info_dict))
 
-    return [api_info['all_names'][0] for api_info in api_info_dict.values()]
+    return [(sorted(list(api_info['all_names']))[0], md5(api_info['docstring']))
+            for api_info in api_info_dict.values()]
 
 
 def insert_api_into_dict(full_name, gen_doc_anno=None):
@@ -272,6 +191,7 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
                 "id": fc_id,
                 "object": obj,
                 "type": type(obj).__name__,
+                "docstring": '',
             }
             docstr = inspect.getdoc(obj)
             if docstr:
@@ -309,28 +229,56 @@ def process_module(m, attr="__all__"):
 
 
 def get_all_api_from_modulelist():
-    modulelist = [
-        paddle, paddle.amp, paddle.nn, paddle.nn.functional,
-        paddle.nn.initializer, paddle.nn.utils, paddle.static, paddle.static.nn,
-        paddle.io, paddle.jit, paddle.metric, paddle.distribution,
-        paddle.optimizer, paddle.optimizer.lr, paddle.regularizer, paddle.text,
-        paddle.utils, paddle.utils.download, paddle.utils.profiler,
-        paddle.utils.cpp_extension, paddle.sysconfig, paddle.vision,
-        paddle.distributed, paddle.distributed.fleet,
-        paddle.distributed.fleet.utils, paddle.distributed.parallel,
-        paddle.distributed.utils, paddle.callbacks, paddle.hub, paddle.autograd
-    ]
+    modulelist = [paddle]
     for m in modulelist:
         visit_all_module(m)
 
     return member_dict
 
 
-if __name__ == '__main__':
-    # modules = sys.argv[1].split(",")
-    # for m in modules:
-    #    visit_all_module(importlib.import_module(m))
-    get_all_api_from_modulelist()
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser(description='Print Apis Signatures')
+    parser.add_argument('--debug', dest='debug', action="store_true")
+    parser.add_argument(
+        '--method',
+        dest='method',
+        type=str,
+        default='from_modulelist',
+        help="using get_all_api or from_modulelist")
+    parser.add_argument(
+        'module', type=str, help='module', default='paddle')  # not used
 
-    for name in member_dict:
-        print(name, member_dict[name])
+    if len(sys.argv) == 1:
+        args = parser.parse_args(['paddle'])
+        return args
+    #    parser.print_help()
+    #    sys.exit(1)
+
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == '__main__':
+    args = parse_args()
+
+    if args.method == 'from_modulelist':
+        get_all_api_from_modulelist()
+        for name in member_dict:
+            print(name, member_dict[name])
+    elif args.method == 'get_all_api':
+        api_signs = get_all_api()
+        for api_sign in api_signs:
+            print("{0} ({0}, ('document', '{1}'))".format(api_sign[0], api_sign[
+                1]))
+
+    if len(ErrorSet) == 0:
+        sys.exit(0)
+    else:
+        for erroritem in ErrorSet:
+            print(
+                "Error, new function {} is unreachable".format(erroritem),
+                file=sys.stderr)
+        sys.exit(1)

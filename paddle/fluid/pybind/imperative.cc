@@ -251,7 +251,7 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
 }
 
 static void InitVarBaseFromTensorWithArgDefault(
-    imperative::VarBase *self, const framework::LoDTensor &tensor) {
+    imperative::VarBase *self, const framework::Tensor &tensor) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
   new (self) imperative::VarBase(
