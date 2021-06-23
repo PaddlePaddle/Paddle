@@ -2266,7 +2266,7 @@ PDNode *patterns::Bfloat16Placement::operator()(
           {"concat", "conv2d", "conv2d_transpose", "elementwise_add",
            "elementwise_mul", "fc", "fusion_gru", "fusion_lstm", "gelu",
            "layer_norm", "matmul", "matmul_v2", "pool2d", "relu", "reshape2",
-           "softmax", "sum", "transpose2"});
+           "softmax", "split", "sum", "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
