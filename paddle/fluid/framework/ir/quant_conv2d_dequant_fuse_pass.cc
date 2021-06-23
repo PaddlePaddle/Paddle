@@ -21,7 +21,88 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-
+QuantDequantFusePass::QuantDequantFusePass() {
+  AddOpCompat(OpCompat("fake_quantize_range_abs_max"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("InScale")
+      .IsTensor()
+      .End()
+      .AddInput("Iter")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("OutScale")
+      .IsTensor()
+      .End()
+      .AddOutput("OutScales")
+      .IsTensor()
+      .End()
+      .AddAttr("window_size")
+      .IsNumGT(0)
+      .End();
+  .AddAttr("bit_length").IsIntIn({8, 16}).End();
+  AddOpCompat(OpCompat("fake_quantize_moving_average_abs_max"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("InScale")
+      .IsTensor()
+      .End()
+      .AddInput("InAccum")
+      .IsTensor()
+      .End()
+      .AddInput("InState")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("OutScale")
+      .IsTensor()
+      .End()
+      .AddOutput("OutState")
+      .IsTensor()
+      .End()
+      .AddOutput("OutAccum")
+      .IsTensor()
+      .End()
+      .AddAttr("moving_rate")
+      .IsNumGT(0)
+      .End();
+  .AddAttr("bit_length").IsIntIn({8, 16}).End();
+  AddOpCompat(OpCompat("fake_dequantize_max_abs"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("max_range")
+      .IsNumGT(0)
+      .End();
+  AddOpCompat(OpCompat("fake_channel_wise_dequantize_max_abs"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scales")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("quant_bits")
+      .End()
+      .AddAttr("quant_axis")
+      .IsIntIn({0, 1})
+      .End();
+}
 // Delete quant op before quantized ops, and set input scale in the attr of
 // quantized ops
 void DeleteQuant(ir::Graph* graph, Scope* scope,
@@ -41,6 +122,10 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
   // ops linked from it
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     PADDLE_ENFORCE_EQ(
         subgraph.count(input_act_node), true,
         platform::errors::NotFound(
@@ -142,6 +227,10 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
   // Create new op desc
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     PADDLE_ENFORCE_EQ(
         subgraph.count(quantized_op_input), true,
         platform::errors::NotFound("Quantized op input node(%s) did not find "
