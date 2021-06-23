@@ -30,6 +30,11 @@ class QuantDequantFusePass : public FusePassBase {
   virtual ~QuantDequantFusePass() {}
 
  protected:
+  void DeleteQuant(ir::Graph* graph, Scope* scope,
+                   const std::string& quant_type) const;
+  void FuseDequant(ir::Graph* graph, Scope* scope,
+                   const std::string& quantized_op_type,
+                   const std::string& dequant_type) const;
   void ApplyImpl(ir::Graph* graph) const override;
 };
 

@@ -42,7 +42,7 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .IsTensor()
       .End()
       .AddAttr("window_size")
-      .IsType<std::int>()
+      .IsType<int>()
       .IsNumGT(0)
       .End()
       .AddAttr("bit_length")
@@ -74,8 +74,8 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .IsTensor()
       .End()
       .AddAttr("moving_rate")
-      .IsType<std::float>()
-      .IsNumGT(0)
+      .IsType<float>()
+      .IsNumGT(0.0f)
       .End()
       .AddAttr("bit_length")
       .IsIntIn({8, 16})
@@ -91,8 +91,8 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .IsTensor()
       .End()
       .AddAttr("max_range")
-      .IsType<std::float>()
-      .IsNumGT(0)
+      .IsType<float>()
+      .IsNumGT(0.0f)
       .End();
   AddOpCompat(OpCompat("fake_channel_wise_dequantize_max_abs"))
       .AddInput("X")
@@ -105,7 +105,7 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .IsTensor()
       .End()
       .AddAttr("quant_bits")
-      .IsType<std::vector>()
+      .IsType<std::vector<int>>()
       .End()
       .AddAttr("quant_axis")
       .IsIntIn({0, 1})
@@ -113,8 +113,8 @@ QuantDequantFusePass::QuantDequantFusePass() {
 }
 // Delete quant op before quantized ops, and set input scale in the attr of
 // quantized ops
-void DeleteQuant(ir::Graph* graph, Scope* scope,
-                 const std::string& quant_type) {
+void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
+                                       const std::string& quant_type) const {
   const std::string pattern_name = "delete_quant_fuse";
   GraphPatternDetector gpd;
   auto* input_act_node = gpd.mutable_pattern()
@@ -196,9 +196,9 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
 
 // Delete dequant op after quantized ops, and convert weight from fp32 range to
 // int8 range
-void FuseDequant(ir::Graph* graph, Scope* scope,
-                 const std::string& quantized_op_type,
-                 const std::string& dequant_type) {
+void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
+                                       const std::string& quantized_op_type,
+                                       const std::string& dequant_type) const {
   std::string weight_name = "";
   std::string input_name = "";
   if (quantized_op_type == "conv2d" ||
