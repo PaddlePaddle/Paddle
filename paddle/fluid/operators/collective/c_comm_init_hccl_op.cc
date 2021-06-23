@@ -69,10 +69,12 @@ class CCommInitOpAscend : public framework::OperatorBase {
     for (int32_t idx = 0; idx < size; idx++) {
       input[idx] = 1.0;
     }
-    aclrtMalloc(reinterpret_cast<void**>(&buff), size * sizeof(float),
-                ACL_MEM_MALLOC_HUGE_FIRST);
-    aclrtMemcpy(reinterpret_cast<void*>(buff), size * sizeof(float),
-                input.data(), size * sizeof(float), ACL_MEMCPY_HOST_TO_DEVICE);
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtMalloc(reinterpret_cast<void**>(&buff),
+                                           size * sizeof(float),
+                                           ACL_MEM_MALLOC_HUGE_FIRST));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(
+        reinterpret_cast<void*>(buff), size * sizeof(float), input.data(),
+        size * sizeof(float), ACL_MEMCPY_HOST_TO_DEVICE));
     VLOG(3) << "Build buff data successful.";
 
     aclrtStream stream = nullptr;
@@ -83,8 +85,8 @@ class CCommInitOpAscend : public framework::OperatorBase {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
     }
-    platform::dynload::HcclBroadcast(buff, size, HCCL_DATA_TYPE_FP32, 0,
-                                     comm->comm(), stream);
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(
+        buff, size, HCCL_DATA_TYPE_FP32, 0, comm->comm(), stream));
     VLOG(3) << "Build connection successful.";
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
