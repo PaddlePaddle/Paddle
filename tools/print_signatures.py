@@ -30,7 +30,6 @@ import functools
 import pkgutil
 import logging
 import argparse
-import paddle
 
 member_dict = collections.OrderedDict()
 
@@ -136,6 +135,7 @@ def get_all_api(root_path='paddle', attr="__all__"):
     """
     walk through the paddle package to collect all the apis.
     """
+    import paddle
     global api_info_dict
     api_counter = 0
     for filefinder, name, ispkg in pkgutil.walk_packages(
@@ -225,6 +225,7 @@ def process_module(m, attr="__all__"):
 
 
 def get_all_api_from_modulelist():
+    import paddle
     modulelist = [paddle]
     for m in modulelist:
         visit_all_module(m)
