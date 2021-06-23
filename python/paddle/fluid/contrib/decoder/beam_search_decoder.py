@@ -550,6 +550,7 @@ class BeamSearchDecoder(object):
 
     Examples:
     .. code-block:: python
+
       from paddle.nn import BeamSearchDecoder
 
       decoder = BeamSearchDecoder(
