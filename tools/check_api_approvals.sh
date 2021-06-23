@@ -43,10 +43,14 @@ linenum=$(echo ${api_spec_diff} | wc -l | sed 's/[[:space:]]//g')
 if [ "${linenum}" = "3" -a "${ops_func_in_diff}" != "" ] ; then
     echo "skip paddle.fluid.layers.ops.func"
 elif [ "$api_spec_diff" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or jzhang533 or dingjiaweiww or Heeenrrry or TCChenlong) approval for the api change for the management reason of API interface.\n"
+    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) approval for API change.\n"
+    echo_line="${echo_line} and one TPM approval for API change: \n"
+    echo_line="${echo_line} jzhang533/ZhangJun, dingjiaweiww/DingJiaWei, Heeenrrry/LiKunLun, TCChenlong/ChenLong for general APIs\n"
+    echo_line="${echo_line} PangHua/XiangHui for distributed related APIs\n"
+    echo_line="${echo_line} twismon/WangYunKai, CheQiXiao/CheQiXiao for inference related APIs.\n"
+
     check_approval 1 46782768 47554610
-    echo_line=""
-    check_approval 1 2870059 29231 23093488 28379894 11935832
+    check_approval 1 29231 23093488 28379894 11935832 2682285 12050047 50894398
 fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
@@ -54,8 +58,12 @@ linenum=$(echo ${api_doc_spec_diff} | wc -l | sed 's/[[:space:]]//g')
 if [ "${linenum}" = "3" -a "${ops_func_in_diff}" != "" ] ; then
     echo "skip paddle.fluid.layers.ops.func for doc diff"
 elif [ "$api_doc_spec_diff" != "" ]; then
-    echo_line="You must have one TPM (saxon-zh or jzhang533 or dingjiaweiww or Heeenrrry or TCChenlong) approval for the api change for the management reason of API document.\n"
-    check_approval 1 2870059 29231 23093488 28379894 11935832
+    echo_line="You must have  one TPM approval for API documents change: \n"
+    echo_line="${echo_line} jzhang533/ZhangJun, dingjiaweiww/DingJiaWei, Heeenrrry/LiKunLun, TCChenlong/ChenLong for general API docs\n"
+    echo_line="${echo_line} PangHua/XiangHui for distributed related API docs\n"
+    echo_line="${echo_line} twismon/WangYunKai, CheQiXiao/CheQiXiao for inference related API docs.\n"
+
+    check_approval 1 29231 23093488 28379894 11935832 2682285 12050047 50894398
 fi
 
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
