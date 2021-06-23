@@ -28,8 +28,8 @@ namespace operators {
 
 enum ElementwiseType { kUnary = 1, kBinary = 2 };
 
-inline int GetThreadsConfig(const platform::CUDADeviceContext &ctx,
-                            int64_t numel, int vec_size);
+int GetThreadsConfig(const platform::CUDADeviceContext &ctx, 
+                     int64_t numel, int vec_size);
 
 template <typename T>
 int GetVectorizedSizeImpl(const T *pointer);

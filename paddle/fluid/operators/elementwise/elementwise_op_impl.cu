@@ -13,14 +13,18 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/fluid/platform/bfloat16.h"
+
+namespace plat = paddle::platform;
+
 #ifdef __HIPCC__
 #define ELEMENTWISE_BLOCK_SIZE 256
 #else
 #define ELEMENTWISE_BLOCK_SIZE 512
 #endif
-
-#include "paddle/fluid/platform/cuda_device_function.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +35,7 @@ namespace operators {
 * 2x~4x) than number of SMs. Hence, SM count is took into account within
 * this function to determine the right number of threads per block.
 */
-inline int GetThreadsConfig(const platform::CUDADeviceContext &ctx,
+int GetThreadsConfig(const platform::CUDADeviceContext &ctx,
                             int64_t numel, int vec_size) {
   int threads = ELEMENTWISE_BLOCK_SIZE;
   int sm_count = ctx.GetSMCount();
@@ -83,13 +87,18 @@ int GetVectorizedSizeImpl(const T *pointer) {
   }
 }
 
-template int GetVectorizedSizeImpl<float>;
-template int GetVectorizedSizeImpl<double>;
-template int GetVectorizedSizeImpl<int>;
-template int GetVectorizedSizeImpl<int64_t>;
-template int GetVectorizedSizeImpl<plat::float16>;
-template int GetVectorizedSizeImpl < plat::complex<float>;
-template int GetVectorizedSizeImpl < plat::complex<double>;
+template int GetVectorizedSizeImpl(const bool *pointer);
+template int GetVectorizedSizeImpl(const signed char *pointer);
+template int GetVectorizedSizeImpl(const unsigned char *pointer);
+template int GetVectorizedSizeImpl(const short *pointer);
+template int GetVectorizedSizeImpl(const int *pointer);
+template int GetVectorizedSizeImpl(const int64_t *pointer);
+template int GetVectorizedSizeImpl(const float *pointer);
+template int GetVectorizedSizeImpl(const double *pointer);
+template int GetVectorizedSizeImpl(const plat::float16 *pointer);
+template int GetVectorizedSizeImpl(const plat::bfloat16 *pointer);
+template int GetVectorizedSizeImpl(const plat::complex<float> *pointer);
+template int GetVectorizedSizeImpl(const plat::complex<double> *pointer);
 
 }  // namespace operators
 }  // namespace paddle
