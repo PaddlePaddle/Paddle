@@ -982,9 +982,7 @@ class Variable(object):
             stop_gradient=True)
 
         self.block.append_op(
-            type='share_data',
-            inputs={'Input': [self]},
-            outputs={'Out': [output]})
+            type='share_data', inputs={'X': [self]}, outputs={'Out': [output]})
         return output
 
     @fake_interface_only

@@ -22,7 +22,7 @@ template <typename T>
 class ShareDataKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *in_var = ctx.InputVar("Input");
+    auto *in_var = ctx.InputVar("X");
     auto *out_var = ctx.OutputVar("Out");
     if (in_var->IsType<framework::LoDTensor>()) {
       const auto &origin_tensor = in_var->Get<framework::LoDTensor>();

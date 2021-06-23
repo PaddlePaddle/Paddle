@@ -23,37 +23,34 @@ class ShareDataOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "ShareData");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ShareData");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ShareData");
-    auto in_type = ctx->GetInputsVarType("Input")[0];
+    auto in_type = ctx->GetInputsVarType("X")[0];
     auto out_type = ctx->GetOutputsVarType("Out")[0];
 
     PADDLE_ENFORCE_EQ(
         in_type == framework::proto::VarType::LOD_TENSOR ||
             in_type == framework::proto::VarType::SELECTED_ROWS,
-        true,
-        platform::errors::InvalidArgument(
-            "Type of Variable[Input] must be LoDTensor or SelectedRows!"));
+        true, platform::errors::InvalidArgument(
+                  "Type of Variable[X] must be LoDTensor or SelectedRows!"));
     PADDLE_ENFORCE_EQ(
         in_type, out_type,
         platform::errors::InvalidArgument(
-            "The type of input (Input) and output (Out) are inconsistent."));
+            "The type of input (X) and output (Out) are inconsistent."));
 
-    ctx->ShareDim("Input", "Out");
+    ctx->ShareDim("X", "Out");
   }
 };
 
 class ShareDataOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "The input tensor.");
-    AddOutput("Out",
-              "The returned tensor, will share data with the input Tensor.");
+    AddInput("X", "(Tensor), The input tensor of share_data op");
+    AddOutput("Out", "(Tensor), The output tensor of share_data op");
     AddComment(R"DOC(
 ShareData Operator.
 
-Return a tensor that share data with the input tensor and
-always doesn't have a Tensor copy.
+Return a tensor $Out$ that shares data with the input tensor $X$ and without tensor copy.
 )DOC");
   }
 };

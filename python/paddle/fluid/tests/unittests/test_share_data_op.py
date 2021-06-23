@@ -23,7 +23,7 @@ class TestShareDataOp(OpTest):
     def setUp(self):
         self.op_type = "share_data"
         input = np.random.rand(2, 3, 5).astype("float32")
-        self.inputs = {'Input': input}
+        self.inputs = {'X': input}
         self.outputs = {'Out': input}
 
     def test_check_output(self):
