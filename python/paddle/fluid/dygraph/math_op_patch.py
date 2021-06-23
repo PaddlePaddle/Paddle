@@ -202,12 +202,17 @@ def monkey_patch_math_varbase():
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
             if not isinstance(other_var, core.VarBase):
-                if reverse:
-                    other_var = create_tensor(
-                        other_var, dtype=lhs_dtype, shape=self.shape)
+                if isinstance(other_var, complex):
+                    import paddle
+                    other_var = paddle.to_tensor(other_var, dtype='complex64')
                 else:
-                    # add fill_op 
-                    other_var = create_scalar(value=other_var, dtype=lhs_dtype)
+                    if reverse:
+                        other_var = create_tensor(
+                            other_var, dtype=lhs_dtype, shape=self.shape)
+                    else:
+                        # add fill_op
+                        other_var = create_scalar(
+                            value=other_var, dtype=lhs_dtype)
 
             # 3. promote types or unify right var type to left var
             rhs_dtype = other_var.dtype
