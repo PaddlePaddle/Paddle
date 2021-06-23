@@ -19,7 +19,53 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
+TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
+  AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({0, 1, 2, 3})
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
+      .End();
+  AddOpCompat(OpCompat("flatten2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({0, 1, 2, 3})
+      .End();
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({0, 1, 2, 3})
+      .End();
+}
+
+void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
+    ir::Graph *graph, int times) const {
   const std::string pattern_name =
       "transpose_flatten" + std::to_string(times) + "_concat_fuse";
 
@@ -37,6 +83,10 @@ void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     const int kNumFields = 5;
     const int kTransOffset = 1;
     const int kTransOutOffset = 2;
