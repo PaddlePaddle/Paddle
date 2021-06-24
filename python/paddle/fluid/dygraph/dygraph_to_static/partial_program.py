@@ -221,23 +221,15 @@ class PartialProgramLayer(layers.Layer):
 
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
-        framework._dygraph_tracer().trace_op(
-            type='run_program',
-            inputs={
-                'X': valid_vars(in_vars),
-                'Params': valid_vars(self._params)
-            },
-            outputs={
-                'Out': valid_vars(out_vars),
-                'OutScope': tmp_scope_vec,
-                'DOut': valid_vars(self._double_grads)
-            },
-            attrs={
-                'global_block': self.program.desc.block(0),
-                'start_op_index': 0,
-                'end_op_index': self._infer_program.desc.block(0).op_size(),
-                'is_test': not self.training
-            })
+
+        attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
+                 0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
+                 'is_test', not self.training)
+        core.ops.run_program(
+            valid_vars(in_vars),
+            valid_vars(self._params),
+            valid_vars(out_vars), tmp_scope_vec,
+            valid_vars(self._double_grads), *attrs)
 
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
@@ -255,24 +247,24 @@ class PartialProgramLayer(layers.Layer):
         flatten_inputs = flatten(inputs)
         # Convert variable into VarBase and feed in training data.
         input_vars = []
+        expected_place = framework._current_expected_place()
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = core.VarBase(
                     value=value,
                     name=self._inputs[i].desc.name(),
                     persistable=False,
-                    place=framework._current_expected_place(),
+                    place=expected_place,
                     zero_copy=True)
             elif isinstance(value, core.VarBase):
-                if value.stop_gradient:
-                    # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
-                    # into CUDAPlace when it's as input of multi Ops. so we move it in advance
-                    # to avoid this problem.
-                    var = paddle.to_tensor(
-                        value,
-                        dtype=value.dtype,
-                        place=framework._current_expected_place(),
-                        stop_gradient=True)
+                # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
+                # into CUDAPlace when it's as input of multi Ops. so we move it in advance
+                # to avoid this problem.
+                if value.stop_gradient and not value.place._equals(
+                        expected_place):
+                    var = value._copy_to(expected_place, False)
+                    var.stop_gradient = True
+                    var.name = value.name
                 else:
                     var = value
                 var.name = self._inputs[i].desc.name()

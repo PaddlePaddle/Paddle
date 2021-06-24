@@ -18,6 +18,7 @@ from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
 from ...base import topology as tp
+from paddle.autograd import PyLayer
 
 __all__ = []
 
@@ -243,3 +244,19 @@ class RowParallelLinear(Layer):
 
         output = output_ + self.bias if self.bias is not None else output_
         return output
+
+
+class ParallelCrossEntropy(Layer):
+    def __init__(self, name=None):
+        super(ParallelCrossEntropy, self).__init__()
+        self.name = name
+        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
+        )
+        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
+        )
+        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+
+    def forward(self, input, label):
+        loss = paddle.distributed.collective._c_softmax_with_cross_entropy(
+            input, label, group=self.model_parallel_group)
+        return loss
