@@ -17,20 +17,14 @@ Print all signature of a python module in alphabet order.
 Usage:
     ./print_signature  "paddle.fluid" > signature.txt
 """
-from __future__ import print_function
 
-import importlib
 import inspect
 import collections
 import sys
-import pydoc
 import hashlib
-import platform
-import functools
 import pkgutil
 import logging
 import argparse
-import paddle
 
 member_dict = collections.OrderedDict()
 
@@ -80,11 +74,7 @@ def is_primitive(instance):
 
 ErrorSet = set()
 IdSet = set()
-skiplist = [
-    'paddle.vision.datasets.DatasetFolderImageFolder',
-    'paddle.truncdigamma',
-    'paddle.fluid.layers.ops.func',
-]
+skiplist = []
 
 
 def visit_all_module(mod):
@@ -140,6 +130,7 @@ def get_all_api(root_path='paddle', attr="__all__"):
     """
     walk through the paddle package to collect all the apis.
     """
+    import paddle
     global api_info_dict
     api_counter = 0
     for filefinder, name, ispkg in pkgutil.walk_packages(
@@ -229,6 +220,7 @@ def process_module(m, attr="__all__"):
 
 
 def get_all_api_from_modulelist():
+    import paddle
     modulelist = [paddle]
     for m in modulelist:
         visit_all_module(m)
