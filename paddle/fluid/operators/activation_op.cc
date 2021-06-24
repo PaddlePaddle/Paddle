@@ -1158,9 +1158,8 @@ REGISTER_OPERATOR(
 
 REGISTER_ACTIVATION_CPU_KERNEL(tanh, Tanh, TanhFunctor, TanhGradFunctor);
 REGISTER_OP_CPU_KERNEL(
-    tanh_grad_grad,
-    ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::TanhGradGradFunctor<float>>,
+    tanh_grad_grad, ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
+                                              ops::TanhGradGradFunctor<float>>,
     ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
                               ops::TanhGradGradFunctor<double>>,
     ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
@@ -1437,9 +1436,8 @@ REGISTER_OP_CPU_KERNEL(expm1,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::Expm1Functor<plat::float16>>);
 REGISTER_OP_CPU_KERNEL(
-    expm1_grad,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::Expm1GradFunctor<float>>,
+    expm1_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                          ops::Expm1GradFunctor<float>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::Expm1GradFunctor<double>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
