@@ -133,7 +133,7 @@ def reader_creator(data_file,
             if mem.name in img2label:
                 image = tf.extractfile(mem).read()
                 label = img2label[mem.name]
-                yield image, int(label)
+                yield image, int(label) - 1
 
     if use_xmap:
         return xmap_readers(mapper, reader, min(4, cpu_count()), buffered_size)
