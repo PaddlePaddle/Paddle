@@ -80,7 +80,7 @@ class CompareReduceOpKernel
       std::vector<const framework::Tensor*> ins = {x, y};
       std::vector<framework::Tensor*> outs = {&tmp};
       LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, bool>(
-                                  cuda_ctx, ins, &outs, Functor<T>();
+          cuda_ctx, ins, &outs, Functor());
 
       // Reduce by 'bitwise and' operator
       std::vector<int> reduce_dims;
