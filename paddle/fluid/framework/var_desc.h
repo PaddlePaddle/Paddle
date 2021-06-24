@@ -111,6 +111,12 @@ class VarDesc {
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
+  bool Parameterized() const { return desc_.parameterized(); }
+
+  void SetParameterized(bool parameterized) {
+    desc_.set_parameterized(parameterized);
+  }
+
   bool NeedCheckFeed() const { return desc_.need_check_feed(); }
 
   void SetNeedCheckFeed(bool need_check_feed) {

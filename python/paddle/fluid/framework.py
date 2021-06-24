@@ -1181,7 +1181,7 @@ class Variable(object):
             var_str = "{name} : {type})".\
                 format(name=self.name, type=type_str)
 
-        if type(self) == Parameter:
+        if self.parameterized:
             if self.trainable:
                 var_str = "trainable param " + var_str
             else:
@@ -1303,6 +1303,25 @@ class Variable(object):
     @persistable.setter
     def persistable(self, p):
         self.desc.set_persistable(p)
+
+    @property
+    def parameterized(self):
+        """
+        Indicating if we current Variable is a Parameter
+
+        Examples:
+          .. code-block:: python
+
+            new_parameter = paddle.static.create_parameter(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("Check current Var is a Parameter: {}".format(new_parameter.parameterized))
+        """
+        return self.desc.parameterized()
+
+    @parameterized.setter
+    def parameterized(self, p):
+        self.desc.set_parameterized(p)
 
     @property
     def name(self):
@@ -5397,6 +5416,8 @@ class Parameter(Variable):
         self.need_clip = kwargs.get('need_clip', True)
 
         self.is_distributed = False
+
+        self.parameterized = True
 
     def __str__(self):
         return self._to_readable_code()
