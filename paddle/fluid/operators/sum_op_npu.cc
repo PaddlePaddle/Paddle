@@ -35,20 +35,22 @@ class SumNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     int n = static_cast<int>(x.size());
-    PADDLE_ENFORCE_EQ(n > 1, true,
-                      platform::errors::InvalidArgument(
-                          "The size of Input(x) list must larger or equal 2"));
+
+    if (n == 1) {
+      TensorCopy(*x[0], place, out);
+      return;
+    }
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Add", {*x[0], *x[1]}, {*out}, {});
+    const auto& runner = NpuOpRunner("Add", {*x[0], *x[1]}, {*out}, {});
 
     runner.Run(stream);
     for (int i = 2; i < n; i++) {
-      runner = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
-      runner.Run(stream);
+      const auto& runner1 = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
+      runner1.Run(stream);
     }
   }
 };

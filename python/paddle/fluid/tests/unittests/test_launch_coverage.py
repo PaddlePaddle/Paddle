@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 
 from argparse import ArgumentParser, REMAINDER
 from paddle.distributed.utils import _print_arguments, get_gpus, get_cluster_from_args
+from paddle.distributed.fleet.launch_utils import find_free_ports
 
 
 def _parse_args():
@@ -114,6 +115,9 @@ class TestCoverage(unittest.TestCase):
 
         args.use_paddlecloud = True
         cluster, pod = get_cluster_from_args(args, "0")
+
+    def test_find_free_ports(self):
+        find_free_ports(2)
 
 
 if __name__ == '__main__':

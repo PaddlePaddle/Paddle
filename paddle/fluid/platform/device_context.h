@@ -233,6 +233,27 @@ template <>
 struct DefaultDeviceContextType<platform::NPUPlace> {
   using TYPE = NPUDeviceContext;
 };
+
+// Currently, NPUPinnedDeviceContext is only used to data copying.
+class NPUPinnedDeviceContext : public DeviceContext {
+ public:
+  NPUPinnedDeviceContext();
+  explicit NPUPinnedDeviceContext(NPUPinnedPlace place);
+
+  Place GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+ private:
+  NPUPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+
+template <>
+struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
+  using TYPE = NPUPinnedDeviceContext;
+};
+
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -337,15 +358,16 @@ class CUDAContext {
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
           &miopen_major, &miopen_minor, &miopen_patch));
       auto local_miopen_version =
-          (miopen_major * 1000 + miopen_minor * 100 + miopen_patch) / 100;
-      auto compile_miopen_version = MIOPEN_VERSION / 100;
+          (miopen_major * 1000 + miopen_minor * 10 + miopen_patch) / 10;
+      auto compile_miopen_version = MIOPEN_VERSION / 10;
       if (local_miopen_version < static_cast<size_t>(compile_miopen_version)) {
         LOG_FIRST_N(WARNING, 1)
             << "WARNING: device: " << place_.device
             << ". The installed Paddle is compiled with MIOPEN "
-            << compile_miopen_version / 10 << "." << compile_miopen_version % 10
+            << compile_miopen_version / 100 << "."
+            << compile_miopen_version % 100
             << ", but MIOPEN version in your machine is "
-            << local_miopen_version / 10 << "." << local_miopen_version % 10
+            << local_miopen_version / 100 << "." << local_miopen_version % 100
             << ", which may cause serious incompatible bug. "
             << "Please recompile or reinstall Paddle with compatible MIOPEN "
                "version.";
@@ -727,8 +749,14 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   using ShapeBlob = umap_key_string_t<KeyBlob>;
   using BlobMap = umap_value_smart_t<int, ShapeBlob>;
 
-  using ExecMap = std::unordered_map<
-      void*, std::vector<std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>>>;
+  // Auxillary two-level structure (shape, executor) to easier control
+  // clearing cache objects related to specific executor
+
+  using ExecKey = void*;
+  using ExecMapCacheIterPair = std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>;
+  using ExecMap =
+      std::unordered_map<ExecKey, std::vector<ExecMapCacheIterPair>>;
+  using ExecShape = std::unordered_map<std::string, std::shared_ptr<ExecMap>>;
 
   explicit MKLDNNDeviceContext(CPUPlace place);
 
@@ -737,6 +765,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   // Register object to currently used executor's map
   void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;
+  void RemoveShapeEntriesWithExecutor(void) const;
 
   // Remove all entries from the blob map
   void ResetBlobMap(void* ptr);
@@ -751,7 +780,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
   // Calculate number of oneDNN objects cached
-  unsigned int GetCachedObjectsNumber(void);
+  unsigned int GetCachedObjectsNumber(void) const;
 
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
@@ -764,7 +793,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<BlobMap> p_blobmap_;
   // Map key is pointer of executor and value is a data(iterator in map) needed
   // to erase
-  std::shared_ptr<ExecMap> p_exec_items_;
+  std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
 };

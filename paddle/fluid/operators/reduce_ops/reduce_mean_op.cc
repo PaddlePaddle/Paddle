@@ -101,6 +101,8 @@ REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
                   ops::ReduceMeanGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
+                                         bool, ops::MeanFunctor>,
+                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          float, ops::MeanFunctor>,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          double, ops::MeanFunctor>);
@@ -110,5 +112,6 @@ using CPUReduceMeanGradKernel =
     ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, T,
                           ops::MeanGradFunctor, true>;
 
-REGISTER_OP_CPU_KERNEL(reduce_mean_grad, CPUReduceMeanGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(reduce_mean_grad, CPUReduceMeanGradKernel<bool>,
+                       CPUReduceMeanGradKernel<float>,
                        CPUReduceMeanGradKernel<double>);

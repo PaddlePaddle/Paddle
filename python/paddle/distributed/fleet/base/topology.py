@@ -28,7 +28,7 @@ _HYBRID_PARALLEL_GROUP = None
 
 class ParallelMode(object):
     DATA_PARALLEL = 0
-    MODEL_PARALLEL = 1
+    TENSOR_PARALLEL = 1
     PIPELINE_PARALLEL = 2
 
 
@@ -107,6 +107,11 @@ class CommunicateTopology(object):
 
         return all_result
 
+    def get_rank_from_stage(self, global_rank, **kwargs):
+        coord = self.get_coord(global_rank)
+        tf = coord._replace(**kwargs)._asdict()
+        return self.get_rank(**tf)
+
 
 class HybridCommunicateGroup(object):
     def __init__(self, topology):
@@ -155,12 +160,12 @@ class HybridCommunicateGroup(object):
         _HYBRID_PARALLEL_GROUP = self
 
     def get_parallel_mode(self):
-        # there are three modes : DataParallel / ModelParallel / PipelineParallel
+        # there are three modes : DataParallel / TensorParallel / PipelineParallel
         if self._mp_degree == 1 and self._pp_degree == 1:
             return ParallelMode.DATA_PARALLEL
         elif self._mp_degree > 1 and self._pp_degree == 1:
             # initialize the seed
-            return ParallelMode.MODEL_PARALLEL
+            return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
             return ParallelMode.PIPELINE_PARALLEL
 
@@ -253,3 +258,7 @@ class HybridCommunicateGroup(object):
     # check parallel group
     def get_check_parallel_group(self):
         return self._check_comm_group
+
+    def get_rank_from_stage(self, stage_id, **kwargs):
+        return self._topo.get_rank_from_stage(
+            self.global_rank, pipe=stage_id, **kwargs)

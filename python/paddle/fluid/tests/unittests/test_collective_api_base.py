@@ -18,14 +18,12 @@ import unittest
 import time
 import argparse
 import os
-import six
 import sys
 import subprocess
 import traceback
 import functools
 import pickle
 from contextlib import closing
-from six import string_types
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
@@ -69,10 +67,7 @@ class TestCollectiveAPIRunnerBase(object):
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
             #print(out, sys.stderr)
-        if six.PY2:
-            print(pickle.dumps(out))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out))
+        sys.stdout.buffer.write(pickle.dumps(out))
 
 
 def runtime_main(test_class, col_type):
@@ -154,7 +149,10 @@ class TestDistBase(unittest.TestCase):
         #update environment
         env0.update(envs)
         env1.update(envs)
-        tr_cmd = "%s %s"
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            tr_cmd = "%s -m coverage run --branch -p %s"
+        else:
+            tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
@@ -254,11 +252,10 @@ class TestDistBase(unittest.TestCase):
         elif col_type == "parallel_embedding":
             result_data = tr0_out[0]
             np.random.seed(2020)
-            need_result = np.random.rand(10, 8)
+            need_result = np.random.rand(12, 8)
             for i in range(result_data.shape[0]):
                 for j in range(result_data.shape[1]):
                     data = result_data[i][j]
-                    if data >= 4: data += 1
                     assert np.allclose(
                         tr0_out[1][i][j], need_result[data], atol=1e-08)
         elif col_type == "row_parallel_linear":

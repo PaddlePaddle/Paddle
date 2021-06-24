@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 
@@ -49,6 +50,10 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
+#endif
+#if CUDA_VERSION >= 10200
+    teller_set.insert("reshape");
+    teller_set.insert("reshape2");
 #endif
   }
 
@@ -118,11 +123,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten2",
       "flatten",
       "gather",
+      "gather_nd",
       "yolo_box",
       "roi_align",
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
+      "reduce_sum",
   };
 };
 
@@ -225,6 +232,27 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Output").size() << " output.";
         return false;
       }
+
+// strides > 1 and 'SAME' is only supported by trt7.0 above
+#if !IS_TRT_VERSION_GE(7000)
+      if (op_type == "conv2d" || op_type == "conv2d_fusion" ||
+          op_type == "depthwise_conv2d") {
+        if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
+          auto padding_algorithm =
+              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+          if (padding_algorithm == "SAME" && desc.HasAttr("strides")) {
+            const std::vector<int> strides =
+                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+            // there is no issue if strides.size() less than 2
+            if (strides.size() > 1) {
+              for (size_t i = 0; i < strides.size(); i++) {
+                if (strides[i] > 1) return false;
+              }
+            }
+          }
+        }
+      }
+#endif
     }
 
     if (op_type == "matmul") {
@@ -272,23 +300,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       }
     }
-    if (op_type == "flatten2") {
-      // flatten doesn't support dynamic shape currently
+    if (op_type == "flatten2" || op_type == "flatten") {
       if (!desc.HasAttr("axis")) {
         return false;
       } else {
+#if IS_TRT_VERSION_GE(7130)
+#else
         if (with_dynamic_shape) return false;
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis != 1) return false;
-      }
-    }
-
-    if (op_type == "flatten") {
-      // flatten doesn't support dynamic shape currently
-      if (!desc.HasAttr("axis")) {
-        return false;
-      } else {
-        if (with_dynamic_shape) return false;
+#endif
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
@@ -297,6 +316,30 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "gather") {
       // current not support axis from input, use default 0
       if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
+    }
+
+    if (op_type == "gather_nd") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto index_var_name = desc.Input("Index")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* index_var_desc = block->FindVar(index_var_name);
+
+      // The index input must be int32 datatype.
+      if (index_var_desc->GetDataType() !=
+          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+        VLOG(3) << "gather_nd op Index input data type must be int32";
+        return false;
+      }
+
+      const auto index_shape = index_var_desc->GetShape();
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() != index_shape.size()) {
+        VLOG(3) << "gather_nd op Index input dims size [" << index_shape.size()
+                << " ] not equal to x dims size [" << x_shape.size() << "]";
+        return false;
+      }
+      if (!with_dynamic_shape) return false;
     }
 
     if (op_type == "yolo_box") {
@@ -643,6 +686,33 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (x_num_col_dims < 1) {
         VLOG(3) << "converter expects x_num_col_dims >= 1, "
                    "but x_num_col_dims = %d.";
+        return false;
+      }
+    }
+    if (op_type == "reshape" || op_type == "reshape2") {
+      if (!desc.HasAttr("shape")) {
+        return false;
+        // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      } else if (desc.Input("Shape").size() >= 1 ||
+                 desc.Input("ShapeTensor").size() >= 1) {
+        return false;
+      } else {
+        std::vector<int> shape =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+        if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
+    }
+
+    if (op_type == "reduce_sum") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the reduce_sum does not support static shape yet";
+        return false;
+      }
+
+      if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
+            desc.HasAttr("reduce_all"))) {
+        VLOG(3) << "the reduce_sum does not have attr (keep_dim or dim or "
+                   "reduce_all)";
         return false;
       }
     }

@@ -15,11 +15,17 @@
 #pragma once
 #include <memory>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
+#endif
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
+#ifdef PADDLE_WITH_ASCEND_CL
+using NPUPinnedAllocator = paddle::memory::allocation::NPUPinnedAllocator;
+#endif
 
 // Allocator Facade is the interface exposed to other modules.
 // All the configuration or dirty code under development should
@@ -46,6 +52,7 @@ class AllocatorFacade {
 
   // Release unused memory pool.
   uint64_t Release(const platform::Place& place);
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
 
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:

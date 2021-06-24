@@ -44,7 +44,15 @@ def _apply_collective_grads(parameters, comm_group):
 
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
-        coalesced_grad = coalesced_grad / comm_group.nranks
+        div_factor = paddle.to_tensor(
+            comm_group.nranks, dtype=coalesced_grad.dtype)
+        paddle.fluid.framework._dygraph_tracer().trace_op(
+            type="elementwise_div",
+            inputs={'X': coalesced_grad,
+                    'Y': div_factor},
+            outputs={'Out': coalesced_grad},
+            attrs={'axis': -1})
+
         paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
 
     _split_tensors(coalesced_grads_and_vars)

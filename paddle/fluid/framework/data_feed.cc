@@ -638,25 +638,34 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
 
     const char* str = reader.get();
     std::string line = std::string(str);
-    // VLOG(3) << line;
+
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      PADDLE_ENFORCE_NE(
-          num, 0,
-          platform::errors::InvalidArgument(
-              "The number of ids can not be zero, you need padding "
-              "it in data generator; or if there is something wrong with "
-              "the data, please check if the data contains unresolvable "
-              "characters.\nplease check this error line: %s, \n Specifically, "
-              "something wrong happened(the length of this slot's feasign is 0)"
-              "when we parse the %d th slots."
-              "Maybe something wrong around this slot"
-              "\nWe detect the feasign number of this slot is %d, "
-              "which is illegal.",
-              str, i, num));
+
+      if (num <= 0) {
+        std::stringstream ss;
+        ss << "\n\nGot unexpected input, maybe something wrong with it.\n";
+        ss << "\n----------------------\n";
+        ss << "The Origin Input Data:\n";
+        ss << "----------------------\n";
+
+        ss << line << "\n";
+
+        ss << "\n----------------------\n";
+        ss << "Some Possible Errors:\n";
+        ss << "----------------------\n";
+        ss << "1. The number of ids can not be zero, you need padding.\n";
+        ss << "2. The input data contains unresolvable characters.\n";
+        ss << "3. We detect the slot " << i << "'s feasign number is " << num
+           << " which is illegal.\n";
+        ss << "\n";
+
+        PADDLE_THROW(platform::errors::InvalidArgument(ss.str()));
+      }
+
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float

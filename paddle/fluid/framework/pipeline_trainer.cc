@@ -35,7 +35,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   ParseDumpConfig(trainer_desc);
   const auto& section_config = section_params.section_config();
   int place_id = section_config.place_id();
-#if (defined PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_RCCL)
   place_ = platform::CUDAPlace(place_id);
 #elif (defined PADDLE_WITH_ASCEND_CL)  // NOLINT
   place_ = platform::NPUPlace(place_id);
