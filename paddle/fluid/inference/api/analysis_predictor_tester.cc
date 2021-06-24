@@ -507,13 +507,13 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
   framework::LoDTensor wx_tensor, wh_tensor, lod_tensor;
 
   wx_tensor.Resize(framework::make_dim(wx.size(), wx[0].size()));
-  for (int i = 0; i < wx.size(); i++)
+  for (size_t i = 0; i < wx.size(); i++)
     std::copy(
         begin(wx[i]), end(wx[i]),
         wx_tensor.mutable_data<float>(platform::CPUPlace()) + i * wx[0].size());
 
   wh_tensor.Resize(framework::make_dim(wh.size(), wh[0].size()));
-  for (int i = 0; i < wh.size(); i++)
+  for (size_t i = 0; i < wh.size(); i++)
     std::copy(
         begin(wh[i]), end(wh[i]),
         wh_tensor.mutable_data<float>(platform::CPUPlace()) + i * wh[0].size());
@@ -525,7 +525,7 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
   std::vector<double> scales = {2.35381475, 1.08304947, 1.32427582,
                                 1.19001095, 1.00151656, 1.01785819};
   ASSERT_EQ(is_unsigned, false);
-  ASSERT_EQ(lod_tensor.numel(), scales.size());
+  ASSERT_EQ(lod_tensor.numel(), static_cast<int64_t>(scales.size()));
   for (int64_t i = 0; i < lod_tensor.numel(); i++) {
     ASSERT_NEAR(lod_tensor.data<double>()[i], scales[i], abs_error);
   }
