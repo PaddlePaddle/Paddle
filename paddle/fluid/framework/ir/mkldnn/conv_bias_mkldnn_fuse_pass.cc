@@ -70,6 +70,47 @@ ConvBiasFusePass::ConvBiasFusePass() {
       .IsNumEQ(-1)
       .End();
 }
+Conv3DBiasFusePass::ConvBiasFusePass() {
+  AddOpCompat(OpCompat("conv3d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(-1)
+      .End();
+}
 
 Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
   AddOpCompat(OpCompat("conv2d_transpose"))
