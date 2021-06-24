@@ -139,6 +139,29 @@ class AMPTest2(unittest.TestCase):
         res = amp.bf16.amp_utils.find_true_post_op(block.ops, op1, "Y")
         assert (res == [op2])
 
+    def test_find_true_post_op_with_search_all(self):
+        program = fluid.Program()
+        block = program.current_block()
+        startup_block = fluid.default_startup_program().global_block()
+
+        var1 = block.create_var(name="X", shape=[3], dtype='float32')
+        var2 = block.create_var(name="Y", shape=[3], dtype='float32')
+        inititializer_op = startup_block._prepend_op(
+            type="fill_constant",
+            outputs={"Out": var1},
+            attrs={"shape": var1.shape,
+                   "dtype": var1.dtype,
+                   "value": 1.0})
+
+        op1 = block.append_op(
+            type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]})
+        result = amp.bf16.amp_utils.find_true_post_op(
+            block.ops, inititializer_op, "X", search_all=False)
+        assert (len(result) == 0)
+        result = amp.bf16.amp_utils.find_true_post_op(
+            block.ops, inititializer_op, "X", search_all=True)
+        assert (result == [op1])
+
 
 if __name__ == '__main__':
     unittest.main()

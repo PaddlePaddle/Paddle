@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 
+import paddle
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
@@ -59,6 +60,30 @@ def test_list_append_in_for_loop(x, iter_num):
     for i in range(iter_num):
         a.append(x)
     return a[0]
+
+
+def test_list_append_in_for_subscript(x):
+    x = fluid.dygraph.to_variable(x)
+    iter_num = paddle.shape(x)[0]
+    a = []
+    for i in range(iter_num):
+        x = x + 1
+        a.append(x)
+    out = paddle.concat(a)
+    return out[0]
+
+
+def test_list_append_in_while_loop_subscript(x):
+    x = fluid.dygraph.to_variable(x)
+    iter_num = paddle.shape(x)[0]
+    a = []
+    i = 0
+    while i < iter_num:
+        x = x + 1
+        a.append(x)
+        i += 1
+    out = paddle.concat(a)
+    return out[0]
 
 
 def test_list_append_in_for_loop_with_concat(x, iter_num):
@@ -259,6 +284,17 @@ class TestListInForLoop(TestListInWhileLoop):
 class TestListInForLoopWithConcat(TestListInWhileLoopWithStack):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_list_append_in_for_loop_with_concat, ]
+
+
+class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
+    def init_dygraph_func(self):
+        self.all_dygraph_funcs = [
+            test_list_append_in_for_subscript,
+            test_list_append_in_while_loop_subscript
+        ]
+
+    def init_data(self):
+        self.input = np.random.random((3, 4)).astype('float32')
 
 
 if __name__ == '__main__':

@@ -14,3 +14,5 @@
 
 from paddle.distributed.fleet import launch
 launch.launch()
+
+__all__ = []

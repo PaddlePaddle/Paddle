@@ -33,8 +33,8 @@ class GatherOpNPUKernel : public framework::OpKernel<T> {
     auto *out = ctx.Output<Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
-    auto runner = NpuOpRunner("Gather", {*x, *index}, {*out},
-                              {{"validate_indices", true}});
+    const auto &runner = NpuOpRunner("Gather", {*x, *index}, {*out},
+                                     {{"validate_indices", true}});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -75,7 +75,7 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
                              zeroslike_xout.numel() * sizeof(T), stream);
 
     // step3: scatter(x_grad)
-    auto runner_scatter = NpuOpRunner(
+    const auto &runner_scatter = NpuOpRunner(
         "TensorScatterUpdate", {zeroslike_xout, *index, *dout}, {*dx}, {});
     runner_scatter.Run(stream);
   }

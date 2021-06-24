@@ -18,6 +18,8 @@ from ...fluid.framework import in_dygraph_mode
 from ...fluid.layers import utils, LayerHelper, unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 
+__all__ = []
+
 
 def _is_list_or_tuple(input):
     return isinstance(input, (list, tuple))

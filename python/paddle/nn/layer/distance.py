@@ -20,6 +20,8 @@ from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 
+__all__ = []
+
 
 class PairwiseDistance(layers.Layer):
     r"""

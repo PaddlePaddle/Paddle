@@ -146,28 +146,8 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
               cudnn_workspace_ptr, workspace_size, false));
     };
 
-    if (!exhaustive_search && !deterministic) {
-      workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
-      algo = find_result.fwd_algo;
-    } else {
-      auto& temp = ctx.cuda_device_context();
-      AlgorithmsCache<algo_t>& algo_cache =
-          *(framework::ConvSearchCache::Instance().GetForward());
-
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
-
-      VLOG(10) << "miopenConvolutionFwdAlgoPerf_t:"
-               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
-               << args.s << ", args.p" << args.p << ", args.d" << args.d;
-
-      algo = algo_cache.GetAlgorithm(
-          x_dims, w_dims, args.s, args.p, args.d, 0,
-          static_cast<int64_t>(args.cudnn_dtype), [&]() {
-            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
-            return find_result.fwd_algo;
-          });
-    }
+    workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+    algo = find_result.fwd_algo;
     VLOG(3) << "choose algo " << algo;
     return algo;
   }
@@ -208,27 +188,8 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
               cudnn_workspace_ptr, workspace_size, false));
     };
 
-    if (!exhaustive_search && !deterministic) {
-      workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
-      algo = find_result.bwd_data_algo;
-    } else {
-      AlgorithmsCache<algo_t>& algo_cache =
-          *(framework::ConvSearchCache::Instance().GetBackwardData());
-
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
-
-      VLOG(10) << "miopenConvolutionFwdAlgoPerf_t"
-               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
-               << args.s << ", args.p" << args.p << ", args.d" << args.d;
-
-      algo = algo_cache.GetAlgorithm(
-          x_dims, w_dims, args.s, args.p, args.d, 0,
-          static_cast<int64_t>(args.cudnn_dtype), [&]() {
-            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
-            return find_result.bwd_data_algo;
-          });
-    }
+    workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+    algo = find_result.bwd_data_algo;
     VLOG(3) << "choose algo " << algo;
     return algo;
   }
@@ -269,27 +230,8 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
               cudnn_workspace_ptr, workspace_size, false));
     };
 
-    if (!exhaustive_search && !deterministic) {
-      workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
-      algo = find_result.bwd_weights_algo;
-    } else {
-      AlgorithmsCache<algo_t>& algo_cache =
-          *(framework::ConvSearchCache::Instance().GetBackwardFilter());
-
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
-
-      VLOG(10) << "miopenConvolutionFwdAlgoPerf_t:"
-               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
-               << args.s << ", args.p" << args.p << ", args.d" << args.d;
-
-      algo = algo_cache.GetAlgorithm(
-          x_dims, w_dims, args.s, args.p, args.d, 0,
-          static_cast<int64_t>(args.cudnn_dtype), [&]() {
-            workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
-            return find_result.bwd_weights_algo;
-          });
-    }
+    workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
+    algo = find_result.bwd_weights_algo;
     VLOG(3) << "choose algo " << algo;
     return algo;
   }

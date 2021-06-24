@@ -51,6 +51,8 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+PyTypeObject *g_varbase_pytype = nullptr;
+
 namespace py = ::pybind11;
 
 class Layer : public imperative::Layer {
@@ -243,7 +245,7 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
 }
 
 static void InitVarBaseFromTensorWithArgDefault(
-    imperative::VarBase *self, const framework::LoDTensor &tensor) {
+    imperative::VarBase *self, const framework::Tensor &tensor) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
   new (self) imperative::VarBase(
@@ -469,6 +471,62 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
   if (!PyTuple_Check(_index)) Py_DecRef(index);
 }
 
+template <typename P>
+static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
+                        imperative::VarBase &dst,                   // NOLINT
+                        const P &dst_device, const bool blocking) {
+  if (dst.SharedVar()->IsEmpty()) {
+    VLOG(3) << "deep copy Variable from " << src->Name() << " to "
+            << dst.Name();
+    dst.SetPersistable(src->Persistable());
+    dst.SetDataType(src->DataType());
+    dst.SetType(src->Type());
+    dst.SetOverridedStopGradient(src->OverridedStopGradient());
+    if (!src->SharedVar()->IsEmpty()) {
+      if (src->Var().IsType<framework::LoDTensor>()) {
+        auto &src_tensor = src->Var().Get<framework::LoDTensor>();
+        auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
+        dst_tensor->set_lod(src_tensor.lod());
+        framework::TensorCopy(src_tensor, dst_device, dst_tensor);
+        if (blocking) {
+          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          auto src_device = src_tensor.place();
+          if (!(src_device == dst_device)) {
+            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+          }
+        }
+      } else if (src->Var().IsType<framework::SelectedRows>()) {
+        auto &src_selected_rows = src->Var().Get<framework::SelectedRows>();
+        auto *dst_selected_rows =
+            dst.MutableVar()->GetMutable<framework::SelectedRows>();
+        dst_selected_rows->set_height(src_selected_rows.height());
+        dst_selected_rows->set_rows(src_selected_rows.rows());
+        framework::TensorCopy(src_selected_rows.value(), dst_device,
+                              dst_selected_rows->mutable_value());
+        if (blocking) {
+          platform::DeviceContextPool::Instance().Get(dst_device)->Wait();
+          auto src_device = src_selected_rows.value().place();
+          if (!(src_device == dst_device)) {
+            platform::DeviceContextPool::Instance().Get(src_device)->Wait();
+          }
+        }
+      }
+
+      if (!blocking) {
+        IncreaseVarbaseReferenceCountUntilCopyComplete(src, dst_device);
+      }
+
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The source Tensor(%s) can not copy when it is empty.", src->Name()));
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The destion Tensor(%s) can not copy when it is not empty.",
+        dst.Name()));
+  }
+}
+
 // Bind Methods
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
@@ -611,9 +669,10 @@ void BindImperative(py::module *m_ptr) {
           imperative::SetCurrentTracer(tracer);
         });
 
-  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
-      m, "VarBase", R"DOC()DOC")
-      .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
+  py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>> varbase(
+      m, "VarBase", R"DOC()DOC");
+  g_varbase_pytype = (PyTypeObject *)varbase.ptr();  // NOLINT
+  varbase.def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
            [](imperative::VarBase &self) {
              std::string name =
@@ -710,6 +769,13 @@ void BindImperative(py::module *m_ptr) {
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
 
+               PADDLE_ENFORCE_EQ(
+                   self->IsLeaf() && !self->OverridedStopGradient(), false,
+                   platform::errors::InvalidArgument(
+                       "Leaf Tensor (%s) that doesn't stop gradient can't use "
+                       "inplace strategy.",
+                       self->Name()));
+
                auto value_tensor =
                    value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                ins.insert({"ValueTensor", {value_tensor}});
@@ -784,6 +850,70 @@ void BindImperative(py::module *m_ptr) {
                return out;
              }
            })
+      .def(
+          "_getitem_from_offset",
+          [](std::shared_ptr<imperative::VarBase> &self, const py::args &args) {
+            const auto &tensor = self->Var().Get<framework::LoDTensor>();
+            PADDLE_ENFORCE_EQ(
+                tensor.IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "Tensor of %s is Empty, please check if it has no data.",
+                    self->Name()));
+
+            const auto &tensor_dims = tensor.dims();
+
+            std::vector<size_t> dims(tensor_dims.size());
+            std::vector<size_t> strides(tensor_dims.size());
+
+            size_t numel = 1;
+            for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+              strides[i] = numel;
+              dims[i] = static_cast<size_t>(tensor_dims[i]);
+              numel *= dims[i];
+            }
+            size_t offset = 0;
+            if (args.empty()) {
+              PADDLE_ENFORCE_EQ(
+                  numel, 1,
+                  platform::errors::InvalidArgument(
+                      "only one element tensors can be converted to Python "
+                      "scalars when no input coordinates"));
+            } else if (args.size() == 1) {
+              offset = args[0].cast<size_t>();
+              PADDLE_ENFORCE_LT(
+                  offset, numel,
+                  platform::errors::InvalidArgument(
+                      "index %d is out of bounds for size %d", offset, numel));
+            } else {
+              PADDLE_ENFORCE_EQ(args.size(), dims.size(),
+                                platform::errors::InvalidArgument(
+                                    "incorrect number of indices for Tensor"));
+
+              for (size_t i = 0; i < args.size(); ++i) {
+                size_t index = args[i].cast<size_t>();
+                PADDLE_ENFORCE_LT(
+                    index, dims[i],
+                    platform::errors::InvalidArgument(
+                        "index %d is out fo bounds for axis %d with size %d",
+                        index, i, dims[i]));
+                offset += index * strides[i];
+              }
+            }
+#define TENSOR_TO_PY_SCALAR(T, proto_type)                                   \
+  if (tensor.type() == proto_type) {                                         \
+    std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(proto_type); \
+    T b = TensorGetElement<T>(tensor, offset);                               \
+    return py::array(py::dtype(py_dtype_str.c_str()), {}, {},                \
+                     static_cast<void *>(&b));                               \
+  }
+
+            _ForEachDataType_(TENSOR_TO_PY_SCALAR);
+#undef TENSOR_TO_PY_SCALAR
+            PADDLE_THROW(platform::errors::Unimplemented(
+                "Unsupported tensor data type: %s",
+                framework::DataTypeToString(tensor.type())));
+          },
+          py::return_value_policy::copy)
       .def("_inplace_version",
            [](imperative::VarBase &self) -> uint32_t {
              const auto &var = self.MutableVar();
@@ -1341,28 +1471,22 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly("shape",
-                             [](imperative::VarBase &self) {
-                               if (self.Var().IsType<framework::LoDTensor>()) {
-                                 return framework::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::LoDTensor>()
-                                         .dims());
-                               } else if (self.Var()
-                                              .IsType<
-                                                  framework::SelectedRows>()) {
-                                 return framework::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::SelectedRows>()
-                                         .value()
-                                         .dims());
-                               } else {
-                                 VLOG(2) << "It is meaningless to get shape of "
-                                            "variable type "
-                                         << GetTypeName(self);
-                                 return std::vector<int>();
-                               }
-                             })
+      .def_property_readonly(
+          "shape",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::LoDTensor>().dims());
+            } else if (self.Var().IsType<framework::SelectedRows>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::SelectedRows>().value().dims());
+            } else {
+              VLOG(2) << "It is meaningless to get shape of "
+                         "variable type "
+                      << GetTypeName(self);
+              return std::vector<int>();
+            }
+          })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.
@@ -1574,6 +1698,12 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::ParallelStrategy &self, int nrings) {
             self.nrings_ = nrings;
           });
+
+  m.def("varbase_copy", &VarBaseCopy<platform::Place>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
 
   m.def(
       "dygraph_partial_grad",

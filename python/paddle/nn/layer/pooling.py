@@ -16,6 +16,8 @@ from ...fluid.dygraph import layers
 from ...fluid.layer_helper import LayerHelper
 from .. import functional as F
 
+__all__ = []
+
 
 class AvgPool1D(layers.Layer):
     r"""

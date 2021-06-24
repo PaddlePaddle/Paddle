@@ -43,7 +43,7 @@ namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
-USE_NO_KERNEL_OP(c_sync_comm_stream);
+USE_OP_DEVICE_KERNEL(c_sync_comm_stream, NPU);
 USE_NO_KERNEL_OP(c_gen_hccl_id);
 USE_NO_KERNEL_OP(c_comm_init_hccl);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);

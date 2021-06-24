@@ -22,6 +22,8 @@ from ...fluid.initializer import Constant
 from paddle.framework import get_default_dtype
 from .. import functional as F
 
+__all__ = []
+
 
 class ELU(layers.Layer):
     r"""

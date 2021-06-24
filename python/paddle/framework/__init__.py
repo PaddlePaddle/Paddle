@@ -34,3 +34,5 @@ from ..fluid.dygraph.base import grad  # noqa: F401
 from .io import save  # noqa: F401
 from .io import load  # noqa: F401
 from ..fluid.dygraph.parallel import DataParallel  # noqa: F401
+
+__all__ = []

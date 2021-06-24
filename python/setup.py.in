@@ -185,9 +185,11 @@ packages=['paddle',
           'paddle.fluid.contrib.mixed_precision',
           'paddle.fluid.contrib.mixed_precision.bf16',
           'paddle.fluid.contrib.layers',
+          'paddle.fluid.contrib.sparsity',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
+          'paddle.fluid.incubate.data_generator',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.checkpoint',
           'paddle.fluid.incubate.fleet.base',
@@ -211,6 +213,7 @@ packages=['paddle',
           'paddle.nn',
           'paddle.nn.functional',
           'paddle.nn.layer',
+          'paddle.nn.quant',
           'paddle.nn.initializer',
           'paddle.nn.utils',
           'paddle.metric',
@@ -254,10 +257,14 @@ paddle_bins = ''
 
 if not '${WIN32}':
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
-package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + ('.so' if os.name != 'nt' else '.pyd')]}
+
+if os.name != 'nt':
+    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.so']}
+else:
+    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
+
 if '${HAS_NOAVX_CORE}' == 'ON':
     package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
-
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -340,26 +347,6 @@ if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
 
-# Only for lite xpu inference.
-if '${WITH_XPU}' == 'OFF' and '${XPU_SDK_ROOT}' != '':
-    xpu_api_lib = os.path.join('${XPU_SDK_ROOT}', 'XTDK/shlib/', 'libxpuapi.so')
-    xpu_rt_lib = os.path.join('${XPU_SDK_ROOT}', 'XTDK/runtime/shlib/', 'libxpurt.so')
-    if os.path.exists(xpu_api_lib):
-        shutil.copy(xpu_api_lib, libs_path)
-        package_data['paddle.libs']+=['libxpuapi.so']
-    if os.path.exists(xpu_rt_lib):
-        shutil.copy(xpu_rt_lib, libs_path)
-        package_data['paddle.libs']+=['libxpurt.so']
-
-
-### New custom op extension mechanism related ###
-
-# copy paddle_custom_op.lib/paddle_custom_op.dll to libs on Windows
-if os.name == 'nt':
-    shutil.copy('${PADDLE_CUSTOM_OP_IMPORT_LIB}', libs_path)
-    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
-    package_data['paddle.libs'] += ['paddle_custom_op.lib', 'paddle_custom_op.dll']
-
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
@@ -406,15 +393,15 @@ headers = (
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
     # to `extension/incude`,
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
-    headers += list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}'))   # errorMessage.pb for errormessage
+    # externalErrorMsg.pb for External Error message
+    headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):

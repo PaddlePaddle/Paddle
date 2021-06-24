@@ -20,6 +20,8 @@ from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
+__all__ = []
+
 
 def _npairs(x, n):
     if isinstance(x, (paddle.Tensor, list)):

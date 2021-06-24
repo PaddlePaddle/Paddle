@@ -732,9 +732,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex64>,
+                            paddle::platform::complex<float>>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex128>);
+                            paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
@@ -742,9 +742,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
                                 plat::float16>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::complex64>,
+                                paddle::platform::complex<float>>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::complex128>);
+                                paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     transpose2,
@@ -754,9 +754,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex64>,
+                            paddle::platform::complex<float>>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex128>);
+                            paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     transpose2_grad,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, int32_t>,
@@ -766,6 +766,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
                                 plat::float16>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::complex64>,
+                                paddle::platform::complex<float>>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::complex128>);
+                                paddle::platform::complex<double>>);

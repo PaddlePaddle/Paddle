@@ -16,6 +16,8 @@
 import paddle.fluid as fluid
 from paddle.fluid import core
 
+__all__ = []
+
 
 def seed(seed):
     """

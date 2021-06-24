@@ -15,6 +15,8 @@
 import paddle
 from paddle.fluid.framework import static_only
 
+__all__ = []
+
 
 @static_only
 def fc(x,

@@ -19,6 +19,8 @@ from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import dygraph_utils
 import numpy as np
 
+__all__ = []
+
 
 def affine_grid(theta, out_shape, align_corners=True, name=None):
     """
@@ -263,8 +265,9 @@ def grid_sample(x,
 
     cudnn_version = get_cudnn_version()
     use_cudnn = False
-    if (cudnn_version is not None
-        ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
+    if not core.is_compiled_with_rocm() and (
+            cudnn_version is not None
+    ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
         use_cudnn = True
         # CUDNN always computes gradients for all inputs
         x.stop_gradient = False

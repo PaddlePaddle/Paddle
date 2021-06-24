@@ -405,13 +405,13 @@ class UniqueKernel : public framework::OpKernel<T> {
     bool return_counts = context.Attr<bool>("return_counts");
 
     if (axis_vec.empty()) {
-      framework::VisitDataTypeSmall(
+      framework::VisitDataTypeTiny(
           data_type,
           UniqueFlattendTensorFunctor<DeviceContext, T>(
               context, *x, out, return_index, return_inverse, return_counts));
     } else {
       int axis = axis_vec[0];
-      framework::VisitDataTypeSmall(
+      framework::VisitDataTypeTiny(
           data_type, UniqueDimFunctor<DeviceContext, T>(
                          context, *x, out, axis, return_index, return_inverse,
                          return_counts));

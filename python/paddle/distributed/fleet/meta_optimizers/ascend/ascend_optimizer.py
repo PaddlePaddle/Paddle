@@ -24,6 +24,8 @@ from collections import namedtuple
 
 HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 
+__all__ = []
+
 
 class AscendIRParser(object):
     def __init__(self, auto_dp=False, world_rank_size=1):

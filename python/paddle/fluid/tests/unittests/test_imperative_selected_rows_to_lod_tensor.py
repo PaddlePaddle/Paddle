@@ -82,7 +82,10 @@ class SimpleNet(fluid.Layer):
 class TestDygraphSimpleNet(unittest.TestCase):
     def test_simple_net(self):
         for is_sparse in [True, False]:
-            for dtype in ["float32", "float64"]:
+            dtype_list = ["float32"]
+            if not core.is_compiled_with_rocm():
+                dtype_list.append("float64")
+            for dtype in dtype_list:
                 self.simple_net_float(is_sparse, dtype)
 
     def simple_net_float(self, is_sparse, dtype):

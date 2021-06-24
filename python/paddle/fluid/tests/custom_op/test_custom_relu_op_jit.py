@@ -105,12 +105,12 @@ class TestJITLoad(unittest.TestCase):
                 in str(e))
             if IS_WINDOWS:
                 self.assertTrue(
-                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:47"
-                    in str(e))
+                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc" in
+                    str(e))
             else:
                 self.assertTrue(
-                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:47"
-                    in str(e))
+                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc" in
+                    str(e))
         self.assertTrue(caught_exception)
 
         caught_exception = False
@@ -126,7 +126,7 @@ class TestJITLoad(unittest.TestCase):
                 "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32_t`"
                 in str(e))
             self.assertTrue(
-                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu:50" in
+                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in
                 str(e))
         self.assertTrue(caught_exception)
 

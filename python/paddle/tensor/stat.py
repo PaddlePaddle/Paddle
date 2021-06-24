@@ -23,6 +23,8 @@ from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
 
+__all__ = []
+
 
 def mean(x, axis=None, keepdim=False, name=None):
     """

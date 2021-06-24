@@ -115,7 +115,7 @@ def train(target,
             use_bf16_guard=False,
             use_pure_bf16=pure_bf16)
 
-    sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost, fluid.default_startup_program())
 
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)

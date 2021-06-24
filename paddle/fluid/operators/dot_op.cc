@@ -33,7 +33,7 @@ class DotOp : public framework::OperatorWithKernel {
                           "Output(Out) of DotOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
-    auto x_rank = (size_t)x_dims.size();
+    auto x_rank = static_cast<size_t>(x_dims.size());
     PADDLE_ENFORCE_EQ(true, 1 == x_rank || 2 == x_rank,
                       platform::errors::PreconditionNotMet(
                           "ShapeError: The dimensions of input tensor X (%s) "
@@ -154,15 +154,15 @@ REGISTER_OP_CPU_KERNEL(
     ops::DotKernel<paddle::platform::CPUDeviceContext, int>,
     ops::DotKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::DotKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex64>,
+                   paddle::platform::complex<float>>,
     ops::DotKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex128>);
+                   paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     dot_grad, ops::DotGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DotGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::DotGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::DotGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::DotGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex64>,
+                       paddle::platform::complex<float>>,
     ops::DotGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex128>);
+                       paddle::platform::complex<double>>);

@@ -19,6 +19,8 @@ import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
 from ..base.private_helper_function import wait_server_ready
 
+__all__ = []
+
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -75,9 +77,12 @@ class CollectiveHelper(object):
                            wait_port,
                            global_ring_id=None,
                            sync=True):
-        nranks = len(endpoints)
-        other_endpoints = endpoints[:]
-        other_endpoints.remove(current_endpoint)
+        # if current_endpoint is None, it means just for sync,
+        # no group is created.
+        if current_endpoint:
+            nranks = len(endpoints)
+            other_endpoints = endpoints[:]
+            other_endpoints.remove(current_endpoint)
 
         if rank == 0 and wait_port:
             wait_server_ready(other_endpoints)
@@ -115,6 +120,12 @@ class CollectiveHelper(object):
                 attrs={OP_ROLE_KEY: OpRole.Forward})
 
         block = program.global_block()
+        if current_endpoint is None:
+            assert endpoints is None
+            assert sync
+            _add_sync_by_allreduce(block)
+            return
+
         if core.is_compiled_with_cuda():
             comm_id_var = block.create_var(
                 name=unique_name.generate('nccl_id'),

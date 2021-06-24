@@ -43,8 +43,8 @@ def _import_module(name, repo_dir):
     except ImportError:
         sys.path.remove(repo_dir)
         raise RuntimeError(
-            'Cannot import `{}`, please make sure `{}`.py in repo root dir'.
-            format(name, name))
+            'Please make sure config exists or repo error messages above fixed when importing'
+        )
 
     sys.path.remove(repo_dir)
 
@@ -109,7 +109,13 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
 
         url = _git_archive_link(repo_owner, repo_name, branch, source=source)
 
-        get_path_from_url(url, hub_dir, decompress=False)
+        fpath = get_path_from_url(
+            url,
+            hub_dir,
+            check_exist=not force_reload,
+            decompress=False,
+            method=('wget' if source == 'gitee' else 'get'))
+        shutil.move(fpath, cached_file)
 
         with zipfile.ZipFile(cached_file) as cached_zipfile:
             extraced_repo_name = cached_zipfile.infolist()[0].filename

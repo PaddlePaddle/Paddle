@@ -20,11 +20,13 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
 
-  HOSTDEVICE inline T operator()(const T& x) const { return x; }
+  template <typename U>
+  HOSTDEVICE inline U operator()(const U& x) const {
+    return x;
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -45,9 +47,9 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
       auto stream = context.cuda_device_context().stream();
       std::vector<int> reduce_dims;
       reduce_dims.push_back(out->dims().size());
-      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+      TensorReduce<T, T, cub::Sum, IdentityFunctor>(
           diag, out, reduce_dims, static_cast<T>(0), cub::Sum(),
-          IdentityFunctor<T>(), stream);
+          IdentityFunctor(), stream);
     }
   }
 };
@@ -64,9 +66,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex64>,
+                         paddle::platform::complex<float>>,
     ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex128>);
+                         paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     trace_grad, ops::TraceGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
@@ -75,6 +77,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex64>,
+                         paddle::platform::complex<float>>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex128>);
+                         paddle::platform::complex<double>>);

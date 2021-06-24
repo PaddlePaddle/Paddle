@@ -14,6 +14,8 @@
 
 from ...fluid.initializer import UniformInitializer
 
+__all__ = []
+
 
 class Uniform(UniformInitializer):
     """The random uniform distribution initializer.

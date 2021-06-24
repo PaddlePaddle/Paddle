@@ -27,6 +27,8 @@ import collections
 import tarfile
 import six
 
+__all__ = []
+
 #URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
 URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
@@ -113,6 +115,7 @@ def reader_creator(filename, word_idx, n, data_type):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(word_idx, n, data_type=DataType.NGRAM):
     """
@@ -137,6 +140,7 @@ def train(word_idx, n, data_type=DataType.NGRAM):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(word_idx, n, data_type=DataType.NGRAM):
     """
@@ -161,6 +165,7 @@ def test(word_idx, n, data_type=DataType.NGRAM):
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(URL, "imikolov", MD5)

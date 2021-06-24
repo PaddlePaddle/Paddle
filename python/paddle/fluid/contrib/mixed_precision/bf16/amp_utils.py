@@ -232,7 +232,52 @@ def bf16_guard():
         yield
 
 
-def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
+def are_post_ops_bf16(post_ops, keep_fp32_ops):
+    for post_op in post_ops:
+        for op in post_op:
+            if op.type in keep_fp32_ops:
+                return False
+    return True
+
+
+def cast_initializers_to_bf16(startup_prog,
+                              amp_lists,
+                              block,
+                              all_ops,
+                              keep_fp32_ops,
+                              to_bf16_var_names=None):
+    prepend_ops = startup_prog.global_block().ops
+    for op in prepend_ops:
+        if str(op.type) in amp_lists.bf16_initializer_list:
+            change_op = True
+            op_post_ops = []
+            op_out_vars = []
+            for out_name in op.output_names:
+                for out_var_name in op.output(out_name):
+                    out_var = block.var(out_var_name)
+                    post_op = find_true_post_op(all_ops, op, out_var_name, True)
+
+                    if out_var is None or out_var.type not in _valid_types:
+                        change_op = False
+                        break
+                    op_post_ops.append(post_op)
+                    op_out_vars.append(out_var)
+
+            if change_op and are_post_ops_bf16(op_post_ops, keep_fp32_ops):
+                for out_var in op_out_vars:
+                    if out_var.dtype == core.VarDesc.VarType.FP32:
+                        out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
+                    if to_bf16_var_names is not None and out_var.name in to_bf16_var_names:
+                        to_bf16_var_names.remove(out_var.name)
+                if op.has_attr('dtype') and op.attr(
+                        'dtype') == core.VarDesc.VarType.FP32:
+                    op._set_attr('dtype', core.VarDesc.VarType.BF16)
+
+
+def cast_model_to_bf16(program,
+                       startup_prog=None,
+                       amp_lists=None,
+                       use_bf16_guard=True):
     """
     Traverse all ops in the whole model and set their inputs and outputs
     to the bf16 data type. This function will do some special processing for
@@ -328,6 +373,10 @@ def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
                 op._set_attr('use_mkldnn', True)
             if op.has_attr('mkldnn_data_type'):
                 op._set_attr('mkldnn_data_type', 'bfloat16')
+
+        if startup_prog is not None:
+            cast_initializers_to_bf16(startup_prog, amp_lists, global_block,
+                                      ops, keep_fp32_ops, to_bf16_var_names)
 
     # process ops in keep_fp32_ops
     op_var_rename_map = [

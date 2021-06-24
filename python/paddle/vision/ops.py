@@ -22,7 +22,14 @@ from ..fluid.initializer import Normal
 
 from paddle.common_ops_import import *
 
-__all__ = ['yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D']
+__all__ = [ #noqa
+    'yolo_loss',
+    'yolo_box',
+    'deform_conv2d',
+    'DeformConv2D',
+    'read_file',
+    'decode_jpeg'
+]
 
 
 def yolo_loss(x,
@@ -244,7 +251,9 @@ def yolo_box(x,
              downsample_ratio,
              clip_bbox=True,
              name=None,
-             scale_x_y=1.):
+             scale_x_y=1.,
+             iou_aware=False,
+             iou_aware_factor=0.5):
     r"""
 
     This operator generates YOLO detection boxes from output of YOLOv3 network.
@@ -253,7 +262,8 @@ def yolo_box(x,
     should be the same, H and W specify the grid size, each grid point predict 
     given number boxes, this given number, which following will be represented as S,
     is specified by the number of anchors. In the second dimension(the channel
-    dimension), C should be equal to S * (5 + class_num), class_num is the object 
+    dimension), C should be equal to S * (5 + class_num) if :attr:`iou_aware` is false,
+    otherwise C should be equal to S * (6 + class_num). class_num is the object
     category number of source dataset(such as 80 in coco dataset), so the 
     second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
     also includes confidence score of the box and class one-hot key of each anchor 
@@ -289,6 +299,15 @@ def yolo_box(x,
     score_{pred} = score_{conf} * score_{class}
     $$
 
+    where the confidence scores follow the formula bellow
+
+    .. math::
+
+        score_{conf} = \begin{case}
+                         obj, \text{if } iou_aware == flase \\
+                         obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
+                       \end{case}
+
     Args:
         x (Tensor): The input tensor of YoloBox operator is a 4-D tensor with
                       shape of [N, C, H, W]. The second dimension(C) stores box
@@ -310,13 +329,14 @@ def yolo_box(x,
                                 should be set for the first, second, and thrid
                                 :attr:`yolo_box` layer.
         clip_bbox (bool): Whether clip output bonding box in :attr:`img_size`
-                          boundary. Default true."
-        "
+                          boundary. Default true.
         scale_x_y (float): Scale the center point of decoded bounding box.
                            Default 1.0
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
+        iou_aware (bool): Whether use iou aware. Default false
+        iou_aware_factor (float): iou aware factor. Default 0.5
 
     Returns:
         Tensor: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
@@ -355,7 +375,8 @@ def yolo_box(x,
         boxes, scores = core.ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,
             'conf_thresh', conf_thresh, 'downsample_ratio', downsample_ratio,
-            'clip_bbox', clip_bbox, 'scale_x_y', scale_x_y)
+            'clip_bbox', clip_bbox, 'scale_x_y', scale_x_y, 'iou_aware',
+            iou_aware, 'iou_aware_factor', iou_aware_factor)
         return boxes, scores
 
     helper = LayerHelper('yolo_box', **locals())
@@ -375,6 +396,8 @@ def yolo_box(x,
         "downsample_ratio": downsample_ratio,
         "clip_bbox": clip_bbox,
         "scale_x_y": scale_x_y,
+        "iou_aware": iou_aware,
+        "iou_aware_factor": iou_aware_factor
     }
 
     helper.append_op(
@@ -782,3 +805,95 @@ class DeformConv2D(Layer):
             groups=self._groups,
             mask=mask)
         return out
+
+
+def read_file(filename, name=None):
+    """
+    Reads and outputs the bytes contents of a file as a uint8 Tensor
+    with one dimension.
+
+    Args:
+        filename (str): Path of the file to be read.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A uint8 tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import cv2
+            import paddle
+
+            fake_img = (np.random.random(
+                        (400, 300, 3)) * 255).astype('uint8')
+
+            cv2.imwrite('fake.jpg', fake_img)
+
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
+            
+            print(img_bytes.shape)
+
+    """
+
+    if in_dygraph_mode():
+        return core.ops.read_file('filename', filename)
+
+    inputs = dict()
+    attrs = {'filename': filename}
+
+    helper = LayerHelper("read_file", **locals())
+    out = helper.create_variable_for_type_inference('uint8')
+    helper.append_op(
+        type="read_file", inputs=inputs, attrs=attrs, outputs={"Out": out})
+
+    return out
+
+
+def decode_jpeg(x, mode='unchanged', name=None):
+    """
+    Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
+    Optionally converts the image to the desired format. 
+    The values of the output tensor are uint8 between 0 and 255.
+
+    Args:
+        x (Tensor): A one dimensional uint8 tensor containing the raw bytes 
+            of the JPEG image.
+        mode (str): The read mode used for optionally converting the image. 
+            Default: 'unchanged'.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
+
+    Examples:
+        .. code-block:: python
+            import cv2
+            import paddle
+
+            fake_img = (np.random.random(
+                        (400, 300, 3)) * 255).astype('uint8')
+
+            cv2.imwrite('fake.jpg', fake_img)
+
+            img_bytes = paddle.vision.ops.read_file('fake.jpg')
+            img = paddle.vision.ops.decode_jpeg(img_bytes)
+
+            print(img.shape)
+    """
+
+    if in_dygraph_mode():
+        return core.ops.decode_jpeg(x, "mode", mode)
+
+    inputs = {'X': x}
+    attrs = {"mode": mode}
+
+    helper = LayerHelper("decode_jpeg", **locals())
+    out = helper.create_variable_for_type_inference('uint8')
+    helper.append_op(
+        type="decode_jpeg", inputs=inputs, attrs=attrs, outputs={"Out": out})
+
+    return out

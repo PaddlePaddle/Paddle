@@ -51,6 +51,8 @@ import six
 from six.moves import cPickle as pickle
 from paddle.utils import try_import
 
+__all__ = []
+
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'
 LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
 SETID_URL = 'http://paddlemodels.bj.bcebos.com/flowers/setid.mat'
@@ -130,10 +132,7 @@ def reader_creator(data_file,
                     file = file.strip()
                     batch = None
                     with open(file, 'rb') as f:
-                        if six.PY2:
-                            batch = pickle.load(f)
-                        else:
-                            batch = pickle.load(f, encoding='bytes')
+                        batch = pickle.load(f, encoding='bytes')
 
                         if six.PY3:
                             batch = cpt.to_text(batch)
@@ -154,6 +153,7 @@ def reader_creator(data_file,
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
@@ -187,6 +187,7 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
@@ -220,6 +221,7 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Flowers",
+    level=1,
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     '''

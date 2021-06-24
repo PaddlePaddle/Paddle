@@ -20,7 +20,7 @@ from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
 from ..layer.common import Linear
 from .. import functional as F
 
-__all__ = ['spectral_norm']
+__all__ = []
 
 
 def normal_(x, mean=0., std=1.):
@@ -143,14 +143,14 @@ def spectral_norm(layer,
     and W is the product result of remaining dimensions.
 
     Step 2:
-    :attr:`power_iters` should be a positive integer, do following
+    :attr:`n_power_iterations` should be a positive integer, do following
     calculations with U and V for :attr:`power_iters` rounds.
 
     .. math::
 
-        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+        \mathbf{v} := \frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
 
-        \mathbf{u} := \\frac{\mathbf{W} \mathbf{v}}{\|\mathbf{W} \mathbf{v}\|_2}
+        \mathbf{u} := \frac{\mathbf{W} \mathbf{v}}{\|\mathbf{W} \mathbf{v}\|_2}
 
     Step 3:
     Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
@@ -159,7 +159,7 @@ def spectral_norm(layer,
 
         \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
 
-        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
+        \mathbf{W} = \frac{\mathbf{W}}{\sigma(\mathbf{W})}
 
 
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .

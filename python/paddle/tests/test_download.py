@@ -70,6 +70,38 @@ class TestDownload(unittest.TestCase):
         for url in urls:
             get_path_from_url(url, root_dir='./test')
 
+    def test_retry_exception(self, ):
+        with self.assertRaises(RuntimeError):
+            from paddle.utils.download import _download
+            _download(
+                'www.baidu.com',
+                './test', )
+
+    def test_wget_download_error(self, ):
+        with self.assertRaises(RuntimeError):
+            from paddle.utils.download import _download
+            _download('www.baidu', './test', method='wget')
+
+    def test_download_methods(self, ):
+        urls = [
+            "https://paddle-hapi.bj.bcebos.com/unittest/files.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/files.zip",
+        ]
+
+        import sys
+        from paddle.utils.download import _download
+        if sys.platform == 'linux':
+            methods = ['wget', 'get']
+        else:
+            methods = ['get']
+
+        for url in urls:
+            for method in methods:
+                _download(
+                    url,
+                    path='./test',
+                    method=method, )
+
 
 if __name__ == '__main__':
     unittest.main()

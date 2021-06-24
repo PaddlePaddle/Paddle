@@ -248,6 +248,12 @@ function cmake_base() {
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
 
+    if [ "$CMD" != "assert_file_approvals" ];then
+      python -m pip install distro
+      python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
+    fi
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -420,6 +426,13 @@ EOF
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
         echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
+    elif [ "$1" == "paddle_inference_c" ]; then
+        cd ${PADDLE_ROOT}/build
+        cp -r paddle_inference_c_install_dir paddle_inference_c
+        tar -czf paddle_inference_c.tgz paddle_inference_c
+        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_c.tgz |awk '{print $1}')
+        echo "Paddle_Inference Capi Size: $buildSize"
+        echo "ipipe_log_param_Paddle_Inference_capi_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -818,11 +831,6 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38" || [ "$1" == "cp39-cp39" ]; then
-        # Use sed to make python2 and python3 sepc keeps the same
-        sed -i 's/arg0: str/arg0: unicode/g' $spec_path
-        sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
-    fi   
     
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
@@ -1228,21 +1236,21 @@ set +x
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         exclusive_tests_two_parallel="$exclusive_tests_two_parallel|^$testcase$"
                     else
                         exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         multiple_card_tests_two_parallel="$multiple_card_tests_two_parallel|^$testcase$"
                     else
                         multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
                 else
-                    if [[ $(echo $cpu_parallel_job | grep -o $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
-                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_two_parallel="$single_card_tests_two_parallel|^$testcase$"
                     else
                         single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
@@ -1256,11 +1264,13 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests_high_parallel" 1 8        # run cases the most each time with single GPU
+        card_test "$single_card_tests_high_parallel" 1 6        # run cases the most each time with single GPU
         card_test "$single_card_tests_two_parallel" 1 2         # run cases 2 job each time with single GPU
         card_test "$single_card_tests_non_parallel" 1           # run cases 1 job each time with single GPU
+        
         card_test "$multiple_card_tests_two_parallel" 2 2       # run cases 2 job each time with two GPUs
         card_test "$multiple_card_tests_non_parallel" 2         # run cases 1 job each time with two GPUs
+        
         card_test "$exclusive_tests_two_parallel" -1 2          # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         card_test "$exclusive_tests_non_parallel" -1            # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         collect_failed_tests
@@ -1409,6 +1419,187 @@ EOF
     fi
 }
 
+function insert_pile_to_h_cu_diff {
+    # TODO get develop h/cu md5
+    cd ${PADDLE_ROOT}
+    find ${PADDLE_ROOT} -name '*.cu'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'get_h_file_md5' ${PADDLE_ROOT}
+    
+    # TODO insert pile to diff h/cu file 
+
+    #insert pile to full h/cu file 
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'insert_pile_to_h_file' ${PADDLE_ROOT}
+}
+
+function precise_card_test_single {
+    set +e
+    set +x
+    testcases=$1
+    num=$2
+    for case in $(echo $testcases | tr "$|^" "\n")
+    do
+        cd ${PADDLE_ROOT}/build
+        precise_card_test "^${case}$" $num
+        # c++ 
+        if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
+            mkdir ${PADDLE_ROOT}/build/ut_map/$case
+        fi
+        set -x
+        mkdir ${PADDLE_ROOT}/build/ut_map/$case
+        find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
+        
+        # python
+        ls python-coverage.data.*
+        if [[ $? == 0 ]]
+        then
+            if [ ! -d "${PADDLE_ROOT}/build/pytest/$case" ];then
+                mkdir -p ${PADDLE_ROOT}/build/pytest/$case
+            fi
+            mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
+        fi
+        find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
+    done
+}
+
+function precise_card_test() {
+    set -m
+    testcases=$1
+    if (( $# > 1 )); then
+        cardnumber=$2
+        cuda_list="0"
+        if [ $cardnumber -eq 2 ]; then
+            cuda_list=${CUDA_VISIBLE_DEVICES}
+        else
+            cuda_list="0"
+        fi
+    else
+        cardnumber=2
+        cuda_list=${CUDA_VISIBLE_DEVICES}
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    echo "****************************************************************"
+    echo "***Running ut: $testcases***"
+    echo "****************************************************************"
+    
+    tmpfile=$tmp_dir/$testcases".log"
+    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    set +m
+}
+
+function get_precise_tests_map_file {
+    cd ${PADDLE_ROOT}/build
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    ut_total_startTime_s=`date +%s`
+    EXIT_CODE=0;
+    test_cases=$(ctest -N -V) # get all test cases
+    single_card_tests='' # all cases list which would take one graph card
+    exclusive_tests=''        # cases list which would be run exclusively
+    multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+    is_exclusive=''           # indicate whether the case is exclusive type
+    is_multicard=''           # indicate whether the case is multiple GPUs type
+set +x
+
+    while read -r line; do
+        if [[ "$line" == "" ]]; then
+            continue
+        fi
+            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            if [[ "$matchstr" == "" ]]; then
+                # Any test case with LABELS property would be parse here
+                # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+            if [[ "$is_multicard" == "" ]]; then
+                # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
+                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+            fi
+
+            if [[ "$is_exclusive" != "" ]]; then
+                if [[ "$exclusive_tests" == "" ]]; then
+                    exclusive_tests="^$testcase$"
+                else
+                    exclusive_tests="$exclusive_tests|^$testcase$"
+                fi
+            elif [[ "$is_multicard" != "" ]]; then
+                if [[ "$multiple_card_tests" == "" ]]; then
+                    multiple_card_tests="^$testcase$"
+                else
+                    multiple_card_tests="$multiple_card_tests|^$testcase$"
+                fi
+            else
+                if [[ "${single_card_tests}" -gt 3000 ]];then
+                    if [[ "$single_card_tests_1" == "" ]]; then
+                        single_card_tests_1="^$testcase$"
+                    else
+                        single_card_tests_1="$single_card_tests_1|^$testcase$"
+                    fi
+                    continue
+                fi
+                if [[ "$single_card_tests" == "" ]]; then
+                    single_card_tests="^$testcase$"
+                else
+                    single_card_tests="$single_card_tests|^$testcase$"
+                fi
+            fi
+            is_exclusive=''
+            is_multicard=''
+            is_nightly=''
+            matchstr=''
+            testcase=''
+    done <<< "$test_cases";
+
+set -x
+    mkdir -p ${PADDLE_ROOT}/build/ut_map
+    mkdir -p ${PADDLE_ROOT}/build/pytest
+
+    precise_card_test_single "$single_card_tests" 1
+    precise_card_test_single "$single_card_tests_1" 1
+    precise_card_test_single "$multiple_card_tests" 2
+    precise_card_test_single "$exclusive_tests"
+    wait;
+    python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
+    
+    #analy h/cu to Map file
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
+
+    wait;
+    get_failedUts_precise_map_file
+
+    #generate python coverage and generate python file to tests_map_file
+    python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
+    wait;
+
+    #generate ut map
+    python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
+}
+
+function get_failedUts_precise_map_file {
+    if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
+        rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
+        #remove pile to full h/cu file
+        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
+        cd ${PADDLE_ROOT}/build
+        cmake_base ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        pip uninstall -y paddlepaddle-gpu
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+        precise_card_test_single "$rerun_tests"
+        wait;
+        
+    fi
+}
+
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -1446,10 +1637,11 @@ set -x
 }
 
 function parallel_test() {
-    ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    ut_total_startTime_s=`date +%s`
     if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     else
@@ -1764,6 +1956,7 @@ EOF
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     build_size "paddle_inference"
+    build_size "paddle_inference_c"
 }
 
 function tar_fluid_lib() {
@@ -1800,6 +1993,26 @@ EOF
     fi
 }
 
+function test_go_inference_api() {
+    cat <<EOF
+    ========================================
+    Testing go inference api ...
+    ========================================
+EOF
+
+    # ln paddle_inference_c lib
+    cd ${PADDLE_ROOT}/build
+    ln -s ${PADDLE_ROOT}/build/paddle_inference_c_install_dir/ ${PADDLE_ROOT}/paddle/fluid/inference/goapi/paddle_inference_c
+
+    # run go test
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
+    bash test.sh
+    EXIT_CODE=$?
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
 function test_fluid_lib_train() {
     cat <<EOF
     ========================================
@@ -1824,12 +2037,16 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
-
-function example() {
+# origin name: example
+function exec_samplecode_test() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
     cd ${PADDLE_ROOT}/tools
-    python sampcd_processor.py cpu;example_error=$?
+    if [ "$1" = "cpu" ] ; then
+        python sampcd_processor.py cpu; example_error=$?
+    elif [ "$1" = "gpu" ] ; then
+        python sampcd_processor.py --threads=16 gpu; example_error=$?
+    fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
       exit 5
@@ -1897,14 +2114,38 @@ function summary_check_problems() {
     set -x
 }
 
+
+function reuse_so_cache() {
+    get_html="https://api.github.com/repos/PaddlePaddle/Paddle"
+    curl -X GET ${get_html}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    merge_commit=`grep "sha" tmp.txt| awk -F \" 'NR==1{print $(NF-1)}'| sed 's# ##g'`
+    curl -X GET ${get_html}/commits/${merge_commit} -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    merge_pr=`grep -oP -m 1 '(#[0-9]*)' tmp.txt| sed 's/#//g'`
+    curl -X GET ${get_html}/pulls/${merge_pr}/commits -H "authorization: token ${GITHUB_API_TOKEN}" >tmp.txt
+    pr_commit=`grep "sha" tmp.txt |tail -3|head -1|awk -F : '{print $NF}'|sed 's#"##g'|sed 's#,##g'| sed 's# ##g'`
+    set +e
+    wget -q https://xly-devops.bj.bcebos.com/PR/Paddle/${merge_pr}/${pr_commit}/workspace/Paddle/build/proto_so.tar.gz
+    down_proto_so=`echo $?`
+    set -e
+    if [ "${down_proto_so}" -eq 0 ];then
+        export CI_SKIP_CPP_TEST=ON
+        cd build && mv ../proto_so.tar.gz .
+        tar --use-compress-program=pigz -xpf proto_so.tar.gz
+        cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
+        cd python
+        touch stub.cc
+        alias cp=cp
+        cp -r ../../python/paddle .
+        python setup.py bdist_wheel
+    else
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+    fi
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
     init
-    if [ "$CMD" != "assert_file_approvals" ];then
-      python ${PADDLE_ROOT}/tools/summary_env.py
-      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
-    fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -1918,9 +2159,15 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
-        example_info=$(example)
+        example_info_gpu=""
+        example_code_gpu=0
+        if [ "${WITH_GPU}" == "ON" ] ; then
+            example_info_gpu=$(exec_samplecode_test gpu)
+            example_code_gpu=$?
+        fi
+        example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
+        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
         ;;
       build)
@@ -1981,6 +2228,23 @@ function main() {
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
+      cpu_cicheck_coverage)
+        check_approvals_of_unittest 1
+        check_diff_file_for_coverage
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        enable_unused_var_check
+        ;;
+      gpu_cicheck_coverage)
+        parallel_test
+        check_coverage
+        check_change_of_unittest ${PYTHON_ABI:-""}
+        ;;
+      ci_preciseTest)
+        insert_pile_to_h_cu_diff 
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        enable_unused_var_check
+        get_precise_tests_map_file
+        ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
@@ -1996,6 +2260,8 @@ function main() {
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train
+        #go inference test
+        test_go_inference_api
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -2038,6 +2304,10 @@ function main() {
         parallel_test
         check_coverage
         ;;
+      reuse_so_cicheck_py35)
+        reuse_so_cache
+        parallel_test
+        ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
@@ -2056,7 +2326,11 @@ function main() {
         build_document_preview
         ;;
       api_example)
-        example
+        example_info=$(exec_samplecode_test cpu)
+        example_code=$?
+        check_style_code=0
+        check_style_info=
+        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         ;;
       test_op_benchmark)
         test_op_benchmark

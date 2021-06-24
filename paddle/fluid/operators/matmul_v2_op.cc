@@ -204,15 +204,15 @@ REGISTER_OP_CPU_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, double>,
     ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex64>,
+                        paddle::platform::complex<float>>,
     ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex128>);
+                        paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     matmul_v2_grad,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex64>,
+                            paddle::platform::complex<float>>,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex128>);
+                            paddle::platform::complex<double>>);

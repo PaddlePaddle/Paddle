@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "acl/acl.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
@@ -30,6 +31,7 @@ using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 using NPUAttribute = framework::NPUAttribute;
 using NPUAttributeMap = framework::NPUAttributeMap;
+using DeviceContextPool = platform::DeviceContextPool;
 
 class NpuOpRunner {
  public:
@@ -38,6 +40,14 @@ class NpuOpRunner {
                        const std::vector<Tensor> &inputs = {},
                        const std::vector<Tensor> &outputs = {},
                        const NPUAttributeMap &attrs = {});
+
+  // NOTE(zhiqiu): why forbid copy and operator= ?
+  // Since we will free the tensor_descs and data_buffers in the ~NpuOpRunner,
+  // if shallow copy is performed on tensor_descs and data_buffers, it may
+  // result
+  // in use-after-free bugs.
+  NpuOpRunner(const NpuOpRunner &runner) = delete;
+  NpuOpRunner &operator=(const NpuOpRunner &runner) = delete;
 
   ~NpuOpRunner();
 
@@ -69,7 +79,7 @@ class NpuOpRunner {
 
   std::vector<aclDataBuffer *> &GetOutputBuffers();
 
-  void Run(aclrtStream stream = nullptr);
+  void Run(aclrtStream stream = nullptr) const;
 
  private:
   aclTensorDesc *CreateTensorDesc(Tensor tensor);
@@ -96,31 +106,36 @@ void FillNpuTensorWithConstant(Tensor *tensor, T val) {
   PADDLE_ENFORCE_EQ(
       platform::is_npu_place(tensor->place()), true,
       platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
-  // do async for better performance
-  if (typeid(float) == typeid(T) || typeid(platform::float16) == typeid(T)) {
-    Tensor tmp(tensor->type());
-    tmp.Resize(tensor->dims());
-    tmp.mutable_data<T>(tensor->place());
-    auto stream = GetCurrentNPUStream(
-        BOOST_GET_CONST(platform::NPUPlace, tensor->place()).device);
-    platform::NPUMemsetAsync(tmp.data<void>(), 0, tmp.numel() * sizeof(T),
-                             stream);
-    auto runner = NpuOpRunner("Power", {tmp}, {*tensor},
-                              {{"power", static_cast<float>(1)},
-                               {"scale", static_cast<float>(0)},
-                               {"shift", static_cast<float>(val)}});
-    runner.Run(stream);
-  } else {
-    T *array = new T[tensor->numel()];
-    for (unsigned int i = 0; i < tensor->numel(); ++i) {
-      array[i] = static_cast<T>(val);
-    }
-    std::vector<T> vec(tensor->numel(), static_cast<T>(val));
-    // do sync copy
+
+  int numel = tensor->numel();
+  if (numel == 1) {
+    Tensor npu_pinned_tensor(tensor->type());
+    platform::NPUPinnedPlace npu_pinned_place;
+    auto npu_pinned_ptr =
+        npu_pinned_tensor.mutable_data<T>({1}, npu_pinned_place);
+    *npu_pinned_ptr = val;
+
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, tensor->place()),
-                 tensor->data<void>(), platform::CPUPlace(), array,
-                 tensor->numel() * sizeof(T), nullptr);
-    delete[] array;
+                 tensor->data<void>(), npu_pinned_place, npu_pinned_ptr,
+                 sizeof(T), GetCurrentNPUStream());
+
+    auto npu_pinned_allocator =
+        static_cast<paddle::memory::allocation::NPUPinnedAllocator *>(
+            paddle::memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(npu_pinned_place)
+                .get());
+    paddle::memory::allocation::Allocation *allocation =
+        npu_pinned_tensor.Holder().get();
+
+    npu_pinned_allocator->RecordEvent(allocation, GetCurrentNPUStream());
+  } else {
+    std::vector<T> vec(numel, static_cast<T>(val));
+    auto device_id = platform::GetCurrentNPUDeviceId();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
+        pool.Get(platform::NPUPlace(device_id)));
+
+    paddle::framework::TensorFromVector<T>(vec, *dev_ctx, tensor);
   }
 }
 

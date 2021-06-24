@@ -18,6 +18,8 @@ import numpy as np
 from paddle.distributed import fleet
 from functools import reduce
 
+__all__ = []
+
 registerd_op = {## forwards
                 "elementwise_add": "AddParser",
                 "matmul": "MatMulParser",

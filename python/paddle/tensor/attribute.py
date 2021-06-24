@@ -22,6 +22,8 @@ from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layers import rank  # noqa: F401
 from ..fluid.layers import shape  # noqa: F401
 
+__all__ = []
+
 
 def _complex_to_real_dtype(dtype):
     if dtype == core.VarDesc.VarType.COMPLEX64:
