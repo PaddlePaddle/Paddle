@@ -344,7 +344,7 @@ void weight_to_permuted_tensor(const platform::Place &place, gpuStream_t stream,
 
 template <typename T>
 void tensor_to_permuted_weight(const platform::Place &place, gpuStream_t stream,
-                               const Tensor tensor,
+                               const Tensor &tensor,
                                std::vector<Tensor *> *weight_grad_list,
                                const gpuRNNMode_t rnn_mode,
                                const bool is_bidirec) {
