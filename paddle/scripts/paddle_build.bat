@@ -72,7 +72,7 @@ if not defined INFERENCE_DEMO_INSTALL_DIR set INFERENCE_DEMO_INSTALL_DIR=%cache_
 if not defined LOG_LEVEL set LOG_LEVEL=normal
 if not defined PRECISION_TEST set PRECISION_TEST=OFF
 if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
-if not defined retry_times set retry_times=2
+if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 
 rem -------set cache build directory-----------
@@ -193,7 +193,7 @@ rem ------Build windows avx whl package------
 set WITH_AVX=ON
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
-set retry_times=3
+set retry_times=4
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -205,7 +205,7 @@ rem ------Build windows no-avx whl package------
 set WITH_AVX=OFF
 set ON_INFER=OFF
 set CUDA_ARCH_NAME=All
-set retry_times=3
+set retry_times=4
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -377,7 +377,11 @@ if NOT %GENERATOR% == "Ninja" (
 
 :build_tp
 echo Build third_party the %build_times% time:
-MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
+if %GENERATOR% == "Ninja" (
+    ninja third_party
+) else (
+    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
+)
 
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
