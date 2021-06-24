@@ -305,7 +305,6 @@ class TestVariable(unittest.TestCase):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", lod_level=0)
         with fluid.dygraph.guard():
-            self.assertRaises(AssertionError, var.detach)
             self.assertRaises(AssertionError, var.numpy)
             self.assertRaises(AssertionError, var.backward)
             self.assertRaises(AssertionError, var.gradient)
@@ -344,6 +343,60 @@ class TestVariable(unittest.TestCase):
             var.lod_level()
 
         self.assertRaises(Exception, _test)
+
+    def test_size(self):
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
+            exe = paddle.static.Executor(fluid.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+
+            output = exe.run(prog, fetch_list=[x.size()])
+            self.assertEqual(output[0], [24])
+
+    def test_detach(self):
+        b = default_main_program().current_block()
+        x = b.create_var(shape=[2, 3, 5], dtype="float64", lod_level=0)
+        detach_x = x.detach()
+        self.assertEqual(x.persistable, detach_x.persistable)
+        self.assertEqual(x.shape, detach_x.shape)
+        self.assertEqual(x.dtype, detach_x.dtype)
+        self.assertEqual(x.type, detach_x.type)
+        self.assertTrue(detach_x.stop_gradient)
+
+        xx = b.create_var(name='xx', type=core.VarDesc.VarType.STEP_SCOPES)
+        self.assertRaises(AssertionError, xx.detach)
+
+        startup = paddle.static.Program()
+        main = paddle.static.Program()
+        scope = fluid.core.Scope()
+        with paddle.static.scope_guard(scope):
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    name='x', shape=[3, 2, 1], dtype='float32')
+                x.persistable = True
+                feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+                detach_x = x.detach()
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                exe.run(startup)
+                result = exe.run(main,
+                                 feed={'x': feed_data},
+                                 fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == feed_data).all())
+                self.assertTrue((result[0] == result[1]).all())
+
+                modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
+                detach_x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
+
+                modified_value = np.random.uniform(
+                    -1, 1, size=[3, 2, 1]).astype('float32')
+                x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
 
 class TestVariableSlice(unittest.TestCase):
