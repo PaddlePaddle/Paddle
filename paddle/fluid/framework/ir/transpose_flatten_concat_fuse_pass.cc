@@ -31,7 +31,7 @@ TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsIntIn({0, 1, 2, 3})
+      .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
       .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
@@ -50,8 +50,7 @@ TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
       .IsIntIn({0, 1, 2, 3})
       .End();
   AddOpCompat(OpCompat("concat"))
-      .AddInput("X")
-      .IsTensor()
+      .AddInput("X")  // Input("X"): vector<tensors>
       .End()
       .AddInput("AxisTensor")
       .IsOptional()
