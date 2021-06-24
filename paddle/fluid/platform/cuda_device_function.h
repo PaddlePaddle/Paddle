@@ -149,6 +149,16 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                   static_cast<unsigned>(delta), width));
 }
 
+#if defined(PADDLE_CUDA_BF16)
+template <>
+__forceinline__ __device__ bfloat16 CudaShuffleDownSync(unsigned mask,
+                                                        bfloat16 val, int delta,
+                                                        int width) {
+  return bfloat16(__shfl_down_sync(mask, static_cast<nv_bfloat16>(val),
+                                   static_cast<unsigned>(delta), width));
+}
+#endif
+
 template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleDownSync(
     unsigned mask, paddle::platform::complex<float> val, int delta, int width) {
@@ -177,6 +187,15 @@ __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
                                                       float16 val, int width) {
   return float16(__shfl_xor_sync(mask, static_cast<half>(val), width));
 }
+
+#if defined(PADDLE_CUDA_BF16)
+template <>
+__forceinline__ __device__ bfloat16 CudaShuffleXorSync(unsigned mask,
+                                                       bfloat16 val,
+                                                       int width) {
+  return bfloat16(__shfl_xor_sync(mask, static_cast<nv_bfloat16>(val), width));
+}
+#endif
 
 template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleXorSync(
