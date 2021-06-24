@@ -26,13 +26,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if false
-SlicePlugin *CreateSlicePluginDeserialize(const void *buffer, size_t length) {
-  return new SlicePlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("slice_plugin", CreateSlicePluginDeserialize);
-#endif
-
 template <typename T>
 __global__ void SliceKernel(int num, int dims, const T *input,
                             const int *offsets_info, T *output) {

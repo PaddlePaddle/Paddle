@@ -40,15 +40,6 @@ cudnnStatus_t convert_trt2cudnn_dtype(nvinfer1::DataType trt_dtype,
   return CUDNN_STATUS_SUCCESS;
 }
 
-#if false
-InstanceNormPlugin *CreateInstanceNormPluginDeserialize(const void *buffer,
-                                                        size_t length) {
-  return new InstanceNormPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("instance_norm_plugin",
-                    CreateInstanceNormPluginDeserialize);
-#endif
-
 int InstanceNormPlugin::initialize() { return 0; }
 
 nvinfer1::Dims InstanceNormPlugin::getOutputDimensions(

@@ -24,13 +24,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if false
-SwishPlugin *CreateSwishPluginDeserialize(const void *buffer, size_t length) {
-  return new SwishPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("swish_plugin", CreateSwishPluginDeserialize);
-#endif
-
 int SwishPlugin::initialize() { return 0; }
 
 nvinfer1::Dims SwishPlugin::getOutputDimensions(int index,

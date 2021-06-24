@@ -25,14 +25,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if false
-LayerNormPlugin *CreateLayerNormPluginDeserialize(const void *buffer,
-                                                  size_t length) {
-  return new LayerNormPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("layer_norm_plugin", CreateLayerNormPluginDeserialize);
-#endif
-
 int LayerNormPlugin::initialize() { return 0; }
 
 nvinfer1::Dims LayerNormPlugin::getOutputDimensions(

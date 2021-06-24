@@ -45,7 +45,7 @@ typedef std::function<PluginTensorRT*(const void*, size_t)>
 typedef std::function<PluginTensorRT*(void)> PluginConstructFunc;
 
 // Deprecated. Do not inherit this class, please refer to PluginTensorRTV2Ext
-class PluginTensorRT : public nvinfer1::IPluginV2Ext {
+class PluginTensorRT : public nvinfer1::IPluginV2 {
  public:
   PluginTensorRT() : with_fp16_(false) {}
   // It was used for TensorRT deserialization.
@@ -113,34 +113,34 @@ class PluginTensorRT : public nvinfer1::IPluginV2Ext {
 
   void destroy() override { delete this; }
 
-  virtual nvinfer1::IPluginV2Ext* clone() const = 0;
+  virtual nvinfer1::IPluginV2* clone() const = 0;
 
   void setPluginNamespace(const char* plugin_namespace) override {
     namespace_ = plugin_namespace;
   }
 
   const char* getPluginNamespace() const override { return namespace_.c_str(); }
+  /*
+    // IPluginV2Ext
+    nvinfer1::DataType getOutputDataType(int32_t index,
+                                         const nvinfer1::DataType* input_types,
+                                         int32_t nb_inputs) const override;
 
-  // IPluginV2Ext
-  nvinfer1::DataType getOutputDataType(int32_t index,
-                                       const nvinfer1::DataType* input_types,
-                                       int32_t nb_inputs) const override;
+    bool isOutputBroadcastAcrossBatch(int32_t output_index,
+                                      const bool* input_is_broadcasted,
+                                      int32_t nb_inputs) const override;
 
-  bool isOutputBroadcastAcrossBatch(int32_t output_index,
-                                    const bool* input_is_broadcasted,
-                                    int32_t nb_inputs) const override;
+    bool canBroadcastInputAcrossBatch(int32_t input_index) const override;
 
-  bool canBroadcastInputAcrossBatch(int32_t input_index) const override;
-
-  void configurePlugin(const nvinfer1::Dims* input_dims, int32_t nb_inputs,
-                       const nvinfer1::Dims* output_dims, int32_t nb_outputs,
-                       const nvinfer1::DataType* input_types,
-                       const nvinfer1::DataType* output_types,
-                       const bool* input_is_broadcast,
-                       const bool* output_is_broadcast,
-                       nvinfer1::PluginFormat float_format,
-                       int32_t max_batch_size) override;
-
+    void configurePlugin(const nvinfer1::Dims* input_dims, int32_t nb_inputs,
+                         const nvinfer1::Dims* output_dims, int32_t nb_outputs,
+                         const nvinfer1::DataType* input_types,
+                         const nvinfer1::DataType* output_types,
+                         const bool* input_is_broadcast,
+                         const bool* output_is_broadcast,
+                         nvinfer1::PluginFormat float_format,
+                         int32_t max_batch_size) override;
+  */
  protected:
   // Deserialize input_dims, max_batch_size, data_type, data_format
   void deserializeBase(void const*& serial_data,  // NOLINT

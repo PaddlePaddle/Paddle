@@ -22,15 +22,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if false
-HardSwishPlugin* CreateHardSwishPluginDeserialize(const void* buffer,
-                                                  size_t length) {
-  return new HardSwishPlugin(buffer, length);
-}
-
-REGISTER_TRT_PLUGIN("hard_swish_plugin", CreateHardSwishPluginDeserialize);
-#endif
-
 nvinfer1::Dims HardSwishPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* in_dims, int nb_inputs) {
   assert(nb_inputs == 1);
