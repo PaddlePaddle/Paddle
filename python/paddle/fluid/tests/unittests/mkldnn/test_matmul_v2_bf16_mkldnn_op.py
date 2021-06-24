@@ -17,77 +17,33 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
+from paddle.fluid.tests.unittests.mkldnn.test_matmul_v2_mkldnn_op import TestMatMulV2VectorXVectorOneDNNOp, reference_matmul
 import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
 
-def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
-    """Reference forward implementation using np.matmul."""
-    # np.matmul does not support the transpose flags, so we manually
-    # transpose X and Y appropriately.
-    if transpose_X:
-        if X.ndim == 1:
-            X = X.reshape((X.size, ))
-        elif X.ndim == 2:
-            X = X.T
-        else:
-            dim = [i for i in range(len(X.shape))]
-            dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
-            X = np.transpose(X, tuple(dim))
-    if transpose_Y:
-        if Y.ndim == 1:
-            Y = Y.reshape((Y.size, ))
-        else:
-            dim = [i for i in range(len(Y.shape))]
-            dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
-            Y = np.transpose(Y, tuple(dim))
-
-    Out = np.atleast_1d(np.matmul(X, Y))
-    return Out
-
-
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 @unittest.skipIf(core.is_compiled_with_cuda(),
                  "core is compiled with CUDA which has no BF implementation")
-class TestMatmulV2BF16VectorXVectorOneDNNOp(OpTest):
-    def config(self):
-        self.x_shape = (100, )
-        self.y_shape = (100, )
-        self.trans_x = False
-        self.trans_y = False
-
-    def setUp(self):
-        self.config()
-        self.op_type = "matmul_v2"
-        x = np.random.random(self.x_shape).astype("float32")
-        y = np.random.random(self.y_shape).astype("float32")
-        # -0.1 ~ 0.1
-        x = -0.1 + 0.2 * x
-        y = -0.1 + 0.2 * y
-        result = reference_matmul(x, y, self.trans_x,
-                                  self.trans_y).astype("float32")
-
-        x_bf16 = convert_float_to_uint16(x)
-        y_bf16 = convert_float_to_uint16(y)
+class TestMatmulV2BF16VectorXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+    def set_inputs(self, x, y):
         self.inputs = {
-            'X': x_bf16,
-            'Y': y_bf16,
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y)
         }
 
-        self.attrs = {
-            'trans_x': self.trans_x,
-            'trans_y': self.trans_y,
-            'use_mkldnn': True,
-            'mkldnn_data_type': "bfloat16"
-        }
-        self.outputs = {'Out': result}
+    def set_dtype_attr(self):
+        self.attrs['mkldnn_data_type'] = "bfloat16"
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
 
 
 class TestMatmulV2BF16VectorXMatrixTransposeYOneDNNOp(
@@ -237,8 +193,8 @@ class TestMatmulV2BF16MatrixXMatrixTransposeXTransposeYOneDNNOp(
 class TestMatmulV2BF16MatrixXMatrixTransposeY2OneDNNOp(
         TestMatmulV2BF16VectorXVectorOneDNNOp):
     def config(self):
-        self.x_shape = (3, 1, 10, 10)
-        self.y_shape = (1, 2, 10, 10)
+        self.x_shape = (3, 1, 5, 10)
+        self.y_shape = (1, 2, 5, 10)
         self.trans_x = False
         self.trans_y = True
 
@@ -246,8 +202,8 @@ class TestMatmulV2BF16MatrixXMatrixTransposeY2OneDNNOp(
 class TestMatmulV2BF16MatrixXMatrix5DTranposeYOneDNNOp(
         TestMatmulV2BF16VectorXVectorOneDNNOp):
     def config(self):
-        self.x_shape = (1, 3, 1, 10, 10)
-        self.y_shape = (15, 1, 2, 10, 10)
+        self.x_shape = (1, 3, 1, 4, 7)
+        self.y_shape = (2, 1, 2, 2, 7)
         self.trans_x = False
         self.trans_y = True
 

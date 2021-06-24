@@ -56,6 +56,12 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         self.trans_x = False
         self.trans_y = False
 
+    def set_inputs(self, x, y):
+        self.inputs = {'X': x, 'Y': y}
+
+    def set_dtype_attr(self):
+        self.attrs['mkldnn_data_type'] = "float32"
+
     def setUp(self):
         self.config()
         self.op_type = "matmul_v2"
@@ -66,15 +72,14 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         y = -0.1 + 0.2 * y
         result = reference_matmul(x, y, self.trans_x,
                                   self.trans_y).astype("float32")
-        self.inputs = {
-            'X': x,
-            'Y': y,
-        }
+
+        self.set_inputs(x, y)
         self.attrs = {
             'trans_x': self.trans_x,
             'trans_y': self.trans_y,
             'use_mkldnn': True
         }
+        self.set_dtype_attr()
         self.outputs = {'Out': result}
 
     def test_check_output(self):
