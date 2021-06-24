@@ -375,14 +375,14 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         }
         case DataLayout::kNHWC: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
-          #ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
           for (int i = 0; i < N * sample_size; ++i) {
             saved_mean_e += x_arr.col(i);
           }
           saved_mean_e /= N * sample_size;
-          #ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
           for (int i = 0; i < N * sample_size; ++i) {
@@ -740,13 +740,15 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                                  sample_size, N * C);
 
 #ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for 
+#pragma omp parallel for
 #endif
         for (int nc = 0; nc < N * C; ++nc) {
           // int c = nc % C;
           dy_sum_arr(nc % C) += d_y_arr.col(nc).sum();
           dy_mul_x_sub_mean_mul_invstd_sum_arr(nc % C) +=
-              ((x_arr.col(nc) - mean_arr(nc % C)) * inv_var_arr(nc % C) * d_y_arr.col(nc)).sum();
+              ((x_arr.col(nc) - mean_arr(nc % C)) * inv_var_arr(nc % C) *
+               d_y_arr.col(nc))
+                  .sum();
         }
 
         if (d_scale && d_bias) {
@@ -755,9 +757,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         }
 
         if (!use_global_stats) {
-
 #ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for 
+#pragma omp parallel for
 #endif
           for (int nc = 0; nc < N * C; ++nc) {
             // int c = nc % C;
@@ -765,7 +766,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                 scale_inv_var_nhw(nc % C) *
                 (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(nc % C) -
                  (x_arr.col(nc) - mean_arr[nc % C]) *
-                     dy_mul_x_sub_mean_mul_invstd_sum_arr(nc % C) * inv_var_arr(nc % C));
+                     dy_mul_x_sub_mean_mul_invstd_sum_arr(nc % C) *
+                     inv_var_arr(nc % C));
           }
         } else {
           for (int nc = 0; nc < N * C; ++nc) {
