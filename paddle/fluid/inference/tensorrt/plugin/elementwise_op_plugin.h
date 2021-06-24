@@ -46,8 +46,7 @@ class ElementWisePlugin : public PluginTensorRT {
   }
 
   ElementWisePlugin* clone() const override {
-    // return new ElementWisePlugin(dims_x_, dims_y_, axis_);
-    return nullptr;
+    return new ElementWisePlugin(type_, dims_x_, dims_y_, axis_);
   }
 
   const char* getPluginType() const override { return "elementwise_plugin"; }
