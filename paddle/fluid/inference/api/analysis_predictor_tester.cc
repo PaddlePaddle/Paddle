@@ -254,7 +254,6 @@ TEST(AnalysisPredictor, memory_optim) {
 }
 */
 
-#ifdef PADDLE_WITH_MKLDNN
 class MkldnnQuantizerTest : public testing::Test {
  public:
   MkldnnQuantizerTest() {
@@ -530,8 +529,6 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
     ASSERT_NEAR(lod_tensor.data<double>()[i], scales[i], abs_error);
   }
 }
-
-#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
