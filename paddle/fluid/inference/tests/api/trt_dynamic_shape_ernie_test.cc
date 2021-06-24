@@ -28,6 +28,7 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
 
   int run_batch = bs;
   const int run_seq_len = 128;
+  size_t len = run_batch * run_seq_len;
 
   int64_t i0_bs1[run_seq_len] = {
       1,    3558, 4,   75,  491, 89, 340, 313, 93,   4,   255,   10, 75,    321,
@@ -48,15 +49,14 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-  std::vector<int64_t> i0_data(run_seq_len * run_batch),
-      i1_data(run_seq_len * run_batch);
-  std::vector<int64_t> i2_data(run_seq_len * run_batch);
-  std::vector<float> i3_data(run_seq_len * run_batch);
-  for (size_t i = 0; i < run_batch * run_seq_len; i++) {
-    i0_data[i] = i0_bs1[i % run_seq_len];
-    i1_data[i] = i1_bs1[i % run_seq_len];
-    i2_data[i] = i2_bs1[i % run_seq_len];
-    i3_data[i] = i3_bs1[i % run_seq_len];
+  std::vector<int64_t> i0_data(len), i1_data(len), i2_data(len);
+  std::vector<float> i3_data(len);
+
+  for (size_t i = 0; i < len; i++) {
+    i0_data[i] = i0_bs1[i % len];
+    i1_data[i] = i1_bs1[i % len];
+    i2_data[i] = i2_bs1[i % len];
+    i3_data[i] = i3_bs1[i % len];
   }
   // first input
   auto input_t = predictor->GetInputTensor(input_names[0]);
