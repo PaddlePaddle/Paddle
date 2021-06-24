@@ -95,6 +95,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
     def test_large_parameters_paddle_save(self):
         # enable dygraph mode
         paddle.disable_static()
+        paddle.set_device("cpu")
         # create network
         layer = LayerWithLargeParameters()
         save_dict = layer.state_dict()
@@ -103,11 +104,10 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
                             "layer.pdparams")
         protocol = 4
         paddle.save(save_dict, path, protocol=protocol)
-        dict_load = paddle.load(path)
+        dict_load = paddle.load(path, return_numpy=True)
         # compare results before and after saving
         for key, value in save_dict.items():
-            self.assertTrue(
-                np.array_equal(dict_load[key].numpy(), value.numpy()))
+            self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
 
 
 class TestSaveLoadPickle(unittest.TestCase):
