@@ -107,8 +107,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         dict_load = paddle.load(path, return_numpy=True)
         # compare results before and after saving
         for key, value in save_dict.items():
-            self.assertTrue(
-                np.array_equal(dict_load[key].numpy(), value.numpy()))
+            self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
 
 
 class TestSaveLoadPickle(unittest.TestCase):
