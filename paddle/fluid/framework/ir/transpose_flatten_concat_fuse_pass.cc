@@ -54,7 +54,7 @@ TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
       .IsTensor()
       .End()
       .AddInput("AxisTensor")
-      .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Out")
       .IsTensor()
