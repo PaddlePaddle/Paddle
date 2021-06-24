@@ -53,10 +53,10 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
   std::vector<float> i3_data(len);
 
   for (size_t i = 0; i < len; i++) {
-    i0_data[i] = i0_bs1[i % len];
-    i1_data[i] = i1_bs1[i % len];
-    i2_data[i] = i2_bs1[i % len];
-    i3_data[i] = i3_bs1[i % len];
+    i0_data[i] = i0_bs1[i % run_seq_len];
+    i1_data[i] = i1_bs1[i % run_seq_len];
+    i2_data[i] = i2_bs1[i % run_seq_len];
+    i3_data[i] = i3_bs1[i % run_seq_len];
   }
   // first input
   auto input_t = predictor->GetInputTensor(input_names[0]);
