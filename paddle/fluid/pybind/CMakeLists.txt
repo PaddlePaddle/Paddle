@@ -143,7 +143,7 @@ if(WITH_PYTHON)
     "${op_function_generator_path}\\op_function_generator.exe ${tmp_impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
-    "    if %build_times% GEQ 3 (\n"
+    "    if %build_times% GEQ 10 (\n"
     "        exit /b 1\n"
     "    ) else (\n"
     "        goto :retry\n"

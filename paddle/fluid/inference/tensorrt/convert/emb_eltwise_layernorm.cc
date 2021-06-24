@@ -36,6 +36,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto word_id_name = op_desc.Input("WordId").front();
     auto pos_id_name = op_desc.Input("PosId").front();
+    engine_->Set("ernie_pos_name", new std::string(pos_id_name));
+
     auto sent_id_name = op_desc.Input("SentId").front();
     auto word_emb_name = op_desc.Input("WordEmbedding").front();
     auto pos_emb_name = op_desc.Input("PosEmbedding").front();
