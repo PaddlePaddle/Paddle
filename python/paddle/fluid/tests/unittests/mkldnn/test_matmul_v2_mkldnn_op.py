@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
@@ -233,6 +233,51 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
         self.trans_x = False
         self.trans_y = True
 
+
+#   BF16 TESTS
+def create_bf16_test_class(parent):
+    @unittest.skipIf(core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    @unittest.skipIf(not core.supports_bfloat16(),
+                     "place does not support BF16 evaluation")
+    class TestMatMulV2Bf16OneDNNOp(parent):
+        def set_inputs(self, x, y):
+            self.inputs = {
+                'X': convert_float_to_uint16(x),
+                'Y': convert_float_to_uint16(y)
+            }
+
+        def set_dtype_attr(self):
+            self.attrs['mkldnn_data_type'] = "bfloat16"
+
+        def test_check_output(self):
+            self.check_output_with_place(core.CPUPlace())
+
+        def test_check_grad(self):
+            pass
+
+    cls_name = "{0}_{1}".format(parent.__name__, "BF16")
+    TestMatMulV2Bf16OneDNNOp.__name__ = cls_name
+    globals()[cls_name] = TestMatMulV2Bf16OneDNNOp
+
+
+create_bf16_test_class(TestMatMulV2VectorXMatrixTransposeYOneDNNOp)
+create_bf16_test_class(TestMatMulV2VectorXMatrixOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXVectorTransposeXOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXVectorOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeYOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrix2OneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrix3OneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrix4OneDNNOp)
+create_bf16_test_class(TestMatMulV2VectorXMatrix5DOneDNNOp)
+create_bf16_test_class(TestMatMulV2Matrix3DXVectorOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp)
 
 if __name__ == "__main__":
     paddle.enable_static()
