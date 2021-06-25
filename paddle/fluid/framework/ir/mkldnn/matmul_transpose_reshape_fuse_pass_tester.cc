@@ -28,7 +28,6 @@ void SetOp(ProgramDesc *prog, const std::string &type,
   op->SetOutput("Out", {outputs[0]});
   if (type == "transpose2") {
     op->SetAttr("axis", std::vector<int>({0, 2, 1, 3}));
-    op->SetAttr("data_format", std::string("NCHW"));
     op->SetOutput("XShape", {outputs[1]});
   }
   if (type == "reshape2") {
