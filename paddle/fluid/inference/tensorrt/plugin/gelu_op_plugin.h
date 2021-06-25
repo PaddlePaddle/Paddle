@@ -60,41 +60,17 @@ class GeluPlugin : public PluginTensorRT {
   void serialize(void* buffer) const override { serializeBase(buffer); }
 };
 
-class GeluPluginCreator : public nvinfer1::IPluginCreator {
+class GeluPluginCreator : public TensorRTPluginCreator {
  public:
-  GeluPluginCreator() {}
   const char* getPluginName() const override { return "gelu_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &field_collection_;
-  }
-
-  nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return nullptr;
-  }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serial_data,
                                          size_t serial_length) override {
     return new GeluPlugin(serial_data, serial_length);
   }
-
-  void setPluginNamespace(const char* lib_namespace) override {
-    plugin_namespace_ = lib_namespace;
-  }
-
-  const char* getPluginNamespace() const override {
-    return plugin_namespace_.c_str();
-  }
-
- private:
-  std::string plugin_namespace_;
-  std::string plugin_name_;
-  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
-  std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 REGISTER_TRT_PLUGIN_V2(GeluPluginCreator);
 
@@ -153,21 +129,11 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
   void destroy() override { delete this; }
 };
 
-class GeluPluginDynamicCreator : public nvinfer1::IPluginCreator {
+class GeluPluginDynamicCreator : public TensorRTPluginCreator {
  public:
-  GeluPluginDynamicCreator() {}
   const char* getPluginName() const override { return "gelu_plugin_dynamic"; }
 
   const char* getPluginVersion() const override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &field_collection_;
-  }
-
-  nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return nullptr;
-  }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serial_data,
@@ -175,22 +141,7 @@ class GeluPluginDynamicCreator : public nvinfer1::IPluginCreator {
     auto plugin = new GeluPluginDynamic(serial_data, serial_length);
     return plugin;
   }
-
-  void setPluginNamespace(const char* lib_namespace) override {
-    plugin_namespace_ = lib_namespace;
-  }
-
-  const char* getPluginNamespace() const override {
-    return plugin_namespace_.c_str();
-  }
-
- private:
-  std::string plugin_namespace_;
-  std::string plugin_name_;
-  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
-  std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-
 REGISTER_TRT_PLUGIN_V2(GeluPluginDynamicCreator);
 #endif
 
