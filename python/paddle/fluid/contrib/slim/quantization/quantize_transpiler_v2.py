@@ -32,21 +32,21 @@ class QuantizeTranspilerV2(object):
                  weight_bits=8,
                  activation_bits=8,
                  weight_quantize_type='abs_max',
-                 activation_quantize_type='abs_max',
-                 quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'],
+                 activation_quantize_type='moving_average_abs_max',
+                 quantizable_op_type=[
+                     'conv2d', 'depthwise_conv2d', 'mul', 'matmul'
+                 ],
                  skip_pattern=['skip_quant']):
         """
-        Add quant_dequant op before the quantized op to quantize the fluid Program.
-        It is a patch for distributed quantization, we will support others module for
-        distributed quantization.
+        Apply fake quant for the quantized ops. 
 
         Args:
             weight_bits(int): the bit of quantized weight.
             activation_bits(int): the bit of quantized activation.
             weight_quantize_type(str): the quantization type for weight.
-                Only support to be 'abs_max' for now.
+                Only support to be 'abs_max' and 'channel_wise_abs_max'.
             activation_quantize_type(str): the quantization type for activation.
-                Only support to be 'abs_max' for now.
+                Only support to be 'abs_max' and 'moving_average_abs_max'.
             quantizable_op_type(str): set the op type for quantization.
             skip_pattern(str|list): The user-defined quantization skip pattern, which
                 will be presented in the name scope of an op. When the skip pattern is
@@ -55,10 +55,12 @@ class QuantizeTranspilerV2(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
 
-        assert activation_quantize_type == "abs_max", \
-            "activation_quantize_type should be abs_max for now."
-        assert weight_quantize_type == "abs_max", \
-            "weight_quantize_type should be abs_max for now."
+        assert activation_quantize_type in \
+            ["abs_max", "moving_average_abs_max"], \
+            "activation_quantize_type should be abs_max " \
+            "or moving_average_abs_max for now."
+        assert weight_quantize_type in ["abs_max", "channel_wise_abs_max"], \
+            "weight_quantize_type should be abs_max or channel_wise_abs_max."
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
 
@@ -68,15 +70,19 @@ class QuantizeTranspilerV2(object):
         ]
 
         self._skip_pattern = skip_pattern
-        self.helper = LayerHelper(self.__class__.__name__)
+        self._helper = LayerHelper(self.__class__.__name__)
 
-    def apply(self, program, startup_program):
+        self._moving_rate = 0.9
+        self._out_ch_axis1_ops = ['conv2d_transpose', 'mul', 'matmul']
+
+    def apply(self, program, startup_program, is_test=False):
         """
         Apply quantization to fluid Program.
 
         Args:
             program(Program): the train or test program to be quantized.
             startup_program(Program): the corresponding startup_program.
+            is_test(bool): Whethe the program is used for test.
         Returns:
             None
         """
@@ -94,7 +100,9 @@ class QuantizeTranspilerV2(object):
                 for op in ops:
                     if op.type in self._quantizable_ops and \
                         (not self._is_skip_quant(op)):
-                        self._transform_forward(block, op, var_rename_map)
+                        self._transform_forward(block, op, var_rename_map,
+                                                is_test)
+
             for block in program.blocks:
                 ops = list(block.ops)
                 for op in ops:
@@ -117,28 +125,50 @@ class QuantizeTranspilerV2(object):
                                 self._skip_pattern) != -1
         return user_skipped
 
-    def _transform_forward(self, block, op, var_rename_map):
+    def _transform_forward(self, block, op, var_rename_map, is_test):
+        """
+        Insert fake quant op before the target ops.
+        """
         op._set_attr("quantization_type", "qat_with_weight")
         idx = block.ops.index(op)
         block_id = block.idx
+
         for in_name in op.input_arg_names:
             if in_name in var_rename_map[block_id]:
                 new_var_name = var_rename_map[block_id][in_name]
             else:
                 in_var = block.var(in_name)
+                if in_var.dtype != core.VarDesc.VarType.FP32:
+                    continue
+
                 quant_bits = self._weight_bits if in_var.persistable \
                         else self._activation_bits
                 quant_type = self._weight_quantize_type if in_var.persistable \
                         else self._activation_quantize_type
+
                 if quant_type == "abs_max":
-                    new_var = self._insert_quant_dequant_abs_max_op(
-                        block, idx, in_var, quant_bits)
+                    new_var = self._insert_abs_max_fq_op(block, idx, in_var,
+                                                         quant_bits)
+                elif quant_type == "moving_average_abs_max":
+                    new_var = self._insert_ma_abs_max_fq_op(block, idx, in_var,
+                                                            quant_bits, is_test)
+                elif quant_type == "channel_wise_abs_max":
+                    ch_axis = 1 if op.type in self._out_ch_axis1_ops else 0
+                    new_var = self._insert_pc_abs_max_fq_op(block, idx, in_var,
+                                                            quant_bits, ch_axis)
                 else:
-                    _logger.error("Quant_type only supported to be abs_max")
+                    _logger.error("Don't support the quant_type: %s" %
+                                  quant_type)
+                    continue
+
                 var_rename_map[block_id][in_name] = new_var.name
                 op._rename_input(in_name, new_var.name)
 
     def _transform_backward(self, block, op, var_rename_map):
+        """
+        Update the backword of the target ops.
+        Note: Skip rename the output of the grad ops.
+        """
         block_id = block.idx
         no_dequanted_input_vars = True
         for name in op.input_arg_names:
@@ -150,13 +180,16 @@ class QuantizeTranspilerV2(object):
             raise ValueError("There is no dequanted inputs for op %s." %
                              (op.type))
 
-    def _insert_quant_dequant_abs_max_op(self, block, idx, in_var, quant_bits):
+    def _insert_abs_max_fq_op(self, block, idx, in_var, quant_bits):
+        """
+        Inset abs max fake quant op.
+        """
         quant_dequant_var = block.create_var(
             type=in_var.type,
             name="{}.quant_dequant".format(in_var.name),
             shape=in_var.shape,
             dtype=in_var.dtype)
-        scale_var = self.helper.create_parameter(
+        scale_var = self._helper.create_parameter(
             attr=ParamAttr(
                 name="{}.quant_dequant.scale".format(in_var.name),
                 initializer=Constant(0.001),
@@ -171,6 +204,95 @@ class QuantizeTranspilerV2(object):
         block._insert_op(
             idx,
             type='fake_quantize_dequantize_abs_max',
+            attrs=attrs,
+            inputs=inputs,
+            outputs=outputs)
+        return quant_dequant_var
+
+    def _insert_ma_abs_max_fq_op(self, block, idx, in_var, quant_bits, is_test):
+        """
+        Insert moving average abs max fake quant op.
+        """
+        quant_dequant_var = block.create_var(
+            type=in_var.type,
+            name="{}.quant_dequant".format(in_var.name),
+            shape=in_var.shape,
+            dtype=in_var.dtype)
+
+        scale_var = self._helper.create_parameter(
+            attr=ParamAttr(
+                name="{}.quant_dequant.scale".format(in_var.name),
+                initializer=Constant(0.001),
+                trainable=False),
+            shape=[1],
+            dtype=in_var.dtype)
+        scale_var.stop_gradient = True
+
+        if not is_test:
+            state_var = self._helper.create_parameter(
+                attr=ParamAttr(
+                    name="{}.quant_dequant.state".format(in_var.name),
+                    initializer=Constant(1),
+                    trainable=False),
+                shape=[1],
+                dtype=in_var.dtype)
+            state_var.stop_gradient = True
+
+            accum_var = self._helper.create_parameter(
+                attr=ParamAttr(
+                    name="{}.quant_dequant.accum".format(in_var.name),
+                    initializer=Constant(1),
+                    trainable=False),
+                shape=[1],
+                dtype=in_var.dtype)
+            accum_var.stop_gradient = True
+
+        attrs = {
+            'moving_rate': self._moving_rate,
+            'bit_length': quant_bits,
+            'is_test': is_test
+        }
+        inputs = {'X': in_var, 'InScale': scale_var}
+        outputs = {'Out': quant_dequant_var, 'OutScale': scale_var}
+        if not is_test:
+            inputs['InState'] = state_var
+            inputs['InAccum'] = accum_var
+            outputs['OutState'] = state_var
+            outputs['OutAccum'] = accum_var
+
+        block._insert_op(
+            idx,
+            type='fake_quantize_dequantize_moving_average_abs_max',
+            attrs=attrs,
+            inputs=inputs,
+            outputs=outputs)
+        return quant_dequant_var
+
+    def _insert_pc_abs_max_fq_op(self, block, idx, in_var, quant_bits, ch_axis):
+        """
+        Insert per channel abs max fake quant op.
+        """
+        quant_dequant_var = block.create_var(
+            type=in_var.type,
+            name="{}.quant_dequant".format(in_var.name),
+            shape=in_var.shape,
+            dtype=in_var.dtype)
+
+        scale_var = self._helper.create_parameter(
+            attr=ParamAttr(
+                name="{}.quant_dequant.scale".format(in_var.name),
+                initializer=Constant(0.),
+                trainable=False),
+            shape=[in_var.shape[ch_axis]],
+            dtype=in_var.dtype)
+        scale_var.stop_gradient = True
+
+        inputs = {'X': in_var}
+        outputs = {'Out': quant_dequant_var, 'OutScale': scale_var}
+        attrs = {'bit_length': quant_bits, 'quant_axis': ch_axis}
+        block._insert_op(
+            idx,
+            type='fake_channel_wise_quantize_dequantize_abs_max',
             attrs=attrs,
             inputs=inputs,
             outputs=outputs)
