@@ -44,7 +44,7 @@ TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsIntIn({0, 1, 2, 3})
+      .IsIntIn({0, 1, 2, 3, 4, 5})
       .End();
   AddOpCompat(OpCompat("concat"))
       .AddInput("X")  // Input("X"): vector<tensors>
@@ -56,7 +56,7 @@ TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsIntIn({0, 1, 2, 3})
+      .IsIntIn({0, 1})
       .End();
 }
 
