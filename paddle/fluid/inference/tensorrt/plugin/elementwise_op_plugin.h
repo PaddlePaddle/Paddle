@@ -40,9 +40,12 @@ class ElementWisePlugin : public PluginTensorRT {
     const char* elementwise_type;
     DeserializeValue(&serial_data, &serial_length, &elementwise_type);
     type_ = std::string(elementwise_type);
-    DeserializeValue(&serial_data, &serial_length, &axis_);
     DeserializeValue(&serial_data, &serial_length, &dims_x_);
     DeserializeValue(&serial_data, &serial_length, &dims_y_);
+    DeserializeValue(&serial_data, &serial_length, &axis_);
+    DeserializeValue(&serial_data, &serial_length, &prev_size_);
+    DeserializeValue(&serial_data, &serial_length, &midd_size_);
+    DeserializeValue(&serial_data, &serial_length, &post_size_);
   }
 
   ElementWisePlugin* clone() const override {
@@ -65,18 +68,21 @@ class ElementWisePlugin : public PluginTensorRT {
               void* workspace, cudaStream_t stream);
 
   size_t getSerializationSize() const override {
-    return SerializedSize(getPluginType()) + SerializedSize(axis_) +
+    return getBaseSerializationSize() + SerializedSize(type_.c_str()) +
            SerializedSize(dims_x_) + SerializedSize(dims_y_) +
-           getBaseSerializationSize();
+           SerializedSize(axis_) + SerializedSize(prev_size_) +
+           SerializedSize(midd_size_) + SerializedSize(post_size_);
   }
 
   void serialize(void* buffer) const override {
-    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, type_.c_str());
-    SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, dims_x_);
     SerializeValue(&buffer, dims_y_);
+    SerializeValue(&buffer, axis_);
+    SerializeValue(&buffer, prev_size_);
+    SerializeValue(&buffer, midd_size_);
+    SerializeValue(&buffer, post_size_);
   }
 
  protected:
@@ -88,6 +94,20 @@ class ElementWisePlugin : public PluginTensorRT {
   int midd_size_;
   int post_size_;
 };
+
+class ElementWisePluginCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const override { return "elementwise_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    return new ElementWisePlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(ElementWisePluginCreator);
 
 #if IS_TRT_VERSION_GE(6000)
 class ElementwisePluginDynamic : public DynamicPluginTensorRT {
@@ -104,7 +124,9 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
     return new ElementwisePluginDynamic(type_, axis_);
   }
 
-  const char* getPluginType() const override { return "elementwise_plugin"; }
+  const char* getPluginType() const override {
+    return "elementwise_plugin_dynamic";
+  }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
 
@@ -149,7 +171,9 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
 class ElementwisePluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
   ElementwisePluginDynamicCreator() {}
-  const char* getPluginName() const override { return "elementwise_plugin"; }
+  const char* getPluginName() const override {
+    return "elementwise_plugin_dynamic";
+  }
 
   const char* getPluginVersion() const override { return "1"; }
 
