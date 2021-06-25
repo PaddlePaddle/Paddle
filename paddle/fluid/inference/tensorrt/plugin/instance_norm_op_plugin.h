@@ -41,15 +41,13 @@ class InstanceNormPlugin : public PluginTensorRT {
  public:
   size_t getSerializationSize() const override {
     return getBaseSerializationSize() + SerializedSize(eps_) +
-           SerializedSize(scale_) + SerializedSize(bias_) +
-           SerializedSize(getPluginType());
+           SerializedSize(scale_) + SerializedSize(bias_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
   void serialize(void *buffer) const override {
-    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, eps_);
     SerializeValue(&buffer, scale_);
@@ -114,6 +112,20 @@ class InstanceNormPlugin : public PluginTensorRT {
             (format == nvinfer1::PluginFormat::kNCHW));
   }
 };
+
+class InstanceNormPluginCreator : public TensorRTPluginCreator {
+ public:
+  const char *getPluginName() const override { return "instance_norm_plugin"; }
+
+  const char *getPluginVersion() const override { return "1"; }
+
+  nvinfer1::IPluginV2 *deserializePlugin(const char *name,
+                                         const void *serial_data,
+                                         size_t serial_length) override {
+    return new InstanceNormPlugin(serial_data, serial_length);
+  }
+};
+REGISTER_TRT_PLUGIN_V2(InstanceNormPluginCreator);
 
 }  // namespace plugin
 }  // namespace tensorrt
