@@ -79,7 +79,7 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
-    # Support build for all python3 versions, currently
+    # Support build for all python3 versions
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
@@ -1743,8 +1743,8 @@ EOF
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
-    RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
-        pip3 install py-cpuinfo==5.0.0 && apt-get install -f -y && \
+    RUN apt-get install -y wget libgtk2.0-dev dmidecode && \
+        apt-get install -f -y && \
         apt-get clean -y && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
@@ -2130,6 +2130,7 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        sleep 30d
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
