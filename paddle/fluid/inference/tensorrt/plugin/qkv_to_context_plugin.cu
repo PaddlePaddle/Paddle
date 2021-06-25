@@ -299,7 +299,7 @@ int QkvToContextPluginDynamic::enqueue(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(device_id)));
 
-    int n_q = seq_len * head_number_ * head_size_;
+    int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
     int blocks = (n_q + threads - 1) / threads;
 

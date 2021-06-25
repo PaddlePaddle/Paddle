@@ -1,32 +1,27 @@
-type: "transpose"
+type: "fake_channel_wise_dequantize_max_abs"
 def {
   inputs {
     name: "X"
+  }
+  inputs {
+    name: "Scales"
   }
   outputs {
     name: "Out"
   }
   attrs {
-    name: "axis"
+    name: "quant_bits"
     type: INTS
+  }
+  attrs {
+    name: "quant_axis"
+    type: INT
   }
 }
 extra {
   attrs {
-    name: "data_format"
-    type: STRING
-  }
-  attrs {
-    name: "use_mkldnn"
+    name: "is_test"
     type: BOOLEAN
-  }
-  attrs {
-    name: "use_quantizer"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "mkldnn_data_type"
-    type: STRING
   }
   attrs {
     name: "op_role"
