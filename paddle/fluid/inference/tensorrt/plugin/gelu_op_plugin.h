@@ -57,9 +57,7 @@ class GeluPlugin : public PluginTensorRT {
 
   // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
-  void serialize(void* buffer) const override {
-    serializeBase(buffer);
-  }
+  void serialize(void* buffer) const override { serializeBase(buffer); }
 };
 
 class GeluPluginCreator : public nvinfer1::IPluginCreator {

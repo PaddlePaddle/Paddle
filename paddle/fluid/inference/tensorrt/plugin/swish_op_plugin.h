@@ -32,8 +32,7 @@ class SwishPlugin : public PluginTensorRT {
 
  public:
   size_t getSerializationSize() const override {
-    return getBaseSerializationSize() +
-           SerializedSize(beta_);
+    return getBaseSerializationSize() + SerializedSize(beta_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
