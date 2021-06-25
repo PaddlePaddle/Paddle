@@ -36,7 +36,7 @@ class TRTInstanceNormTest(InferencePassTest):
 
     def build(self):
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, 3, self.precision, self.serialize, False)
+            1 << 30, self.bs, 2, self.precision, self.serialize, False)
 
         with fluid.program_guard(self.main_program, self.startup_program):
             shape = [-1, self.channel, self.height, self.width]
