@@ -76,9 +76,9 @@ class TestFleetWithASP(unittest.TestCase):
 
         sparsity.prune_model(place, train_prog)
 
-        data = (np.random.randn(32, 3, 32, 32), np.random.randint(
-            10, size=(32, 1)))
         for _ in range(3):
+            data = (np.random.randn(64, 3, 32, 32), np.random.randint(
+                10, size=(64, 1)))
             exe.run(train_prog, feed=feeder.feed([data]))
 
         for param in train_prog.global_block().all_parameters():
