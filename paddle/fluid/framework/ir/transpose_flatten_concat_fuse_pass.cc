@@ -32,9 +32,6 @@ TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
       .End()
       .AddAttr("axis")
       .IsType<std::vector<int>>()
-      .End()
-      .AddAttr("data_format")
-      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
       .End();
   AddOpCompat(OpCompat("flatten2"))
       .AddInput("X")
