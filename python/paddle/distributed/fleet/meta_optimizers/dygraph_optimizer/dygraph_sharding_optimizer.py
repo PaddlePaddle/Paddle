@@ -28,42 +28,6 @@ class DygraphShardingOptimizer(object):
     """
     A wrapper for Sharding Optimizer in Dygraph. 
 
-    Example::
-        .. code-block:: python
-
-            # init fleet and setting sharding degree
-            import paddle.distributed.fleet as fleet
-            strategy = fleet.DistributedStrategy()
-            strategy.hybrid_configs = {
-                "dp_degree": args.dp_degree,
-                "mp_degree": 1,
-                "pp_degree": 1,
-                "sharding_degree": args.sharding_degree,
-            }
-            fleet.init(is_collective=True, strategy=strategy)
-
-            # wrap model & optimizer 
-            model = model_class(...)
-            model = fleet.distributed_model(model)
-            optimizer = DygraphShardingOptimizer(
-                hcg = fleet.get_hybrid_communicate_group(),
-                user_defined_strategy = strategy,
-                params = model.parameters(),
-                inner_optimizer_class = paddle.optimizer.AdamW,
-                    learning_rate = lr_scheduler,
-                    epsilon = args.adam_epsilon,
-                    weight_decay = args.weight_decay,
-                    apply_decay_param_fun = lambda x: x in decay_params,
-                )
-            optimizer = fleet.distributed_optimizer(optimizer)
-
-            # use optimizer as normal
-            out = model(input=data)
-            loss = criterion(out)
-            loss.backward()
-            optimizer.step()
-            optimizer.clear_grad()
-
     .. warning: DygraphShardingOptimizer is experimental and subject to change.
 
     .. ZeRO: https://arxiv.org/abs/1910.02054
@@ -182,7 +146,9 @@ class DygraphShardingOptimizer(object):
                 for param in params:
                     paddle.distributed.broadcast(
                         param,
-                        src=rank,
+                        # the collective API need src rank to be the global rank id 
+                        # instead of the relative logic rank id within group 
+                        src=self._hcg.get_sharding_parallel_group().ranks[rank],
                         group=self._hcg.get_sharding_parallel_group(),
                         use_calc_stream=True)
 
