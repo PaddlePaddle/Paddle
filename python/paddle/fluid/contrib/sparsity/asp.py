@@ -64,11 +64,14 @@ def decorate(optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             from paddle.fluid.contrib import sparsity
 
             main_program = fluid.Program()
             startup_program = fluid.Program()
+
+            paddle.enable_static()
 
             with fluid.program_guard(main_program, startup_program):
                 input_data = fluid.layers.data(name='data', shape=[None, 128])
@@ -122,15 +125,16 @@ def prune_model(place,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             from paddle.fluid.contrib import sparsity
+
+            paddle.enable_static()
 
             main_program = fluid.Program()
             startup_program = fluid.Program()
 
             place = fluid.CUDAPlace(0)
-
-
 
             with fluid.program_guard(main_program, startup_program):
                 input_data = fluid.layers.data(name='data', shape=[None, 128])
