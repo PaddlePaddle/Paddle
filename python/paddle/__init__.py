@@ -118,6 +118,7 @@ from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
 from .tensor.manipulation import concat  # noqa: F401
+from .tensor.manipulation import broadcast_tensors  # noqa: F401
 from .tensor.manipulation import expand  # noqa: F401
 from .tensor.manipulation import broadcast_to  # noqa: F401
 from .tensor.manipulation import expand_as  # noqa: F401
@@ -203,6 +204,7 @@ from .tensor.math import erf  # noqa: F401
 from .tensor.math import addmm  # noqa: F401
 from .tensor.math import clip  # noqa: F401
 from .tensor.math import trace  # noqa: F401
+from .tensor.math import diagonal  # noqa: F401
 from .tensor.math import kron  # noqa: F401
 from .tensor.math import isfinite  # noqa: F401
 from .tensor.math import isinf  # noqa: F401
@@ -501,7 +503,9 @@ __all__ = [  # noqa
            'log10',
            'concat',
            'check_shape',
-           'trunc'
+           'trunc',
            'digamma',
-           'standard_normal'
+           'standard_normal',
+           'diagonal',
+           'broadcast_tensors',
 ]

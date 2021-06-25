@@ -18,14 +18,12 @@ import unittest
 import time
 import argparse
 import os
-import six
 import sys
 import subprocess
 import traceback
 import functools
 import pickle
 from contextlib import closing
-from six import string_types
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
@@ -69,10 +67,7 @@ class TestCollectiveAPIRunnerBase(object):
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
             #print(out, sys.stderr)
-        if six.PY2:
-            print(pickle.dumps(out))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out))
+        sys.stdout.buffer.write(pickle.dumps(out))
 
 
 def runtime_main(test_class, col_type):

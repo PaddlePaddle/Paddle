@@ -54,6 +54,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
            "tools/print_signatures.py"
            "tools/sampcd_processor.py"
+           "tools/check_pr_approval.py"
            "paddle/scripts/paddle_build.bat"
            "tools/windows/run_unittests.sh"
            "tools/parallel_UT_rule.py"
@@ -146,6 +147,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "tools/print_signatures.py" ];then
           echo_line="test_print_signatures.py will be executed for changed print_signatures.py.\n"
           run_tools_test test_print_signatures.py
+      elif [ "${API_FILE}" == "tools/checkout_pr_approval.py" ];then
+          echo_line="test_checkout_pr_approval.py will be executed for changed checkout_pr_approval.py.\n"
+          run_tools_test test_checkout_pr_approval.py
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
 	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
 	      check_approval 1 35824027 38231817
