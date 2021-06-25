@@ -85,7 +85,7 @@ class QuantizeTranspilerV2(object):
         assert isinstance(startup_program, Program), \
             "startup_program must be the instance of Program"
 
-        quant_dequant_vars = [
+        var_rename_map = [
             collections.OrderedDict() for _ in range(len(program.blocks))
         ]
         with program_guard(program, startup_program):
@@ -94,13 +94,13 @@ class QuantizeTranspilerV2(object):
                 for op in ops:
                     if op.type in self._quantizable_ops and \
                         (not self._is_skip_quant(op)):
-                        self._transform_forward(block, op, quant_dequant_vars)
+                        self._transform_forward(block, op, var_rename_map)
             for block in program.blocks:
                 ops = list(block.ops)
                 for op in ops:
                     if op.type in self._quantizable_grad_ops and \
                         (not self._is_skip_quant(op)):
-                        self._transform_backward(block, op, quant_dequant_vars)
+                        self._transform_backward(block, op, var_rename_map)
 
     def _is_skip_quant(self, op):
         """
@@ -117,13 +117,13 @@ class QuantizeTranspilerV2(object):
                                 self._skip_pattern) != -1
         return user_skipped
 
-    def _transform_forward(self, block, op, quant_dequant_vars):
+    def _transform_forward(self, block, op, var_rename_map):
         op._set_attr("quantization_type", "qat_with_weight")
         idx = block.ops.index(op)
         block_id = block.idx
         for in_name in op.input_arg_names:
-            if in_name in quant_dequant_vars[block_id]:
-                quant_dequant_var = quant_dequant_vars[block_id][in_name]
+            if in_name in var_rename_map[block_id]:
+                new_var_name = var_rename_map[block_id][in_name]
             else:
                 in_var = block.var(in_name)
                 quant_bits = self._weight_bits if in_var.persistable \
@@ -131,20 +131,20 @@ class QuantizeTranspilerV2(object):
                 quant_type = self._weight_quantize_type if in_var.persistable \
                         else self._activation_quantize_type
                 if quant_type == "abs_max":
-                    quant_dequant_var = self._insert_quant_dequant_abs_max_op(
+                    new_var = self._insert_quant_dequant_abs_max_op(
                         block, idx, in_var, quant_bits)
                 else:
                     _logger.error("Quant_type only supported to be abs_max")
-                quant_dequant_vars[block_id][in_name] = quant_dequant_var
-                op._rename_input(in_name, quant_dequant_var.name)
+                var_rename_map[block_id][in_name] = new_var.name
+                op._rename_input(in_name, new_var.name)
 
-    def _transform_backward(self, block, op, quant_dequant_vars):
+    def _transform_backward(self, block, op, var_rename_map):
         block_id = block.idx
         no_dequanted_input_vars = True
         for name in op.input_arg_names:
-            if name in quant_dequant_vars[block_id]:
-                dequant_var = quant_dequant_vars[block_id][name]
-                op._rename_input(name, dequant_var.name)
+            if name in var_rename_map[block_id]:
+                new_var_name = var_rename_map[block_id][name]
+                op._rename_input(name, new_var_name)
                 no_dequanted_input_vars = False
         if no_dequanted_input_vars:
             raise ValueError("There is no dequanted inputs for op %s." %
