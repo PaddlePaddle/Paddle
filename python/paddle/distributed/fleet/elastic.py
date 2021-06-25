@@ -18,6 +18,7 @@ import os
 import six
 import logging
 import signal
+import random
 
 logging.basicConfig(level=os.environ.get('LOGLEVEL', 'INFO').upper())
 logger = logging.getLogger("ELASTIC")
@@ -129,10 +130,14 @@ class ElasticManager(object):
 
         # etcd data
         self.prefix = "/paddle/" + name
-        self.node_prefix = self.prefix + '/nodes/'
+        self.node_prefix = self.prefix + '/nodes'
         self.np_path = self.prefix + '/np'
         self.endpoints_path = self.prefix + '/endpoints'
-        self.host_path = '{}{}'.format(self.node_prefix, time.time())
+
+        node_tag = ''.join(
+            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
+        self.host_path = '{}/{}{}'.format(self.node_prefix, node_tag,
+                                          time.time())
 
         self.np = np + scale
         '''
@@ -264,6 +269,7 @@ class ElasticManager(object):
         if not self.enable:
             return
 
+        idx = 1
         while not self.stopped:
             if self._match():
                 logger.info('ready with hosts {}'.format(self.hosts))
@@ -271,6 +277,14 @@ class ElasticManager(object):
                 return
             logger.info('not ready for np {} with hosts {}'.format(self.np,
                                                                    self.hosts))
+
+            # reset hosts every 30s to prevent fake deadlock
+            if idx % 10 == 0:
+                self.etcd.delete_prefix(self.node_prefix)
+                logger.info('reset np {} with hosts {}'.format(self.np,
+                                                               self.hosts))
+
+            idx += 1
             time.sleep(3)
         return
 
