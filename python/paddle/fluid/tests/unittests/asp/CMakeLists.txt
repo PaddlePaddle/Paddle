@@ -12,3 +12,6 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_fleet_with_asp MODULES test_fleet_with_asp ENVS ${dist_ENVS})
     py_test_modules(test_fleet_with_asp_amp MODULES test_fleet_with_asp_amp ENVS ${dist_ENVS})
 endif()
+
+set_tests_properties(test_fleet_with_asp PROPERTIES TIMEOUT 120)
+set_tests_properties(test_fleet_with_asp_amp PROPERTIES TIMEOUT 120)

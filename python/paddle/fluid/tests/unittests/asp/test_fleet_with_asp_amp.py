@@ -122,7 +122,7 @@ class TestFleetWithASP(unittest.TestCase):
 
         data = (np.random.randn(32, 3, 32, 32), np.random.randint(
             10, size=(32, 1)))
-        for _ in range(2):
+        for _ in range(3):
             exe.run(train_prog, feed=feeder.feed([data]))
 
         for param in train_prog.global_block().all_parameters():

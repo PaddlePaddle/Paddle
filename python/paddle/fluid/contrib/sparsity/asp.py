@@ -67,6 +67,7 @@ def decorate(optimizer):
             import paddle
             import paddle.fluid as fluid
             from paddle.fluid.contrib import sparsity
+            import fleet
 
             main_program = fluid.Program()
             startup_program = fluid.Program()
