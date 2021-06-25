@@ -41,6 +41,7 @@ class ConvAffineChannelFusePass : public FusePassBase {
 
 class ConvEltwiseAddAffineChannelFusePass : public FusePassBase {
  public:
+  ConvEltwiseAddAffineChannelFusePass();
   virtual ~ConvEltwiseAddAffineChannelFusePass() {}
 
  protected:
