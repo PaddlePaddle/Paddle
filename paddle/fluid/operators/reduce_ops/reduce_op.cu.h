@@ -639,13 +639,6 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();  // get the parameters of LaunchReduceKernel
 
-  if (config.reduce_num == 1) {
-    auto out_dims = y->dims();
-    framework::TensorCopy(x, y->place(), y);
-    y->Resize(out_dims);
-    return;
-  }
-
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
   //   temp_output should be stored temp_data in output_data space or stored in
@@ -653,6 +646,14 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   framework::Tensor tmp;
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>(x.place());
+
+  if (config.reduce_num == 1) {
+    auto out_dims = y->dims();
+    framework::TensorCopy(x, y->place(), y);
+    y->Resize(out_dims);
+    return;
+  }
+
   config.SetOutputData(y_data, x.place(), &tmp);
 
   using TransformOp = typename ReduceOp<Tx, Ty>::Transformer;

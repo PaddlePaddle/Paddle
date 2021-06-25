@@ -16,7 +16,6 @@
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
-// reduce_prod
 REGISTER_OP_CUDA_KERNEL(
     reduce_prod, ops::ReduceCudaKernel<float, paddle::operators::CustomMul>,
     ops::ReduceCudaKernel<int, paddle::operators::CustomMul>,
