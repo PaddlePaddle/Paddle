@@ -64,10 +64,6 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
 
   nvinfer1::PluginFormat getDataFormat() const { return data_format_; }
 
-  void AddInput(nvinfer1::ITensor* input) { inputs_.push_back(input); }
-
-  std::vector<nvinfer1::ITensor*>& GetInputs() { return inputs_; }
-
   // IPluginV2
   virtual const char* getPluginType() const = 0;
 
