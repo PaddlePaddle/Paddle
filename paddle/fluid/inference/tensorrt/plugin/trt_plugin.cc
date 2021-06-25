@@ -134,6 +134,23 @@ void PluginTensorRTV2Ext::configurePlugin(
   data_type_ = input_types[0];
 }
 
+const nvinfer1::PluginFieldCollection* TensorRTPluginCreator::getFieldNames() {
+  return &field_collection_;
+}
+
+nvinfer1::IPluginV2* TensorRTPluginCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* fc) {
+  return nullptr;
+}
+
+void TensorRTPluginCreator::setPluginNamespace(const char* lib_namespace) {
+  plugin_namespace_ = lib_namespace;
+}
+
+const char* TensorRTPluginCreator::getPluginNamespace() const {
+  return plugin_namespace_.c_str();
+}
+
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

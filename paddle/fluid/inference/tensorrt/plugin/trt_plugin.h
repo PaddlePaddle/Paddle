@@ -346,6 +346,34 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
 };
 #endif
 
+class TensorRTPluginCreator : public nvinfer1::IPluginCreator {
+ public:
+  TensorRTPluginCreator() = default;
+
+  virtual const char* getPluginName() const = 0;
+
+  virtual const char* getPluginVersion() const = 0;
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override;
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override;
+
+  virtual nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                                 const void* serial_data,
+                                                 size_t serial_length) = 0;
+
+  void setPluginNamespace(const char* lib_namespace) override;
+
+  const char* getPluginNamespace() const override;
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+
 template <typename T>
 class TrtPluginRegistrarV2 {
  public:
