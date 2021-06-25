@@ -73,6 +73,7 @@ def decorate(optimizer):
 
             paddle.enable_static()
 
+            is_distributed = False
             with fluid.program_guard(main_program, startup_program):
                 input_data = fluid.layers.data(name='data', shape=[None, 128])
                 label = fluid.layers.data(name='label', shape=[None, 10])
