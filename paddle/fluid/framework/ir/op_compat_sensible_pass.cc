@@ -23,6 +23,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+AttrCompat& AttrCompat::IsStringEQ(const std::string& value) {
+  conditions_.emplace_back([value](const Attribute& attr) -> bool {
+    return value == BOOST_GET_CONST(std::string, attr);
+  });
+  return *this;
+}
+
 AttrCompat& AttrCompat::IsStringIn(const std::set<std::string>& candidates) {
   conditions_.emplace_back([candidates](const Attribute& attr) -> bool {
     std::string value = BOOST_GET_CONST(std::string, attr);

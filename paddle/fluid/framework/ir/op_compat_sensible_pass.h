@@ -37,6 +37,8 @@ class AttrCompat {
 
   // @{ String-related methods
   //! Assert the attribute is an string in the `candidates` domain.
+  AttrCompat& IsStringEQ(const std::string& value);
+  //! Assert the attribute is an string in the `candidates` domain.
   AttrCompat& IsStringIn(const std::set<std::string>& candidates);
   //! Assert the attribute is a string and match a custom judging function.
   AttrCompat& IsStringMatch(
