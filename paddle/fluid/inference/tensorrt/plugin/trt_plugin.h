@@ -48,6 +48,7 @@ typedef std::function<PluginTensorRT*(void)> PluginConstructFunc;
 class PluginTensorRT : public nvinfer1::IPluginV2 {
  public:
   PluginTensorRT() : with_fp16_(false) {}
+
   // It was used for TensorRT deserialization.
   // It should not be called by users.
   PluginTensorRT(const void* serialized_data, size_t length) {}
@@ -73,7 +74,7 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
                                              const nvinfer1::Dims* input_dims,
                                              int num_inputs) = 0;
 
-  // Check format support. The default is FLOAT32 and NCHW.
+  // Check format support. The default is FLOAT32 and kLINEAR.
   bool supportsFormat(nvinfer1::DataType type,
                       nvinfer1::PluginFormat format) const override;
 
@@ -132,7 +133,6 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
   nvinfer1::DataType data_type_;
   nvinfer1::PluginFormat data_format_;
 
-  std::vector<nvinfer1::ITensor*> inputs_;
   bool with_fp16_;
 
  private:
@@ -243,7 +243,6 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   std::vector<nvinfer1::Dims> input_dims_;
   nvinfer1::DataType data_type_;
   nvinfer1::PluginFormat data_format_;
-  std::vector<nvinfer1::ITensor*> inputs_;
   bool with_fp16_;
 
  private:
