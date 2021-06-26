@@ -88,6 +88,7 @@ class InstanceNormPlugin : public PluginTensorRT {
     platform::dynload::cudnnDestroyTensorDescriptor(y_desc_);
     platform::dynload::cudnnDestroyTensorDescriptor(b_desc_);
   }
+
   int initialize() override;
 
   InstanceNormPlugin *clone() const override {
@@ -98,6 +99,7 @@ class InstanceNormPlugin : public PluginTensorRT {
   int getNbOutputs() const override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
                                      int nbInputDims) override;
+
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batchSize, const void *const *inputs, void **outputs,
 #else
@@ -106,11 +108,7 @@ class InstanceNormPlugin : public PluginTensorRT {
               void *workspace, cudaStream_t stream) override;
 
   bool supportsFormat(nvinfer1::DataType type,
-                      nvinfer1::PluginFormat format) const override {
-    return ((type == nvinfer1::DataType::kFLOAT ||
-             type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
-  }
+                      nvinfer1::PluginFormat format) const override;
 };
 
 class InstanceNormPluginCreator : public TensorRTPluginCreator {

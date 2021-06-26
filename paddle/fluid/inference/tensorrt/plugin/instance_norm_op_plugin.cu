@@ -51,6 +51,13 @@ nvinfer1::Dims InstanceNormPlugin::getOutputDimensions(
   return output_dims;
 }
 
+bool InstanceNormPlugin::supportsFormat(nvinfer1::DataType type,
+                                        nvinfer1::PluginFormat format) const {
+  return ((type == nvinfer1::DataType::kFLOAT ||
+           type == nvinfer1::DataType::kHALF) &&
+          (format == nvinfer1::PluginFormat::kNCHW));
+}
+
 int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
                                 void **outputs, void *workspace,
