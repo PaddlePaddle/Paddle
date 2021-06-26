@@ -21,10 +21,9 @@ namespace plugin {
 
 inline void Seria(void*& buffer,  // NOLINT
                   const std::vector<nvinfer1::Dims>& input_dims,
-                  size_t max_batch_size, nvinfer1::DataType data_type,
+                  nvinfer1::DataType data_type,
                   nvinfer1::PluginFormat data_format, bool with_fp16) {
   SerializeValue(&buffer, input_dims);
-  SerializeValue(&buffer, max_batch_size);
   SerializeValue(&buffer, data_type);
   SerializeValue(&buffer, data_format);
   SerializeValue(&buffer, with_fp16);
@@ -32,37 +31,33 @@ inline void Seria(void*& buffer,  // NOLINT
 
 inline void Deseria(void const*& serial_data, size_t& serial_length,  // NOLINT
                     std::vector<nvinfer1::Dims>* input_dims,
-                    size_t* max_batch_size, nvinfer1::DataType* data_type,
+                    nvinfer1::DataType* data_type,
                     nvinfer1::PluginFormat* data_format, bool* with_fp16) {
   DeserializeValue(&serial_data, &serial_length, input_dims);
-  DeserializeValue(&serial_data, &serial_length, max_batch_size);
   DeserializeValue(&serial_data, &serial_length, data_type);
   DeserializeValue(&serial_data, &serial_length, data_format);
   DeserializeValue(&serial_data, &serial_length, with_fp16);
 }
 
 inline size_t SeriaSize(const std::vector<nvinfer1::Dims>& input_dims,
-                        size_t max_batch_size, nvinfer1::DataType data_type,
+                        nvinfer1::DataType data_type,
                         nvinfer1::PluginFormat data_format, bool with_fp16) {
-  return (SerializedSize(input_dims) + SerializedSize(max_batch_size) +
-          SerializedSize(data_type) + SerializedSize(data_format) +
-          SerializedSize(with_fp16));
+  return (SerializedSize(input_dims) + SerializedSize(data_type) +
+          SerializedSize(data_format) + SerializedSize(with_fp16));
 }
 
 void PluginTensorRT::serializeBase(void*& buffer) const {
-  Seria(buffer, input_dims_, max_batch_size_, data_type_, data_format_,
-        with_fp16_);
+  Seria(buffer, input_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRT::deserializeBase(void const*& serial_data,
                                      size_t& serial_length) {
-  Deseria(serial_data, serial_length, &input_dims_, &max_batch_size_,
-          &data_type_, &data_format_, &with_fp16_);
+  Deseria(serial_data, serial_length, &input_dims_, &data_type_, &data_format_,
+          &with_fp16_);
 }
 
 size_t PluginTensorRT::getBaseSerializationSize() const {
-  return SeriaSize(input_dims_, max_batch_size_, data_type_, data_format_,
-                   with_fp16_);
+  return SeriaSize(input_dims_, data_type_, data_format_, with_fp16_);
 }
 
 bool PluginTensorRT::supportsFormat(nvinfer1::DataType type,
@@ -78,47 +73,20 @@ void PluginTensorRT::configureWithFormat(
   data_type_ = type;
   data_format_ = format;
   input_dims_.assign(input_dims, input_dims + num_inputs);
-  max_batch_size_ = max_batch_size;
-}
-/*
-nvinfer1::DataType PluginTensorRT::getOutputDataType(
-    int32_t index, const nvinfer1::DataType* input_types,
-    int32_t nb_inputs) const {
-  return input_types[0];
 }
 
-bool PluginTensorRT::isOutputBroadcastAcrossBatch(
-    int32_t output_index, const bool* input_is_broadcasted,
-    int32_t nb_inputs) const {
-  return false;
-}
-
-bool PluginTensorRT::canBroadcastInputAcrossBatch(int32_t input_index) const {
-  return false;
-}
-
-void PluginTensorRT::configurePlugin(
-    const nvinfer1::Dims* input_dims, int32_t nb_inputs,
-    const nvinfer1::Dims* output_dims, int32_t nb_outputs,
-    const nvinfer1::DataType* input_types,
-    const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
-    const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
-    int32_t max_batch_size) {}
-*/
 void PluginTensorRTV2Ext::serializeBase(void*& buffer) const {
-  Seria(buffer, input_dims_, max_batch_size_, data_type_, data_format_,
-        with_fp16_);
+  Seria(buffer, input_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRTV2Ext::deserializeBase(void const*& serial_data,
                                           size_t& serial_length) {
-  Deseria(serial_data, serial_length, &input_dims_, &max_batch_size_,
-          &data_type_, &data_format_, &with_fp16_);
+  Deseria(serial_data, serial_length, &input_dims_, &data_type_, &data_format_,
+          &with_fp16_);
 }
 
 size_t PluginTensorRTV2Ext::getBaseSerializationSize() const {
-  return SeriaSize(input_dims_, max_batch_size_, data_type_, data_format_,
-                   with_fp16_);
+  return SeriaSize(input_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRTV2Ext::configurePlugin(
@@ -129,7 +97,6 @@ void PluginTensorRTV2Ext::configurePlugin(
     const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
     int32_t max_batch_size) {
   input_dims_.assign(input_dims, input_dims + nb_inputs);
-  max_batch_size_ = max_batch_size;
   data_format_ = float_format;
   data_type_ = input_types[0];
 }

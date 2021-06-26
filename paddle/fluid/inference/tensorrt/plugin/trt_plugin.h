@@ -58,8 +58,6 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
     return input_dims_.at(index);
   }
 
-  size_t getMaxBatchSize() const { return max_batch_size_; }
-
   nvinfer1::DataType getDataType() const { return data_type_; }
 
   nvinfer1::PluginFormat getDataFormat() const { return data_format_; }
@@ -121,27 +119,7 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
   }
 
   const char* getPluginNamespace() const override { return namespace_.c_str(); }
-  /*
-    // IPluginV2Ext
-    nvinfer1::DataType getOutputDataType(int32_t index,
-                                         const nvinfer1::DataType* input_types,
-                                         int32_t nb_inputs) const override;
 
-    bool isOutputBroadcastAcrossBatch(int32_t output_index,
-                                      const bool* input_is_broadcasted,
-                                      int32_t nb_inputs) const override;
-
-    bool canBroadcastInputAcrossBatch(int32_t input_index) const override;
-
-    void configurePlugin(const nvinfer1::Dims* input_dims, int32_t nb_inputs,
-                         const nvinfer1::Dims* output_dims, int32_t nb_outputs,
-                         const nvinfer1::DataType* input_types,
-                         const nvinfer1::DataType* output_types,
-                         const bool* input_is_broadcast,
-                         const bool* output_is_broadcast,
-                         nvinfer1::PluginFormat float_format,
-                         int32_t max_batch_size) override;
-  */
  protected:
   // Deserialize input_dims, max_batch_size, data_type, data_format
   void deserializeBase(void const*& serial_data,  // NOLINT
@@ -151,7 +129,6 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
   void serializeBase(void*& buffer) const;  // NOLINT
 
   std::vector<nvinfer1::Dims> input_dims_;
-  size_t max_batch_size_;
   nvinfer1::DataType data_type_;
   nvinfer1::PluginFormat data_format_;
 
@@ -172,7 +149,6 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   nvinfer1::Dims const& getInputDims(int index) const {
     return input_dims_.at(index);
   }
-  size_t getMaxBatchSize() const { return max_batch_size_; }
   nvinfer1::DataType getDataType() const { return data_type_; }
   nvinfer1::PluginFormat getDataFormat() const { return data_format_; }
 
@@ -265,7 +241,6 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
 
  protected:
   std::vector<nvinfer1::Dims> input_dims_;
-  size_t max_batch_size_;
   nvinfer1::DataType data_type_;
   nvinfer1::PluginFormat data_format_;
   std::vector<nvinfer1::ITensor*> inputs_;
