@@ -69,7 +69,6 @@ class ElementWisePlugin : public PluginTensorRT {
               void* workspace, cudaStream_t stream);
 
   size_t getSerializationSize() const override {
-    VLOG(2) << "ElementWisePlugin getSerializationSize";
     return getBaseSerializationSize() + SerializedSize(type_.c_str()) +
            SerializedSize(dims_x_) + SerializedSize(dims_y_) +
            SerializedSize(axis_) + SerializedSize(prev_size_) +
@@ -77,7 +76,6 @@ class ElementWisePlugin : public PluginTensorRT {
   }
 
   void serialize(void* buffer) const override {
-    VLOG(2) << "ElementWisePlugin serialize";
     serializeBase(buffer);
     SerializeValue(&buffer, type_.c_str());
     SerializeValue(&buffer, dims_x_);
