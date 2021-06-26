@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import os
+import shutil
 import unittest
 import itertools
 import numpy as np
@@ -48,7 +50,9 @@ class TRTInstanceNormTest(InferencePassTest):
         self.feeds = {'in': np.random.random(shape).astype('float32'), }
         self.fetch_list = [out]
 
-    def check_output(self):
+    def check_output(self, remove_cache=False):
+        if remove_cache and os.path.exists(self.path + "_opt_cache"):
+            shutil.rmtree(self.path + "_opt_cache")
         if core.is_compiled_with_cuda():
             use_gpu = True
             atol = 1e-5
@@ -58,9 +62,9 @@ class TRTInstanceNormTest(InferencePassTest):
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
-    def run_test(self):
+    def run_test(self, remove_cache=False):
         self.build()
-        self.check_output()
+        self.check_output(remove_cache)
 
     def run_all_tests(self):
         precision_opt = [
@@ -83,7 +87,7 @@ class TRTInstanceNormTest(InferencePassTest):
 
     def test_serialize(self):
         self.serialize = True
-        self.run_test()
+        self.run_test(remove_cache=True)
 
     def test_all(self):
         self.run_all_tests()
