@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import os
+import shutil
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -45,6 +47,8 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
         return fluid.layers.elementwise_add(x=data1, y=data2, axis=0)
 
     def test_check_output(self):
+        if os.path.exists(self.path + "_opt_cache"):
+            shutil.rmtree(self.path + "_opt_cache")
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
