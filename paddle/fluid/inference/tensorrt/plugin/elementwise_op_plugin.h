@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <glog/logging.h>
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
