@@ -67,14 +67,12 @@ def decorate(optimizer):
             import paddle
             import paddle.fluid as fluid
             from paddle.fluid.contrib import sparsity
-            import fleet
 
             main_program = fluid.Program()
             startup_program = fluid.Program()
 
             paddle.enable_static()
 
-            is_distributed = False
             with fluid.program_guard(main_program, startup_program):
                 input_data = fluid.layers.data(name='data', shape=[None, 128])
                 label = fluid.layers.data(name='label', shape=[None, 10])
@@ -83,12 +81,12 @@ def decorate(optimizer):
                 loss = fluid.layers.mean(fluid.layers.square_error_cost(prob, label))
 
                 optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-                if is_distributed:
-                    optimizer = sparsity.decorate(optimizer)
-                else:
-                    strategy = paddle.distributed.fleet.DistributedStrategy()
-                    strategy.asp = True
-                    optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+                optimizer = sparsity.decorate(optimizer)
+                # if do sparse training with Fleet, please replace above decorate with:
+                # strategy = paddle.distributed.fleet.DistributedStrategy()
+                # strategy.asp = True
+                # optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
                 optimizer.minimize(loss, startup_program)
     """
     return ASPHelper.decorate(optimizer)
