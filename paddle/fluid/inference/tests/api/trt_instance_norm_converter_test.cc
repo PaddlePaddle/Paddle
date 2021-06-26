@@ -29,7 +29,7 @@ TEST(TensorRT, instance_norm) {
   config.SetModel(model_dir);
   config.SwitchUseFeedFetchOps(false);
   config.EnableTensorRtEngine(1 << 20, batch_size, 0,
-                              AnalysisConfig::Precision::kFloat32, false);
+                              AnalysisConfig::Precision::kFloat32, true);
 
   auto predictor = CreatePaddlePredictor(config);
 
