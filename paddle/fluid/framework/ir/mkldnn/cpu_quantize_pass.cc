@@ -830,7 +830,8 @@ void CPUQuantizePass::QuantizeFusionLSTM(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(x, x, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(weight_h, weight_h, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(weight_x, weight_x, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(out, out, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(hidden, hidden, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cell, cell, pattern);
 
     // Starting from here there maybe issues
     if (!AreScalesPresentForNodes({x, weight_h, weight_x})) {

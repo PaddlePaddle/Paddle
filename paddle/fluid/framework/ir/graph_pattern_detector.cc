@@ -2717,10 +2717,13 @@ PDNode *patterns::FusionLSTM::operator()() {
   auto weight_x = pattern->NewNode(weight_x_repr())
                       ->AsInput()
                       ->assert_is_op_input("fusion_lstm", "WeightX");
-  auto out = pattern->NewNode(out_repr())
-                 ->AsOutput()
-                 ->assert_is_op_output("fusion_lstm", "Hidden");
-  op->LinksFrom({x, weight_h, weight_x}).LinksTo({out});
+  auto hidden = pattern->NewNode(hidden_repr())
+                    ->AsOutput()
+                    ->assert_is_op_output("fusion_lstm", "Hidden");
+  auto cell = pattern->NewNode(cell_repr())
+                  ->AsOutput()
+                  ->assert_is_op_output("fusion_lstm", "Cell");
+  op->LinksFrom({x, weight_h, weight_x}).LinksTo({hidden, cell});
   return out;
 }
 

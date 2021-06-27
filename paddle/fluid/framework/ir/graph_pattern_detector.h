@@ -1580,7 +1580,8 @@ struct FusionLSTM : public PatternBase {
   PATTERN_DECL_NODE(weight_x);
 
   // decalre outputs
-  PATTERN_DECL_NODE(out);
+  PATTERN_DECL_NODE(hidden);
+  PATTERN_DECL_NODE(cell);
 };
 
 // two concatenated fusion_gru ops
