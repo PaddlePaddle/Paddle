@@ -1693,27 +1693,17 @@ EOF
         ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp39-cp39-linux_x86_64.whl
     fi
 
-    #ref_paddle2_mv1=""
-    #ref_paddle2_mv2=""
     ref_paddle36_mv1=""
     ref_paddle36_mv2=""
-    #ref_paddle37_mv1=""
-    #ref_paddle37_mv2=""
     if [[ ${PADDLE_BRANCH} == "0.0.0" && ${WITH_GPU} == "ON" ]]; then
         ref_paddle36_whl=paddlepaddle_gpu-1.5.1-cp36-cp36m-linux_x86_64.whl
-        #ref_paddle37_whl=paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl
         ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
         ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
-        #ref_paddle37_mv1="mv ref_paddle37 paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl &&"
-        #ref_paddle37_mv2="&& mv paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl ref_paddle37"
     fi
     if [[ ${PADDLE_BRANCH} == "0.0.0" && ${WITH_GPU} != "ON" ]]; then
         ref_paddle36_whl=paddlepaddle-1.5.1-cp36-cp36m-linux_x86_64.whl
-        #ref_paddle37_whl=paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl
         ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
         ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
-        #ref_paddle37_mv1="mv ref_paddle37 paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl &&"
-        #ref_paddle37_mv2="&& mv paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl ref_paddle37"
     fi
     
     cat > ${PADDLE_ROOT}/build/Dockerfile <<EOF
