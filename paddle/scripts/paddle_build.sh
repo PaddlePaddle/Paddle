@@ -2144,7 +2144,7 @@ function reuse_so_cache() {
 
 function find_suffix_pyc() {
     jsonData=`curl \
-#	    -H "Authorization: token ${GITHUB_API_TOKEN}"\ 
+	    -H "Authorization: token ${GITHUB_API_TOKEN}"\ 
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
     
