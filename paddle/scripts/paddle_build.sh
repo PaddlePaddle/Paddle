@@ -2142,41 +2142,17 @@ function reuse_so_cache() {
     fi
 }
 
-function getJsonValueByPython() {
-    if which python; then
-        python -c '''
-import json
-s = ""
-try:
-        while True:
-                in_var = raw_input()
-                s += in_var
-except EOFError:
-        pass
-jsonObj = json.loads( s )
-
-ret = ""
-for i in range(len(jsonObj)):
-        ret += jsonObj[ i ][ "filename" ] + "\n"
-print(ret)
-        '''
-        return 0
-    else
-        return 1
-    fi
-}
-
 function find_suffix_pyc() {
     jsonData=`curl \
-	    -H "Authorization: token ${GITHUB_API_TOKEN}"\ 
+#	    -H "Authorization: token ${GITHUB_API_TOKEN}"\ 
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
     
-    result=`echo ${jsonData} | getJsonValueByPython | grep '.pyc$' 2> /dev/null`
+    result=`echo ${jsonData}|python ${PADDLE_ROOT}/tools/check_file_suffix.py .pyc`
     
     if [ ${#result} -gt 0 ]
     then
-	echo "find file name ends with \".pyc\""
+	echo ${result}
 	exit 1
     fi
 }
