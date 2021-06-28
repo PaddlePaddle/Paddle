@@ -157,8 +157,6 @@ class TestAmpScaler(unittest.TestCase):
                     scaler.unscale(optimizer)
                     optimize_ops, params_grads = scaler.step(optimizer,
                                                              scaled_loss)
-                    #optimize_ops, params_grads = scaler.minimize(optimizer,
-                    #                                             scaled_loss)
                 else:
                     print('use no scaler')
                     loss.backward()
@@ -206,7 +204,6 @@ class TestAmpScaler(unittest.TestCase):
             scaled_loss.backward()
             scaler.unscale(optimizer)
             optimize_ops, params_grads = scaler.step(optimizer, scaled_loss)
-            #optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
             self.assertEqual(scaler._found_inf.numpy() == 1, True)
 
             for param in model.parameters():
@@ -328,7 +325,6 @@ class TestResnet2(unittest.TestCase):
             scaler.unscale(optimizer)
             scaler.step(optimizer, scaled_loss)
             scaler.update()
-            #scaler.minimize(optimizer, scaled_loss)
 
             dy_grad_value = {}
             for param in resnet.parameters():
@@ -418,7 +414,6 @@ class TestResnet(unittest.TestCase):
                 scaler.unscale(optimizer)
                 scaler.step(optimizer, scaled_loss)
                 scaler.update()
-                #scaler.minimize(optimizer, scaled_loss)
 
                 dy_grad_value = {}
                 for param in resnet.parameters():

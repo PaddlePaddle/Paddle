@@ -21,10 +21,10 @@ class GradScaler(AmpScaler):
     """
     GradScaler is used for Auto-Mixed-Precision training in dynamic graph mode. 
     It controls the scaling of loss, helps avoiding numerical overflow.
-    The object of this class has two methods `scale()`, `minimize()`.
+    The object of this class has some methods such as `scale()`, `unscale()`, `step()`, `update()`.
 
     `scale()` is used to multiply the loss by a scale ratio.
-    `minimize()` is similar as `optimizer.minimize()`, performs parameters updating.
+    `unscale()` + `step()` is similar as `Optimizer.minimize()`, performs parameters updating.
 
     Commonly, it is used together with `paddle.amp.auto_cast` to achieve Auto-Mixed-Precision in 
     dynamic graph mode.
