@@ -155,7 +155,7 @@ FCGRUFusePass::FCGRUFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(1)
+      .IsNumEQ(-1)
       .End();
 }
 
