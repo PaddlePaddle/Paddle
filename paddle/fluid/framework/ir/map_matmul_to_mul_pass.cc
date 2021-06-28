@@ -287,7 +287,7 @@ Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
       .IsTensor()
       .End()
       .AddAttr("shape")  // ints
-      .IsType(std::vector<int>)
+      .IsType<std::vector<int>>()
       .End();
 
   AddOpCompat(OpCompat("matmul"))
