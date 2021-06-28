@@ -419,12 +419,9 @@ class PartialProgramLayer:
 
 def _create_fake_var():
     """
-    Create a fake_var to handle empty input or output
+    Create a fake_var (force on CPU) to handle empty input or output
     """
-    fake_var = paddle.to_tensor([0], 'float32', paddle.CPUPlace(), True)
-    # NOTE: keep consistent with run_program_op
-    fake_var.name = "Fake_var"
-    return [fake_var]
+    return [core.VarBase(value=[1], name='Fake_var', place=paddle.CPUPlace())]
 
 
 def partial_program_from(concrete_program):
