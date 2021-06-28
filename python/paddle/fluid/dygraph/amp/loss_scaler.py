@@ -266,7 +266,7 @@ class AmpScaler(object):
         self._incr_ratio = new_incr_ratio
 
     def get_decr_ratio(self):
-        return self.decr_ratio
+        return self._decr_ratio
 
     def set_decr_ratio(self, new_decr_ratio):
         assert new_decr_ratio < 1.0, "The new_decr_ratio must be < 1.0."
