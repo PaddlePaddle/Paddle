@@ -64,17 +64,16 @@ static __forceinline__ __device__ U WarpReduceSum(U val) {
 }
 
 template <typename U>
-__forceinline__ __device__ U BlockReduceSum(U val) {
-  static __shared__ U shared[32];
+__forceinline__ __device__ U BlockReduceSum(U val, U *shared) {
   int lane = threadIdx.x % warpSize;
   int wid = threadIdx.x / warpSize;
 
   val = WarpReduceSum(val);  // Each warp performs partial reduction
 
+  __syncthreads();
   if (lane == 0) shared[wid] = val;  // Write reduced value to shared memory
 
   __syncthreads();  // Wait for all partial reductions
-
   // read from shared memory only if that warp existed
   val =
       (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : static_cast<U>(0);
@@ -183,6 +182,9 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
                                  int64_t feature_size) {
   __shared__ U mean_share;
   __shared__ U var_share;
+  __shared__ U shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
+                                 // warpSize <= 1024/32 = 32;
+  __shared__ U shared_var[32];
 
   int64_t beg_idx = blockIdx.x * feature_size + threadIdx.x;
   int64_t end_idx = (blockIdx.x + 1) * feature_size;
@@ -196,8 +198,8 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
     var_val += (tmp * tmp);
   }
 
-  mean_val = BlockReduceSum<U>(mean_val);
-  var_val = BlockReduceSum<U>(var_val);
+  mean_val = BlockReduceSum<U>(mean_val, shared_mean);
+  var_val = BlockReduceSum<U>(var_val, shared_var);
 
   if (threadIdx.x == 0) {
     auto scale = static_cast<float>(1.) / static_cast<float>(feature_size);
@@ -398,9 +400,9 @@ __global__ void LayerNormBackwardComputeGradInput(
     const U *__restrict__ mean, const U *__restrict__ var, const float epsilon,
     const U *gamma, T *grad_input) {
 #ifdef __HIPCC__
-  for (auto i1 = hipBlockIdx_y; i1 < n1; i1 += hipGridDim_y) {
+  for (auto i1 = hipBlockIdx_x; i1 < n1; i1 += hipGridDim_x) {
 #else
-  for (auto i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
+  for (auto i1 = blockIdx.x; i1 < n1; i1 += gridDim.x) {
 #endif
     U sum_loss1 = U(0);
     U sum_loss2 = U(0);
@@ -541,8 +543,11 @@ __global__ void LayerNormBackwardGradientAll(
     }
   }
 
-  d_scale_partial = BlockReduceSum<U>(d_scale_partial);
-  d_bias_partial = BlockReduceSum<U>(d_bias_partial);
+  __shared__ U shared_scale[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
+                                  // warpSize <= 1024/32 = 32;
+  __shared__ U shared_bias[32];
+  d_scale_partial = BlockReduceSum<U>(d_scale_partial, shared_scale);
+  d_bias_partial = BlockReduceSum<U>(d_bias_partial, shared_bias);
 
   if (threadIdx.x == 0) {
     d_scale[blockIdx.x + col_offset] = d_scale_partial;
@@ -864,9 +869,8 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
       constexpr int BDIMX1 = 32;
       constexpr int BDIMY1 = 4;
       dim3 threads1(BDIMX1, BDIMY1, 1);
-      const dim3 blocks1(1, batch_size, 1);
       LayerNormBackwardComputeGradInput<
-          T, U, BDIMX1, BDIMY1><<<blocks1, threads1, 0, stream>>>(
+          T, U, BDIMX1, BDIMY1><<<batch_size, threads1, 0, stream>>>(
           d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
       break;
     }
