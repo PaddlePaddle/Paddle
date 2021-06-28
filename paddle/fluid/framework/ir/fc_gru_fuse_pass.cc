@@ -37,6 +37,7 @@ MulGRUFusePass::MulGRUFusePass() {
       .End()
       .AddInput("H0")
       .IsTensor()
+      .IsOptional()
       .End()
       .AddInput("Weight")
       .IsTensor()
@@ -67,6 +68,7 @@ MulGRUFusePass::MulGRUFusePass() {
       .End()
       .AddAttr("origin_mode")
       .IsType<bool>()
+      .IsOptional()
       .End();
   AddOpCompat(OpCompat("mul"))
       .AddInput("X")
@@ -93,6 +95,7 @@ FCGRUFusePass::FCGRUFusePass() {
       .End()
       .AddInput("H0")
       .IsTensor()
+      .IsOptional()
       .End()
       .AddInput("Weight")
       .IsTensor()
@@ -123,6 +126,7 @@ FCGRUFusePass::FCGRUFusePass() {
       .End()
       .AddAttr("origin_mode")
       .IsType<bool>()
+      .IsOptional()
       .End();
   AddOpCompat(OpCompat("mul"))
       .AddInput("X")
