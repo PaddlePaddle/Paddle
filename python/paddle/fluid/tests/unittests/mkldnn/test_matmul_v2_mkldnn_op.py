@@ -236,8 +236,6 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
-    @unittest.skipIf(not core.supports_bfloat16(),
-                     "place does not support BF16 evaluation")
     class TestMatMulV2Bf16OneDNNOp(parent):
         def set_inputs(self, x, y):
             self.inputs = {
@@ -249,7 +247,8 @@ def create_bf16_test_class(parent):
             self.attrs['mkldnn_data_type'] = "bfloat16"
 
         def test_check_output(self):
-            self.check_output_with_place(core.CPUPlace())
+            if core.supports_bfloat16():
+                self.check_output_with_place(core.CPUPlace())
 
         def test_check_grad(self):
             pass
