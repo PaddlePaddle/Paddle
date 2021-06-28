@@ -63,6 +63,7 @@ ScaleMatmulFusePass::ScaleMatmulFusePass() {
       .IsNumEQ(0.0f)
       .End()
       .AddAttr("bias_after_scale")
+      .IsOptional()
       .IsType<bool>()
       .End();
 }
