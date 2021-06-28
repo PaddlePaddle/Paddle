@@ -132,20 +132,6 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .AddAttr("data_format")
       .IsStringIn({"NCHW", "NHWC"})
       .End();
-
-  AddOpCompat(OpCompat("elementwise_add"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("axis")
-      .IsNumEQ(-1)
-      .End();
 }
 
 template <typename BinaryOperation>
