@@ -15,7 +15,6 @@
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import six
 import unittest
 import paddle.nn as nn
 import os
@@ -50,10 +49,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
         self.feature_size = 3
         self.fc_size = 2
         self.layer = self._train_simple_net()
-        if six.PY2:
-            self.type_str = 'type'
-        else:
-            self.type_str = 'class'
+        self.type_str = 'class'
 
     def test_trace_err(self):
         with fluid.dygraph.guard():

@@ -831,11 +831,6 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38" ] || [ "$1" == "cp39-cp39" ]; then
-        # Use sed to make python2 and python3 sepc keeps the same
-        sed -i 's/arg0: str/arg0: unicode/g' $spec_path
-        sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
-    fi   
     
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
@@ -1427,7 +1422,6 @@ EOF
 function insert_pile_to_h_cu_diff {
     # TODO get develop h/cu md5
     cd ${PADDLE_ROOT}
-    find ${PADDLE_ROOT} -name '*.h'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
     find ${PADDLE_ROOT} -name '*.cu'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'get_h_file_md5' ${PADDLE_ROOT}
     
@@ -1447,11 +1441,10 @@ function precise_card_test_single {
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
         # c++ 
-        if [ -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
-            rm -rf ${PADDLE_ROOT}/build/ut_map/$case
+        if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
+            mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
-        mkdir ${PADDLE_ROOT}/build/ut_map/$case
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
@@ -1460,7 +1453,9 @@ function precise_card_test_single {
         ls python-coverage.data.*
         if [[ $? == 0 ]]
         then
-            mkdir -p ${PADDLE_ROOT}/build/pytest/$case
+            if [ ! -d "${PADDLE_ROOT}/build/pytest/$case" ];then
+                mkdir -p ${PADDLE_ROOT}/build/pytest/$case
+            fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
         find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
@@ -1571,26 +1566,38 @@ set -x
     precise_card_test_single "$single_card_tests_1" 1
     precise_card_test_single "$multiple_card_tests" 2
     precise_card_test_single "$exclusive_tests"
-
+    wait;
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
     
-    if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
-        rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
-        precise_card_test_single "$rerun_tests"
-    fi
+    #analy h/cu to Map file
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
+
     wait;
+    get_failedUts_precise_map_file
 
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
+    wait;
 
-    #analy h/cu to Map file
-    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
     #generate ut map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
-    wait;
 }
 
-
+function get_failedUts_precise_map_file {
+    if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
+        rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
+        #remove pile to full h/cu file
+        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
+        cd ${PADDLE_ROOT}/build
+        cmake_base ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        pip uninstall -y paddlepaddle-gpu
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+        precise_card_test_single "$rerun_tests"
+        wait;
+        
+    fi
+}
 
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -1985,6 +1992,26 @@ EOF
     fi
 }
 
+function test_go_inference_api() {
+    cat <<EOF
+    ========================================
+    Testing go inference api ...
+    ========================================
+EOF
+
+    # ln paddle_inference_c lib
+    cd ${PADDLE_ROOT}/build
+    ln -s ${PADDLE_ROOT}/build/paddle_inference_c_install_dir/ ${PADDLE_ROOT}/paddle/fluid/inference/goapi/paddle_inference_c
+
+    # run go test
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
+    bash test.sh
+    EXIT_CODE=$?
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
 function test_fluid_lib_train() {
     cat <<EOF
     ========================================
@@ -2017,7 +2044,7 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        python sampcd_processor.py --threads=16 --full-test gpu; example_error=$?
+        python sampcd_processor.py --threads=16 gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
@@ -2114,6 +2141,23 @@ function reuse_so_cache() {
     fi
 }
 
+function find_temporary_files() {
+    set +x
+    jsonData=`curl \
+            -H "Authorization: token ${GITHUB_API_TOKEN}"\
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
+    
+    result=`echo ${jsonData}|python ${PADDLE_ROOT}/tools/check_file_suffix.py`
+    
+    if [ ${#result} -gt 0 ]
+    then
+	echo ${result}
+	exit 65
+    fi
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2126,14 +2170,21 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
+        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
+        example_info_gpu=""
+        example_code_gpu=0
+        if [ "${WITH_GPU}" == "ON" ] ; then
+            example_info_gpu=$(exec_samplecode_test gpu)
+            example_code_gpu=$?
+        fi
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
+        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
         ;;
       build)
@@ -2226,6 +2277,8 @@ function main() {
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train
+        #go inference test
+        test_go_inference_api
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
