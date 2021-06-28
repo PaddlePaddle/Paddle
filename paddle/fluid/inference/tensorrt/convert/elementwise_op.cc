@@ -251,9 +251,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
       } else {
         plugin::ElementWisePlugin* plugin =
             new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
+
         std::vector<nvinfer1::ITensor*> inputs{X, Y};
-        // plugin->AddInput(X);
-        // plugin->AddInput(Y);
         auto* plugin_layer = engine_->AddPlugin(
             inputs.data(), inputs.size(),
             reinterpret_cast<plugin::PluginTensorRT*>(plugin));
