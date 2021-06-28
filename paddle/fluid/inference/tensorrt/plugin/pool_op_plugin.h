@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -174,17 +175,7 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
         paddings_(paddings),
         is_global_(is_global) {}
 
-  PoolPluginDynamic(void const* serialData, size_t serialLength) {
-    DeserializeValue(&serialData, &serialLength, &ceil_mode_);
-    const char* pool_type;
-    DeserializeValue(&serialData, &serialLength, &pool_type);
-    pool_type_ = std::string(pool_type);
-    DeserializeValue(&serialData, &serialLength, &adaptive_);
-    DeserializeValue(&serialData, &serialLength, &ksize_);
-    DeserializeValue(&serialData, &serialLength, &strides_);
-    DeserializeValue(&serialData, &serialLength, &paddings_);
-    DeserializeValue(&serialData, &serialLength, &is_global_);
-  }
+  PoolPluginDynamic(void const* serialData, size_t serialLength);
   ~PoolPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new PoolPluginDynamic(ceil_mode_, pool_type_, adaptive_, ksize_,
