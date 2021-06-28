@@ -323,7 +323,6 @@ def convert_to_input_spec(inputs, input_spec):
                 input_with_spec[name] = input
         return input_with_spec
     elif isinstance(input_spec, paddle.static.InputSpec):
-        _set_spec_stop_gradient(input_spec, inputs.stop_gradient)
         return input_spec
     else:
         # NOTE(Aurelius84): Support non-Tensor type as input spec info

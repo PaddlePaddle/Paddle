@@ -132,12 +132,12 @@ class PartialProgramLayer:
         super(PartialProgramLayer, self).__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
-        # A fake_var to handle empty input or output
-        self.__fake_vars = _create_fake_var()
-        self._params = self._valid_vars(parameters)
+        self._params = parameters if parameters is not None else []
 
         self._origin_main_program = self._verify_program(main_program)
         self._tmp_scope_vec = self._create_scope_vec()
+        # A fake_var to handle empty input or output
+        self.__fake_vars = _create_fake_var()
         # Set default mode to train
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
@@ -229,7 +229,8 @@ class PartialProgramLayer:
                  0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
                  'is_test', not self.training)
         core.ops.run_program(
-            self._valid_vars(in_vars), self._params,
+            self._valid_vars(in_vars),
+            self._valid_vars(self._params),
             self._valid_vars(out_vars), self._tmp_scope_vec, self._double_grads,
             *attrs)
 
@@ -421,7 +422,10 @@ def _create_fake_var():
     """
     Create a fake_var (force on CPU) to handle empty input or output
     """
-    return [core.VarBase(value=[1], name='Fake_var', place=paddle.CPUPlace())]
+    return [
+        core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
+                     core.VarDesc.VarType.RAW, False)
+    ]
 
 
 def partial_program_from(concrete_program):
