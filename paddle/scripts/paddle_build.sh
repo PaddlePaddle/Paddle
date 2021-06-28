@@ -2235,6 +2235,7 @@ function main() {
         enable_unused_var_check
         ;;
       gpu_cicheck_coverage)
+        check_approvals_of_unittest 1
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
