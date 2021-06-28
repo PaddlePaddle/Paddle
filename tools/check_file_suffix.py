@@ -16,7 +16,8 @@ import sys
 import json
 
 
-def check_suffix(suffix):
+def check_suffix():
+    suffix_arr = [".pyc"]
     json_buff = ""
     for line in sys.stdin:
         json_buff = "".join([json_buff, line])
@@ -24,22 +25,20 @@ def check_suffix(suffix):
     if not isinstance(json_obj, list):
         print('Json String Should be a list Object\n')
         return
-    files_end_with_pyc = []
+    files_with_invalid_suffix = []
     for i in range(len(json_obj)):
         file_name = json_obj[i]["filename"]
         if file_name == None:
             continue
-        if file_name.endswith(suffix):
-            files_end_with_pyc.append(file_name)
-    if len(files_end_with_pyc) != 0:
-        print('Find file(s): [\n')
-        for i in range(len(files_end_with_pyc)):
-            print('\t' + files_end_with_pyc[i] + '\n')
-        print(' ] end(s) with suffix name' + ' py.\n')
+        for suffix in suffix_arr:
+            if file_name.endswith(suffix):
+                files_with_invalid_suffix.append(file_name)
+    if len(files_with_invalid_suffix) != 0:
+        print('Error: Find file(s): [\n')
+        for i in range(len(files_with_invalid_suffix)):
+            print('\t' + files_with_invalid_suffix[i] + '\n')
+        print(' ] end(s) with invalid suffix.')
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        check_suffix(sys.argv[1])
-    else:
-        print("Usage: python check_suffix.py [ suffix_name ] ")
+    check_suffix()
