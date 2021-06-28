@@ -245,54 +245,41 @@ class AmpScaler(object):
         return
 
     def get_enable(self):
-        # 获取 enable 的值 
         return self._enable
 
     def get_use_dynamic_loss_scaling(self):
-        # 获取 use_dynamic_loss_scaling 的值
         return self._use_dynamic_loss_scaling
 
     def get_init_loss_scaling(self):
-        # 获取 init_loss_scaling 的值
         return self._init_loss_scaling
 
     def set_init_loss_scaling(self, new_init_loss_scaling):
-        # 设置 init_loss_scaling 的值
         self._init_loss_scaling = new_init_loss_scaling
         self._scale = to_variable(
-                np.array([self._init_loss_scaling]).astype(np.float32))
+            np.array([self._init_loss_scaling]).astype(np.float32))
 
     def get_incr_ratio(self):
-        # 获取 incr_ratio 的值
         return self._incr_ratio
 
     def set_incr_ratio(self, new_incr_ratio):
-        # 设置 incr_ratio 的值
         assert new_incr_ratio > 1.0, "The new_incr_ratio must be > 1.0."
         self._incr_ratio = new_incr_ratio
 
     def get_decr_ratio(self):
-        # 获取 decr_ratio 的值
         return self.decr_ratio
 
     def set_decr_ratio(self, new_decr_ratio):
-        # 设置 decr_ratio 的值
         assert new_decr_ratio < 1.0, "The new_decr_ratio must be < 1.0."
         self._decr_ratio = new_decr_ratio
 
     def get_incr_every_n_steps(self):
-        # 获取 incr_every_n_steps 的值
         return self._incr_every_n_steps
 
     def set_incr_every_n_steps(self, new_incr_every_n_steps):
-        # 设置 incr_every_n_steps 的值
         self._incr_every_n_steps = new_incr_every_n_steps
 
     def get_decr_every_n_nan_or_inf(self):
-        # 获取 decr_every_n_nan_or_inf 的值
         return self._decr_every_n_nan_or_inf
 
     def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
-        # 设置 decr_every_n_nan_or_inf 的值
         self._decr_every_n_nan_or_inf = new_decr_every_n_nan_or_inf
-
