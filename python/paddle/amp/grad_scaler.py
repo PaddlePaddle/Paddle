@@ -146,6 +146,15 @@ class GradScaler(AmpScaler):
         """
         return super(GradScaler, self).minimize(optimizer, *args, **kwargs)
 
+    def unscale(self, optimizer):
+        return super(GradScaler, self).unscale(optimizer)
+
+    def step(self, optimizer, *args, **kwargs):
+        return super(GradScaler, self).step(optimizer, *args, **kwargs)
+
+    def update(self):
+        return super(GradScaler, self).update()
+
     def get_enable(self):
         return super(GradScaler, self).get_enable()
 

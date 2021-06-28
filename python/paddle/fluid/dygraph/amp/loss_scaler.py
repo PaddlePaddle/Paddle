@@ -191,7 +191,7 @@ class AmpScaler(object):
             return optimizer.minimize(*args, **kwargs)
 
         #  unscale the grad
-        self._unscale(optimizer)
+        # self._unscale(optimizer)
 
         optimize_ops, params_grads = (None, None)
 
@@ -201,13 +201,9 @@ class AmpScaler(object):
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
             self._cache_founf_inf = False
 
-        if self._use_dynamic_loss_scaling:
-            # uopdate the scale
-            self._update()
-
         return optimize_ops, params_grads
 
-    def _unscale(self, optimizer):
+    def unscale(self, optimizer):
         if not self._enable:
             return
         param_grads = [
@@ -216,6 +212,22 @@ class AmpScaler(object):
         ]
         core.ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
                                           self._found_inf)
+
+    def step(self, optimizer, *args, **kwargs):
+        if not self._enable:
+            return optimizer.minimize(*args, **kwargs)
+
+        optimize_ops, params_grads = self.minimize(optimizer, *args, **kwargs)
+        return optimize_ops, params_grads
+
+    def update(self):
+        # uopdate the scale
+        if not self._enable:
+            return
+        if self._use_dynamic_loss_scaling:
+            # uopdate the scale
+            self._update()
+        return
 
     def _update(self):
         """
