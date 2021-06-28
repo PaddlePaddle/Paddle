@@ -84,6 +84,7 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   // building while op in sub_block
   auto* op5 = sub_blocks[0]->AppendOp();
   op5->SetType("while");
+  op5->SetAttr("sub_block", sub_blocks[0]);
 
   auto* x2 = sub_blocks[0]->Var("X2");
   x2->SetType(proto::VarType::LOD_TENSOR);
@@ -105,17 +106,55 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   op5->SetOutput("kOutputs", {out2->Name()});
   op5->SetOutput("kStepScopes", {steps->Name()});
 
-  ProgramProcessor program_processor;
-  std::set<std::string> inner_inputs;
-  std::set<std::string> inner_outputs;
+  auto* x3 = global_block->Var("X3");
+  x3->SetType(proto::VarType::LOD_TENSOR);
+  x3->SetLoDLevel(0);
+  x3->SetDataType(proto::VarType::FP32);
+  x3->SetShape({1000, 784});
 
-  program_processor.GetInputsOutputsInBlock(&program, *sub_blocks[0],
-                                            &inner_inputs, &inner_outputs);
+  auto* y3 = global_block->Var("Y3");
+  y3->SetType(proto::VarType::LOD_TENSOR);
+  y3->SetLoDLevel(0);
+  y3->SetDataType(proto::VarType::FP32);
+  y3->SetShape({784, 100});
+
+  auto* op6 = sub_blocks[0]->AppendOp();
+  op6->SetType("mul");
+  op6->SetInput("X", {x3->Name()});
+  op6->SetInput("Y", {y3->Name()});
+
+  auto* out3 = global_block->Var("Out3");
+  out3->SetType(proto::VarType::LOD_TENSOR);
+  op6->SetOutput("Y", {out3->Name()});
+
+  ProgramProcessor program_processor;
+  VariableNameMap inner_inputs;
+  VariableNameMap inner_outputs;
+
+  program_processor.GetInputsOutputsInBlock(*sub_blocks[0], &inner_inputs,
+                                            &inner_outputs);
+
+  VLOG(3) << "inner_inputs().size():" << inner_inputs.size();
+  VLOG(3) << "inner_outputs().size():" << inner_outputs.size();
 
   // while op inner_inputs : kCondition = Out1
-  ASSERT_EQ(1UL, inner_inputs.size());
+  ASSERT_EQ(3UL, inner_inputs.size());
   // while op inner_outputs : kOutputs = Out2, kStepScopes = StepScopes
-  ASSERT_EQ(2UL, inner_outputs.size());
+
+  ASSERT_EQ(3UL, inner_outputs.size());
+
+  VLOG(3) << "Before AddDependency, op's input size:"
+          << op5->InputNames().size();
+  VLOG(3) << "Before AddDependency, op's output size:"
+          << op5->OutputNames().size();
+  program_processor.AddDepToBlockOp(*sub_blocks[0]);
+  VLOG(3) << "After AddDependency, op's input size:"
+          << op5->InputNames().size();
+  VLOG(3) << "After AddDependency, op's output size:"
+          << op5->OutputNames().size();
+
+  ASSERT_EQ(4UL, op5->InputNames().size());
+  ASSERT_EQ(3UL, op5->OutputNames().size());
 }
 }  // namespace framework
 }  // namespace paddle

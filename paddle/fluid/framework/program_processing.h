@@ -24,12 +24,13 @@ class ProgramProcessor {
  public:
   ProgramProcessor();
 
-  void GetInputsOutputsInBlock(ProgramDesc *program,
-                               const BlockDesc &current_block,
-                               std::set<std::string> *inner_inputs,
-                               std::set<std::string> *inner_outputs);
+  void GetInputsOutputsInBlock(const BlockDesc &current_block,
+                               VariableNameMap *inner_inputs,
+                               VariableNameMap *inner_outputs);
 
-  void SSAProgram(ProgramDesc *program);
+  void AddDepToBlockOp(const BlockDesc &block);
+
+  void ToSSAProgram(ProgramDesc *program);
 };
 }  // namespace framework
 }  // namespace paddle
