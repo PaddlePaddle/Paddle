@@ -6,12 +6,12 @@ def {
   outputs {
     name: "Out"
   }
-}
-extra {
   attrs {
     name: "threshold"
     type: FLOAT
   }
+}
+extra {
   attrs {
     name: "name"
     type: STRING

@@ -89,8 +89,8 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
                   activation->Op()->GetAttrIfExists<float>("beta"));
 
     if (!IsCompat(*desc)) {
-      LOG(WARNING)
-          << "conv_activation_mkldnn_fuse_pass in out fc op compat failed.";
+      LOG(WARNING) << "conv_activation_mkldnn_fuse_pass: ConvActivation op "
+                      "compat failed.";
       return;
     }
 
@@ -165,6 +165,7 @@ Conv2DLeakyReLUFusePass::Conv2DLeakyReLUFusePass() {
       .End()
       // float, default=0.02
       .AddAttr("alpha")
+      .IsType<float>()
       .End();
 }
 Conv2DReLU6FusePass::Conv2DReLU6FusePass() {
@@ -174,6 +175,10 @@ Conv2DReLU6FusePass::Conv2DReLU6FusePass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
+      .End()
+      // default = 6.0f
+      .AddAttr("threshold")
+      .IsType<float>()
       .End();
 }
 Conv2DSwishFusePass::Conv2DSwishFusePass() {
@@ -196,14 +201,17 @@ Conv2DHardSwishFusePass::Conv2DHardSwishFusePass() {
       // float, optional, default=6.0
       .AddAttr("threshold")
       .IsOptional()
+      .IsType<float>()
       .End()
       // float, optional, default=6.0
       .AddAttr("scale")
       .IsOptional()
+      .IsType<float>()
       .End()
       // float, optional, default=3.0
       .AddAttr("offset")
       .IsOptional()
+      .IsType<float>()
       .End();
 }
 
