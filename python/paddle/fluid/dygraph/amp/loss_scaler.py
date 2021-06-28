@@ -30,10 +30,10 @@ class AmpScaler(object):
 
     AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
     mode. It controls the scaling of loss, helps avoiding numerical overflow.
-    The object of this class has two methods `scale()`, `minimize()`.
+    The object of this class has some methods such as `scale()`, `unscale()`, `step()`, `update()`.
 
     `scale()` is used to multiply the loss by a scale ratio.
-    `minimize()` is similar as `Optimizer.minimize()`, performs parameters updating.
+    `unscale()` + `step()` is similar as `Optimizer.minimize()`, performs parameters updating.
 
     Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in 
     imperative mode.
@@ -72,7 +72,9 @@ class AmpScaler(object):
                 loss = fluid.layers.reduce_mean(conv)
                 scaled = scaler.scale(loss)
                 scaled.backward()
-                scaler.minimize(optimizer, scaled)         
+                scaler.unscale(optimizer)
+                scaler.step(optimizer, scaled)
+                scaler.update()      
     """
 
     @dygraph_only
@@ -144,7 +146,9 @@ class AmpScaler(object):
                     loss = fluid.layers.reduce_mean(conv)
                     scaled = scaler.scale(loss)
                     scaled.backward()
-                    scaler.minimize(optimizer, scaled) 
+                    scaler.unscale(optimizer)
+                    scaler.step(optimizer, scaled)
+                    scaler.update() 
         """
         check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
 
@@ -153,7 +157,32 @@ class AmpScaler(object):
 
         return var * self._scale
 
-    def minimize(self, optimizer, *args, **kwargs):
+    def unscale(self, optimizer):
+        if not self._enable:
+            return
+        param_grads = [
+            param._grad_ivar() for param in optimizer._parameter_list
+            if param._grad_ivar() is not None
+        ]
+        core.ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
+                                          self._found_inf)
+
+    def step(self, optimizer, *args, **kwargs):
+        if not self._enable:
+            return optimizer.minimize(*args, **kwargs)
+
+        optimize_ops, params_grads = self.minimize_(optimizer, *args, **kwargs)
+        return optimize_ops, params_grads
+
+    def update(self):
+        # uopdate the scale
+        if not self._enable:
+            return
+        if self._use_dynamic_loss_scaling:
+            self._update()
+        return
+
+    def minimize_(self, optimizer, *args, **kwargs):
         """
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
         
@@ -185,7 +214,9 @@ class AmpScaler(object):
                     loss = fluid.layers.reduce_mean(conv)
                     scaled = scaler.scale(loss)
                     scaled.backward()
-                    scaler.minimize(optimizer, scaled) 
+                    scaler.unscale(optimizer)
+                    scaler.step(optimizer, scaled)
+                    scaler.update() 
         """
         if not self._enable:
             return optimizer.minimize(*args, **kwargs)
@@ -202,32 +233,6 @@ class AmpScaler(object):
             self._cache_founf_inf = False
 
         return optimize_ops, params_grads
-
-    def unscale(self, optimizer):
-        if not self._enable:
-            return
-        param_grads = [
-            param._grad_ivar() for param in optimizer._parameter_list
-            if param._grad_ivar() is not None
-        ]
-        core.ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
-                                          self._found_inf)
-
-    def step(self, optimizer, *args, **kwargs):
-        if not self._enable:
-            return optimizer.minimize(*args, **kwargs)
-
-        optimize_ops, params_grads = self.minimize(optimizer, *args, **kwargs)
-        return optimize_ops, params_grads
-
-    def update(self):
-        # uopdate the scale
-        if not self._enable:
-            return
-        if self._use_dynamic_loss_scaling:
-            # uopdate the scale
-            self._update()
-        return
 
     def _update(self):
         """
