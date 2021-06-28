@@ -170,8 +170,8 @@ FCLstmFusePass::FCLstmFusePass() {
       .End();
 }
 
-int FCLstmFusePass::BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
-                bool with_fc_bias) const{
+int FCLstmFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
+                                Scope* scope, bool with_fc_bias) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 

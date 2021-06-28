@@ -31,19 +31,19 @@ class Graph;
 
 class FCLstmFusePass : public FusePassBase {
  public:
-  FCLstmFusePass::FCLstmFusePass();
+  FCLstmFusePass();
   virtual ~FCLstmFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
   int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
-                bool with_fc_bias) const;
+                  bool with_fc_bias) const;
   const std::string name_scope_{"fc_lstm_fuse"};
 };
 
 class MulLstmFusePass : public FCLstmFusePass {
  public:
-  MulLstmFusePass::MulLstmFusePass();
+  MulLstmFusePass();
   virtual ~MulLstmFusePass() {}
 
  protected:
