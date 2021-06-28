@@ -118,27 +118,33 @@ ConvActivationFusePass::ConvActivationFusePass() {
       .End()
       .AddInput("Bias")
       .IsOptional()
+      .IsTensor()
       .End()
       .AddOutput("Output")
       .IsTensor()
       .End()
       .AddAttr("strides")
+      .IsType<std::vector<int>>()
       .End()
       .AddAttr("paddings")
+      .IsType<std::vector<int>>()
       .End()
       // IsStringIn({"EXPLICIT", "SAME", "VALID"}), MobileNetV2 has no this
       // attribute
       .AddAttr("padding_algorithm")
       .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
       .IsNumGE(1)
       .End()
       .AddAttr("dilations")
+      .IsType<std::vector<int>>()
       .End()
       // IsStringIn({"NHWC", "NCHW"}) MobileNetV2 has no this attribute
       .AddAttr("data_format")
       .IsOptional()
+      .IsStringIn({"NHWC", "NCHW"})
       .End();
 
   AddOpCompat(OpCompat("relu"))
