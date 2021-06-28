@@ -27,6 +27,14 @@ def initialize_p2p_groups(hcg):
     _hcg = hcg
 
 
+def _is_valid_communciate(src_stage, dest_stage):
+    first_stage = 0
+    last_stage = _hcg.get_pipe_parallel_world_size() - 1
+    assert abs(src_stage-dest_stage) == 1 or \
+        (src_stage == first_stage and dest_stage == last_stage) or \
+        (src_stage == last_stage and dest_stage == first_stage)
+
+
 def send(tensor, dest_stage):
     global _groups, _hcg
     src_stage = _hcg.get_stage_id()
