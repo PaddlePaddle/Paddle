@@ -218,6 +218,7 @@ set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
 python %work_dir%\tools\remove_grad_op_and_kernel.py
+if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
