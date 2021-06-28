@@ -462,14 +462,9 @@ def roll(x, shifts, axis=None, name=None):
     check_type(shifts, 'shifts', (list, tuple), 'roll')
 
     if in_dygraph_mode():
-        if axis is None:
-            axis = []
         return core.ops.roll(x, 'axis', axis, 'shifts', shifts)
 
     out = helper.create_variable_for_type_inference(x.dtype)
-
-    if axis is None:
-        axis = []
 
     helper.append_op(
         type='roll',
