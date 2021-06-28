@@ -2194,7 +2194,7 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
-	find_suffix_pyc
+        find_suffix_pyc
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
