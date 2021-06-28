@@ -459,6 +459,9 @@ def roll(x, shifts, axis=None, name=None):
 
     if axis:
         check_type(axis, 'axis', (list, tuple), 'roll')
+    else:
+        axis = []
+
     check_type(shifts, 'shifts', (list, tuple), 'roll')
 
     if in_dygraph_mode():
