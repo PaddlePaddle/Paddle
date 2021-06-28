@@ -2724,7 +2724,7 @@ PDNode *patterns::FusionLSTM::operator()() {
                   ->AsOutput()
                   ->assert_is_op_output("fusion_lstm", "Cell");
   op->LinksFrom({x, weight_h, weight_x}).LinksTo({hidden, cell});
-  return out;
+  return hidden;
 }
 
 PDNode *patterns::FusionGru::operator()() {
