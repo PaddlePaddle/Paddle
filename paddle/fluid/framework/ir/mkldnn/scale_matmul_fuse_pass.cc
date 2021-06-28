@@ -43,6 +43,10 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   int found_scale_matmul_fuse_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_IR_NODE_FROM_SUBGRAPH(scale_in, scale_in, scale_matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_op, scale_op, scale_matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, scale_matmul_pattern);
