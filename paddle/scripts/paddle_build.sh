@@ -2142,6 +2142,46 @@ function reuse_so_cache() {
     fi
 }
 
+function getJsonValueByPython() {
+    if which python; then
+        python -c '''
+import json
+s = ""
+try:
+        while True:
+                in_var = raw_input()
+                s += in_var
+except EOFError:
+        pass
+jsonObj = json.loads( s )
+
+ret = ""
+for i in range(len(jsonObj)):
+        ret += jsonObj[ i ][ "filename" ] + "\n"
+print(ret)
+        '''
+        return 0
+    else
+        return 1
+    fi
+}
+
+function find_suffix_pyc() {
+    jsonData=`curl \
+	    -H "Authorization: token ${GITHUB_API_TOKEN}"\ 
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
+    
+    result=`echo ${jsonData} | getJsonValueByPython | grep '.pyc$' 2> /dev/null`
+    
+    if [ ${#result} -gt 0 ]
+    then
+	echo "find file name ends with \".pyc\""
+	exit 1
+    fi
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2154,6 +2194,7 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
+	find_suffix_pyc
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
