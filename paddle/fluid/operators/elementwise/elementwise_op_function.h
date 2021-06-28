@@ -2152,10 +2152,10 @@ template <typename T, typename CompoundFunctor, bool BcastY,
 static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
     const T *x, const T *y, int h, int w, CompoundFunctor compound_functor,
     T *out, T *intermediate_out) {
-  int j = blockIdx.x;
-  int i = threadIdx.x;
+  int i = blockIdx.x;
+  int j = threadIdx.x;
 
-  while (i < h) {
+  while (j < w) {
     int offset = i * w + j;
 
     T y_val = BcastY ? y[j] : y[offset];
@@ -2181,7 +2181,7 @@ static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
       out[offset] = compound_functor.GetOut(x_val, y_val);
     }
 
-    i += ELEMWISE_MAX_BLOCK_DIM;
+    j += ELEMWISE_MAX_BLOCK_DIM;
   }
 }
 
@@ -2192,8 +2192,8 @@ static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream, const T *x,
                                               CompoundFunctor compound_functor,
                                               int h, int w, T *out,
                                               T *intermediate_out) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
-  int gird_size = w;
+  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, w);
+  int gird_size = h;
   FusedElemwiseAndActBroadcast1CUDAKernel<
       T, CompoundFunctor, BcastY, KeepIntermediateOut,
       SameShapeOfIntermediateOutAndOut><<<gird_size, block_size, 0, stream>>>(
