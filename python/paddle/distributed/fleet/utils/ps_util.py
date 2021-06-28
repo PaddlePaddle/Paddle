@@ -203,3 +203,84 @@ class DistributedInfer:
 
         covert_program = distributed_ops_pass(main_program)
         return covert_program
+
+
+def sparse_sharding_merge(dirname, varname):
+    def save_selectedrows(shards, param_dim, save_path):
+        sharding_merge = paddle.utils.cpp_extension.ShardingMerge()
+        sharding_merge.merge(shards, save_path, param_dim)
+
+    def get_distributed_shard(shard_dirname, shard_varname):
+        ids = []
+        tensors = []
+
+        def get_meta(shard_meta):
+            varname = None
+            param_dim = -1
+            row_names = None
+            row_dims = None
+
+            with open(shard_meta, "r") as rb:
+                for line in rb:
+                    line = line.strip()
+                    if line.startswith("param="):
+                        varname = line.split("=")[1]
+                    if line.startswith("row_name"):
+                        row_names = line.split("=")[1]
+                    if line.startswith("row_dims"):
+                        row_dims = line.split("=")[1]
+
+                param_dim = row_dims.split(",")[row_names.split(",").index(
+                    "Param")]
+                param_dim = int(param_dim)
+
+            if varname is None or param_dim == -1:
+                raise ValueError("can not get right information from {}".format(
+                    shard_meta))
+
+            return (varname, param_dim)
+
+        def get_shard():
+            shards = []
+            for f in os.listdir(shard_dirname):
+                if f.startswith(shard_varname) and f.endswith(".txt"):
+                    shards.append(os.path.join(shard_dirname, f))
+            return shards
+
+        shards = get_shard()
+
+        if len(shards) == 0:
+            return None, None
+
+        meta_txt = os.path.join(shard_dirname,
+                                "{}.block0.meta".format(shard_varname))
+        meta_varname, param_dim = get_meta(meta_txt)
+
+        if meta_varname != shard_varname:
+            raise ValueError("meta error, please check.")
+
+        return shards, param_dim
+
+    shard_txt = os.path.join(dirname, "{}.shard".format(varname))
+    selected_rows = os.path.join(dirname, varname)
+
+    if not os.path.exists(shard_txt):
+        raise ValueError("{} is not exist, pleast confirm your argv.".format(
+            shard_txt))
+
+    if os.path.exists(selected_rows):
+        raise ValueError("{} is exist, pleast delete.".format(selected_rows))
+
+    print("searching Param/Meta from {} and will merge to {}".format(
+        shard_txt, selected_rows))
+
+    shards, param_dim = get_distributed_shard(shard_txt, varname)
+
+    print(shards)
+    print(param_dim)
+
+    save_path = os.path.join(dirname, varname)
+    save_selectedrows(shards, param_dim, save_path)
+
+    print("save {} with {} shards to {}".format(varname, len(shards),
+                                                save_path))
