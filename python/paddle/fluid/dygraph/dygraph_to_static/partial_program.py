@@ -134,7 +134,7 @@ class PartialProgramLayer(layers.Layer):
         self._params = parameters if parameters is not None else []
 
         self._origin_main_program = self._verify_program(main_program)
-        self._inner_scope = core.Scope()
+        self._tmp_scope_vec = self._create_scope_vec()
         # Set default mode to train
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
@@ -220,7 +220,7 @@ class PartialProgramLayer(layers.Layer):
         return double_grads
 
     def forward(self, inputs):
-        in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
+        in_vars, out_vars = self._prepare(inputs)
 
         attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
                  0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
@@ -228,7 +228,7 @@ class PartialProgramLayer(layers.Layer):
         core.ops.run_program(
             valid_vars(in_vars),
             valid_vars(self._params),
-            valid_vars(out_vars), tmp_scope_vec,
+            valid_vars(out_vars), self._tmp_scope_vec,
             valid_vars(self._double_grads), *attrs)
 
         restored_nest_out = self._restore_out(out_vars)
@@ -283,14 +283,17 @@ class PartialProgramLayer(layers.Layer):
                                     var_desc.name(), var_desc.type(), False)
             out_vars.append(var_base)
 
+        return input_vars, out_vars
+
+    def _create_scope_vec(self):
         # Hold forward variables
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                      "program_out_scope",
                                      core.VarDesc.VarType.STEP_SCOPES, True)
 
-        tmp_scope_vec.value().set_scope(self._inner_scope)
-
-        return input_vars, out_vars, tmp_scope_vec
+        inner_scope = core.Scope()
+        tmp_scope_vec.value().set_scope(inner_scope)
+        return tmp_scope_vec
 
     def _restore_out(self, out_vars):
         """
