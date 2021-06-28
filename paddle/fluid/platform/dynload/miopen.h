@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
-#define MIOPEN_VERSION                                        \
-  (MIOPEN_VERSION_MAJOR * 1000 + MIOPEN_VERSION_MINOR * 100 + \
+#define MIOPEN_VERSION                                       \
+  (MIOPEN_VERSION_MAJOR * 1000 + MIOPEN_VERSION_MINOR * 10 + \
    MIOPEN_VERSION_PATCH)  // NOLINT
 
 namespace paddle {

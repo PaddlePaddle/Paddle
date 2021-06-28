@@ -126,7 +126,7 @@ class TestModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not fluid.is_compiled_with_cuda():
-            self.skipTest('module not tested when ONLY_CPU compling')
+            cls.skipTest('module not tested when ONLY_CPU compling')
         cls.device = paddle.set_device('gpu')
         fluid.enable_dygraph(cls.device)
 
@@ -717,6 +717,36 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)
         shutil.rmtree(save_dir)
+
+    def test_accumulate(self, ):
+        dim = 20
+        data = np.random.random(size=(4, dim)).astype(np.float32)
+        label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+        net = MyModel()
+        optim = fluid.optimizer.SGD(learning_rate=0.001,
+                                    parameter_list=net.parameters())
+        inputs = [InputSpec([None, dim], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+
+        for amp_cfg in [None, 'O1']:
+            model = Model(net, inputs, labels)
+            model.prepare(
+                optim,
+                loss=CrossEntropyLoss(reduction="sum"),
+                amp_configs=amp_cfg)
+            losses, grads = [], []
+            for stat in [False, False, True]:
+                loss, = model.train_batch([data], [label], update=stat)
+                losses.append(loss)
+                grads.append([p.grad.numpy() for p in net.parameters()])
+
+            for grad1, grad2, grad3 in zip(*grads):
+                np.testing.assert_almost_equal(grad1 * 2, grad2, decimal=4)
+                np.testing.assert_almost_equal(
+                    grad3, np.zeros_like(grad3), decimal=4)
+
+            np.testing.assert_almost_equal(losses[0], losses[1], decimal=4)
+            np.testing.assert_almost_equal(losses[0], losses[2], decimal=4)
 
 
 class TestModelWithLRScheduler(unittest.TestCase):

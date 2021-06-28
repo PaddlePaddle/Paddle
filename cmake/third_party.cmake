@@ -108,13 +108,18 @@ ENDMACRO()
 # 2. NAME:          The name of file, that determin the dirname
 #
 FUNCTION(file_download_and_uncompress URL NAME)
-  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}")
+  set(options "")
+  set(oneValueArgs MD5)
+  set(multiValueArgs "")
+  cmake_parse_arguments(URL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}, MD5: ${URL_MD5}")
   SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME}/data PARENT_SCOPE)
   ExternalProject_Add(
       download_${NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${THIRD_PARTY_PATH}/${NAME}
       URL                   ${URL}
+      URL_MD5               ${URL_MD5}
       TIMEOUT               120
       DOWNLOAD_DIR          ${THIRD_PARTY_PATH}/${NAME}/data/
       SOURCE_DIR            ${THIRD_PARTY_PATH}/${NAME}/data/
@@ -210,6 +215,8 @@ list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boos
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
 include(cblas)              	# find first, then download, build, install openblas
+
+message(STATUS "CBLAS_PROVIDER: ${CBLAS_PROVIDER}")
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
 elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
@@ -244,17 +251,19 @@ if(WITH_GPU)
         list(APPEND third_party_deps extern_cub)
     endif()
     set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg.tar.gz" CACHE STRING "" FORCE)
-    file_download_and_uncompress(${URL} "externalError")   # download file externalErrorMsg.tar.gz
+    file_download_and_uncompress(${URL} "externalError" MD5 c0749523ebb536eb7382487d645d9cd4)   # download file externalErrorMsg.tar.gz
     if(WITH_TESTING)
-        # copy externalErrorMsg.pb for unittest 'enforce_test'
+        # copy externalErrorMsg.pb, just for unittest can get error message correctly.
         set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)
         if(WIN32 AND (NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja"))
-            set(DST_DIR ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
+            set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
         else()
-            set(DST_DIR ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
+            set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
         endif()
+        set(DST_DIR2 ${CMAKE_BINARY_DIR}/python/paddle/include/third_party/externalError/data)
         add_custom_command(TARGET download_externalError POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR}
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
             COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
     endif()
 endif(WITH_GPU)

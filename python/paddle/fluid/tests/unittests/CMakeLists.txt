@@ -70,6 +70,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_meta_optimizer_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_distributed_strategy)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_static_mp_layers)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -80,6 +81,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_c_split)
     LIST(REMOVE_ITEM TEST_OPS test_allgather)
     LIST(REMOVE_ITEM TEST_OPS test_c_identity)
+    LIST(REMOVE_ITEM TEST_OPS test_c_embedding_op)
     LIST(REMOVE_ITEM TEST_OPS test_allreduce)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
     LIST(REMOVE_ITEM TEST_OPS test_collective_reduce)
@@ -103,6 +105,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_sendrecv_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_wait)
     LIST(REMOVE_ITEM TEST_OPS test_memcpy_op)
+    LIST(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
 endif()
 
 if(WIN32)
@@ -477,6 +480,8 @@ py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_stat
 py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
     FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -521,6 +526,7 @@ if(WITH_DISTRIBUTE)
     	   py_test_modules(test_fleet_private_function MODULES test_fleet_private_function ENVS ${dist_ENVS})
 	   py_test_modules(test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS ${dist_ENVS})
 	   py_test_modules(test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy)
+	   py_test_modules(test_fleet_static_mp_layers MODULES test_fleet_static_mp_layers)
 	   #py_test_modules(test_fleet_auto MODULES test_fleet_auto ENVS ${dist_ENVS})
         if(NOT WIN32)
             py_test_modules(test_fleet_localsgd_meta_optimizer MODULES test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
@@ -574,7 +580,7 @@ endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 # Coverage pipeline use cuda 10.1 now, profiler will random hang in cuda 10.1,
 # see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in cuda 10.1 or 10.2, 
+# We guess there are some bugs in cuda 10.1 or 10.2,
 # since this unittest is stable in cuda 11 (py3 pipeline) now.
 if(NOT WITH_COVERAGE)
   py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
@@ -599,8 +605,8 @@ py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_c
 py_test_modules(test_fuse_bn_add_act_pass MODULES test_fuse_bn_add_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
 
 # NOTE: These unittests will appear NaN steadily in windows CI. After analysis,
-# it is found that windows CI will run all the training unittests with the ON_INFER option turned on, 
-# which will not appear in other CIs. The calculation behavior of some ops in inference mode is 
+# it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
+# which will not appear in other CIs. The calculation behavior of some ops in inference mode is
 # inconsistent with that in non-inference mode.
 if(NOT ON_INFER)
     py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
@@ -643,7 +649,7 @@ if (WITH_XPU)
     add_subdirectory(xpu)
 endif()
 
-# dist xpu tests: 
+# dist xpu tests:
 if (WITH_XPU_BKCL)
     py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
     py_test(test_collective_allreduce_api_xpu SRCS "test_collective_allreduce_api.py")
@@ -656,6 +662,8 @@ endif()
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
+
+add_subdirectory(asp)
 
 add_subdirectory(ir)
 
@@ -711,6 +719,8 @@ if (WITH_DISTRIBUTE)
     set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
     set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
     set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
+    set_tests_properties(test_dist_fleet_raw_program_optimizer PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce PROPERTIES TIMEOUT 60)
 endif()
 
 if (WITH_DISTRIBUTE AND NOT APPLE)
@@ -838,6 +848,8 @@ set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv2d_op_depthwise_conv PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv2d_api PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_mul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cyclic_cifar_dataset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_all_reduce_pass PROPERTIES TIMEOUT 120)
@@ -845,7 +857,7 @@ set_tests_properties(test_dygraph_multi_forward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_mnist PROPERTIES TIMEOUT 120)
-set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150)
+set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
 set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)

@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -58,8 +58,9 @@ INSTANTIATION(EigenSlice, int64_t);
 INSTANTIATION(EigenSlice, float);
 INSTANTIATION(EigenSlice, double);
 INSTANTIATION(EigenSlice, platform::float16);
-INSTANTIATION(EigenSlice, platform::complex64);
-INSTANTIATION(EigenSlice, platform::complex128);
+INSTANTIATION(EigenSlice, platform::bfloat16);
+INSTANTIATION(EigenSlice, platform::complex<float>);
+INSTANTIATION(EigenSlice, platform::complex<double>);
 #undef INSTANTIATION
 
 }  // namespace operators

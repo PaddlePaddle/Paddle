@@ -1191,7 +1191,9 @@ class OpTest(unittest.TestCase):
                         np.float32, np.float64
                 ]:
                     actual_t = convert_uint16_to_float(actual_t)
-                    atol = max(atol, 0.03)
+                    rtol = 1.e-2
+                else:
+                    rtol = 1.e-5
 
                 if expect_t.dtype == np.uint16 and actual_t.dtype == np.uint16:
                     expect_t = convert_uint16_to_float(expect_t)
@@ -1204,7 +1206,11 @@ class OpTest(unittest.TestCase):
 
                 self.assertTrue(
                     np.allclose(
-                        actual_t, expect_t, atol=atol, equal_nan=equal_nan),
+                        actual_t,
+                        expect_t,
+                        rtol=rtol,
+                        atol=atol,
+                        equal_nan=equal_nan),
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t) + " in class " + self.__class__.__name__)
@@ -1509,7 +1515,7 @@ class OpTest(unittest.TestCase):
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = 0.03
+                max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
 
@@ -1517,7 +1523,7 @@ class OpTest(unittest.TestCase):
         for grad in numeric_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = 0.03
+                max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
 
@@ -1533,7 +1539,7 @@ class OpTest(unittest.TestCase):
             for grad in dygraph_grad:
                 if grad.dtype == np.uint16:
                     grad = convert_uint16_to_float(grad)
-                    max_relative_error = 0.03
+                    max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
                 fp32_grads.append(grad)
             dygraph_grad = fp32_grads
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
