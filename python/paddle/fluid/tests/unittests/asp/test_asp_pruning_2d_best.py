@@ -16,6 +16,7 @@
 from __future__ import print_function
 
 import paddle
+import unittest
 from paddle.fluid.contrib import sparsity
 from paddle.fluid.tests.unittests.asp.asp_pruning_base import TestASPHelperPruningBase
 
