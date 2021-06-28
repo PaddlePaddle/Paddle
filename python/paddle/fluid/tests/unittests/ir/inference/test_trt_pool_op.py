@@ -16,6 +16,7 @@
 import os
 import shutil
 import unittest
+import itertools
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
@@ -80,59 +81,32 @@ class TensorRTPoolTest(InferencePassTest):
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
-    def set_dynamic(self):
-        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
+    def run_test(self):
+        self.build_network()
+        self.check_output()
+
+    def test(self):
+        precision_options = [
+            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+        ]
+        serialize_options = [False, True]
+        dynamic_shape_profile = InferencePassTest.DynamicShapeParam(
             {
                 'data':
                 [self.bs, self.channel, self.height // 2, self.width // 2]
             }, {'data': [self.bs, self.channel, self.height, self.width]},
             {'data': [self.bs, self.channel, self.height, self.width]}, False)
+        dynamic_shape_options = [None, dynamic_shape_profile]
 
-    def set_fp16(self):
-        self.precision = AnalysisConfig.Precision.Half
-
-    def set_serialize(self):
-        self.serialize = True
-
-    def run_test(self):
-        self.build_network()
-        self.check_output()
-
-    def test_fp32(self):
-        self.run_test()
-
-    def test_fp16(self):
-        self.set_fp16()
-        self.run_test()
-
-    def test_fp32_serialize(self):
-        self.set_serialize()
-        self.run_test()
-
-    def test_fp16_serialize(self):
-        self.set_fp16()
-        self.set_serialize()
-        self.run_test()
-
-    def test_fp32_dynamic(self):
-        self.set_dynamic()
-        self.run_test()
-
-    def test_fp16_dynamic(self):
-        self.set_fp16()
-        self.set_dynamic()
-        self.run_test()
-
-    def test_fp32_dynamic_serialize(self):
-        self.set_dynamic()
-        self.set_serialize()
-        self.run_test()
-
-    def test_fp16_dynamic_serialize(self):
-        self.set_fp16()
-        self.set_dynamic()
-        self.set_serialize()
-        self.run_test()
+        for precision, serialize, dynamic_shape in itertools.product(
+                precision_options, serialize_options, dynamic_shape_options):
+            is_dynamic = True if dynamic_shape_options is not None else False
+            with self.subTest('Precision: {}, Serialize: {}, Dynamic: {}'.
+                              format(precision, serialize, is_dynamic)):
+                self.precision = precision
+                self.serialize = serialize
+                self.dynamic_shape = dynamic_shape
+                self.run_test()
 
 
 class TensorRTAvgPoolTest(TensorRTPoolTest):
