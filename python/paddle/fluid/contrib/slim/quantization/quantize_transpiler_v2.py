@@ -17,6 +17,7 @@ import logging
 import numpy as np
 from .... import core
 from ....framework import Program, Operator, Variable, program_guard
+from ....executor import global_scope
 from .... import unique_name
 from ....layer_helper import LayerHelper
 from ....param_attr import ParamAttr
@@ -34,7 +35,9 @@ class QuantizeTranspilerV2(object):
                  weight_quantize_type='abs_max',
                  activation_quantize_type='moving_average_abs_max',
                  quantizable_op_type=[
-                     'conv2d', 'depthwise_conv2d', 'mul', 'matmul'
+                     'conv2d',
+                     'depthwise_conv2d',
+                     'mul',
                  ],
                  skip_pattern=['skip_quant']):
         """
@@ -64,6 +67,9 @@ class QuantizeTranspilerV2(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
 
+        for op_type in quantizable_op_type:
+            assert op_type in ['conv2d', 'depthwise_conv2d', 'mul'], \
+                "Quantize op should be ['conv2d', 'depthwise_conv2d', 'mul']"
         self._quantizable_ops = quantizable_op_type
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
@@ -110,32 +116,41 @@ class QuantizeTranspilerV2(object):
                         (not self._is_skip_quant(op)):
                         self._transform_backward(block, op, var_rename_map)
 
-    def _is_skip_quant(self, op):
+    def convert(self, test_program, scope=None):
         """
-        Analyse whether the op should skip quantization or not.
+        Convert the test program.
+        Args:
+            test_program(Program): the test program to be converted.
+            scope(fluid.Scope, optional): The scope of the program, use it to load 
+                and save variables. If scope=None, get scope by global_scope(). 
         """
-        user_skipped = False
-        if isinstance(self._skip_pattern, list):
-            user_skipped = op.has_attr("op_namescope") and \
-                            any(pattern in op.attr("op_namescope") \
-                                for pattern in self._skip_pattern)
-        elif isinstance(self._skip_pattern, str):
-            user_skipped = op.has_attr("op_namescope") and \
-                            op.attr("op_namescope").find(
-                                self._skip_pattern) != -1
-        return user_skipped
+        scope = global_scope() if scope == None else scope
+
+        target_ops = []
+        for block in test_program.blocks:
+            for op in block.ops:
+                if op.type == "moving_average_abs_max_scale":
+                    target_ops.append(op)
+
+        for op in target_ops:
+            out_scale_name = op.output("OutScale")
+            # TODO: save the out threshold in the target ops
+            #print(out_scale_name)
+            #print(self._load_variable_data(scope, out_scale_name[0]))
 
     def _transform_forward(self, block, op, var_rename_map, is_test):
         """
         Insert fake quant op before the target ops.
         """
         op._set_attr("quantization_type", "qat_with_weight")
-        idx = block.ops.index(op)
-        block_id = block.idx
 
+        # insert fake quant op before the quantized op
         for in_name in op.input_arg_names:
+            block_id = block.idx
+            idx = block.ops.index(op)
+
             if in_name in var_rename_map[block_id]:
-                new_var_name = var_rename_map[block_id][in_name]
+                new_in_name = var_rename_map[block_id][in_name]
             else:
                 in_var = block.var(in_name)
                 if in_var.dtype != core.VarDesc.VarType.FP32:
@@ -161,13 +176,62 @@ class QuantizeTranspilerV2(object):
                                   quant_type)
                     continue
 
-                var_rename_map[block_id][in_name] = new_var.name
-                op._rename_input(in_name, new_var.name)
+                new_in_name = new_var.name
+                var_rename_map[block_id][in_name] = new_in_name
+
+            op._rename_input(in_name, new_in_name)
+
+        # insert out scale op followed the quantized op
+        for out_name in op.output_arg_names:
+            next_ops = self._find_next_ops(block, out_name)
+
+            idx = block.ops.index(op)
+            out_var = block.var(out_name)
+            new_out_var = self._insert_ma_abs_max_scale_op(
+                block, idx + 1, out_var, is_test, True)
+
+            for next_op in next_ops:
+                if "_grad" not in next_op.type:
+                    next_op._rename_input(out_name, new_out_var.name)
+
+    def _find_next_ops(self, block, var_name):
+        """
+        Find all followed ops for the input variable.
+        """
+        res_ops = []
+        for op in block.ops:
+            if var_name in op.input_arg_names:
+                res_ops.append(op)
+        return res_ops
+
+    def _load_variable_data(self, scope, var_name):
+        '''
+        Load variable value from scope
+        '''
+        var_node = scope.find_var(var_name)
+        assert var_node is not None, \
+            "Cannot find " + var_name + " in scope."
+        return np.array(var_node.get_tensor())
+
+    def _is_skip_quant(self, op):
+        """
+        Analyse whether the op should skip quantization or not.
+        """
+        user_skipped = False
+        if isinstance(self._skip_pattern, list):
+            user_skipped = op.has_attr("op_namescope") and \
+                            any(pattern in op.attr("op_namescope") \
+                                for pattern in self._skip_pattern)
+        elif isinstance(self._skip_pattern, str):
+            user_skipped = op.has_attr("op_namescope") and \
+                            op.attr("op_namescope").find(
+                                self._skip_pattern) != -1
+        return user_skipped
 
     def _transform_backward(self, block, op, var_rename_map):
         """
         Update the backword of the target ops.
-        Note: Skip rename the output of the grad ops.
+        Note: for the grad ops, only rename the input, skip rename the output.
         """
         block_id = block.idx
         no_dequanted_input_vars = True
@@ -192,7 +256,7 @@ class QuantizeTranspilerV2(object):
         scale_var = self._helper.create_parameter(
             attr=ParamAttr(
                 name="{}.quant_dequant.scale".format(in_var.name),
-                initializer=Constant(0.001),
+                initializer=Constant(0.),
                 trainable=False),
             shape=[1],
             dtype=in_var.dtype)
@@ -222,7 +286,7 @@ class QuantizeTranspilerV2(object):
         scale_var = self._helper.create_parameter(
             attr=ParamAttr(
                 name="{}.quant_dequant.scale".format(in_var.name),
-                initializer=Constant(0.001),
+                initializer=Constant(0.),
                 trainable=False),
             shape=[1],
             dtype=in_var.dtype)
@@ -232,7 +296,7 @@ class QuantizeTranspilerV2(object):
             state_var = self._helper.create_parameter(
                 attr=ParamAttr(
                     name="{}.quant_dequant.state".format(in_var.name),
-                    initializer=Constant(1),
+                    initializer=Constant(0),
                     trainable=False),
                 shape=[1],
                 dtype=in_var.dtype)
@@ -241,7 +305,7 @@ class QuantizeTranspilerV2(object):
             accum_var = self._helper.create_parameter(
                 attr=ParamAttr(
                     name="{}.quant_dequant.accum".format(in_var.name),
-                    initializer=Constant(1),
+                    initializer=Constant(0),
                     trainable=False),
                 shape=[1],
                 dtype=in_var.dtype)
@@ -297,3 +361,68 @@ class QuantizeTranspilerV2(object):
             inputs=inputs,
             outputs=outputs)
         return quant_dequant_var
+
+    def _insert_ma_abs_max_scale_op(self,
+                                    block,
+                                    idx,
+                                    in_var,
+                                    is_test,
+                                    has_out_var=False):
+        """
+        Insert moving average abs max scale op.
+        """
+        scale_var = self._helper.create_parameter(
+            attr=ParamAttr(
+                name="{}.outscale.scale".format(in_var.name),
+                initializer=Constant(0.),
+                trainable=False),
+            shape=[1],
+            dtype=in_var.dtype)
+        scale_var.stop_gradient = True
+
+        attrs = {'moving_rate': self._moving_rate, 'is_test': is_test}
+        inputs = {'X': in_var}
+        outputs = {'OutScale': scale_var}
+
+        if not is_test:
+            state_var = self._helper.create_parameter(
+                attr=ParamAttr(
+                    name="{}.outscale.state".format(in_var.name),
+                    initializer=Constant(0),
+                    trainable=False),
+                shape=[1],
+                dtype=in_var.dtype)
+            state_var.stop_gradient = True
+
+            accum_var = self._helper.create_parameter(
+                attr=ParamAttr(
+                    name="{}.outscale.accum".format(in_var.name),
+                    initializer=Constant(0),
+                    trainable=False),
+                shape=[1],
+                dtype=in_var.dtype)
+            accum_var.stop_gradient = True
+
+            inputs['InState'] = state_var
+            inputs['InAccum'] = accum_var
+            outputs['OutState'] = state_var
+            outputs['OutAccum'] = accum_var
+
+        if has_out_var:
+            out_var = block.create_var(
+                type=in_var.type,
+                name="{}.tmp".format(in_var.name),
+                shape=in_var.shape,
+                dtype=in_var.dtype)
+
+            outputs['Out'] = out_var
+
+        block._insert_op(
+            idx,
+            type='moving_average_abs_max_scale',
+            attrs=attrs,
+            inputs=inputs,
+            outputs=outputs)
+
+        if has_out_var:
+            return out_var
