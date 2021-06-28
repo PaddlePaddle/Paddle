@@ -163,10 +163,6 @@ def prune_model(place,
 
             # Must call `exe.run(startup_program)` first before calling `sparsity.prune_model`
             sparsity.prune_model(place, main_program, func_name=sparsity.MaskAlgo.MASK_2D_BEST)
-
-            # Start training with ASP workflow.
-            for epoch in range(total_epochs):
-                exe.run(main_program)
     """
     return ASPHelper.prune_model(
         place=place,
