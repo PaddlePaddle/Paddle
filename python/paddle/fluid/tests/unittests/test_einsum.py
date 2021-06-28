@@ -232,92 +232,92 @@ class TestNumpyTests(unittest.TestCase):
 
     def test_sums(self):
         for n in range(1, 17):
-            a = np.arange(n)
+            a = np.arange(n).astype('float')
             self.expect = np.einsum("i->", a)
             self.check_output("i->", a)
 
         for n in range(1, 17):
-            a = np.arange(2 * 3 * n).reshape(2, 3, n)
+            a = np.arange(2 * 3 * n).reshape(2, 3, n).astype('float')
             self.expect = np.einsum("...i->...", a)
             self.check_output("...i->...", a)
 
         for n in range(1, 17):
-            a = np.arange(2 * n).reshape(2, n)
+            a = np.arange(2 * n).reshape(2, n).astype('float')
             self.expect = np.einsum("i...->...", a)
             self.check_output("i...->...", a)
 
         for n in range(1, 17):
-            a = np.arange(2 * 3 * n).reshape(2, 3, n)
+            a = np.arange(2 * 3 * n).reshape(2, 3, n).astype('float')
             self.expect = np.einsum("i...->...", a)
             self.check_output("i...->...", a)
 
         for n in range(1, 17):
-            a = np.arange(3 * n).reshape(3, n)
-            b = np.arange(2 * 3 * n).reshape(2, 3, n)
+            a = np.arange(3 * n).reshape(3, n).astype('float')
+            b = np.arange(2 * 3 * n).reshape(2, 3, n).astype('float')
             self.expect = np.einsum("..., ...", a, b)
             self.check_output("..., ...", a, b)
 
         for n in range(1, 17):
-            a = np.arange(2 * 3 * n).reshape(2, 3, n)
-            b = np.arange(n)
+            a = np.arange(2 * 3 * n).reshape(2, 3, n).astype('float')
+            b = np.arange(n).astype('float')
             self.expect = np.einsum("...i, ...i", a, b)
             self.check_output("...i, ...i", a, b)
 
         for n in range(1, 11):
-            a = np.arange(n * 3 * 2).reshape(n, 3, 2)
-            b = np.arange(n)
+            a = np.arange(n * 3 * 2).reshape(n, 3, 2).astype('float')
+            b = np.arange(n).astype('float')
             self.expect = np.einsum("i..., i...", a, b)
             self.check_output("i..., i...", a, b)
 
         for n in range(1, 17):
-            a = np.arange(3) + 1
-            b = np.arange(n) + 1
+            a = (np.arange(3) + 1).astype('float')
+            b = (np.arange(n) + 1).astype('float')
             self.expect = np.einsum("i,j", a, b)
             self.check_output("i,j", a, b)
 
         for n in range(1, 17):
-            a = np.arange(4 * n).reshape(4, n)
-            b = np.arange(n)
+            a = np.arange(4 * n).reshape(4, n).astype('float')
+            b = np.arange(n).astype('float')
             self.expect = np.einsum("ij, j", a, b)
             self.check_output("ij, j", a, b)
 
         for n in range(1, 17):
-            a = np.arange(4 * n).reshape(4, n)
-            b = np.arange(n)
+            a = np.arange(4 * n).reshape(4, n).astype('float')
+            b = np.arange(n).astype('float')
             self.expect = np.einsum("ji,j", a.T, b.T)
             self.check_output("ji,j", a.T, b.T)
 
         for n in range(1, 17):
-            a = np.arange(4 * n).reshape(4, n)
-            b = np.arange(n * 6).reshape(n, 6)
+            a = np.arange(4 * n).reshape(4, n).astype('float')
+            b = np.arange(n * 6).reshape(n, 6).astype('float')
             self.expect = np.einsum("ij,jk", a, b)
             self.check_output("ij,jk", a, b)
 
-        a = np.arange(12).reshape(3, 4)
-        b = np.arange(20).reshape(4, 5)
-        c = np.arange(30).reshape(5, 6)
+        a = np.arange(12).reshape(3, 4).astype('float')
+        b = np.arange(20).reshape(4, 5).astype('float')
+        c = np.arange(30).reshape(5, 6).astype('float')
         self.expect = np.einsum("ij,jk,kl", a, b, c)
         self.check_output("ij,jk,kl", a, b, c)
 
-        a = np.arange(60).reshape(3, 4, 5)
-        b = np.arange(24).reshape(4, 3, 2)
+        a = np.arange(60).reshape(3, 4, 5).astype('float')
+        b = np.arange(24).reshape(4, 3, 2).astype('float')
         self.expect = np.einsum("ijk, jil -> kl", a, b)
         self.check_output("ijk, jil -> kl", a, b)
 
         for n in range(1, 25):
-            a = np.arange(n)
+            a = np.arange(n).astype('float')
             self.expect = np.einsum("...,...", a, a)
             self.check_output("...,...", a, a)
             self.expect = np.einsum("i,i", a, a)
             self.check_output("i,i", a, a)
 
-        p = np.ones((10, 2))
-        q = np.ones((1, 2))
+        p = np.ones((10, 2)).astype('float')
+        q = np.ones((1, 2)).astype('float')
         self.expect = np.einsum('ij,ij->j', p, q)
         self.check_output('ij,ij->j', p, q)
 
-        x = np.array([2., 3.])
-        y = np.array([4.])
+        x = np.array([2., 3.]).astype('float')
+        y = np.array([4.]).astype('float')
         self.expect = np.einsum("i, i", x, y)
         self.check_output("i, i", x, y)
 
@@ -328,15 +328,14 @@ class TestNumpyTests(unittest.TestCase):
         self.expect = np.einsum("...ij,...jk->...ik", p, q)
         self.check_output("...ij,...jk->...ik", p, q)
 
-        x = np.eye(2)
-        y = np.ones(2)
+        x = np.eye(2).astype('float')
+        y = np.ones(2).astype('float')
         self.expect = np.einsum("ji,i->", x, y)
         self.check_output("ji,i->", x, y)
         self.expect = np.einsum("i,ij->", y, x)
         self.check_output("i,ij->", y, x)
         self.expect = np.einsum("ij,i->", x, y)
         self.check_output("ij,i->", x, y)
-
 
 if __name__ == "__main__":
     unittest.main()
