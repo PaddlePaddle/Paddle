@@ -21,7 +21,7 @@ from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 import paddle.compat as cpt
@@ -317,8 +317,11 @@ class PartialProgramLayer:
         return main_program.clone(for_test=True)
 
     def _is_no_value(self, var):
-        return isinstance(var,
-                          core.VarBase) and RETURN_NO_VALUE_VAR_NAME in var.name
+        if isinstance(var, core.VarBase) and var.shape == [1]:
+            # NOTE: .numpy() will insert MemcpySync operation, it hits performance.
+            if var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
+                return True
+        return False
 
     def _remove_no_value(self, out_vars):
         """
