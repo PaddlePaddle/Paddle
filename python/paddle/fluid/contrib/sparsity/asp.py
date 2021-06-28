@@ -155,8 +155,8 @@ def prune_model(place,
                 optimizer = fluid.contrib.mixed_precision.decorator.decorate(optimizer )
                 # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
                 # will insert necessary masking operations for ASP workflow.
-                optimizer = sparsity.decorate(optimizer )
-                optimizer.minimize(optimizer, loss, main_program, startup_program)
+                optimizer = sparsity.decorate(optimizer)
+                optimizer.minimize(loss, startup_program)
 
             exe = fluid.Executor(place)
             exe.run(startup_program)

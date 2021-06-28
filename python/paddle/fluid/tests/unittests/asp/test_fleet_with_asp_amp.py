@@ -34,15 +34,11 @@ class TestFleetWithASP(unittest.TestCase):
 
     def net(self, main_prog, startup_prog, dtype='float32'):
         with fluid.program_guard(main_prog, startup_prog):
-            input_x = fluid.data(name='x', shape=[None, 3, 32, 32], dtype=dtype)
+            input_x = fluid.data(name='x', shape=[None, 1, 32, 32], dtype=dtype)
             input_y = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
             hidden = fluid.layers.conv2d(
-                input=input_x,
-                num_filters=4,
-                filter_size=3,
-                padding=2,
-                act="relu")
+                input=input_x, num_filters=4, filter_size=3, act="relu")
             hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
             prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
 
@@ -79,10 +75,9 @@ class TestFleetWithASP(unittest.TestCase):
 
         sparsity.prune_model(place, train_prog)
 
-        for _ in range(3):
-            data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-                10, size=(64, 1)))
-            exe.run(train_prog, feed=feeder.feed([data]))
+        data = (np.random.randn(64, 3, 32, 32), np.random.randint(
+            10, size=(64, 1)))
+        exe.run(train_prog, feed=feeder.feed([data]))
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
@@ -120,10 +115,9 @@ class TestFleetWithASP(unittest.TestCase):
 
         sparsity.prune_model(place, train_prog)
 
-        for _ in range(3):
-            data = (np.random.randn(64, 3, 32, 32), np.random.randint(
-                10, size=(64, 1)))
-            exe.run(train_prog, feed=feeder.feed([data]))
+        data = (np.random.randn(64, 3, 32, 32), np.random.randint(
+            10, size=(64, 1)))
+        exe.run(train_prog, feed=feeder.feed([data]))
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
