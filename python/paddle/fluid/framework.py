@@ -1181,7 +1181,7 @@ class Variable(object):
             var_str = "{name} : {type})".\
                 format(name=self.name, type=type_str)
 
-        if self.parameterized:
+        if self.is_parameter:
             if self.trainable:
                 var_str = "trainable param " + var_str
             else:
@@ -1305,7 +1305,7 @@ class Variable(object):
         self.desc.set_persistable(p)
 
     @property
-    def parameterized(self):
+    def is_parameter(self):
         """
         Indicating if we current Variable is a Parameter
 
@@ -1315,13 +1315,13 @@ class Variable(object):
             new_parameter = paddle.static.create_parameter(name="X",
                                                 shape=[-1, 23, 48],
                                                 dtype='float32')
-            print("Check current Var is a Parameter: {}".format(new_parameter.parameterized))
+            print("Check current Var is a Parameter: {}".format(new_parameter.is_parameter))
         """
-        return self.desc.parameterized()
+        return self.desc.is_parameter()
 
-    @parameterized.setter
-    def parameterized(self, p):
-        self.desc.set_parameterized(p)
+    @is_parameter.setter
+    def is_parameter(self, p):
+        self.desc.set_is_parameter(p)
 
     @property
     def name(self):
@@ -3059,7 +3059,15 @@ class Block(object):
         # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
-                self.create_var(name=var.name(), desc=var, type=var.type())
+                if var.is_parameter:
+                    self.create_parameter(
+                        name=var.name(),
+                        desc=var,
+                        type=var.type(),
+                        shape=var.shape(),
+                        dtype=var.dtype())
+                else:
+                    self.create_var(name=var.name(), desc=var, type=var.type())
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
@@ -5417,7 +5425,7 @@ class Parameter(Variable):
 
         self.is_distributed = False
 
-        self.parameterized = True
+        self.is_parameter = True
 
     def __str__(self):
         return self._to_readable_code()

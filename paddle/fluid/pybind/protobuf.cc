@@ -175,8 +175,8 @@ void BindVarDsec(pybind11::module *m) {
       .def("serialize_to_string", SerializeMessage<pd::VarDesc>)
       .def("persistable", &pd::VarDesc::Persistable)
       .def("set_persistable", &pd::VarDesc::SetPersistable)
-      .def("parameterized", &pd::VarDesc::Parameterized)
-      .def("set_parameterized", &pd::VarDesc::SetParameterized)
+      .def("is_parameter", &pd::VarDesc::IsParameter)
+      .def("set_is_parameter", &pd::VarDesc::SetIsParameter)
       .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
       .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed);
 
