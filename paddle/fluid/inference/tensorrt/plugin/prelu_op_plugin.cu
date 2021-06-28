@@ -99,9 +99,23 @@ int PReluPluginDynamic::initialize() {
              cudaMemcpyHostToDevice);
   return 0;
 }
-size_t PReluPluginDynamic::getSerializationSize() const { return 0; }
 
-void PReluPluginDynamic::serialize(void *buffer) const {}
+PReluPluginDynamic::PReluPluginDynamic(void const *serialData,
+                                       size_t serialLength) {
+  DeserializeValue(&serialData, &serialLength, &weight_);
+  const char *prelu_mode;
+  DeserializeValue(&serialData, &serialLength, &prelu_mode);
+  mode_ = std::string(prelu_mode);
+}
+
+size_t PReluPluginDynamic::getSerializationSize() const {
+  return SerializedSize(mode_.c_str()) + SerializedSize(weight_);
+}
+
+void PReluPluginDynamic::serialize(void *buffer) const {
+  SerializeValue(&buffer, weight_);
+  SerializeValue(&buffer, mode_.c_str());
+}
 
 nvinfer1::DimsExprs PReluPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,

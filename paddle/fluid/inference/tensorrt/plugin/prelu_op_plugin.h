@@ -1,4 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,14 +111,7 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
     std::copy(weight, weight + weight_num, weight_.data());
   }
 
-  // It was used for tensorrt deserialization.
-  // It should not be called by users.
-  PReluPluginDynamic(void const* serialData, size_t serialLength) {
-    DeserializeValue(&serialData, &serialLength, &weight_);
-    const char* prelu_mode;
-    DeserializeValue(&serialData, &serialLength, &prelu_mode);
-    mode_ = std::string(prelu_mode);
-  }
+  PReluPluginDynamic(void const* serialData, size_t serialLength);
   ~PReluPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     auto ptr = new PReluPluginDynamic(weight_.data(), weight_.size(), mode_);
