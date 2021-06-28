@@ -273,7 +273,7 @@ std::future<int32_t> BrpcPsClient::print_table_stat(uint32_t table_id) {
 }
 std::future<int32_t> BrpcPsClient::send_cmd(
     uint32_t table_id, int cmd_id, const std::vector<std::string> &params,
-    int timeout_ms = 10800000) {
+    int timeout_ms) {
   size_t request_call_num = _server_channels.size();
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [request_call_num, cmd_id](void *done) {
@@ -412,7 +412,7 @@ std::future<int32_t> BrpcPsClient::stop_profiler() {
 
 std::future<int32_t> BrpcPsClient::barrier(size_t table_id,
                                            uint32_t barrier_type,
-                                           int timeout_ms = 10800000) {
+                                           int timeout_ms) {
   return send_cmd(table_id, PS_BARRIER, {std::to_string(barrier_type)},
                   timeout_ms);
 }
