@@ -2141,6 +2141,23 @@ function reuse_so_cache() {
     fi
 }
 
+function find_temporary_files() {
+    set +x
+    jsonData=`curl \
+            -H "Authorization: token ${GITHUB_API_TOKEN}"\
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
+    
+    result=`echo ${jsonData}|python ${PADDLE_ROOT}/tools/check_file_suffix.py`
+    
+    if [ ${#result} -gt 0 ]
+    then
+	echo ${result}
+	exit 65
+    fi
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2153,6 +2170,7 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
+        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
