@@ -102,11 +102,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     place = _get_paddle_place(place)
     if place is None:
         place = _current_expected_place()
-    elif not isinstance(
-            place,
-        (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+    elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
+                                core.CUDAPlace, core.NPUPlace)):
         raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace"
         )
 
     #Todo(zhouwei): Support allocate tensor on any other specified card
@@ -134,16 +133,19 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                 )
         elif isinstance(data, paddle.Tensor):
             data = data._copy_to(place, False)
-            ata = _handle_dtype(data, dtype)
+            data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
-        elif isinstance(data, core.LoDTensor):
-            # convert LoDTensor to VarBase first
-            # Currenly, LoDTensor does no copy when places are same
+            return data
+        elif isinstance(data, (core.LoDTensor, core.Tensor)):
+            # Note(zhouwei25): should't expose it to users, just for internal use.
+            # convert core.Tensor/core.LoDTensor to VarBase first
+            # Currenly, there is no copy when places are same
             data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
             data.stop_gradient = stop_gradient
+            return data
         else:
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".

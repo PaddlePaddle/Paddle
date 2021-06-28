@@ -23,6 +23,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+AttrCompat& AttrCompat::IsStringEQ(const std::string& value) {
+  conditions_.emplace_back([value](const Attribute& attr) -> bool {
+    return value == BOOST_GET_CONST(std::string, attr);
+  });
+  return *this;
+}
+
 AttrCompat& AttrCompat::IsStringIn(const std::set<std::string>& candidates) {
   conditions_.emplace_back([candidates](const Attribute& attr) -> bool {
     std::string value = BOOST_GET_CONST(std::string, attr);
@@ -61,7 +68,7 @@ AttrCompat& AttrCompat::IsLeftDefault() {
     return *this;
   }
   const OpInfo& op_info = OpInfoMap::Instance().Get(op_name);
-  const AttributeMap attrs = op_info.Checker()->GetAttrsDefaultValuesMap();
+  const AttributeMap attrs = op_info.Checker()->GetDefaultAttrsMap();
   if (attrs.find(attr_name_) == attrs.end()) {
     LOG(WARNING) << "Op (" << op_name << ") has no default attr:" << attr_name_;
     conditions_.emplace_back([](const Attribute& attr) { return false; });
@@ -75,9 +82,6 @@ AttrCompat& AttrCompat::IsLeftDefault() {
 }
 
 bool AttrCompat::operator()(const OpDesc& op_desc) {
-  if (conditions_.empty()) {
-    return true;
-  }
   if (!op_desc.HasAttr(attr_name_)) {
     if (!optional_) {
       LOG(WARNING) << "The non-optional Attr(" << attr_name_ << ") of Op ("
@@ -120,7 +124,7 @@ InputOrOutputCompat& InputOrOutputCompat::IsOptional() {
 
 bool InputOrOutputCompat::operator()(
     const std::vector<std::string>& input) const {
-  if (input.empty()) return false;
+  if (input.empty()) return optional_;
   for (auto& func : conditions_) {
     if (!func(input)) {
       return false;
@@ -263,7 +267,7 @@ bool OpCompatSensiblePass::IsCompat(
     auto op_type = node_pair.second->Op()->Type();
     if (!op_compat_judgers_.count(op_type)) {
       if (HasOpDef(op_type)) {
-        LOG(WARNING) << op_type << "compat not registered!";
+        LOG(WARNING) << op_type << " compat not registered!";
         return false;
       }
       continue;

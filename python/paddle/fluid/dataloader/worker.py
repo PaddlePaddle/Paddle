@@ -26,10 +26,7 @@ from ..framework import in_dygraph_mode
 from .flat import _flatten_batch
 
 # NOTE: queue has a different name in python2 and python3
-if six.PY2:
-    import Queue as queue
-else:
-    import queue
+import queue
 
 __all__ = ['get_worker_info']
 

@@ -92,8 +92,6 @@ class Group():
         return True
 
     def get_group_rank(self, rank):
-        if self.id == 0:
-            return rank
         if self.is_member() and rank in self.ranks:
             return self.ranks.index(rank)
         else:
@@ -126,7 +124,8 @@ def _get_group_map():
     global _group_map
     if not _group_map:
         genv = _get_global_env()
-        _group_map[0] = Group(genv.rank, genv.world_size, 0)
+        _group_map[0] = Group(genv.rank, genv.world_size,
+                              list(range(genv.world_size)))
     return _group_map
 
 
@@ -267,7 +266,9 @@ def new_group(ranks=None, backend=None):
 
     # TODO(shenliang03): This is a temporary solution to solve the problem of 
     # hang caused by cross-creation of new_group
-    tmp = fill_constant([0], dtype="int32", value="1")
+    tmp = paddle.to_tensor(
+        [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+            [0], dtype="int32", value="1")
     paddle.distributed.all_reduce(tmp, use_calc_stream=True)
     paddle.distributed.wait(tmp)
     return gp
@@ -1011,6 +1012,27 @@ def _c_softmax_with_cross_entropy(logits,
             return loss
         else:
             return loss, softmax
+
+    attrs = {
+        'ring_id': ring_id,
+        'rank': rank,
+        'nranks': nranks,
+    }
+    helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    helper.append_op(
+        type='c_softmax_with_cross_entropy',
+        inputs={'Logits': logits,
+                'Label': label},
+        outputs={'Softmax': softmax,
+                 'Loss': loss},
+        attrs=attrs)
+
+    if return_softmax:
+        return loss, softmax
+
+    return loss
 
 
 def _linear(x, weight, bias=None, name=None):
