@@ -24,7 +24,6 @@ def {
     name: "value"
     type: FLOAT
   }
-
 }
 extra {
     attrs {

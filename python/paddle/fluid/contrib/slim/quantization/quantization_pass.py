@@ -1148,7 +1148,7 @@ class QuantizationFreezePass(object):
                     ], "the dim of scale_v should be 1 or 2"
                     if scale_v.ndim == 2:
                         scale_v = scale_v[0]
-                    if scale_v.size == 1:
+                    if scale_v.size == 1 and self._weight_quantize_type == 'abs_max':
                         scale_v = scale_v[0]
                     else:
                         scale_v = scale_v.tolist()
@@ -1183,7 +1183,8 @@ class QuantizationFreezePass(object):
             if op_node_desc.has_attr("quantization_type") and \
                 op_node_desc.attr("quantization_type") == "qat_with_weight":
                 if self._weight_quantize_type == 'channel_wise_abs_max':
-                    self._insert_post_channel_dequant_op(graph, op_node)
+                    self._insert_post_channel_dequant_op(graph, op_node,
+                                                         quant_axis)
                 else:
                     self._insert_post_dequant_op(graph, op_node)
 
@@ -1210,7 +1211,7 @@ class QuantizationFreezePass(object):
                 v.node]
         graph.safe_remove_nodes(op_node)
 
-    def _insert_post_channel_dequant_op(self, graph, op_node):
+    def _insert_post_channel_dequant_op(self, graph, op_node, quant_axis):
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
         for var_node in op_node.inputs:
             name = var_node.name()
@@ -1258,6 +1259,7 @@ class QuantizationFreezePass(object):
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
                 'quant_bits': [self._weight_bits, self._activation_bits],
+                'quant_axis': quant_axis,
                 'op_role': core.op_proto_and_checker_maker.OpRole.Forward
             },
             inputs={
