@@ -201,8 +201,9 @@ class Communicator {
 
   virtual void Barrier() {}
 
-  virtual void BarrierWithTable(uint32_t barrier_type) {
-    auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
+  virtual void BarrierWithTable(uint32_t barrier_type, int timeout_ms) {
+    auto rets =
+        _worker_ptr->barrier(barrier_table_id_, barrier_type, timeout_ms);
     rets.wait();
   }
 

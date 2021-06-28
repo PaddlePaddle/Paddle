@@ -24,6 +24,9 @@ limitations under the License. */
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
 
+constexpr int init_timeout = 10800000;
+constexpr int barrier_timeout = 10800000;
+
 namespace paddle {
 namespace distributed {
 
@@ -332,9 +335,9 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
       VLOG(4) << "push dense param to table " << table_id
               << " from 0' trainer done";
     }
-    BarrierWithTable(1);
+    BarrierWithTable(1, init_timeout);
   } else {
-    BarrierWithTable(1);
+    BarrierWithTable(1, init_timeout);
     for (auto &iter : recv_varname_to_ctx) {
       auto &table_id = iter.first;
       auto &varnames = iter.second;
@@ -343,7 +346,7 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
               << " from 0' trainer done";
     }
   }
-  BarrierWithTable(1);
+  BarrierWithTable(1, init_timeout);
   return;
 }
 
@@ -756,13 +759,13 @@ void HalfAsyncCommunicator::BarrierWeakUp() {
 
 void SyncCommunicator::BarrierSend() {
   if (!running_) return;
-  BarrierWithTable(0);
+  BarrierWithTable(0, barrier_timeout);
   VLOG(4) << "BarrierSend with SyncCommunicator";
 }
 
 void SyncCommunicator::BarrierRecv() {
   if (!running_) return;
-  BarrierWithTable(1);
+  BarrierWithTable(1, barrier_timeout);
 
   VLOG(4) << "BarrierRecv with SyncCommunicator";
 }
@@ -884,11 +887,11 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
                                 int table_id) {
   if (trainer_id_ == 0) {
     RpcSendDenseParam(varnames, table_id, *recv_scope_);
-    BarrierWithTable(1);
+    BarrierWithTable(1, init_timeout);
     VLOG(1) << "push dense param to table " << table_id
             << " from 0' trainer done";
   } else {
-    BarrierWithTable(1);
+    BarrierWithTable(1, init_timeout);
     RpcRecvDense(varnames, table_id, recv_scope_);
     VLOG(1) << "pull dense param to table " << table_id
             << " from 0' trainer done";
@@ -987,11 +990,11 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
   VLOG(1) << "Init Sparse " << var_name << " : table " << table_id << " begin.";
   if (trainer_id_ == 0) {
     RpcSendSparseParam(var_name, table_id, *recv_scope_);
-    BarrierWithTable(1);
+    BarrierWithTable(1, init_timeout);
     VLOG(1) << "push sparse param to table " << table_id
             << " from 0' trainer done";
   } else {
-    BarrierWithTable(1);
+    BarrierWithTable(1, init_timeout);
     RpcRecvSparse(var_name, table_id, recv_scope_);
     VLOG(1) << "pull sparse param to table " << table_id
             << " from 0' trainer done";
