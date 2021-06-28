@@ -108,6 +108,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("WeightH", {inputs[3]});
 
     op->SetOutput("Hidden", {outputs[0]});
+    op->SetOutput("Cell", {outputs[1]});
 
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
     op->SetAttr("Scale_data", 1.0f);
@@ -431,7 +432,7 @@ ProgramDesc BuildProgramDescFusionGru() {
 }
 
 static const std::initializer_list<std::string> variable_names_fusion_lstm = {
-    "x", "wx", "wh", "b", "h"};
+    "x", "wx", "wh", "b", "h", "c"};
 
 // (x, wx, wh, b)->Fusion_lstm_1->h
 ProgramDesc BuildProgramDescFusionLSTM() {
@@ -443,8 +444,8 @@ ProgramDesc BuildProgramDescFusionLSTM() {
     }
   }
 
-  SetOp(&prog, "fusion_lstm", "Fusion_lstm_1", {"x", "wx", "wh", "b"}, {"h"},
-        true, "int8");
+  SetOp(&prog, "fusion_lstm", "Fusion_lstm_1", {"x", "wx", "wh", "b"},
+        {"h", "c"}, true, "int8");
 
   return prog;
 }
