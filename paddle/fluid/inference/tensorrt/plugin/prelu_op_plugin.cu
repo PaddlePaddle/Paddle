@@ -124,7 +124,7 @@ bool PReluPluginDynamic::supportsFormatCombination(
   (in_out && pos < (nb_inputs + nb_outputs));
 
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
-          in_out[pos].format == nvinfer1::PluginFormat::kNCHW);
+          in_out[pos].format == nvinfer1::PluginFormat::kLINEAR);
 }
 
 nvinfer1::DataType PReluPluginDynamic::getOutputDataType(

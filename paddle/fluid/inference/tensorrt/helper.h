@@ -134,6 +134,19 @@ inline size_t ProductDim(const nvinfer1::Dims& dims) {
   return v;
 }
 
+inline void PrintITensorShape(nvinfer1::ITensor* X) {
+  auto dims = X->getDimensions();
+  auto name = X->getName();
+  std::cout << "ITensor " << name << " shape: [";
+  for (int i = 0; i < dims.nbDims; i++) {
+    if (i == dims.nbDims - 1)
+      std::cout << dims.d[i];
+    else
+      std::cout << dims.d[i] << ", ";
+  }
+  std::cout << "]\n";
+}
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

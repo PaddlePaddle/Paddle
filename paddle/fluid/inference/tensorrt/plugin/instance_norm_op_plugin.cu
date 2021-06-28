@@ -55,7 +55,7 @@ bool InstanceNormPlugin::supportsFormat(nvinfer1::DataType type,
                                         nvinfer1::PluginFormat format) const {
   return ((type == nvinfer1::DataType::kFLOAT ||
            type == nvinfer1::DataType::kHALF) &&
-          (format == nvinfer1::PluginFormat::kNCHW));
+          (format == nvinfer1::PluginFormat::kLINEAR));
 }
 
 int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,

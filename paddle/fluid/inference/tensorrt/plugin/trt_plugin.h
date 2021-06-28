@@ -194,7 +194,7 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   bool supportsFormat(nvinfer1::DataType type,
                       nvinfer1::PluginFormat format) const override {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
   // Initialize the layer for execution.
   // This is called when the engine is created.
