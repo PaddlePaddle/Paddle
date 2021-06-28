@@ -28,6 +28,44 @@ namespace ir {
 class Graph;
 
 using string::PrettyLogDetail;
+ScaleMatmulFusePass::ScaleMatmulFusePass() {
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGT(0.0f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsType<bool>()
+      .End()
+      .AddAttr("transpose_Y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("scale"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("scale")
+      .IsNumGT(0.0f)
+      .End()
+      .AddAttr("bias")
+      .IsNumEQ(0.0f)
+      .End()
+      .AddAttr("bias_after_scale")
+      .IsType<bool>()
+      .End();
+}
 
 void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
@@ -79,6 +117,11 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       matmul_op->Op()->SetInput(matmul_op_input_name,
                                 std::vector<std::string>({scale_in->Name()}));
       IR_NODE_LINK_TO(scale_in, matmul_op);
+
+      if (!IsCompat(*matmul_op->Op())) {
+        LOG(WARNING) << "scale_matmul_fuse_pass in out fc op compat failed.";
+        return;
+      }
       GraphSafeRemoveNodes(graph, {scale_op, scale_out});
       found_scale_matmul_fuse_count++;
     }
