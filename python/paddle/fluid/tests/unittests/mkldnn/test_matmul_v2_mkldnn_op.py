@@ -238,9 +238,6 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
 def create_bf16_test_class(parent):
     @unittest.skipIf(not core.supports_bfloat16(),
                      "place does not support BF16 evaluation")
-    @unittest.skipIf(
-        core.is_compiled_with_cuda(),
-        "core is compiled with CUDA which has no BF implementation")
     class TestMatMulV2Bf16OneDNNOp(parent):
         def set_inputs(self, x, y):
             self.inputs = {
