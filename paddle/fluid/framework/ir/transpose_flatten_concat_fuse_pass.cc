@@ -50,6 +50,7 @@ TransposeFlattenConcatFusePass::TransposeFlattenConcatFusePass() {
       .AddInput("X")  // Input("X"): vector<tensors>
       .End()
       .AddInput("AxisTensor")
+      .IsTensor()
       .IsOptional()
       .End()
       .AddOutput("Out")
