@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <string>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -25,6 +26,103 @@ namespace framework {
 namespace ir {
 
 class Node;
+
+MapMatmul2MulPass::MapMatmul2MulPass() {
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGE(0.99f)
+      .IsNumLE(1.01f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
+
+Flatten2MatmulFusePass::Flatten2MatmulFusePass() {
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGE(0.99f)
+      .IsNumLE(1.01f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("flatten2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(0)
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
 
 void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -39,6 +137,11 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     VLOG(4) << "map matmul to mul";
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
@@ -82,6 +185,11 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(mul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {matmul_op});
       ++found_count;
+
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "MapMatmul2MulPass in out mul op compat failed.";
+        return;
+      }
     }
   };
 
@@ -159,6 +267,68 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
+Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
+  AddOpCompat(OpCompat("reshape2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Shape")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ShapeTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("shape")  // ints
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGT(0.99999f)
+      .IsNumLT(1.00001f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ("False")
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ("False")
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
+
 void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
@@ -172,6 +342,10 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     VLOG(4) << "fuse reshape2+matmul to mul";
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_in_x, reshape2_in_x, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_op, reshape2_op, fuse_pattern);
@@ -218,6 +392,10 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
         desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
       }
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "reshape2 matmul pass in out mul op compat failed.";
+        return;
+      }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(reshape2_in_x, mul_node);
       IR_NODE_LINK_TO(matmul_in_y, mul_node);
@@ -244,6 +422,11 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     VLOG(4) << "fuse flatten2+matmul to mul";
     GET_IR_NODE_FROM_SUBGRAPH(flatten2_in_x, flatten2_in_x, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(flatten2_op, flatten2_op, fuse_pattern);
@@ -301,6 +484,11 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(mul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {flatten2_op, matmul_in_x, matmul_op});
       ++found_count;
+
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "Flatten2MatmulFusePass in out mul op compat failed.";
+        return;
+      }
     }
   };
 

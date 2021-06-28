@@ -136,7 +136,7 @@ class AscendHelper(object):
 
     def dtype2np(self, index):
         assert index in self.dtype2np_map, "index[%d] is not supported %d" % (
-            dtype)
+            index)
         return self.dtype2np_map[index]
 
 
