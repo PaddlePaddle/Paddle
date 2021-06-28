@@ -28,9 +28,9 @@ from paddle.fluid.core import AnalysisConfig
 class TensorRTPoolTest(InferencePassTest):
     def setUp(self):
         self.bs = 1
-        self.channel = 4
-        self.height = 16
-        self.width = 16
+        self.channel = 3
+        self.height = 8
+        self.width = 8
         self.pool_size = 2
         self.pool_type = 'max'
         self.pool_stride = 1
