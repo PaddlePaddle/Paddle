@@ -44,7 +44,6 @@ ShuffleChannelDetectPass::ShuffleChannelDetectPass() {
       .IsTensor()
       .End()
       .AddOutput("XShape")
-      .IsOptional()
       .IsTensor()
       .End()
       .AddOutput("Out")
