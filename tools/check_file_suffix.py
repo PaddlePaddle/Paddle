@@ -33,6 +33,7 @@ def check_suffix():
         for suffix in suffix_arr:
             if file_name.endswith(suffix):
                 files_with_invalid_suffix.append(file_name)
+                break
     if len(files_with_invalid_suffix) != 0:
         print('Error: Find file(s): [\n')
         for i in range(len(files_with_invalid_suffix)):
