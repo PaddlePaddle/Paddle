@@ -127,6 +127,7 @@ def prune_model(place,
 
             import paddle
             import paddle.fluid as fluid
+            import paddle.fluid.core as core
             from paddle.fluid.contrib import sparsity
 
             paddle.enable_static()
@@ -134,7 +135,9 @@ def prune_model(place,
             main_program = fluid.Program()
             startup_program = fluid.Program()
 
-            place = fluid.CUDAPlace(0)
+            place = paddle.CPUPlace()
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
 
             with fluid.program_guard(main_program, startup_program):
                 input_data = fluid.layers.data(name='data', shape=[None, 128])
