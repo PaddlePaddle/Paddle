@@ -217,6 +217,7 @@ rem ------Build windows inference library------
 set ON_INFER=ON
 set WITH_PYTHON=OFF
 set CUDA_ARCH_NAME=All
+python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
 
 call :cmake || goto cmake_error
 call :build || goto build_error
