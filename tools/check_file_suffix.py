@@ -37,7 +37,9 @@ def check_suffix():
         print('Error: Find file(s): [\n')
         for i in range(len(files_with_invalid_suffix)):
             print('\t' + files_with_invalid_suffix[i] + '\n')
-        print(' ] end(s) with invalid suffix.')
+        print(
+            ' ] end(s) with invalid suffix, Please check if these files are temporary.'
+        )
 
 
 if __name__ == "__main__":

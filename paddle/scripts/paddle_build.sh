@@ -2142,7 +2142,8 @@ function reuse_so_cache() {
     fi
 }
 
-function find_suffix_files() {
+function find_temporary_files() {
+    set +x
     jsonData=`curl \
             -H "Authorization: token ${GITHUB_API_TOKEN}"\
             -H "Accept: application/vnd.github.v3+json" \
@@ -2153,7 +2154,7 @@ function find_suffix_files() {
     if [ ${#result} -gt 0 ]
     then
 	echo ${result}
-	exit 1
+	exit 65
     fi
 }
 
@@ -2170,7 +2171,7 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
-        find_suffix_files
+        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
