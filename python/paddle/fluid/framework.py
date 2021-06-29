@@ -1312,10 +1312,14 @@ class Variable(object):
         Examples:
           .. code-block:: python
 
+            import paddle
             new_parameter = paddle.static.create_parameter(name="X",
-                                                shape=[-1, 23, 48],
+                                                shape=[10, 23, 48],
                                                 dtype='float32')
-            print("Check current Var is a Parameter: {}".format(new_parameter.is_parameter))
+            if new_parameter.is_parameter:
+                print("Current Var is a Parameter")
+            else:
+                print("Current Var is a Variable")
         """
         return self.desc.is_parameter()
 
