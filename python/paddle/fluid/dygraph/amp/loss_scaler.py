@@ -244,3 +244,89 @@ class AmpScaler(object):
                 self._incr_count = 0
 
         return
+
+    def get_enable(self):
+        """
+        Get the parameter of `_enable`.
+        """
+        return self._enable
+
+    def get_use_dynamic_loss_scaling(self):
+        """
+        Get the parameter of `_use_dynamic_loss_scaling`.
+        """
+        return self._use_dynamic_loss_scaling
+
+    def get_init_loss_scaling(self):
+        """
+        Get the parameter of `_init_loss_scaling`.
+        """
+        return self._init_loss_scaling
+
+    def set_init_loss_scaling(self, new_init_loss_scaling):
+        """
+        Set the parameter of `_init_loss_scaling` by `new_init_loss_scaling`.
+        Args:
+            new_init_loss_scaling(int):  The new_init_loss_scaling used to update _init_loss_scaling.
+        """
+        self._init_loss_scaling = new_init_loss_scaling
+        self._scale = to_variable(
+            np.array([self._init_loss_scaling]).astype(np.float32))
+
+    def get_incr_ratio(self):
+        """
+        Get the parameter of `_incr_ratio`.
+        """
+        return self._incr_ratio
+
+    def set_incr_ratio(self, new_incr_ratio):
+        """
+        Set the parameter of `_incr_ratio` by `new_incr_ratio`, `new_incr_ratio` should > 1.0.
+        Args:
+            new_incr_ratio(float):  The new_incr_ratio used to update _incr_ratio.
+        """
+        assert new_incr_ratio > 1.0, "The new_incr_ratio must be > 1.0."
+        self._incr_ratio = new_incr_ratio
+
+    def get_decr_ratio(self):
+        """
+        Get the parameter of `_decr_ratio`.
+        """
+        return self._decr_ratio
+
+    def set_decr_ratio(self, new_decr_ratio):
+        """
+        Set the parameter of `_decr_ratio` by `new_incr_ratio`, `new_decr_ratio` should < 1.0.
+        Args:
+            new_decr_ratio(float):  The new_decr_ratio used to update _decr_ratio.
+        """
+        assert new_decr_ratio < 1.0, "The new_decr_ratio must be < 1.0."
+        self._decr_ratio = new_decr_ratio
+
+    def get_incr_every_n_steps(self):
+        """
+        Get the parameter of `_incr_every_n_steps`.
+        """
+        return self._incr_every_n_steps
+
+    def set_incr_every_n_steps(self, new_incr_every_n_steps):
+        """
+        Set the parameter of `_incr_every_n_steps` by `new_incr_every_n_steps`.
+        Args:
+            new_incr_every_n_steps(float):  The new_incr_every_n_steps used to update _incr_every_n_steps.
+        """
+        self._incr_every_n_steps = new_incr_every_n_steps
+
+    def get_decr_every_n_nan_or_inf(self):
+        """
+        Get the parameter of `_decr_every_n_nan_or_inf`.
+        """
+        return self._decr_every_n_nan_or_inf
+
+    def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
+        """
+        Set the parameter of `_decr_every_n_nan_or_inf` by `new_decr_every_n_nan_or_inf`.
+        Args:
+            new_decr_every_n_nan_or_inf(float):  The new_decr_every_n_nan_or_inf used to update _decr_every_n_nan_or_inf.
+        """
+        self._decr_every_n_nan_or_inf = new_decr_every_n_nan_or_inf

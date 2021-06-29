@@ -209,6 +209,35 @@ class TestAmpScaler(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(param.numpy(), params_init[param.name]))
 
+    def test_get_and_set(self):
+        with fluid.dygraph.guard():
+            scaler = paddle.amp.GradScaler(
+                enable=True,
+                init_loss_scaling=1024,
+                incr_ratio=2.0,
+                decr_ratio=0.5,
+                incr_every_n_steps=1000,
+                decr_every_n_nan_or_inf=2,
+                use_dynamic_loss_scaling=True)
+            self.assertEqual(scaler.get_enable() == True, True)
+            self.assertEqual(scaler.get_init_loss_scaling() == 1024, True)
+            self.assertEqual(scaler.get_incr_ratio() == 2.0, True)
+            self.assertEqual(scaler.get_decr_ratio() == 0.5, True)
+            self.assertEqual(scaler.get_incr_every_n_steps() == 1000, True)
+            self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 2, True)
+            self.assertEqual(scaler.get_use_dynamic_loss_scaling() == True,
+                             True)
+            scaler.set_decr_every_n_nan_or_inf(4)
+            self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 4, True)
+            scaler.set_decr_ratio(0.1)
+            self.assertEqual(scaler.get_decr_ratio() == 0.1, True)
+            scaler.set_incr_every_n_steps(200)
+            self.assertEqual(scaler.get_incr_every_n_steps() == 200, True)
+            scaler.set_incr_ratio(3.0)
+            self.assertEqual(scaler.get_incr_ratio() == 3.0, True)
+            scaler.set_init_loss_scaling(100)
+            self.assertEqual(scaler.get_init_loss_scaling() == 100, True)
+
 
 def reader_decorator(reader):
     def __reader__():
