@@ -247,11 +247,15 @@ def create_bf16_test_class(parent):
             self.attrs['mkldnn_data_type'] = "bfloat16"
 
         def test_check_output(self):
-            if not core.supports_bfloat16():
-                self.check_output_with_place(core.CPUPlace())
-            else:
+            if core.is_compiled_with_cuda():
+                self.skipTest(
+                    "OneDNN doesn't support bf16 with CUDA, skipping UT" +
+                    self.__class__.__name__)
+            elif not core.supports_bfloat16():
                 self.skipTest("Core doesn't support bf16, skipping UT" +
                               self.__class__.__name__)
+            else:
+                self.check_output_with_place(core.CPUPlace())
 
         def test_check_grad(self):
             pass
