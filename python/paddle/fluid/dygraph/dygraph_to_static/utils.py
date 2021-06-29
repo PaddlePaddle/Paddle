@@ -485,8 +485,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
             os.remove(filepath)
 
     source = ast_to_source_code(ast_root)
-    import_fluid = "import paddle\nimport paddle.fluid as fluid\n"
-    source = import_fluid + source
+    source = _inject_import_statements() + source
 
     f = tempfile.NamedTemporaryFile(
         mode='w', suffix='.py', delete=False, encoding='utf-8')
@@ -517,6 +516,14 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     recover_globals_attribute(dyfunc, callable_func)
 
     return callable_func, f.name
+
+
+def _inject_import_statements():
+    import_statements = [
+        "import paddle", "import paddle.fluid as fluid", "from typing import *",
+        "import numpy as np"
+    ]
+    return '\n'.join(import_statements) + '\n'
 
 
 def recover_globals_attribute(src_obj, dst_obj):

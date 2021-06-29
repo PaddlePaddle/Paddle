@@ -198,6 +198,8 @@ class ElasticManager(object):
     def exit(self, completed=False):
         logger.info('manager exist completed {}'.format(completed))
 
+        self.launcher.stop()
+
         if not self.enable:
             return
 
@@ -288,7 +290,6 @@ class ElasticManager(object):
                 logger.info('job exit with code {}'.format(ret))
                 # process is completed if ret >= 0 or error else
                 completed = True if ret == 0 else False
-                self.launcher.stop()
                 self.exit(completed=completed)
                 if completed:
                     return ElasticStatus.COMPLETED

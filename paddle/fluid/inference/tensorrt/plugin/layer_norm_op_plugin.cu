@@ -43,7 +43,11 @@ nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
 }
 
 int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
+#if IS_TRT_VERSION_LT(8000)
                              void **outputs, void *workspace,
+#else
+                             void *const *outputs, void *workspace,
+#endif
                              cudaStream_t stream) {
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);

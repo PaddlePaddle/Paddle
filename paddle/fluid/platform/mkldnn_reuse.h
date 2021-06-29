@@ -599,17 +599,8 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
                       const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
-            platform::CreateKey(
-                dev_ctx, framework::vectorize(x->dims()), uniq_name,
-                (algo == dnnl::algorithm::binary_mul ? "M" : ""))) {
-    // bradcasting combined with in-place may require
-    auto rankdiff = x->dims().size() - y->dims().size();
-    if (rankdiff > 0) {
-      auto suffix = std::to_string(rankdiff);
-      this->key_ += suffix;
-      this->key_common_ += suffix;
-    }
-
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                uniq_name)) {
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
           x->layout(), DataLayout::kMKLDNN,
@@ -629,18 +620,24 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       const auto src_y_tz = framework::vectorize(y->dims());
       // if output tensor(z) is nullptr then we are computing into oneDNN
       // managed buffer
-      const auto dst_tz =
-          (z == nullptr) ? src_x_tz : framework::vectorize(z->dims());
+      auto rankdiff = x->dims().size() - y->dims().size();
+      const auto dst_tz = (z == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
+                                         : framework::vectorize(z->dims());
 
-      const auto src0_md = dnnl::memory::desc(
+      auto src0_md = dnnl::memory::desc(
           src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
       auto src1_md = dnnl::memory::desc(
           src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
-      if (rankdiff > 0) {
+      if (rankdiff > 0) {  // Second input is of smaller rank than first
         std::vector<int64_t> dims1_ex(rankdiff, 1);
         dims1_ex.insert(next(dims1_ex.begin(), (axis == -1 ? rankdiff : axis)),
                         src_y_tz.begin(), src_y_tz.end());
         src1_md = src1_md.reshape(dims1_ex);
+      } else if (rankdiff < 0) {  // First input is of smaller than second
+        std::vector<int64_t> dims0_ex(-rankdiff, 1);
+        dims0_ex.insert(next(dims0_ex.begin(), (axis == -1 ? -rankdiff : axis)),
+                        src_x_tz.begin(), src_x_tz.end());
+        src0_md = src0_md.reshape(dims0_ex);
       }
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::any);
@@ -1023,6 +1020,27 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
     return this->AcquireMemory(dims_, dtype_, fmt, ptr, "@user_src_mem_p");
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireSrcSubmemory(
+      const std::vector<int64_t>& dims, const std::vector<int64_t>& offset,
+      const std::shared_ptr<mkldnn::memory>& mem_p, int submemory_number) {
+    std::string local_key = key_;
+    local_key.append("@submem")
+        .append(std::to_string(submemory_number))
+        .append("_p");
+
+    auto sub_mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (sub_mem_p == nullptr) {
+      auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
+      sub_mem_p = std::make_shared<mkldnn::memory>(sub_md, engine_,
+                                                   mem_p->get_data_handle());
+      dev_ctx_.SetBlob(local_key, sub_mem_p);
+    } else {
+      sub_mem_p->set_data_handle(mem_p->get_data_handle());
+    }
+    return sub_mem_p;
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       framework::Tensor* output, const MKLDNNMemoryFormat& fmt,
       platform::Place place) {
@@ -1043,6 +1061,44 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
       mem_p->set_data_handle(dst_data);
     }
     return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
+      framework::Tensor* output, const std::vector<int64_t>& dims,
+      const int memory_number, const MKLDNNMemoryFormat& fmt,
+      platform::Place place) {
+    auto local_key =
+        key_ + "@user_dst_mem" + std::to_string(memory_number) + "_p";
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
+      auto dst_data =
+          output->mutable_data(place, vtype_dst_, dst_md.get_size());
+
+      mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      // Even if memory object exists , we may be using it for diffrent tensor
+      auto dst_data =
+          output->mutable_data(place, vtype_dst_, mem_p->get_desc().get_size());
+      mem_p->set_data_handle(dst_data);
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::reorder> AcquireReorder(
+      std::shared_ptr<mkldnn::memory> dst_memory_p,
+      std::shared_ptr<mkldnn::memory> src_memory_p, int reorder_number) {
+    auto prim_key = key_ + "@reorder" + std::to_string(reorder_number) + "_p";
+    auto reorder_p =
+        std::static_pointer_cast<mkldnn::reorder>(dev_ctx_.GetBlob(prim_key));
+    if (reorder_p == nullptr) {
+      reorder_p =
+          std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
+      dev_ctx_.SetBlob(prim_key, reorder_p);
+    }
+    return reorder_p;
   }
 
   std::shared_ptr<mkldnn::reorder> AcquireReorder(

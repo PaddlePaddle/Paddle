@@ -54,8 +54,9 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     int len = logits->numel();
     T* clip_logits_data =
         clip_logits.mutable_data<T>(context.GetPlace(), len * sizeof(T));
-    r = xpu::clip(dev_ctx.x_context(), logits->data<float>(), clip_logits_data,
-                  len, -1e30, 1e30);
+    r = xpu::clip_v2(dev_ctx.x_context(), logits->data<float>(),
+                     clip_logits_data, len, static_cast<float>(-1e20),
+                     static_cast<float>(1e20));
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
         platform::errors::External("XPU kernel error. clip "
