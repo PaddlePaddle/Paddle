@@ -42,10 +42,10 @@ bool GeluPlugin::supportsFormat(nvinfer1::DataType type,
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   } else {
     return ((type == nvinfer1::DataType::kFLOAT) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
 }
 

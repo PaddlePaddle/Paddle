@@ -25,23 +25,18 @@ import warnings
 import time
 import socket
 import contextlib
-from collections import Iterable
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Variable
-from paddle.fluid.framework import ParamBase
-from paddle.fluid.framework import _current_expected_place
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
 from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
 from paddle.fluid.layers.utils import flatten
@@ -50,9 +45,6 @@ from paddle.fluid.layers import collective
 from paddle.io import DataLoader
 from paddle.io import Dataset
 from paddle.io import DistributedBatchSampler
-from paddle.fluid.executor import scope_guard
-from paddle.fluid.executor import Executor
-from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 import paddle.distributed as dist
@@ -298,10 +290,11 @@ class StaticGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
+        assert update is True, "Does not support `update == False` in static mode by now."
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -701,7 +694,7 @@ class DynamicGraphAdapter(object):
         self.model.mode = value
 
     # TODO multi device in dygraph mode not implemented at present time
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.model.network.train()
@@ -736,8 +729,9 @@ class DynamicGraphAdapter(object):
                 self.model.network.clear_gradients()
         else:
             final_loss.backward()
-            self.model._optimizer.minimize(final_loss)
-            self.model.network.clear_gradients()
+            if update:
+                self.model._optimizer.minimize(final_loss)
+                self.model.network.clear_gradients()
 
         metrics = []
         for metric in self.model._metrics:
@@ -1020,9 +1014,10 @@ class Model(object):
         else:
             self._adapter = StaticGraphAdapter(self)
 
-    def train_batch(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None, update=True):
         """
-        Run one training step on a batch of data.
+        Run one training step on one batch of data. And using `update` indicates
+        whether optimizer update gradients computing by this batch.
 
         Args:
             inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
@@ -1032,6 +1027,8 @@ class Model(object):
                 a numpy array or paddle.Tensor, or a list of arrays or tensors 
                 (in case the model has multiple labels). If has no labels, 
                 set None. Default is None.
+            update (bool): Whether update parameters after loss.backward() computing.
+                Using it to accumulate gradients. Default is True.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
@@ -1065,7 +1062,7 @@ class Model(object):
               loss = model.train_batch([data], [label])
               print(loss)
         """
-        loss = self._adapter.train_batch(inputs, labels)
+        loss = self._adapter.train_batch(inputs, labels, update)
         if fluid.in_dygraph_mode() and self._input_info is None:
             self._update_inputs()
         return loss
@@ -1539,7 +1536,8 @@ class Model(object):
             drop_last=False,
             shuffle=True,
             num_workers=0,
-            callbacks=None, ):
+            callbacks=None,
+            accumulate_grad_batches=1, ):
         """
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
@@ -1582,7 +1580,10 @@ class Model(object):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
-
+            accumulate_grad_batches (int): The number of batches to accumulate gradident 
+                during training process before optimizer updates. It can mimic large batch
+                size. Default: 1.
+            
         Returns:
             None
 
@@ -1702,6 +1703,8 @@ class Model(object):
 
         do_eval = eval_loader is not None
         self._test_dataloader = eval_loader
+
+        self._accumulate = accumulate_grad_batches
 
         steps = self._len_data_loader(train_loader)
         cbks = config_callbacks(
@@ -2007,7 +2010,12 @@ class Model(object):
                 model_filename=model_filename,
                 params_filename=params_filename)
 
-    def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
+    def _run_one_epoch(
+            self,
+            data_loader,
+            callbacks,
+            mode,
+            logs={}, ):
         outputs = []
         for step, data in enumerate(data_loader):
             # data might come from different types of data_loader and have
@@ -2031,8 +2039,14 @@ class Model(object):
             callbacks.on_batch_begin(mode, step, logs)
 
             if mode != 'predict':
-                outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
-                                                      data[len(self._inputs):])
+
+                _inputs = [data[:len(self._inputs)], data[len(self._inputs):]]
+                if mode == 'train':
+                    _inputs.append((step + 1) % self._accumulate == 0 or
+                                   step + 1 == len(data_loader))
+
+                outs = getattr(self, mode + '_batch')(*_inputs)
+
                 if self._metrics and self._loss:
                     metrics = [[l[0] for l in outs[0]]]
                 elif self._loss:

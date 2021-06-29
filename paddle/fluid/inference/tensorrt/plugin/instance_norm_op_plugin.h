@@ -112,7 +112,7 @@ class InstanceNormPlugin : public PluginTensorRT {
                       nvinfer1::PluginFormat format) const override {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
-            (format == nvinfer1::PluginFormat::kNCHW));
+            (format == nvinfer1::PluginFormat::kLINEAR));
   }
 };
 

@@ -53,10 +53,19 @@ class FlattenOpConverter : public OpConverter {
       layer->setReshapeDimensions(flatten_dim);
     } else {
       auto* shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
+      nvinfer1::Dims start_dim, size_dim, stride_dim;
+      start_dim.nbDims = 1;
+      size_dim.nbDims = 1;
+      stride_dim.nbDims = 1;
+      start_dim.d[0] = 1;
+      size_dim.d[0] = dims - 1;
+      stride_dim.d[0] = 1;
+      auto* slice_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Slice, *(shape_layer->getOutput(0)),
+                               start_dim, size_dim, stride_dim);
       uint32_t reduce_dim = 1;
-
       auto* reduce_prod_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Reduce, *(shape_layer->getOutput(0)),
+          engine_, Reduce, *(slice_layer->getOutput(0)),
           nvinfer1::ReduceOperation::kPROD, reduce_dim, true);
       int32_t* constant_weight_data = new int32_t[1];
       constant_weight_data[0] = -1;
