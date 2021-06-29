@@ -123,7 +123,6 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
-      .IsType<int>()
       .IsNumGE(1)
       .End()
       .AddAttr("dilations")
@@ -162,7 +161,6 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsType<int>()
       .IsNumEQ(1)
       .End();
 }
@@ -277,7 +275,6 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
-      .IsType<int>()
       .IsNumGE(1)
       .End()
       .AddAttr("dilations")
@@ -316,8 +313,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsType<int>()
-      .IsNumGE(-1)
+      .IsIntIn({1, -1})
       .End();
 }
 
