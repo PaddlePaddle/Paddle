@@ -729,10 +729,11 @@ class DynamicGraphAdapter(object):
         if self._amp_level != "O0":
             scaled = scaler.scale(final_loss)
             scaled.backward()
-            scaler.unscale(self.model._optimizer)
-            scaler.step(self.model._optimizer, scaled)
-            scaler.update()
-            self.model.network.clear_gradients()
+            if update:
+                scaler.unscale(self.model._optimizer)
+                scaler.step(self.model._optimizer, scaled)
+                scaler.update()
+                self.model.network.clear_gradients()
         else:
             final_loss.backward()
             self.model._optimizer.minimize(final_loss)
