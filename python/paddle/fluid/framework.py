@@ -3059,7 +3059,7 @@ class Block(object):
         # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
-                if var.is_parameter:
+                if var.is_parameter():
                     self.create_parameter(
                         name=var.name(),
                         desc=var,
