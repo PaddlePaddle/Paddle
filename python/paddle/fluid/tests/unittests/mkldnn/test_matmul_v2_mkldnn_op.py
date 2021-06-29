@@ -247,11 +247,11 @@ def create_bf16_test_class(parent):
             self.attrs['mkldnn_data_type'] = "bfloat16"
 
         def test_check_output(self):
-            if core.supports_bfloat16():
+            if not core.supports_bfloat16():
                 self.check_output_with_place(core.CPUPlace())
             else:
-                print("Core doesn't support bf16, skipping UT" +
-                      self.__class__.__name__)
+                self.skipTest("Core doesn't support bf16, skipping UT" +
+                              self.__class__.__name__)
 
         def test_check_grad(self):
             pass
