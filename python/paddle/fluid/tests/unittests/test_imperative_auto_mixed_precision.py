@@ -213,7 +213,7 @@ class TestAmpScaler(unittest.TestCase):
 
     def test_get_and_set(self):
         with fluid.dygraph.guard():
-            scaler = paddle.fluid.dygraph.AmpScaler(
+            scaler = paddle.amp.GradScale(
                 enable=True,
                 init_loss_scaling=1024,
                 incr_ratio=2.0,
