@@ -47,8 +47,8 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     int len = x->numel();
     T* clip_x_data =
         clip_x.mutable_data<T>(context.GetPlace(), len * sizeof(T));
-    r = xpu::clip(dev_ctx.x_context(), x->data<float>(), clip_x_data, len,
-                  -1e30, 1e30);
+    r = xpu::clip_v2(dev_ctx.x_context(), x->data<float>(), clip_x_data, len,
+                     static_cast<float>(-1e20), static_cast<float>(1e20));
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External("XPU API(clip) return wrong "
                                                  "value[%d %s]",
