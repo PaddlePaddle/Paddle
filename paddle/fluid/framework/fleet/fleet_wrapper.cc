@@ -565,16 +565,17 @@ void FleetWrapper::PullSparseVarsSync(
       try {
         status = t.get();
       } catch (const std::future_error& e) {
-        LOG(ERROR) << "Caught a future_error with code" << e.code() << ", Message:" << e.what();
+        VLOG(0) << "Caught a future_error with code" << e.code()
+                << ", Message:" << e.what();
       }
       if (status != 0) {
-        LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
         sleep(sleep_seconds_before_fail_exit_);
         flag = false;
         cnt++;
       }
       if (cnt > 3) {
-        LOG(ERROR) << "fleet pull sparse failed, retry 3 times";
+        VLOG(0) << "fleet pull sparse failed, retry 3 times";
         exit(-1);
       }
     }
