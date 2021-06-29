@@ -337,5 +337,6 @@ class TestNumpyTests(unittest.TestCase):
         self.expect = np.einsum("ij,i->", x, y)
         self.check_output("ij,i->", x, y)
 
+
 if __name__ == "__main__":
     unittest.main()

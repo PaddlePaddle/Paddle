@@ -45,21 +45,24 @@ def parse_op_labels(labelstr, operand):
     # Sanity checks
     for c in labelstr.replace('.', ''):
         assert c.isalpha(), (
-            f"Invalid equation: {c} is not a valid label, which should be letters.")
+            f"Invalid equation: {c} is not a valid label, which should be letters."
+        )
 
     assert labelstr.replace('...', '', 1).find('.') == -1, (
-        f"Invalid equation: `.` is only expected to be included in an ellipsis.")
+        f"Invalid equation: `.` is only expected to be included in an ellipsis."
+    )
 
-    # Check shape
-    ndims = len(operand.shape) # Note, in Paddle a tensor rank is always nonzero
+    # Check shape. Note, in Paddle a tensor rank is always nonzero
+    ndims = len(operand.shape)
     assert ndims > 0
-    
+
     full_labelstr = labelstr.replace('...', '.' * (ndims - len(labelstr) + 3))
 
     assert len(full_labelstr) == ndims, (
         f"Invalid equation: the label string '{labelstr}' misses dimensions.")
 
     return full_labelstr
+
 
 def parse_labels(labelstr, operands):
     '''
@@ -79,10 +82,8 @@ def parse_labels(labelstr, operands):
 
     nop_labels = labelstr.split(',')
     assert len(nop_labels) == len(operands), (
-        "Invalid equation: "
-        f"the number of operands is {len(operands)}"
-        f"but only found {len(nop_labels)} in the label string."
-    )
+        "Invalid equation: the number of operands is {len(operands)}"
+        f"but only found {len(nop_labels)} in the label string.")
     
     return list(map(parse_op_labels, nop_labels, operands))
 
@@ -105,8 +106,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     non_input_labels = rhs_set.difference(input_labels)
     assert not non_input_labels, (
         f"Invalid equation: "
-        f"output label '{non_input_labels}' not used by any input."
-    )
+        f"output label '{non_input_labels}' not used by any input.")
     # Verify that output labels are not duplicate
     assert len(rhs) == len(rhs_set), (
         f"Invalid equation: duplicate output labels are found.")
@@ -183,7 +183,7 @@ def build_view(in_labels, out_labels):
         # fill the broadcast dimension indices from right to left.
         if s:
             for ax, dim in zip(
-                range(start, end)[::-1], range(s.start(), s.end())[::-1]):
+                    range(start, end)[::-1], range(s.start(), s.end())[::-1]):
                 inv_map[ax] = dim
 
     # Now work on non-broadcast dimensions 
@@ -326,7 +326,7 @@ def build_global_shape(g_view, op_shapes):
     g_shape = [set(sizes_per_ax) - {1} for sizes_per_ax in zip(*view_shapes)]
 
     assert not any(len(sizes) > 1 for sizes in g_shape), (
-            f"Invalid operands: there non-broadcastable dimensions.")
+        f"Invalid operands: there non-broadcastable dimensions.")
 
     g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
 
@@ -550,7 +550,7 @@ def plan_matmul(plan, g_view, op1, op2, g_op_masks, g_shape, I, J1, J2, K):
         op2_view[ax] = -1
     dim = 0
     for ax in I + J1 + J2:
-        op2_view[ax], dim = dim, dim + 1   
+        op2_view[ax], dim = dim, dim + 1
 
 
 def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count,
@@ -568,7 +568,7 @@ def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count,
     I, K, J1, J2 = list(range(n_bcast)), [], [], []
 
     for ax, dim1, dim2 in zip(
-        range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]):
+            range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]):
 
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
@@ -755,7 +755,7 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
         for ax, d in enumerate(view):
             if d != -1:
                 view[ax], dim = dim, dim + 1
- 
+
     squeeze_dims = [dim for dim in view[nout:] if dim != -1]
     if squeeze_dims:
         # plan_reduce(plan, nop-1, reduce_dims, keepdim=False)
@@ -893,7 +893,7 @@ def einsum(equation, *operands):
     #   A list of masks that specify each operand's non-trivial dimensions
     # g_count
     #   Counting how many non-trivial dimensions remain for each ax
- 
+
     g_labels, g_view, g_nout, g_count = build_global_view(nop_labels, rhs,
                                                           n_bcast_dims)
     g_shape, g_op_masks = build_global_shape(g_view,
