@@ -132,6 +132,11 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
 
     if ((y_dims.size() == x_dims.size()) && y_dims.size() > 2) {
       for (size_t i = 0; i < x_dims.size() - 2; ++i) {
+        PADDLE_ENFORCE_EQ(x_dims[i] == y_dims[i] || x_dims[i] == 1 || y_dims[i] == 1 , true,
+                          platform::errors::InvalidArgument(
+                              "Tensor dimensions are incorrect for broadcasting."
+                              "Dimensions in X and Y must be same or equal to 1, but received x_dim[%d]=%d and y_dims[%d]= %d",
+                              i, x_dims[i], i, y_dims[i]));
         out_dims[i] = std::max(x_dims[i], y_dims[i]);
       }
       out->Resize(framework::make_ddim(out_dims));
@@ -139,8 +144,7 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
   }
 
   void RunKernel(const ExecutionContext& ctx) const {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* x = ctx.Input<Tensor>("X");
@@ -172,18 +176,18 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
 
     auto matmul_p = handler.AcquireForwardPrimitive();
 
-    std::unordered_map<int, dnnl::memory> matmul_args = {
+    std::unordered_map<int, memory> matmul_args = {
         {DNNL_ARG_SRC, *src_memory_p},
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = MKLDNNDeviceContext::tls().get_stream();
     matmul_p->execute(astream, matmul_args);
     astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(
-        platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(out_dims)));
+        GetMKLDNNFormat(dst_memory_p->get_desc().reshape(out_dims)));
   }
 };
 }  // namespace operators

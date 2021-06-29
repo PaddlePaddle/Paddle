@@ -89,7 +89,6 @@ class MatMulV2Op : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,

@@ -168,8 +168,8 @@ class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
 class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
         TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
-        self.x_shape = (2, 2, 5, 5)
-        self.y_shape = (2, 2, 5, 5)
+        self.x_shape = (2, 2, 5, 4)
+        self.y_shape = (2, 2, 5, 3)
         self.trans_x = True
         self.trans_y = False
 
@@ -177,7 +177,7 @@ class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
 class TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp(
         TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
-        self.x_shape = (3, 1, 6, 6)
+        self.x_shape = (3, 1, 6, 5)
         self.y_shape = (1, 2, 6, 9)
         self.trans_x = True
         self.trans_y = False
@@ -210,8 +210,8 @@ class TestMatMulV2Matrix3DXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 class TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp(
         TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
-        self.x_shape = (3, 1, 10, 10)
-        self.y_shape = (1, 2, 10, 10)
+        self.x_shape = (3, 1, 10, 8)
+        self.y_shape = (1, 2, 9, 10)
         self.trans_x = True
         self.trans_y = True
 
@@ -220,7 +220,7 @@ class TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp(
         TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
         self.x_shape = (3, 1, 10, 10)
-        self.y_shape = (1, 2, 10, 10)
+        self.y_shape = (1, 2, 9, 10)
         self.trans_x = False
         self.trans_y = True
 
@@ -229,7 +229,7 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
         TestMatMulV2VectorXVectorOneDNNOp):
     def config(self):
         self.x_shape = (1, 3, 1, 10, 10)
-        self.y_shape = (3, 1, 2, 10, 10)
+        self.y_shape = (3, 1, 2, 9, 10)
         self.trans_x = False
         self.trans_y = True
 
@@ -249,6 +249,9 @@ def create_bf16_test_class(parent):
         def test_check_output(self):
             if core.supports_bfloat16():
                 self.check_output_with_place(core.CPUPlace())
+            else:
+                print("Core doesn't support bf16, skipping UT" +
+                      self.__class__.__name__)
 
         def test_check_grad(self):
             pass
