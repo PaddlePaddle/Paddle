@@ -102,6 +102,9 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 self.assertEqual(
                     isinstance(framework._current_expected_place(),
                                core.NPUPlace), True)
+                self.assertTrue(out1.place.is_npu_place())
+                self.assertTrue(out2.place.is_npu_place())
+                self.assertTrue(out3.place.is_npu_place())
                 self.assertEqual(device, "npu:0")
 
 

@@ -186,8 +186,8 @@ def set_device(device):
 
     Parameters:
         device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu:x``, ``xpu:x`` and ``npu:x``, where ``x`` is the
-            index of the GPUs, XPUs or NPUs.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x`` and ``npu:x``,
+            where ``x`` is the index of the GPUs, XPUs or NPUs.
 
     Examples:
 
