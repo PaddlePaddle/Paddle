@@ -25,6 +25,7 @@ class GradScaler(AmpScaler):
 
     `scale()` is used to multiply the loss by a scale ratio.
     `unscale()` + `step()` is similar as `Optimizer.minimize()`, performs parameters updating.
+    `update()` is used to update the loss scaling.
 
     Commonly, it is used together with `paddle.amp.auto_cast` to achieve Auto-Mixed-Precision in 
     dynamic graph mode.
@@ -283,6 +284,9 @@ class GradScaler(AmpScaler):
     def set_init_loss_scaling(self, new_init_loss_scaling):
         """
         Set the parameter of `_init_loss_scaling` by `new_init_loss_scaling`.
+
+        Args:
+            new_init_loss_scaling(int):  The new_init_loss_scaling used to update _init_loss_scaling.
         
         Examples:
 
@@ -326,6 +330,9 @@ class GradScaler(AmpScaler):
     def set_incr_ratio(self, new_incr_ratio):
         """
         Set the parameter of `_incr_ratio` by `new_incr_ratio`, `new_incr_ratio` should > 1.0.
+
+        Args:
+            new_incr_ratio(float):  The new_incr_ratio used to update _incr_ratio.
         
         Examples:
 
@@ -369,6 +376,9 @@ class GradScaler(AmpScaler):
     def set_decr_ratio(self, new_decr_ratio):
         """
         Set the parameter of `_decr_ratio` by `new_incr_ratio`, `new_decr_ratio` should < 1.0.
+
+        Args:
+            new_decr_ratio(float):  The new_decr_ratio used to update _decr_ratio.
         
         Examples:
 
