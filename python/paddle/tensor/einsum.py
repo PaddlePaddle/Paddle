@@ -45,11 +45,10 @@ def parse_op_labels(labelstr, operand):
     # Sanity checks
     for c in labelstr.replace('.', ''):
         assert c.isalpha(), (
-            f"Invalid equation: {c} is not a valid label, which should be letters."
-        )
+            f"Invalid equation: {c} is not a valid label, which should be letters.")
+
     assert labelstr.replace('...', '', 1).find('.') == -1, (
-        f"Invalid equation: `.` is only expected to be included in an ellipsis."
-    )
+        f"Invalid equation: `.` is only expected to be included in an ellipsis.")
 
     # Check shape
     ndims = len(operand.shape) # Note, in Paddle a tensor rank is always nonzero
@@ -58,8 +57,7 @@ def parse_op_labels(labelstr, operand):
     full_labelstr = labelstr.replace('...', '.' * (ndims - len(labelstr) + 3))
 
     assert len(full_labelstr) == ndims, (
-        f"Invalid equation: the label string '{labelstr}' misses dimensions."
-    )
+        f"Invalid equation: the label string '{labelstr}' misses dimensions.")
 
     return full_labelstr
 
@@ -95,12 +93,14 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     # Sanity check.
     if n_bcast_dims > 0:
         assert '...' in rhs, (
-            f"Invalid equation: missing ellipsis in output labels"
-        )
+            f"Invalid equation: missing ellipsis in output labels")
+
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
+
     # Hidden assumption: availble labels don't include '.'
     assert '.' not in input_labels
+
     # Verify that output labels all come from the set of input labels
     non_input_labels = rhs_set.difference(input_labels)
     assert not non_input_labels, (
@@ -109,8 +109,8 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     )
     # Verify that output labels are not duplicate
     assert len(rhs) == len(rhs_set), (
-        f"Invalid equation: duplicate output labels are found."
-    )
+        f"Invalid equation: duplicate output labels are found.")
+
 
 # def bcastable_test(args, f=None):
 #     '''
@@ -126,21 +126,22 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
 #         if available, is used as a callback for postprocessing the aligned operand dimensions.
 #     '''
 #     xran, xshape, yran, yshape = args
-
+#
 #     xran_inv, yran_inv = xran[::-1], yran[::-1]
-
+#
 #     for xi, yi in zip(xran_inv, yran_inv):
 #         xs, ys = xshape[xi], yshape[yi]
 #         cond = xs == ys or xs == 1 or ys == 1
 #         if not cond:
 #             return False
-
+#
 #     if not f:
 #         return True
-
+#
 #     # Apply the callback to each aligned dimension pair
 #     for xi, yi in zip(xran_inv, yran_inv):
 #         f(xi, yi)
+
 
 def build_view(in_labels, out_labels):
     '''
@@ -172,7 +173,7 @@ def build_view(in_labels, out_labels):
     # print(f"in labels: '{in_labels}'     out labels: '{out_labels}'")
 
     inv_map = [-1] * len(out_labels)
-    
+
     # First build the broadcast dimension mapping
     # Find the broadcast index range in out_labels
     r = re.search(r'\.+', out_labels)
@@ -182,10 +183,9 @@ def build_view(in_labels, out_labels):
         # fill the broadcast dimension indices from right to left.
         if s:
             for ax, dim in zip(
-                range(start, end)[::-1], 
-                range(s.start(), s.end())[::-1]):
+                range(start, end)[::-1], range(s.start(), s.end())[::-1]):
                 inv_map[ax] = dim
-        
+
     # Now work on non-broadcast dimensions 
     if r:
         it = itertools.chain(range(start), range(end, len(out_labels)))
@@ -196,6 +196,7 @@ def build_view(in_labels, out_labels):
         inv_map[i] = in_labels.find(out_labels[i])
 
     return inv_map
+
 
 # def part_labels(nop_labels, rhs, n_bcast_dims):
 #     '''
@@ -225,15 +226,16 @@ def build_view(in_labels, out_labels):
 #         output = rhs.replace('...', '.' * n_bcast_dims)
 #     else:
 #         output = '.' * n_bcast_dims + ''.join(l for l, c in zip(labels, count) if c == 1)
-    
+#
 #     for i in range(len(count))[::-1]:  # Ouch ... it hurts to get confused with [-1:]
 #         if labels[i] in output:
 #             labels.pop(i)
 #             count.pop(i)
-    
+#
 #     combine = ''.join(labels)
-    
+#
 #     return output, combine, count
+
 
 def build_global_view(nop_labels, rhs, n_bcast_dims):
     '''
@@ -280,19 +282,20 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     else:
         g_labels_out = '.' * n_bcast_dims + ''.join(
             l for l, c in zip(labels, count) if c == 1)
-    
+
     for i in range(len(count))[::-1]:
         if labels[i] in g_labels_out:
             labels.pop(i)
             count.pop(i)
-    
+
     g_labels_sum = ''.join(labels)
     g_labels = g_labels_out + g_labels_sum
     g_view = list(map(lambda i: build_view(i, g_labels), nop_labels))
     g_nout = len(g_labels_out)
     g_count = count
-    
+
     return g_labels, g_view, g_nout, g_count
+
 
 def build_global_shape(g_view, op_shapes):
     '''
@@ -318,32 +321,19 @@ def build_global_shape(g_view, op_shapes):
     g_masks = []
 
     for view, op_shape in zip(g_view, op_shapes):
-        view_shapes.append([
-            op_shape[dim] if dim > -1 else 1 
-            for dim in view
-        ])
+        view_shapes.append([op_shape[dim] if dim > -1 else 1 for dim in view])
 
-    g_shape = [
-        set(sizes_per_ax) - {1} 
-        for sizes_per_ax in zip(*view_shapes)
-    ]
+    g_shape = [set(sizes_per_ax) - {1} for sizes_per_ax in zip(*view_shapes)]
 
-    assert not any(
-        len(sizes) > 1 for sizes in g_shape), (
-            f"Invalid operands: there non-broadcastable dimensions."
-        )
+    assert not any(len(sizes) > 1 for sizes in g_shape), (
+            f"Invalid operands: there non-broadcastable dimensions.")
 
-    g_shape = [
-        sizes.pop() if len(sizes) > 0 else 1
-        for sizes in g_shape
-    ]
+    g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
 
-    g_masks = [
-        [s > 1 for s in view_shape]
-        for view_shape in view_shapes
-    ]
+    g_masks = [[s > 1 for s in view_shape] for view_shape in view_shapes]
 
     return g_shape, g_masks
+
 
 def dim_strides(shape):
     '''
@@ -355,6 +345,7 @@ def dim_strides(shape):
         strides.append(stride)
         stride = stride * size
     return strides
+
 
 def create_view(operand, *view_def):
     '''
@@ -369,14 +360,16 @@ def create_view(operand, *view_def):
     '''
     assert False, f'Diagonal and trace not implemented yet.'
     view_shape, view_strides = view_def
-    return operand.create_view(view_shape, view_strides)    
+    return operand.create_view(view_shape, view_strides)
+
 
 def has_duplicated_labels(labels):
     '''
     Returns True if there is any duplicate label.
     '''
     labels = labels.replace('.', '')
-    return len(labels) > len(set(labels)) 
+    return len(labels) > len(set(labels))
+
 
 def diagonalize(labels, operand):
     '''
@@ -415,6 +408,7 @@ def diagonalize(labels, operand):
     new_op = create_view(operand, new_shape, new_strides)
     return new_labels, new_op
 
+
 def prod(iter, default=1):
     if len(iter):
         res = 1
@@ -422,6 +416,7 @@ def prod(iter, default=1):
             res *= s
         return res
     return default
+
 
 def plan_reduce(plan, op, reduce_dims, keepdim):
     '''
@@ -433,11 +428,13 @@ def plan_reduce(plan, op, reduce_dims, keepdim):
     step = f, [varname], varname, reduce_dims
     plan.add_step(step)
 
+
 def plan_scalar_prod(plan, op1, op2):
     varnames = [f'op{op1}', f'op{op2}']
     f = lambda var1, var2: paddle_sum(var1) * var2
     step = f, varnames, varnames[1]
     plan.add_step(step)
+
 
 def plan_matmul(plan, g_view, op1, op2, g_op_masks, g_shape, I, J1, J2, K):
     '''
@@ -461,20 +458,16 @@ def plan_matmul(plan, g_view, op1, op2, g_op_masks, g_shape, I, J1, J2, K):
     op1_vshape = [s if m else 1 for s, m in zip(g_shape, op1_mask)]
     op2_vshape = [s if m else 1 for s, m in zip(g_shape, op2_mask)]
 
-    I1_shape, J1_shape, K1_shape = [
-        [op1_vshape[ax] for ax in axes]
-        for axes in (I, J1, K)
-    ]
-    I2_shape, J2_shape, K2_shape = [
-        [op2_vshape[ax] for ax in axes]
-        for axes in (I, J2, K)
-    ]
+    I1_shape, J1_shape, K1_shape = [[op1_vshape[ax] for ax in axes]
+                                    for axes in (I, J1, K)]
+    I2_shape, J2_shape, K2_shape = [[op2_vshape[ax] for ax in axes]
+                                    for axes in (I, J2, K)]
 
     K1_size, J1_size, J2_size = prod(K1_shape), prod(J1_shape), prod(J2_shape)
 
     perm1 = I1_dims + J1_dims + K1_dims
     perm2 = I2_dims + J2_dims + K2_dims
-    
+
     if any(i != dim for i, dim in enumerate(perm1)):
         # print(f'perm1: {perm1}')
         step = transpose, [var1], var1, perm1
@@ -557,9 +550,11 @@ def plan_matmul(plan, g_view, op1, op2, g_op_masks, g_shape, I, J1, J2, K):
         op2_view[ax] = -1
     dim = 0
     for ax in I + J1 + J2:
-        op2_view[ax], dim = dim, dim+1   
+        op2_view[ax], dim = dim, dim + 1   
 
-def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count, n_bcast):
+
+def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count,
+                   n_bcast):
     '''
     Plan various kinds of summation
     '''
@@ -573,9 +568,7 @@ def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count, n_bcast
     I, K, J1, J2 = list(range(n_bcast)), [], [], []
 
     for ax, dim1, dim2 in zip(
-        range(n_bcast, ndim), 
-        op1_view[n_bcast:],
-        op2_view[n_bcast:]):
+        range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]):
 
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
@@ -584,7 +577,7 @@ def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count, n_bcast
                 J2.append(ax)
         elif dim1 != -1:
             if ax < nout:
-                I.append(ax) 
+                I.append(ax)
             # If both dims are masked plus the remaining count is 2 then it's time to combine
             elif count[ax] <= 2:
                 # kill this axis
@@ -599,8 +592,8 @@ def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count, n_bcast
 
     # Now it's OK to merge the K dims as the same shape holds
     # print(f'I: {I}   J1: {J1}    J2: {J2}   K: {K}')
-
     plan_matmul(plan, g_view, op1, op2, g_op_masks, g_shape, I, J1, J2, K)
+
 
 def rearrange(axes):
     perm, fill = [], []
@@ -612,8 +605,9 @@ def rearrange(axes):
     # Trivial permutation returns []
     if all(i == dim for i, dim in enumerate(perm)):
         perm = []
-    
+
     return perm, fill
+
 
 def plan_broadcast(plan, operands, nop_axes):
     '''
@@ -639,6 +633,7 @@ def plan_broadcast(plan, operands, nop_axes):
 
     step = f, varnames, None
     plan.add_step(step)
+
 
 class Plan:
     def __init__(self):
@@ -667,6 +662,7 @@ class Plan:
             if out_varname:
                 self.set_var(out_varname, res)
         return res
+
 
 def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
     '''
@@ -703,7 +699,7 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
         to_reduce = []
         for dim, masked, count in zip(view[nout:], mask[nout:], g_count):
             to_reduce.append(dim if (masked and count == 1) else -1)
-        
+
         reduce_dims = list(filter(lambda x: x > -1, to_reduce))
         if reduce_dims:
             plan_reduce(plan, i, reduce_dims, keepdim=True)
@@ -717,7 +713,7 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
     # Plan the summations over the operand sequence
     for i in range(nop):
         # plan a single step
-        
+
         if i == 0:
             continue
 
@@ -738,15 +734,16 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
         #  (4) Elsewise, either I... or J... not empty, and K... not empty, use a general matmul
 
         # Resolve the summation kind: dot, matmul or *
-        if not any(g_op_masks[i-1]):
+        if not any(g_op_masks[i - 1]):
             # op1 is a scalar
-            plan_scalar_prod(plan, i-1, i)
+            plan_scalar_prod(plan, i - 1, i)
         else:
-            plan_summation(plan, g_view, i-1, i, g_op_masks, g_shape, g_count, n_bcast)
+            plan_summation(plan, g_view, i-1, i, g_op_masks, g_shape, g_count,
+                           n_bcast)
 
     # for ax, dim in enumerate(g_view[nop-1][:nout]):
     #     assert dim == ax
-    assert all(not masked for masked in g_op_masks[nop-1][nout:])
+    assert all(not masked for masked in g_op_masks[nop - 1][nout:])
 
     view = g_view[-1]
     if any(ax != dim for ax, dim in enumerate(view[:nout])):
@@ -757,7 +754,7 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
         dim = 0
         for ax, d in enumerate(view):
             if d != -1:
-                view[ax], dim = dim, dim+1
+                view[ax], dim = dim, dim + 1
  
     squeeze_dims = [dim for dim in view[nout:] if dim != -1]
     if squeeze_dims:
@@ -767,6 +764,7 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
         plan.add_step(step)
 
     return plan
+
 
 @dygraph_only
 def einsum(equation, *operands):
@@ -869,9 +867,7 @@ def einsum(equation, *operands):
     nop_labels = parse_labels(lhs, operands)
 
     # Diagonalize the operands which have duplicate labels
-    nop_labels, operands = list(
-        zip(*map(diagonalize, nop_labels, operands))
-    )
+    nop_labels, operands = list(zip(*map(diagonalize, nop_labels, operands)))
 
     # To handle broadcasting, we should first know how many dimensions are there
     # We need to use that number to generate output labels
@@ -898,8 +894,7 @@ def einsum(equation, *operands):
     # g_count
     #   Counting how many non-trivial dimensions remain for each ax
  
-    g_labels, g_view, g_nout, g_count = build_global_view(nop_labels,
-                                                          rhs,
+    g_labels, g_view, g_nout, g_count = build_global_view(nop_labels, rhs,
                                                           n_bcast_dims)
     g_shape, g_op_masks = build_global_shape(g_view,
                                              [op.shape for op in operands])
@@ -910,121 +905,3 @@ def einsum(equation, *operands):
     result = plan.execute()
 
     return result
-
-if __name__ == '__main__':
-    import numpy as np
-
-    np.random.seed(102)
-    # -------------------
-    # Group 1
-    # -------------------
-    shapes = [
-        [1, 5, 2, 2, 3, 4],
-        [5, 2, 3, 4],
-        [2, 1, 2],
-        [1, 5, 2, 3, 4]
-    ]
-    x, y, z, t = [np.random.rand(*s) for s in shapes]
-    tx, ty, tz, tt = [paddle.to_tensor(_) for _ in (x, y, z, t)]
-
-    equations = [
-        'abcdef, bcef, cad'
-    ]
-    for e in equations:
-        np_out = np.einsum(e, x, y, z)
-        pd_out = einsum(e, tx, ty, tz).numpy()
-        assert np.allclose(np_out, pd_out)
-
-    # -------------------
-    # Group 2
-    # -------------------
-    shapes = [
-        [5, 1, 10000],
-        [100, 10000]
-    ]
-    x, y = [np.random.randn(*s) for s in shapes]
-    tx, ty = [paddle.to_tensor(_) for _ in (x, y)]
-
-    equations = [
-        'ijk->j'
-    ]
-
-    for eqn in equations:
-        np_out = np.einsum(eqn, x)
-        pd_out = einsum(eqn, tx).numpy()
-        assert np.allclose(np_out, pd_out)
-
-    equations = [               \
-        'ijk, jk',              \
-        # '...k, ...k->...k',     \
-        # 'ij..., j...',          \
-        # 'ij..., j...->...'      \
-    ]
-
-    for eqn in equations:
-        np_out = np.einsum(eqn, x, y)
-        pd_out = einsum(eqn, tx, ty).numpy()
-        assert np.allclose(np_out, pd_out)
-
-    # -------------------
-    # Group 3
-    # -------------------
-    shapes = [
-        [4],
-        [5]
-    ]
-    x, y = [np.random.randn(*s) for s in shapes]
-    tx, ty = [paddle.to_tensor(_) for _ in (x, y)]
-
-    equations = [
-        'i,i->'
-    ]
-    for eqn in equations:
-        np_out = np.einsum(eqn, x, x)
-        pd_out = einsum(eqn, tx, tx).numpy()
-        assert np.allclose(np_out, pd_out)
-
-    equations =[
-        'i,j->',
-        'i,j->ij'
-    ]
-    for eqn in equations:
-        np_out = np.einsum(eqn, x, y)
-        pd_out = einsum(eqn, tx, ty).numpy()
-        assert np.allclose(np_out, pd_out)
-
-    # -------------------
-    # Group 4
-    # -------------------
-    shapes = [
-        [10, 1, 4, 256],
-        [256, 10, 1]
-    ]
-    x, y = [np.random.randn(*s) for s in shapes]
-    tx, ty = [paddle.to_tensor(_) for _ in (x, y)]
-
-    equations = [
-        'abcd,dfg->d'
-    ]
-    for eqn in equations:
-        np_out = np.einsum(eqn, x, y)
-        pd_out = einsum(eqn, tx, ty).numpy()
-        assert np.allclose(np_out, pd_out)
-
-    # -------------------
-    # Group 5
-    # -------------------
-    shapes = [
-        [10000, 100, 10]
-    ]
-    x = np.random.randn(*shapes[0])
-    tx = paddle.to_tensor(x)
-    
-    equations = [
-        'ijk->'
-    ]
-
-    for eqn in equations:
-        np_out = np.einsum(eqn, x)
-        pd_out = einsum(eqn, tx).numpy()
-        assert np.allclose(np_out, pd_out)
