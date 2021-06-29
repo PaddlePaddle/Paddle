@@ -79,6 +79,7 @@ class TestQuantizeProgramPass(unittest.TestCase):
         random.seed(0)
         np.random.seed(0)
 
+        # 1 Define program
         train_program = fluid.Program()
         startup_program = fluid.Program()
         test_program = fluid.Program()
@@ -93,13 +94,14 @@ class TestQuantizeProgramPass(unittest.TestCase):
             test_graph = IrGraph(core.Graph(test_program.desc), for_test=True)
             test_graph.draw('.', 'test_program_1')
 
+        # 2 Apply quantization
         qt = QuantizeTranspilerV2(
             activation_quantize_type=activation_quant_type,
-            weight_quantize_type=weight_quant_type,
-            quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'])
-        qt.apply(train_program, startup_program, False)
-        qt.apply(test_program, startup_program, True)
+            weight_quantize_type=weight_quant_type)
+        qt.apply(train_program, startup_program, is_test=False)
+        qt.apply(test_program, startup_program, is_test=True)
 
+        # 3 Train
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.Scope()
@@ -135,6 +137,8 @@ class TestQuantizeProgramPass(unittest.TestCase):
 
         print('{}: {}'.format('loss', np.mean(loss_v)))
 
+        # 4 Convert
+        qt.convert(test_program, scope)
         if not for_ci:
             with fluid.scope_guard(scope):
                 fluid.io.save_inference_model('./infer_model',

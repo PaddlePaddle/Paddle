@@ -28,6 +28,27 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
+def find_next_ops(block, var_name):
+    """
+    Find all followed ops for the input variable.
+    """
+    res_ops = []
+    for op in block.ops:
+        if var_name in op.input_arg_names:
+            res_ops.append(op)
+    return res_ops
+
+
+def load_variable_data(scope, var_name):
+    '''
+    Load variable value from scope
+    '''
+    var_node = scope.find_var(var_name)
+    assert var_node is not None, \
+        "Cannot find " + var_name + " in scope."
+    return np.array(var_node.get_tensor())
+
+
 class QuantizeTranspilerV2(object):
     def __init__(self,
                  weight_bits=8,
@@ -118,7 +139,9 @@ class QuantizeTranspilerV2(object):
 
     def convert(self, test_program, scope=None):
         """
-        Convert the test program.
+        Convert the test program. 
+        Get the out scale from the moving_average_abs_max_scale op and save the
+        out scale into the quantized op. 
         Args:
             test_program(Program): the test program to be converted.
             scope(fluid.Scope, optional): The scope of the program, use it to load 
@@ -126,17 +149,26 @@ class QuantizeTranspilerV2(object):
         """
         scope = global_scope() if scope == None else scope
 
-        target_ops = []
         for block in test_program.blocks:
             for op in block.ops:
-                if op.type == "moving_average_abs_max_scale":
-                    target_ops.append(op)
+                if op.has_attr("quantization_type") \
+                    and op.attr("quantization_type") == "qat_with_weight":
+                    # quant op -> var1 -> fake op -> var2
+                    assert len(op.output_arg_names) == 1
+                    var1_name = op.output_arg_names[0]
 
-        for op in target_ops:
-            out_scale_name = op.output("OutScale")
-            # TODO: save the out threshold in the target ops
-            #print(out_scale_name)
-            #print(self._load_variable_data(scope, out_scale_name[0]))
+                    fake_ops = find_next_ops(block, var1_name)
+                    assert len(fake_ops) == 1
+                    fake_op = fake_ops[0]
+                    assert fake_op.type == "moving_average_abs_max_scale"
+
+                    out_scale_name = fake_op.output("OutScale")
+                    out_threshold = load_variable_data(scope, out_scale_name[0])
+                    op._set_attr("out_threshold", float(out_threshold))
+
+                    var2_name = fake_op.output("Out")[0]
+                    op._rename_output(var1_name, var2_name)
+                    fake_op._rename_output(var2_name, var1_name)
 
     def _transform_forward(self, block, op, var_rename_map, is_test):
         """
@@ -183,7 +215,7 @@ class QuantizeTranspilerV2(object):
 
         # insert out scale op followed the quantized op
         for out_name in op.output_arg_names:
-            next_ops = self._find_next_ops(block, out_name)
+            next_ops = find_next_ops(block, out_name)
 
             idx = block.ops.index(op)
             out_var = block.var(out_name)
@@ -193,25 +225,6 @@ class QuantizeTranspilerV2(object):
             for next_op in next_ops:
                 if "_grad" not in next_op.type:
                     next_op._rename_input(out_name, new_out_var.name)
-
-    def _find_next_ops(self, block, var_name):
-        """
-        Find all followed ops for the input variable.
-        """
-        res_ops = []
-        for op in block.ops:
-            if var_name in op.input_arg_names:
-                res_ops.append(op)
-        return res_ops
-
-    def _load_variable_data(self, scope, var_name):
-        '''
-        Load variable value from scope
-        '''
-        var_node = scope.find_var(var_name)
-        assert var_node is not None, \
-            "Cannot find " + var_name + " in scope."
-        return np.array(var_node.get_tensor())
 
     def _is_skip_quant(self, op):
         """
