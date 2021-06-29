@@ -132,11 +132,13 @@ class MatMulV2MKLDNNKernel : public framework::OpKernel<T> {
 
     if ((y_dims.size() == x_dims.size()) && y_dims.size() > 2) {
       for (size_t i = 0; i < x_dims.size() - 2; ++i) {
-        PADDLE_ENFORCE_EQ(x_dims[i] == y_dims[i] || x_dims[i] == 1 || y_dims[i] == 1 , true,
-                          platform::errors::InvalidArgument(
-                              "Tensor dimensions are incorrect for broadcasting."
-                              "Dimensions in X and Y must be same or equal to 1, but received x_dim[%d]=%d and y_dims[%d]= %d",
-                              i, x_dims[i], i, y_dims[i]));
+        PADDLE_ENFORCE_EQ(
+            x_dims[i] == y_dims[i] || x_dims[i] == 1 || y_dims[i] == 1, true,
+            platform::errors::InvalidArgument(
+                "Tensor dimensions are incorrect for broadcasting."
+                "Dimensions in X and Y must be same or equal to 1, but "
+                "received x_dim[%d]=%d and y_dims[%d]= %d",
+                i, x_dims[i], i, y_dims[i]));
         out_dims[i] = std::max(x_dims[i], y_dims[i]);
       }
       out->Resize(framework::make_ddim(out_dims));
