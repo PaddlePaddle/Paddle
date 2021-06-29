@@ -1,4 +1,4 @@
-type: "transpose"
+type: "square"
 def {
   inputs {
     name: "X"
@@ -6,30 +6,20 @@ def {
   outputs {
     name: "Out"
   }
-  attrs {
-    name: "axis"
-    type: INTS
-  }
-  attrs {
-    name: "data_format"
-    type: STRING
-  }
 }
+
 extra {
-  outputs {
-    name: "XShape"
+  attrs {
+    name: "is_test"
+    type: BOOLEAN
   }
   attrs {
     name: "use_mkldnn"
     type: BOOLEAN
   }
   attrs {
-    name: "use_quantizer"
+    name: "use_cudnn"
     type: BOOLEAN
-  }
-  attrs {
-    name: "mkldnn_data_type"
-    type: STRING
   }
   attrs {
     name: "op_role"
@@ -52,4 +42,3 @@ extra {
     type: STRING
   }
 }
-
