@@ -132,6 +132,13 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (kernel_iter == kernels.end() &&
+      is_npu_place(expected_kernel_key.place_)) {
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that case
   PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
                     platform::errors::NotFound(
