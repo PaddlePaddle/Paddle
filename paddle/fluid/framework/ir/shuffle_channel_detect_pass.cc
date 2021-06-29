@@ -85,7 +85,7 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     GET_NODES;
     if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Pass in op compat failed.";
+      LOG(WARNING) << "The Pass in op compat failed.";
       return;
     }
     PADDLE_ENFORCE_GT(
