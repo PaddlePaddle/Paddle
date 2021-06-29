@@ -86,10 +86,10 @@ MulLstmFusePass::MulLstmFusePass() {
       .IsTensor()
       .End()
       .AddAttr("x_num_col_dims")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End()
       .AddAttr("y_num_col_dims")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End();
 }
 
@@ -150,10 +150,10 @@ FCLstmFusePass::FCLstmFusePass() {
       .IsTensor()
       .End()
       .AddAttr("x_num_col_dims")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End()
       .AddAttr("y_num_col_dims")
-      .IsNumGE(1)
+      .IsNumEQ(1)
       .End();
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
