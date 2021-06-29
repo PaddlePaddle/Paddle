@@ -23,6 +23,59 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
+  AddOpCompat(OpCompat("reshape2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      // The reshape2 op for this pass should not have "Shape" and "ShapeTensor"
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddAttr("shape")
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsType<float>()
+      .End()
+      .AddAttr("transpose_X")
+      .IsType<bool>()
+      .End()
+      .AddAttr("transpose_Y")
+      .IsType<bool>()
+      .End();
+}
+
 void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     Graph *graph, bool with_reshape_xshape, bool with_transpose_xshape) const {
   GraphPatternDetector gpd;
@@ -34,6 +87,11 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
   int found_reshape_transpose_matmul_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Op compatible check in "
+                      "reshape_transpose_matmul_mkldnn_fuse_pass failed.";
+      return;
+    }
     VLOG(4) << "handle ReshapeTransposeMatmulMkldnn fuse";
     GET_IR_NODE_FROM_SUBGRAPH(reshape_in, reshape_in, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape_op, rtm_pattern);
