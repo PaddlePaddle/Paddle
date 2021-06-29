@@ -25,21 +25,31 @@ from paddle.common_ops_import import dygraph_only
 
 __all__ = []
 
+
 def parse_op_labels(labelstr, operand):
     '''
-    Parses labels for an input operand.
+    Parse labels for an input operand.
+
     Parameters
     ----------
     labelstr:
-        the 
-    Returns an extended label string with all missing labels filled as dots
+        the input label string
+    operand:
+        the input operand
+
+    Returns
+    -------
+    the input operand's full label string in which all anonymous dimensions are 
+    labeled in dots. 
     '''
     # Sanity checks
     for c in labelstr.replace('.', ''):
-        assert c.isalpha(), f"Invalid equation: {c} is not a valid label, which should be letters."
-
-    assert labelstr.replace('...', '', 1).find('.') == -1, \
+        assert c.isalpha(), (
+            f"Invalid equation: {c} is not a valid label, which should be letters."
+        )
+    assert labelstr.replace('...', '', 1).find('.') == -1, (
         f"Invalid equation: `.` is only expected to be included in an ellipsis."
+    )
 
     # Check shape
     ndims = len(operand.shape) # Note, in Paddle a tensor rank is always nonzero
@@ -47,86 +57,99 @@ def parse_op_labels(labelstr, operand):
     
     full_labelstr = labelstr.replace('...', '.' * (ndims - len(labelstr) + 3))
 
-    assert len(full_labelstr) == ndims, \
+    assert len(full_labelstr) == ndims, (
         f"Invalid equation: the label string '{labelstr}' misses dimensions."
+    )
 
     return full_labelstr
 
 def parse_labels(labelstr, operands):
     '''
-    Parse out a list of distinct labels and count their number of occurrences.
+    Parse label strings for all input operands.
     
     Parameters
     ----------
     labelstr:
         The equation's label string
-    nop:
-        Number of operands
+    operands:
+        The input operands
     
     Returns
     -------
-    nop_label:
-        list of full label strings matching the each operand's dimensino size
+    list of full label strings for all input operands
     '''
 
     nop_labels = labelstr.split(',')
-    assert len(nop_labels) == len(operands), \
-        f"Invalid equation: the number of operands is {len(operands)} but only found {len(nop_labels)} in the label string."
+    assert len(nop_labels) == len(operands), (
+        "Invalid equation: "
+        f"the number of operands is {len(operands)}"
+        f"but only found {len(nop_labels)} in the label string."
+    )
     
     return list(map(parse_op_labels, nop_labels, operands))
 
 def validate_rhs(rhs, input_labels, n_bcast_dims):
+    '''
+    Check whether the equation's right hand side is valid 
+    '''
     # Sanity check.
     if n_bcast_dims > 0:
-        assert '...' in rhs, f"Invalid equation: missing ellipsis in output labels"
+        assert '...' in rhs, (
+            f"Invalid equation: missing ellipsis in output labels"
+        )
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
     # Hidden assumption: availble labels don't include '.'
     assert '.' not in input_labels
     # Verify that output labels all come from the set of input labels
     non_input_labels = rhs_set.difference(input_labels)
-    assert not non_input_labels, \
-        f"Invalid equation: output label '{non_input_labels}' not used by any input."
+    assert not non_input_labels, (
+        f"Invalid equation: "
+        f"output label '{non_input_labels}' not used by any input."
+    )
     # Verify that output labels are not duplicate
-    assert len(rhs) == len(rhs_set), \
+    assert len(rhs) == len(rhs_set), (
         f"Invalid equation: duplicate output labels are found."
+    )
 
-def bcastable_test(args, f=None):
-    '''
-    Tests if the two operands can perform a broadcast operation on the given ranges of dimensions. 
-    We follow the Numpy broadcasting convention which states that, by lining up the shape arrays
-    starting from the right most dimension, all the aligned dimensions either have equal sizes or
-    one of them is sized one.
-    Parameters
-    ----------
-    args:
-        *args unpacks into operand one's axes range, shape, operand two's axes range, shape
-    f: 
-        if available, is used as a callback for postprocessing the aligned operand dimensions.
-    '''
-    xran, xshape, yran, yshape = args
+# def bcastable_test(args, f=None):
+#     '''
+#     Tests if the two operands can perform a broadcast operation on the given ranges of dimensions. 
+#     We follow the Numpy broadcasting convention which states that, by lining up the shape arrays
+#     starting from the right most dimension, all the aligned dimensions either have equal sizes or
+#     one of them is sized one.
+#     Parameters
+#     ----------
+#     args:
+#         *args unpacks into operand one's axes range, shape, operand two's axes range, shape
+#     f: 
+#         if available, is used as a callback for postprocessing the aligned operand dimensions.
+#     '''
+#     xran, xshape, yran, yshape = args
 
-    xran_inv, yran_inv = xran[::-1], yran[::-1]
+#     xran_inv, yran_inv = xran[::-1], yran[::-1]
 
-    for xi, yi in zip(xran_inv, yran_inv):
-        xs, ys = xshape[xi], yshape[yi]
-        cond = xs == ys or xs == 1 or ys == 1
-        if not cond:
-            return False
+#     for xi, yi in zip(xran_inv, yran_inv):
+#         xs, ys = xshape[xi], yshape[yi]
+#         cond = xs == ys or xs == 1 or ys == 1
+#         if not cond:
+#             return False
 
-    if not f:
-        return True
+#     if not f:
+#         return True
 
-    # Apply the callback to each aligned dimension pair
-    for xi, yi in zip(xran_inv, yran_inv):
-        f(xi, yi)
+#     # Apply the callback to each aligned dimension pair
+#     for xi, yi in zip(xran_inv, yran_inv):
+#         f(xi, yi)
 
 def build_view(in_labels, out_labels):
     '''
-    Build an inverse map of dimension indices. Following prerequisites must hold to make
-    the result meaningful. First, there's no duplicate alphabet labels in either parameters.
-    Second, the broadcast dimensions in out_labels, are at least as many as in in_labels.
-    Third, indices of broadcast dimension are contiguous.
+    Build an inverse map of dimension indices. Three conditions must hold for 
+    the result to be meaningful. 
+    First, no duplicate letter labels in each label string.
+    Second, the number of dots in dimout_labels >= that in in_labels.
+    Third, dots are contiguous in each label string.
+
     Parameters
     ----------
     in_labels:
@@ -138,6 +161,7 @@ def build_view(in_labels, out_labels):
     -------
     The inverse map from out_labels to in_labels. The length of the inverse map equals that of
     out_labels. -1 is filled if there's no matching intput dimension for a specific label.
+
     Examples
     --------
     in_labels = 'ij..', out_labels = '..ji'
@@ -157,7 +181,9 @@ def build_view(in_labels, out_labels):
         s = re.search(r'\.+', in_labels)
         # fill the broadcast dimension indices from right to left.
         if s:
-            for ax, dim in zip(range(start, end)[::-1], range(s.start(), s.end())[::-1]):
+            for ax, dim in zip(
+                range(start, end)[::-1], 
+                range(s.start(), s.end())[::-1]):
                 inv_map[ax] = dim
         
     # Now work on non-broadcast dimensions 
@@ -171,45 +197,73 @@ def build_view(in_labels, out_labels):
 
     return inv_map
 
-def part_labels(nop_labels, rhs, n_bcast_dims):
-    '''
-    Part labels in two strings, the output label string and the combined label string. 
-    Infer output labels in case no explicit right hand side is given. In this case
-    the output label string is formed by labels that count only once, in alphabetical order.
-    Returns
-    -------
-    output:
-        output label string
-    combine:
-        combine label string
-    count:
-        combine labels' count
-    '''
-    # Put all labels in alphabetical order
-    concat = sorted(''.join(nop_labels).replace('.', ''))
-    labels, count = [], []
-    for a, b in zip(['.'] + concat, concat):
-        if a != b:
-            labels.append(b)
-            count.append(1)
-        else:
-            count[-1] += 1
-    if rhs != None:
-        validate_rhs(rhs, labels, n_bcast_dims)
-        output = rhs.replace('...', '.' * n_bcast_dims)
-    else:
-        output = '.' * n_bcast_dims + ''.join(l for l, c in zip(labels, count) if c == 1)
+# def part_labels(nop_labels, rhs, n_bcast_dims):
+#     '''
+#     Part labels in two strings, the output label string and the combined label string. 
+#     Infer output labels in case no explicit right hand side is given. In this case
+#     the output label string is formed by labels that count only once, in alphabetical order.
+#     Returns
+#     -------
+#     output:
+#         output label string
+#     combine:
+#         combine label string
+#     count:
+#         combine labels' count
+#     '''
+#     # Put all labels in alphabetical order
+#     concat = sorted(''.join(nop_labels).replace('.', ''))
+#     labels, count = [], []
+#     for a, b in zip(['.'] + concat, concat):
+#         if a != b:
+#             labels.append(b)
+#             count.append(1)
+#         else:
+#             count[-1] += 1
+#     if rhs != None:
+#         validate_rhs(rhs, labels, n_bcast_dims)
+#         output = rhs.replace('...', '.' * n_bcast_dims)
+#     else:
+#         output = '.' * n_bcast_dims + ''.join(l for l, c in zip(labels, count) if c == 1)
     
-    for i in range(len(count))[::-1]:  # Ouch ... it hurts to get confused with [-1:]
-        if labels[i] in output:
-            labels.pop(i)
-            count.pop(i)
+#     for i in range(len(count))[::-1]:  # Ouch ... it hurts to get confused with [-1:]
+#         if labels[i] in output:
+#             labels.pop(i)
+#             count.pop(i)
     
-    combine = ''.join(labels)
+#     combine = ''.join(labels)
     
-    return output, combine, count
+#     return output, combine, count
 
 def build_global_view(nop_labels, rhs, n_bcast_dims):
+    '''
+    Build the global view, which is a layout of all dimension labels
+    plus an index table that maps from the layout to the dimensions
+    in each operand. In the global view, the dimensions are arranged
+    such that output ones are put on the left and contraction ones
+    are put on the right.  
+
+    Parameters
+    ----------
+    nop_labels:
+        The input full label strings of all input operands
+    rhs:
+        The equation right hand side
+    n_bcast_dims:
+        The maxium number of broadcast dimensions
+    
+    Returns
+    -------
+    A tuple of g_labels, g_view, g_nout, g_count
+    g_labels:
+        the layout of all labels in a string
+    g_view:
+        the index table
+    g_nout:
+        the number of output dimensions
+    g_count:
+        the counter array for dimension contractions
+    '''
     # Put all labels in alphabetical order
     concat = sorted(''.join(nop_labels).replace('.', ''))
     labels, count = [], []
@@ -224,9 +278,10 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
         validate_rhs(rhs, labels, n_bcast_dims)
         g_labels_out = rhs.replace('...', '.' * n_bcast_dims)
     else:
-        g_labels_out = '.' * n_bcast_dims + ''.join(l for l, c in zip(labels, count) if c == 1)
+        g_labels_out = '.' * n_bcast_dims + ''.join(
+            l for l, c in zip(labels, count) if c == 1)
     
-    for i in range(len(count))[::-1]:  # Ouch ... it hurts to get confused with [-1:]
+    for i in range(len(count))[::-1]:
         if labels[i] in g_labels_out:
             labels.pop(i)
             count.pop(i)
@@ -240,17 +295,54 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     return g_labels, g_view, g_nout, g_count
 
 def build_global_shape(g_view, op_shapes):
+    '''
+    The global shape is the shape of all dimensions rearranged and broadcasting 
+    to the global view. It's a reference data structure for einsum planning.
+
+    Parameters
+    ----------
+    g_view:
+        the global view
+    op_shapes:
+        the shapes of the all operands
+
+    Returns
+    -------
+    g_shape:
+        the global shape vector
+    g_masks:
+        list of shape masks for each operand. A dimension's shape mask is a boolean
+        indicating whether its size > 1, in other words, it's not squeezable
+    '''
     view_shapes = []
     g_masks = []
+
     for view, op_shape in zip(g_view, op_shapes):
-        view_shape = [op_shape[dim] if dim > -1 else 1 for dim in view]
-        view_shapes.append(view_shape)
-    g_shape = [set(sizes_per_ax) - {1} for sizes_per_ax in zip(*view_shapes)]
-    assert not any(len(sizes) > 1 for sizes in g_shape), \
-        f"Invalid operands: there non-broadcastable dimensions."
-    g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
-    # g_shape = [max(sizes_per_ax) for sizes_per_ax in zip(*view_shapes)]
-    g_masks = [[s > 1 for s in view_shape] for view_shape in view_shapes]
+        view_shapes.append([
+            op_shape[dim] if dim > -1 else 1 
+            for dim in view
+        ])
+
+    g_shape = [
+        set(sizes_per_ax) - {1} 
+        for sizes_per_ax in zip(*view_shapes)
+    ]
+
+    assert not any(
+        len(sizes) > 1 for sizes in g_shape), (
+            f"Invalid operands: there non-broadcastable dimensions."
+        )
+
+    g_shape = [
+        sizes.pop() if len(sizes) > 0 else 1
+        for sizes in g_shape
+    ]
+
+    g_masks = [
+        [s > 1 for s in view_shape]
+        for view_shape in view_shapes
+    ]
+
     return g_shape, g_masks
 
 def dim_strides(shape):
@@ -369,8 +461,15 @@ def plan_matmul(plan, g_view, op1, op2, g_op_masks, g_shape, I, J1, J2, K):
     op1_vshape = [s if m else 1 for s, m in zip(g_shape, op1_mask)]
     op2_vshape = [s if m else 1 for s, m in zip(g_shape, op2_mask)]
 
-    I1_shape, J1_shape, K1_shape =  [[op1_vshape[ax] for ax in axes] for axes in (I, J1, K)]
-    I2_shape, J2_shape, K2_shape =  [[op2_vshape[ax] for ax in axes] for axes in (I, J2, K)]
+    I1_shape, J1_shape, K1_shape = [
+        [op1_vshape[ax] for ax in axes]
+        for axes in (I, J1, K)
+    ]
+    I2_shape, J2_shape, K2_shape = [
+        [op2_vshape[ax] for ax in axes]
+        for axes in (I, J2, K)
+    ]
+
     K1_size, J1_size, J2_size = prod(K1_shape), prod(J1_shape), prod(J2_shape)
 
     perm1 = I1_dims + J1_dims + K1_dims
@@ -473,7 +572,11 @@ def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count, n_bcast
 
     I, K, J1, J2 = list(range(n_bcast)), [], [], []
 
-    for ax, dim1, dim2 in zip(range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]):
+    for ax, dim1, dim2 in zip(
+        range(n_bcast, ndim), 
+        op1_view[n_bcast:],
+        op2_view[n_bcast:]):
+
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
                 J1.append(ax)
@@ -588,7 +691,10 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
 
     # Down count axis >= nout and degenerate dimensions (masked is not set)
     for view, mask in zip(g_view, g_op_masks):
-        down_count = [1 if (dim > -1 and not masked) else 0 for dim, masked in zip(view[nout:], mask[nout:])]
+        down_count = [
+            1 if (dim > -1 and not masked) else 0
+            for dim, masked in zip(view[nout:], mask[nout:])
+        ]
         for i, d in enumerate(down_count):
             g_count[i] -= d
 
@@ -763,7 +869,9 @@ def einsum(equation, *operands):
     nop_labels = parse_labels(lhs, operands)
 
     # Diagonalize the operands which have duplicate labels
-    nop_labels, operands = list(zip(*map(diagonalize, nop_labels, operands)))
+    nop_labels, operands = list(
+        zip(*map(diagonalize, nop_labels, operands))
+    )
 
     # To handle broadcasting, we should first know how many dimensions are there
     # We need to use that number to generate output labels
@@ -790,8 +898,11 @@ def einsum(equation, *operands):
     # g_count
     #   Counting how many non-trivial dimensions remain for each ax
  
-    g_labels, g_view, g_nout, g_count = build_global_view(nop_labels, rhs, n_bcast_dims)
-    g_shape, g_op_masks = build_global_shape(g_view, [op.shape for op in operands])
+    g_labels, g_view, g_nout, g_count = build_global_view(nop_labels,
+                                                          rhs,
+                                                          n_bcast_dims)
+    g_shape, g_op_masks = build_global_shape(g_view,
+                                             [op.shape for op in operands])
 
     # Now we're ready to build up an execution plan
     args = operands, g_view, g_shape, g_op_masks, g_count, n_bcast_dims
