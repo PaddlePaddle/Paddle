@@ -1171,7 +1171,7 @@ set -x
                 exit 8;
             fi
         fi
-#set +x
+set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
