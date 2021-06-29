@@ -32,7 +32,7 @@ cache_third_party(extern_gloo
     TAG           ${GLOO_TAG}
     DIR           GLOO_SOURCE_DIR)
 
-  if(WITH_ASCEND OR WITH_ASCEND_CL)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
   ExternalProject_Add(
       extern_gloo
       ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -47,6 +47,7 @@ cache_third_party(extern_gloo
           && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
       INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
       COMMAND              ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
+      BUILD_BYPRODUCTS     ${GLOO_LIBRARIES}
   )
 else()
   ExternalProject_Add(
@@ -63,6 +64,7 @@ else()
           && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
       INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
       COMMAND              ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
+      BUILD_BYPRODUCTS     ${GLOO_LIBRARIES}
   )
 endif()
 
