@@ -246,6 +246,9 @@ class TestVarBase(unittest.TestCase):
             _test_place("gpu_pinned")
             _test_place(core.CUDAPlace(0))
             _test_place("gpu:0")
+        if core.is_compiled_with_npu():
+            _test_place(core.NPUPlace(0))
+            _test_place("npu:0")
 
     def test_to_tensor_not_change_input_stop_gradient(self):
         with paddle.fluid.dygraph.guard(core.CPUPlace()):

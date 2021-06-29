@@ -102,7 +102,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
             "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
             input, ShapeStr(shape)));
       }
-      return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
+      return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
       if (shape[1] == -1 || shape[2] == -1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -112,10 +112,10 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
       }
       return nvinfer1::Dims2(shape[1], shape[2]);
     }
-    return nvinfer1::DimsCHW(shape[1], 1, 1);
+    return nvinfer1::Dims3(shape[1], 1, 1);
   } else {
     if (shape.size() == 4UL) {
-      return nvinfer1::DimsNCHW(shape[0], shape[1], shape[2], shape[3]);
+      return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
       return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
     }
@@ -277,22 +277,19 @@ class TensorRTEngine {
     }
 
     if (with_dynamic_shape_) {
-#if IS_TRT_VERSION_GE(6000)
       infer_engine_.reset(runtime->deserializeCudaEngine(
-          engine_serialized_data.c_str(), engine_serialized_data.size(),
-          nullptr));
-#else
-
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "To enable dynamic shape support, the TensorRT version should be "
-          "greater than 6.0.0"));
-
-#endif
+          engine_serialized_data.c_str(), engine_serialized_data.size()));
     } else {
+#if IS_TRT_VERSION_LT(8000)
       infer_engine_.reset(runtime->deserializeCudaEngine(
           engine_serialized_data.c_str(), engine_serialized_data.size(),
           &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+#else
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size()));
+#endif
     }
+
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
         platform::errors::Fatal(
@@ -369,13 +366,7 @@ class TensorRTEngine {
   void Execute(int batch_size, std::vector<void*>* buffers,
                cudaStream_t stream = nullptr);
 
-  nvinfer1::INetworkDefinition* network() {
-    if (with_dynamic_shape_) {
-      return infer_networkv2_.get();
-    } else {
-      return infer_network_.get();
-    }
-  }
+  nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
@@ -530,7 +521,6 @@ class TensorRTEngine {
 
   // For dynamic shape
   bool with_dynamic_shape_{false};
-  infer_ptr<nvinfer1::INetworkDefinition> infer_networkv2_;
 #if IS_TRT_VERSION_GE(6000)
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
   nvinfer1::IOptimizationProfile* optim_profile_;

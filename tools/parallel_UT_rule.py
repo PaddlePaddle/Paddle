@@ -665,7 +665,6 @@ TWO_PARALLEL_JOB = [
     'convert_model2dot_ernie',
     'im2col_test',
     'test_logical_op',
-    'test_imperative_mnist',
     'test_imperative_deepcf',
     'test_cholesky_op',
     'test_sample_logits_op',

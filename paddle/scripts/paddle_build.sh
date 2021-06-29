@@ -831,11 +831,6 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38" ] || [ "$1" == "cp39-cp39" ]; then
-        # Use sed to make python2 and python3 sepc keeps the same
-        sed -i 's/arg0: str/arg0: unicode/g' $spec_path
-        sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
-    fi   
     
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
@@ -1450,7 +1445,6 @@ function precise_card_test_single {
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
-        mkdir ${PADDLE_ROOT}/build/ut_map/$case
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
@@ -2050,7 +2044,7 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        python sampcd_processor.py --threads=16 --full-test gpu; example_error=$?
+        python sampcd_processor.py --threads=16 gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
@@ -2147,6 +2141,23 @@ function reuse_so_cache() {
     fi
 }
 
+function find_temporary_files() {
+    set +x
+    jsonData=`curl \
+            -H "Authorization: token ${GITHUB_API_TOKEN}"\
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
+    
+    result=`echo ${jsonData}|python ${PADDLE_ROOT}/tools/check_file_suffix.py`
+    
+    if [ ${#result} -gt 0 ]
+    then
+	echo ${result}
+	exit 65
+    fi
+}
+
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -2159,14 +2170,21 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
+        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
+        example_info_gpu=""
+        example_code_gpu=0
+        if [ "${WITH_GPU}" == "ON" ] ; then
+            example_info_gpu=$(exec_samplecode_test gpu)
+            example_code_gpu=$?
+        fi
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
-        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
+        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
         ;;
       build)

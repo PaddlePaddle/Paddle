@@ -39,6 +39,7 @@ class Graph;
 
 class MapMatmul2MulPass : public FusePassBase {
  public:
+  MapMatmul2MulPass();
   virtual ~MapMatmul2MulPass() {}
 
  protected:
@@ -95,6 +96,7 @@ class Squeeze2MatmulFusePass : public FusePassBase {
 
 class Reshape2MatmulFusePass : public FusePassBase {
  public:
+  Reshape2MatmulFusePass();
   virtual ~Reshape2MatmulFusePass() {}
 
  protected:
@@ -103,6 +105,7 @@ class Reshape2MatmulFusePass : public FusePassBase {
 
 class Flatten2MatmulFusePass : public FusePassBase {
  public:
+  Flatten2MatmulFusePass();
   virtual ~Flatten2MatmulFusePass() {}
 
  protected:
