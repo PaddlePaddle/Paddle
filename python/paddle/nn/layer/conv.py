@@ -19,8 +19,8 @@ import numpy as np
 from ...fluid import get_flags
 from ...fluid import core
 from ...device import get_cudnn_version
-from ...fluid.dygraph import layers
-from ...fluid.initializer import Normal
+from .. import Layer
+from ..initializer import Normal
 from .. import functional as F
 from ...fluid.layers import utils
 from ..functional.conv import _update_padding_nd
@@ -42,7 +42,7 @@ def _reverse_repeat_list(t, n):
     return list(x for x in reversed(t) for _ in range(n))
 
 
-class _ConvNd(layers.Layer):
+class _ConvNd(Layer):
     def __init__(self,
                  in_channels,
                  out_channels,

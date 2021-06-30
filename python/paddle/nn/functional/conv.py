@@ -16,12 +16,16 @@ from paddle.fluid.framework import _global_flags
 
 import numpy as np
 from ...device import get_cudnn_version
-from ...fluid.framework import Variable, in_dygraph_mode
+from ...fluid.framework import in_dygraph_mode
+from ...static import Variable
 from ...fluid import core, dygraph_utils, get_flags
-from ...fluid.layers import nn, utils
+from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.param_attr import ParamAttr
+from ...framework import ParamAttr
 from ...fluid.layer_helper import LayerHelper
+from ...tensor.manipulation import unsqueeze, squeeze
+from ...tensor.math import add
+from ...fluid.layers import nn
 
 __all__ = []
 
@@ -68,24 +72,24 @@ def _update_padding_nd(padding, channel_last, num_dims):
             padding_algorithm = "EXPLICIT"
             padding = _exclude_padding_in_batch_and_channel(padding,
                                                             channel_last)
-            if utils._is_symmetric_padding(padding, num_dims):
+            if _is_symmetric_padding(padding, num_dims):
                 padding = padding[0::2]
         # for padding like [pad_before, pad_after, pad_before, pad_after, ...]
         elif len(padding) == 2 * num_dims and isinstance(padding[0], int):
             padding_algorithm = "EXPLICIT"
-            padding = utils.convert_to_list(padding, 2 * num_dims, 'padding')
-            if utils._is_symmetric_padding(padding, num_dims):
+            padding = convert_to_list(padding, 2 * num_dims, 'padding')
+            if _is_symmetric_padding(padding, num_dims):
                 padding = padding[0::2]
         # for padding like [pad_d1, pad_d2, ...]
         elif len(padding) == num_dims and isinstance(padding[0], int):
             padding_algorithm = "EXPLICIT"
-            padding = utils.convert_to_list(padding, num_dims, 'padding')
+            padding = convert_to_list(padding, num_dims, 'padding')
         else:
             raise ValueError("In valid padding: {}".format(padding))
     # for integer padding
     else:
         padding_algorithm = "EXPLICIT"
-        padding = utils.convert_to_list(padding, num_dims, 'padding')
+        padding = convert_to_list(padding, num_dims, 'padding')
     if not all([p >= 0 for p in padding]):
         raise ValueError(
             "Invalid padding, all value should be larger than or equal to 0, but received: {}".
@@ -323,8 +327,8 @@ def conv1d(x,
             "The size of padding's dimension should be 1 or 2. But got padding={}".
             format(padding))
 
-    stride = utils.convert_to_list(stride, 1, 'stride') + [1]
-    dilation = utils.convert_to_list(dilation, 1, 'dilation') + [1]
+    stride = convert_to_list(stride, 1, 'stride') + [1]
+    dilation = convert_to_list(dilation, 1, 'dilation') + [1]
 
     l_type = "conv2d"
     if (num_channels == groups and num_channels != 1 and
@@ -345,8 +349,8 @@ def conv1d(x,
         "data_format": conv2d_data_format
     }
     squeeze_aixs = -2 if channel_last else -1
-    x = nn.unsqueeze(input=x, axes=[squeeze_aixs])
-    weight = nn.unsqueeze(input=weight, axes=[-1])
+    x = unsqueeze(x, axis=[squeeze_aixs])
+    weight = unsqueeze(weight, axis=[-1])
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
@@ -378,7 +382,7 @@ def conv1d(x,
             type=l_type, inputs=inputs, outputs=outputs, attrs=attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
-    out = nn.squeeze(input=out, axes=[squeeze_aixs])
+    out = squeeze(out, axis=[squeeze_aixs])
     return out
 
 
@@ -542,8 +546,8 @@ def conv2d(x,
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+    stride = convert_to_list(stride, 2, 'stride')
+    dilation = convert_to_list(dilation, 2, 'dilation')
 
     l_type = "conv2d"
     if (num_channels == groups and num_channels != 1 and
@@ -742,8 +746,8 @@ def conv1d_transpose(x,
             "The size of padding's dimension should 1 or 2. But got padding={}".
             format(padding))
 
-    stride = utils.convert_to_list(stride, 1, 'stride') + [1]
-    dilation = utils.convert_to_list(dilation, 1, 'dilation') + [1]
+    stride = convert_to_list(stride, 1, 'stride') + [1]
+    dilation = convert_to_list(dilation, 1, 'dilation') + [1]
 
     if output_size is None:
         output_size = []
@@ -752,8 +756,7 @@ def conv1d_transpose(x,
             raise ValueError('output_padding option is mutually exclusive with '
                              'output_size')
         if isinstance(output_size, (list, tuple, int)):
-            output_size = utils.convert_to_list(output_size, 1,
-                                                'output_size') + [1]
+            output_size = convert_to_list(output_size, 1, 'output_size') + [1]
         else:
             raise ValueError(
                 "output_size should be int, or list, tuple of ints")
@@ -761,8 +764,8 @@ def conv1d_transpose(x,
     if output_padding == 0:
         output_padding = []
     else:
-        output_padding = utils.convert_to_list(output_padding, 1,
-                                               'output_padding') + [0]
+        output_padding = convert_to_list(output_padding, 1,
+                                         'output_padding') + [0]
 
     if len(output_padding) > 0 and output_padding[0] > stride[0]:
         raise ValueError(
@@ -780,8 +783,8 @@ def conv1d_transpose(x,
     squeeze_axis = -2 if channel_last else -1
     conv2d_data_format = "NHWC" if channel_last else "NCHW"
 
-    x = nn.unsqueeze(input=x, axes=[squeeze_axis])
-    weight = nn.unsqueeze(input=weight, axes=[-1])
+    x = unsqueeze(x, axis=[squeeze_axis])
+    weight = unsqueeze(weight, axis=[-1])
 
     if in_dygraph_mode():
         attrs = ('output_padding', output_padding, 'output_size', output_size,
@@ -815,7 +818,7 @@ def conv1d_transpose(x,
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
 
-    out = nn.squeeze(input=out, axes=[squeeze_axis])
+    out = squeeze(out, axis=[squeeze_axis])
     return out
 
 
@@ -991,8 +994,8 @@ def conv2d_transpose(x,
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+    stride = convert_to_list(stride, 2, 'stride')
+    dilation = convert_to_list(dilation, 2, 'dilation')
 
     if output_size is None:
         output_size = []
@@ -1001,7 +1004,7 @@ def conv2d_transpose(x,
             raise ValueError('output_padding option is mutually exclusive with '
                              'output_size')
         if isinstance(output_size, (list, tuple, int)):
-            output_size = utils.convert_to_list(output_size, 2, 'output_size')
+            output_size = convert_to_list(output_size, 2, 'output_size')
         else:
             raise ValueError(
                 "output_size should be int, or list, tuple of ints")
@@ -1009,8 +1012,7 @@ def conv2d_transpose(x,
     if output_padding == 0:
         output_padding = []
     else:
-        output_padding = utils.convert_to_list(output_padding, 2,
-                                               'output_padding')
+        output_padding = convert_to_list(output_padding, 2, 'output_padding')
 
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
@@ -1199,8 +1201,8 @@ def conv3d(x,
                          cudnn_version is not None) else False
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
-    stride = utils.convert_to_list(stride, 3, 'stride')
-    dilation = utils.convert_to_list(dilation, 3, 'dilation')
+    stride = convert_to_list(stride, 3, 'stride')
+    dilation = convert_to_list(dilation, 3, 'dilation')
     op_type = "conv3d"
 
     return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
@@ -1381,8 +1383,8 @@ def conv3d_transpose(x,
                                                                    groups))
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
-    stride = utils.convert_to_list(stride, 3, 'stride')
-    dilation = utils.convert_to_list(dilation, 3, 'dilation')
+    stride = convert_to_list(stride, 3, 'stride')
+    dilation = convert_to_list(dilation, 3, 'dilation')
     if output_size is None:
         output_size = []
     else:
@@ -1390,7 +1392,7 @@ def conv3d_transpose(x,
             raise ValueError('output_padding option is mutually exclusive with '
                              'output_size')
         if isinstance(output_size, (list, tuple, int)):
-            output_size = utils.convert_to_list(output_size, 3, 'output_size')
+            output_size = convert_to_list(output_size, 3, 'output_size')
         else:
             raise ValueError(
                 "output_size should be int, or list, tuple of ints")
@@ -1398,8 +1400,7 @@ def conv3d_transpose(x,
     if output_padding == 0:
         output_padding = []
     else:
-        output_padding = utils.convert_to_list(output_padding, 3,
-                                               'output_padding')
+        output_padding = convert_to_list(output_padding, 3, 'output_padding')
 
     cudnn_version = get_cudnn_version()
 
