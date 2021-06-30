@@ -28,11 +28,21 @@ using Tensor = framework::Tensor;
 
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
-                                      size_t index_size, size_t slice_size) {
+                                      size_t index_size, size_t slice_size,
+                                      int bound) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
+
+    PADDLE_ENFORCE(
+        scatter_i >= 0 && scatter_i < bound,
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater or equal to 0, but received [%d]",
+        bound, scatter_i);
+
     IndexT out_i = scatter_i * slice_size + slice_i;
     *(output + out_i) = static_cast<T>(0);
   }
@@ -41,11 +51,21 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
 template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
                                   T* output, size_t index_size,
-                                  size_t slice_size, bool overwrite) {
+                                  size_t slice_size, bool overwrite,
+                                  int bound) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
+
+    PADDLE_ENFORCE(
+        scatter_i >= 0 && scatter_i < bound,
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater or equal to 0, but received [%d]",
+        bound, scatter_i);
+
     IndexT out_i = scatter_i * slice_size + slice_i;
     if (overwrite) {
       *(output + out_i) = *(params + i);
@@ -67,6 +87,15 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = indices[indices_i * end_size + j];
+
+      PADDLE_ENFORCE(
+          index_value >= 0 && index_value < output_dims[j],
+          "The index is out of bounds, "
+          "please check whether the dimensions of index and "
+          "input meet the requirements. It should "
+          "be less than [%d] and greater or equal to 0, but received [%d]",
+          output_dims[j], index_value);
+
       gather_i += (index_value * temp);
       temp *= output_dims[j];
     }
@@ -109,6 +138,7 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
   framework::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
+  int bound = src_dims[0];
   // slice size
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
@@ -128,13 +158,13 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
     ScatterInitCUDAKernel<T, IndexT><<<
         grid, block, 0,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-        p_index, p_output, index_size, slice_size);
+        p_index, p_output, index_size, slice_size, bound);
   }
 
   ScatterCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size, overwrite);
+      p_src, p_index, p_output, index_size, slice_size, overwrite, bound);
 }
 
 // The function is only for scatter grad x,
