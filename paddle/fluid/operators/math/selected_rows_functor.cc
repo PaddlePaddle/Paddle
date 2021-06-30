@@ -302,15 +302,15 @@ namespace scatter {
 
 #ifdef PADDLE_WITH_MKLDNN
 template <typename T>
-typename std::enable_if<std::is_same<T, float>::value ||
-                        std::is_same<T, platform::bfloat16>::value>::type
+typename std::enable_if<std::is_same<T, platform::bfloat16>::value>::type
 elementwise_add_to(BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
                    const T* in, T* out) {
   onednn_handler_axpy(data_len, T(1.f), in, out);
 }
 
 template <typename T>
-typename std::enable_if<std::is_same<T, double>::value ||
+typename std::enable_if<std::is_same<T, float>::value ||
+                        std::is_same<T, double>::value ||
                         std::is_same<T, platform::complex<float>>::value ||
                         std::is_same<T, platform::complex<double>>::value>::type
 elementwise_add_to(BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
