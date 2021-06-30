@@ -132,6 +132,7 @@ def create_bf16_test_class(parent):
             self.check_grad_with_place(
                 core.CPUPlace(), ["X", "Alpha"],
                 "Out",
+                check_dygraph=False,
                 user_defined_grads=[self.dx, self.dalpha],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
 
