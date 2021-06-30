@@ -605,8 +605,10 @@ EOF
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
+                        set +e
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        set -e
                         if [[ "${exec_times}" == "1" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
@@ -2150,6 +2152,7 @@ function main() {
         enable_unused_var_check
         ;;
       gpu_cicheck_coverage)
+        check_approvals_of_unittest 1
         parallel_test
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
