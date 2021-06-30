@@ -29,6 +29,7 @@ class SoftmaxNPUKernel : public framework::OpKernel<T> {
     framework::NPUAttributeMap attr_input = {{"axes", axes}};
 
     auto* out = ctx.Output<framework::LoDTensor>("Out");
+    InferNPUStorageFormatAndDims(out, in->npu_storage_layout());
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("SoftmaxV2", {*in}, {*out}, attr_input);
@@ -66,7 +67,18 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     Tensor tmp_out;
-    tmp_out.ShareDataWith(*out).Resize({first_dim, sec_dim});
+    if (dOut->npu_storage_layout() != DataLayout::kFractalNZ) {
+      tmp_out.ShareDataWith(*out).Resize({first_dim, sec_dim});
+    } else {
+      tmp_out.Resize(out->dims());
+      InferNPUStorageFormatAndDims(&tmp_out, DataLayout::kNCHW);
+      tmp_out.mutable_data<T>(ctx.GetPlace());
+      RunTransDataNPUOP(*out, &tmp_out, stream);
+      VLOG(3) << "Transform data_format of softmax grad op.";
+
+      tmp_out.Resize({first_dim, sec_dim});
+      tmp_out.ResizeNPUDims({first_dim, sec_dim});
+    }
 
     Tensor tmp_dOut;
     if (dOut->npu_storage_layout() != DataLayout::kFractalNZ) {
