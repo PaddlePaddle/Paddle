@@ -107,7 +107,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     non_input_labels = rhs_set.difference(input_labels)
     assert not non_input_labels, (
         f"Invalid equation: "
-        f"output label {non_input_labels} not used by any input.")
+        f"output label {sorted(non_input_labels)} not used by any input.")
     # Verify that output labels are not duplicate
     assert len(rhs) == len(rhs_set), (
         f"Invalid equation: duplicate output labels are found.")
@@ -398,7 +398,7 @@ def diagonalize(labels, operand):
     new_strides = []
 
     for ax, l in enumerate(labels):
-        if l == '.' or l in new_labels:
+        if l == '.' or l not in new_labels:
             # not duplicate
             new_labels.append(l)
             new_strides.append(strides[ax])
@@ -562,7 +562,8 @@ def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count,
     '''
     Plan various kinds of summation
     '''
-    op1_view, op2_view = [g_view[op] for op in (op1, op2)]
+    op1_view, op2_view = g_view[op1], g_view[op2]
+    op1_mask, op2_mask = g_op_masks[op1], g_op_masks[op2]
 
     ndim = len(op1_view)
     nout = ndim - len(g_count)
@@ -580,16 +581,14 @@ def plan_summation(plan, g_view, op1, op2, g_op_masks, g_shape, g_count,
             else:
                 J2.append(ax)
         elif dim1 != -1:
-            if ax < nout:
-                I.append(ax)
-            # If both dims are masked plus the remaining count is 2 then it's time to combine
-            elif count[ax] <= 2:
-                # kill this axis
+            fold = int(op1_mask[ax]) + int(op2_mask[ax])
+            if ax >= nout and fold == count[ax]:
+                # Ready to fold the dimensions
                 K.append(ax)
-                count[ax] = 0
+                count[ax] -= fold
             else:
                 I.append(ax)
-                count[ax] -= 1
+                count[ax] -= max(fold - 1, 0)
 
     # Update g_count
     g_count[:] = count[nout:]
