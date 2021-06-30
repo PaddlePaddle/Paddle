@@ -65,7 +65,8 @@ class TestErrors(unittest.TestCase):
                 "Invalid equation: the label string 'i' misses dimensions.")):
             paddle.einsum('i', a)
         with self.assertRaisesRegex(AssertionError, (
-                "Invalid equation: _ is not a valid label, which should be letters.")):
+            "Invalid equation: _ is not a valid label, "
+            "which should be letters.")):
             paddle.einsum('i_', a)
         with self.assertRaisesRegex(AssertionError, (
                 "Invalid equation: `.` is found outside of an ellipsis.")):
@@ -83,6 +84,7 @@ class TestErrors(unittest.TestCase):
                 "Invalid operands: label i "
                 "corresponds to non-broadcastable dimensions.")):
             paddle.einsum('ij...,ji...', a, a)
+
 
 class TestEinsum(unittest.TestCase):
     @classmethod
@@ -380,7 +382,7 @@ class TestNumpyTests(unittest.TestCase):
         self.check_output("ji,i->", x, y)
         self.check_output("i,ij->", y, x)
         self.check_output("ij,i->", x, y)
-    
+
     def test_large_nops(self):
         a = np.arange(4 * 3 * 1 * 4).reshape(4, 3, 1, 4).astype('float')
         self.check_output('a...b,b...c,c...d', a, a, a)

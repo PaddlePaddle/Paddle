@@ -49,8 +49,7 @@ def parse_op_labels(labelstr, operand):
         )
 
     assert labelstr.replace('...', '', 1).find('.') == -1, (
-        f"Invalid equation: `.` is found outside of an ellipsis."
-    )
+        f"Invalid equation: `.` is found outside of an ellipsis.")
 
     # Check shape. Note, in Paddle a tensor rank is always nonzero
     ndims = len(operand.shape)
@@ -326,10 +325,10 @@ def build_global_shape(g_view, g_labels, op_shapes):
 
     g_shape = [set(sizes_per_ax) - {1} for sizes_per_ax in zip(*view_shapes)]
 
-    nonbcastable_axes = [ax for ax, sizes in enumerate(g_shape) if len(sizes) > 1]
+    non_bcastable = [ax for ax, sizes in enumerate(g_shape) if len(sizes) > 1]
 
-    assert not nonbcastable_axes, (
-        f"Invalid operands: label {g_labels[nonbcastable_axes[0]]} "
+    assert not nonbcastable, (
+        f"Invalid operands: label {g_labels[nonbcastable[0]]} "
         f"corresponds to non-broadcastable dimensions.")
 
     g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
