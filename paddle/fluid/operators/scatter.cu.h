@@ -174,6 +174,7 @@ void GPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
                         Tensor* output) {
   IndexT index_size = index.dims()[0];
   auto dst_dims = output->dims();
+  int bound = dst_dims[0];
   // slice size
   IndexT slice_size = 1;
   for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
@@ -195,7 +196,7 @@ void GPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
   ScatterInitCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_index, p_output, index_size, slice_size);
+      p_index, p_output, index_size, slice_size, bound);
 }
 
 template <typename DeviceContext, typename T, typename IndexT = int>
