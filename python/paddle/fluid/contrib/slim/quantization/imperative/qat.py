@@ -516,7 +516,7 @@ class ImperativeQuantizeOutputs(object):
                 out_scale = utils.load_variable_data(scope, out_scale_name)
                 out_scale = utils.fp_numpy_to_naive(out_scale)
 
-                if previous_op is not None:
+                if previous_op.type != "feed":
                     argname, index = utils._get_output_name_index(previous_op,
                                                                   in_var_name)
                     previous_op._set_attr(argname + str(index) + "_threshold",
