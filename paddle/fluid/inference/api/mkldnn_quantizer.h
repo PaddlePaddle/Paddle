@@ -52,7 +52,7 @@ class AnalysisPredictor::MkldnnQuantizer {
   // Execute full quantization procedure.
   bool Quantize();
 
-#if PADDLE_WITH_TESTING
+#ifdef PADDLE_WITH_TESTING
   friend class MkldnnQuantizerTest;
 #endif
 

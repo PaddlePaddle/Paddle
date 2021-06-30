@@ -71,6 +71,11 @@ elseif (WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 endif()
+
+if(WITH_TESTING AND WITH_MKLDNN)
+  cc_test(test_mkldnn_quantizer SRCS mkldnn_quantizer_tester.cc DEPS paddle_inference_shared ARGS --dirname=${WORD2VEC_MODEL_DIR})
+endif()
+
 if(WITH_TESTING AND TEST test_api_impl)
     if(NOT APPLE)
         set_tests_properties(test_api_impl PROPERTIES TIMEOUT 120)
