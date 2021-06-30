@@ -293,3 +293,31 @@ class HybridCommunicateGroup(object):
     def get_rank_from_stage(self, stage_id, **kwargs):
         return self._topo.get_rank_from_stage(
             self.global_rank, pipe=stage_id, **kwargs)
+
+
+class _CommunicateGroup(object):
+    """ tmp for static """
+
+    def __init__(self):
+        global _HYBRID_PARALLEL_GROUP
+        _HYBRID_PARALLEL_GROUP = self
+        self.groups = dict()
+
+    def set_comm_group(self, group_name, group_rank, group_size, ring_id,
+                       group_ranks):
+        group = paddle.distributed.collective.Group(group_rank, group_size,
+                                                    ring_id, group_ranks)
+        self.groups[group_name] = group
+
+    def get_group(self, group_name):
+        assert group_name in self.groups
+        return self.groups[group_name]
+
+    def get_model_parallel_group(self):
+        return self.get_group('model')
+
+    def get_model_parallel_world_size(self):
+        return self.get_group('model').nranks
+
+    def get_model_parallel_rank(self):
+        return self.get_group('model').rank
