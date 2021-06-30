@@ -49,7 +49,7 @@ def parse_op_labels(labelstr, operand):
         )
 
     assert labelstr.replace('...', '', 1).find('.') == -1, (
-        f"Invalid equation: `.` is only expected to be included in an ellipsis."
+        f"Invalid equation: `.` is found outside of an ellipsis."
     )
 
     # Check shape. Note, in Paddle a tensor rank is always nonzero
@@ -82,10 +82,11 @@ def parse_labels(labelstr, operands):
 
     nop_labels = labelstr.split(',')
     assert len(nop_labels) == len(operands), (
-        "Invalid equation: the number of operands is {len(operands)}"
-        f"but only found {len(nop_labels)} in the label string.")
-    
+        f"Invalid equation: the number of operands is {len(operands)}, "
+        f"but found {len(nop_labels)} segments in the label equation.")
+
     return list(map(parse_op_labels, nop_labels, operands))
+
 
 def validate_rhs(rhs, input_labels, n_bcast_dims):
     '''
@@ -94,7 +95,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     # Sanity check.
     if n_bcast_dims > 0:
         assert '...' in rhs, (
-            f"Invalid equation: missing ellipsis in output labels")
+            f"Invalid equation: missing ellipsis in output labels.")
 
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
@@ -106,7 +107,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     non_input_labels = rhs_set.difference(input_labels)
     assert not non_input_labels, (
         f"Invalid equation: "
-        f"output label '{non_input_labels}' not used by any input.")
+        f"output label {non_input_labels} not used by any input.")
     # Verify that output labels are not duplicate
     assert len(rhs) == len(rhs_set), (
         f"Invalid equation: duplicate output labels are found.")
@@ -297,7 +298,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     return g_labels, g_view, g_nout, g_count
 
 
-def build_global_shape(g_view, op_shapes):
+def build_global_shape(g_view, g_labels, op_shapes):
     '''
     The global shape is the shape of all dimensions rearranged and broadcasting 
     to the global view. It's a reference data structure for einsum planning.
@@ -325,8 +326,11 @@ def build_global_shape(g_view, op_shapes):
 
     g_shape = [set(sizes_per_ax) - {1} for sizes_per_ax in zip(*view_shapes)]
 
-    assert not any(len(sizes) > 1 for sizes in g_shape), (
-        f"Invalid operands: there non-broadcastable dimensions.")
+    nonbcastable_axes = [ax for ax, sizes in enumerate(g_shape) if len(sizes) > 1]
+
+    assert not nonbcastable_axes, (
+        f"Invalid operands: label {g_labels[nonbcastable_axes[0]]} "
+        f"corresponds to non-broadcastable dimensions.")
 
     g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
 
@@ -738,7 +742,7 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
             # op1 is a scalar
             plan_scalar_prod(plan, i - 1, i)
         else:
-            plan_summation(plan, g_view, i-1, i, g_op_masks, g_shape, g_count,
+            plan_summation(plan, g_view, i - 1, i, g_op_masks, g_shape, g_count,
                            n_bcast)
 
     # for ax, dim in enumerate(g_view[nop-1][:nout]):
@@ -896,7 +900,7 @@ def einsum(equation, *operands):
 
     g_labels, g_view, g_nout, g_count = build_global_view(nop_labels, rhs,
                                                           n_bcast_dims)
-    g_shape, g_op_masks = build_global_shape(g_view,
+    g_shape, g_op_masks = build_global_shape(g_view, g_labels,
                                              [op.shape for op in operands])
 
     # Now we're ready to build up an execution plan

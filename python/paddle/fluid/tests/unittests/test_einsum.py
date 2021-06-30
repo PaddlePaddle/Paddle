@@ -18,6 +18,75 @@ import unittest
 import paddle
 from paddle.fluid import core
 
+class TestErrors(unittest.TestCase):
+    def setUp(self):
+        pass
+
+
+    def test_diagonalize_errors(self):
+        a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
+        a = paddle.to_tensor(a)
+        with self.assertRaisesRegex(AssertionError(
+                'Diagonal and trace not implemented yet.')):
+            paddle.einsum('...ii->...i', a)
+        with self.assertRaisesRegex(AssertionError(
+                'Diagonal and trace not implemented yet.')):
+            paddle.einsum('i...i')
+        with self.assertRaisesRegex(AssertionError(
+                'Diagonal and trace not implemented yet.')):
+            paddle.einsum('i...i->i...')
+
+
+    def test_param_errors(self):
+        a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
+        a = paddle.to_tensor(a)
+        with self.assertRaisesRegex(AssertionError(
+                'At least one operand is expected.')):
+            paddle.einsum('ijk')
+        with self.assertRaisesRegex(AssertionError(
+                'Invalid equation: multiple `->` were found.')):
+            paddle.einsum('i -> j -> k', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: the number of operands is 2, "
+                "but found 3 segments in the label equation.")):
+            padde.einsum('i,j,k', a, a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: the number of operands is 2, "
+                "but found 1 segments in the label equation.")):
+            paddle.einsum('ij -> k', a, a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: the number of operands is 1, "
+                "but found 2 segments in the label equation.")):
+            paddle.einsum('i, -> k', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: the label string '' misses dimensions.")):
+            paddle.einsum('->', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: the label string 'i' misses dimensions.")):
+            paddle.einsum('i', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: _ is not a valid label, which should be letters.")):
+            paddle.einsum('i_', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: `.` is only expected to be included in an ellipsis.")):
+            paddle.einsum('i..j', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: `.` is found outside of an ellipsis.")):
+            paddle.einsum('...k...', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: missing ellipsis in output labels.")):
+            paddle.einsum('i...->i', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: "
+                "output label {'j', 'k'} not used by any input.")):
+            paddle.einsum('i...->jk...', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid equation: duplicate output labels are found.")):
+            paddle.einsum('i...->i...i', a)
+        with self.assertRaisesRegex(AssertionError(
+                "Invalid operands: label i "
+                "corresponds to non-broadcastable dimensions.")):
+            paddle.einsum('ij...,ji...', a, a)
 
 class TestEinsum(unittest.TestCase):
     @classmethod
