@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifdef PADDLE_WITH_MKLDNN
 
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include <algorithm>
@@ -605,4 +604,3 @@ float AnalysisPredictor::MkldnnQuantizer::SafeEntropy(
 }
 
 }  // namespace paddle
-#endif
