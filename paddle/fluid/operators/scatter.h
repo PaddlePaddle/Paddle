@@ -119,14 +119,13 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   for (int i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
 
-    PADDLE_ENFORCE_EQ(
-        (index_ >= 0 && index_ < src_dims[0]), true,
-        platform::errors::OutOfRange(
-            "The index is out of bounds, "
-            "please check whether the dimensions of index and "
-            "input meet the requirements. It should "
-            "be less than [%d] and greater or equal to 0, but received [%d]",
-            src_dims[0], index_));
+    PADDLE_ENFORCE_GE(index_, 0,
+                      platform::errors::OutOfRange(
+                          "The index is out of bounds, "
+                          "please check whether the dimensions of index and "
+                          "input meet the requirements. It should "
+                          "be greater or equal to 0, but received [%d]",
+                          index_));
 
     memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
   }
@@ -184,14 +183,13 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   for (int i = 0; i < index_size; ++i) {
     const IndexT& index_ = p_index[i];
 
-    PADDLE_ENFORCE_EQ(
-        (index_ >= 0 && index_ < src_dims[0]), true,
-        platform::errors::OutOfRange(
-            "The index is out of bounds, "
-            "please check whether the dimensions of index and "
-            "input meet the requirements. It should "
-            "be less than [%d] and greater or equal to 0, but received [%d]",
-            src_dims[0], index_));
+    PADDLE_ENFORCE_GE(index_, 0,
+                      platform::errors::OutOfRange(
+                          "The index is out of bounds, "
+                          "please check whether the dimensions of index and "
+                          "input meet the requirements. It should "
+                          "be greater or equal to 0, but received [%d]",
+                          index_));
 
     elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, result_p_output, src,
                                      output, i, index_, slice_size,
