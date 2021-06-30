@@ -64,7 +64,7 @@ class FakeQuantMovingAverageAbsMax(layers.Layer):
             name) if name else 'quant_dequant.scale'
         scale_attr = ParamAttr(
             name=unique_name.generate(scale_prefix),
-            initializer=Constant(0.001),
+            initializer=Constant(0.),
             trainable=False)
         self._scale = self.create_parameter(
             shape=[1], attr=scale_attr, dtype=dtype)
@@ -74,7 +74,7 @@ class FakeQuantMovingAverageAbsMax(layers.Layer):
             name) if name else 'quant_dequant.state'
         state_attr = ParamAttr(
             name=unique_name.generate(state_prefix),
-            initializer=Constant(1),
+            initializer=Constant(0),
             trainable=False)
         self._state = self.create_parameter(
             shape=[1], attr=state_attr, dtype=dtype)
@@ -84,7 +84,7 @@ class FakeQuantMovingAverageAbsMax(layers.Layer):
             name) if name else 'quant_dequant.accum'
         accum_attr = ParamAttr(
             name=unique_name.generate(accum_prefix),
-            initializer=Constant(1),
+            initializer=Constant(0),
             trainable=False)
         self._accum = self.create_parameter(
             shape=[1], attr=accum_attr, dtype=dtype)
@@ -527,7 +527,7 @@ class MovingAverageAbsMaxScale(layers.Layer):
         scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
         scale_name = unique_name.generate(scale_prefix)
         scale_attr = ParamAttr(
-            name=scale_name, initializer=Constant(1), trainable=False)
+            name=scale_name, initializer=Constant(0), trainable=False)
         self._scale = self.create_parameter(
             shape=[1], attr=scale_attr, dtype=dtype)
         self._scale.stop_gradient = True
@@ -535,7 +535,7 @@ class MovingAverageAbsMaxScale(layers.Layer):
         state_prefix = "{}.state".format(name) if name else 'outscale.state'
         state_attr = ParamAttr(
             name=unique_name.generate(state_prefix),
-            initializer=Constant(1),
+            initializer=Constant(0),
             trainable=False)
         self._state = self.create_parameter(
             shape=[1], attr=state_attr, dtype=dtype)
@@ -544,7 +544,7 @@ class MovingAverageAbsMaxScale(layers.Layer):
         accum_prefix = "{}.accum".format(name) if name else 'outscale.accum'
         accum_attr = ParamAttr(
             name=unique_name.generate(accum_prefix),
-            initializer=Constant(1),
+            initializer=Constant(0),
             trainable=False)
         self._accum = self.create_parameter(
             shape=[1], attr=accum_attr, dtype=dtype)
@@ -598,8 +598,8 @@ class MovingAverageAbsMaxScale(layers.Layer):
 
 class MAOutputScaleLayer(layers.Layer):
     """
-    Calculate the scale (moving average abs max) for the output of the input layer.
     Add MovingAverageMaxScale layer to the behind of the input layer.
+    Calculate the scale (moving average abs max) for the output of the input layer.
     """
 
     def __init__(self, layer=None, moving_rate=0.9, name=None, dtype='float32'):
@@ -623,6 +623,10 @@ class MAOutputScaleLayer(layers.Layer):
 
 
 class FakeQuantMAOutputScaleLayer(layers.Layer):
+    """
+    Add FakeQuantMovingAverageAbsMax layer to the behind of the input layer.
+    """
+
     def __init__(self,
                  layer,
                  weight_bits=8,

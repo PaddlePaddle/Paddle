@@ -18,6 +18,10 @@ import numpy as np
 import paddle
 
 from . import quant_nn
+from ..quantization_pass import _get_op_input_var_names
+from ..quantization_pass import _get_op_output_var_names
+from ..quantization_pass import _get_output_name_index
+from ..quantization_pass import _get_input_name_index
 
 layer_name_map = {
     'Conv2D': paddle.nn.Conv2D,
@@ -94,6 +98,7 @@ def find_previous_op(block, var_name):
     for op in block.ops:
         if var_name in op.output_arg_names:
             return op
+    return None
 
 
 def find_next_ops(block, var_name):
@@ -244,3 +249,10 @@ def cal_kl_scaling_factor(hist, abs_max, bits):
                 break
         min_kl_index = starting_iter
     return (min_kl_index + 0.5) * bin_width
+
+
+def fp_numpy_to_naive(x_np):
+    if x_np.size == 1:
+        return float(x_np)
+    else:
+        return x_np.tolist()
