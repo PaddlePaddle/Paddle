@@ -28,8 +28,9 @@ paddle.enable_static()
 
 
 class TestFleetWithASP(unittest.TestCase):
-    # def setUp(self):
-    #     os.environ["PADDLE_TRAINER_ID"] = "0"
+    def setUp(self):
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+
     #     os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
     def net(self, main_prog, startup_prog):
