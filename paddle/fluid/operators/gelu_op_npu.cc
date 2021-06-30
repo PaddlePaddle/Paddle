@@ -61,13 +61,7 @@ class GeluGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Tensor out(x->type());
-    out.mutable_data<T>(x->dims(), place);
-    const auto& runner_out = NpuOpRunner("Gelu", {*x}, {out}, {});
-    runner_out.Run(stream);
-
-    const auto& runner_dx =
-        NpuOpRunner("GeluGrad", {*dout, *x, out}, {*dx}, {});
+    const auto& runner_dx = NpuOpRunner("GeluGrad", {*dout, *x, *x}, {*dx}, {});
     runner_dx.Run(stream);
   }
 };
