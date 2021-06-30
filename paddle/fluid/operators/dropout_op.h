@@ -19,9 +19,13 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/platform/timer.h"
+#include <time.h>
 
 namespace paddle {
 namespace operators {
@@ -99,9 +103,8 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     bool upscale_in_train = (dropout_implementation == "upscale_in_train");
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
-      auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
-      size_t size = framework::product(mask->dims());
-
+      auto* mask_data = mask->mutable_data<float>(context.GetPlace());
+      int size = framework::product(mask->dims());
       // Special case when dropout_prob is 1.0
       if (dropout_prob == 1.0f) {
         std::memset(y_data, 0, size * sizeof(*y_data));        // NOLINT
@@ -118,23 +121,60 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         seed_data =
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
-      auto engine = framework::GetCPURandomEngine(seed_data);
-
+      auto engine = framework::GetCPURandomEngine_32(seed_data);
+      auto factor = static_cast<T>( 1.0f / (1.0f - dropout_prob));
       std::uniform_real_distribution<float> dist(0, 1);
 
-      for (size_t i = 0; i < size; ++i) {
-        if (dist(*engine) < dropout_prob) {
-          mask_data[i] = 0;
-          y_data[i] = 0;
-        } else {
-          mask_data[i] = 1;
-          if (upscale_in_train) {
-            y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
-          } else {
-            y_data[i] = x_data[i];
-          }
+#ifdef __AVX__
+      constexpr unsigned int block = YMM_FLOAT_BLOCK;
+       int end = size & ~(block - 1);
+       int i = 0;
+      for( i = 0; i < end; i+=block){
+        __m256 rand = _mm256_set_ps(dist(*engine),dist(*engine),dist(*engine),dist(*engine),dist(*engine),dist(*engine),dist(*engine),dist(*engine));
+        __m256 _dropout = _mm256_set_ps(dropout_prob, dropout_prob, dropout_prob, dropout_prob, dropout_prob, dropout_prob, dropout_prob, dropout_prob);
+        __m256 _mask = _mm256_and_ps(_mm256_cmp_ps(_dropout , rand, _CMP_LT_OQ),  _mm256_set1_ps(1.0f));
+        _mm256_storeu_ps(reinterpret_cast<float*>(mask_data)+i, _mask);
+        __m256 b = _mm256_mul_ps(_mm256_mul_ps(_mm256_loadu_ps((float*)x_data + i), _mask), _mm256_set1_ps(factor));
+        if (upscale_in_train) {
+          _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i, _mm256_blendv_ps(_mm256_setzero_ps(), b, _mask));
+        }else{
+          _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i, _mm256_blendv_ps(_mm256_setzero_ps(), _mm256_loadu_ps((float*)x_data+i), _mask)  );
         }
       }
+      for (; i < size; ++i) {
+          if(dist(*engine) < dropout_prob) {
+            mask_data[i] = 0.0f;
+            y_data[i] = 0.0f;
+          } else {
+            mask_data[i] = 1.0f;
+            if (upscale_in_train) {
+              y_data[i] = x_data[i] * factor;
+            } else {
+              y_data[i] = x_data[i];
+            }
+          }
+      } 
+#else
+    int i = 0;
+    float _rand = 0.0f;
+#ifdef PADDLE_WITH_MKLML
+    #pragma omp parallel for private(i,rand_) shared(mask_data,y_data,x_data)
+#endif
+        for (i = 0; i < size; ++i) {
+          rand_ = dist(*engine); 
+          if(rand_ < prob ) {
+            mask_data[i] = 0;
+            y_data[i] = 0.0f;
+          } else {
+            mask_data[i] = 1;
+            if (upscale_in_train) {
+              y_data[i] = x_data[i] * factor;
+            } else {
+              y_data[i] = x_data[i];
+            }
+          }
+        }  
+#endif
     } else {
       if (upscale_in_train) {
         const auto* X_data = x->data<T>();
@@ -170,7 +210,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     grad_x->mutable_data<T>(context.GetPlace());
     auto size = grad_x->numel();
 
-    auto M = EigenVector<uint8_t>::Flatten(*mask);
+    auto M = EigenVector<float>::Flatten(*mask);
     auto dX = EigenVector<T>::Flatten(*grad_x);
     auto dY = EigenVector<T>::Flatten(*grad_y);
 
