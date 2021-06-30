@@ -195,6 +195,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
+    } else if (platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      platform::SetNPUDeviceId(
+          BOOST_GET_CONST(platform::NPUPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with NPU if use NPUPlace."));
+#endif
     }
 
     OpBase::Run(*op, new_ins, outs, attrs, default_attrs, place);
