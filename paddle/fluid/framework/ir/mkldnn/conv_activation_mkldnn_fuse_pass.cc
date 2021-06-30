@@ -88,12 +88,6 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     desc->SetAttr("fuse_beta",
                   activation->Op()->GetAttrIfExists<float>("beta"));
 
-    if (!IsCompat(*desc)) {
-      LOG(WARNING) << "conv_activation_mkldnn_fuse_pass: ConvActivation op "
-                      "compat failed.";
-      return;
-    }
-
     GraphSafeRemoveNodes(graph, {activation, conv_out});
 
     PADDLE_ENFORCE_GT(subgraph.count(conv_input), 0UL,
