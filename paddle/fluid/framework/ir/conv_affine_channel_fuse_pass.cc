@@ -311,7 +311,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsIntIn({1, -1})
+      .IsNumEQ(1)
       .End();
 }
 
