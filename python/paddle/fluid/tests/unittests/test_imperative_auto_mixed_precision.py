@@ -154,8 +154,8 @@ class TestAmpScaler(unittest.TestCase):
                     print('use scaler')
                     scaled_loss = scaler.scale(loss)
                     scaled_loss.backward()
-                    optimize_ops, params_grads = scaler.step(optimizer,
-                                                             scaled_loss)
+                    optimize_ops, params_grads = scaler.minimize(optimizer,
+                                                                 scaled_loss)
                     '''
                     optimize_ops, params_grads = scaler.minimize(optimizer,
                                                                  scaled_loss)

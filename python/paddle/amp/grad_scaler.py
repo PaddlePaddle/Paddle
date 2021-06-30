@@ -116,6 +116,41 @@ class GradScaler(AmpScaler):
 
     def step(self, optimizer, *args, **kwargs):
         """
+        This function is similar as `optimizer.step()`, which performs parameters updating.
+        
+        If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
+        Otherwise, it first unscales the scaled gradients of parameters, then updates the parameters.
+
+        Args:
+            optimizer(Optimizer):  The optimizer used to update parameters.
+            args:  Arguments, which will be forward to `optimizer.step()`.
+            kwargs: Keyword arguments, which will be forward to `optimizer.step()`.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+
+                model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                data = paddle.rand([10, 3, 32, 32])
+
+                with paddle.amp.auto_cast():
+                    conv = model(data)
+                    loss = paddle.mean(conv)
+
+                scaled = scaler.scale(loss)  # scale the loss 
+                scaled.backward()            # do backward
+                scaler.step(optimizer, scaled)
+                scaler.update()  
+                optimizer.clear_grad()
+        """
+        return super(GradScaler, self).step(optimizer, *args, **kwargs)
+
+    def minimize(self, optimizer, *args, **kwargs):
+        """
         This function is similar as `optimizer.minimize()`, which performs parameters updating.
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
@@ -143,11 +178,11 @@ class GradScaler(AmpScaler):
 
                 scaled = scaler.scale(loss)  # scale the loss 
                 scaled.backward()            # do backward
-                scaler.step(optimizer, scaled)
+                scaler.minimize(optimizer, scaled)
                 scaler.update()  
                 optimizer.clear_grad()
         """
-        return super(GradScaler, self).step(optimizer, *args, **kwargs)
+        return super(GradScaler, self).minimize(optimizer, *args, **kwargs)
 
     def unscale(self, optimizer):
         """
