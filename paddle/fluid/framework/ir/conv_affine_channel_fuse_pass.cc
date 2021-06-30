@@ -226,11 +226,6 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetAttr("axis", 1);
     desc.SetAttr("use_mkldnn", conv->Op()->GetAttrIfExists<bool>("use_mkldnn"));
 
-    if (!IsCompat(desc)) {
-      LOG(WARNING) << "ConvAffineChannelFusePass in out fc op compat failed.";
-      return;
-    }
-
     auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
     GraphSafeRemoveNodes(graph, {ac_scale, ac_bias, affine_channel});
