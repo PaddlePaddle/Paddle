@@ -28,27 +28,27 @@ paddle.enable_static()
 
 
 class TestFleetWithASP(unittest.TestCase):
-    def setUp(self):
-        os.environ["PADDLE_TRAINER_ID"] = "0"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
+    # def setUp(self):
+    #     os.environ["PADDLE_TRAINER_ID"] = "0"
+    #     os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
-    def net(self, main_prog, startup_prog, dtype='float32'):
+    def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
-            input_x = fluid.data(name='x', shape=[None, 1, 32, 32], dtype=dtype)
-            input_y = fluid.data(name='label', shape=[None, 1], dtype='int64')
-
+            img = fluid.data(
+                name='img', shape=[None, 3, 32, 32], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = fluid.layers.conv2d(
-                input=input_x, num_filters=4, filter_size=3, act="relu")
+                input=img, num_filters=4, filter_size=3, padding=2, act="relu")
             hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
             prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
 
             cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y)
+                input=prediction, label=label)
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.asp = True
-        return avg_cost, strategy, input_x, input_y
+        return avg_cost, strategy, img, label
 
     def test_with_asp(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
