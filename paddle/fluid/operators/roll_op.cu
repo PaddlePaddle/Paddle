@@ -112,7 +112,10 @@ class RollKernel<platform::CUDADeviceContext, T>
       CALL_ROLL_CUDA_KERNEL(8);
       CALL_ROLL_CUDA_KERNEL(9);
       default:
-        break;
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "shifts.size() should be less than 10, But received shifts.size() "
+            "= %d",
+            shifts.size()));
     }
   }
 };
@@ -163,7 +166,10 @@ class RollGradKernel<platform::CUDADeviceContext, T>
       CALL_ROLL_CUDA_KERNEL(8);
       CALL_ROLL_CUDA_KERNEL(9);
       default:
-        break;
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "shifts.size() should be less than 10, But received shifts.size() "
+            "= %d",
+            shifts.size()));
     }
   }
 };
