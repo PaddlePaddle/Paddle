@@ -66,8 +66,8 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
 const std::shared_ptr<Generator_32>& DefaultCPUGenerator_32() {
   static auto default_cpu_generator =
       std::make_shared<Generator_32>(GetRandomSeed());
-  // VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
-  //         << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get();
+  VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
+          << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get();
   return default_cpu_generator;
 }
 
@@ -79,7 +79,7 @@ std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
 std::shared_ptr<std::mt19937> GetCPURandomEngine_32(int seed) {
   if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
     VLOG(4) << "Use random engine from generator";
-    return DefaultCPUGenerator_32()->GetCPUEngine_32();
+    return DefaultCPUGenerator_32()->GetCPUEngine();
   } else {
     // NOTE(zhiqiu): creating an engine instance everytime instead of using
     // OpDefaultCPUEngine(), this is the legacy behavior of random operators.
@@ -153,6 +153,11 @@ uint64_t Generator::GetCurrentSeed() {
   return this->state_.current_seed;
 }
 
+int Generator_32::GetCurrentSeed() {
+  std::lock_guard<std::mutex> lock(this->mu_);
+  return this->state_.current_seed;
+}
+
 uint64_t Generator::Seed() {
   std::lock_guard<std::mutex> lock(this->mu_);
   uint64_t seed;
@@ -178,7 +183,7 @@ std::shared_ptr<std::mt19937_64> Generator::GetCPUEngine() {
   return this->engine_;
 }
 
-std::shared_ptr<std::mt19937> Generator_32::GetCPUEngine_32() {
+std::shared_ptr<std::mt19937> Generator_32::GetCPUEngine() {
   std::lock_guard<std::mutex> lock(this->mu_);
   return this->engine_32;
 }

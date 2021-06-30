@@ -48,7 +48,7 @@ struct GeneratorState {
 };
 
 struct Generator_32 {
-    Generator_32() {
+  Generator_32() {
     auto seed = GetRandomSeed_32();
     std::seed_seq seq({seed});
     auto engine_32 = std::make_shared<std::mt19937>(seq);
@@ -61,7 +61,7 @@ struct Generator_32 {
             << ", cpu engine: " << &this->state_.cpu_engine;
   }
 
-    explicit Generator_32(int seed) {
+  explicit Generator_32(int seed) {
     std::seed_seq seq({seed});
     auto engine_32 = std::make_shared<std::mt19937>(seq);
     this->state_.cpu_engine_32 = *engine_32;
@@ -73,19 +73,41 @@ struct Generator_32 {
     //         << ", cpu engine: " << &this->state_.cpu_engine;
     this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
   }
+  Generator_32(const Generator_32& other) = delete;
 
-    void SetCPUEngine_32(std::shared_ptr<std::mt19937>);
-    std::shared_ptr<std::mt19937> GetCPUEngine_32();
-  private:
-    GeneratorState state_;
-    mutable std::mutex mu_;
+  // get random state
+  GeneratorState GetState();
+  // set random state
+  void SetState(const GeneratorState&);
+  // get current seed
+  int GetCurrentSeed();
+  // random a seed and get
+  int Seed();
+  // set seed
+  void SetCurrentSeed(int seed);
+  // get cpu engine
+  std::shared_ptr<std::mt19937> GetCPUEngine();
+
+  int Random64();
+
+  std::pair<int, int> IncrementOffset(int increament_offset);
+
+  void SetIsInitPy(bool);
+  bool GetIsInitPy() const;
+  int get_device_id() { return this->state_.device; }
+
+  void SetCPUEngine_32(std::shared_ptr<std::mt19937>);
+  std::shared_ptr<std::mt19937> GetCPUEngine_32();
+
+ private:
+  GeneratorState state_;
+  mutable std::mutex mu_;
 
   // NOTE(zhiqiu): is_init_py_ is used to make generator be compatible with
   // old seed, and it should be removed after all random-related operators
   // and unittests upgrades to use generator.
   bool is_init_py_ = false;
-    std::shared_ptr<std::mt19937> engine_32;
-
+  std::shared_ptr<std::mt19937> engine_32;
 };
 
 struct Generator {

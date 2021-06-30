@@ -19,13 +19,11 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/platform/timer.h"
-#include <time.h>
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -122,58 +120,71 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
       auto engine = framework::GetCPURandomEngine_32(seed_data);
-      auto factor = static_cast<T>( 1.0f / (1.0f - dropout_prob));
+      auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
       std::uniform_real_distribution<float> dist(0, 1);
 
 #ifdef __AVX__
       constexpr unsigned int block = YMM_FLOAT_BLOCK;
-       int end = size & ~(block - 1);
-       int i = 0;
-      for( i = 0; i < end; i+=block){
-        __m256 rand = _mm256_set_ps(dist(*engine),dist(*engine),dist(*engine),dist(*engine),dist(*engine),dist(*engine),dist(*engine),dist(*engine));
-        __m256 _dropout = _mm256_set_ps(dropout_prob, dropout_prob, dropout_prob, dropout_prob, dropout_prob, dropout_prob, dropout_prob, dropout_prob);
-        __m256 _mask = _mm256_and_ps(_mm256_cmp_ps(_dropout , rand, _CMP_LT_OQ),  _mm256_set1_ps(1.0f));
-        _mm256_storeu_ps(reinterpret_cast<float*>(mask_data)+i, _mask);
-        __m256 b = _mm256_mul_ps(_mm256_mul_ps(_mm256_loadu_ps((float*)x_data + i), _mask), _mm256_set1_ps(factor));
+      int end = size & ~(block - 1);
+      int i = 0;
+      for (i = 0; i < end; i += block) {
+        __m256 rand = _mm256_set_ps(dist(*engine), dist(*engine), dist(*engine),
+                                    dist(*engine), dist(*engine), dist(*engine),
+                                    dist(*engine), dist(*engine));
+        __m256 _dropout = _mm256_set_ps(
+            dropout_prob, dropout_prob, dropout_prob, dropout_prob,
+            dropout_prob, dropout_prob, dropout_prob, dropout_prob);
+        __m256 _mask = _mm256_and_ps(_mm256_cmp_ps(_dropout, rand, _CMP_LT_OQ),
+                                     _mm256_set1_ps(1.0f));
+        _mm256_storeu_ps(reinterpret_cast<float*>(mask_data) + i, _mask);
+        __m256 b = _mm256_mul_ps(
+            _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i), _mask),
+            _mm256_set1_ps(factor));
         if (upscale_in_train) {
-          _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i, _mm256_blendv_ps(_mm256_setzero_ps(), b, _mask));
-        }else{
-          _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i, _mm256_blendv_ps(_mm256_setzero_ps(), _mm256_loadu_ps((float*)x_data+i), _mask)  );
+          _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i,
+                           _mm256_blendv_ps(_mm256_setzero_ps(), b, _mask));
+        } else {
+          _mm256_storeu_ps(
+              reinterpret_cast<float*>(y_data) + i,
+              _mm256_blendv_ps(_mm256_setzero_ps(),
+                               _mm256_loadu_ps((const float*)x_data + i),
+                               _mask));
         }
       }
       for (; i < size; ++i) {
-          if(dist(*engine) < dropout_prob) {
-            mask_data[i] = 0.0f;
-            y_data[i] = 0.0f;
+        if (dist(*engine) < dropout_prob) {
+          mask_data[i] = 0.0f;
+          y_data[i] = 0.0f;
+        } else {
+          mask_data[i] = 1.0f;
+          if (upscale_in_train) {
+            y_data[i] = x_data[i] * factor;
           } else {
-            mask_data[i] = 1.0f;
-            if (upscale_in_train) {
-              y_data[i] = x_data[i] * factor;
-            } else {
-              y_data[i] = x_data[i];
-            }
+            y_data[i] = x_data[i];
           }
-      } 
+        }
+      }
 #else
-    int i = 0;
-    float _rand = 0.0f;
+      int i = 0;
+      float rand_number = 0.0f;
 #ifdef PADDLE_WITH_MKLML
-    #pragma omp parallel for private(i,rand_) shared(mask_data,y_data,x_data)
+#pragma omp parallel for private(i, rand_number) shared(mask_data, y_data, \
+                                                        x_data)
 #endif
-        for (i = 0; i < size; ++i) {
-          rand_ = dist(*engine); 
-          if(rand_ < prob ) {
-            mask_data[i] = 0;
-            y_data[i] = 0.0f;
+      for (i = 0; i < size; ++i) {
+        rand_number = dist(*engine);
+        if (rand_number < dropout_prob) {
+          mask_data[i] = 0;
+          y_data[i] = 0.0f;
+        } else {
+          mask_data[i] = 1;
+          if (upscale_in_train) {
+            y_data[i] = x_data[i] * factor;
           } else {
-            mask_data[i] = 1;
-            if (upscale_in_train) {
-              y_data[i] = x_data[i] * factor;
-            } else {
-              y_data[i] = x_data[i];
-            }
+            y_data[i] = x_data[i];
           }
-        }  
+        }
+      }
 #endif
     } else {
       if (upscale_in_train) {
