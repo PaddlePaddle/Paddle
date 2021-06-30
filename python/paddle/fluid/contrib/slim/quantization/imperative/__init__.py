@@ -14,9 +14,6 @@
 
 from __future__ import print_function
 
-from . import quant_nn
-from .quant_nn import *
-
 from . import qat
 from .qat import *
 
@@ -33,7 +30,6 @@ from . import ptq_registry
 from .ptq_registry import *
 
 __all__ = []
-__all__ += quant_nn.__all__
 __all__ += qat.__all__
 __all__ += ptq.__all__
 __all__ += ptq_config.__all__

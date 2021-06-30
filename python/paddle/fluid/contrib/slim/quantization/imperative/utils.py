@@ -16,8 +16,8 @@ import math
 import numpy as np
 
 import paddle
+import paddle.nn.quant.quant_layers as quant_layers
 
-from . import quant_nn
 from ..quantization_pass import _get_op_input_var_names
 from ..quantization_pass import _get_op_output_var_names
 from ..quantization_pass import _get_output_name_index
@@ -58,13 +58,15 @@ fake_quant_output_layers = [
 ]
 
 fake_quant_leaf_layers = [
-    quant_nn.FakeQuantAbsMax,
-    quant_nn.FakeQuantChannelWiseAbsMax,
-    quant_nn.FakeQuantMovingAverageAbsMax,
-    quant_nn.MovingAverageAbsMaxScale,
+    quant_layers.FakeQuantAbsMax,
+    quant_layers.FakeQuantChannelWiseAbsMax,
+    quant_layers.FakeQuantMovingAverageAbsMax,
+    quant_layers.MovingAverageAbsMaxScale,
 ]
 
-fake_quant_wrap_layers = [quant_nn.QuantizedConv2D, quant_nn.QuantizedLinear]
+fake_quant_wrap_layers = [
+    quant_layers.QuantizedConv2D, quant_layers.QuantizedLinear
+]
 
 # The weight format of these layers is Cin * Cout * H * W 
 spec_channel_axis_layers = [paddle.nn.Conv2D, paddle.nn.Conv2DTranspose]

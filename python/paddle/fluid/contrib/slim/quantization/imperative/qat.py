@@ -20,6 +20,7 @@ import os
 import warnings
 
 import paddle
+import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid import dygraph, core, framework, unique_name
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.param_attr import ParamAttr
@@ -28,7 +29,6 @@ from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.io import load_inference_model, save_inference_model
 from paddle.fluid.log_helper import get_logger
 from .. import quantization_pass
-from . import quant_nn
 from . import utils
 
 __all__ = ['ImperativeQuantAware']
@@ -329,7 +329,7 @@ class ImperativeQuantizeInputs(object):
             "The layer %s is unsupported to be quantized." \
             % layer.full_name()
 
-        return quant_nn.__dict__[quant_layer_name](layer, **self._kwargs)
+        return quant_layers.__dict__[quant_layer_name](layer, **self._kwargs)
 
 
 class ImperativeQuantizeOutputs(object):
@@ -371,11 +371,11 @@ class ImperativeQuantizeOutputs(object):
                 utils.find_parent_layer_and_sub_name(model, cur_name)
 
             if isinstance(cur_layer, tuple(utils.fake_quant_output_layers)):
-                cur_quant_layer = quant_nn.FakeQuantMAOutputScaleLayer(
+                cur_quant_layer = quant_layers.FakeQuantMAOutputScaleLayer(
                     cur_layer, self._moving_rate)
             else:
-                cur_quant_layer = quant_nn.MAOutputScaleLayer(cur_layer,
-                                                              self._moving_rate)
+                cur_quant_layer = quant_layers.MAOutputScaleLayer(
+                    cur_layer, self._moving_rate)
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
@@ -455,7 +455,7 @@ class ImperativeQuantizeOutputs(object):
         """
         flag = False
         if isinstance(layer, dygraph.Layer):
-            # exclude fake_quant ops in quant_nn file
+            # exclude fake_quant ops in quant_layers file
             if utils.is_leaf_layer(layer) and \
                 not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
                 flag = True
