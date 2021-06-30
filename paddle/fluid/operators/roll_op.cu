@@ -25,21 +25,21 @@ using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-template <typename T, size_t N>
-__global__ void RollCudaKernel(const T* input, T* output, int64_t Num,
-                               paddle::framework::Array<int64_t, N> shifts,
-                               paddle::framework::Array<int64_t, N> strides,
-                               paddle::framework::Array<int64_t, N> sizes) {
+template <typename T, size_t Rank>
+__global__ void RollCudaKernel(const T* input, T* output, int64_t N,
+                               paddle::framework::Array<int64_t, Rank> shifts,
+                               paddle::framework::Array<int64_t, Rank> strides,
+                               paddle::framework::Array<int64_t, Rank> sizes) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= Num) {
+  if (idx >= N) {
     return;
   }
 
   int64_t output_idx = idx;
   int64_t dim_idx, dim_idx_shift;
 
-#pragma unroll N
-  for (size_t i = 0; i < N; i++) {
+#pragma unroll Rank
+  for (size_t i = 0; i < Rank; i++) {
     dim_idx = (idx / strides[i]) % sizes[i];
     dim_idx_shift = (dim_idx + shifts[i]) % sizes[i];
     output_idx = output_idx + (dim_idx_shift - dim_idx) * strides[i];
@@ -83,7 +83,7 @@ class RollKernel<platform::CUDADeviceContext, T>
       }
     }
 
-#define CallRollCudaKernel(N)                                                  \
+#define CALL_ROLL_CUDA_KERNEL(N)                                               \
   case N: {                                                                    \
     paddle::framework::Array<int64_t, N> _strides;                             \
     paddle::framework::Array<int64_t, N> _shifts;                              \
@@ -102,15 +102,15 @@ class RollKernel<platform::CUDADeviceContext, T>
   }
 
     switch (nums) {
-      CallRollCudaKernel(1);
-      CallRollCudaKernel(2);
-      CallRollCudaKernel(3);
-      CallRollCudaKernel(4);
-      CallRollCudaKernel(5);
-      CallRollCudaKernel(6);
-      CallRollCudaKernel(7);
-      CallRollCudaKernel(8);
-      CallRollCudaKernel(9);
+      CALL_ROLL_CUDA_KERNEL(1);
+      CALL_ROLL_CUDA_KERNEL(2);
+      CALL_ROLL_CUDA_KERNEL(3);
+      CALL_ROLL_CUDA_KERNEL(4);
+      CALL_ROLL_CUDA_KERNEL(5);
+      CALL_ROLL_CUDA_KERNEL(6);
+      CALL_ROLL_CUDA_KERNEL(7);
+      CALL_ROLL_CUDA_KERNEL(8);
+      CALL_ROLL_CUDA_KERNEL(9);
       default:
         break;
     }
@@ -153,15 +153,15 @@ class RollGradKernel<platform::CUDADeviceContext, T>
     }
 
     switch (nums) {
-      CallRollCudaKernel(1);
-      CallRollCudaKernel(2);
-      CallRollCudaKernel(3);
-      CallRollCudaKernel(4);
-      CallRollCudaKernel(5);
-      CallRollCudaKernel(6);
-      CallRollCudaKernel(7);
-      CallRollCudaKernel(8);
-      CallRollCudaKernel(9);
+      CALL_ROLL_CUDA_KERNEL(1);
+      CALL_ROLL_CUDA_KERNEL(2);
+      CALL_ROLL_CUDA_KERNEL(3);
+      CALL_ROLL_CUDA_KERNEL(4);
+      CALL_ROLL_CUDA_KERNEL(5);
+      CALL_ROLL_CUDA_KERNEL(6);
+      CALL_ROLL_CUDA_KERNEL(7);
+      CALL_ROLL_CUDA_KERNEL(8);
+      CALL_ROLL_CUDA_KERNEL(9);
       default:
         break;
     }
