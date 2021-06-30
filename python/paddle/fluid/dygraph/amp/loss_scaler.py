@@ -316,23 +316,3 @@ class AmpScaler(object):
                 self._incr_count = 0
 
         return
-
-    def state_dict():
-
-        return {
-            "init_loss_scaling": init_loss_scaling,
-            "incr_ratio": incr_ratio,
-            "decr_ratio": decr_ratio,
-            "incr_every_n_steps": incr_every_n_steps,
-            "decr_every_n_nan_or_inf": decr_every_n_nan_or_inf
-        }
-
-    def load_state_dict(self, state_dict):
-
-        self.init_loss_scaling = state_dict['init_loss_scaling']
-        self.incr_ratio = state_dict['incr_ratio']
-        self.decr_ratio = state_dict['decr_ratio']
-        self.incr_every_n_steps = state_dict['incr_every_n_steps']
-        self.decr_every_n_nan_or_inf = state_dict['decr_every_n_nan_or_inf']
-
-        return None
