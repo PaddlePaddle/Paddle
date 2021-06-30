@@ -164,7 +164,7 @@ class GradScaler(AmpScaler):
                                                incr_every_n_steps=1000,
                                                decr_every_n_nan_or_inf=2,
                                                use_dynamic_loss_scaling=True)
-                enable = scaler.get_enable()
+                enable = scaler.is_enable()
                 print(enable) # True
         """
         return super(GradScaler, self).is_enable()
@@ -178,6 +178,7 @@ class GradScaler(AmpScaler):
         
         Examples:
             .. code-block:: python
+            
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -186,7 +187,7 @@ class GradScaler(AmpScaler):
                                                incr_every_n_steps=1000,
                                                decr_every_n_nan_or_inf=2,
                                                use_dynamic_loss_scaling=True)
-                use_dynamic_loss_scaling = scaler.get_use_dynamic_loss_scaling()
+                use_dynamic_loss_scaling = scaler.is_use_dynamic_loss_scaling()
                 print(use_dynamic_loss_scaling) # True
         """
         return super(GradScaler, self).is_use_dynamic_loss_scaling()
