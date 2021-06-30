@@ -146,12 +146,16 @@ class GradScaler(AmpScaler):
         """
         return super(GradScaler, self).minimize(optimizer, *args, **kwargs)
 
-    def is_use_loss_scaling(self):
+    def is_enable(self):
         """
         Enable loss scaling or not.
+
+        Returns:
+            bool: enable loss scaling return True else return False.
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -163,11 +167,14 @@ class GradScaler(AmpScaler):
                 enable = scaler.get_enable()
                 print(enable) # True
         """
-        return super(GradScaler, self).is_use_loss_scaling()
+        return super(GradScaler, self).is_enable()
 
     def is_use_dynamic_loss_scaling(self):
         """
         Whether to use dynamic loss scaling.
+
+        Returns:
+            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamicly return true.
         
         Examples:
             .. code-block:: python
@@ -187,9 +194,13 @@ class GradScaler(AmpScaler):
     def get_init_loss_scaling(self):
         """
         Return the initial loss scaling factor.
+
+        Reurns:
+            float:  the initial loss scaling factor.
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -212,6 +223,7 @@ class GradScaler(AmpScaler):
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -230,9 +242,13 @@ class GradScaler(AmpScaler):
     def get_incr_ratio(self):
         """
         Return the multiplier to use when increasing the loss scaling.
+
+        Reurns:
+            float:  the multiplier to use when increasing the loss scaling.
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -255,6 +271,7 @@ class GradScaler(AmpScaler):
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -273,9 +290,13 @@ class GradScaler(AmpScaler):
     def get_decr_ratio(self):
         """
         Get the less-than-one-multiplier to use when decreasing the loss scaling.
+
+        Reurns:
+            float:  the less-than-one-multiplier to use when decreasing the loss scaling.
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -298,6 +319,7 @@ class GradScaler(AmpScaler):
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -316,9 +338,13 @@ class GradScaler(AmpScaler):
     def get_incr_every_n_steps(self):
         """
         Return the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+
+        Reurns:
+            int:  the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -341,6 +367,7 @@ class GradScaler(AmpScaler):
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -359,9 +386,13 @@ class GradScaler(AmpScaler):
     def get_decr_every_n_nan_or_inf(self):
         """
         Return the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+
+        Reurns:
+            int:  the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,
@@ -384,6 +415,7 @@ class GradScaler(AmpScaler):
         
         Examples:
             .. code-block:: python
+
                 import paddle
                 scaler = paddle.amp.GradScaler(enable=True,
                                                init_loss_scaling=1024,

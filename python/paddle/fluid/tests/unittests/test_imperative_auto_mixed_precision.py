@@ -219,7 +219,7 @@ class TestAmpScaler(unittest.TestCase):
                 incr_every_n_steps=1000,
                 decr_every_n_nan_or_inf=2,
                 use_dynamic_loss_scaling=True)
-            self.assertEqual(scaler.is_use_loss_scaling() == True, True)
+            self.assertEqual(scaler.is_enable() == True, True)
             self.assertEqual(scaler.get_init_loss_scaling() == 1024, True)
             self.assertEqual(scaler.get_incr_ratio() == 2.0, True)
             self.assertEqual(scaler.get_decr_ratio() == 0.5, True)
