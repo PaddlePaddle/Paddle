@@ -107,6 +107,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_wait)
     LIST(REMOVE_ITEM TEST_OPS test_memcpy_op)
     LIST(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
 endif()
 
 if(WIN32)
