@@ -32,7 +32,7 @@ class PReluMKLDNNHandler
   PReluMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                      const mkldnn::engine engine, platform::Place cpu_place,
                      const Tensor* x, const Tensor* weights,
-                     const std::string& uniq_name, bool is_test)
+                     const std::string& uniq_name, bool is_test = false)
       : platform::MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
