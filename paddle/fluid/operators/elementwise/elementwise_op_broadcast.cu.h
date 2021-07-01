@@ -310,10 +310,9 @@ __device__ inline void ScalarizedBroadcastKernelImpl(
   OutT args_out;
   broadcast_warpper.LoadScalarizedData(args, tid);
 
-#pragma unroll(ET)
-  for (int j = 1; j < ET; ++j) {
-    args_out = broadcast_warpper.func(args);
-  }
+  // Calcualtion of the in_tensor data.
+  args_out = broadcast_warpper.func(args);
+  
   broadcast_warpper.StoreScalarizedData(args_out, tid);
 }
 
