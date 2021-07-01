@@ -200,10 +200,13 @@ class ElasticManager(object):
 
         self.watches = [host_watch, np_watch, endpoints_watch]
 
+        self.launcher = None
+
     def exit(self, completed=False):
         logger.info('manager exist completed {}'.format(completed))
 
-        self.launcher.stop()
+        if self.launcher:
+            self.launcher.stop()
 
         if not self.enable:
             return
@@ -318,7 +321,8 @@ class ElasticManager(object):
 
             time.sleep(3)
 
-        self.launcher.stop()
+        if self.launcher:
+            self.launcher.stop()
         return ElasticStatus.EXIT
 
     def signal_handler(self, sigint, frame):
