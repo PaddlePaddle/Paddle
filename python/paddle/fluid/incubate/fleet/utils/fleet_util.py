@@ -942,7 +942,7 @@ class FleetUtil(object):
             if not client.is_exist(dest):
                 client.makedirs(dest)
 
-            client.upload(model_name, dest, multiprocess=5, overwrite=True)
+            client.upload(model_name, dest, multi_processes=5, overwrite=True)
 
         fleet._role_maker._barrier_worker()
 
@@ -1040,7 +1040,7 @@ class FleetUtil(object):
                                                        pass_id)
             if not client.is_exist(dest):
                 client.mkdirs(dest)
-            client.upload(model_name, dest, multi_process=1, overwrite=True)
+            client.upload(model_name, dest, multi_processes=5, overwrite=True)
 
         fleet._role_maker._barrier_worker()
 
