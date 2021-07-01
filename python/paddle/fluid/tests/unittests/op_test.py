@@ -1436,6 +1436,9 @@ class OpTest(unittest.TestCase):
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
+        if self.is_bfloat16_op():
+            check_dygraph = False
+
         self._check_grad_helper()
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:

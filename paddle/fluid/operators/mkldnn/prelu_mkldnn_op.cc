@@ -32,7 +32,7 @@ class PReluMKLDNNHandler
   PReluMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                      const mkldnn::engine engine, platform::Place cpu_place,
                      const Tensor* x, const Tensor* weights,
-                     const std::string& uniq_name)
+                     const std::string& uniq_name, bool is_test)
       : platform::MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
@@ -46,8 +46,9 @@ class PReluMKLDNNHandler
 
       this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                               x_md, weights_md);
-      this->AcquireBackwardPrimitiveDescriptor(x_md, weights_md, x_md,
-                                               weights_md);
+      if (!is_test)
+        this->AcquireBackwardPrimitiveDescriptor(x_md, weights_md, x_md,
+                                                 weights_md);
     }
   }
 
@@ -87,7 +88,7 @@ class PReluMKLDNNKernel : public framework::OpKernel<T> {
     const bool is_test = ctx.Attr<bool>("is_test");
 
     PReluMKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(), x,
-                                  alpha, ctx.InputName("X"));
+                                  alpha, ctx.InputName("X"), is_test);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto weights_memory_p =
