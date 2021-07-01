@@ -18,10 +18,10 @@ import unittest
 import paddle
 from paddle.fluid import core
 
+
 class TestErrors(unittest.TestCase):
     def setUp(self):
         pass
-
 
     def test_diagonalize_errors(self):
         a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
@@ -36,11 +36,10 @@ class TestErrors(unittest.TestCase):
                 'Diagonal and trace not implemented yet.')):
             paddle.einsum('i...i->i...', a)
 
-
     def test_param_errors(self):
         a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
         a = paddle.to_tensor(a)
-        with self.assertRaisesRegex(AssertionError, 
+        with self.assertRaisesRegex(AssertionError,
                                     ('At least one operand is expected.')):
             paddle.einsum('ijk')
         with self.assertRaisesRegex(AssertionError, (
