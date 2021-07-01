@@ -69,7 +69,8 @@ class TestPReluModeAllOneDNNOp(TestPReluModeChannelOneDNNOp):
         self.mode = "all"
         self.alpha = np.random.random((1, 1, 1, 1)).astype("float32")
 
-    # Skip 'Alpha' input check because in mode = 'all' it has to be a single 1D value, so checking if it has at least 100 values will cause an error
+    # Skip 'Alpha' input check because in mode = 'all' it has to be a single
+    # 1D value so checking if it has at least 100 values will cause an error
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
