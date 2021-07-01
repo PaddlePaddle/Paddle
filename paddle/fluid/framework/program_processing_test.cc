@@ -47,44 +47,36 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   out1->SetType(proto::VarType::LOD_TENSOR);
   op1->SetOutput("Y", {out1->Name()});
 
-  BlockDesc* new_block = program.AppendBlock(*global_block);
-  auto* op2 = new_block->AppendOp();
-  op2->SetType("mul");
-
-  auto* op3 = global_block->AppendOp();
-  op3->SetType("op_with_subblock");
-  op3->SetAttr("sub_block", new_block);
+  BlockDesc* sub_block = program.AppendBlock(*global_block);
   std::vector<BlockDesc*> sub_blocks;
-  sub_blocks.push_back(program.AppendBlock(*global_block));
-  op3->SetAttr("sub_blocks", sub_blocks);
+  sub_blocks.push_back(sub_block);
 
   // building cond op such as less_than
-  BlockDesc* parent_block = program.MutableBlock(new_block->Parent());
-  auto* op4 = parent_block->AppendOp();
-  op4->SetType("less_than");
-  auto* x1 = parent_block->Var("X1");
+  auto* op2 = global_block->AppendOp();
+  op2->SetType("less_than");
+  auto* x1 = global_block->Var("X1");
   x1->SetType(proto::VarType::LOD_TENSOR);
   x1->SetLoDLevel(0);
   x1->SetDataType(proto::VarType::FP32);
   x1->SetShape({1});
 
-  auto* y1 = parent_block->Var("Y1");
+  auto* y1 = global_block->Var("Y1");
   y1->SetType(proto::VarType::LOD_TENSOR);
   y1->SetLoDLevel(0);
   y1->SetDataType(proto::VarType::FP32);
   y1->SetShape({1});
 
-  op4->SetInput("X", {x1->Name()});
-  op4->SetInput("Y", {y1->Name()});
+  op2->SetInput("X", {x1->Name()});
+  op2->SetInput("Y", {y1->Name()});
 
-  auto* less_than_out = parent_block->Var("Out1");
+  auto* less_than_out = global_block->Var("Out1");
   out1->SetType(proto::VarType::BOOL);
-  op4->SetOutput("Out", {less_than_out->Name()});
+  op2->SetOutput("Out", {less_than_out->Name()});
 
   // building while op in sub_block
-  auto* op5 = sub_blocks[0]->AppendOp();
-  op5->SetType("while");
-  op5->SetAttr("sub_block", sub_blocks[0]);
+  auto* op3 = sub_blocks[0]->AppendOp();
+  op3->SetType("while");
+  op3->SetAttr("sub_block", sub_blocks[0]);
 
   auto* x2 = sub_blocks[0]->Var("X2");
   x2->SetType(proto::VarType::LOD_TENSOR);
@@ -92,8 +84,8 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   x2->SetDataType(proto::VarType::FP32);
   x2->SetShape({1});
 
-  op5->SetInput("kX", {x2->Name()});
-  op5->SetInput("kCondition", {less_than_out->Name()});
+  op3->SetInput("kX", {x2->Name()});
+  op3->SetInput("kCondition", {less_than_out->Name()});
 
   auto* out2 = sub_blocks[0]->Var("Out2");
   out2->SetType(proto::VarType::LOD_TENSOR);
@@ -103,8 +95,8 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
 
   auto* steps = sub_blocks[0]->Var("StepScopes");
 
-  op5->SetOutput("kOutputs", {out2->Name()});
-  op5->SetOutput("kStepScopes", {steps->Name()});
+  op3->SetOutput("kOutputs", {out2->Name()});
+  op3->SetOutput("kStepScopes", {steps->Name()});
 
   auto* x3 = global_block->Var("X3");
   x3->SetType(proto::VarType::LOD_TENSOR);
@@ -118,18 +110,18 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   y3->SetDataType(proto::VarType::FP32);
   y3->SetShape({784, 100});
 
-  auto* op6 = sub_blocks[0]->AppendOp();
-  op6->SetType("mul");
-  op6->SetInput("X", {x3->Name()});
-  op6->SetInput("Y", {y3->Name()});
+  auto* op4 = sub_blocks[0]->AppendOp();
+  op4->SetType("mul");
+  op4->SetInput("X", {x3->Name()});
+  op4->SetInput("Y", {y3->Name()});
 
   auto* out3 = global_block->Var("Out3");
   out3->SetType(proto::VarType::LOD_TENSOR);
-  op6->SetOutput("Y", {out3->Name()});
+  op4->SetOutput("Y", {out3->Name()});
 
   ProgramProcessor program_processor;
-  VariableNameMap inner_inputs;
-  VariableNameMap inner_outputs;
+  std::set<std::string> inner_inputs;
+  std::set<std::string> inner_outputs;
 
   program_processor.GetInputsOutputsInBlock(*sub_blocks[0], &inner_inputs,
                                             &inner_outputs);
@@ -137,24 +129,22 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   VLOG(3) << "inner_inputs().size():" << inner_inputs.size();
   VLOG(3) << "inner_outputs().size():" << inner_outputs.size();
 
-  // while op inner_inputs : kCondition = Out1
   ASSERT_EQ(3UL, inner_inputs.size());
-  // while op inner_outputs : kOutputs = Out2, kStepScopes = StepScopes
-
   ASSERT_EQ(3UL, inner_outputs.size());
 
-  VLOG(3) << "Before AddDependency, op's input size:"
-          << op5->InputNames().size();
-  VLOG(3) << "Before AddDependency, op's output size:"
-          << op5->OutputNames().size();
-  program_processor.AddDepToBlockOp(*sub_blocks[0]);
-  VLOG(3) << "After AddDependency, op's input size:"
-          << op5->InputNames().size();
-  VLOG(3) << "After AddDependency, op's output size:"
-          << op5->OutputNames().size();
+  VLOG(3) << "Before AddDependency, op's input kX size:"
+          << op3->Input("kX").size();
+  VLOG(3) << "Before AddDependency, op's output kOutPuts size:"
+          << op3->Output("kOutputs").size();
 
-  ASSERT_EQ(4UL, op5->InputNames().size());
-  ASSERT_EQ(3UL, op5->OutputNames().size());
+  program_processor.AddDepToBlockOp(*sub_blocks[0]);
+  VLOG(3) << "After AddDependency, op's input kX size:"
+          << op3->Input("kX").size();
+  VLOG(3) << "After AddDependency, op's output kOutPuts size:"
+          << op3->Output("kOutputs").size();
+
+  ASSERT_EQ(4UL, op3->Input("kX").size());
+  ASSERT_EQ(3UL, op3->Output("kOutputs").size());
 }
 }  // namespace framework
 }  // namespace paddle

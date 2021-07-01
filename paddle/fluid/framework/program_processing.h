@@ -25,8 +25,8 @@ class ProgramProcessor {
   ProgramProcessor();
 
   void GetInputsOutputsInBlock(const BlockDesc &current_block,
-                               VariableNameMap *inner_inputs,
-                               VariableNameMap *inner_outputs);
+                               std::set<std::string> *inner_inputs,
+                               std::set<std::string> *inner_outputs);
 
   void AddDepToBlockOp(const BlockDesc &block);
 
