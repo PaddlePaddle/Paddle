@@ -164,7 +164,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         }
       }
 #else
-      for (size_t i = 0; i < size; ++i) {
+      for (int i = 0; i < size; ++i) {
         if (dist(*engine) < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
