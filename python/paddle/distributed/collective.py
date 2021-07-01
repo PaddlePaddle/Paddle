@@ -19,6 +19,7 @@ from ..fluid.framework import Variable
 from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.framework import convert_np_dtype_to_dtype_
+from ..fluid.framework import _varbase_creator
 from ..fluid.data_feeder import convert_dtype
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.data_feeder import check_type
@@ -31,6 +32,7 @@ import paddle
 from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.dygraph_utils as dygraph_utils
 
 __all__ = []
 
@@ -92,8 +94,6 @@ class Group():
         return True
 
     def get_group_rank(self, rank):
-        if self.id == 0:
-            return rank
         if self.is_member() and rank in self.ranks:
             return self.ranks.index(rank)
         else:
@@ -126,7 +126,8 @@ def _get_group_map():
     global _group_map
     if not _group_map:
         genv = _get_global_env()
-        _group_map[0] = Group(genv.rank, genv.world_size, 0)
+        _group_map[0] = Group(genv.rank, genv.world_size,
+                              list(range(genv.world_size)))
     return _group_map
 
 
@@ -159,7 +160,7 @@ def get_group(id=0):
     """
 
     gm = _get_group_map()
-    return gm[group] if group in gm else None
+    return gm[id] if id in gm else None
 
 
 def barrier(group=None):
@@ -267,7 +268,9 @@ def new_group(ranks=None, backend=None):
 
     # TODO(shenliang03): This is a temporary solution to solve the problem of 
     # hang caused by cross-creation of new_group
-    tmp = fill_constant([0], dtype="int32", value="1")
+    tmp = paddle.to_tensor(
+        [1], dtype="int32") if in_dygraph_mode() else fill_constant(
+            [0], dtype="int32", value="1")
     paddle.distributed.all_reduce(tmp, use_calc_stream=True)
     paddle.distributed.wait(tmp)
     return gp
@@ -461,7 +464,6 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
                 tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
-        return out
 
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -781,7 +783,7 @@ def _c_identity(tensor, group=None):
     return out
 
 
-def _c_concat(tensor, nranks, group=None):
+def _c_concat(tensor, group=None):
     """
     Return allgather of the tensor, mainly used with model parallel.
 
@@ -797,10 +799,14 @@ def _c_concat(tensor, nranks, group=None):
         return
     ring_id = 0 if group is None else group.id
 
+    global_rank = _get_global_env().rank
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
+
     if in_dygraph_mode():
         return core.ops.c_concat(tensor, 'ring_id', ring_id, 'use_calc_stream',
-                                 True, 'nranks', nranks, 'use_model_parallel',
-                                 True)
+                                 True, 'rank', rank, 'nranks', nranks,
+                                 'use_model_parallel', True)
 
     op_type = 'c_concat'
     helper = LayerHelper(op_type, **locals())
@@ -818,12 +824,13 @@ def _c_concat(tensor, nranks, group=None):
             'ring_id': ring_id,
             'use_calc_stream': True,
             'use_model_parallel': True,
-            'nranks': nranks
+            'nranks': nranks,
+            'rank': rank
         })
     return out
 
 
-def _c_split(tensor, rank, nranks, group=None):
+def _c_split(tensor, group=None):
     """
     Split tensor evenly among all members, mainly used with model parallel.
 
@@ -839,6 +846,10 @@ def _c_split(tensor, rank, nranks, group=None):
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
+
+    global_rank = _get_global_env().rank
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
 
     if in_dygraph_mode():
         return core.ops.c_split(tensor, 'use_calc_stream', True, 'ring_id',
@@ -885,8 +896,56 @@ def _mp_allreduce(tensor,
                 "use_model_parallel", use_model_parallel)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
-    else:
-        raise NotImplementedError("No support _mp_allreduce in dygraph mode.")
+
+    op_type = 'c_allreduce_sum'
+    helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        op_type)
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': tensor},
+        outputs={'Out': out},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': use_calc_stream,
+            'use_model_parallel': use_model_parallel,
+        })
+    return out
+
+
+def _c_lookup_table(table, index, start_index=0, name=None):
+    """
+    Lookup table according to index.
+
+    Args:
+        table (Tensor): The input Tensor. Its data type
+            should be float16, float32, float64.
+        index (Tensor): The index to lookup table.
+        start_index (int): The initial index for table range.
+        name (string): The name of the api
+
+    Returns:
+        Tensor.
+    """
+    if in_dygraph_mode():
+        return core.ops.c_embedding(table, index, "start_index", start_index)
+
+    op_type = 'c_embedding'
+    helper = LayerHelper(op_type, **locals())
+    dtype = helper.input_dtype(input_param_name='table')
+    check_variable_and_dtype(index, 'input', ['int32', 'int64'], op_type)
+    tmp = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='c_embedding',
+        inputs={'Ids': index,
+                'W': table},
+        outputs={'Out': tmp},
+        attrs={"start_index": start_index})
+    return tmp
 
 
 class _Linear(layers.Layer):
@@ -925,6 +984,56 @@ class _Linear(layers.Layer):
         name_str = ', name={}'.format(self.name) if self.name else ''
         return 'in_features={}, out_features={}, dtype={}{}'.format(
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
+
+
+def _c_softmax_with_cross_entropy(logits,
+                                  label,
+                                  group=None,
+                                  return_softmax=False):
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+    global_rank = _get_global_env().rank
+    rank = global_rank if group is None else group.get_group_rank(global_rank)
+    nranks = _get_global_env().world_size if group is None else group.nranks
+
+    input_dims = len(list(logits.shape))
+    label_dims = len(list(label.shape))
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+             (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
+    if input_dims - 1 == label_dims:
+        label = paddle.unsqueeze(label, axis=-1)
+
+    if in_dygraph_mode():
+        softmax, loss = core.ops.c_softmax_with_cross_entropy(
+            logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks)
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+
+    attrs = {
+        'ring_id': ring_id,
+        'rank': rank,
+        'nranks': nranks,
+    }
+    helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+    helper.append_op(
+        type='c_softmax_with_cross_entropy',
+        inputs={'Logits': logits,
+                'Label': label},
+        outputs={'Softmax': softmax,
+                 'Loss': loss},
+        attrs=attrs)
+
+    if return_softmax:
+        return loss, softmax
+
+    return loss
 
 
 def _linear(x, weight, bias=None, name=None):
@@ -995,7 +1104,7 @@ def _parallel_linear(x,
 
     if axis == 0:
         if split_tensor:
-            x = _c_split(x, inner_rank, nranks, group=group)
+            x = _c_split(x, group=group)
     else:
         x = _c_identity(x, group=group)
 
@@ -1075,6 +1184,52 @@ def _parallel_embedding(x,
                         group=None):
     """
     Parallel Embedding
+    """
+    if group is not None and not group.is_member():
+        return
+    ring_id = 0 if group is None else group.id
+
+    helper = LayerHelper("_parallel_embedding", **locals())
+
+    per_part_size = per_part_embeddings
+    rank = inner_rank
+
+    vocab_start_index = rank * per_part_size
+    dtype = helper.get_default_dtype()
+    size = [per_part_size, origin_size[1]]
+
+    weight = helper.create_parameter(
+        attr=param_attr, shape=size, dtype=dtype, is_bias=False)
+
+    if num_partitions == 1:
+        return paddle.nn.functional.embedding(
+            x, weight=weight, padding_idx=None, sparse=False, name=name)
+
+    startup_block = paddle.static.default_startup_program().global_block()
+    main_block = paddle.static.default_main_program().global_block()
+    startup_block.vars[weight.name].is_distributed = True
+    main_block.vars[weight.name].is_distributed = True
+
+    output_parallel = paddle.distributed.collective._c_lookup_table(
+        weight, x, start_index=vocab_start_index, name=name)
+    out = paddle.distributed.collective._mp_allreduce(
+        output_parallel,
+        group=group,
+        use_calc_stream=True,
+        use_model_parallel=True)
+    return out
+
+
+def _parallel_embedding_npu(x,
+                            per_part_embeddings,
+                            origin_size,
+                            param_attr,
+                            inner_rank,
+                            num_partitions,
+                            name,
+                            group=None):
+    """
+    NPU Parallel Embedding
     """
     if group is not None and not group.is_member():
         return
@@ -1232,21 +1387,33 @@ def split(x,
     if operation == "embedding":
         assert axis == 0, ("We only support to split the weight of embedding "
                            "along the first axis now.")
-        per_part_size = (size[0] + num_partitions - 1) // num_partitions
-        last_part_size = size[0] - per_part_size * (num_partitions - 1)
-        if inner_rank == num_partitions - 1: per_part_size = last_part_size
-        per_part_size += 1  # make the last row as the padding index
+        assert size[0] % num_partitions == 0, \
+            "The length of the vocabulary must be divisible by num_partitions " \
+            "but received vocabulary={} num_partitions={}".format(size[0], num_partitions)
 
-        emb_out = _parallel_embedding(
-            x,
-            per_part_size,
-            size,
-            weight_attr,
-            inner_rank,
-            num_partitions,
-            name,
-            group=None)
-        return emb_out
+        per_part_size = size[0] // num_partitions
+        if core.is_compiled_with_npu():
+            emb_out = _parallel_embedding_npu(
+                x,
+                per_part_size,
+                size,
+                weight_attr,
+                inner_rank,
+                num_partitions,
+                name,
+                group=None)
+            return emb_out
+        else:
+            emb_out = _parallel_embedding(
+                x,
+                per_part_size,
+                size,
+                weight_attr,
+                inner_rank,
+                num_partitions,
+                name,
+                group=None)
+            return emb_out
     else:
         should_split = False
         if axis == 0:

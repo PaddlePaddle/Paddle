@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
 <img align="center" src="doc/imgs/logo.png", width=1600>
 <p>
     
@@ -33,7 +33,7 @@ pip install paddlepaddle
 pip install paddlepaddle-gpu
 
 ```
-More infomation about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
+For more information about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
 
 Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 10 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
 
@@ -46,14 +46,13 @@ Now our developers can acquire Tesla V100 online computing resources for free. I
 
 -  **Support Ultra-Large-Scale Training of Deep Neural Networks**
 
-    PaddlePaddle has made breakthroughs in ultra-large-scale deep neural networks training. It launched the world's first large-scale open-source training platform that supports the training of deep networks with 100 billions of features and trillions of parameters using data sources distributed over hundreds of nodes. PaddlePaddle overcomes the online deep learning challenges for ultra-large-scale deep learning models, and further achieved the real-time model updating with more than 1 trillion parameters.
+    PaddlePaddle has made breakthroughs in ultra-large-scale deep neural networks training. It launched the world's first large-scale open-source training platform that supports the training of deep networks with 100 billion features and trillions of parameters using data sources distributed over hundreds of nodes. PaddlePaddle overcomes the online deep learning challenges for ultra-large-scale deep learning models, and further achieved real-time model updating with more than 1 trillion parameters.
      [Click here to learn more](https://github.com/PaddlePaddle/Fleet)
 
 
-- **Accelerated High-Performance Inference over Ubiquitous Deployments**
+- **High-Performance Inference Engines for Comprehensive Deployment Enviroments**
 
-    PaddlePaddle is not only compatible with other open-source frameworks for models training, but also works well on the ubiquitous developments, varying from platforms to devices. More specifically, PaddlePaddle accelerates the inference procedure with the fastest speed-up. Note that, a recent breakthrough of inference speed has been made by PaddlePaddle on Huawei's Kirin NPU, through the hardware/software co-optimization.
-     [Click here to learn more](https://github.com/PaddlePaddle/Paddle-Lite)
+   PaddlePaddle is not only compatible with models trained in 3rd party open-source frameworks , but also offers complete inference products for various production scenarios. Our inference product line includes [Paddle Inference](https://paddle-inference.readthedocs.io/en/latest/product_introduction/summary.html): Native inference library for high-performance server and cloud inference; [Paddle Serving](https://github.com/PaddlePaddle/Serving): A service-oriented framework suitable for distributed and pipeline productions; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite): Ultra-Lightweight inference engine for mobile and IoT environments; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs): A frontend inference engine for browser and mini-apps. Furthermore, by great amounts of optimization with leading hardware in each scenario, Paddle inference engines outperform most of the other mainstream frameworks.
      
      
 - **Industry-Oriented Models and Libraries with Open Source Repositories**

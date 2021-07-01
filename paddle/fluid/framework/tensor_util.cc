@@ -60,6 +60,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
             << dst_place;
     return;
   }
+  VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
 #ifdef PADDLE_WITH_MKLDNN
   auto size = src.layout() == DataLayout::kMKLDNN
@@ -277,7 +278,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
-  if (platform::is_gpu_place(dst_place)) {
+  if (platform::is_gpu_place(dst_place) || platform::is_npu_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {
     dev_ctx = pool.Get(src.place());
