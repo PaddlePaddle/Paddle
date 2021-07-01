@@ -56,6 +56,8 @@ DepthwiseConvMKLDNNPass::DepthwiseConvMKLDNNPass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("padding_algorithm")
+      // mobilenet-ssd has no "padding_algorithm"
+      .IsOptional()
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
