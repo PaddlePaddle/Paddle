@@ -312,7 +312,7 @@ __device__ inline void ScalarizedBroadcastKernelImpl(
 
   // Calcualtion of the in_tensor data.
   args_out = broadcast_warpper.func(args);
-  
+
   broadcast_warpper.StoreScalarizedData(args_out, tid);
 }
 
