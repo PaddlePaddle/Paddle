@@ -85,7 +85,7 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .AddInput("Bias")
       .IsTensor()
       .IsOptional()
-      .End)
+      .End()
       .AddOutput("Output")
       .IsTensor()
       .End()
