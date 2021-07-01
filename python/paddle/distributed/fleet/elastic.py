@@ -318,6 +318,7 @@ class ElasticManager(object):
 
             time.sleep(3)
 
+        self.launcher.stop()
         return ElasticStatus.EXIT
 
     def signal_handler(self, sigint, frame):
