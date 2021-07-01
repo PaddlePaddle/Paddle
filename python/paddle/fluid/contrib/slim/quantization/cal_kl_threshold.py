@@ -15,6 +15,8 @@
 import math
 import numpy as np
 
+__all__ = ['cal_kl_threshold']
+
 
 def expand_quantized_bins(quantized_bins, reference_bins):
     '''

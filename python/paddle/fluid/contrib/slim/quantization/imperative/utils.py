@@ -138,3 +138,13 @@ def is_leaf_layer(layer):
     """
     return isinstance(layer, paddle.nn.Layer) \
         and len(layer.sublayers()) == 0
+
+
+def fp_numpy_to_naive(x_np):
+    """
+    Convert numpy to float or list.
+    """
+    if x_np.size == 1:
+        return float(x_np)
+    else:
+        return x_np.tolist()
