@@ -40,9 +40,12 @@ __global__ void RollCudaKernel(const T* input, T* output, int64_t N,
 
 #pragma unroll Rank
   for (size_t i = 0; i < Rank; i++) {
-    dim_idx = (idx / strides[i]) % sizes[i];
-    dim_idx_shift = (dim_idx + shifts[i]) % sizes[i];
-    output_idx = output_idx + (dim_idx_shift - dim_idx) * strides[i];
+    dim_idx = (idx / strides[i]) % sizes[i] + shifts[i];
+    if (dim_idx >= sizes[i]) {
+      output_idx += (shifts[i] - sizes[i]) * strides[i];
+    } else {
+      output_idx += shifts[i] * strides[i];
+    }
   }
   output[output_idx] = input[idx];
 }
