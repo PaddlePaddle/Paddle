@@ -206,6 +206,7 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .End()
       .AddAttr("output_size")
       .IsType<std::vector<int>>()
+      .IsOptional()
       .End()
       .AddAttr("groups")
       .IsNumGE(1)
