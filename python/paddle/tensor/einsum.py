@@ -327,8 +327,8 @@ def build_global_shape(g_view, g_labels, op_shapes):
 
     non_bcastable = [ax for ax, sizes in enumerate(g_shape) if len(sizes) > 1]
 
-    assert not nonbcastable, (
-        f"Invalid operands: label {g_labels[nonbcastable[0]]} "
+    assert not non_bcastable, (
+        f"Invalid operands: label {g_labels[non_bcastable[0]]} "
         f"corresponds to non-broadcastable dimensions.")
 
     g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]

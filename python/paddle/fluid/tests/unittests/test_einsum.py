@@ -40,8 +40,8 @@ class TestErrors(unittest.TestCase):
     def test_param_errors(self):
         a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
         a = paddle.to_tensor(a)
-        with self.assertRaisesRegex(AssertionError, (
-                'At least one operand is expected.')):
+        with self.assertRaisesRegex(AssertionError, 
+                                    ('At least one operand is expected.')):
             paddle.einsum('ijk')
         with self.assertRaisesRegex(AssertionError, (
                 'Invalid equation: multiple `->` were found.')):
@@ -65,8 +65,8 @@ class TestErrors(unittest.TestCase):
                 "Invalid equation: the label string 'i' misses dimensions.")):
             paddle.einsum('i', a)
         with self.assertRaisesRegex(AssertionError, (
-            "Invalid equation: _ is not a valid label, "
-            "which should be letters.")):
+                "Invalid equation: _ is not a valid label, "
+                "which should be letters.")):
             paddle.einsum('i_', a)
         with self.assertRaisesRegex(AssertionError, (
                 "Invalid equation: `.` is found outside of an ellipsis.")):
