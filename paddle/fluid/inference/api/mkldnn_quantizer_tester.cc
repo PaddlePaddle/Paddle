@@ -299,5 +299,6 @@ TEST_F(MkldnnQuantizerTest, max_ch_gru_scaling_factor) {
     ASSERT_NEAR(lod_tensor.data<double>()[i], scales[i], abs_error);
   }
   printf("--- max_ch_gru_scaling_factor ---\n");
+  ASSERT_EQ(true, false);  // trigger output printing
 }
 }  // namespace paddle

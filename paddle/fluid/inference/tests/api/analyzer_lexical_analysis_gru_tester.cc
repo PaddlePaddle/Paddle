@@ -275,6 +275,7 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
       CHECK_LE(std::abs(acc_ref[i] - acc_analysis[i]),
                FLAGS_quantized_accuracy);
     }
+    ASSERT_EQ(true, false);  // trigger output printing
   }
 }
 
