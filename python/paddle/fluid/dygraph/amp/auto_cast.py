@@ -130,9 +130,10 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
         raise ValueError(
             "current_tracer is None, maybe it is not in imperative mode.")
 
-    if enable and not tracer._expected_place.is_gpu_place():
+    if enable and not (tracer._expected_place.is_gpu_place() or
+                       tracer._expected_place.is_xpu_place()):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
 

@@ -66,6 +66,7 @@ from .manipulation import cast  # noqa: F401
 from .manipulation import concat  # noqa: F401
 from .manipulation import expand  # noqa: F401
 from .manipulation import broadcast_to  # noqa: F401
+from .manipulation import broadcast_tensors  # noqa: F401
 from .manipulation import expand_as  # noqa: F401
 from .manipulation import tile  # noqa: F401
 from .manipulation import flatten  # noqa: F401
@@ -171,6 +172,7 @@ from .math import trunc  # noqa: F401
 from .math import digamma  # noqa: F401
 from .math import neg  # noqa: F401
 from .math import lgamma  # noqa: F401
+from .math import diagonal  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -355,12 +357,14 @@ tensor_method_func  = [ #noqa
            'shape',
            'real',
            'imag',
+           'digamma',
+           'diagonal'
            'trunc'
-           'digamma'
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',
            'bitwise_not',
+           'broadcast_tensors',
 ]
 
 #this list used in math_op_patch.py for magic_method bind
