@@ -70,7 +70,7 @@ class Quant2Int8MkldnnPass(object):
         self._fc_ops = ['fc']
         self._relu_ops = ['relu', 'relu6']
         self._matmul_ops = ['matmul']
-        self._gru_ops = ['fusion_gru', 'multi_gru']
+        self._rnn_ops = ['fusion_gru', 'multi_gru', 'fusion_lstm']
         self._weight_thresholds = {}
         # Collect the Input and Output sclaes from Fake quant models
         self._var_quant_scales = {}
@@ -521,7 +521,7 @@ class Quant2Int8MkldnnPass(object):
 
         def _compute_gru_weight_scales(wx_name, wh_name):
             for op in graph.all_op_nodes():
-                if op.op().type() in self._gru_ops:
+                if op.op().type() in self._rnn_ops:
                     assert len(op.input(wx_name)) == len(
                         op.input(wh_name)
                     ), 'Mismatch in number of weights inputs ({} for WeightX vs. {} for WeightH).'.format(
@@ -536,7 +536,7 @@ class Quant2Int8MkldnnPass(object):
 
         _compute_var_scales(self._conv_ops, "Filter", axis=1)
         _compute_var_scales(self._fc_ops, "W", axis=0)
-        _compute_var_scales(self._gru_ops, "WeightH", axis=0)
+        _compute_var_scales(self._rnn_ops, "WeightH", axis=0)
         _compute_gru_weight_scales("WeightX", "WeightH")
         return graph
 
