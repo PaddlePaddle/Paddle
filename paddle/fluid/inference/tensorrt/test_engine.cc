@@ -68,7 +68,7 @@ TEST_F(TensorRTEngineTest, add_layer) {
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, size);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, size);
   auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::DimsCHW{1, 1, 1});
+                                  nvinfer1::Dims3{1, 1, 1});
   auto *fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, size,
                                         weight.get(), bias.get());
   PADDLE_ENFORCE_NOT_NULL(fc_layer,
@@ -123,7 +123,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 4);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 2);
   auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
-                                  nvinfer1::DimsCHW{1, 2, 1});
+                                  nvinfer1::Dims3{1, 2, 1});
   auto *fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, 2,
                                         weight.get(), bias.get());
   PADDLE_ENFORCE_NOT_NULL(fc_layer,
