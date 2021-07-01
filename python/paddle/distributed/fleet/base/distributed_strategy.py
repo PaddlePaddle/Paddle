@@ -263,7 +263,7 @@ class DistributedStrategy(object):
           .. code-block:: python
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
-            strategy.gradient_scale_configs['scale_strategy'] = 'avg'
+            strategy.gradient_scale_configs = {'scale_strategy': 'avg'}
 
         Note that, strategy must be in 'avg', 'sum' or 'customized'
         """
