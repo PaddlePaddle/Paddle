@@ -202,6 +202,7 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .End()
       .AddAttr("output_padding")
       .IsType<std::vector<int>>()
+      .IsOptional()
       .End()
       .AddAttr("output_size")
       .IsType<std::vector<int>>()
