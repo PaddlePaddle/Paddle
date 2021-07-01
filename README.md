@@ -22,7 +22,7 @@ PaddlePaddle is originated from industrial practices with dedication and commitm
 
 ## Installation
 
-### Latest PaddlePaddle Release: [v2.0](https://github.com/PaddlePaddle/Paddle/tree/release/2.0)
+### Latest PaddlePaddle Release: [v2.1](https://github.com/PaddlePaddle/Paddle/tree/release/2.1)
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.
@@ -36,7 +36,7 @@ pip install paddlepaddle-gpu
 ```
 More infomation about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
 
-Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 10 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
+Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 8 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
 
 ## FOUR LEADING TECHNOLOGIES
 
