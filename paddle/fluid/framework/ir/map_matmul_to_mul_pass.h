@@ -67,6 +67,7 @@ class MapMatmul2MulPass : public FusePassBase {
 
 class Squeeze2MatmulFusePass : public FusePassBase {
  public:
+  Squeeze2MatmulFusePass();
   virtual ~Squeeze2MatmulFusePass() {}
 
  protected:

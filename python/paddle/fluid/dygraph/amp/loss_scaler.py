@@ -352,3 +352,115 @@ class AmpScaler(object):
                 self._incr_count = 0
 
         return
+
+    def is_enable(self):
+        """
+        Enable loss scaling or not.
+
+        Returns:
+            bool: enable loss scaling return True else return False.
+        """
+        return self._enable
+
+    def is_use_dynamic_loss_scaling(self):
+        """
+        Whether to use dynamic loss scaling.
+
+        Returns:
+            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamicly return true.
+        """
+        return self._use_dynamic_loss_scaling
+
+    def get_init_loss_scaling(self):
+        """
+        Return the initial loss scaling factor.
+
+        Reurns:
+            float:  the initial loss scaling factor.
+        """
+        return self._init_loss_scaling
+
+    def set_init_loss_scaling(self, new_init_loss_scaling):
+        """
+        Set the initial loss scaling factor by `new_init_loss_scaling`.
+
+        Args:
+            new_init_loss_scaling(int):  The new_init_loss_scaling used to update initial loss scaling factor.s
+        """
+        self._init_loss_scaling = new_init_loss_scaling
+        self._scale = to_variable(
+            np.array([self._init_loss_scaling]).astype(np.float32))
+
+    def get_incr_ratio(self):
+        """
+        Return the multiplier to use when increasing the loss scaling.
+
+        Reurns:
+            float:  the multiplier to use when increasing the loss scaling.
+        """
+        return self._incr_ratio
+
+    def set_incr_ratio(self, new_incr_ratio):
+        """
+        Set the multiplier to use when increasing the loss scaling by `new_incr_ratio`, `new_incr_ratio` should > 1.0.
+
+        Args:
+            new_incr_ratio(float):  The new_incr_ratio used to update the multiplier to use when increasing the loss scaling.
+        """
+        assert new_incr_ratio > 1.0, "The new_incr_ratio must be > 1.0."
+        self._incr_ratio = new_incr_ratio
+
+    def get_decr_ratio(self):
+        """
+        Get the less-than-one-multiplier to use when decreasing the loss scaling.
+
+        Reurns:
+            float:  the less-than-one-multiplier to use when decreasing the loss scaling.
+        """
+        return self._decr_ratio
+
+    def set_decr_ratio(self, new_decr_ratio):
+        """
+        Set the less-than-one-multiplier to use when decreasing the loss scaling by `new_incr_ratio`, `new_decr_ratio` should < 1.0.
+
+        Args:
+            new_decr_ratio(float):  The new_decr_ratio used to update the less-than-one-multiplier to use when decreasing the loss scaling.
+        """
+        assert new_decr_ratio < 1.0, "The new_decr_ratio must be < 1.0."
+        self._decr_ratio = new_decr_ratio
+
+    def get_incr_every_n_steps(self):
+        """
+        Return the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+
+        Reurns:
+            int:  the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+        """
+        return self._incr_every_n_steps
+
+    def set_incr_every_n_steps(self, new_incr_every_n_steps):
+        """
+        Set the num `n` by `new_incr_every_n_steps`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+
+        Args:
+            new_incr_every_n_steps(int):  The new_incr_every_n_steps used to update the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+        """
+        self._incr_every_n_steps = new_incr_every_n_steps
+
+    def get_decr_every_n_nan_or_inf(self):
+        """
+        Return the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+
+        Reurns:
+            int:  the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+        """
+        return self._decr_every_n_nan_or_inf
+
+    def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
+        """
+        Set the num `n` by `new_decr_every_n_nan_or_inf`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+
+        Args:
+            new_decr_every_n_nan_or_inf(int):  The new_decr_every_n_nan_or_inf used to update the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+        """
+        self._decr_every_n_nan_or_inf = new_decr_every_n_nan_or_inf

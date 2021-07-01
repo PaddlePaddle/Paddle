@@ -241,3 +241,290 @@ class GradScaler(AmpScaler):
             optimizer.clear_grad() 
         """
         return super(GradScaler, self).update()
+
+    def is_enable(self):
+        """
+        Enable loss scaling or not.
+
+        Returns:
+            bool: enable loss scaling return True else return False.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                enable = scaler.is_enable()
+                print(enable) # True
+        """
+        return super(GradScaler, self).is_enable()
+
+    def is_use_dynamic_loss_scaling(self):
+        """
+        Whether to use dynamic loss scaling.
+
+        Returns:
+            bool: if fixed loss_scaling is used return False, if the loss scaling is updated dynamicly return true.
+        
+        Examples:
+            .. code-block:: python
+            
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                use_dynamic_loss_scaling = scaler.is_use_dynamic_loss_scaling()
+                print(use_dynamic_loss_scaling) # True
+        """
+        return super(GradScaler, self).is_use_dynamic_loss_scaling()
+
+    def get_init_loss_scaling(self):
+        """
+        Return the initial loss scaling factor.
+
+        Reurns:
+            float:  the initial loss scaling factor.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                init_loss_scaling = scaler.get_init_loss_scaling()
+                print(init_loss_scaling) # 1024
+        """
+        return super(GradScaler, self).get_init_loss_scaling()
+
+    def set_init_loss_scaling(self, new_init_loss_scaling):
+        """
+        Set the initial loss scaling factor by `new_init_loss_scaling`.
+
+        Args:
+            new_init_loss_scaling(int):  The new_init_loss_scaling used to update initial loss scaling factor.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                print(scaler.get_init_loss_scaling()) # 1024
+                new_init_loss_scaling = 1000
+                scaler.set_init_loss_scaling(new_init_loss_scaling)
+                print(scaler.get_init_loss_scaling()) # 1000
+        """
+        super(GradScaler, self).set_init_loss_scaling(new_init_loss_scaling)
+
+    def get_incr_ratio(self):
+        """
+        Return the multiplier to use when increasing the loss scaling.
+
+        Reurns:
+            float:  the multiplier to use when increasing the loss scaling.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                incr_ratio = scaler.get_incr_ratio()
+                print(incr_ratio) # 2.0
+        """
+        return super(GradScaler, self).get_incr_ratio()
+
+    def set_incr_ratio(self, new_incr_ratio):
+        """
+        Set the multiplier to use when increasing the loss scaling by `new_incr_ratio`, `new_incr_ratio` should > 1.0.
+
+        Args:
+            new_incr_ratio(float):  The new_incr_ratio used to update the multiplier to use when increasing the loss scaling.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                print(scaler.get_incr_ratio()) # 2.0
+                new_incr_ratio = 3.0
+                scaler.set_incr_ratio(new_incr_ratio)
+                print(scaler.get_incr_ratio()) # 3.0
+        """
+        super(GradScaler, self).set_incr_ratio(new_incr_ratio)
+
+    def get_decr_ratio(self):
+        """
+        Get the less-than-one-multiplier to use when decreasing the loss scaling.
+
+        Reurns:
+            float:  the less-than-one-multiplier to use when decreasing the loss scaling.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                decr_ratio = scaler.get_decr_ratio()
+                print(decr_ratio) # 0.5
+        """
+        return super(GradScaler, self).get_decr_ratio()
+
+    def set_decr_ratio(self, new_decr_ratio):
+        """
+        Set the less-than-one-multiplier to use when decreasing the loss scaling by `new_incr_ratio`, `new_decr_ratio` should < 1.0.
+
+        Args:
+            new_decr_ratio(float):  The new_decr_ratio used to update the less-than-one-multiplier to use when decreasing the loss scaling.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                print(scaler.get_decr_ratio()) # 0.5
+                new_decr_ratio = 0.1
+                scaler.set_decr_ratio(new_decr_ratio)
+                print(scaler.get_decr_ratio()) # 0.1
+        """
+        super(GradScaler, self).set_decr_ratio(new_decr_ratio)
+
+    def get_incr_every_n_steps(self):
+        """
+        Return the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+
+        Reurns:
+            int:  the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                incr_every_n_steps = scaler.get_incr_every_n_steps()
+                print(incr_every_n_steps) # 1000
+        """
+        return super(GradScaler, self).get_incr_every_n_steps()
+
+    def set_incr_every_n_steps(self, new_incr_every_n_steps):
+        """
+        Set the num `n` by `new_incr_every_n_steps`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+
+        Args:
+            new_incr_every_n_steps(int):  The new_incr_every_n_steps used to update the num `n`, `n` represent increases loss scaling every `n` consecutive steps with finite gradients.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                print(scaler.get_incr_every_n_steps()) # 1000
+                new_incr_every_n_steps = 2000
+                scaler.set_incr_every_n_steps(new_incr_every_n_steps)
+                print(scaler.get_incr_every_n_steps()) # 2000
+        """
+        super(GradScaler, self).set_incr_every_n_steps(new_incr_every_n_steps)
+
+    def get_decr_every_n_nan_or_inf(self):
+        """
+        Return the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+
+        Reurns:
+            int:  the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                decr_every_n_nan_or_inf = scaler.get_decr_every_n_nan_or_inf()
+                print(decr_every_n_nan_or_inf) # 2
+        """
+        return super(GradScaler, self).get_decr_every_n_nan_or_inf()
+
+    def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
+        """
+        Set the num `n` by `new_decr_every_n_nan_or_inf`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+
+        Args:
+            new_decr_every_n_nan_or_inf(int):  The new_decr_every_n_nan_or_inf used to update the num `n`, `n` represent decreases loss scaling every `n` accumulated steps with nan or inf gradients.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                scaler = paddle.amp.GradScaler(enable=True,
+                                               init_loss_scaling=1024,
+                                               incr_ratio=2.0,
+                                               decr_ratio=0.5,
+                                               incr_every_n_steps=1000,
+                                               decr_every_n_nan_or_inf=2,
+                                               use_dynamic_loss_scaling=True)
+                print(scaler.get_decr_every_n_nan_or_inf()) # 2
+                new_decr_every_n_nan_or_inf = 3
+                scaler.set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
+                print(scaler.get_decr_every_n_nan_or_inf()) # 3
+        """
+        super(GradScaler,
+              self).set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
