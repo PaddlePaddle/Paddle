@@ -38,7 +38,7 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
                    "The index is out of bounds, "
                    "please check whether the dimensions of index and "
                    "input meet the requirements. It should "
-                   "be greater or equal to 0, but received [%d]",
+                   "be greater than or equal to 0, but received [%d]",
                    scatter_i);
 
     IndexT out_i = scatter_i * slice_size + slice_i;
@@ -59,7 +59,7 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
                    "The index is out of bounds, "
                    "please check whether the dimensions of index and "
                    "input meet the requirements. It should "
-                   "be greater or equal to 0, but received [%d]",
+                   "be greater than or equal to 0, but received [%d]",
                    scatter_i);
 
     IndexT out_i = scatter_i * slice_size + slice_i;

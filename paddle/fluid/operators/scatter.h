@@ -124,7 +124,7 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
-                          "be greater or equal to 0, but received [%d]",
+                          "be greater than or equal to 0, but received [%d]",
                           index_));
 
     memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
@@ -188,7 +188,7 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
-                          "be greater or equal to 0, but received [%d]",
+                          "be greater than or equal to 0, but received [%d]",
                           index_));
 
     elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, result_p_output, src,
