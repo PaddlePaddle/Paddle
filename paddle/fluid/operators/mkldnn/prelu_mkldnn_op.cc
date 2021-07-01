@@ -24,6 +24,7 @@ using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
 using platform::to_void_cast;
 
+namespace {
 template <typename T>
 class PReluMKLDNNHandler
     : public platform::MKLDNNHandlerT<T, dnnl::prelu_forward,
@@ -70,6 +71,7 @@ class PReluMKLDNNHandler
                                             output_data, "@diff_weights_mem_p");
   }
 };
+}  // anonymous namespace
 
 template <typename T>
 class PReluMKLDNNKernel : public framework::OpKernel<T> {
