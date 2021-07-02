@@ -81,6 +81,60 @@ boost::optional<T> HasAttribute(const Node& op, const std::string& attr) {
     return boost::none;
 }
 
+ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
+}
+
 ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::IdentityFuseHandle(
     const ResidualConnectionMKLDNNFusePass::CanFuseFunc& can_fuse_func,
     const ResidualConnectionMKLDNNFusePass::IdentityConvFunc&
@@ -102,6 +156,10 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
   Node* elementwise_add_op;
   Node* elementwise_add_identity;
   Node* elementwise_add_out;
+  if (!IsCompat(subgraph, graph)) {
+    LOG(WARNING) << "Pass in op compat failed.";
+    return;
+  }
 
   std::tie(conv_op, conv_input, conv_filter, conv_output) =
       get_node_from_conv_op(subgraph);
@@ -154,6 +212,11 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
 
   Node* elementwise_add_op;
   Node* elementwise_add_out;
+
+  if (!IsCompat(subgraph, graph)) {
+    LOG(WARNING) << "Pass in op compat failed.";
+    return;
+  }
 
   std::tie(conv_x_op, conv_x_input, conv_x_filter, conv_x_output) =
       get_node_from_conv_x_op(subgraph);

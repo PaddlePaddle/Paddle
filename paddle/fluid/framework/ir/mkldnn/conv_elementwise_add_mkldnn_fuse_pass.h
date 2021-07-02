@@ -129,6 +129,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
   };
 
  public:
+  ResidualConnectionMKLDNNFusePass();
   virtual ~ResidualConnectionMKLDNNFusePass() {}
 
  protected:
