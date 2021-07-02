@@ -117,6 +117,12 @@ class VarDesc {
     desc_.set_is_parameter(is_parameter);
   }
 
+  bool StopGradient() const { return desc_.stop_gradient(); }
+
+  void SetStopGradient(bool stop_gradient) {
+    desc_.set_stop_gradient(stop_gradient);
+  }
+
   bool NeedCheckFeed() const { return desc_.need_check_feed(); }
 
   void SetNeedCheckFeed(bool need_check_feed) {
