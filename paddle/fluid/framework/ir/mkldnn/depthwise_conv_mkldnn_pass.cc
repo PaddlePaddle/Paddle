@@ -40,6 +40,7 @@ DepthwiseConvMKLDNNPass::DepthwiseConvMKLDNNPass() {
       .IsTensor()
       .End()
       .AddInput("Bias")
+      .IsOptional()
       .IsTensor()
       .End()
       .AddInput("ResidualData")
