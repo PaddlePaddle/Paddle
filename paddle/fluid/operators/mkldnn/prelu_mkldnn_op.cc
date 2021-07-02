@@ -33,7 +33,8 @@ class PReluMKLDNNHandler
   PReluMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                      const mkldnn::engine engine, platform::Place cpu_place,
                      const Tensor* x, const Tensor* weights,
-                     const std::string& uniq_name, bool is_test = false)
+                     const std::string& uniq_name, const std::string& mode,
+                     bool is_test = false)
       : platform::MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
@@ -41,9 +42,25 @@ class PReluMKLDNNHandler
     if (!this->isCached()) {
       auto x_md = memory::desc(framework::vectorize(x->dims()),
                                MKLDNNGetDataType<T>(), x->format());
-      auto weights_md =
-          memory::desc(framework::vectorize(weights->dims()),
-                       MKLDNNGetDataType<T>(), memory::format_tag::any);
+
+      auto weights_dims = framework::vectorize(weights->dims());
+      if (weights->dims().size() != x->dims().size()) {
+        auto new_weights_dims = std::vector<int64_t>(x->dims().size(), 1);
+        int j = 0;
+        if (mode == "element") {
+          for (int i = x->dims().size() - weights_dims.size();
+               i < x->dims().size(); ++i) {
+            new_weights_dims[i] = weights_dims[j];
+            ++j;
+          }
+        } else if ("channel") {
+          new_weights_dims[1] =
+              *std::max_element(weights_dims.begin(), weights_dims.end());
+        }
+        weights_dims = std::move(new_weights_dims);
+      }
+      auto weights_md = memory::desc(weights_dims, MKLDNNGetDataType<T>(),
+                                     memory::format_tag::any);
 
       this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                               x_md, weights_md);
@@ -53,9 +70,18 @@ class PReluMKLDNNHandler
     }
   }
 
-  std::shared_ptr<memory> AcquireWeightsMemoryWithReorder(const Tensor* input,
-                                                          const bool is_test) {
+  std::shared_ptr<memory> AcquireWeightsMemoryPossiblyWithReorder(
+      const Tensor* input, const bool is_test) {
     const T* input_data = input->data<T>();
+
+    // if weights are 1D, every format tag is correct, so we accept
+    // format_tag::any's output and no reorder is needed
+    if (input->dims().size() == 1) {
+      return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
+                                              to_void_cast<T>(input_data),
+                                              "@alpha_mem_p");
+    }
+
     auto user_weights_md =
         memory::desc(framework::vectorize(input->dims()),
                      MKLDNNGetDataType<T>(), input->format());
@@ -88,13 +114,14 @@ class PReluMKLDNNKernel : public framework::OpKernel<T> {
     const auto* alpha = ctx.Input<Tensor>("Alpha");
     auto* out = ctx.Output<Tensor>("Out");
     const bool is_test = ctx.Attr<bool>("is_test");
+    const auto mode = ctx.Attr<std::string>("mode");
 
     PReluMKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(), x,
-                                  alpha, ctx.InputName("X"), is_test);
+                                  alpha, ctx.InputName("X"), mode, is_test);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto weights_memory_p =
-        handler.AcquireWeightsMemoryWithReorder(alpha, is_test);
+        handler.AcquireWeightsMemoryPossiblyWithReorder(alpha, is_test);
     auto dst_memory_p = handler.AcquireDstMemory(out);
     auto prelu_p = handler.AcquireForwardPrimitive();
 
@@ -126,13 +153,14 @@ class PReluGradMKLDNNKernel : public framework::OpKernel<T> {
     auto* dalpha = ctx.Output<Tensor>(framework::GradVarName("Alpha"));
     auto* alpha = ctx.Input<Tensor>("Alpha");
     const bool is_test = ctx.Attr<bool>("is_test");
+    const auto mode = ctx.Attr<std::string>("mode");
 
     PReluMKLDNNHandler<T> handler(dev_ctx, onednn_engine, ctx.GetPlace(), x,
-                                  alpha, framework::GradVarName("X"));
+                                  alpha, framework::GradVarName("X"), mode);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto weights_memory_p =
-        handler.AcquireWeightsMemoryWithReorder(alpha, is_test);
+        handler.AcquireWeightsMemoryPossiblyWithReorder(alpha, is_test);
     auto diff_src_memory_p = handler.AcquireDiffSrcMemory(dx);
     auto diff_weights_memory_p = handler.AcquireDiffWeightsMemory(dalpha);
     auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);

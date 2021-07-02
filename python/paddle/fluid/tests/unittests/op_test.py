@@ -361,7 +361,7 @@ class OpTest(unittest.TestCase):
         return self.dtype == np.uint16 or (
             hasattr(self, 'mkldnn_data_type') and
             getattr(self, 'mkldnn_data_type') is "bfloat16") or (
-                'mkldnn_data_type' in self.attrs and
+                hasattr(self, 'attrs') and 'mkldnn_data_type' in self.attrs and
                 self.attrs['mkldnn_data_type'] == 'bfloat16')
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
