@@ -90,13 +90,10 @@ constexpr int kMaxThread = 256;
 #else
 constexpr int kMaxThread = 128;
 #endif
-constexpr int warp_size = 32;
 
 // get blockDim for reduceLastDim and reduceAny
 static inline int GetBlockDim(int block_dim) {
-  return block_dim >= kMaxThread
-             ? kMaxThread
-             : (block_dim <= warp_size ? warp_size : GetLastPow2(block_dim));
+  return block_dim >= kMaxThread ? kMaxThread : GetLastPow2(block_dim);
 }
 
 // check reduce rand is valid
@@ -434,10 +431,11 @@ __device__ __forceinline__ T BlockReduce(T val, T init, ReduceOp reducer) {
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
   __shared__ T shared[detail::kMaxThread];
-  constexpr int warp_size = 32;
-  if (blockDim.x > warp_size) {
+  int block_dim_x = blockDim.x;
+  if (blockDim.x > warpSize) {
+    block_dim_x = warpSize;
     shared[threadIdx.x] = val;
-    for (int stride = blockDim.x / 2; stride >= warp_size; stride >>= 1) {
+    for (int stride = blockDim.x / 2; stride >= warpSize; stride >>= 1) {
       __syncthreads();
       if (threadIdx.x < stride) {
         T temp = shared[threadIdx.x + stride];
@@ -450,7 +448,7 @@ __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
 
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
-  for (int stride = warp_size / 2; stride > 0; stride >>= 1) {
+  for (int stride = 1; stride < block_dim_x; stride <<= 1) {
     T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
     val = reducer(val, temp);
   }
