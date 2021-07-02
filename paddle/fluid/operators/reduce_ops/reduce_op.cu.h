@@ -578,7 +578,7 @@ __device__ __forceinline__ void ReduceModule(
     paddle::framework::Array<int, Rank - ReduceRank> left_dim,
     paddle::framework::Array<int, Rank - ReduceRank> left_strides) {
   // reduce_rank == 1 && reduce_dim[0] == x_dim.size() - 1
-  if (reduceType == ReduceType::kReduceLastDim) {
+  if (reduce_type == ReduceType::kReduceLastDim) {
     ReduceLastDim<Tx, Ty, ReduceOp, TransformOp>(x, y, reducer, transformer,
                                                  init, reduce_num);
 
@@ -735,9 +735,8 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
     return;
   }
 
-  LaunchReduceKernel<Tx, Ty, ReduceOp<Tx, Ty>, TransformOp>(
-      x_data, y_data, reducer, TransformOp(config.reduce_num),
-      reducer.initial(), stream, config);
+  ReduceKernelImpl<Tx, Ty, ReduceOp<Tx, Ty>>(x_data, y_data, reducer,
+                                             reducer.initial(), stream, config);
 }
 
 template <typename Tx, template <typename, typename> class ReduceOp>
