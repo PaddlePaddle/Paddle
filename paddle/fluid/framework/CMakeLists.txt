@@ -29,7 +29,7 @@ add_subdirectory(io)
 proto_library(framework_proto SRCS framework.proto)
 
 proto_library(op_def_proto SRCS op_def.proto)
-cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto)
+cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
 
 FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
 FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt 
