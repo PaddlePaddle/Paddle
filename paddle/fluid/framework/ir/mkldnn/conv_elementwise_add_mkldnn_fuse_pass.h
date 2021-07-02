@@ -84,9 +84,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
     auto can_fuse = [this](Node* op1, Node* op2) -> bool {
       return this->FindFuseOption(*op1, *op2) == FUSE_MKLDNN;
     };
-    const ResidualConnectionMKLDNNFusePass pass;
-    auto fuse_handle =
-        HandleType{can_fuse, std::forward<OpFuncs>(op_funcs)..., &pass};
+    auto fuse_handle = HandleType{can_fuse, std::forward<OpFuncs>(op_funcs)...};
 
     (*gpd)(graph, fuse_handle);
 
@@ -136,7 +134,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
  public:
   ResidualConnectionMKLDNNFusePass();
   virtual ~ResidualConnectionMKLDNNFusePass() {}
-  // using FusePassBase::IsCompat;
+
  protected:
   void ApplyImpl(graph_ptr graph) const;
   static bool HasFusedActivation(Node* conv_node) {

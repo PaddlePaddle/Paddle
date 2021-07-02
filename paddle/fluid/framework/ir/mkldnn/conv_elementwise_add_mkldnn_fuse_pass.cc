@@ -314,7 +314,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsX(
       [this, &conv_pattern](const GraphPatternDetector::subgraph_t& subgraph) {
         return GetNodesFromConv(conv_pattern, subgraph);
       },
-      get_node_from_elementwise_add);
+      get_node_from_elementwise_add, this);
 }
 
 GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
@@ -351,7 +351,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
       [this, &conv_pattern](const GraphPatternDetector::subgraph_t& subgraph) {
         return GetNodesFromConv(conv_pattern, subgraph);
       },
-      get_node_from_elementwise_add);
+      get_node_from_elementwise_add, this);
 }
 
 GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
@@ -392,7 +392,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
        &conv_y_pattern](const GraphPatternDetector::subgraph_t& subgraph) {
         return GetNodesFromConv(conv_y_pattern, subgraph);
       },
-      get_node_from_elementwise_add);
+      get_node_from_elementwise_add, this);
 }
 
 void ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
