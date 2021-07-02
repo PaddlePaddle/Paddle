@@ -84,8 +84,9 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
     auto can_fuse = [this](Node* op1, Node* op2) -> bool {
       return this->FindFuseOption(*op1, *op2) == FUSE_MKLDNN;
     };
-
-    auto fuse_handle = HandleType{can_fuse, std::forward<OpFuncs>(op_funcs)...};
+    const ResidualConnectionMKLDNNFusePass pass;
+    auto fuse_handle =
+        HandleType{can_fuse, std::forward<OpFuncs>(op_funcs)..., &pass};
 
     (*gpd)(graph, fuse_handle);
 
@@ -96,10 +97,11 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
     IdentityFuseHandle(
         const CanFuseFunc& can_fuse_func,
         const IdentityConvFunc& get_node_from_conv_op,
-        const IdentityElementwiseAddFunc& get_node_from_elementwise_add_op);
+        const IdentityElementwiseAddFunc& get_node_from_elementwise_add_op,
+        const ResidualConnectionMKLDNNFusePass* pass);
 
     void operator()(const GraphPatternDetector::subgraph_t& subgraph,
-                    Graph* graph, const ResidualConnectionMKLDNNFusePass* pass);
+                    Graph* graph);
     int get_stats() const { return *fusion_stats; }
 
    private:
@@ -107,6 +109,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
     CanFuseFunc can_fuse_func;
     IdentityConvFunc get_node_from_conv_op;
     IdentityElementwiseAddFunc get_node_from_elementwise_add_op;
+    const ResidualConnectionMKLDNNFusePass* pass_;
   };
 
   struct ProjectionFuseHandle {
@@ -114,10 +117,11 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
         const CanFuseFunc& can_fuse_func,
         const ProjectionConvFunc& get_node_from_conv_x_op,
         const ProjectionConvFunc& get_node_from_conv_y_op,
-        const ProjectionElementwiseAddFunc& get_node_from_elementwise_add_op);
+        const ProjectionElementwiseAddFunc& get_node_from_elementwise_add_op,
+        const ResidualConnectionMKLDNNFusePass* pass);
 
     void operator()(const GraphPatternDetector::subgraph_t& subgraph,
-                    Graph* graph, const ResidualConnectionMKLDNNFusePass* pass);
+                    Graph* graph);
     int get_stats() const { return *fusion_stats; }
 
    private:
@@ -126,12 +130,13 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
     ProjectionConvFunc get_node_from_conv_x_op;
     ProjectionConvFunc get_node_from_conv_y_op;
     ProjectionElementwiseAddFunc get_node_from_elementwise_add_op;
+    const ResidualConnectionMKLDNNFusePass* pass_;
   };
 
  public:
   ResidualConnectionMKLDNNFusePass();
   virtual ~ResidualConnectionMKLDNNFusePass() {}
-
+  // using FusePassBase::IsCompat;
  protected:
   void ApplyImpl(graph_ptr graph) const;
   static bool HasFusedActivation(Node* conv_node) {
