@@ -124,7 +124,6 @@ void testSingleSampleNeighboor(
   for (auto g : s) {
     ASSERT_EQ(true, s1.find(g) != s1.end());
   }
-  VLOG(0) << "test single done";
   s.clear();
   s1.clear();
   vs.clear();
@@ -141,6 +140,57 @@ void testSingleSampleNeighboor(
   }
 }
 
+void testAddNode(
+    std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
+  worker_ptr_->clear_nodes(0);
+  int total_num = 270000;
+  uint64_t id;
+  std::unordered_set<uint64_t> id_set;
+  for (int i = 0; i < total_num; i++) {
+    while (id_set.find(id = rand()) != id_set.end())
+      ;
+    id_set.insert(id);
+  }
+  std::vector<uint64_t> id_list(id_set.begin(), id_set.end());
+  std::vector<bool> weight_list;
+  auto status = worker_ptr_->add_graph_node(0, id_list, weight_list);
+  status.wait();
+  std::vector<uint64_t> ids[2];
+  for (int i = 0; i < 2; i++) {
+    auto sample_status =
+        worker_ptr_->random_sample_nodes(0, i, total_num, ids[i]);
+    sample_status.wait();
+  }
+  std::unordered_set<uint64_t> id_set_check(ids[0].begin(), ids[0].end());
+  for (auto x : ids[1]) id_set_check.insert(x);
+  ASSERT_EQ(id_set.size(), id_set_check.size());
+  for (auto x : id_set) {
+    ASSERT_EQ(id_set_check.find(x) != id_set_check.end(), true);
+  }
+  std::vector<uint64_t> remove_ids;
+  for (auto p : id_set_check) {
+    if (remove_ids.size() == 0)
+      remove_ids.push_back(p);
+    else if (remove_ids.size() < total_num / 2 && rand() % 2 == 1) {
+      remove_ids.push_back(p);
+    }
+  }
+  for (auto p : remove_ids) id_set_check.erase(p);
+  status = worker_ptr_->remove_graph_node(0, remove_ids);
+  status.wait();
+  for (int i = 0; i < 2; i++) ids[i].clear();
+  for (int i = 0; i < 2; i++) {
+    auto sample_status =
+        worker_ptr_->random_sample_nodes(0, i, total_num, ids[i]);
+    sample_status.wait();
+  }
+  std::unordered_set<uint64_t> id_set_check1(ids[0].begin(), ids[0].end());
+  for (auto x : ids[1]) id_set_check1.insert(x);
+  ASSERT_EQ(id_set_check1.size(), id_set_check.size());
+  for (auto x : id_set_check1) {
+    ASSERT_EQ(id_set_check.find(x) != id_set_check.end(), true);
+  }
+}
 void testBatchSampleNeighboor(
     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
@@ -527,6 +577,7 @@ void RunBrpcPushSparse() {
 
   std::remove(edge_file_name);
   std::remove(node_file_name);
+  testAddNode(worker_ptr_);
   LOG(INFO) << "Run stop_server";
   worker_ptr_->stop_server();
   LOG(INFO) << "Run finalize_worker";

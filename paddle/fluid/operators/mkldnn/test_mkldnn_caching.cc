@@ -50,7 +50,7 @@ class CacheTester {
     platform::CPUPlace place;
     onednn_dev_ctx_ =
         dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
-    onednn_dev_ctx_->ResetBlobMap();
+    onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
   bool Analyze(unsigned short int num_entries) {
@@ -176,18 +176,6 @@ TEST(test_elementwise_add_reuse_cache, cpu_place) {
   RunOperator<float>(p, "elementwise_add", dims, "elementwise_add_out");
   RunOperator<float>(p, "relu", dims, "elementwise_add_out", true);
   PADDLE_ENFORCE_EQ(ct.Analyze(8), true,
-                    platform::errors::InvalidArgument(
-                        "Wrong number of cached oneDNN objects"));
-}
-
-TEST(test_elementwises_sequence_reuse_cache, cpu_place) {
-  framework::DDim dims({32, 64});
-  platform::CPUPlace p;
-  CacheTester ct;
-  RunOperator<float>(p, "elementwise_add", dims, "elementwise_add_out", true);
-  RunOperator<float>(p, "elementwise_mul", dims, "elementwise_add_out", true);
-  RunOperator<float>(p, "relu", dims, "elementwise_add_out", true);
-  PADDLE_ENFORCE_EQ(ct.Analyze(11), true,
                     platform::errors::InvalidArgument(
                         "Wrong number of cached oneDNN objects"));
 }

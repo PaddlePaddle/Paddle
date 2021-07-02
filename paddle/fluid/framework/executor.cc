@@ -72,7 +72,7 @@ Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  ClearMKLDNNCache(place_);
+  ClearMKLDNNCache(place_, this);
 #endif
 }
 
@@ -169,6 +169,9 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool force_disable_gc, bool keep_kid_scopes) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
                      keep_kid_scopes);
@@ -294,6 +297,9 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   bool has_feed_ops =
       has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
   bool has_fetch_ops =
@@ -456,11 +462,22 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #endif
     } else if (platform::is_npu_place(place_)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      // TODO(ascendrc): Support garbage collector on NPUPlace
-      VLOG(4) << "Skip NPU gc because it is not implemented now.";
+      if (IsFastEagerDeletionModeEnabled()) {
+        VLOG(4) << "Use unsafe fast gc for NPU.";
+        gc.reset(new NPUUnsafeFastGarbageCollector(
+            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Please set FLAGS_fast_eager_deletion_mode=true to use "
+            "GarbageCollector on NPU."));
+        // TODO(zhiqiu): fix bugs and enable NPUDefaultStreamGarbageCollector.
+        VLOG(4) << "Use default stream gc for NPU.";
+        gc.reset(new NPUDefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+      }
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "No NPU gc found in CPU/GPU/XPU paddle"));
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No NPU gc found in CPU/NPU paddle"));
 #endif
     }
   }
@@ -565,7 +582,6 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       }
     }
   }
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
 #else
   LOG(WARNING)
       << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";

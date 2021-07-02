@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "thrust/pair.h"
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {
@@ -182,7 +182,7 @@ class HeterComm {
   std::vector<std::vector<Path>> path_;
   std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};
-  int multi_node_{1};
+  int multi_node_{0};
   std::vector<ncclComm_t> nccl_inner_comms_;
   std::vector<ncclComm_t> nccl_inter_comms_;
   int node_size_;

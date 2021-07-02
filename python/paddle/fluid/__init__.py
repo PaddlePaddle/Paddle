@@ -15,6 +15,7 @@
 from __future__ import print_function
 import os
 import sys
+import atexit
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepadde without -U option
@@ -71,7 +72,6 @@ from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
 from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
 from .incubate import fleet
-from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -92,6 +92,10 @@ from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from . import generator
 from .core import _cuda_synchronize
+from .generator import Generator
+from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiTrainer, HeterXpuTrainer
+from .transpiler import HashName, RoundRobin
+from .backward import append_backward
 
 Tensor = LoDTensor
 enable_imperative = enable_dygraph
@@ -116,7 +120,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'transpiler',
         'nets',
         'optimizer',
-        'learning_rate_decay',
         'backward',
         'regularizer',
         'LoDTensor',
@@ -137,7 +140,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'install_check',
         'save',
         'load',
-        'VarBase',
         '_cuda_synchronize'
     ]
 
@@ -255,3 +257,8 @@ def __bootstrap__():
 monkey_patch_variable()
 __bootstrap__()
 monkey_patch_varbase()
+
+# NOTE(zhiqiu): register npu_finalize on the exit of Python,
+# do some clean up manually.
+if core.is_compiled_with_npu():
+    atexit.register(core.npu_finalize)

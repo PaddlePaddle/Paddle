@@ -28,8 +28,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/distributed/common/sparse_sharding_merge.h"
 #include "paddle/fluid/distributed/communicator_common.h"
 #include "paddle/fluid/distributed/fleet.h"
+#include "paddle/fluid/distributed/index_dataset/index_sampler.h"
+#include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/graph_brpc_client.h"
@@ -46,6 +49,7 @@ using paddle::distributed::GraphNode;
 using paddle::distributed::GraphPyServer;
 using paddle::distributed::GraphPyClient;
 using paddle::distributed::FeatureNode;
+using paddle::distributed::ShardingMerge;
 
 namespace paddle {
 namespace pybind {
@@ -54,6 +58,8 @@ void BindDistFleetWrapper(py::module* m) {
                                                           "DistFleetWrapper")
       .def(py::init([]() { return FleetWrapper::GetInstance(); }))
       .def("load_sparse", &FleetWrapper::LoadSparseOnServer)
+      .def("load_model", &FleetWrapper::LoadModel)
+      .def("load_one_table", &FleetWrapper::LoadModelOneTable)
       .def("init_server", &FleetWrapper::InitServer)
       .def("run_server",
            (uint64_t (FleetWrapper::*)(void)) & FleetWrapper::RunServer)
@@ -81,6 +87,12 @@ void BindPSHost(py::module* m) {
       .def("to_uint64", &distributed::PSHost::serialize_to_uint64)
       .def("from_uint64", &distributed::PSHost::parse_from_uint64)
       .def("to_string", &distributed::PSHost::to_string);
+}
+
+void BindSparseShardingTools(py::module* m) {
+  py::class_<ShardingMerge>(*m, "ShardingMerge")
+      .def(py::init<>())
+      .def("merge", &ShardingMerge::Merge);
 }
 
 void BindCommunicatorContext(py::module* m) {
@@ -210,6 +222,77 @@ void BindGraphPyClient(py::module* m) {
              return bytes_feats;
            })
       .def("bind_local_server", &GraphPyClient::bind_local_server);
+}
+
+using paddle::distributed::TreeIndex;
+using paddle::distributed::IndexWrapper;
+using paddle::distributed::IndexNode;
+
+void BindIndexNode(py::module* m) {
+  py::class_<IndexNode>(*m, "IndexNode")
+      .def(py::init<>())
+      .def("id", [](IndexNode& self) { return self.id(); })
+      .def("is_leaf", [](IndexNode& self) { return self.is_leaf(); })
+      .def("probability", [](IndexNode& self) { return self.probability(); });
+}
+
+void BindTreeIndex(py::module* m) {
+  py::class_<TreeIndex, std::shared_ptr<TreeIndex>>(*m, "TreeIndex")
+      .def(py::init([](const std::string name, const std::string path) {
+        auto index_wrapper = IndexWrapper::GetInstancePtr();
+        index_wrapper->insert_tree_index(name, path);
+        return index_wrapper->get_tree_index(name);
+      }))
+      .def("height", [](TreeIndex& self) { return self.Height(); })
+      .def("branch", [](TreeIndex& self) { return self.Branch(); })
+      .def("total_node_nums",
+           [](TreeIndex& self) { return self.TotalNodeNums(); })
+      .def("emb_size", [](TreeIndex& self) { return self.EmbSize(); })
+      .def("get_all_leafs", [](TreeIndex& self) { return self.GetAllLeafs(); })
+      .def("get_nodes",
+           [](TreeIndex& self, const std::vector<uint64_t>& codes) {
+             return self.GetNodes(codes);
+           })
+      .def("get_layer_codes",
+           [](TreeIndex& self, int level) { return self.GetLayerCodes(level); })
+      .def("get_ancestor_codes",
+           [](TreeIndex& self, const std::vector<uint64_t>& ids, int level) {
+             return self.GetAncestorCodes(ids, level);
+           })
+      .def("get_children_codes",
+           [](TreeIndex& self, uint64_t ancestor, int level) {
+             return self.GetChildrenCodes(ancestor, level);
+           })
+      .def("get_travel_codes",
+           [](TreeIndex& self, uint64_t id, int start_level) {
+             return self.GetTravelCodes(id, start_level);
+           });
+}
+
+void BindIndexWrapper(py::module* m) {
+  py::class_<IndexWrapper, std::shared_ptr<IndexWrapper>>(*m, "IndexWrapper")
+      .def(py::init([]() { return IndexWrapper::GetInstancePtr(); }))
+      .def("insert_tree_index", &IndexWrapper::insert_tree_index)
+      .def("get_tree_index", &IndexWrapper::get_tree_index)
+      .def("clear_tree", &IndexWrapper::clear_tree);
+}
+
+using paddle::distributed::IndexSampler;
+using paddle::distributed::LayerWiseSampler;
+
+void BindIndexSampler(py::module* m) {
+  py::class_<IndexSampler, std::shared_ptr<IndexSampler>>(*m, "IndexSampler")
+      .def(py::init([](const std::string& mode, const std::string& name) {
+        if (mode == "by_layerwise") {
+          return IndexSampler::Init<LayerWiseSampler>(name);
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Unsupported IndexSampler Type!"));
+        }
+      }))
+      .def("init_layerwise_conf", &IndexSampler::init_layerwise_conf)
+      .def("init_beamsearch_conf", &IndexSampler::init_beamsearch_conf)
+      .def("sample", &IndexSampler::sample);
 }
 
 }  // end namespace pybind

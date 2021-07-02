@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
+from ..fluid.dygraph.base import grad  # noqa: F401
+from . import backward_mode  # noqa: F401
+from .backward_mode import backward  # noqa: F401
+from .py_layer import PyLayer, PyLayerContext  # noqa: F401
 
-from . import backward_mode
-from .backward_mode import backward
-
-__all__ = ['grad']
-
-__all__ += backward_mode.__all__
+__all__ = ['grad', 'backward', 'PyLayer', 'PyLayerContext']

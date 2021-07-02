@@ -124,7 +124,7 @@ if __name__ == '__main__':
             custom_pattern2 = custom_pattern2[:-1]
 
         all_matches = []
-        with open(op_file, 'r') as f:
+        with open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())
 
             op, op_count = remove_grad_op_and_kernel(content, op_pattern1,

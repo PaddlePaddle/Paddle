@@ -19,10 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
-#include "paddle/fluid/framework/fleet/heter_context.h"
-#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
@@ -64,7 +60,6 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   pull_dense_worker_ = PullDenseWorker::GetInstance();
   pull_dense_worker_->Initialize(trainer_desc);
   SetDebug(trainer_desc.debug());
-  fleet_ptr_ = FleetWrapper::GetInstance();
   trainer_desc_ = trainer_desc;
   workers_.resize(place_num);
   for (int i = 0; i < place_num; ++i) {

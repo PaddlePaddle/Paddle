@@ -880,8 +880,8 @@ std::future<int32_t> BrpcPsClient::send_client2client_msg(
   auto promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> fut = promise->get_future();
   if (to_client_id >= _client_channels.size()) {
-    LOG(FATAL) << "to_client_id is out of range clients, which size is "
-               << _client_channels.size();
+    VLOG(0) << "to_client_id is out of range clients, which size is "
+            << _client_channels.size();
     promise->set_value(-1);
     return fut;
   }

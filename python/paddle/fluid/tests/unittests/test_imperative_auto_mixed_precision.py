@@ -106,6 +106,20 @@ class TestAutoCast(unittest.TestCase):
 
         self.assertRaises(ValueError, func)
 
+    def test_amp_guard_upsupported_fp16_op(self):
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard(True):
+                out_fp16 = conv2d(data)
+                out_fp32 = paddle.expand_as(
+                    out_fp16, out_fp16)  # expand_as_v2 has no fp16 kernel
+
+        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
+        self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+
 
 class TestAmpScaler(unittest.TestCase):
     def test_scale(self):
@@ -194,6 +208,34 @@ class TestAmpScaler(unittest.TestCase):
                 # param not update when tensor contains nan or inf
                 self.assertTrue(
                     np.array_equal(param.numpy(), params_init[param.name]))
+
+    def test_get_and_set(self):
+        with fluid.dygraph.guard():
+            scaler = paddle.amp.GradScaler(
+                enable=True,
+                init_loss_scaling=1024,
+                incr_ratio=2.0,
+                decr_ratio=0.5,
+                incr_every_n_steps=1000,
+                decr_every_n_nan_or_inf=2,
+                use_dynamic_loss_scaling=True)
+            self.assertEqual(scaler.is_enable() == True, True)
+            self.assertEqual(scaler.get_init_loss_scaling() == 1024, True)
+            self.assertEqual(scaler.get_incr_ratio() == 2.0, True)
+            self.assertEqual(scaler.get_decr_ratio() == 0.5, True)
+            self.assertEqual(scaler.get_incr_every_n_steps() == 1000, True)
+            self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 2, True)
+            self.assertEqual(scaler.is_use_dynamic_loss_scaling() == True, True)
+            scaler.set_decr_every_n_nan_or_inf(4)
+            self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 4, True)
+            scaler.set_decr_ratio(0.1)
+            self.assertEqual(scaler.get_decr_ratio() == 0.1, True)
+            scaler.set_incr_every_n_steps(200)
+            self.assertEqual(scaler.get_incr_every_n_steps() == 200, True)
+            scaler.set_incr_ratio(3.0)
+            self.assertEqual(scaler.get_incr_ratio() == 3.0, True)
+            scaler.set_init_loss_scaling(100)
+            self.assertEqual(scaler.get_init_loss_scaling() == 100, True)
 
 
 def reader_decorator(reader):

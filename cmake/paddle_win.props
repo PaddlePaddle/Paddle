@@ -88,4 +88,3 @@ set CUDAFE_FLAGS=--sdk_dir "$(WindowsSdkDir)"
         </ClCompile>
     </ItemDefinitionGroup>
 </Project>
-

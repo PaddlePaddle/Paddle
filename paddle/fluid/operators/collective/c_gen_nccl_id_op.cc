@@ -66,6 +66,9 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
+    std::string endpoint = Attr<std::string>("endpoint");
+    int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
 
@@ -75,8 +78,6 @@ class CGenNCCLIdOp : public framework::OperatorBase {
           Attr<std::vector<std::string>>("other_endpoints");
       platform::SendBroadCastCommID(endpoint_list, &nccl_ids);
     } else {
-      std::string endpoint = Attr<std::string>("endpoint");
-      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
       platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
     }
 

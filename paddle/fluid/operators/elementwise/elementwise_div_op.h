@@ -74,23 +74,13 @@ struct DivGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout / y; }
 };
 
-template <>
-struct DivGradDX<paddle::platform::complex64> {
-  HOSTDEVICE paddle::platform::complex64 operator()(
-      paddle::platform::complex64 x, paddle::platform::complex64 y,
-      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
-    paddle::platform::complex64 y_conj(y.real, -y.imag);
-    return dout / y_conj;
-  }
-};
-
-template <>
-struct DivGradDX<paddle::platform::complex128> {
-  HOSTDEVICE paddle::platform::complex128 operator()(
-      paddle::platform::complex128 x, paddle::platform::complex128 y,
-      paddle::platform::complex128 out,
-      paddle::platform::complex128 dout) const {
-    paddle::platform::complex128 y_conj(y.real, -y.imag);
+template <typename T>
+struct DivGradDX<paddle::platform::complex<T>> {
+  HOSTDEVICE paddle::platform::complex<T> operator()(
+      paddle::platform::complex<T> x, paddle::platform::complex<T> y,
+      paddle::platform::complex<T> out,
+      paddle::platform::complex<T> dout) const {
+    paddle::platform::complex<T> y_conj(y.real, -y.imag);
     return dout / y_conj;
   }
 };
@@ -102,23 +92,13 @@ struct DivGradDY {
   }
 };
 
-template <>
-struct DivGradDY<paddle::platform::complex64> {
-  HOSTDEVICE paddle::platform::complex64 operator()(
-      paddle::platform::complex64 x, paddle::platform::complex64 y,
-      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
-    paddle::platform::complex64 out_div_y_conj((out / y).real, -(out / y).imag);
-    return -dout * out_div_y_conj;
-  }
-};
-
-template <>
-struct DivGradDY<paddle::platform::complex128> {
-  HOSTDEVICE paddle::platform::complex128 operator()(
-      paddle::platform::complex128 x, paddle::platform::complex128 y,
-      paddle::platform::complex128 out,
-      paddle::platform::complex128 dout) const {
-    paddle::platform::complex128 out_div_y_conj((out / y).real,
+template <typename T>
+struct DivGradDY<paddle::platform::complex<T>> {
+  HOSTDEVICE paddle::platform::complex<T> operator()(
+      paddle::platform::complex<T> x, paddle::platform::complex<T> y,
+      paddle::platform::complex<T> out,
+      paddle::platform::complex<T> dout) const {
+    paddle::platform::complex<T> out_div_y_conj((out / y).real,
                                                 -(out / y).imag);
     return -dout * out_div_y_conj;
   }

@@ -28,13 +28,10 @@
 # TODO: define normalization api  
 
 import six
-#from ...fluid.dygraph.nn import InstanceNorm
 
-from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
-#from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import BatchNorm  # noqa: F401
 
-#from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
 from ...fluid.dygraph import layers
 from ...framework import get_default_dtype, set_default_dtype
@@ -53,11 +50,7 @@ import warnings
 from ...fluid.dygraph.base import no_grad
 from .. import functional as F
 
-__all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1D',
-    'BatchNorm2D', 'BatchNorm3D', 'InstanceNorm1D', 'InstanceNorm2D',
-    'InstanceNorm3D', 'SyncBatchNorm', 'LocalResponseNorm'
-]
+__all__ = []
 
 
 class _InstanceNormBase(layers.Layer):
@@ -382,7 +375,7 @@ class GroupNorm(layers.Layer):
         self._num_channels = num_channels
         self._num_groups = num_groups
         if data_format != 'NCHW':
-            raise ValueError("unsupported data layout:" + data_layout)
+            raise ValueError("unsupported data layout:" + data_format)
 
         param_shape = [self._num_channels]
 
@@ -745,6 +738,19 @@ class BatchNorm1D(_BatchNormBase):
           print(batch_norm_out)
     """
 
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCL',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm1D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
+
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NC' or input == 'NCL':
             self._data_format = 'NCHW'
@@ -924,6 +930,19 @@ class BatchNorm3D(_BatchNormBase):
           print(batch_norm_out)
     """
 
+    def __init__(self,
+                 num_features,
+                 momentum=0.9,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_format='NCDHW',
+                 use_global_stats=None,
+                 name=None):
+        super(BatchNorm3D,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, use_global_stats, name)
+
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NCDHW':
             self._data_format = 'NCHW'
@@ -1036,9 +1055,20 @@ class SyncBatchNorm(_BatchNormBase):
                  name=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, name)
+                             bias_attr, data_format, None, name)
+
+    def _check_data_format(self):
+        if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
+            self._data_format = 'NCHW'
+        elif self._data_format in ["NHWC", "NDHWC", 'NLC']:
+            self._data_format = 'NHWC'
+        else:
+            raise ValueError(
+                'expected \'NCDHW\', \'NDHWC\', \'NCL\', \'NLC\', \'NC\', \'NCHW\', \'NHWC\' for data_format'
+            )
 
     def forward(self, x):
+        self._check_data_format()
         # create output
         # mean and mean_out share the same memory
         mean_out = self._mean
@@ -1123,11 +1153,12 @@ class SyncBatchNorm(_BatchNormBase):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            if layer._weight_attr != None and not isinstance(layer._weight_attr,
-                                                             bool):
+            if layer._weight_attr != None and not isinstance(
+                    layer._weight_attr,
+                    bool) and layer._weight_attr.name != None:
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
-            if layer._bias_attr != None and not isinstance(layer._weight_attr,
-                                                           bool):
+            if layer._bias_attr != None and not isinstance(
+                    layer._bias_attr, bool) and layer._bias_attr.name != None:
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
             layer_output = SyncBatchNorm(layer._num_features, layer._momentum,

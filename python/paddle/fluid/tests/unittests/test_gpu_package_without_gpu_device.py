@@ -34,6 +34,7 @@ class TestGPUPackagePaddle(unittest.TestCase):
             with open(test_file, 'w') as wb:
                 cmd_test = """
 import paddle
+paddle.utils.run_check()
 x = paddle.rand([3,4])
 assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's place is CUDAPlace"
 """
@@ -52,7 +53,7 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
             assert 'CPU device will be used by default' in str(
                 stderr
             ), "GPU version Paddle is installed. But CPU device can't be used when CUDA device is not set properly"
-            assert "Error" not in str(
+            assert "AssertionError" not in str(
                 stderr
             ), "There is no CUDA device, but Tensor's place is CUDAPlace"
 

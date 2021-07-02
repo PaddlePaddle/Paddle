@@ -195,7 +195,13 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 2, 1])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 1])
-                self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                if core.is_compiled_with_rocm():
+                    # HIP will fail if no atol
+                    self.assertEqual(
+                        np.allclose(
+                            y1.numpy(), y2.numpy(), atol=1e-07), True)
+                else:
+                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
 
     def test_2d(self):
         for p in self.places:
@@ -209,7 +215,13 @@ class TestBatchNormChannelLast(unittest.TestCase):
                 channel_first_x = paddle.transpose(x, [0, 3, 1, 2])
                 y2 = net2(channel_first_x)
                 y2 = paddle.transpose(y2, [0, 2, 3, 1])
-                self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                if core.is_compiled_with_rocm():
+                    # HIP will fail if no atol
+                    self.assertEqual(
+                        np.allclose(
+                            y1.numpy(), y2.numpy(), atol=1e-07), True)
+                else:
+                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
 
     def test_3d(self):
         for p in self.places:

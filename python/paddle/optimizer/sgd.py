@@ -17,7 +17,8 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 from ..fluid.dygraph import no_grad
-__all__ = ["SGD"]
+
+__all__ = []
 
 
 class SGD(Optimizer):
@@ -31,16 +32,16 @@ class SGD(Optimizer):
     Parameters:
         learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
-        parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-        It canbe a float value as coeff of L2 regularization or \
-        :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-        If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
-        the regularization setting here in optimizer will be ignored for this parameter. \
-        Otherwise, the regularization setting here in optimizer will take effect. \
-        Default None, meaning there is no regularization.
+            It canbe a float value as coeff of L2 regularization or \
+            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            the regularization setting here in optimizer will be ignored for this parameter. \
+            Otherwise, the regularization setting here in optimizer will take effect. \
+            Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
@@ -86,6 +87,8 @@ class SGD(Optimizer):
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
         lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
             core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
@@ -105,3 +108,7 @@ class SGD(Optimizer):
             stop_gradient=True)
 
         return sgd_op
+
+    def _update_param_group(self, parameters):
+        parameters = parameters.get('params')
+        return parameters

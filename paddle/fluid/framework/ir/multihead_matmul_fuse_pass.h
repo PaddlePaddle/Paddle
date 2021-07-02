@@ -18,16 +18,6 @@
 #include <string>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-
-namespace paddle {
-namespace framework {
-namespace ir {
-class Graph;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -158,22 +148,30 @@ class MultiHeadMatmulFusePass : public FusePassBase {
 
 class MultiHeadMatmulV2FusePass : public FusePassBase {
  public:
-  virtual ~MultiHeadMatmulV2FusePass() {}
+  MultiHeadMatmulV2FusePass();
 
  protected:
   void ApplyImpl(Graph* graph) const;
 
   const std::string name_scope_{"multihead_matmul_fuse_v2"};
+
+ private:
+  int BuildFusionV2(Graph* graph, const std::string& name_scope,
+                    Scope* scope) const;
 };
 
 class MultiHeadMatmulV3FusePass : public FusePassBase {
  public:
-  virtual ~MultiHeadMatmulV3FusePass() {}
+  MultiHeadMatmulV3FusePass();
 
  protected:
   void ApplyImpl(Graph* graph) const;
 
   const std::string name_scope_{"multihead_matmul_fuse_v3"};
+
+ private:
+  int BuildFusionV3(Graph* graph, const std::string& name_scope,
+                    Scope* scope) const;
 };
 
 }  // namespace ir

@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
@@ -103,15 +102,6 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
   auto new_dim = framework::make_ddim(shape);
-  if (tensor->numel() != framework::product(new_dim)) {
-    LOG(WARNING) << "Custom Op: Calling reshape to a new shape which is bigger "
-                    "or smaller"
-                 << "than original shape will not change your tensor's memory "
-                    "Please call"
-                 << "paddle::Tensor::mutable_data<T>() after to reallocate "
-                    "your tensor's size."
-                 << std::endl;
-  }
   tensor->Resize(new_dim);
 }
 
@@ -247,9 +237,9 @@ template PD_DLL_DECL Tensor
 Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
 template PD_DLL_DECL Tensor
 Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex64>(
+template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<float>>(
     const PlaceType &target_place) const;
-template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex128>(
+template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex<double>>(
     const PlaceType &target_place) const;
 template PD_DLL_DECL Tensor
 Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
@@ -262,10 +252,10 @@ template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>() const;
 template PD_DLL_DECL int8_t *Tensor::data<int8_t>() const;
 template PD_DLL_DECL int16_t *Tensor::data<int16_t>() const;
 template PD_DLL_DECL bool *Tensor::data<bool>() const;
-template PD_DLL_DECL paddle::platform::complex64 *
-Tensor::data<paddle::platform::complex64>() const;
-template PD_DLL_DECL paddle::platform::complex128 *
-Tensor::data<paddle::platform::complex128>() const;
+template PD_DLL_DECL paddle::platform::complex<float>
+    *Tensor::data<paddle::platform::complex<float>>() const;
+template PD_DLL_DECL paddle::platform::complex<double>
+    *Tensor::data<paddle::platform::complex<double>>() const;
 template PD_DLL_DECL paddle::platform::float16 *
 Tensor::data<paddle::platform::float16>() const;
 
@@ -277,10 +267,10 @@ template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>();
 template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>();
 template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>();
 template PD_DLL_DECL bool *Tensor::mutable_data<bool>();
-template PD_DLL_DECL paddle::platform::complex64 *
-Tensor::mutable_data<paddle::platform::complex64>();
-template PD_DLL_DECL paddle::platform::complex128 *
-Tensor::mutable_data<paddle::platform::complex128>();
+template PD_DLL_DECL paddle::platform::complex<float>
+    *Tensor::mutable_data<paddle::platform::complex<float>>();
+template PD_DLL_DECL paddle::platform::complex<double>
+    *Tensor::mutable_data<paddle::platform::complex<double>>();
 template PD_DLL_DECL paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>();
 
@@ -298,10 +288,10 @@ template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>(
 template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>(
     const PlaceType &place);
 template PD_DLL_DECL bool *Tensor::mutable_data<bool>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::complex64 *
-Tensor::mutable_data<paddle::platform::complex64>(const PlaceType &place);
-template PD_DLL_DECL paddle::platform::complex128 *
-Tensor::mutable_data<paddle::platform::complex128>(const PlaceType &place);
+template PD_DLL_DECL paddle::platform::complex<float> *
+Tensor::mutable_data<paddle::platform::complex<float>>(const PlaceType &place);
+template PD_DLL_DECL paddle::platform::complex<double> *
+Tensor::mutable_data<paddle::platform::complex<double>>(const PlaceType &place);
 template PD_DLL_DECL paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
 
@@ -365,13 +355,13 @@ Tensor Tensor::cast(const DataType &target_type) const {
           dst_type, CastDataType<uint8_t>(*tensor, rlt_tensor_, ctx));
       break;
     case framework::proto::VarType::COMPLEX64:
-      framework::VisitDataType(
-          dst_type,
-          CastDataType<paddle::platform::complex64>(*tensor, rlt_tensor_, ctx));
+      framework::VisitDataType(dst_type,
+                               CastDataType<paddle::platform::complex<float>>(
+                                   *tensor, rlt_tensor_, ctx));
       break;
     case framework::proto::VarType::COMPLEX128:
       framework::VisitDataType(dst_type,
-                               CastDataType<paddle::platform::complex128>(
+                               CastDataType<paddle::platform::complex<double>>(
                                    *tensor, rlt_tensor_, ctx));
       break;
     case framework::proto::VarType::FP16:
@@ -391,6 +381,15 @@ Tensor Tensor::cast(const DataType &target_type) const {
 int64_t Tensor::size() const {
   GET_CASTED_TENSOR;
   return tensor->numel();
+}
+
+bool Tensor::is_initialized() const {
+  GET_CASTED_TENSOR;
+  if (tensor->IsInitialized()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 #ifdef PADDLE_WITH_CUDA

@@ -77,7 +77,8 @@ bool PlacementPassBase::IsDefaultOpTypes(const std::string& op_type) const {
     // the corresponding pass.
     const std::vector<std::string> not_default_op_types = {
         "bilinear_interp", "nearest_interp", "trilinear_interp",
-        "bicubic_interp", "linear_interp"};
+        "bicubic_interp",  "linear_interp",  "bilinear_interp_v2",
+        "linear_interp_v2"};
     bool is_interpolate_op =
         std::find(not_default_op_types.begin(), not_default_op_types.end(),
                   op_type) != not_default_op_types.end();

@@ -143,6 +143,14 @@ elseif(WITH_ROCM)
     add_definitions(-DPADDLE_WITH_HIP)
     add_definitions(-DEIGEN_USE_GPU)
     add_definitions(-DEIGEN_USE_HIP)
+
+    if(NOT MIOPEN_FOUND)
+        message(FATAL_ERROR "Paddle needs MIOpen to compile")
+    endif()
+
+    if(${MIOPEN_VERSION} VERSION_LESS 2090)
+        message(FATAL_ERROR "Paddle needs MIOPEN >= 2.9 to compile")
+    endif()
 else()
     add_definitions(-DHPPL_STUB_FUNC)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
@@ -173,10 +181,9 @@ if(WITH_PSCORE)
     add_definitions(-DPADDLE_WITH_PSCORE)
 endif()
 
-
-if(WITH_GRPC)
-    add_definitions(-DPADDLE_WITH_GRPC)
-endif(WITH_GRPC)
+if(WITH_HETERPS)
+    add_definitions(-DPADDLE_WITH_HETERPS)
+endif()
 
 if(WITH_BRPC_RDMA)
     add_definitions(-DPADDLE_WITH_BRPC_RDMA)

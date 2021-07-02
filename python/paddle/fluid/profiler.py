@@ -106,6 +106,65 @@ def cuda_profiler(output_file, output_mode=None, config=None):
         os.remove(config_file)
 
 
+@signature_safe_contextmanager
+def npu_profiler(output_file, config=None):
+    """
+    The NPU profiler.
+    
+    This fuctions is used to profile NPU program by NPU runtime application
+    programming interface. The profiling result will be written into
+    `output_file`. The users can set set the NPU profiling config by `config` argument. 
+    
+    After getting the profiling result file, users can use 
+    `tools provided by Ascend <https://support.huaweicloud.com/tg-Inference-cann/atlasprofiling_16_0006.html>`_ 
+    to load this output file to visualize results.
+
+    Args:
+        output_file (str) : The output file name, the result will be
+            written into this file. It should be absolute path. 
+        config (list<str>, optional) : NPU profile config. For more details, please
+            refer to `User Guide <https://support.huaweicloud.com/tg-Inference-cann/atlasprofiling_16_0006.html>`_ .
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.profiler as profiler
+            import numpy as np
+
+            epoc = 8
+            dshape = [4, 3, 28, 28]
+            data = fluid.data(name='data', shape=[None, 3, 28, 28], dtype='float32')
+            conv = fluid.layers.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
+
+            place = fluid.NPUPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            output_file = 'npu.txt'
+            with profiler.npu_profiler(output_file) as npu_prof:
+                for i in range(epoc):
+                    input = np.random.random(dshape).astype('float32')
+                    exe.run(fluid.default_main_program(), feed={'data': input})
+            # then use  NPU profiler tools to load this output file
+            # to visualize results.
+    """
+    # TODO: support config in python.
+    if not config:
+        config = core.npu_prof_create_config()
+
+    core.npu_prof_init(output_file)
+    # Enables profiler collection by the active NPU profiling tool.
+    core.npu_prof_start(config)
+    try:
+        yield
+    # Disables profiler collection.
+    finally:
+        core.npu_prof_stop(config)
+        core.npu_prof_finalize()
+
+
 def reset_profiler():
     """
     Clear the previous time record. This interface does not work for

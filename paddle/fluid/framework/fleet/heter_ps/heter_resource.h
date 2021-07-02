@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
 namespace framework {

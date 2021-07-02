@@ -54,6 +54,7 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   size_t avail, total, actual_avail, actual_total;
   bool is_limited = platform::RecordedCudaMemGetInfo(
       &avail, &total, &actual_avail, &actual_total, place_.device);
+  size_t allocated = total - avail;
 
   std::string err_msg;
   if (is_limited) {
@@ -68,13 +69,14 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
 
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
-      "Cannot allocate %s memory on GPU %d, "
+      "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
       "available memory is only %s.\n\n"
       "Please check whether there is any other process using GPU %d.\n"
       "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
       "2. If no, please decrease the batch size of your model. %s\n\n",
       place_.device, string::HumanReadableSize(size), place_.device,
-      string::HumanReadableSize(avail), place_.device, err_msg));
+      string::HumanReadableSize(allocated), string::HumanReadableSize(avail),
+      place_.device, err_msg));
 }
 
 }  // namespace allocation

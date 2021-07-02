@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_HETERPS
 
 #include <iostream>
 
@@ -52,25 +52,6 @@ struct FeaturePushValue {
   float lr_g;
   float mf_g[MF_DIM];
 };
-// class DownpourFixedFeatureValue {
-//    public:
-//        DownpourFixedFeatureValue() {}
-//        ~DownpourFixedFeatureValue() {}
-//        float* data() {
-//            return _data.data();
-//        }
-//        size_t size() {
-//            return _data.size();
-//        }
-//        void resize(size_t size) {
-//            _data.resize(size);
-//        }
-//        void shrink_to_fit() {
-//            _data.shrink_to_fit();
-//        }
-//    private:
-//        std::vector<float> _data;
-//    };
 
 }  // end namespace framework
 }  // end namespace paddle

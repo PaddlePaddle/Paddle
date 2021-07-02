@@ -1,10 +1,10 @@
 cc_library(imperative_flag SRCS flags.cc DEPS gflags)
 
-cc_library(prepared_operator SRCS prepared_operator.cc DEPS proto_desc operator device_context lod_tensor selected_rows var_type_traits op_kernel_type data_transform)
+cc_library(prepared_operator SRCS prepared_operator.cc DEPS proto_desc operator device_context lod_tensor selected_rows var_type_traits op_kernel_type data_transform nan_inf_utils)
 cc_library(layer SRCS layer.cc DEPS prepared_operator math_function imperative_flag variable_helper op_registry)
 add_subdirectory(jit)
 cc_library(amp SRCS amp_auto_cast.cc DEPS layer )
-cc_library(tracer SRCS tracer.cc DEPS layer engine program_desc_tracer amp)
+cc_library(tracer SRCS tracer.cc DEPS layer engine program_desc_tracer amp denormal)
 cc_library(basic_engine SRCS basic_engine.cc DEPS layer gradient_accumulator)
 cc_library(engine SRCS basic_engine.cc partial_grad_engine.cc DEPS layer gradient_accumulator)
 cc_library(imperative_profiler SRCS profiler.cc)

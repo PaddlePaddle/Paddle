@@ -15,7 +15,7 @@
 from ...fluid.initializer import NormalInitializer
 from ...fluid.initializer import TruncatedNormalInitializer
 
-__all__ = ['Normal', 'TruncatedNormal']
+__all__ = []
 
 
 class Normal(NormalInitializer):

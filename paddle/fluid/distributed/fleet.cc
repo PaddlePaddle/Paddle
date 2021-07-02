@@ -146,6 +146,44 @@ void FleetWrapper::CreateClient2ClientConnection() {
       client2client_max_retry_);
 }
 
+std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
+    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+  fea_keys->clear();
+  fea_keys->resize(0);
+  fea_keys->reserve(MAX_FEASIGN_NUM);
+  for (auto name : var_names) {
+    Variable* var = scope.FindVar(name);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
+    int64_t* ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+    for (auto i = 0u; i < len; ++i) {
+      if (ids[i] == 0u) {
+        continue;
+      }
+      fea_keys->push_back(static_cast<uint64_t>(ids[i]));
+    }
+  }
+  fea_values->resize(fea_keys->size() + 1);
+  for (auto& t : *fea_values) {
+    t.resize(fea_value_dim);
+  }
+  std::vector<float*> pull_result_ptr;
+  for (auto& t : *fea_values) {
+    pull_result_ptr.push_back(t.data());
+  }
+
+  bool training = true;
+  return pserver_ptr_->_worker_ptr->pull_sparse(pull_result_ptr.data(),
+                                                table_id, fea_keys->data(),
+                                                fea_keys->size(), training);
+}
+
 void FleetWrapper::PullSparseVarsSync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
@@ -379,8 +417,10 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   return;
 }
 
-void FleetWrapper::LoadModel(const std::string& path, const int mode) {
-  auto ret = pserver_ptr_->_worker_ptr->load(path, std::to_string(mode));
+void FleetWrapper::LoadModel(const std::string& path, const std::string& mode) {
+  auto* communicator = Communicator::GetInstance();
+  auto ret = communicator->_worker_ptr->load(path, mode);
+  // auto ret = pserver_ptr_->_worker_ptr->load(path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
@@ -391,8 +431,11 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 
 void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
                                      const std::string& path, const int mode) {
+  auto* communicator = Communicator::GetInstance();
   auto ret =
-      pserver_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
+      communicator->_worker_ptr->load(table_id, path, std::to_string(mode));
+  // auto ret =
+  //    pserver_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model of table id: " << table_id

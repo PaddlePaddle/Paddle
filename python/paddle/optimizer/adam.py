@@ -21,10 +21,11 @@ from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 import warnings
 from ..fluid.dygraph import base as imperative_base
+from collections import defaultdict
 
 import paddle
 
-__all__ = ["Adam"]
+__all__ = []
 
 
 class Adam(Optimizer):
@@ -60,10 +61,14 @@ class Adam(Optimizer):
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
+        epsilon (float|Tensor, optional): A small float value for numerical stability.
+            It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 1e-08.
-	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. \
+	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+	    This parameter is required in dygraph mode. And you can specify different options for \
+            different parameter groups such as the learning rate, weight decay, etc, \
+            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            represents the scale of base learning_rate. \
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
 	    It canbe a float value as coeff of L2 regularization or \
@@ -125,6 +130,29 @@ class Adam(Optimizer):
             adam.step()
             adam.clear_grad()
 
+            #Note that the learning_rate of linear_2 is 0.01.
+            linear_1 = paddle.nn.Linear(10, 10)
+            linear_2 = paddle.nn.Linear(10, 10)
+            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            out = linear_1(inp)
+            out = linear_2(out)
+            loss = paddle.mean(out)
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.1,
+                parameters=[{
+                    'params': linear_1.parameters()
+                }, {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1,
+                    'beta1': 0.8
+                }],
+                weight_decay=0.01,
+                beta1=0.9)                   
+            out.backward()
+            adam.step()
+            adam.clear_grad()
+
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
@@ -146,12 +174,18 @@ class Adam(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        if not 0 <= beta1 < 1:
-            raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
-        if not 0 <= beta2 < 1:
-            raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
-        if not 0 <= epsilon:
-            raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
+        if not isinstance(beta1, Variable):
+            if not 0 <= beta1 < 1:
+                raise ValueError(
+                    "Invaild value of beta1, expect beta1 in [0,1).")
+        if not isinstance(beta2, Variable):
+            if not 0 <= beta2 < 1:
+                raise ValueError(
+                    "Invaild value of beta2, expect beta2 in [0,1).")
+        if not isinstance(epsilon, Variable):
+            if not 0 <= epsilon:
+                raise ValueError(
+                    "Invaild value of epsilon, expect epsilon >= 0.")
         super(Adam, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
@@ -165,6 +199,12 @@ class Adam(Optimizer):
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
         self._master_weights = {}
+        self._default_dict = {
+            'beta1': beta1,
+            'beta2': beta2,
+            'epsilon': epsilon,
+            'lazy_mode': lazy_mode,
+        }
 
     def _create_master_weight(self, param):
         assert isinstance(self.helper, LayerHelper)
@@ -234,6 +274,8 @@ class Adam(Optimizer):
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
+        if isinstance(parameters, dict):
+            parameters = self._update_param_group(parameters)
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
@@ -250,6 +292,8 @@ class Adam(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
 
         moment1 = self._get_accumulator(self._moment1_acc_str,
                                         param_and_grad[0])
@@ -267,6 +311,7 @@ class Adam(Optimizer):
         # create the adam optimize op
 
         if framework.in_dygraph_mode():
+
             _beta1 = self._beta1 if not isinstance(
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
@@ -297,7 +342,6 @@ class Adam(Optimizer):
             "Beta2PowOut": [beta2_pow_acc],
         }
         attrs = {
-            "epsilon": self._epsilon,
             "lazy_mode": self._lazy_mode,
             "min_row_size_to_use_multithread": 1000,
             "multi_precision": find_master
@@ -311,6 +355,10 @@ class Adam(Optimizer):
             inputs['Beta2Tensor'] = self._beta2
         else:
             attrs['beta2'] = self._beta2
+        if isinstance(self._epsilon, Variable):
+            inputs['EpsilonTensor'] = self._epsilon
+        else:
+            attrs['epsilon'] = self._epsilon
 
         if find_master:
             inputs["MasterParam"] = master_weight
@@ -349,18 +397,43 @@ class Adam(Optimizer):
                 adam.step()
                 adam.clear_grad()
         """
-        params_grads = []
-        for param in self._parameter_list:
-            if param.stop_gradient:
-                continue
-            if param._grad_ivar() is not None:
-                grad_var = param._grad_ivar()
-                if hasattr(grad_var, "_is_sparse") and grad_var._is_sparse(
-                ) and self.regularization is not None:
-                    raise RuntimeError(
-                        "Adam don't support weight_decay with sparse parameters, please set it to None."
-                    )
-                params_grads.append((param, grad_var))
+        if not isinstance(self._parameter_list[0], dict):
+            params_grads = []
+            for param in self._parameter_list:
+                if param.stop_gradient:
+                    continue
+                if param._grad_ivar() is not None:
+                    grad_var = param._grad_ivar()
+                    if hasattr(grad_var, "_is_sparse") and grad_var._is_sparse(
+                    ) and self.regularization is not None:
+                        raise RuntimeError(
+                            "Adam don't support weight_decay with sparse parameters, please set it to None."
+                        )
+                    params_grads.append((param, grad_var))
 
-        optimize_ops = self._apply_optimize(
-            loss=None, startup_program=None, params_grads=params_grads)
+            optimize_ops = self._apply_optimize(
+                loss=None, startup_program=None, params_grads=params_grads)
+        else:
+            # optimize parameters in groups
+            for param_group in self._param_groups:
+                params_grads = defaultdict(lambda: list())
+                for param in param_group['params']:
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        grad_var = param._grad_ivar()
+                        params_grads['params'].append((param, grad_var))
+                params_grads.update(
+                    {k: v
+                     for k, v in param_group.items() if k != 'params'})
+                self._apply_optimize(
+                    loss=None, startup_program=None, params_grads=params_grads)
+
+    def _update_param_group(self, parameters):
+        self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
+        self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
+        self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
+        self._lazy_mode = parameters.get('lazy_mode',
+                                         self._default_dict['lazy_mode'])
+        parameters = parameters.get('params')
+        return parameters

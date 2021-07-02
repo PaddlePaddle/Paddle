@@ -145,10 +145,14 @@ REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer,
                   ops::ClipDoubleGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ClipKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::ClipKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ClipKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ClipKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ClipGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::ClipGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ClipGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ClipGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 REGISTER_OP_VERSION(clip)
     .AddCheckpoint(

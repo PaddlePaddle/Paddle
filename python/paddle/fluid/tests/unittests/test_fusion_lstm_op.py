@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-from test_lstm_op import lstm, ACTIVATION
+from paddle.fluid.tests.unittests.test_lstm_op import lstm, ACTIVATION
 
 
 def fc(x, w, b):

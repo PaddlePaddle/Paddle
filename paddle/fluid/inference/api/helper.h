@@ -398,5 +398,7 @@ static bool IsFileExists(const std::string &path) {
   return exists;
 }
 
+void RegisterAllCustomOperator();
+
 }  // namespace inference
 }  // namespace paddle

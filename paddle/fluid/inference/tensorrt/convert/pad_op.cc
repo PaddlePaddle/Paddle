@@ -43,8 +43,6 @@ class PadOpConverter : public OpConverter {
 
     const std::vector<int> paddings =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
-    const float pad_value =
-        BOOST_GET_CONST(float, op_desc.GetAttr("pad_value"));
 
     nvinfer1::Dims input_shape = input->getDimensions();
     int nbDims = input_shape.nbDims;
@@ -62,9 +60,6 @@ class PadOpConverter : public OpConverter {
                                           "(nbDims + 1) * 2 == pad_size. But "
                                           "received nbDims:%d, pad_size:%d.",
                                           nbDims, pad_size));
-    PADDLE_ENFORCE_EQ(pad_value, 0.0,
-                      platform::errors::InvalidArgument(
-                          "The pad layer of TRT only support zero."));
 
     nvinfer1::DimsHW pre_pad(paddings[pad_size - 4], paddings[pad_size - 2]);
     nvinfer1::DimsHW post_pad(paddings[pad_size - 3], paddings[pad_size - 1]);

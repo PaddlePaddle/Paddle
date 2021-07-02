@@ -141,6 +141,7 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
       }
     }
 
+    const T* dz_data = dz->data<T>();
     T* dx_data = nullptr;
     T* dy_data = nullptr;
     if (dx) {
@@ -152,9 +153,9 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
-    int ret = xpu::broadcast_add_grad<T>(dev_ctx.x_context(), dx_data, dx_data,
-                                         dx_data, dz->data<T>(), dy_data,
-                                         dx_data, x_dims_vec, y_dims_vec);
+    int ret = xpu::broadcast_add_grad<T>(dev_ctx.x_context(), dz_data, dz_data,
+                                         dz_data, dz_data, dy_data, dx_data,
+                                         x_dims_vec, y_dims_vec);
     PADDLE_ENFORCE_EQ(
         ret, xpu::SUCCESS,
         platform::errors::External(

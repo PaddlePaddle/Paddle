@@ -20,43 +20,21 @@ from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-# from ...fluid import one_hot  #DEFINE_ALIAS
-# from ...fluid.layers import pad2d  #DEFINE_ALIAS
-from ...fluid.layers import unfold  #DEFINE_ALIAS
-from ...fluid.layers import squeeze  #DEFINE_ALIAS
-from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
+from ...fluid.layers import unfold  # noqa: F401
+from ...fluid.layers import squeeze
+from ...fluid.layers import unsqueeze
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
-from ...tensor import sum  #DEFINE_ALIAS
-from ...tensor import sqrt  #DEFINE_ALIAS
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
 
-#from ...fluid.layers import fc  #DEFINE_ALIAS
-# from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
 from ...fluid.framework import in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
 from ...fluid.data_feeder import check_variable_and_dtype
 
-__all__ = [
-    'dropout',
-    'dropout2d',
-    'dropout3d',
-    'alpha_dropout',
-    #       'embedding',
-    #       'fc',
-    'label_smooth',
-    'linear',
-    'pad',
-    'unfold',
-    #       'bilinear_tensor_product',
-    'interpolate',
-    'upsample',
-    'bilinear',
-    'cosine_similarity',
-]
+__all__ = []
 
 
 def interpolate(x,
@@ -207,7 +185,7 @@ def interpolate(x,
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -638,7 +616,7 @@ def upsample(x,
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -764,8 +742,8 @@ def dropout(x,
 
     Args:
         x (Tensor): The input tensor. The data type is float32 or float64.
-        p (float | int): Probability of setting units to zero. Default 0.5.
-        axis (int | list): The axis along which the dropout is performed. Default None.
+        p (float|int): Probability of setting units to zero. Default 0.5.
+        axis (int|list|tuple): The axis along which the dropout is performed. Default None.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
         mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
@@ -896,7 +874,7 @@ def dropout(x,
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
-    if axis and not isinstance(axis, (int, list)):
+    if axis and not isinstance(axis, (int, list, tuple)):
         raise TypeError("datatype of axis argument should be int or list")
 
     if axis == None:  # commonly used dropout
@@ -955,7 +933,7 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
-            drop_axes = [axis] if isinstance(axis, int) else axis
+            drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
                 raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
                                  .format(len(input_shape), max(drop_axes)))
@@ -1471,8 +1449,11 @@ def linear(x, weight, bias=None, name=None):
         pre_bias = _varbase_creator(dtype=x.dtype)
         core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
                         'transpose_Y', False, "alpha", 1)
-        return dygraph_utils._append_bias_in_dygraph(
-            pre_bias, bias, axis=len(x.shape) - 1)
+
+        if bias is None:
+            return pre_bias
+
+        return core.ops.elementwise_add(pre_bias, bias)
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype

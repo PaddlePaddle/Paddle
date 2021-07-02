@@ -36,6 +36,7 @@ endif(NOT WIN32)
 
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
+  list(APPEND PYBIND_DEPS py_layer_op)
 endif()
 
 set(PYBIND_SRCS
@@ -55,12 +56,13 @@ set(PYBIND_SRCS
   ir.cc
   inference_api.cc
   compatible.cc
+  io.cc
   generator_py.cc)
 
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
   set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
-endif(WITH_ASCEND)
+endif()
 
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
@@ -72,10 +74,18 @@ if (WITH_CRYPTO)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif (WITH_CRYPTO)
 
+if (WITH_PSLIB)
+  set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+      set(DISTRIBUTE_COMPILE_FLAGS
+              "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+endif(WITH_PSLIB)
 if (WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
   set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  list(APPEND PYBIND_DEPS fleet communicator)
+  list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS fleet_py.cc)
 endif()
 
@@ -85,7 +95,11 @@ endif()
 
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
-  set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
+  if (WITH_ASCEND_CL)
+    set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag ascend_wrapper)
+  else()
+    set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
+  endif()
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
@@ -99,6 +113,7 @@ if(WITH_PYTHON)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
+
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(op_function_generator ${os_dependency_modules})
   if(WITH_ROCM)
@@ -114,14 +129,20 @@ if(WITH_PYTHON)
     else()
       set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
     endif()
+    file(TO_NATIVE_PATH ${op_function_generator_path} op_function_generator_path)
+    file(TO_NATIVE_PATH ${impl_file} impl_file)
+    file(TO_NATIVE_PATH ${tmp_impl_file} tmp_impl_file)
+
     file(WRITE ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat ""
     "set build_times=1\n"
     ":retry\n"
     "ECHO op_function_generator run %build_times% time\n"
-    "${op_function_generator_path}/op_function_generator ${impl_file}\n"
+    "if exist ${tmp_impl_file} del ${tmp_impl_file}\n"
+    "taskkill /f /im op_function_generator.exe 2>NUL\n"
+    "${op_function_generator_path}\\op_function_generator.exe ${tmp_impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
-    "    if %build_times% GTR 5 (\n"
+    "    if %build_times% GEQ 10 (\n"
     "        exit /b 1\n"
     "    ) else (\n"
     "        goto :retry\n"
@@ -131,6 +152,8 @@ if(WITH_PYTHON)
 
     add_custom_command(TARGET op_function_generator POST_BUILD
           COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
+          COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
     )
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
@@ -152,9 +175,9 @@ if(WITH_PYTHON)
           )
     endif()
   else(WIN32)
-    # If there are no *.so in /usr/lib or LD_LIBRARY_PATH, 
+    # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
-    # LD_LIBRARY_PATH. This is different with Windows platformm, which search 
+    # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     add_custom_command(TARGET op_function_generator
           POST_BUILD
@@ -162,7 +185,7 @@ if(WITH_PYTHON)
               "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
               "${tmp_impl_file}"
           COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
-          COMMENT "copy_if_different ${impl_file}"
+          COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
           VERBATIM
     )
     if(WITH_MKL)

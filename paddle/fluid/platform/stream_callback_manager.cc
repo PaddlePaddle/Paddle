@@ -71,6 +71,8 @@ void StreamCallbackManager<Stream>::AddCallback(
 #endif
 
 #if PADDLE_WITH_ASCEND_CL
+  VLOG(3) << "aclrtLaunchCallback at stream: " << stream_;
+  // TODO(zhiqiu): failed to call aclrtLaunchCallback
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtLaunchCallback(StreamCallbackFunc, func,
                                                  ACL_CALLBACK_BLOCK, stream_));
 #endif

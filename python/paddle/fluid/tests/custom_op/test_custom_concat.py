@@ -58,7 +58,7 @@ def concat_dynamic(func, dtype, np_inputs, axis_v, with_attr=False):
     out = func(inputs, axis)
     out.stop_gradient = False
     out.backward()
-    grad_inputs = [x.grad for x in inputs]
+    grad_inputs = [x.grad.numpy() for x in inputs]
     return out.numpy(), grad_inputs
 
 

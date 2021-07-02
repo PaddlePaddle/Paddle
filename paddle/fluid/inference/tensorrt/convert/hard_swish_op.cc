@@ -41,17 +41,7 @@ class HardSwishOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(
-        input_num, 1,
-        platform::errors::InvalidArgument(
-            "HardSwish op has only 1 input, but got %d", input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    // Get output
-    size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE_EQ(
-        output_num, 1,
-        platform::errors::InvalidArgument(
-            "HardSwish op has only 1 output, but got %d", output_num));
 
     const float threshold =
         op_desc.HasAttr("threshold")

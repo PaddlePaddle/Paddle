@@ -70,6 +70,8 @@ class TestFleetAMPInit(unittest.TestCase):
             optimizer = fleet.distributed_optimizer(optimizer)
             optimizer.minimize(cost)
 
+        loss_scale = optimizer.get_loss_scaling()
+
         place = paddle.CUDAPlace(0)
 
         exe = paddle.static.Executor(place)

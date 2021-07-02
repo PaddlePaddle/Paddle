@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -425,5 +425,31 @@ class TestFillConstantOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
 
 
+class TestFillConstantOp_ValueTensorBf16(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "fill_constant"
+        self.init_data()
+
+        self.inputs = {
+            "ShapeTensor": np.array(self.shape).astype("int32"),
+            'ValueTensor':
+            convert_float_to_uint16(np.array([self.value]).astype("float32"))
+        }
+        self.attrs = {'value': self.value, 'dtype': core.VarDesc.VarType.BF16}
+        self.outputs = {'Out': np.full(self.shape, self.value)}
+
+    def init_data(self):
+        self.shape = [123, 92]
+        self.value = 3.0
+        self.dtype = np.uint16
+        self.mkldnn_data_type = "bfloat16"
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import unittest
 import numpy as np
-from op_test import OpTest
+import paddle.fluid.core as core
+from op_test import OpTest, skip_check_grad_ci
+paddle.enable_static()
 
 
 def AffineGrid(theta, grid_shape):
@@ -159,7 +162,6 @@ class TestGridSamplerOp(OpTest):
             "padding_mode": self.padding_mode,
             "mode": self.mode
         }
-        #    print("X: {}".format(x))
         self.outputs = {
             'Output': GridSampler(x, grid, self.align_corners, self.mode,
                                   self.padding_mode)
@@ -182,7 +184,7 @@ class TestGridSamplerOp(OpTest):
         self.align_corners = True
         self.padding_mode = "zeros"
         self.mode = "bilinear"
-        self.use_cudnn = True
+        self.use_cudnn = False if core.is_compiled_with_rocm() else True
 
 
 class Case1(TestGridSamplerOp):
@@ -234,6 +236,42 @@ class Case4(TestGridSamplerOp):
         self.padding_mode = "reflection"
         self.mode = "nearest"
         self.numeric_grad_delta = 0.0001
+
+
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class LargeInputCase(TestGridSamplerOp):
+    def get_places(self):
+        places = []
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        return places
+
+    def initTestCase(self):
+        self.no_need_check_grad = True
+        self.x_shape = (2, 3, 128, 128)
+        self.grid_shape = (2, 130, 130, 2)
+        self.theta_shape = (2, 2, 3)
+        self.align_corners = False
+        self.padding_mode = "reflection"
+        self.mode = "bilinear"
+
+    def test_check_grad_normal(self):
+        pass
+
+
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class Case5(LargeInputCase):
+    def initTestCase(self):
+        self.no_need_check_grad = True
+        self.x_shape = (2, 3, 128, 128)
+        self.grid_shape = (2, 130, 130, 2)
+        self.theta_shape = (2, 2, 3)
+        self.align_corners = True
+        self.padding_mode = "zeros"
+        self.mode = "bilinear"
+        self.use_cudnn = False if core.is_compiled_with_rocm() else True
 
 
 if __name__ == "__main__":

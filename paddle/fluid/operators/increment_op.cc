@@ -107,3 +107,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::IncrementKernel<paddle::platform::CPUDeviceContext, double>,
     ops::IncrementKernel<paddle::platform::CPUDeviceContext, int>,
     ops::IncrementKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+REGISTER_OP_CUDA_KERNEL(
+    increment, ops::IncrementKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::IncrementKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::IncrementKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::IncrementKernel<paddle::platform::CUDADeviceContext, int64_t>);

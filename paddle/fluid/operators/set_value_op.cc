@@ -146,22 +146,75 @@ Assignment to a Tensor in static mode.
 )DOC");
   }
 };
+
+template <typename T>
+class SetValueGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    if (this->HasInput("ValueTensor")) {
+      op->SetType("slice");
+      op->SetInput("Input", this->OutputGrad("Out"));
+      if (this->HasInput("StartsTensorList")) {
+        op->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+      }
+      if (this->HasInput("EndsTensorList")) {
+        op->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+      }
+
+      // convert std::vector<int64_t > to std::vector<int >
+      std::vector<int64_t> axes_int64 = static_cast<std::vector<int64_t>>(
+          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("axes")));
+      std::vector<int64_t> starts_int64 = static_cast<std::vector<int64_t>>(
+          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("starts")));
+      std::vector<int64_t> ends_int64 = static_cast<std::vector<int64_t>>(
+          BOOST_GET_CONST(std::vector<int64_t>, this->GetAttr("ends")));
+      std::vector<int64_t> decrease_axes_int64 =
+          static_cast<std::vector<int64_t>>(BOOST_GET_CONST(
+              std::vector<int64_t>, this->GetAttr("decrease_axes")));
+
+      std::vector<int> axes(axes_int64.begin(), axes_int64.end());
+      std::vector<int> starts(starts_int64.begin(), starts_int64.end());
+      std::vector<int> ends(ends_int64.begin(), ends_int64.end());
+      std::vector<int> decrease_axes(decrease_axes_int64.begin(),
+                                     decrease_axes_int64.end());
+
+      op->SetAttr("axes", axes);
+      op->SetAttr("starts", starts);
+      op->SetAttr("ends", ends);
+      op->SetAttr("decrease_axis", decrease_axes);
+      op->SetAttr("infer_flags", std::vector<int>({}));
+
+      op->SetOutput("Out", this->InputGrad("ValueTensor"));
+    } else {
+      op->SetType("assign");
+      op->SetInput("X", this->OutputGrad("Out"));
+      op->SetOutput("Out", this->InputGrad("Input"));
+    }
+  }
+};
+
+DECLARE_INPLACE_OP_INFERER(SetValueOpInplaceInferer, {"Input", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(
-    set_value, ops::SetValue, ops::SetValueMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(set_value, ops::SetValue, ops::SetValueMaker,
+                  ops::SetValueGradMaker<paddle::framework::OpDesc>,
+                  ops::SetValueGradMaker<paddle::imperative::OpBase>,
+                  ops::SetValueOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     set_value, ops::SetValueKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SetValueKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SetValueKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SetValueKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SetValueKernel<paddle::platform::CPUDeviceContext, bool>);
+    ops::SetValueKernel<plat::CPUDeviceContext, int64_t>,
+    ops::SetValueKernel<plat::CPUDeviceContext, float>,
+    ops::SetValueKernel<plat::CPUDeviceContext, double>,
+    ops::SetValueKernel<plat::CPUDeviceContext, bool>);
 
 REGISTER_OP_VERSION(set_value)
     .AddCheckpoint(

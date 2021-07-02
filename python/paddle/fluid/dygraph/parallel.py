@@ -25,6 +25,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
+from paddle.fluid.dygraph import base as imperative_base
 import warnings
 import paddle
 import itertools
@@ -320,6 +321,62 @@ def scale_loss(loss):
     return scaled_loss
 
 
+@imperative_base.no_grad
+@framework.dygraph_only
+def build_groups(vars, group_size):
+    group_idx = 0
+    memory_counter = 0
+    var_groups = OrderedDict()
+    dtype = vars[0].dtype
+
+    for var in vars:
+        bytes = np.prod(var.shape) * core.size_of_dtype(var.dtype)
+        if memory_counter < group_size and dtype == var.dtype:
+            memory_counter += bytes
+        else:
+            memory_counter = bytes
+            dtype = var.dtype
+            group_idx += 1
+        var_groups.setdefault(group_idx, []).append(var)
+    return _coalesce_tensors(var_groups)
+
+
+@imperative_base.no_grad
+@framework.dygraph_only
+def sync_params_buffers(model,
+                        comm_group=None,
+                        src_rank=0,
+                        is_model_parallel=False):
+    model_vars = []
+    for _, param in model.state_dict().items():
+        if not isinstance(param, core.VarBase):
+            raise TypeError("The data type of '%s' must be Varbase" %
+                            param.name)
+        # is_distributed param not need to sync when in mp mode
+        if is_model_parallel and param.is_distributed:
+            continue
+
+        model_vars.append(param.detach())
+    if len(model_vars) == 0:
+        return
+
+    # group size is 128M
+    coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
+
+    for coalesced_var, _, _ in coalesced_vars:
+        paddle.distributed.broadcast(
+            coalesced_var, src=src_rank, group=comm_group, use_calc_stream=True)
+
+    for coalesced_var, origin_vars, var_shapes in coalesced_vars:
+        var_len = [np.prod(v_shape) for v_shape in var_shapes]
+        paddle.fluid.framework._dygraph_tracer().trace_op(
+            type='split',
+            inputs={'X': coalesced_var},
+            outputs={'Out': origin_vars},
+            attrs={'sections': var_len,
+                   'axis': 0})
+
+
 class DataParallel(layers.Layer):
     """
     Run the dygraph module with data parallelism.
@@ -360,14 +417,15 @@ class DataParallel(layers.Layer):
                                                 Note that setting the find_unused_parameters to True 
                                                 will affect computing performance. Therefore, if all parameters
                                                 are sure to participate in the loss calculation and the 
-                                                autograd graph construction, please set it False. Default: True.
+                                                autograd graph construction, please set it False. Default: False.
             
     Returns:
         Layer: The data paralleled module.
 
     Examples:
         .. code-block:: python
-
+        
+            # required: distributed
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
@@ -417,7 +475,7 @@ class DataParallel(layers.Layer):
                  strategy=None,
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
-                 find_unused_parameters=True):
+                 find_unused_parameters=False):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -443,7 +501,7 @@ class DataParallel(layers.Layer):
             # TODO(liuyuhui) Currently not support xpu. xpu is 
             # still broadcasting parameters when calling layer
             if not paddle.is_compiled_with_xpu():
-                self._sync_params_buffers()
+                sync_params_buffers(self._layers)
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control 
@@ -516,55 +574,11 @@ class DataParallel(layers.Layer):
             return itertools.chain(*map(self._find_varbase, obj.values()))
         return []
 
-    def _sync_params_buffers(self):
-        model_vars = []
-        for _, param in self._layers.state_dict().items():
-            if not isinstance(param, core.VarBase):
-                raise TypeError("The data type of '%s' must be Varbase" %
-                                param.name)
-            model_vars.append(param.detach())
-        if len(model_vars) == 0:
-            return
-
-        mega_bytes = 128 * 1024 * 1024
-        group_idx = 0
-        memory_counter = 0
-        var_groups = OrderedDict()
-        dtype = model_vars[0].dtype
-
-        for var in model_vars:
-            bytes = np.prod(var.shape) * core.size_of_dtype(var.dtype)
-            if memory_counter < mega_bytes and dtype == var.dtype:
-                memory_counter += bytes
-            else:
-                memory_counter = 0
-                dtype = var.dtype
-                group_idx += 1
-            var_groups.setdefault(group_idx, []).append(var)
-
-        coalesced_vars = _coalesce_tensors(var_groups)
-
-        for coalesced_var, _, _ in coalesced_vars:
-            collective._broadcast(coalesced_var, root=0, sync_mode=True)
-
-        for coalesced_var, origin_vars, var_shapes in coalesced_vars:
-            var_len = [np.prod(v_shape) for v_shape in var_shapes]
-            framework._dygraph_tracer().trace_op(
-                type='split',
-                inputs={'X': coalesced_var},
-                outputs={'Out': origin_vars},
-                attrs={'sections': var_len,
-                       'axis': 0})
-
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
         if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
-            if self.find_unused_parameters:
-                self._reducer.prepare_for_backward(
-                    list(self._find_varbase(outputs)))
-            else:
-                self._reducer.prepare_for_backward(list(self._find_varbase([])))
-
+            self._reducer.prepare_for_backward(
+                list(self._find_varbase(outputs)))
         return outputs
 
     @deprecated(
@@ -621,16 +635,12 @@ class DataParallel(layers.Layer):
             structured_name_prefix=structured_name_prefix)
 
     @framework.deprecate_stat_dict
-    def set_state_dict(self,
-                       state_dict,
-                       include_sublayers=True,
-                       use_structured_name=True):
+    def set_state_dict(self, state_dict, use_structured_name=True):
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
@@ -656,9 +666,7 @@ class DataParallel(layers.Layer):
         '''
 
         self._layers.set_state_dict(
-            state_dict,
-            include_sublayers=include_sublayers,
-            use_structured_name=use_structured_name)
+            state_dict, use_structured_name=use_structured_name)
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

@@ -38,7 +38,7 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
         if data_type in ['float32', 'float64', 'int32', 'int64']:
             max_value = np.nanmax(out)
             min_value = np.nanmin(out)
-            always_non_full_zero = max_value > min_value
+            always_non_full_zero = max_value >= min_value
             always_full_zero = max_value == 0.0 and min_value == 0.0
             self.assertTrue(always_full_zero or always_non_full_zero,
                             'always_full_zero or always_non_full_zero.')
@@ -146,6 +146,8 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
         self.init_config()
 
     def test_static_graph(self):
+        paddle.enable_static()
+
         dtype = 'float32'
 
         train_program = Program()
@@ -166,6 +168,8 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
         self.dst_dtype = dtype
         self.dst_shape = x.shape
         self.__check_out__(res[0])
+
+        paddle.disable_static()
 
     def init_config(self):
         self.x_shape = (200, 3)

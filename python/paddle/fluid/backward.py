@@ -456,12 +456,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
-    _MAX_ADD_NUM_ = core.globals()['FLAGS_max_inplace_grad_add']
+    _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
     pending_sum_ops = collections.OrderedDict()
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
+    var_device = collections.defaultdict(str)
     for idx, op_desc in enumerate(op_descs):
         op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
         )
@@ -528,16 +529,19 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
+                    # record the latest device, for shared param
+                    var_device[var_name] = op_device
 
     for var_name, inputs in six.iteritems(renamed_vars):
         if len(renamed_vars[var_name]) > 1:
             if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
-                                                 pending_sum_ops, len(op_descs))
+                _accumulate_gradients_by_sum_op_(
+                    var_name, renamed_vars, pending_sum_ops,
+                    len(op_descs), var_device[var_name])
             else:
-                _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
-                                                  pending_sum_ops,
-                                                  len(op_descs))
+                _accumulate_gradients_by_add_ops_(
+                    var_name, renamed_vars, pending_sum_ops,
+                    len(op_descs), var_device[var_name])
 
     # sum_op descs are sorted according to their insert position
     for key, value in collections.OrderedDict(
@@ -1036,7 +1040,7 @@ def _append_backward_ops_(block,
             val(list) the op path of block(index)
     """
     if callbacks is not None:
-        assert (isinstance(callbacks, list))
+        assert (isinstance(callbacks, (list, tuple)))
         for cb in callbacks:
             if not hasattr(cb, '__call__'):
                 raise ValueError("'callback' must be a callable object.")
@@ -1157,7 +1161,7 @@ def _append_backward_ops_(block,
         new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
-            assert (isinstance(callbacks, list))
+            assert (isinstance(callbacks, (list, tuple)))
             for cb in callbacks:
                 cb(block=target_block, context=grad_to_var)
 
@@ -1380,7 +1384,7 @@ def append_backward(loss,
 
     Parameters:
         loss(Tensor): The loss Tensor of the network.
-        parameter_list(list[Tensor|str], optional): List of Parameters or Parameter.names
+        parameter_list(list[Tensor|str]|tuple[Tensor|str], optional): List/Tuple of Parameters or Parameter.names
                                            that need to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
@@ -1391,7 +1395,7 @@ def append_backward(loss,
                                be automatically added into this set.
                                If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
                                Default: None.
-        callbacks(list[callable object], optional): List of callback functions.
+        callbacks(list[callable object]|tuple[callable object], optional): List/Tuple of callback functions.
                                                The callbacks are used for
                                                doing some custom jobs during
                                                backward part building. All
@@ -1477,7 +1481,7 @@ def append_backward(loss,
                       int(core.op_proto_and_checker_maker.OpRole.Loss))
 
     if callbacks is not None:
-        check_type(callbacks, 'callbacks', list,
+        check_type(callbacks, 'callbacks', (list, tuple),
                    'paddle.static.append_backward')
 
     program = loss.block.program
@@ -1823,9 +1827,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets(Tensor|list[Tensor]): The target Tensors
-        inputs(Tensor|list[Tensor]): The input Tensors
-        target_gradients (Tensor|list[Tensor], optional): The gradient Tensors
+        targets(Tensor|list[Tensor]|tuple[Tensor]): The target Tensors
+        inputs(Tensor|list[Tensor]|tuple[Tensor]): The input Tensors
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensors
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
@@ -1962,9 +1966,9 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets (Tensor|list[Tensor]): The target Tensors.
-        inputs (Tensor|list[Tensor]): The input Tensors.
-        target_gradients (Tensor|list[Tensor], optional): The gradient Tensor
+        targets (Tensor|list[Tensor]|tuple[Tensor]): The target Tensors.
+        inputs (Tensor|list[Tensor]|tuple[Tensor]): The input Tensors.
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensor
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
@@ -1992,12 +1996,12 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = paddle.static.gradients([y], x)
             print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
     """
-    check_type(targets, 'targets', (framework.Variable, list),
+    check_type(targets, 'targets', (framework.Variable, list, tuple),
                'paddle.static.gradients')
-    check_type(inputs, 'inputs', (framework.Variable, list),
+    check_type(inputs, 'inputs', (framework.Variable, list, tuple),
                'paddle.static.gradients')
     check_type(target_gradients, 'target_gradients', (
-        framework.Variable, list, type(None)), 'paddle.static.gradients')
+        framework.Variable, list, tuple, type(None)), 'paddle.static.gradients')
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)

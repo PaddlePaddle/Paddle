@@ -173,7 +173,7 @@ model = SE_ResNeXt50Small
 def batch_size(use_device):
     if use_device == DeviceType.CUDA:
         # Paddle uses 8GB P4 GPU for unittest so we decreased the batch size.
-        return 8
+        return 4
     return 12
 
 

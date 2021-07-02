@@ -213,6 +213,11 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
 
+  DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
+  DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(dlnne_max_batch_size, DlnneMaxBatchSize, int);
+  DECL_ARGUMENT_FIELD(dlnne_workspace_size, DlnneWorkspaceSize, int);
+
   DECL_ARGUMENT_FIELD(lite_passes_filter, LitePassesFilter,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter, std::vector<std::string>);
@@ -222,6 +227,11 @@ struct Argument {
 
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
   DECL_ARGUMENT_FIELD(xpu_l3_workspace_size, XpuL3WorkspaceSize, int);
+  DECL_ARGUMENT_FIELD(xpu_locked, XpuLocked, bool);
+  DECL_ARGUMENT_FIELD(xpu_autotune, XpuAutotune, bool);
+  DECL_ARGUMENT_FIELD(xpu_autotune_file, XpuAutotuneFile, std::string);
+  DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
+  DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

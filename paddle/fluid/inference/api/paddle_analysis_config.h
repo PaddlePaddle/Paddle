@@ -31,6 +31,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle_infer_declare.h"  // NOLINT
 
 /*! \file */
@@ -177,7 +178,30 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void DisableGpu();
 
-  void EnableXpu(int l3_workspace_size = 0xfffc00);
+  ///
+  /// \brief Turn on XPU.
+  ///
+  /// \param l3_workspace_size The size of the video memory allocated by the l3
+  ///         cache, the maximum is 16M.
+  /// \param locked Whether the allocated L3 cache can be locked. If false,
+  ///       it means that the L3 cache is not locked, and the allocated L3
+  ///       cache can be shared by multiple models, and multiple models
+  ///       sharing the L3 cache will be executed sequentially on the card.
+  /// \param autotune Whether to autotune the conv operator in the model. If
+  ///       true, when the conv operator of a certain dimension is executed
+  ///       for the first time, it will automatically search for a better
+  ///       algorithm to improve the performance of subsequent conv operators
+  ///       of the same dimension.
+  /// \param autotune_file Specify the path of the autotune file. If
+  ///       autotune_file is specified, the algorithm specified in the
+  ///       file will be used and autotune will not be performed again.
+  /// \param precision Calculation accuracy of multi_encoder
+  /// \param adaptive_seqlen Is the input of multi_encoder variable length
+  ///
+  void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
+                 bool autotune = true, const std::string& autotune_file = "",
+                 const std::string& precision = "int16",
+                 bool adaptive_seqlen = false);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -291,7 +315,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// workspace.
   /// \param max_batch_size The maximum batch size of this prediction task,
   /// better set as small as possible for less performance loss.
-  /// \param min_subgrpah_size The minimum TensorRT subgraph size needed, if a
+  /// \param min_subgraph_size The minimum TensorRT subgraph size needed, if a
   /// subgraph is smaller than this, it will not be transferred to TensorRT
   /// engine.
   /// \param precision The precision used in TensorRT.
@@ -359,6 +383,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether to use the TensorRT DLA.
   ///
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
+
+  void EnableDlnne(int min_subgraph_size = 3);
+  bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
@@ -627,6 +654,10 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
 
+  // dlnne related.
+  bool use_dlnne_{false};
+  int dlnne_min_subgraph_size_{3};
+
   // memory reuse related.
   bool enable_memory_optim_{false};
 
@@ -661,9 +692,14 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_xpu_{false};
   int xpu_l3_workspace_size_;
+  bool xpu_locked_;
+  bool xpu_autotune_;
+  std::string xpu_autotune_file_;
+  std::string xpu_precision_;
+  bool xpu_adaptive_seqlen_;
 
   // mkldnn related.
-  int mkldnn_cache_capacity_{0};
+  int mkldnn_cache_capacity_{10};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
   bool use_mkldnn_bfloat16_{false};

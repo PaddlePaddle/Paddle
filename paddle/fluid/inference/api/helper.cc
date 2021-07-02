@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/extension/include/ext_op_meta_info.h"
+#include "paddle/fluid/framework/custom_operator.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace inference {
@@ -38,6 +41,21 @@ std::string to_string<std::vector<std::vector<float>>>(
     ss << '\n';
   }
   return ss.str();
+}
+
+void RegisterAllCustomOperator() {
+  auto &op_meta_info_map = OpMetaInfoMap::Instance();
+  const auto &meta_info_map = op_meta_info_map.GetMap();
+  for (auto &pair : meta_info_map) {
+    const auto &all_op_kernels{framework::OperatorWithKernel::AllOpKernels()};
+    if (all_op_kernels.find(pair.first) == all_op_kernels.end()) {
+      framework::RegisterOperatorWithMetaInfo(pair.second);
+    } else {
+      LOG(INFO) << "The operator `" << pair.first
+                << "` has been registered. "
+                   "Therefore, we will not repeat the registration here.";
+    }
+  }
 }
 
 }  // namespace inference

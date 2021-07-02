@@ -1373,11 +1373,14 @@ class Executor(object):
                          fetch_info=None,
                          print_period=100):
         is_heter = 0
+        use_ps_gpu = 0
         if not program._fleet_opt is None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
                 is_heter = 1
+            if program._fleet_opt.get("use_ps_gpu", False):
+                use_ps_gpu = True
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -1412,7 +1415,9 @@ class Executor(object):
             trainer._set_program(program.program)
 
         if thread <= 0:
-            if dataset.thread_num <= 0:
+            if use_ps_gpu:
+                trainer._set_thread(len(program._fleet_opt["worker_places"]))
+            elif dataset.thread_num <= 0:
                 raise RuntimeError(
                     "You should set thread num first, either in Dataset"
                     "or in Executor.train_from_dataset")
@@ -1446,8 +1451,12 @@ class Executor(object):
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            dataset = paddle.fluid.DatasetFactory().create_dataset(
-                'FileInstantDataset')
+            if core.is_compiled_with_npu():
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'InMemoryDataset')
+            else:
+                dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    'FileInstantDataset')
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -1498,6 +1507,9 @@ class Executor(object):
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)
+        # in case of calling _set_use_ps_gpu explicitly
+        if dataset.use_ps_gpu is False:
+            dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_instance = self._default_executor.init_for_dataset(

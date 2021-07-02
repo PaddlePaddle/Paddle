@@ -129,6 +129,11 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       return;
     }
 
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "skip_layernorm pass in op compat failed.";
+      return;
+    }
+
     VLOG(4) << "handle SkipLayerNorm fuse";
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
@@ -152,6 +157,10 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
+
+    if (elementwise->Op()->HasAttr("out_threshold")) {
+      new_desc.SetAttr("enable_int8", true);
+    }
 
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});

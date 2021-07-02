@@ -524,13 +524,15 @@ class TestFleetMetaOptimizer(TestFleetMetaOptimizer):
         # check program
         startup_prog_op_types = [op.type for op in startup_prog_ops]
         main_prog_op_types = [op.type for op in main_prog_ops]
+        print(startup_prog_op_types)
         self.assertEqual(startup_prog_op_types, [
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
-            'fill_constant', 'fill_constant', 'fill_constant', 'uniform_random',
-            'fill_constant', 'uniform_random', 'fill_constant', 'c_gen_nccl_id',
-            'c_comm_init', 'fill_constant', 'c_allreduce_sum', 'c_gen_nccl_id',
-            'c_comm_init', 'fill_constant', 'c_allreduce_sum', 'c_gen_nccl_id',
-            'c_comm_init', 'c_gen_nccl_id', 'c_comm_init'
+            'c_gen_nccl_id', 'c_comm_init', 'fill_constant', 'c_allreduce_sum',
+            'c_sync_calc_stream', 'c_gen_nccl_id', 'c_comm_init',
+            'fill_constant', 'c_allreduce_sum', 'c_sync_calc_stream',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init'
         ])
 
         self.assertEqual(main_prog_op_types, [

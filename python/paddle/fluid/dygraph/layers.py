@@ -30,11 +30,12 @@ from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
+from .layer_hooks import record_program_ops_pre_hook, set_op_customized_attrs_post_hook, LayerOpsRecoder
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
@@ -112,6 +113,10 @@ class Layer(core.Layer):
         self._non_persistable_buffer_names_set = set()
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()
+
+        # Record generated op_descs in this layer
+        self._op_recorder = LayerOpsRecoder(ops=[], hooks=[])
+        self._customized_attrs = {}
 
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
@@ -516,9 +521,6 @@ class Layer(core.Layer):
     def parameters(self, include_sublayers=True):
         """Returns a list of all Parameters from current layer and its sub-layers.
 
-        Parameters:
-            include_sublayers(bool, optional): Whether include the parameters of sublayers. If True, also include the parameters from sublayers. Default: True
-
         Returns:
             list of Tensor : a list of Parameters.
 
@@ -588,11 +590,11 @@ class Layer(core.Layer):
                 memo.add(layer)
                 yield name, layer
 
-    def sublayers(self, include_sublayers=True):
+    def sublayers(self, include_self=False):
         """Returns a list of sub layers.
 
         Parameters:
-            include_sublayers(bool, optional): Whether return the sublayers of sublayers. If True, also include the sublayers of sublayers. Default: True
+            include_self(bool, optional): Whether return self as sublayers. Default: False
 
         Returns:
             list of Layer : a list of sub layers.
@@ -619,8 +621,7 @@ class Layer(core.Layer):
         """
         ret = [
             layer
-            for _, layer in self.named_sublayers(
-                include_sublayers=include_sublayers)
+            for _, layer in self.named_sublayers(include_self=include_self)
         ]
         return ret
 
@@ -651,8 +652,7 @@ class Layer(core.Layer):
         params_set = set()
         named_sublayers = self.named_sublayers(
             prefix=prefix,
-            include_sublayers=include_sublayers,
-            include_self=True)
+            include_self=True) if include_sublayers else zip([prefix], [self])
         for layer_prefix, sublayer in named_sublayers:
             params = sublayer._parameters.items()
             for key, param in params:
@@ -662,20 +662,15 @@ class Layer(core.Layer):
                 name = layer_prefix + ('.' if layer_prefix else '') + key
                 yield name, param
 
-    def named_sublayers(self,
-                        prefix='',
-                        include_sublayers=True,
-                        include_self=False,
-                        layers_set=None):
+    def named_sublayers(self, prefix='', include_self=False, layers_set=None):
         """
         Returns an iterator over all sublayers in the Layer, yielding tuple of name and sublayer.
         The duplicate sublayer will only be yielded once.
 
         Parameters:
             prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
-            include_sublayers(bool, optional): Whether include the sublayers. Default: True.
             include_self(bool, optional): Whether include the Layer itself. Default: False.
-            layers_set(set, optioanl): The set to record duplicate sublayers. Default: None.
+            layers_set(set, optional): The set to record duplicate sublayers. Default: None.
 
         Yields:
             (string, Layer): Tuple of name and Layer
@@ -697,17 +692,14 @@ class Layer(core.Layer):
         if include_self and self not in layers_set:
             layers_set.add(self)
             yield prefix, self
-        if include_sublayers:
-            for key, layer in self._sub_layers.items():
-                if layer is None:
-                    continue
-                layer_prefix = prefix + ('.' if prefix else '') + key
-                for p, l in layer.named_sublayers(
-                        prefix=layer_prefix,
-                        include_sublayers=include_sublayers,
-                        include_self=True,
-                        layers_set=layers_set):
-                    yield p, l
+        for key, layer in self._sub_layers.items():
+            if layer is None:
+                continue
+            layer_prefix = prefix + ('.' if prefix else '') + key
+            for p, l in layer.named_sublayers(
+                    prefix=layer_prefix, include_self=True,
+                    layers_set=layers_set):
+                yield p, l
 
     def register_buffer(self, name, tensor, persistable=True):
         """
@@ -844,8 +836,7 @@ class Layer(core.Layer):
         buffers_set = set()
         named_sublayers = self.named_sublayers(
             prefix=prefix,
-            include_sublayers=include_sublayers,
-            include_self=True)
+            include_self=True) if include_sublayers else zip([prefix], [self])
         for layer_prefix, sublayer in named_sublayers:
             buffers = sublayer._buffers.items()
             for key, buffer in buffers:
@@ -887,6 +878,10 @@ class Layer(core.Layer):
         pass
 
     def __call__(self, *inputs, **kwargs):
+        # NOTE(Aurelius84): Why we still need param_guard here?
+        # In case of ControlFlow, true_fn and false_fn will contain
+        # parameters that may not trigger logic of `Operator` to create
+        # them. we add this to make sure all parameters is available.
         with param_guard(self._parameters), param_guard(self._buffers):
             for forward_pre_hook in self._forward_pre_hooks.values():
                 hook_result = forward_pre_hook(self, inputs)
@@ -1037,6 +1032,54 @@ class Layer(core.Layer):
 
             self._parameters[name] = parameter
         return parameter
+
+    def _set_op_attrs(self, attrs):
+        """
+        Add customized attribute while append_op. In case of quantization, we want to save
+        some attributes into op_desc while exporting inference model by @to_static.
+
+        Arguments:
+            attrs(dict): customized attributes that will be added into op_descs.
+
+        NOTE: The interface is only exposed to developers.
+        """
+
+        def is_already_registered(is_pre_hook):
+            layers_hooks = self._forward_pre_hooks if is_pre_hook else self._forward_post_hooks
+            candidate_hook = record_program_ops_pre_hook if is_pre_hook else set_op_customized_attrs_post_hook
+
+            already_registed = False
+            if layers_hooks:
+                last_key = next(reversed(layers_hooks))
+                already_registed = (layers_hooks[last_key] == candidate_hook)
+
+            return already_registed
+
+        if not isinstance(attrs, dict):
+            raise TypeError("attrs should be type(dict), but received {}".
+                            format(type(attrs).__name__))
+
+        # NOTE: Overwrite behavior for same key.
+        self._customized_attrs.update(attrs)
+
+        if not is_already_registered(is_pre_hook=True):
+            pre_hook_helper = self.register_forward_pre_hook(
+                record_program_ops_pre_hook)
+            assert len(self._op_recorder.hooks) == 0
+            self._op_recorder.hooks = [pre_hook_helper]
+
+        # manually register post_hook to ensure it is inserted into the head.
+        if not is_already_registered(is_pre_hook=False):
+            post_hook_helper = self.register_forward_post_hook(
+                set_op_customized_attrs_post_hook)
+            if len(self._forward_post_hooks) > 1:
+                self._forward_post_hooks.move_to_end(
+                    post_hook_helper._hook_id, last=False)
+
+            assert len(self._op_recorder.hooks) == 1
+
+            # hooks that need to be removed once we finish executing them.
+            self._op_recorder.hooks.append(post_hook_helper)
 
     def __getstate__(self):
         return self.__dict__
@@ -1263,16 +1306,12 @@ class Layer(core.Layer):
         return destination
 
     @framework.deprecate_stat_dict
-    def set_state_dict(self,
-                       state_dict,
-                       include_sublayers=True,
-                       use_structured_name=True):
+    def set_state_dict(self, state_dict, use_structured_name=True):
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
@@ -1445,8 +1484,19 @@ class Layer(core.Layer):
                 dtype = t.dtype
 
             new_t = t._copy_to(device, blocking)
-            if dtype is not None and dtype != t.dtype:
-                new_t = new_t.cast(dtype=dtype)
+            if isinstance(t, framework.ParamBase):
+                if dtype is not None and dtype != t.dtype:
+                    framework._dygraph_tracer().trace_op(
+                        type='cast',
+                        inputs={'X': new_t},
+                        outputs={'Out': new_t},
+                        attrs={
+                            'in_dtype': t.dtype,
+                            'out_dtype': convert_np_dtype_to_dtype_(dtype)
+                        })
+            else:
+                if dtype is not None and dtype != t.dtype:
+                    new_t = new_t.cast(dtype=dtype)
 
             return new_t
 

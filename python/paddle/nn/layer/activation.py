@@ -14,32 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-__all__ = [
-    'ELU',
-    'GELU',
-    'Hardshrink',
-    'Hardswish',
-    'Tanh',
-    'Hardtanh',
-    'PReLU',
-    'ReLU',
-    'ReLU6',
-    'SELU',
-    'LeakyReLU',
-    'Sigmoid',
-    'Hardsigmoid',
-    'Softmax',
-    'Softplus',
-    'Softshrink',
-    'Softsign',
-    'Swish',
-    'Tanhshrink',
-    'ThresholdedReLU',
-    'LogSigmoid',
-    'LogSoftmax',
-    'Maxout',
-]
-
 from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
@@ -47,6 +21,8 @@ from ...fluid.param_attr import ParamAttr
 from ...fluid.initializer import Constant
 from paddle.framework import get_default_dtype
 from .. import functional as F
+
+__all__ = []
 
 
 class ELU(layers.Layer):
@@ -917,6 +893,44 @@ class ThresholdedReLU(layers.Layer):
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'threshold={}{}'.format(self._threshold, name_str)
+
+
+class Silu(layers.Layer):
+    """
+    Silu Activation.
+    .. math::
+
+        Silu(x) = \frac{x}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, or float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            m = paddle.nn.Silu()
+            out = m(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+    """
+
+    def __init__(self, name=None):
+        super(Silu, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.silu(x, self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str
 
 
 class LogSigmoid(layers.Layer):

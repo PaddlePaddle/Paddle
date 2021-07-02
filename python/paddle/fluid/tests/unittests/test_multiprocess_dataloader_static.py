@@ -101,7 +101,7 @@ def prepare_places(with_data_parallel, with_cpu=False, with_gpu=True):
 
 
 class TestStaticDataLoader(unittest.TestCase):
-    def run_main(self, num_workers, places):
+    def run_main(self, num_workers, places, use_pe=True):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, image, label, loss = simple_fc_net_static()
@@ -120,10 +120,13 @@ class TestStaticDataLoader(unittest.TestCase):
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)
 
-            prog = fluid.CompiledProgram(main_prog)
-            if len(places) > 1:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places)
+            if use_pe:
+                prog = fluid.CompiledProgram(main_prog)
+                if len(places) > 1:
+                    prog = prog.with_data_parallel(
+                        loss_name=loss.name, places=places)
+            else:
+                prog = main_prog
 
             step_list = []
             loss_list = []

@@ -68,6 +68,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/io.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
@@ -109,6 +110,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/npu_info.h"
+#include "paddle/fluid/platform/npu_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -223,7 +225,9 @@ OpSupportedInfos(const std::string &place,
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
+      {"GPU", &platform::is_gpu_place},
+      {"CPU", &platform::is_cpu_place},
+      {"XPU", &platform::is_xpu_place},
   };
   PADDLE_ENFORCE_NE(
       is_target_place.count(query_place), 0,
@@ -267,11 +271,6 @@ bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
 #endif
-
-#ifdef PADDLE_WITH_GRPC
-  return false;
-#endif
-
   return true;
 }
 
@@ -501,46 +500,11 @@ PYBIND11_MODULE(core_noavx, m) {
     return tensor;
   });
 
-  m.def("_save_static_dict",
-        [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope) {
-          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
-          SaveStaticNameListToDisk(str_file_name, vec_name_list, scope);
-        });
-
-  m.def("_load_static_dict",
-        [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope, const Executor *executor) {
-          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
-          CreateVariableIfNotExit(vec_var_list, scope, executor);
-          LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
-        });
-
   m.def("_create_loaded_parameter",
         [](const py::handle &vec_var_list, const Scope &scope,
            const Executor *executor) {
           CreateVariableIfNotExit(vec_var_list, scope, executor);
         });
-
-  m.def("_save_dygraph_dict", [](const std::string &str_file_name,
-                                 const PyNameVarBaseMap &state_dict) {
-    auto vec_var_base_list = GetVarBaseList(state_dict);
-
-    SaveDygraphVarBaseListToDisk(str_file_name, vec_var_base_list);
-  });
-
-  m.def("_load_dygraph_dict", [](const std::string &str_file_name) {
-    auto load_tensor = LoadDygraphVarBaseListFromDisk(str_file_name);
-
-    std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
-        map_output;
-
-    for (size_t i = 0; i < load_tensor.size(); ++i) {
-      map_output.emplace(load_tensor[i]->Name(), load_tensor[i]);
-    }
-
-    return map_output;
-  });
 
   m.def("save_op_version_info", [](framework::ProgramDesc &desc) {
     framework::compatible::pb::OpVersionMap pb_vmap{desc.OpVersionMap()};
@@ -580,11 +544,6 @@ PYBIND11_MODULE(core_noavx, m) {
     return vectorize(operators::details::BroadcastTwoDims(
         make_ddim(x_dim), make_ddim(y_dim), -1));
   });
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  m.def("_npu_finalize",
-        []() { platform::AclInstance::Instance().Finalize(); });
-#endif
 
   m.def(
       "_append_python_callable_object_and_return_id",
@@ -1351,7 +1310,7 @@ All parameter, weight, gradient are variables in Paddle.
           if (info != nullptr) {
             if (info->HasOpProtoAndChecker()) {
               auto op_checker = info->Checker();
-              res = op_checker->GetAttrsDefaultValuesMap();
+              res = op_checker->GetDefaultAttrsMap();
             }
           }
           return res;
@@ -1744,7 +1703,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "Cannot use NPU because you have installed CPU/GPU version "
                  "PaddlePaddle.\n"
                  "If you want to use NPU, please try to install NPU version "
-                 "PaddlePaddle by: pip install paddlepaddle-xpu\n"
+                 "PaddlePaddle by: pip install paddlepaddle-npu\n"
                  "If you only have CPU, please change NPUPlace(%d) to be "
                  "CPUPlace().\n",
                  dev_id);
@@ -1759,6 +1718,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::NPUPlace, platform::NPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::NPUPlace, platform::CUDAPinnedPlace>)
+      .def("get_device_id",
+           [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
   py::class_<platform::Place>(m, "Place")
@@ -2178,6 +2139,29 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  m.def("get_npu_device_count", platform::GetNPUDeviceCount);
+  m.def("npu_finalize", []() { platform::AclInstance::Instance().Finalize(); });
+
+  py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
+
+  m.def("npu_prof_init", platform::NPUProfilerInit);
+  m.def("npu_prof_start", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerStart(c.ptr());
+  });
+  m.def("npu_prof_stop", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerStop(c.ptr());
+  });
+  m.def("npu_prof_finalize", platform::NPUProfilerFinalize);
+  m.def("npu_prof_create_config", []() {
+    return platform::NPUProfConfigWrapper(platform::NPUProfilerCreateConfig());
+  });
+
+  m.def("npu_prof_destropy_config", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerDestroyConfig(c.ptr());
+  });
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
@@ -3048,12 +3032,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+  BindIO(&m);
 
 #ifdef PADDLE_WITH_PSLIB
   BindHeterWrapper(&m);
 #endif
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
+#ifdef PADDLE_WITH_HETERPS
   BindPSGPUWrapper(&m);
 #endif
   BindGlooWrapper(&m);
@@ -3093,6 +3077,11 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraphPyService(&m);
   BindGraphPyServer(&m);
   BindGraphPyClient(&m);
+  BindIndexNode(&m);
+  BindTreeIndex(&m);
+  BindIndexWrapper(&m);
+  BindIndexSampler(&m);
+  BindSparseShardingTools(&m);
 #endif
 }
 }  // namespace pybind

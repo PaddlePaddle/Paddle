@@ -221,6 +221,9 @@ def add_error_cases(suite):
     suite.addTest(
         Conv3DErrorTestCase(
             methodName='runTest', num_channels=5, groups=2))
+    suite.addTest(
+        Conv3DErrorTestCase(
+            methodName='runTest', num_channels=5, groups=2, padding=[-1, 1, 3]))
 
 
 def load_tests(loader, standard_tests, pattern):

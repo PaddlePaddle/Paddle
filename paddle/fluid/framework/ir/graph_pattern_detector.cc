@@ -2262,11 +2262,11 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat", "conv2d", "conv2d_transpose",
-                                       "elementwise_add", "elementwise_mul",
-                                       "fc", "fusion_gru", "gelu", "layer_norm",
-                                       "matmul", "pool2d", "relu", "reshape2",
-                                       "softmax", "sum", "transpose2"});
+      std::unordered_set<std::string>(
+          {"concat", "conv2d", "conv2d_transpose", "elementwise_add",
+           "elementwise_mul", "fc", "fusion_gru", "fusion_lstm", "gelu",
+           "layer_norm", "matmul", "matmul_v2", "pool2d", "relu", "reshape2",
+           "softmax", "split", "sum", "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
@@ -2340,16 +2340,7 @@ PDNode *patterns::DuplicatedInputs::operator()() {
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
   const std::unordered_set<std::string> &supported_op_types = {
-      "abs",
-      "elementwise_mul",
-      "elementwise_add",
-      "gelu",
-      "leaky_relu",
-      "relu",
-      "softmax",
-      "sqrt",
-      "swish",
-      "tanh"};
+      "abs", "gelu", "leaky_relu", "relu", "softmax", "sqrt", "swish", "tanh"};
 
   auto possible_inplace_op = pattern->NewNode(inplace_to_be_op_repr())
                                  ->assert_is_ops(supported_op_types);
@@ -2437,6 +2428,29 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
 
   concat_op->LinksFrom(flatten_outs).LinksTo({concat_out});
   return concat_out;
+}
+
+void patterns::DeleteDropoutOpPattern::operator()() {
+  auto any_op_out = pattern->NewNode(any_op_out_repr())
+                        ->assert_is_op_input("dropout", "X")
+                        ->AsInput();
+
+  auto dropout_op =
+      pattern->NewNode(dropout_op_repr())->assert_is_op("dropout");
+
+  auto dropout_op_out = pattern->NewNode(dropout_op_out_repr())
+                            ->assert_is_op_output("dropout", "Out")
+                            ->AsIntermediate();
+
+  auto dropout_op_outmask = pattern->NewNode(dropout_op_outmask_repr())
+                                ->assert_is_op_output("dropout", "Mask")
+                                ->AsOutput();
+  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
+
+  dropout_op->LinksFrom({any_op_out});
+  dropout_op_out->LinksFrom({dropout_op});
+  dropout_op_outmask->LinksFrom({dropout_op});
+  any_op2->LinksFrom({dropout_op_out});
 }
 
 void patterns::DeleteQuantOpFuse::operator()(PDNode *input_act_node,

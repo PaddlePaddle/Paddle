@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import os
 import sys
-import six
+from io import BytesIO
 
 import paddle
 import paddle.nn as nn
@@ -27,6 +27,7 @@ import paddle.fluid as fluid
 from paddle.fluid.optimizer import Adam
 import paddle.fluid.framework as framework
 from test_imperative_base import new_program_scope
+from paddle.optimizer.lr import LRScheduler
 
 BATCH_SIZE = 16
 BATCH_NUM = 4
@@ -36,10 +37,7 @@ SEED = 10
 IMAGE_SIZE = 784
 CLASS_NUM = 10
 
-if six.PY2:
-    LARGE_PARAM = 2**2
-else:
-    LARGE_PARAM = 2**26
+LARGE_PARAM = 2**26
 
 
 def random_batch_reader():
@@ -97,22 +95,19 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
     def test_large_parameters_paddle_save(self):
         # enable dygraph mode
         paddle.disable_static()
+        paddle.set_device("cpu")
         # create network
         layer = LayerWithLargeParameters()
         save_dict = layer.state_dict()
 
         path = os.path.join("test_paddle_save_load_large_param_save",
                             "layer.pdparams")
-        if six.PY2:
-            protocol = 2
-        else:
-            protocol = 4
+        protocol = 4
         paddle.save(save_dict, path, protocol=protocol)
-        dict_load = paddle.load(path)
+        dict_load = paddle.load(path, return_numpy=True)
         # compare results before and after saving
         for key, value in save_dict.items():
-            self.assertTrue(
-                np.array_equal(dict_load[key].numpy(), value.numpy()))
+            self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
 
 
 class TestSaveLoadPickle(unittest.TestCase):
@@ -262,8 +257,31 @@ class TestSaveLoadAny(unittest.TestCase):
 
     def test_paddle_save_load_v2(self):
         paddle.disable_static()
+
+        class StepDecay(LRScheduler):
+            def __init__(self,
+                         learning_rate,
+                         step_size,
+                         gamma=0.1,
+                         last_epoch=-1,
+                         verbose=False):
+                self.step_size = step_size
+                self.gamma = gamma
+                super(StepDecay, self).__init__(learning_rate, last_epoch,
+                                                verbose)
+
+            def get_lr(self):
+                i = self.last_epoch // self.step_size
+                return self.base_lr * (self.gamma**i)
+
         layer = LinearNet()
-        state_dict = layer.state_dict()
+        inps = paddle.randn([2, IMAGE_SIZE])
+        adam = opt.Adam(
+            learning_rate=StepDecay(0.1, 1), parameters=layer.parameters())
+        y = layer(inps)
+        y.mean().backward()
+        adam.step()
+        state_dict = adam.state_dict()
         path = 'paddle_save_load_v2/model.pdparams'
         with self.assertRaises(TypeError):
             paddle.save(state_dict, path, use_binary_format='False')
@@ -274,9 +292,15 @@ class TestSaveLoadAny(unittest.TestCase):
         paddle.save(state_dict, path)
         load_dict_np = paddle.framework.io._legacy_load(path)
         for k, v in state_dict.items():
-            self.assertTrue(
-                np.array_equal(v.numpy(), load_dict_tensor[k].numpy()))
-            self.assertTrue(np.array_equal(v.numpy(), load_dict_np[k]))
+            if isinstance(v, dict):
+                self.assertTrue(v == load_dict_tensor[k])
+            else:
+                self.assertTrue(
+                    np.array_equal(v.numpy(), load_dict_tensor[k].numpy()))
+                if not np.array_equal(v.numpy(), load_dict_np[k]):
+                    print(v.numpy())
+                    print(load_dict_np[k])
+                self.assertTrue(np.array_equal(v.numpy(), load_dict_np[k]))
 
     def test_single_pickle_var_dygraph(self):
         # enable dygraph mode
@@ -370,6 +394,430 @@ class TestSaveLoadAny(unittest.TestCase):
                     np.array_equal(tensor.numpy(),
                                    np.array(state_dict_param[tensor.name])))
 
+    def test_save_load_complex_object_dygraph_save(self):
+        paddle.disable_static()
+        layer = paddle.nn.Linear(3, 4)
+        state_dict = layer.state_dict()
+        obj1 = [
+            paddle.randn(
+                [3, 4], dtype='float32'), np.random.randn(5, 6),
+            ('fake_weight', np.ones(
+                [7, 8], dtype='float32'))
+        ]
+        obj2 = {'k1': obj1, 'k2': state_dict, 'epoch': 123}
+        obj3 = (paddle.randn(
+            [5, 4], dtype='float32'), np.random.randn(3, 4).astype("float32"), {
+                "state_dict": state_dict,
+                "opt": state_dict
+            })
+        obj4 = (np.random.randn(5, 6), (123, ))
+
+        path1 = "test_save_load_any_complex_object_dygraph/obj1"
+        path2 = "test_save_load_any_complex_object_dygraph/obj2"
+        path3 = "test_save_load_any_complex_object_dygraph/obj3"
+        path4 = "test_save_load_any_complex_object_dygraph/obj4"
+        paddle.save(obj1, path1)
+        paddle.save(obj2, path2)
+        paddle.save(obj3, path3)
+        paddle.save(obj4, path4)
+
+        load_tensor1 = paddle.load(path1, return_numpy=False)
+        load_tensor2 = paddle.load(path2, return_numpy=False)
+        load_tensor3 = paddle.load(path3, return_numpy=False)
+        load_tensor4 = paddle.load(path4, return_numpy=False)
+
+        self.assertTrue(
+            np.array_equal(load_tensor1[0].numpy(), obj1[0].numpy()))
+        self.assertTrue(np.array_equal(load_tensor1[1], obj1[1]))
+        self.assertTrue(np.array_equal(load_tensor1[2].numpy(), obj1[2][1]))
+        for i in range(len(load_tensor1)):
+            self.assertTrue(
+                type(load_tensor1[i]) == type(load_tensor2['k1'][i]))
+        for k, v in state_dict.items():
+            self.assertTrue(
+                np.array_equal(v.numpy(), load_tensor2['k2'][k].numpy()))
+        self.assertTrue(load_tensor2['epoch'] == 123)
+
+        self.assertTrue(
+            np.array_equal(load_tensor3[0].numpy(), obj3[0].numpy()))
+        self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+
+        for k, v in state_dict.items():
+            self.assertTrue(
+                np.array_equal(load_tensor3[2]["state_dict"][k].numpy(),
+                               v.numpy()))
+
+        for k, v in state_dict.items():
+            self.assertTrue(
+                np.array_equal(load_tensor3[2]["opt"][k].numpy(), v.numpy()))
+
+        self.assertTrue(np.array_equal(load_tensor4[0].numpy(), obj4[0]))
+
+        load_array1 = paddle.load(path1, return_numpy=True)
+        load_array2 = paddle.load(path2, return_numpy=True)
+        load_array3 = paddle.load(path3, return_numpy=True)
+        load_array4 = paddle.load(path4, return_numpy=True)
+
+        self.assertTrue(np.array_equal(load_array1[0], obj1[0].numpy()))
+        self.assertTrue(np.array_equal(load_array1[1], obj1[1]))
+        self.assertTrue(np.array_equal(load_array1[2], obj1[2][1]))
+        for i in range(len(load_array1)):
+            self.assertTrue(type(load_array1[i]) == type(load_array2['k1'][i]))
+        for k, v in state_dict.items():
+            self.assertTrue(np.array_equal(v.numpy(), load_array2['k2'][k]))
+        self.assertTrue(load_array2['epoch'] == 123)
+
+        self.assertTrue(np.array_equal(load_array3[0], obj3[0].numpy()))
+        self.assertTrue(np.array_equal(load_array3[1], obj3[1]))
+
+        for k, v in state_dict.items():
+            self.assertTrue(
+                np.array_equal(load_array3[2]["state_dict"][k], v.numpy()))
+
+        for k, v in state_dict.items():
+            self.assertTrue(np.array_equal(load_array3[2]["opt"][k], v.numpy()))
+
+        self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+
+        # static mode
+        paddle.enable_static()
+
+        load_tensor1 = paddle.load(path1, return_numpy=False)
+        load_tensor2 = paddle.load(path2, return_numpy=False)
+        load_tensor3 = paddle.load(path3, return_numpy=False)
+        load_tensor4 = paddle.load(path4, return_numpy=False)
+
+        self.assertTrue(
+            np.array_equal(np.array(load_tensor1[0]), obj1[0].numpy()))
+        self.assertTrue(np.array_equal(np.array(load_tensor1[1]), obj1[1]))
+        self.assertTrue(np.array_equal(np.array(load_tensor1[2]), obj1[2][1]))
+
+        for i in range(len(load_tensor1)):
+            self.assertTrue(
+                type(load_tensor1[i]) == type(load_tensor2['k1'][i]))
+        for k, v in state_dict.items():
+            self.assertTrue(
+                np.array_equal(v.numpy(), np.array(load_tensor2['k2'][k])))
+        self.assertTrue(load_tensor2['epoch'] == 123)
+
+        self.assertTrue(
+            isinstance(load_tensor3[0], paddle.fluid.core.LoDTensor))
+        self.assertTrue(
+            np.array_equal(np.array(load_tensor3[0]), obj3[0].numpy()))
+        self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+
+        for k, v in state_dict.items():
+            self.assertTrue(
+                isinstance(load_tensor3[2]["state_dict"][k],
+                           paddle.fluid.core.LoDTensor))
+            self.assertTrue(
+                np.array_equal(
+                    np.array(load_tensor3[2]["state_dict"][k]), v.numpy()))
+
+        for k, v in state_dict.items():
+            self.assertTrue(
+                isinstance(load_tensor3[2]["opt"][k],
+                           paddle.fluid.core.LoDTensor))
+            self.assertTrue(
+                np.array_equal(np.array(load_tensor3[2]["opt"][k]), v.numpy()))
+
+        self.assertTrue(load_tensor4[0], paddle.fluid.core.LoDTensor)
+        self.assertTrue(np.array_equal(np.array(load_tensor4[0]), obj4[0]))
+
+        load_array1 = paddle.load(path1, return_numpy=True)
+        load_array2 = paddle.load(path2, return_numpy=True)
+        load_array3 = paddle.load(path3, return_numpy=True)
+        load_array4 = paddle.load(path4, return_numpy=True)
+
+        self.assertTrue(np.array_equal(load_array1[0], obj1[0].numpy()))
+        self.assertTrue(np.array_equal(load_array1[1], obj1[1]))
+        self.assertTrue(np.array_equal(load_array1[2], obj1[2][1]))
+        for i in range(len(load_array1)):
+            self.assertTrue(type(load_array1[i]) == type(load_array2['k1'][i]))
+        for k, v in state_dict.items():
+            self.assertTrue(np.array_equal(v.numpy(), load_array2['k2'][k]))
+        self.assertTrue(load_array2['epoch'] == 123)
+
+        self.assertTrue(isinstance(load_array3[0], np.ndarray))
+        self.assertTrue(np.array_equal(load_array3[0], obj3[0].numpy()))
+        self.assertTrue(np.array_equal(load_array3[1], obj3[1]))
+
+        for k, v in state_dict.items():
+            self.assertTrue(
+                np.array_equal(load_array3[2]["state_dict"][k], v.numpy()))
+
+        for k, v in state_dict.items():
+            self.assertTrue(np.array_equal(load_array3[2]["opt"][k], v.numpy()))
+
+        self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+
+    def test_save_load_complex_object_static_save(self):
+        paddle.enable_static()
+        with new_program_scope():
+            # create network
+            x = paddle.static.data(
+                name="x", shape=[None, IMAGE_SIZE], dtype='float32')
+            z = paddle.static.nn.fc(x, 10, bias_attr=False)
+            z = paddle.static.nn.fc(z, 128, bias_attr=False)
+            loss = fluid.layers.reduce_mean(z)
+            place = fluid.CPUPlace(
+            ) if not paddle.fluid.core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            prog = paddle.static.default_main_program()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+
+            state_dict = prog.state_dict()
+            keys = list(state_dict.keys())
+            obj1 = [
+                state_dict[keys[0]], np.random.randn(5, 6),
+                ('fake_weight', np.ones(
+                    [7, 8], dtype='float32'))
+            ]
+            obj2 = {'k1': obj1, 'k2': state_dict, 'epoch': 123}
+            obj3 = (state_dict[keys[0]], np.ndarray(
+                [3, 4], dtype="float32"), {
+                    "state_dict": state_dict,
+                    "opt": state_dict
+                })
+            obj4 = (np.ndarray([3, 4], dtype="float32"), )
+
+            path1 = "test_save_load_any_complex_object_static/obj1"
+            path2 = "test_save_load_any_complex_object_static/obj2"
+            path3 = "test_save_load_any_complex_object_static/obj3"
+            path4 = "test_save_load_any_complex_object_static/obj4"
+            paddle.save(obj1, path1)
+            paddle.save(obj2, path2)
+            paddle.save(obj3, path3)
+            paddle.save(obj4, path4)
+
+            load_tensor1 = paddle.load(path1, return_numpy=False)
+            load_tensor2 = paddle.load(path2, return_numpy=False)
+            load_tensor3 = paddle.load(path3, return_numpy=False)
+            load_tensor4 = paddle.load(path4, return_numpy=False)
+
+            self.assertTrue(
+                np.array_equal(np.array(load_tensor1[0]), np.array(obj1[0])))
+            self.assertTrue(np.array_equal(np.array(load_tensor1[1]), obj1[1]))
+            self.assertTrue(
+                np.array_equal(np.array(load_tensor1[2]), obj1[2][1]))
+            for i in range(len(load_tensor1)):
+                self.assertTrue(
+                    type(load_tensor1[i]) == type(load_tensor2['k1'][i]))
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(v), np.array(load_tensor2['k2'][k])))
+            self.assertTrue(load_tensor2['epoch'] == 123)
+
+            self.assertTrue(isinstance(load_tensor3[0], fluid.core.LoDTensor))
+            self.assertTrue(np.array_equal(np.array(load_tensor3[0]), obj3[0]))
+            self.assertTrue(isinstance(load_tensor3[1], fluid.core.LoDTensor))
+            self.assertTrue(np.array_equal(np.array(load_tensor3[1]), obj3[1]))
+
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    isinstance(load_tensor3[2]["state_dict"][k],
+                               fluid.core.LoDTensor))
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(load_tensor3[2]["state_dict"][k]), np.array(
+                            v)))
+
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    isinstance(load_tensor3[2]["opt"][k], fluid.core.LoDTensor))
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(load_tensor3[2]["opt"][k]), np.array(v)))
+
+            self.assertTrue(isinstance(load_tensor4[0], fluid.core.LoDTensor))
+            self.assertTrue(np.array_equal(np.array(load_tensor4[0]), obj4[0]))
+
+            load_array1 = paddle.load(path1, return_numpy=True)
+            load_array2 = paddle.load(path2, return_numpy=True)
+            load_array3 = paddle.load(path3, return_numpy=True)
+            load_array4 = paddle.load(path4, return_numpy=True)
+
+            self.assertTrue(np.array_equal(load_array1[0], np.array(obj1[0])))
+            self.assertTrue(np.array_equal(load_array1[1], obj1[1]))
+            self.assertTrue(np.array_equal(load_array1[2], obj1[2][1]))
+            for i in range(len(load_array1)):
+                self.assertTrue(
+                    type(load_array1[i]) == type(load_array2['k1'][i]))
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    np.array_equal(np.array(v), load_array2['k2'][k]))
+            self.assertTrue(load_array2['epoch'] == 123)
+
+            self.assertTrue(np.array_equal(load_array3[0], np.array(obj3[0])))
+            self.assertTrue(np.array_equal(load_array3[1], obj3[1]))
+
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    np.array_equal(load_array3[2]["state_dict"][k], np.array(
+                        v)))
+
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    np.array_equal(load_array3[2]["opt"][k], np.array(v)))
+
+            self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+
+            # dygraph mode
+            paddle.disable_static()
+
+            load_tensor1 = paddle.load(path1, return_numpy=False)
+            load_tensor2 = paddle.load(path2, return_numpy=False)
+            load_tensor3 = paddle.load(path3, return_numpy=False)
+            load_tensor4 = paddle.load(path4, return_numpy=False)
+
+            self.assertTrue(
+                np.array_equal(np.array(load_tensor1[0]), np.array(obj1[0])))
+            self.assertTrue(np.array_equal(np.array(load_tensor1[1]), obj1[1]))
+            self.assertTrue(np.array_equal(load_tensor1[2].numpy(), obj1[2][1]))
+            for i in range(len(load_tensor1)):
+                self.assertTrue(
+                    type(load_tensor1[i]) == type(load_tensor2['k1'][i]))
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(v), np.array(load_tensor2['k2'][k])))
+            self.assertTrue(load_tensor2['epoch'] == 123)
+
+            self.assertTrue(isinstance(load_tensor3[0], fluid.core.VarBase))
+            self.assertTrue(np.array_equal(load_tensor3[0].numpy(), obj3[0]))
+            self.assertTrue(isinstance(load_tensor3[1], fluid.core.VarBase))
+            self.assertTrue(np.array_equal(load_tensor3[1].numpy(), obj3[1]))
+
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    isinstance(load_tensor3[2]["state_dict"][k],
+                               fluid.core.VarBase))
+                self.assertTrue(
+                    np.array_equal(load_tensor3[2]["state_dict"][k].numpy(),
+                                   np.array(v)))
+
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    isinstance(load_tensor3[2]["opt"][k], fluid.core.VarBase))
+                self.assertTrue(
+                    np.array_equal(load_tensor3[2]["opt"][k].numpy(),
+                                   np.array(v)))
+
+            self.assertTrue(isinstance(load_tensor4[0], fluid.core.VarBase))
+            self.assertTrue(np.array_equal(load_tensor4[0].numpy(), obj4[0]))
+
+            load_array1 = paddle.load(path1, return_numpy=True)
+            load_array2 = paddle.load(path2, return_numpy=True)
+            load_array3 = paddle.load(path3, return_numpy=True)
+            load_array4 = paddle.load(path4, return_numpy=True)
+
+            self.assertTrue(np.array_equal(load_array1[0], np.array(obj1[0])))
+            self.assertTrue(np.array_equal(load_array1[1], obj1[1]))
+            self.assertTrue(np.array_equal(load_array1[2], obj1[2][1]))
+            for i in range(len(load_array1)):
+                self.assertTrue(
+                    type(load_array1[i]) == type(load_array2['k1'][i]))
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    np.array_equal(np.array(v), load_array2['k2'][k]))
+            self.assertTrue(load_array2['epoch'] == 123)
+
+            self.assertTrue(np.array_equal(load_array3[0], np.array(obj3[0])))
+            self.assertTrue(np.array_equal(load_array3[1], obj3[1]))
+
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    np.array_equal(load_array3[2]["state_dict"][k], np.array(
+                        v)))
+
+            for k, v in state_dict.items():
+                self.assertTrue(
+                    np.array_equal(load_array3[2]["opt"][k], np.array(v)))
+
+            self.assertTrue(isinstance(load_array4[0], np.ndarray))
+            self.assertTrue(np.array_equal(load_array4[0], obj4[0]))
+
+    def test_varbase_binary_var(self):
+        paddle.disable_static()
+        varbase = paddle.randn([3, 2], dtype='float32')
+        path = 'test_paddle_save_load_varbase_binary_var/varbase'
+        paddle.save(varbase, path, use_binary_format=True)
+        load_array = paddle.load(path, return_numpy=True)
+        load_tensor = paddle.load(path, return_numpy=False)
+        origin_array = varbase.numpy()
+        load_tensor_array = load_tensor.numpy()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            fluid.core._cuda_synchronize(paddle.CUDAPlace(0))
+        self.assertTrue(np.array_equal(origin_array, load_array))
+        self.assertTrue(np.array_equal(origin_array, load_tensor_array))
+
+
+class TestSaveLoadToMemory(unittest.TestCase):
+    def test_dygraph_save_to_memory(self):
+        paddle.disable_static()
+        linear = LinearNet()
+        state_dict = linear.state_dict()
+        byio = BytesIO()
+        paddle.save(state_dict, byio)
+        tensor = paddle.randn([2, 3], dtype='float32')
+        paddle.save(tensor, byio)
+        byio.seek(0)
+        # load state_dict
+        dict_load = paddle.load(byio, return_numpy=True)
+        for k, v in state_dict.items():
+            self.assertTrue(np.array_equal(v.numpy(), dict_load[k]))
+        # load tensor
+        tensor_load = paddle.load(byio, return_numpy=True)
+        self.assertTrue(np.array_equal(tensor_load, tensor.numpy()))
+
+        with self.assertRaises(ValueError):
+            paddle.save(4, 3)
+        with self.assertRaises(ValueError):
+            paddle.save(state_dict, '')
+        with self.assertRaises(ValueError):
+            paddle.fluid.io._open_file_buffer('temp', 'b')
+
+    def test_static_save_to_memory(self):
+        paddle.enable_static()
+        with new_program_scope():
+            # create network
+            x = paddle.static.data(
+                name="x", shape=[None, IMAGE_SIZE], dtype='float32')
+            z = paddle.static.nn.fc(x, 10, bias_attr=False)
+            z = paddle.static.nn.fc(z, 128, bias_attr=False)
+            loss = fluid.layers.reduce_mean(z)
+            place = fluid.CPUPlace(
+            ) if not paddle.fluid.core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            prog = paddle.static.default_main_program()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+
+            state_dict = prog.state_dict()
+            keys = list(state_dict.keys())
+            tensor = state_dict[keys[0]]
+
+            byio = BytesIO()
+            byio2 = BytesIO()
+            paddle.save(prog, byio2)
+            paddle.save(tensor, byio)
+            paddle.save(state_dict, byio)
+            byio.seek(0)
+            byio2.seek(0)
+
+            prog_load = paddle.load(byio2)
+            self.assertTrue(prog.desc.serialize_to_string() ==
+                            prog_load.desc.serialize_to_string())
+
+            tensor_load = paddle.load(byio, return_numpy=True)
+            self.assertTrue(np.array_equal(tensor_load, np.array(tensor)))
+
+            state_dict_load = paddle.load(byio, return_numpy=True)
+            for k, v in state_dict.items():
+                self.assertTrue(np.array_equal(np.array(v), state_dict_load[k]))
+
 
 class TestSaveLoad(unittest.TestCase):
     def setUp(self):
@@ -431,8 +879,6 @@ class TestSaveLoad(unittest.TestCase):
         # error test cases, some tests relay base test above
         # 1. test save obj not dict error
         test_list = [1, 2, 3]
-        with self.assertRaises(NotImplementedError):
-            paddle.save(test_list, "not_dict_error_path")
 
         # 2. test save path format error
         with self.assertRaises(ValueError):
@@ -445,6 +891,51 @@ class TestSaveLoad(unittest.TestCase):
         # 4. test load old save path error
         with self.assertRaises(ValueError):
             paddle.load("test_paddle_save_load.linear")
+
+
+class TestSaveLoadProgram(unittest.TestCase):
+    def test_save_load_program(self):
+        paddle.enable_static()
+        with new_program_scope():
+            layer = LinearNet()
+            data = paddle.static.data(
+                name='x_static_save', shape=(None, IMAGE_SIZE), dtype='float32')
+            y_static = layer(data)
+            main_program = paddle.static.default_main_program()
+            startup_program = paddle.static.default_startup_program()
+            origin_main = main_program.desc.serialize_to_string()
+            origin_startup = startup_program.desc.serialize_to_string()
+            path1 = "test_paddle_save_load_program/main_program.pdmodel"
+            path2 = "test_paddle_save_load_program/startup_program.pdmodel"
+            paddle.save(main_program, path1)
+            paddle.save(startup_program, path2)
+
+        with new_program_scope():
+            load_main = paddle.load(path1).desc.serialize_to_string()
+            load_startup = paddle.load(path2).desc.serialize_to_string()
+            self.assertTrue(origin_main == load_main)
+            self.assertTrue(origin_startup == load_startup)
+
+
+class TestSaveLoadLayer(unittest.TestCase):
+    def test_save_load_layer(self):
+        paddle.disable_static()
+        inps = paddle.randn([1, IMAGE_SIZE], dtype='float32')
+        layer1 = LinearNet()
+        layer2 = LinearNet()
+        layer1.eval()
+        layer2.eval()
+        origin_layer = (layer1, layer2)
+        origin = (layer1(inps), layer2(inps))
+        path = "test_save_load_layer_/layer.pdmodel"
+        paddle.save(origin_layer, path)
+
+        loaded_layer = paddle.load(path)
+        loaded_result = [l(inps) for l in loaded_layer]
+        for i in range(len(origin)):
+            self.assertTrue((origin[i] - loaded_result[i]).abs().max() < 1e-10)
+            for k, v in origin_layer[i]._linear.weight.__dict__.items():
+                self.assertTrue(v == loaded_layer[i]._linear.weight.__dict__[k])
 
 
 if __name__ == '__main__':

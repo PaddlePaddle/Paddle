@@ -20,3 +20,15 @@ if (WITH_LITE)
   set(INFER_IR_PASSES ${INFER_IR_PASSES} lite_subgraph_pass CACHE INTERNAL "")
   cc_test(lite_subgraph_pass_tester SRCS lite_subgraph_pass_tester.cc DEPS lite_subgraph_pass gtest glog)
 endif()
+
+MESSAGE("WITH_DLNNE:${WITH_DLNNE}")
+if(WITH_DLNNE)
+  cc_library(dlnne_subgraph_pass SRCS dlnne_subgraph_pass.cc DEPS ${analysis_deps} subgraph_util)
+  set(analysis_deps ${analysis_deps}
+        subgraph_util dlnne_subgraph_pass
+        CACHE INTERNAL "")
+
+  set(pass_file ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h.tmp)
+  file(APPEND ${pass_file} "USE_PASS(dlnne_subgraph_pass);\n")
+  set(INFER_IR_PASSES ${INFER_IR_PASSES} dlnne_subgraph_pass CACHE INTERNAL "")
+endif()

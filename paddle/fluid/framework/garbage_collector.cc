@@ -122,6 +122,32 @@ void CUDAPinnedGarbageCollector::ClearCallback(
 }
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+NPUDefaultStreamGarbageCollector::NPUDefaultStreamGarbageCollector(
+    const platform::NPUPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void NPUDefaultStreamGarbageCollector::Wait() const {
+  static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
+      ->WaitStreamCallback();
+}
+
+void NPUDefaultStreamGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
+      ->AddStreamCallback(callback);
+}
+NPUUnsafeFastGarbageCollector::NPUUnsafeFastGarbageCollector(
+    const platform::NPUPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void NPUUnsafeFastGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
+}
+
+#endif
+
 int64_t GetEagerDeletionThreshold() {
   return FLAGS_eager_delete_tensor_gb < 0
              ? -1
