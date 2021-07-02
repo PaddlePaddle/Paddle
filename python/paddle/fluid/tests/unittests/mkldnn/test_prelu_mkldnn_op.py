@@ -129,12 +129,22 @@ def create_bf16_test_class(parent):
                 self.check_output_with_place(core.CPUPlace())
 
         def test_check_grad(self):
-            self.calculate_grads()
-            self.check_grad_with_place(
-                core.CPUPlace(), ["X", "Alpha"],
-                "Out",
-                user_defined_grads=[self.dx, self.dalpha],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+            if core.is_compiled_with_cuda():
+                self.skipTest(
+                    "OneDNN doesn't support bf16 with CUDA, skipping UT" +
+                    self.__class__.__name__)
+            elif not core.supports_bfloat16():
+                self.skipTest("Core doesn't support bf16, skipping UT" +
+                              self.__class__.__name__)
+            else:
+                self.calculate_grads()
+                self.check_grad_with_place(
+                    core.CPUPlace(), ["X", "Alpha"],
+                    "Out",
+                    user_defined_grads=[self.dx, self.dalpha],
+                    user_defined_grad_outputs=[
+                        convert_float_to_uint16(self.dout)
+                    ])
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestPReluBF16OneDNNOp.__name__ = cls_name
