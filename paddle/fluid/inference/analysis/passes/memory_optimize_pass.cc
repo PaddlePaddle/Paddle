@@ -124,6 +124,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
     return true;
   };
 
+  // Collect unsafty tensors from graph.
   std::unordered_set<std::string> black_list;
   for (auto* node : graph_->Nodes()) {
     if (node->IsVar() &&
