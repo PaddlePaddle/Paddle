@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/split_op.h"
 #include <string>
-#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
