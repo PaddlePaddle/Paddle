@@ -108,9 +108,12 @@ struct sgd_dense_param_kernel<
     auto p = framework::EigenVector<platform::bfloat16>::Flatten(*param);
     auto g = framework::EigenVector<platform::bfloat16>::Flatten(*grad);
     auto o = framework::EigenVector<platform::bfloat16>::Flatten(*param_out);
-    const auto *lr = learning_rate->data<platform::bfloat16>();
-
-    o = p - lr[0] * g;
+    const auto *lr = learning_rate->data<float>();
+#ifdef PADDLE_WITH_MKLDNN
+    operators::onednn_handler_axpy(p.size(), -lr[0], g.data(), o.data());
+#else
+    o = p - static_cast<platform::bfloat16>(lr[0]) * g;
+#endif
   }
 };
 
@@ -132,7 +135,7 @@ struct sgd_dense_param_kernel<
 
     const auto *grad_data = grad_value.data<platform::bfloat16>();
     auto *out_data = param_out->data<platform::bfloat16>();
-    const auto *lr = learning_rate->data<platform::bfloat16>();
+    const auto *lr = learning_rate->data<float>();
 
     for (size_t i = 0; i < grad_rows.size(); ++i) {
       PADDLE_ENFORCE_LT(
