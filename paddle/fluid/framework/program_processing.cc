@@ -67,7 +67,6 @@ void ProgramProcessor::GetInputsOutputsInBlock(
       }
     }
     std::set<std::string> inner_inputs_;
-    // set_difference is not an inplace funtion.
     std::set_difference(inner_inputs->begin(), inner_inputs->end(),
                         removed_inner_inputs.begin(),
                         removed_inner_inputs.end(),
@@ -81,26 +80,24 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
   for (OpDesc *op : block.AllOps()) {
     if (op->HasAttr("sub_block")) {
       auto op_type = op->Type();
-      auto sub_block = op->GetAttr("sub_block");
-      // TODO(huangxu96): sub_block is an Attr, how to get a BlockDesc*?
+      BlockDesc *sub_block = boost::get<BlockDesc *>(op->GetAttr("sub_block"));
+
       // recursively processing
-      // VLOG(3)<<"sub_block" << sub_block;
-      // AddDepToBlockOp(sub_block);
+      AddDepToBlockOp(*sub_block);
 
       std::set<std::string> sub_inputs;
       std::set<std::string> sub_outputs;
-      ProgramProcessor::GetInputsOutputsInBlock(block, &sub_inputs,
+      ProgramProcessor::GetInputsOutputsInBlock(*sub_block, &sub_inputs,
                                                 &sub_outputs);
       VLOG(3) << "sub_inputs.size:" << sub_inputs.size();
       VLOG(3) << "sub_outputs.size:" << sub_outputs.size();
-      // TODO(huangxu96): check sub_inputs and sub_outputs are in parent block.
 
       auto *op_inputs = op->MutableInputs();
       std::vector<std::string> *op_input_var_vec;
       VLOG(3) << "op_type:>>>>>>" << op_type;
       if (op_type.compare("while") == 0)
         op_input_var_vec = &((*op_inputs)["kX"]);
-      else if (op_type.compare("kCondition") == 0)
+      else if (op_type.compare("conditional_block") == 0)
         op_input_var_vec = &((*op_inputs)["kInputs"]);
       else
         // Only support while_op and conditinal_block_op now

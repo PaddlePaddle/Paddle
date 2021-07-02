@@ -26,98 +26,169 @@ namespace framework {
 TEST(ProgramDesc, GetInputsOutputsInBlock) {
   ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
-  auto* x = global_block->Var("X");
-  x->SetType(proto::VarType::LOD_TENSOR);
-  x->SetLoDLevel(0);
-  x->SetDataType(proto::VarType::FP32);
-  x->SetShape({1000, 784});
+  auto* mul_1_x = global_block->Var("Mul_1_X");
+  mul_1_x->SetType(proto::VarType::LOD_TENSOR);
+  mul_1_x->SetLoDLevel(0);
+  mul_1_x->SetDataType(proto::VarType::FP32);
+  mul_1_x->SetShape({1000, 784});
 
-  auto* y = global_block->Var("Y");
-  y->SetType(proto::VarType::LOD_TENSOR);
-  y->SetLoDLevel(0);
-  y->SetDataType(proto::VarType::FP32);
-  y->SetShape({784, 100});
+  auto* mul_1_y = global_block->Var("Mul_1_Y");
+  mul_1_y->SetType(proto::VarType::LOD_TENSOR);
+  mul_1_y->SetLoDLevel(0);
+  mul_1_y->SetDataType(proto::VarType::FP32);
+  mul_1_y->SetShape({784, 100});
 
-  auto* op1 = global_block->AppendOp();
-  op1->SetType("mul");
-  op1->SetInput("X", {x->Name()});
-  op1->SetInput("Y", {y->Name()});
+  auto* mul_1_out = global_block->Var("Mul_1_Out");
+  mul_1_out->SetType(proto::VarType::LOD_TENSOR);
+  auto* mul_op_1 = global_block->AppendOp();
 
-  auto* out1 = global_block->Var("Out1");
-  out1->SetType(proto::VarType::LOD_TENSOR);
-  op1->SetOutput("Y", {out1->Name()});
+  mul_op_1->SetType("mul");
+  mul_op_1->SetInput("X", {mul_1_x->Name()});
+  mul_op_1->SetInput("Y", {mul_1_y->Name()});
+  mul_op_1->SetOutput("Y", {mul_1_out->Name()});
+
+  // building cond op such as less_than
+  auto* less_than_op_1 = global_block->AppendOp();
+  less_than_op_1->SetType("less_than");
+  auto* less_than_1_x = global_block->Var("Less_than_1_X");
+  less_than_1_x->SetType(proto::VarType::LOD_TENSOR);
+  less_than_1_x->SetLoDLevel(0);
+  less_than_1_x->SetDataType(proto::VarType::FP32);
+  less_than_1_x->SetShape({1});
+
+  auto* less_than_1_y = global_block->Var("Less_than_1_Y");
+  less_than_1_y->SetType(proto::VarType::LOD_TENSOR);
+  less_than_1_y->SetLoDLevel(0);
+  less_than_1_y->SetDataType(proto::VarType::FP32);
+  less_than_1_y->SetShape({1});
+
+  auto* less_than_1_out = global_block->Var("Less_than_1_Out");
+  less_than_1_out->SetType(proto::VarType::BOOL);
+
+  less_than_op_1->SetInput("X", {less_than_1_x->Name()});
+  less_than_op_1->SetInput("Y", {less_than_1_y->Name()});
+  less_than_op_1->SetOutput("Out", {less_than_1_out->Name()});
 
   BlockDesc* sub_block = program.AppendBlock(*global_block);
   std::vector<BlockDesc*> sub_blocks;
   sub_blocks.push_back(sub_block);
 
-  // building cond op such as less_than
-  auto* op2 = global_block->AppendOp();
-  op2->SetType("less_than");
-  auto* x1 = global_block->Var("X1");
-  x1->SetType(proto::VarType::LOD_TENSOR);
-  x1->SetLoDLevel(0);
-  x1->SetDataType(proto::VarType::FP32);
-  x1->SetShape({1});
-
-  auto* y1 = global_block->Var("Y1");
-  y1->SetType(proto::VarType::LOD_TENSOR);
-  y1->SetLoDLevel(0);
-  y1->SetDataType(proto::VarType::FP32);
-  y1->SetShape({1});
-
-  op2->SetInput("X", {x1->Name()});
-  op2->SetInput("Y", {y1->Name()});
-
-  auto* less_than_out = global_block->Var("Out1");
-  out1->SetType(proto::VarType::BOOL);
-  op2->SetOutput("Out", {less_than_out->Name()});
+  BlockDesc* sub_block2 =
+      program.AppendBlock(*sub_block);  // for testing nested case.
+  sub_blocks.push_back(sub_block2);
 
   // building while op in sub_block
-  auto* op3 = sub_blocks[0]->AppendOp();
-  op3->SetType("while");
-  op3->SetAttr("sub_block", sub_blocks[0]);
+  auto* while_op = global_block->AppendOp();
+  while_op->SetType("while");
+  while_op->SetAttr("sub_block", sub_blocks[0]);
 
-  auto* x2 = sub_blocks[0]->Var("X2");
-  x2->SetType(proto::VarType::LOD_TENSOR);
-  x2->SetLoDLevel(0);
-  x2->SetDataType(proto::VarType::FP32);
-  x2->SetShape({1});
+  auto* while_x = sub_blocks[0]->Var("While_X");
+  while_x->SetType(proto::VarType::LOD_TENSOR);
+  while_x->SetLoDLevel(0);
+  while_x->SetDataType(proto::VarType::FP32);
+  while_x->SetShape({1});
 
-  op3->SetInput("kX", {x2->Name()});
-  op3->SetInput("kCondition", {less_than_out->Name()});
+  while_op->SetInput("kX", {while_x->Name()});
+  while_op->SetInput("kCondition", {less_than_1_out->Name()});
 
-  auto* out2 = sub_blocks[0]->Var("Out2");
-  out2->SetType(proto::VarType::LOD_TENSOR);
-  out2->SetLoDLevel(0);
-  out2->SetDataType(proto::VarType::FP32);
-  out2->SetShape({1});
+  auto* while_out = sub_blocks[0]->Var("While_Out");
+  while_out->SetType(proto::VarType::LOD_TENSOR);
+  while_out->SetLoDLevel(0);
+  while_out->SetDataType(proto::VarType::FP32);
+  while_out->SetShape({1});
 
   auto* steps = sub_blocks[0]->Var("StepScopes");
 
-  op3->SetOutput("kOutputs", {out2->Name()});
-  op3->SetOutput("kStepScopes", {steps->Name()});
+  while_op->SetOutput("kOutputs", {while_out->Name()});
+  while_op->SetOutput("kStepScopes", {steps->Name()});
 
-  auto* x3 = global_block->Var("X3");
-  x3->SetType(proto::VarType::LOD_TENSOR);
-  x3->SetLoDLevel(0);
-  x3->SetDataType(proto::VarType::FP32);
-  x3->SetShape({1000, 784});
+  auto* mul_2_x = global_block->Var("Mul_2_X");
+  mul_2_x->SetType(proto::VarType::LOD_TENSOR);
+  mul_2_x->SetLoDLevel(0);
+  mul_2_x->SetDataType(proto::VarType::FP32);
+  mul_2_x->SetShape({1000, 784});
 
-  auto* y3 = global_block->Var("Y3");
-  y3->SetType(proto::VarType::LOD_TENSOR);
-  y3->SetLoDLevel(0);
-  y3->SetDataType(proto::VarType::FP32);
-  y3->SetShape({784, 100});
+  auto* mul_2_y = global_block->Var("Mul_2_Y");
+  mul_2_y->SetType(proto::VarType::LOD_TENSOR);
+  mul_2_y->SetLoDLevel(0);
+  mul_2_y->SetDataType(proto::VarType::FP32);
+  mul_2_y->SetShape({784, 100});
 
-  auto* op4 = sub_blocks[0]->AppendOp();
-  op4->SetType("mul");
-  op4->SetInput("X", {x3->Name()});
-  op4->SetInput("Y", {y3->Name()});
+  auto* mul_op_2 = sub_blocks[0]->AppendOp();
+  mul_op_2->SetType("mul");
+  mul_op_2->SetInput("X", {mul_2_x->Name()});
+  mul_op_2->SetInput("Y", {mul_2_y->Name()});
 
-  auto* out3 = global_block->Var("Out3");
-  out3->SetType(proto::VarType::LOD_TENSOR);
-  op4->SetOutput("Y", {out3->Name()});
+  auto* mul_2_out = global_block->Var("Mul_2_Out");
+  mul_2_out->SetType(proto::VarType::LOD_TENSOR);
+  mul_op_2->SetOutput("Y", {mul_2_out->Name()});
+
+  auto* less_than_op_2 = sub_blocks[0]->AppendOp();
+  less_than_op_2->SetType("less_than");
+  auto* less_than_2_x = global_block->Var("Less_than_2_X");
+  less_than_2_x->SetType(proto::VarType::LOD_TENSOR);
+  less_than_2_x->SetLoDLevel(0);
+  less_than_2_x->SetDataType(proto::VarType::FP32);
+  less_than_2_x->SetShape({1});
+
+  auto* less_than_2_y = global_block->Var("Less_than_2_Y");
+  less_than_2_y->SetType(proto::VarType::LOD_TENSOR);
+  less_than_2_y->SetLoDLevel(0);
+  less_than_2_y->SetDataType(proto::VarType::FP32);
+  less_than_2_y->SetShape({1});
+
+  less_than_op_2->SetInput("X", {less_than_2_x->Name()});
+  less_than_op_2->SetInput("Y", {less_than_2_y->Name()});
+
+  auto* less_than_2_out = global_block->Var("Less_than_2_out");
+  less_than_2_out->SetType(proto::VarType::BOOL);
+  less_than_op_2->SetOutput("Out", {less_than_2_out->Name()});
+
+  auto* cond_op = sub_blocks[0]->AppendOp();
+  cond_op->SetType("conditional_block");
+  cond_op->SetAttr("sub_block", sub_blocks[1]);
+
+  auto* cond_x = global_block->Var("Cond_X");
+  cond_x->SetType(proto::VarType::LOD_TENSOR);
+  cond_x->SetLoDLevel(0);
+  cond_x->SetDataType(proto::VarType::FP32);
+  cond_x->SetShape({1});
+
+  cond_op->SetInput("kInputs", {cond_x->Name()});
+  cond_op->SetInput("kCondition", {less_than_2_out->Name()});
+
+  auto* cond_out = global_block->Var("Out5");
+  cond_out->SetType(proto::VarType::LOD_TENSOR);
+  cond_out->SetLoDLevel(0);
+  cond_out->SetDataType(proto::VarType::FP32);
+  cond_out->SetShape({1});
+
+  auto* scope = global_block->Var("Scope");
+  scope->SetType(proto::VarType::STEP_SCOPES);
+
+  cond_op->SetOutput("kOutputs", {cond_out->Name()});
+  cond_op->SetOutput("kScope", {scope->Name()});
+
+  auto* mul_3_x = global_block->Var("Mul_3_X");
+  mul_3_x->SetType(proto::VarType::LOD_TENSOR);
+  mul_3_x->SetLoDLevel(0);
+  mul_3_x->SetDataType(proto::VarType::FP32);
+  mul_3_x->SetShape({1000, 784});
+
+  auto* mul_3_y = global_block->Var("Mul_3_Y");
+  mul_3_y->SetType(proto::VarType::LOD_TENSOR);
+  mul_3_y->SetLoDLevel(0);
+  mul_3_y->SetDataType(proto::VarType::FP32);
+  mul_3_y->SetShape({784, 100});
+
+  auto* mul_3_out = global_block->Var("Mul_3_Out");
+  mul_3_out->SetType(proto::VarType::LOD_TENSOR);
+
+  auto* mul_op_3 = sub_blocks[1]->AppendOp();
+  mul_op_3->SetType("mul");
+  mul_op_3->SetInput("X", {mul_3_x->Name()});
+  mul_op_3->SetInput("Y", {mul_3_y->Name()});
+  mul_op_3->SetOutput("Y", {mul_3_out->Name()});
 
   ProgramProcessor program_processor;
   std::set<std::string> inner_inputs;
@@ -129,22 +200,22 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   VLOG(3) << "inner_inputs().size():" << inner_inputs.size();
   VLOG(3) << "inner_outputs().size():" << inner_outputs.size();
 
-  ASSERT_EQ(3UL, inner_inputs.size());
-  ASSERT_EQ(3UL, inner_outputs.size());
+  ASSERT_EQ(5UL, inner_inputs.size());
+  ASSERT_EQ(4UL, inner_outputs.size());
 
-  VLOG(3) << "Before AddDependency, op's input kX size:"
-          << op3->Input("kX").size();
-  VLOG(3) << "Before AddDependency, op's output kOutPuts size:"
-          << op3->Output("kOutputs").size();
+  VLOG(3) << "Before AddDependency, while op's input kX size:"
+          << while_op->Input("kX").size();
+  VLOG(3) << "Before AddDependency, while op's output kOutPuts size:"
+          << while_op->Output("kOutputs").size();
 
-  program_processor.AddDepToBlockOp(*sub_blocks[0]);
-  VLOG(3) << "After AddDependency, op's input kX size:"
-          << op3->Input("kX").size();
-  VLOG(3) << "After AddDependency, op's output kOutPuts size:"
-          << op3->Output("kOutputs").size();
+  program_processor.AddDepToBlockOp(*global_block);
+  VLOG(3) << "After AddDependency, while op's input kX size:"
+          << while_op->Input("kX").size();
+  VLOG(3) << "After AddDependency, while op's output kOutPuts size:"
+          << while_op->Output("kOutputs").size();
 
-  ASSERT_EQ(4UL, op3->Input("kX").size());
-  ASSERT_EQ(3UL, op3->Output("kOutputs").size());
+  ASSERT_EQ(8UL, while_op->Input("kX").size());
+  ASSERT_EQ(6UL, while_op->Output("kOutputs").size());
 }
 }  // namespace framework
 }  // namespace paddle
