@@ -84,7 +84,7 @@ class PSGPUWrapper {
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void BuildTask(std::shared_ptr<HeterContext> gpu_task);
-  void LoadIntoMemory();
+  void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
   void EndPass();
   void start_build_thread();
@@ -249,15 +249,6 @@ class PSGPUWrapper {
   }
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
-
-  void Finalize() {
-    VLOG(3) << "PSGPUWrapper Begin Finalize.";
-    if (s_instance_ == nullptr) {
-      return;
-    }
-    s_instance_ = nullptr;
-    VLOG(3) << "PSGPUWrapper Finalize Finished.";
-  }
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;

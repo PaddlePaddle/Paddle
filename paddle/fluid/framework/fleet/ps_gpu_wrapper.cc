@@ -307,13 +307,18 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           << " s.";
 }
 
-void PSGPUWrapper::LoadIntoMemory() {
+void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
   platform::Timer timer;
   VLOG(3) << "Begin LoadIntoMemory(), dataset[" << dataset_ << "]";
   timer.Start();
   dataset_->LoadIntoMemory();
   timer.Pause();
   VLOG(0) << "LoadIntoMemory cost: " << timer.ElapsedSec() << "s";
+
+  // local shuffle
+  if (is_shuffle) {
+    dataset_->LocalShuffle();
+  }
 
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();

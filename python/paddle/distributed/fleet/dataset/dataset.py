@@ -225,7 +225,7 @@ class DatasetBase(object):
         """
         self.use_ps_gpu = use_ps_gpu
         # if not defined heterps with paddle, users will not use psgpu
-        if not core.is_compiled_with_heterps():
+        if not core._is_compiled_with_heterps():
             self.use_ps_gpu = 0
         elif self.use_ps_gpu:
             self.psgpu = core.PSGPU()
@@ -683,11 +683,14 @@ class InMemoryDataset(DatasetBase):
         self.dataset.generate_local_tables_unlock(
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
 
-    def load_into_memory(self):
+    def load_into_memory(self, is_shuffle=False):
         """
         :api_attr: Static Graph
         
         Load data into memory
+
+        Args:
+            is_shuffle(bool): whether to use local shuffle, default is False
 
         Examples:
             .. code-block:: python
@@ -715,9 +718,9 @@ class InMemoryDataset(DatasetBase):
         self._prepare_to_run()
         if not self.use_ps_gpu:
             self.dataset.load_into_memory()
-        elif core.is_compiled_with_heterps():
+        elif core._is_compiled_with_heterps():
             self.psgpu.set_dataset(self.dataset)
-            self.psgpu.load_into_memory()
+            self.psgpu.load_into_memory(is_shuffle)
 
     def preload_into_memory(self, thread_num=None):
         """
