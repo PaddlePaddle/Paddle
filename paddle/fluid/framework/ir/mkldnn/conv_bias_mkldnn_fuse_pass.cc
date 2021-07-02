@@ -84,15 +84,18 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .End()
       .AddInput("Bias")
       .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Output")
       .IsTensor()
       .End()
       .AddAttr("output_padding")
       .IsType<std::vector<int>>()
+      .IsOptional()
       .End()
       .AddAttr("output_size")
-      .IsNumGE(1)
+      .IsType<std::vector<int>>()
+      .IsOptional()
       .End()
       .AddAttr("groups")
       .IsNumGE(1)
@@ -110,7 +113,7 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 }
 
