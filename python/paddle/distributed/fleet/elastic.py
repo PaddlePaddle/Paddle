@@ -104,6 +104,14 @@ class ElasticManager(object):
         self.elastic_level = int(
             os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL', 1))
 
+        # compatible with kuberntes service discovery
+        if not server and os.getenv(
+                'PADDLE_ELASTIC_ETCD_SERVICE_HOST') and os.getenv(
+                    'PADDLE_ELASTIC_ETCD_SERVICE_PORT'):
+            server = '{}:{}'.format(
+                os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_HOST'),
+                os.getenv('PADDLE_ELASTIC_ETCD_SERVICE_PORT'))
+
         #elastic_timeout = os.getenv('PADDLE_ELASTIC_TIMEOUT',1)
 
         logger.debug('init with server {} host {}'.format(server, host))
