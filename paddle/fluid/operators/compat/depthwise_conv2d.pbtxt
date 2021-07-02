@@ -39,12 +39,39 @@ def {
     name: "data_format"
     type: STRING
   }
-  
 }
 extra {
   attrs {
+    name: "Input_scale"
+    type: FLOAT
+  }
+  attrs {
+    name: "quantization_type"
+    type: STRING
+  } 
+  attrs {
+    name: "bit_length"
+    type: INT
+  }
+  attrs {
+    name: "out_threshold"
+    type: FLOAT
+  }
+  attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
+    type: BOOLEAN
+  } 
+  attrs {
+    name: "skip_quant"
+    type: BOOLEAN
+  }
+  attrs {
     name: "is_test"
     type: BOOLEAN
+  }
+  attrs {
+    name: "name"
+    type: STRING
   }
   attrs {
     name: "use_cudnn"
@@ -99,6 +126,22 @@ extra {
     type: BOOLEAN
   }
   attrs {
+    name: "Scale_in"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_out"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_in_eltwise"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_weights"
+    type: FLOATS
+  }
+  attrs {
     name: "force_fp32_output"
     type: BOOLEAN
   }
@@ -130,30 +173,4 @@ extra {
     name: "op_device"
     type: STRING
   }
-   attrs {
-    name: "Scale_in"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_out"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_in_eltwise"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_weights"
-    type: FLOATS
-  }
-  attrs {
-    name: "name"
-    type: STRING
-  }
-  attrs {
-    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
-    type: BOOLEAN
-  } 
 }
-
-
