@@ -99,7 +99,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
         const IdentityElementwiseAddFunc& get_node_from_elementwise_add_op);
 
     void operator()(const GraphPatternDetector::subgraph_t& subgraph,
-                    Graph* graph);
+                    Graph* graph, const ResidualConnectionMKLDNNFusePass* pass);
     int get_stats() const { return *fusion_stats; }
 
    private:
@@ -117,7 +117,7 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
         const ProjectionElementwiseAddFunc& get_node_from_elementwise_add_op);
 
     void operator()(const GraphPatternDetector::subgraph_t& subgraph,
-                    Graph* graph);
+                    Graph* graph, const ResidualConnectionMKLDNNFusePass* pass);
     int get_stats() const { return *fusion_stats; }
 
    private:

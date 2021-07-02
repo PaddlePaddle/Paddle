@@ -147,7 +147,8 @@ ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::IdentityFuseHandle(
       get_node_from_elementwise_add_op{get_node_from_elementwise_add_op} {}
 
 void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
-    const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+    const GraphPatternDetector::subgraph_t& subgraph, Graph* graph,
+    const ResidualConnectionMKLDNNFusePass* pass) {
   Node* conv_op;
   Node* conv_input;
   Node* conv_filter;
@@ -156,7 +157,7 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
   Node* elementwise_add_op;
   Node* elementwise_add_identity;
   Node* elementwise_add_out;
-  if (!IsCompat(subgraph, graph)) {
+  if (!pass->IsCompat(subgraph, graph)) {
     LOG(WARNING) << "Pass in op compat failed.";
     return;
   }
@@ -199,7 +200,8 @@ ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::ProjectionFuseHandle(
       get_node_from_elementwise_add_op{get_node_from_elementwise_add_op} {}
 
 void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
-    const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+    const GraphPatternDetector::subgraph_t& subgraph, Graph* graph,
+    const ResidualConnectionMKLDNNFusePass* pass) {
   Node* conv_x_op;
   Node* conv_x_input;
   Node* conv_x_filter;
@@ -213,7 +215,7 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
   Node* elementwise_add_op;
   Node* elementwise_add_out;
 
-  if (!IsCompat(subgraph, graph)) {
+  if (!pass->IsCompat(subgraph, graph)) {
     LOG(WARNING) << "Pass in op compat failed.";
     return;
   }
