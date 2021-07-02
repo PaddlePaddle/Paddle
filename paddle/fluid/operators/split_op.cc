@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/split_op.h"
 #include <string>
+#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -78,9 +79,18 @@ class SplitOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+      // OneDNN uses blocking format, which cannot be always
+      // supported with reorders, because if blocked dimension is not divisible
+      // by
+      // 8 or 16(depending on which blocking format is used) submemory cannot be
+      // created, so in that scenario a fallback is needed
+      auto tmp_md = dnnl::memory::desc(
+          framework::vectorize(ctx.Input<Tensor>("X")->dims()), dnnl::data_type
+          : f32, ctx.Input<Tensor>("X")->format());
+      if (tmp_md.inner_blks != 0)
+        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
