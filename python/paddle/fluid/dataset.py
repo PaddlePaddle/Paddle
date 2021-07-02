@@ -312,8 +312,10 @@ class DatasetBase(object):
             use_ps_gpu: bool
         """
         self.use_ps_gpu = use_ps_gpu
-        print("dataset set use_ps_gpu = {}".format(use_ps_gpu))
-        if self.use_ps_gpu:
+        # if not defined heterps with paddle, users will not use psgpu
+        if not core.is_compiled_with_heterps():
+            self.use_ps_gpu = 0
+        elif self.use_ps_gpu:
             self.psgpu = core.PSGPU()
 
     def _finish_to_run(self):
@@ -714,7 +716,7 @@ class InMemoryDataset(DatasetBase):
         self._prepare_to_run()
         if not self.use_ps_gpu:
             self.dataset.load_into_memory()
-        else:
+        elif core.is_compiled_with_heterps():
             self.psgpu.set_dataset(self.dataset)
             self.psgpu.load_into_memory()
 
