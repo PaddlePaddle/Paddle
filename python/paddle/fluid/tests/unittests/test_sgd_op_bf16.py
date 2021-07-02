@@ -36,9 +36,9 @@ class TestSGDOpBF16(OpTest):
         g = np.random.random((self.h, self.w)).astype('float32')
         g_bf16 = convert_float_to_uint16(g)
         lr = np.array([0.1]).astype('float32')
-        lr_bf16 = convert_float_to_uint16(lr)
+        # lr_bf16 = convert_float_to_uint16(lr)
 
-        self.inputs = {'Param': w_bf16, 'Grad': g_bf16, 'LearningRate': lr_bf16}
+        self.inputs = {'Param': w_bf16, 'Grad': g_bf16, 'LearningRate': lr}
         self.outputs = {'ParamOut': w - lr * g}
 
     def conf(self):
@@ -109,8 +109,8 @@ class TestSparseSGDOpBF16(unittest.TestCase):
         lr_tensor = scope.var('LearningRate').get_tensor()
         lr_value = np.random.uniform()
         lr_array = np.full((1), lr_value, np.float32)
-        lr_array_bf16 = convert_float_to_uint16(lr_array)
-        lr_tensor.set(lr_array_bf16, place)
+        # lr_array_bf16 = convert_float_to_uint16(lr_array)
+        lr_tensor.set(lr_array, place)
 
         return lr_tensor, lr_value
 
