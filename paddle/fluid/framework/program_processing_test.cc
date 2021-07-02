@@ -82,7 +82,7 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   while_op->SetType("while");
   while_op->SetAttr("sub_block", sub_blocks[0]);
 
-  auto* while_x = sub_blocks[0]->Var("While_X");
+  auto* while_x = global_block->Var("While_X");
   while_x->SetType(proto::VarType::LOD_TENSOR);
   while_x->SetLoDLevel(0);
   while_x->SetDataType(proto::VarType::FP32);
@@ -91,13 +91,13 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   while_op->SetInput("kX", {while_x->Name()});
   while_op->SetInput("kCondition", {less_than_1_out->Name()});
 
-  auto* while_out = sub_blocks[0]->Var("While_Out");
+  auto* while_out = global_block->Var("While_Out");
   while_out->SetType(proto::VarType::LOD_TENSOR);
   while_out->SetLoDLevel(0);
   while_out->SetDataType(proto::VarType::FP32);
   while_out->SetShape({1});
 
-  auto* steps = sub_blocks[0]->Var("StepScopes");
+  auto* steps = global_block->Var("StepScopes");
 
   while_op->SetOutput("kOutputs", {while_out->Name()});
   while_op->SetOutput("kStepScopes", {steps->Name()});
@@ -148,7 +148,7 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   cond_op->SetType("conditional_block");
   cond_op->SetAttr("sub_block", sub_blocks[1]);
 
-  auto* cond_x = global_block->Var("Cond_X");
+  auto* cond_x = sub_blocks[0]->Var("Cond_X");
   cond_x->SetType(proto::VarType::LOD_TENSOR);
   cond_x->SetLoDLevel(0);
   cond_x->SetDataType(proto::VarType::FP32);
@@ -157,13 +157,13 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   cond_op->SetInput("kInputs", {cond_x->Name()});
   cond_op->SetInput("kCondition", {less_than_2_out->Name()});
 
-  auto* cond_out = global_block->Var("Out5");
+  auto* cond_out = sub_blocks[0]->Var("Cond_Out");
   cond_out->SetType(proto::VarType::LOD_TENSOR);
   cond_out->SetLoDLevel(0);
   cond_out->SetDataType(proto::VarType::FP32);
   cond_out->SetShape({1});
 
-  auto* scope = global_block->Var("Scope");
+  auto* scope = sub_blocks[0]->Var("Scope");
   scope->SetType(proto::VarType::STEP_SCOPES);
 
   cond_op->SetOutput("kOutputs", {cond_out->Name()});
@@ -200,8 +200,8 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   VLOG(3) << "inner_inputs().size():" << inner_inputs.size();
   VLOG(3) << "inner_outputs().size():" << inner_outputs.size();
 
-  ASSERT_EQ(5UL, inner_inputs.size());
-  ASSERT_EQ(4UL, inner_outputs.size());
+  ASSERT_EQ(4UL, inner_inputs.size());
+  ASSERT_EQ(2UL, inner_outputs.size());
 
   VLOG(3) << "Before AddDependency, while op's input kX size:"
           << while_op->Input("kX").size();
@@ -214,8 +214,16 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   VLOG(3) << "After AddDependency, while op's output kOutPuts size:"
           << while_op->Output("kOutputs").size();
 
-  ASSERT_EQ(8UL, while_op->Input("kX").size());
-  ASSERT_EQ(6UL, while_op->Output("kOutputs").size());
+  ASSERT_EQ(7UL, while_op->Input("kX").size());
+  ASSERT_EQ(4UL, while_op->Output("kOutputs").size());
+
+  //   auto var_input_vec = {"Less_than_1_Out", "While_X", "Less_than_2_X",
+  //   "Less_than_2_Y", "Less_than_2_out", "Mul_3_X", "Mul_3_Y"};
+  //   auto var_output_vec = {"While_Out", "Mul_2_Out", "Less_than_2_out",
+  //   "Mul_3_Out"};
+
+  //   ASSERT_EQ(var_input_vec, while_op->Input("kX"));
+  //   ASSERT_EQ(var_output_vec, while_op->Output("kOutputs"));
 }
 }  // namespace framework
 }  // namespace paddle

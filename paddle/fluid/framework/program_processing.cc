@@ -29,8 +29,6 @@ void ProgramProcessor::GetInputsOutputsInBlock(
   // Step1: update inner_inputs and inner_outputs
   // NOTE: Here assumes that all variables are input or output of Ops,
 
-  std::set<std::string> removed_inner_inputs;
-
   for (OpDesc *op : current_block.AllOps()) {
     for (auto iname : op->InputNames()) {
       for (auto in_var_name : op->Input(iname)) {
@@ -52,26 +50,27 @@ void ProgramProcessor::GetInputsOutputsInBlock(
 
   // Step2: Remove variable created in current control flow block.
   BlockDesc *parent_block = current_block.ParentBlock();
-  VarDesc *current_block_var;
 
   if (parent_block) {
-    for (auto in_var_name : *inner_inputs) {
-      VLOG(3) << "recursively find var:" << in_var_name;
-      VarDesc *parent_block_var = parent_block->FindVarRecursive(in_var_name);
-      if (current_block.HasVar(in_var_name))
-        current_block_var = current_block.FindVar(in_var_name);
-      if (parent_block_var == nullptr && current_block_var &&
-          current_block_var->GetType() == proto::VarType::LOD_TENSOR) {
-        VLOG(3) << "remove inner var:" << in_var_name;
-        removed_inner_inputs.insert(in_var_name);
+    for (auto iter = inner_inputs->begin(); iter != inner_inputs->end();) {
+      const std::string &in_var_name = *iter;
+      if (current_block.HasVar(in_var_name)) {
+        VLOG(3) << "remove inner intput var:" << in_var_name;
+        iter = inner_inputs->erase(iter);
+      } else {
+        ++iter;
       }
     }
-    std::set<std::string> inner_inputs_;
-    std::set_difference(inner_inputs->begin(), inner_inputs->end(),
-                        removed_inner_inputs.begin(),
-                        removed_inner_inputs.end(),
-                        inserter(inner_inputs_, inner_inputs_.begin()));
-    inner_inputs->swap(inner_inputs_);
+
+    for (auto iter = inner_outputs->begin(); iter != inner_outputs->end();) {
+      const std::string &out_var_name = *iter;
+      if (current_block.HasVar(out_var_name)) {
+        VLOG(3) << "remove inner output  var:" << out_var_name;
+        iter = inner_outputs->erase(iter);
+      } else {
+        ++iter;
+      }
+    }
   }
 }
 
@@ -95,13 +94,16 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       auto *op_inputs = op->MutableInputs();
       std::vector<std::string> *op_input_var_vec;
       VLOG(3) << "op_type:>>>>>>" << op_type;
-      if (op_type.compare("while") == 0)
+      if (op_type.compare("while") == 0) {
         op_input_var_vec = &((*op_inputs)["kX"]);
-      else if (op_type.compare("conditional_block") == 0)
+      } else if (op_type.compare("conditional_block") == 0) {
         op_input_var_vec = &((*op_inputs)["kInputs"]);
-      else
+      } else {
         // Only support while_op and conditinal_block_op now
+        throw std::invalid_argument(
+            "Currently, only support while_op and conditinal_block_op.\n");
         continue;
+      }
 
       for (auto sub_input : sub_inputs) {
         if (std::find(op_input_var_vec->begin(), op_input_var_vec->end(),
