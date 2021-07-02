@@ -129,6 +129,7 @@ def create_bf16_test_class(parent):
                 self.check_output_with_place(core.CPUPlace())
 
         def test_check_grad(self):
+<<<<<<< HEAD
             if core.is_compiled_with_cuda() or not core.supports_bfloat16():
                 pass
             else:
@@ -140,6 +141,13 @@ def create_bf16_test_class(parent):
                     user_defined_grad_outputs=[
                         convert_float_to_uint16(self.dout)
                     ])
+=======
+            self.calculate_grads()
+            self.check_grad_with_place(
+                core.CPUPlace(), ["X", "Alpha"], "Out", None, 0.005, False,
+                0.005, [self.dx, self.dalpha],
+                [convert_float_to_uint16(self.dout)], False)
+>>>>>>> dc892c7dfd... minor cchange
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestPReluBF16OneDNNOp.__name__ = cls_name
