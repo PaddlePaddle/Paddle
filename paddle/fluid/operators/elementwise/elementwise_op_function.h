@@ -253,9 +253,9 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
   const T *x_data = x->data<T>();
   const T *y_data = y->data<T>();
   PADDLE_ENFORCE_NOT_NULL(x_data, platform::errors::InvalidArgument(
-                     "The input X should not be empty.")); 
+                                      "The input X should not be empty."));
   PADDLE_ENFORCE_NOT_NULL(y_data, platform::errors::InvalidArgument(
-                         "The input Y should not be empty."));
+                                      "The input Y should not be empty."));
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
   const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
