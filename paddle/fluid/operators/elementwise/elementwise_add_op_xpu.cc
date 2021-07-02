@@ -150,6 +150,7 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
     const T* dz_data = dz->data<T>();
     framework::Tensor dx_local_tensor;
     framework::Tensor dy_local_tensor;
+    bool need_wait = false;
     T* dx_data = nullptr;
     T* dy_data = nullptr;
     if (dx) {
@@ -157,12 +158,14 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
     } else {
       dx_data =
           dx_local_tensor.mutable_data<T>(ctx.GetPlace(), x_len * sizeof(T));
+      need_wait = true;
     }
     if (dy) {
       dy_data = dy->mutable_data<T>(ctx.GetPlace());
     } else {
       dy_data =
           dy_local_tensor.mutable_data<T>(ctx.GetPlace(), y_len * sizeof(T));
+      need_wait = true;
     }
 
     auto& dev_ctx =
@@ -175,6 +178,9 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
         platform::errors::External(
             "XPU kernel Elementwise occur error in XPUElementwise error code ",
             ret, XPUAPIErrorMsg[ret]));
+    if (need_wait && dev_ctx.x_context()->xpu_stream) {
+      dev_ctx.Wait();
+    }
   }
 };
 

@@ -58,11 +58,10 @@ class UpdateLossScalingXPUKernel : public framework::OpKernel<T> {
         r = xpu::constant(dev_ctx.x_context(),
                           reinterpret_cast<XPUTyp*>(out_data), num,
                           XPUTyp(0.0));
-        PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                          platform::errors::External(
-                              "XPU API return wrong value[%d], please check "
-                              "where Baidu Kunlun Card is properly installed.",
-                              r));
+        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
+                                              "XPU API(constant) return wrong "
+                                              "value[%d %s]",
+                                              r, XPUAPIErrorMsg[r]));
       }
     }
     const bool stop_update = ctx.Attr<bool>("stop_update");

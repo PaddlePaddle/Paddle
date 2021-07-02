@@ -118,12 +118,10 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
                          reinterpret_cast<const XPUTyp*>(mask->data<T>()),
                          reinterpret_cast<XPUTyp*>(mask_new.data<T>()),
                          mask->numel(), false, scale, 0.0f);
-      PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
-          platform::errors::External(
-              "XPU dropout return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
+                                            "XPU API(scale) return wrong "
+                                            "value[%d %s]",
+                                            r, XPUAPIErrorMsg[r]));
       mask_data = mask_new.data<T>();
     }
 
@@ -131,12 +129,10 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
         dev_ctx.x_context(), reinterpret_cast<const XPUTyp*>(grad_y->data<T>()),
         reinterpret_cast<const XPUTyp*>(mask_data),
         reinterpret_cast<XPUTyp*>(grad_x->data<T>()), grad_y->numel());
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External(
-            "XPU dropout return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External("XPU API(mul) return wrong "
+                                                 "value[%d %s]",
+                                                 r, XPUAPIErrorMsg[r]));
   }
 };
 }  // namespace operators
