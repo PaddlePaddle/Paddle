@@ -23,8 +23,8 @@ class TestTokenizerDemo(unittest.TestCase):
         paddle.set_device('cpu')
 
         tokens = ['I Love China', 'I Love shenzhen']
-        x = paddle.Tensor(core.VarDesc.VarType.RAW, [], "demo_tokens",
-                          core.VarDesc.VarType.RAW, False)
+        x = paddle.Tensor(core.VarDesc.VarType.STRINGS, [], "demo_tokens",
+                          core.VarDesc.VarType.STRINGS, False)
         x.value().set_string_list(tokens)
 
         output = core.ops.tokenizer(x)
