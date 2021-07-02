@@ -700,9 +700,12 @@ class InMemoryDataset(DatasetBase):
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.load_into_memory")
-    def load_into_memory(self):
+    def load_into_memory(self, is_shuffle=False):
         """
         Load data into memory
+
+         Args:
+            is_shuffle(bool): whether to use local shuffle, default is False
 
         Examples:
             .. code-block:: python
@@ -718,7 +721,7 @@ class InMemoryDataset(DatasetBase):
             self.dataset.load_into_memory()
         elif core._is_compiled_with_heterps():
             self.psgpu.set_dataset(self.dataset)
-            self.psgpu.load_into_memory()
+            self.psgpu.load_into_memory(is_shuffle)
 
     @deprecated(
         since="2.0.0",
