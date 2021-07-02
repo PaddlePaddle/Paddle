@@ -382,8 +382,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       }
 
       // Run training mode.
-      // obtain running mean and running inv var, and see if we need to
-      // initialize them.
+      // obtain running mean and running inv var, and there is no need
+      // to initialize them.
 
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
@@ -394,10 +394,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
       saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
       saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-          functor;
-      functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
-      functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
       if ((N * H * W * D) == 1) {
         // Only 1 element in normalization dimension,

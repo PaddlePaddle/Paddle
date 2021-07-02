@@ -209,11 +209,16 @@ inline bool PyObject_CheckLongOrToLong(PyObject** obj) {
       PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype)) {  // NOLINT
     return true;
   }
-  auto to = PyNumber_Long(*obj);
-  if (to) {
-    *obj = to;
-    return true;
+
+  if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
+          .find("numpy") != std::string::npos) {
+    auto to = PyNumber_Long(*obj);
+    if (to) {
+      *obj = to;
+      return true;
+    }
   }
+
   return false;
 }
 
@@ -223,10 +228,13 @@ inline bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
       PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype)) {  // NOLINT
     return true;
   }
-  auto to = PyNumber_Float(*obj);
-  if (to) {
-    *obj = to;
-    return true;
+  if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
+          .find("numpy") != std::string::npos) {
+    auto to = PyNumber_Float(*obj);
+    if (to) {
+      *obj = to;
+      return true;
+    }
   }
   return false;
 }

@@ -146,12 +146,20 @@ gray_list = {
     'cast',
     'fused_bn_add_activation',
     'c_identity',
+    'c_concat',
+    'c_allreduce_sum',
 }
 
 # The set of ops that don't support fp16 calculation
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
-_, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-    'GPU', core.VarDesc.VarType.FP16)
+_sys_unsupported_fp16_list = []
+if core.is_compiled_with_xpu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'XPU', core.VarDesc.VarType.FP16)
+else:
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'GPU', core.VarDesc.VarType.FP16)
+
 unsupported_fp16_list = {'lookup_table',
                          'lookup_table_v2'} | _sys_unsupported_fp16_list
 

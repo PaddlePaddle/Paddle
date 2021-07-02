@@ -124,6 +124,8 @@ class TestMultipleGpus(unittest.TestCase):
                 break
             time.sleep(3)
 
+
+class TestDataParallelGradientCheck(TestMultipleGpus):
     def test_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
 

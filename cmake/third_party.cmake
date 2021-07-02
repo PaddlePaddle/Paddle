@@ -253,15 +253,17 @@ if(WITH_GPU)
     set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg.tar.gz" CACHE STRING "" FORCE)
     file_download_and_uncompress(${URL} "externalError" MD5 c0749523ebb536eb7382487d645d9cd4)   # download file externalErrorMsg.tar.gz
     if(WITH_TESTING)
-        # copy externalErrorMsg.pb for unittest 'enforce_test'
+        # copy externalErrorMsg.pb, just for unittest can get error message correctly.
         set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)
         if(WIN32 AND (NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja"))
-            set(DST_DIR ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
+            set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
         else()
-            set(DST_DIR ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
+            set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
         endif()
+        set(DST_DIR2 ${CMAKE_BINARY_DIR}/python/paddle/include/third_party/externalError/data)
         add_custom_command(TARGET download_externalError POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR}
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
             COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
     endif()
 endif(WITH_GPU)

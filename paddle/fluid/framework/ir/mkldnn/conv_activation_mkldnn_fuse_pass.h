@@ -31,6 +31,7 @@ class Graph;
 
 class ConvActivationFusePass : public FusePassBase {
  public:
+  ConvActivationFusePass();
   virtual ~ConvActivationFusePass() {}
   virtual std::string conv_type() const { return "conv2d"; }
   virtual std::string activation_type() const { return "relu"; }
@@ -44,6 +45,7 @@ class ConvActivationFusePass : public FusePassBase {
  */
 class Conv2DLeakyReLUFusePass : public ConvActivationFusePass {
  public:
+  Conv2DLeakyReLUFusePass();
   std::string activation_type() const { return "leaky_relu"; }
 };
 /*
@@ -51,6 +53,7 @@ class Conv2DLeakyReLUFusePass : public ConvActivationFusePass {
  */
 class Conv2DReLU6FusePass : public ConvActivationFusePass {
  public:
+  Conv2DReLU6FusePass();
   std::string activation_type() const { return "relu6"; }
 };
 /*
@@ -58,6 +61,7 @@ class Conv2DReLU6FusePass : public ConvActivationFusePass {
  */
 class Conv2DSwishFusePass : public ConvActivationFusePass {
  public:
+  Conv2DSwishFusePass();
   std::string activation_type() const { return "swish"; }
 };
 /*
@@ -65,6 +69,7 @@ class Conv2DSwishFusePass : public ConvActivationFusePass {
  */
 class Conv2DHardSwishFusePass : public ConvActivationFusePass {
  public:
+  Conv2DHardSwishFusePass();
   std::string activation_type() const { return "hard_swish"; }
 };
 }  // namespace ir
