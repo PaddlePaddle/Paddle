@@ -394,38 +394,45 @@ struct ReduceConfig {
 };
 
 // version 1
-template <typename T, typename ReduceOp>
-__device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  for (int stride = warpSize / 2; stride > 0; stride >>= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-    val = reducer(val, temp);
-  }
-  return val;
-}
+// template <typename T, typename ReduceOp>
+// __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
+//   constexpr int warp_size = 32;
+//   unsigned mask = 0u;
+//   CREATE_SHFL_MASK(mask, true);
+//   for (int stride = warp_size / 2; stride > 0; stride >>= 1) {
+//     T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+//     val = reducer(val, temp);
+//   }
+//   return val;
+// }
 
-template <typename T, typename ReduceOp>
-__device__ __forceinline__ T BlockReduce(T val, T init, ReduceOp reducer) {
-  __shared__ T shared[32];
-  int lane = threadIdx.x % warpSize;
-  int wid = threadIdx.x / warpSize;
+// template <typename T, typename ReduceOp>
+// __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
+//   __shared__ T shared[32];
+//   int block_dim_x = blockDim.x;
+//   if (blockDim.x > warpSize) {
+//     block_dim_x = blockDim.x / warpSize;
+//     int lane = threadIdx.x % warpSize;
+//     int wid = threadIdx.x / warpSize;
+//     val = WarpReduce(val, reducer);
+//     if (lane == 0) {
+//       shared[wid] = val;
+//     }
+//     __syncthreads();
+//     if (wid == 0) {
+//       val = shared[lane];
+//     }
+//   }
+//   __syncthreads();
 
-  val = WarpReduce(val, reducer);
-
-  if (lane == 0) {
-    shared[wid] = val;
-  }
-
-  __syncthreads();
-
-  val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : init;
-
-  if (wid == 0) {
-    val = WarpReduce(val, reducer);
-  }
-  return val;
-}
+//   unsigned mask = 0u;
+//   CREATE_SHFL_MASK(mask, true);
+//   for (int stride = 1; stride < block_dim_x; stride <<= 1) {
+//     T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+//     val = reducer(val, temp);
+//   }
+//   return val;
+// }
 
 // version 2
 template <typename T, typename ReduceOp>
