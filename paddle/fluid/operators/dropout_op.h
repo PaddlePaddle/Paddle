@@ -121,7 +121,6 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
       auto engine = framework::GetCPURandomEngine_32(seed_data);
-
       std::uniform_real_distribution<float> dist(0, 1);
       float factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
 
@@ -129,21 +128,25 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       constexpr unsigned int block = YMM_FLOAT_BLOCK;
       int end = size & ~(block - 1);
       int i = 0;
+      __m256 one = _mm256_set1_ps(1.0f);
+      __m256 _factor = _mm256_set1_ps(factor);
+      __m256 _dropout = _mm256_set1_ps(dropout_prob);
+      float* rand_num = new float[size];
+
       for (i = 0; i < end; i += block) {
-        __m256 rand = _mm256_set_ps(dist(*engine), dist(*engine), dist(*engine),
-                                    dist(*engine), dist(*engine), dist(*engine),
-                                    dist(*engine), dist(*engine));
-        __m256 _dropout = _mm256_set_ps(
-            dropout_prob, dropout_prob, dropout_prob, dropout_prob,
-            dropout_prob, dropout_prob, dropout_prob, dropout_prob);
-        __m256 _mask = _mm256_and_ps(_mm256_cmp_ps(_dropout, rand, _CMP_LT_OQ),
-                                     _mm256_set1_ps(1.0f));
+        __m256 _rand = _mm256_set_ps(
+            dist(*engine), dist(*engine), dist(*engine), dist(*engine),
+            dist(*engine), dist(*engine), dist(*engine), dist(*engine));
+
+        _mm256_storeu_ps(reinterpret_cast<float*>(rand_num) + i, _rand);
+        __m256 _mask =
+            _mm256_and_ps(_mm256_cmp_ps(_rand, _dropout, _CMP_GE_OS), one);
         _mm256_storeu_ps(reinterpret_cast<float*>(mask_data) + i, _mask);
-        __m256 b = _mm256_mul_ps(
-            _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i), _mask),
-            _mm256_set1_ps(factor));
         if (upscale_in_train) {
-          _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i, b);
+          __m256 _temp = _mm256_mul_ps(
+              _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i), _mask),
+              _factor);
+          _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i, _temp);
         } else {
           _mm256_storeu_ps(
               reinterpret_cast<float*>(y_data) + i,
@@ -151,13 +154,14 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         }
       }
       for (; i < size; ++i) {
-        if (dist(*engine) < dropout_prob) {
-          mask_data[i] = 0.0f;
-          y_data[i] = 0.0f;
+        float rand = dist(*engine);
+        if (rand < dropout_prob) {
+          mask_data[i] = 0;
+          y_data[i] = 0;
         } else {
-          mask_data[i] = 1.0f;
+          mask_data[i] = 1;
           if (upscale_in_train) {
-            y_data[i] = x_data[i] * factor;
+            y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
           } else {
             y_data[i] = x_data[i];
           }

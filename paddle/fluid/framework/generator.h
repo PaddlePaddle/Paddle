@@ -1,11 +1,8 @@
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,11 +31,6 @@ static uint64_t GetRandomSeed() {
   return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
 }
 
-static int GetRandomSeed_32() {
-  std::random_device rd;
-  return rd();
-}
-
 struct GeneratorState {
   int64_t device = -1;
   uint64_t current_seed = 34342423252;
@@ -47,95 +39,41 @@ struct GeneratorState {
   std::mt19937 cpu_engine_32;
 };
 
-struct Generator_32 {
-  Generator_32() {
-    auto seed = GetRandomSeed_32();
-    std::seed_seq seq({seed});
-    auto engine_32 = std::make_shared<std::mt19937>(seq);
-    this->state_.cpu_engine_32 = *engine_32;
-    this->state_.device = -1;
-    this->state_.current_seed = seed;
-    this->state_.thread_offset = 0;
-    this->engine_32 = engine_32;
-    VLOG(4) << "initial seed: " << this->state_.current_seed
-            << ", cpu engine: " << &this->state_.cpu_engine;
-  }
-
-  explicit Generator_32(int seed) {
-    std::seed_seq seq({seed});
-    auto engine_32 = std::make_shared<std::mt19937>(seq);
-    this->state_.cpu_engine_32 = *engine_32;
-    this->state_.device = -1;
-    this->state_.current_seed = seed;
-    this->state_.thread_offset = 0;
-    this->engine_32 = engine_32;
-    // VLOG(4) << "initial seed: " << this->state_.current_seed
-    //         << ", cpu engine: " << &this->state_.cpu_engine;
-    this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
-  }
-  Generator_32(const Generator_32& other) = delete;
-
-  // get random state
-  GeneratorState GetState();
-  // set random state
-  void SetState(const GeneratorState&);
-  // get current seed
-  int GetCurrentSeed();
-  // random a seed and get
-  int Seed();
-  // set seed
-  void SetCurrentSeed(int seed);
-  // get cpu engine
-  std::shared_ptr<std::mt19937> GetCPUEngine();
-
-  int Random64();
-
-  std::pair<int, int> IncrementOffset(int increament_offset);
-
-  void SetIsInitPy(bool);
-  bool GetIsInitPy() const;
-  int get_device_id() { return this->state_.device; }
-
-  void SetCPUEngine_32(std::shared_ptr<std::mt19937>);
-  std::shared_ptr<std::mt19937> GetCPUEngine_32();
-
- private:
-  GeneratorState state_;
-  mutable std::mutex mu_;
-
-  // NOTE(zhiqiu): is_init_py_ is used to make generator be compatible with
-  // old seed, and it should be removed after all random-related operators
-  // and unittests upgrades to use generator.
-  bool is_init_py_ = false;
-  std::shared_ptr<std::mt19937> engine_32;
-};
-
 struct Generator {
   Generator() {
     auto seed = GetRandomSeed();
     std::seed_seq seq({seed});
     auto engine = std::make_shared<std::mt19937_64>(seq);
+    auto engine_32 = std::make_shared<std::mt19937>(seq);
     this->state_.cpu_engine = *engine;
+    this->state_.cpu_engine_32 = *engine_32;
     this->state_.device = -1;
     this->state_.current_seed = seed;
     this->state_.thread_offset = 0;
     this->engine_ = engine;
+    this->engine_32 = engine_32;
     VLOG(4) << "initial seed: " << this->state_.current_seed
-            << ", cpu engine: " << &this->state_.cpu_engine;
+            << ", cpu engine: " << &this->state_.cpu_engine
+            << ", cpu engine_32: " << &this->state_.cpu_engine_32;
   }
 
   explicit Generator(uint64_t seed) {
     std::seed_seq seq({seed});
     auto engine = std::make_shared<std::mt19937_64>(seq);
+    auto engine_32 = std::make_shared<std::mt19937>(seq);
     this->state_.cpu_engine = *engine;
+    this->state_.cpu_engine_32 = *engine_32;
     this->state_.device = -1;
     this->state_.current_seed = seed;
     this->state_.thread_offset = 0;
     this->engine_ = engine;
+    this->engine_32 = engine_32;
     VLOG(4) << "initial seed: " << this->state_.current_seed
-            << ", cpu engine: " << &this->state_.cpu_engine;
+            << ", cpu engine: " << &this->state_.cpu_engine
+            << ", cpu engine_32: " << &this->engine_32;
     this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
   }
+
   Generator(uint64_t seed, uint64_t device_id) {
     std::seed_seq seq({seed});
     auto engine = std::make_shared<std::mt19937_64>(seq);
@@ -164,8 +102,11 @@ struct Generator {
   // get cpu engine
   std::shared_ptr<std::mt19937_64> GetCPUEngine();
 
+  std::shared_ptr<std::mt19937> GetCPUEngine_32();
   // set cpu engine
   void SetCPUEngine(std::shared_ptr<std::mt19937_64>);
+
+  void SetCPUEngine_32(std::shared_ptr<std::mt19937>);
 
   uint64_t Random64();
 
@@ -178,6 +119,7 @@ struct Generator {
  private:
   GeneratorState state_;
   std::shared_ptr<std::mt19937_64> engine_;
+  std::shared_ptr<std::mt19937> engine_32;
   mutable std::mutex mu_;
 
   // NOTE(zhiqiu): is_init_py_ is used to make generator be compatible with
@@ -193,8 +135,8 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator();
 std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine();
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
-
-std::shared_ptr<std::mt19937> GetCPURandomEngine_32(int);
+std::shared_ptr<std::mt19937> GetCPURandomEngine_32(uint64_t);
+uint64_t CurrentSeed();
 
 const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(
     int64_t device_id = -1);
