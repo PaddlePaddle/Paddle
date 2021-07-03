@@ -94,7 +94,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     auto* y = context.Output<Tensor>("Out");
     const auto* x_data = x->data<T>();
     auto* y_data = y->mutable_data<T>(context.GetPlace());
-    float dropout_prob = context.Attr<float>("dropout_prob");
+    const float dropout_prob = context.Attr<float>("dropout_prob");
 
     auto& dropout_implementation =
         context.Attr<std::string>("dropout_implementation");
@@ -124,64 +124,72 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       std::uniform_real_distribution<float> dist(0, 1);
       float factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
 
-#ifdef __AVX__
-      constexpr unsigned int block = YMM_FLOAT_BLOCK;
-      int end = size & ~(block - 1);
+      // #ifdef __AVX__
+      //       constexpr unsigned int block = YMM_FLOAT_BLOCK;
+      //       int end = size & ~(block - 1);
+      //       int i = 0;
+      //       __m256 one = _mm256_set1_ps(1.0f);
+      //       __m256 _factor = _mm256_set1_ps(factor);
+      //       __m256 _dropout = _mm256_set1_ps(dropout_prob);
+      //       for (i = 0; i < end; i += block) {
+      //         __m256 _rand = _mm256_set_ps(
+      //             dist(*engine), dist(*engine), dist(*engine), dist(*engine),
+      //             dist(*engine), dist(*engine), dist(*engine),
+      //             dist(*engine));
+      //         __m256 _mask =
+      //             _mm256_and_ps(_mm256_cmp_ps(_rand, _dropout, _CMP_GE_OS),
+      //             one);
+      //         _mm256_storeu_ps(reinterpret_cast<float*>(mask_data) + i,
+      //         _mask);
+      //         if (upscale_in_train) {
+      //           __m256 _temp = _mm256_mul_ps(
+      //               _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i),
+      //               _mask),
+      //               _factor);
+      //           _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i,
+      //           _temp);
+      //         } else {
+      //           _mm256_storeu_ps(
+      //               reinterpret_cast<float*>(y_data) + i,
+      //               _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i),
+      //               _mask));
+      //         }
+      //       }
+      //       for (; i < size; ++i) {
+      //         float rand = dist(*engine);
+      //         if (rand < dropout_prob) {
+      //           mask_data[i] = 0;
+      //           y_data[i] = 0;
+      //         } else {
+      //           mask_data[i] = 1;
+      //           if (upscale_in_train) {
+      //             y_data[i] = x_data[i] / static_cast<T>(1.0f -
+      //             dropout_prob);
+      //           } else {
+      //             y_data[i] = x_data[i];
+      //           }
+      //         }
+      //       }
+      // #else
       int i = 0;
-      __m256 one = _mm256_set1_ps(1.0f);
-      __m256 _factor = _mm256_set1_ps(factor);
-      __m256 _dropout = _mm256_set1_ps(dropout_prob);
-      float* rand_num = new float[size];
-
-      for (i = 0; i < end; i += block) {
-        __m256 _rand = _mm256_set_ps(
-            dist(*engine), dist(*engine), dist(*engine), dist(*engine),
-            dist(*engine), dist(*engine), dist(*engine), dist(*engine));
-
-        _mm256_storeu_ps(reinterpret_cast<float*>(rand_num) + i, _rand);
-        __m256 _mask =
-            _mm256_and_ps(_mm256_cmp_ps(_rand, _dropout, _CMP_GE_OS), one);
-        _mm256_storeu_ps(reinterpret_cast<float*>(mask_data) + i, _mask);
-        if (upscale_in_train) {
-          __m256 _temp = _mm256_mul_ps(
-              _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i), _mask),
-              _factor);
-          _mm256_storeu_ps(reinterpret_cast<float*>(y_data) + i, _temp);
-        } else {
-          _mm256_storeu_ps(
-              reinterpret_cast<float*>(y_data) + i,
-              _mm256_mul_ps(_mm256_loadu_ps((const float*)x_data + i), _mask));
-        }
-      }
-      for (; i < size; ++i) {
-        float rand = dist(*engine);
-        if (rand < dropout_prob) {
+      float rand_number = 0.0f;
+#pragma omp parallel for private(i, rand_number) shared(mask_data, x_data, \
+                                                        y_data)
+      for (i = 0; i < size; ++i) {
+        rand_number = dist(*engine);
+        if (rand_number < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {
           mask_data[i] = 1;
           if (upscale_in_train) {
-            y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
+            y_data[i] = x_data[i] * factor;
           } else {
             y_data[i] = x_data[i];
           }
         }
       }
-#else
-      for (int i = 0; i < size; ++i) {
-        if (dist(*engine) < dropout_prob) {
-          mask_data[i] = 0;
-          y_data[i] = 0;
-        } else {
-          mask_data[i] = 1;
-          if (upscale_in_train) {
-            y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
-          } else {
-            y_data[i] = x_data[i];
-          }
-        }
-      }
-#endif
+      // #endif
     } else {
       if (upscale_in_train) {
         const auto* X_data = x->data<T>();
