@@ -120,7 +120,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         seed_data =
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
-      auto engine = framework::GetCPURandomEngine_32(seed_data);
+      auto engine = framework::GetCPURandomEngine(seed_data);
       std::uniform_real_distribution<float> dist(0, 1);
       float factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
 
@@ -144,6 +144,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
           }
         }
       }
+#
     } else {
       if (upscale_in_train) {
         const auto* X_data = x->data<T>();
