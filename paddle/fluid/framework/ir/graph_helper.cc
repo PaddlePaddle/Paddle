@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include <queue>
 #include <stack>
 
 DEFINE_string(print_sub_graph_dir, "",
@@ -393,6 +394,64 @@ std::vector<Node *> TopologyVarientSort(const Graph &graph,
     default:
       return framework::ir::TopologyDfsSortOperations(graph);
   }
+}
+
+class TopologyComparator {
+ public:
+  bool operator()(const Node *n1, const Node *n2) {
+    return (n1->id() > n2->id()) ||
+           ((n1->id() == n2->id()) && (n1->Name() > n2->Name()));
+  }
+};
+
+std::vector<ir::Node *> TopologySortGraph(const Graph &graph) {
+  std::vector<ir::Node *> sorted_ops;
+  std::priority_queue<Node *, std::vector<Node *>, TopologyComparator> q;
+  std::unordered_map<Node *, std::unordered_set<Node *>> in_ops;
+  std::unordered_map<Node *, std::unordered_set<Node *>> out_ops;
+
+  // record all op's input op and output op
+  for (auto &n : graph.Nodes()) {
+    if (!n->IsOp()) continue;
+
+    if (in_ops.count(n) == 0) {
+      in_ops[n] = std::unordered_set<Node *>();
+    }
+
+    if (out_ops.count(n) == 0) {
+      out_ops[n] = std::unordered_set<Node *>();
+    }
+
+    for (auto &var : n->inputs) {
+      for (auto &in : var->inputs) {
+        in_ops[n].insert(in);
+        out_ops[in].insert(n);
+      }
+    }
+  }
+
+  // find root op
+  for (auto &in_pair : in_ops) {
+    if (in_pair.second.empty()) {
+      q.push(in_pair.first);
+    }
+  }
+
+  while (!q.empty()) {
+    auto cur_op = q.top();
+    q.pop();
+
+    sorted_ops.push_back(cur_op);
+    for (auto &out : out_ops[cur_op]) {
+      in_ops[out].erase(cur_op);
+
+      if (in_ops[out].empty()) {
+        q.push(out);
+      }
+    }
+  }
+
+  return sorted_ops;
 }
 
 }  // namespace ir

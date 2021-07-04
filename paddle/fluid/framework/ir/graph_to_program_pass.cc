@@ -62,7 +62,7 @@ void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
     nodes = TopologyVarientSort(
         *graph, static_cast<framework::ir::SortKind>(sort_kind));
   } else {
-    nodes = TopologySortOperations(*graph);
+    nodes = TopologySortGraph(*graph);
   }
 
   for (ir::Node* n : nodes) {
