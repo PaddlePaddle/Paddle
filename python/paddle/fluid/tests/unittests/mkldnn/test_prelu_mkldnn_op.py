@@ -27,9 +27,14 @@ def ref_prelu(x, weight, mode):
     if mode == "all":
         result = np.where(x > 0, x, x * weight[0])
     elif mode == "channel":
-        for i in range(x.shape[1]):
-            result[:, i] = np.where(x[:, i] > 0, x[:, i],
-                                    x[:, i] * weight[0, i])
+        if len(weight.shape) > 1:
+            for i in range(x.shape[1]):
+                result[:, i] = np.where(x[:, i] > 0, x[:, i],
+                                        x[:, i] * weight[0, i])
+        else:
+            for i in range(x.shape[1]):
+                result[:, i] = np.where(x[:, i] > 0, x[:, i],
+                                        x[:, i] * weight[i])
     elif mode == "element":
         result = np.where(x[:] > 0, x[:], x[:] * weight)
 
@@ -88,6 +93,20 @@ class TestPReluModeChannel3DOneDNNOp(TestPReluModeChannelOneDNNOp):
         self.alpha = np.random.random((1, 100, 1)).astype("float32")
 
 
+class TestPReluModeChannelAlpha1DOneDNNOp(TestPReluModeChannelOneDNNOp):
+    def init_attrs(self):
+        self.mode = "channel"
+        self.x = np.random.random((1, 100, 1)).astype("float32")
+        self.alpha = np.random.random((100)).astype("float32")
+
+
+class TestPReluModeAllAlpha1DOneDNNOp(TestPReluModeAllOneDNNOp):
+    def init_attrs(self):
+        self.mode = "channel"
+        self.x = np.random.random((1, 1, 100)).astype("float32")
+        self.alpha = np.random.random((1)).astype("float32")
+
+
 #   BF16 TESTS
 def create_bf16_test_class(parent):
     class TestPReluBF16OneDNNOp(parent):
@@ -108,9 +127,15 @@ def create_bf16_test_class(parent):
             if self.mode == "all":
                 self.dx = np.where(self.x > 0, dout, dout * self.alpha[0])
             elif self.mode == "channel":
-                for i in range(self.x.shape[1]):
-                    self.dx[:, i] = np.where(self.x[:, i] > 0, dout[:, i],
-                                             dout[:, i] * self.alpha[0, i])
+                if len(weight.shape) > 1:
+                    for i in range(self.x.shape[1]):
+                        self.dx[:, i] = np.where(self.x[:, i] > 0, dout[:, i],
+                                                 dout[:, i] * self.alpha[0, i])
+                else:
+                    for i in range(self.x.shape[1]):
+                        self.dx[:, i] = np.where(self.x[:, i] > 0, dout[:, i],
+                                                 dout[:, i] * self.alpha[i])
+                    self.dx
             elif self.mode == "element":
                 self.dx = np.where(self.x[:] > 0, dout[:], dout[:] * self.alpha)
 
@@ -127,6 +152,9 @@ def create_bf16_test_class(parent):
                               self.__class__.__name__)
             else:
                 self.check_output_with_place(core.CPUPlace())
+
+        def test_check_grad(self):
+            pass
 
 #   TODO jakpiase, when base class for BF16 oneDNN tests
 #   will be done, add grad tests
@@ -150,6 +178,8 @@ def create_bf16_test_class(parent):
 create_bf16_test_class(TestPReluModeChannelOneDNNOp)
 create_bf16_test_class(TestPReluModeElementOneDNNOp)
 create_bf16_test_class(TestPReluModeChannel3DOneDNNOp)
+create_bf16_test_class(TestPReluModeChannelAlpha1DOneDNNOp)
+create_bf16_test_class(TestPReluModeAllAlpha1DOneDNNOp)
 
 if __name__ == "__main__":
     paddle.enable_static()
