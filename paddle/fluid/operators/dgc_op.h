@@ -17,8 +17,10 @@ limitations under the License. */
 #include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#endif
 
 namespace paddle {
 namespace operators {
