@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 
 def ref_prelu(x, weight, mode):
@@ -109,6 +109,9 @@ class TestPReluModeAllAlpha1DOneDNNOp(TestPReluModeAllOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+    @skip_check_grad_ci(
+        reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+    )
     class TestPReluBF16OneDNNOp(parent):
         def set_inputs(self, ):
             self.inputs = {
@@ -157,7 +160,7 @@ def create_bf16_test_class(parent):
             pass
 
 #   TODO jakpiase, when base class for BF16 oneDNN tests
-#   will be done, add grad tests
+#   will be done, add grad BF16 tests
 #        def test_check_grad(self):
 #            if core.is_compiled_with_cuda() or not core.supports_bfloat16():
 #                pass
