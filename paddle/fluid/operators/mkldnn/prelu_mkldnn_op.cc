@@ -48,7 +48,6 @@ class PReluMKLDNNHandler
       // weights must have same size as X only for "element" case
       if (weights->dims().size() != x->dims().size()) {
         auto new_weights_dims = std::vector<int64_t>(x->dims().size(), 1);
-        int j = 0;
         if (mode == "channel") {
           new_weights_dims[1] =
               *std::max_element(weights_dims.begin(), weights_dims.end());
