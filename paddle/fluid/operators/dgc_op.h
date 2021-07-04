@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
