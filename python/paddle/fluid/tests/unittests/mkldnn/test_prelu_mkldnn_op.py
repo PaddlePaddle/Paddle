@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 
 def ref_prelu(x, weight, mode):
@@ -109,9 +109,6 @@ class TestPReluModeAllAlpha1DOneDNNOp(TestPReluModeAllOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
-    @skip_check_grad_ci(
-        reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
-    )
     class TestPReluBF16OneDNNOp(parent):
         def set_inputs(self, ):
             self.inputs = {
@@ -130,7 +127,7 @@ def create_bf16_test_class(parent):
             if self.mode == "all":
                 self.dx = np.where(self.x > 0, dout, dout * self.alpha[0])
             elif self.mode == "channel":
-                if len(weight.shape) > 1:
+                if len(self.alpha.shape) > 1:
                     for i in range(self.x.shape[1]):
                         self.dx[:, i] = np.where(self.x[:, i] > 0, dout[:, i],
                                                  dout[:, i] * self.alpha[0, i])
@@ -157,32 +154,29 @@ def create_bf16_test_class(parent):
                 self.check_output_with_place(core.CPUPlace())
 
         def test_check_grad(self):
-            pass
-
-#   TODO jakpiase, when base class for BF16 oneDNN tests
-#   will be done, add grad BF16 tests
-#        def test_check_grad(self):
-#            if core.is_compiled_with_cuda() or not core.supports_bfloat16():
-#                pass
-#            else:
-#                self.calculate_grads()
-#                self.check_grad_with_place(
-#                    core.CPUPlace(), ["X", "Alpha"],
-#                    "Out",
-#                    user_defined_grads=[self.dx, self.dalpha],
-#                    user_defined_grad_outputs=[
-#                        convert_float_to_uint16(self.dout)
-#                    ])
+            if core.is_compiled_with_cuda() or not core.supports_bfloat16():
+                self.skipTest(
+                    "Core is compiled with cuda or doesn't support bf16, kipping UT"
+                    + self.__class__.__name__)
+            else:
+                self.calculate_grads()
+                self.check_grad_with_place(
+                    core.CPUPlace(), ["X", "Alpha"],
+                    "Out",
+                    user_defined_grads=[self.dx, self.dalpha],
+                    user_defined_grad_outputs=[
+                        convert_float_to_uint16(self.dout)
+                    ])
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestPReluBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestPReluBF16OneDNNOp
 
+
 create_bf16_test_class(TestPReluModeChannelOneDNNOp)
 create_bf16_test_class(TestPReluModeElementOneDNNOp)
 create_bf16_test_class(TestPReluModeChannel3DOneDNNOp)
 create_bf16_test_class(TestPReluModeChannelAlpha1DOneDNNOp)
-create_bf16_test_class(TestPReluModeAllAlpha1DOneDNNOp)
 
 if __name__ == "__main__":
     paddle.enable_static()
