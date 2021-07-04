@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
