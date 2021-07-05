@@ -67,8 +67,6 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   thread_keys_.resize(thread_keys_thread_num_);
   for (int i = 0; i < thread_keys_thread_num_; i++) {
     thread_keys_[i].resize(thread_keys_shard_num_);
-    for (int j = 0; j < thread_keys_shard_num_; j++) {
-    }
   }
   const std::deque<Record>& vec_data = input_channel->GetData();
   size_t total_len = vec_data.size();
@@ -253,7 +251,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
         }
       }
 #endif
-      VLOG(1) << "GpuPs build hbmps done";
+      VLOG(3) << "GpuPs build hbmps done";
 
       device_mutex[dev]->unlock();
     }
@@ -294,7 +292,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
   HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
-    std::cout << "building table: " << i << std::endl;
+    VLOG(3) << "building table: " << i;
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);

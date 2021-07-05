@@ -29,6 +29,15 @@ class PTQConfig(object):
     """
 
     def __init__(self, activation_quantizer, weight_quantizer):
+        """
+        Constructor.
+
+        Args:
+            activation_quantizer(BaseQuantizer): The activation quantizer.
+                It should be the instance of BaseQuantizer.
+            weight_quantizer(BaseQuantizer): The weight quantizer.
+                It should be the instance of BaseQuantizer.    
+        """
         super(PTQConfig, self).__init__()
 
         assert isinstance(activation_quantizer, BaseQuantizer)
@@ -38,7 +47,7 @@ class PTQConfig(object):
         self.out_act_quantizer = copy.deepcopy(activation_quantizer)
         self.wt_quantizer = copy.deepcopy(weight_quantizer)
 
-        self.hook_handle = None
+        self.quant_hook_handle = None
 
 
 default_ptq_config = PTQConfig(AbsmaxQuantizer(), AbsmaxQuantizer())
