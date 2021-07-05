@@ -1135,7 +1135,6 @@ class Executor(object):
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:
-                return self.train_from_dataset(program, fetch_list=fetch_list)
                 return self._run_pipeline(
                     program,
                     fetch_list=fetch_list,
