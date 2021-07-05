@@ -87,8 +87,10 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 
 #ifdef __HIPCC__
 constexpr int kMaxThread = 256;
+constexpr int warp_size = 64;
 #else
 constexpr int kMaxThread = 128;
+constexpr int warp_size = 32;
 #endif
 
 // get blockDim for reduceLastDim and reduceAny
@@ -393,63 +395,31 @@ struct ReduceConfig {
   dim3 grid;
 };
 
-// version 1
-// template <typename T, typename ReduceOp>
-// __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
-//   constexpr int warp_size = 32;
-//   unsigned mask = 0u;
-//   CREATE_SHFL_MASK(mask, true);
-//   for (int stride = warp_size / 2; stride > 0; stride >>= 1) {
-//     T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-//     val = reducer(val, temp);
-//   }
-//   return val;
-// }
+template <typename T, typename ReduceOp>
+__device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
+  unsigned mask = 0u;
+  CREATE_SHFL_MASK(mask, true);
+  for (int stride = detail::warp_size / 2; stride > 0; stride >>= 1) {
+    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    val = reducer(val, temp);
+  }
+  return val;
+}
 
-// template <typename T, typename ReduceOp>
-// __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
-//   __shared__ T shared[32];
-//   int block_dim_x = blockDim.x;
-//   if (blockDim.x > warpSize) {
-//     block_dim_x = blockDim.x / warpSize;
-//     int lane = threadIdx.x % warpSize;
-//     int wid = threadIdx.x / warpSize;
-//     val = WarpReduce(val, reducer);
-//     if (lane == 0) {
-//       shared[wid] = val;
-//     }
-//     __syncthreads();
-//     if (wid == 0) {
-//       val = shared[lane];
-//     }
-//   }
-//   __syncthreads();
-
-//   unsigned mask = 0u;
-//   CREATE_SHFL_MASK(mask, true);
-//   for (int stride = 1; stride < block_dim_x; stride <<= 1) {
-//     T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-//     val = reducer(val, temp);
-//   }
-//   return val;
-// }
-
-// version 2
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
-  __shared__ T shared[detail::kMaxThread];
+  __shared__ T shared[detail::warp_size];
   int block_dim_x = blockDim.x;
   if (blockDim.x > warpSize) {
-    block_dim_x = warpSize;
-    shared[threadIdx.x] = val;
-    for (int stride = blockDim.x / 2; stride >= warpSize; stride >>= 1) {
-      __syncthreads();
-      if (threadIdx.x < stride) {
-        T temp = shared[threadIdx.x + stride];
-        val = reducer(val, temp);
-        shared[threadIdx.x] = val;
-      }
+    block_dim_x = blockDim.x / warpSize;
+    int lane = threadIdx.x % warpSize;
+    int wid = threadIdx.x / warpSize;
+    val = WarpReduce(val, reducer);
+    if (lane == 0) {
+      shared[wid] = val;
     }
+    __syncthreads();
+    val = shared[lane];
   }
   __syncthreads();
 
@@ -616,37 +586,36 @@ __global__ void ReduceKernelFunction(
       left_strides);
 }
 
-template <typename Tx, typename Ty, typename ReduceOp, int kRank,
-          int kReduceRank>
+template <typename Tx, typename Ty, typename ReduceOp, int Rank, int ReduceRank>
 static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
                                const ReduceOp& reducer, Ty init,
                                gpuStream_t stream, ReduceConfig<Ty> config) {
   using TransformOp = typename ReduceOp::Transformer;
 
-  ReduceKernelFunction<Tx, Ty, ReduceOp, TransformOp, kRank,
-                       kReduceRank><<<config.grid, config.block, 0, stream>>>(
+  ReduceKernelFunction<Tx, Ty, ReduceOp, TransformOp, Rank,
+                       ReduceRank><<<config.grid, config.block, 0, stream>>>(
       x_data, config.output_data, reducer, TransformOp(config.reduce_num), init,
       config.reduce_num, config.left_num, config.blocking_size,
-      config.reduce_type, detail::VectorToArray<int, kRank>(config.x_strides),
-      detail::VectorToArray<int, kReduceRank>(config.reduce_dim),
-      detail::VectorToArray<int, kReduceRank>(config.reduce_strides),
-      detail::VectorToArray<int, kRank - kReduceRank>(config.left_dim),
-      detail::VectorToArray<int, kRank - kReduceRank>(config.left_strides));
+      config.reduce_type, detail::VectorToArray<int, Rank>(config.x_strides),
+      detail::VectorToArray<int, ReduceRank>(config.reduce_dim),
+      detail::VectorToArray<int, ReduceRank>(config.reduce_strides),
+      detail::VectorToArray<int, Rank - ReduceRank>(config.left_dim),
+      detail::VectorToArray<int, Rank - ReduceRank>(config.left_strides));
 
   if (config.should_reduce_again) {
     dim3 block(config.block.x, 1, 1);
     dim3 grid(config.grid.x, 1, config.grid.z);
 
-    ReduceKernelFunction<Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, kRank,
-                         kReduceRank><<<grid, block, 0, stream>>>(
+    ReduceKernelFunction<Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, Rank,
+                         ReduceRank><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer,
         detail::IdentityFunctor<Ty>(config.grid.y), init, config.grid.y,
         config.left_num, config.grid.y, ReduceType::kReduceHigherDim,
-        detail::VectorToArray<int, kRank>(config.x_strides),
-        detail::VectorToArray<int, kReduceRank>(config.reduce_dim),
-        detail::VectorToArray<int, kReduceRank>(config.reduce_strides),
-        detail::VectorToArray<int, kRank - kReduceRank>(config.left_dim),
-        detail::VectorToArray<int, kRank - kReduceRank>(config.left_strides));
+        detail::VectorToArray<int, Rank>(config.x_strides),
+        detail::VectorToArray<int, ReduceRank>(config.reduce_dim),
+        detail::VectorToArray<int, ReduceRank>(config.reduce_strides),
+        detail::VectorToArray<int, Rank - ReduceRank>(config.left_dim),
+        detail::VectorToArray<int, Rank - ReduceRank>(config.left_strides));
   }
 }
 
@@ -659,15 +628,15 @@ static void ReduceKernelImpl(const Tx* x_data, Ty* y_data,
 
 #define CUB_RANK_CASE(i, ...)             \
   case i: {                               \
-    constexpr auto kRank = i;             \
+    constexpr auto Rank = i;              \
     switch (reduce_rank) { __VA_ARGS__; } \
   } break
 
-#define CUB_REDUCE_RANK_CASE(i, ...)                          \
-  case i: {                                                   \
-    constexpr auto kReduceRank = i;                           \
-    LaunchReduceKernel<Tx, Ty, ReduceOp, kRank, kReduceRank>( \
-        x_data, y_data, reducer, init, stream, config);       \
+#define CUB_REDUCE_RANK_CASE(i, ...)                        \
+  case i: {                                                 \
+    constexpr auto ReduceRank = i;                          \
+    LaunchReduceKernel<Tx, Ty, ReduceOp, Rank, ReduceRank>( \
+        x_data, y_data, reducer, init, stream, config);     \
   } break
 
   detail::CheckReduceRank(reduce_rank, rank);
