@@ -51,7 +51,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
 #endif
-#if CUDA_VERSION >= 10200
+#if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
     teller_set.insert("reshape2");
 #endif
@@ -717,7 +717,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
+    if ((*teller)(op_type, desc, use_no_calib_int8))
+      return true;
+    else
+      VLOG(3) << "trt unsupported op " << op_type;
   }
   return false;
 }
