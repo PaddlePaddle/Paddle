@@ -28,6 +28,7 @@ class TransposeNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     framework::NPUAttributeMap attr_input = {{"perm", axis}};
+    // Tensor tmp_x = CastNPUFormat(*x, 29);
     out->mutable_data<T>(ctx.device_context().GetPlace());
     const auto& runner = NpuOpRunner("TransposeD", {*x}, {*out}, attr_input);
     auto stream =
@@ -50,13 +51,30 @@ class TransposeGradNPUKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < axis.size(); i++) {
       reversed_axis[axis[i]] = i;
     }
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    /*Tensor trans_out_grad(out_grad->type());
+    trans_out_grad.Resize(out_grad->dims());
+    InferNPUStorageFormatAndDims(&trans_out_grad, DataLayout::kNCHW);
+    trans_out_grad.mutable_data<T>(ctx.GetPlace());
+    if (out_grad->npu_storage_layout() == DataLayout::kFractalNZ) {
+      std::string src_format_name = "FRACTAL_NZ";
+      std::string dst_format_name = "NCHW";
+      const auto &runner_trans_data =
+          NpuOpRunner("TransData", {*out_grad}, {trans_out_grad},
+                      {{"src_format", src_format_name},
+                      {"dst_format", dst_format_name},
+                      {"groups", 1}});
+      runner_trans_data.Run(stream);
+      VLOG(3) << "Transform data_format of transpose op.";
+    } else {
+      trans_out_grad.ShareDataWith(*out_grad);
+    }*/
     x_grad->mutable_data<T>(ctx.GetPlace());
     framework::NPUAttributeMap attr_input = {{"perm", reversed_axis}};
     const auto& runner =
         NpuOpRunner("TransposeD", {*out_grad}, {*x_grad}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
     runner.Run(stream);
   }
 };

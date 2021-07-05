@@ -411,3 +411,65 @@ class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
 
 if __name__ == '__main__':
     unittest.main()
+
+import csv
+
+csv_reader = csv.reader(open("./op_summary_4_1.csv"))
+
+last_op_type = ""
+line_count = 0
+
+auto_trans_count = 0
+auto_trans_last_map = {}
+auto_trans_next_map = {}
+mine_trans_count = 0
+mine_trans_last_map = {}
+mine_trans_next_map = {}
+
+for line in csv_reader:
+    line_count += 1
+    if line_count >= 1388:
+        break
+    """
+    if line_count < 1388 or line_count >= 3357:
+        continue
+    if line_count < 3357 or line_count >= 5804:
+        continue
+    if line_count < 5804:
+        continue
+    """
+    op_type = line[3]
+    if "trans_TransData_" in op_type:
+        auto_trans_last_map[last_op_type] = auto_trans_last_map[
+            last_op_type] + 1 if last_op_type in auto_trans_last_map else 1
+    if "trans_TransData_" in last_op_type:
+        auto_trans_count += 1
+        auto_trans_next_map[op_type] = auto_trans_next_map[
+            op_type] + 1 if op_type in auto_trans_next_map else 1
+
+    if op_type == "TransData":
+        mine_trans_last_map[last_op_type] = mine_trans_last_map[
+            last_op_type] + 1 if last_op_type in mine_trans_last_map else 1
+    if last_op_type == "TransData":
+        mine_trans_count += 1
+        mine_trans_next_map[op_type] = mine_trans_next_map[
+            op_type] + 1 if op_type in mine_trans_next_map else 1
+
+    last_op_type = op_type
+
+auto_trans_last_map = sorted(
+    auto_trans_last_map.items(), key=lambda x: x[1], reverse=True)
+auto_trans_next_map = sorted(
+    auto_trans_next_map.items(), key=lambda x: x[1], reverse=True)
+mine_trans_last_map = sorted(
+    mine_trans_last_map.items(), key=lambda x: x[1], reverse=True)
+mine_trans_next_map = sorted(
+    mine_trans_next_map.items(), key=lambda x: x[1], reverse=True)
+
+print("Number of auto inserted Transdata: ", auto_trans_count)
+print("Op before auto inserted Transdata: ", auto_trans_last_map)
+print("Op after auto inserted Transdata: ", auto_trans_next_map)
+
+print("Number of mine Transdata: ", mine_trans_count)
+print("Op before mine Transdata: ", mine_trans_last_map)
+print("Op after mine Transdata: ", mine_trans_next_map)

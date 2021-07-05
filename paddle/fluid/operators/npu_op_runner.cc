@@ -364,7 +364,18 @@ Tensor CastNPUFormat(const Tensor &src_tensor, int acl_format_id) {
 
   Tensor dst_tensor(dtype);
   dst_tensor.Resize(src_tensor.dims());
-  dst_tensor.set_npu_storage_layout(ConvertNpuFormatToDataLayout(acl_format));
+  InferNPUStorageFormatAndDims(&dst_tensor,
+                               ConvertNpuFormatToDataLayout(acl_format));
+  auto stream = GetCurrentNPUStream();
+  auto place = GetCurrentNPUPlace();
+  dst_tensor.mutable_data(place, src_tensor.type());
+
+  Tensor trans_src_tensor(src_tensor.type());
+  trans_src_tensor.ShareDataWith(src_tensor);
+  if () RunTransDataNPUOP(trans_src_tensor, &dst_tensor, stream);
+
+  // dst_tensor.set_npu_storage_layout(ConvertNpuFormatToDataLayout(acl_format));
+
   // if (src_tensor->layout() != tmp_x.layout()) {
   //   auto runner_cast_x = NpuOpRunner(
   //       "TransData", {src_tensor}, {tmp_x},
