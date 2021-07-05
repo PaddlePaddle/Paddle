@@ -87,10 +87,10 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
 
 #ifdef __HIPCC__
 constexpr int kMaxThread = 256;
-constexpr int warp_size = 64;
+constexpr int kWarpSize = 64;
 #else
 constexpr int kMaxThread = 128;
-constexpr int warp_size = 32;
+constexpr int kWarpSize = 32;
 #endif
 
 // get blockDim for reduceLastDim and reduceAny
@@ -399,7 +399,7 @@ template <typename T, typename ReduceOp>
 __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
-  for (int stride = detail::warp_size / 2; stride > 0; stride >>= 1) {
+  for (int stride = detail::kWarpSize / 2; stride > 0; stride >>= 1) {
     T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
     val = reducer(val, temp);
   }
@@ -417,12 +417,13 @@ __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
  */
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
-  __shared__ T shared[detail::warp_size];
+  using detail::kWarpSize;
+  __shared__ T shared[kWarpSize];
   int block_dim_x = blockDim.x;
-  if (blockDim.x > warpSize) {
-    block_dim_x = blockDim.x / warpSize;
-    int lane = threadIdx.x % warpSize;
-    int wid = threadIdx.x / warpSize;
+  if (blockDim.x > kWarpSize) {
+    block_dim_x = blockDim.x / kWarpSize;
+    int lane = threadIdx.x % kWarpSize;
+    int wid = threadIdx.x / kWarpSize;
     val = WarpReduce(val, reducer);
     if (lane == 0) {
       shared[wid] = val;
@@ -430,7 +431,6 @@ __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
     __syncthreads();
     val = shared[lane];
   }
-  __syncthreads();
 
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
