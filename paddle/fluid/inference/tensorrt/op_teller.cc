@@ -717,11 +717,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if ((*teller)(op_type, desc, use_no_calib_int8))
-      return true;
-    else
-      VLOG(3) << "trt unsupported op " << op_type;
+    if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
+
+  VLOG(3) << "trt unsupported op " << op_type;
   return false;
 }
 
