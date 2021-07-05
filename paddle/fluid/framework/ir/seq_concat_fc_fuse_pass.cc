@@ -233,6 +233,27 @@ SeqConcatFcFusePass::SeqConcatFcFusePass() {
       .AddAttr("axis")
       .IsNumEQ(1)
       .End();
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+  AddOpCompat(OpCompat("tanh"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+  AddOpCompat(OpCompat("sigmoid"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
 }
 
 void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
