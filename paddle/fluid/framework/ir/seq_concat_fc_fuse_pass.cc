@@ -233,6 +233,7 @@ SeqConcatFcFusePass::SeqConcatFcFusePass() {
       .AddAttr("axis")
       .IsNumEQ(1)
       .End();
+
   AddOpCompat(OpCompat("relu"))
       .AddInput("X")
       .IsTensor()
@@ -240,6 +241,7 @@ SeqConcatFcFusePass::SeqConcatFcFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+
   AddOpCompat(OpCompat("tanh"))
       .AddInput("X")
       .IsTensor()
@@ -247,6 +249,7 @@ SeqConcatFcFusePass::SeqConcatFcFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+
   AddOpCompat(OpCompat("sigmoid"))
       .AddInput("X")
       .IsTensor()
