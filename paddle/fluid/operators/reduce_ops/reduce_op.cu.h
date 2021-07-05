@@ -406,6 +406,15 @@ __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
   return val;
 }
 
+/* e.g.
+ * |---------block---------|
+ * |warp0|warp1|warp2|warp3|
+ * |0~31|32~63|64~95|96~127|  ---->blockDim.x = 128
+ *  \|/  \|/   \|/    \|/     ---->1. First WarpReduce in each warp
+ * res0  res1  res2  res3     ---->2. Store result of each warp to shared memory
+ *   \    \    /     /        ---->3. Load the result above from shared memory
+ *        res                         to warp0 and process the second WarpReduce
+ */
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
   __shared__ T shared[detail::warp_size];
