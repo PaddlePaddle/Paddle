@@ -34,10 +34,13 @@ MatmulTransposeReshapeMKLDNNPass::MatmulTransposeReshapeMKLDNNPass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")  // unconstrained. can be any float value.
+      .IsType<float>()
       .End()
       .AddAttr("transpose_X")  // unconstrained. can be any bool value.
+      .IsType<bool>()
       .End()
       .AddAttr("transpose_Y")  // unconstrained. can be any bool value.
+      .IsType<bool>()
       .End();
 
   AddOpCompat(OpCompat("transpose2"))
@@ -51,9 +54,7 @@ MatmulTransposeReshapeMKLDNNPass::MatmulTransposeReshapeMKLDNNPass() {
       .IsTensor()
       .End()
       .AddAttr("axis")  // ints
-      .End()
-      .AddAttr("data_format")
-      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
+      .IsType<std::vector<int>>()
       .End();
 
   AddOpCompat(OpCompat("reshape2"))
@@ -75,6 +76,7 @@ MatmulTransposeReshapeMKLDNNPass::MatmulTransposeReshapeMKLDNNPass() {
       .IsTensor()
       .End()
       .AddAttr("shape")  // ints
+      .IsType<std::vector<int>>()
       .End();
 }
 void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {

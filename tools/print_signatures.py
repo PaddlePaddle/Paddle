@@ -17,19 +17,14 @@ Print all signature of a python module in alphabet order.
 Usage:
     ./print_signature  "paddle.fluid" > signature.txt
 """
-from __future__ import print_function
 
-import importlib
 import inspect
 import collections
 import sys
-import pydoc
 import hashlib
-import platform
-import functools
 import pkgutil
 import logging
-import paddle
+import argparse
 
 member_dict = collections.OrderedDict()
 
@@ -79,9 +74,7 @@ def is_primitive(instance):
 
 ErrorSet = set()
 IdSet = set()
-skiplist = [
-    'paddle.vision.datasets.DatasetFolderImageFolder', 'paddle.truncdigamma'
-]
+skiplist = []
 
 
 def visit_all_module(mod):
@@ -100,21 +93,20 @@ def visit_all_module(mod):
     if hasattr(mod, "__all__"):
         member_names += mod.__all__
     for member_name in member_names:
-        if member_name.startswith('__'):
+        if member_name.startswith('_'):
             continue
         cur_name = mod_name + '.' + member_name
+        if cur_name in skiplist:
+            continue
         try:
             instance = getattr(mod, member_name)
             if inspect.ismodule(instance):
                 visit_all_module(instance)
             else:
-                doc_md5 = md5(instance.__doc__)
                 instance_id = id(instance)
                 if instance_id in IdSet:
                     continue
                 IdSet.add(instance_id)
-                member_dict[cur_name] = "({}, ('document', '{}'))".format(
-                    cur_name, doc_md5)
                 if hasattr(instance,
                            '__name__') and member_name != instance.__name__:
                     print(
@@ -135,6 +127,7 @@ def get_all_api(root_path='paddle', attr="__all__"):
     """
     walk through the paddle package to collect all the apis.
     """
+    import paddle
     global api_info_dict
     api_counter = 0
     for filefinder, name, ispkg in pkgutil.walk_packages(
@@ -157,7 +150,8 @@ def get_all_api(root_path='paddle', attr="__all__"):
     logger.info('%s: collected %d apis, %d distinct apis.', attr, api_counter,
                 len(api_info_dict))
 
-    return [api_info['all_names'][0] for api_info in api_info_dict.values()]
+    return [(sorted(list(api_info['all_names']))[0], md5(api_info['docstring']))
+            for api_info in api_info_dict.values()]
 
 
 def insert_api_into_dict(full_name, gen_doc_anno=None):
@@ -185,6 +179,7 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
                 "id": fc_id,
                 "object": obj,
                 "type": type(obj).__name__,
+                "docstring": '',
             }
             docstr = inspect.getdoc(obj)
             if docstr:
@@ -221,7 +216,84 @@ def process_module(m, attr="__all__"):
     return api_counter
 
 
-def get_all_api_from_modulelist():
+def check_public_api():
+    import paddle
+    modulelist = [  #npqa
+        paddle,
+        paddle.amp,
+        paddle.nn,
+        paddle.nn.functional,
+        paddle.nn.initializer,
+        paddle.nn.utils,
+        paddle.static,
+        paddle.static.nn,
+        paddle.io,
+        paddle.jit,
+        paddle.metric,
+        paddle.distribution,
+        paddle.optimizer,
+        paddle.optimizer.lr,
+        paddle.regularizer,
+        paddle.text,
+        paddle.utils,
+        paddle.utils.download,
+        paddle.utils.profiler,
+        paddle.utils.cpp_extension,
+        paddle.sysconfig,
+        paddle.vision,
+        paddle.vision.datasets,
+        paddle.vision.models,
+        paddle.vision.transforms,
+        paddle.vision.ops,
+        paddle.distributed,
+        paddle.distributed.fleet,
+        paddle.distributed.fleet.utils,
+        paddle.distributed.parallel,
+        paddle.distributed.utils,
+        paddle.callbacks,
+        paddle.hub,
+        paddle.autograd,
+        paddle.incubate,
+        paddle.inference,
+        paddle.onnx,
+        paddle.device
+    ]
+
+    apinum = 0
+    alldict = {}
+    for module in modulelist:
+        if hasattr(module, '__all__'):
+            old_all = module.__all__
+        else:
+            old_all = []
+            dirall = dir(module)
+            for item in dirall:
+                if item.startswith('__'):
+                    continue
+                old_all.append(item)
+        apinum += len(old_all)
+        alldict.update({module.__name__: old_all})
+
+    old_all = []
+    dirall = dir(paddle.Tensor)
+    for item in dirall:
+        if item.startswith('_'):
+            continue
+        old_all.append(item)
+    apinum += len(old_all)
+    alldict.update({'paddle.Tensor': old_all})
+
+    for module, allapi in alldict.items():
+        for member_name in allapi:
+            cur_name = module + '.' + member_name
+            instance = eval(cur_name)
+            doc_md5 = md5(instance.__doc__)
+            member_dict[cur_name] = "({}, ('document', '{}'))".format(cur_name,
+                                                                      doc_md5)
+
+
+def check_allmodule_callable():
+    import paddle
     modulelist = [paddle]
     for m in modulelist:
         visit_all_module(m)
@@ -229,15 +301,49 @@ def get_all_api_from_modulelist():
     return member_dict
 
 
-if __name__ == '__main__':
-    get_all_api_from_modulelist()
+def parse_args():
+    """
+    Parse input arguments
+    """
+    parser = argparse.ArgumentParser(description='Print Apis Signatures')
+    parser.add_argument('--debug', dest='debug', action="store_true")
+    parser.add_argument(
+        '--method',
+        dest='method',
+        type=str,
+        default='from_modulelist',
+        help="using get_all_api or from_modulelist")
+    parser.add_argument(
+        'module', type=str, help='module', default='paddle')  # not used
 
-    for name in member_dict:
-        print(name, member_dict[name])
+    if len(sys.argv) == 1:
+        args = parser.parse_args(['paddle'])
+        return args
+    #    parser.print_help()
+    #    sys.exit(1)
+
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    check_allmodule_callable()
+    if args.method == 'from_modulelist':
+        check_public_api()
+        for name in member_dict:
+            print(name, member_dict[name])
+    elif args.method == 'get_all_api':
+        api_signs = get_all_api()
+        for api_sign in api_signs:
+            print("{0} ({0}, ('document', '{1}'))".format(api_sign[0], api_sign[
+                1]))
+
     if len(ErrorSet) == 0:
         sys.exit(0)
-    for erroritem in ErrorSet:
-        print(
-            "Error, new function {} is unreachable".format(erroritem),
-            file=sys.stderr)
-    sys.exit(1)
+    else:
+        for erroritem in ErrorSet:
+            print(
+                "Error, new function {} is unreachable".format(erroritem),
+                file=sys.stderr)
+        sys.exit(1)
