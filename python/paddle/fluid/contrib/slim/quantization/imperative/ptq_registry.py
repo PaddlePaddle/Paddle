@@ -47,6 +47,8 @@ PTQ_LAYERS_INFO = [
     LayerInfo(paddle.nn.quant.add, ['X', 'Y'], [], ['Out']),
 ]
 
+SIMULATED_LAYERS = [paddle.nn.Conv2D, paddle.nn.Linear]
+
 
 class PTQRegistry(object):
     """
@@ -69,14 +71,35 @@ class PTQRegistry(object):
     def is_supported_layer(cls, layer):
         """
         Analyze whether the layer supports quantization.
+        Args:
+            layer(Layer): The input layer can be a python class or an instance.
+        Returns:
+            flag(bool): Whther the layer is supported.
         """
         cls._init()
         return layer in cls.supported_layers_map or \
             isinstance(layer, tuple(cls.supported_layers_map.keys()))
 
+    @classmethod
+    def is_simulated_quant_layer(cls, layer):
+        """
+        Analyze whether the layer is simulated quant layer.
+        Args:
+            layer(Layer): The input layer can be a python class or an instance.
+        Returns:
+            flag(bool): Whther the layer is supported.
+        """
+        return layer in SIMULATED_LAYERS or \
+            isinstance(layer, tuple(SIMULATED_LAYERS))
+
+    @classmethod
     def layer_info(cls, layer):
         """
         Get the infomation for the supported layer.
+        Args:
+            layer(Layer): The input layer can be a python class or an instance.
+        Returns:
+            layer_info(LayerInfo): The layer info of the input layer.
         """
         assert cls.is_supported_layer(
             layer), "The input layer is not supported."

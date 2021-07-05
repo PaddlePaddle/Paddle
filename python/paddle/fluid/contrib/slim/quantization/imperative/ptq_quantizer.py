@@ -110,6 +110,7 @@ class BaseQuantizer(object):
 
         self.quant_bits = quant_bits
 
+        self.abs_max_vals = []
         self.thresholds = []
 
     @abc.abstractmethod
@@ -133,10 +134,10 @@ class AbsmaxQuantizer(BaseQuantizer):
         assert isinstance(tensors, tuple)
 
         abs_max_vals = [abs_max_value(t) for t in tensors]
-        self.thresholds = merge_max_value(self.thresholds, abs_max_vals)
+        self.abs_max_vals = merge_max_value(self.abs_max_vals, abs_max_vals)
 
     def cal_thresholds(self):
-        pass
+        self.thresholds = self.abs_max_vals
 
 
 class PerChannelAbsmaxQuantizer(BaseQuantizer):
@@ -164,10 +165,11 @@ class PerChannelAbsmaxQuantizer(BaseQuantizer):
                 ]
                 abs_max_vals_list.append(abs_max_vals)
 
-        self.thresholds = merge_max_value(self.thresholds, abs_max_vals_list)
+        self.abs_max_vals = merge_max_value(self.abs_max_vals,
+                                            abs_max_vals_list)
 
     def cal_thresholds(self):
-        pass
+        self.thresholds = self.abs_max_vals
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -180,7 +182,6 @@ class BaseHistQuantizer(BaseQuantizer):
         self.bins = bins
         self.upsample_bins = upsample_bins
 
-        self.abs_max_vals = []
         self.hists = []
 
     def sample_data(self, layer, tensors):

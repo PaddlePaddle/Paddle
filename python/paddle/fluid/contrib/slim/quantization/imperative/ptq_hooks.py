@@ -24,5 +24,4 @@ def quant_forward_post_hook(layer, inputs, outputs):
     """
     assert hasattr(layer, '_quant_config'), \
         "The layer should have _quant_config attr"
-    layer._quant_config.in_act_quantizer.sample_data(layer, inputs)
     layer._quant_config.out_act_quantizer.sample_data(layer, (outputs, ))

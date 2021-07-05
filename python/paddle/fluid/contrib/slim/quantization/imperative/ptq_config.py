@@ -43,7 +43,8 @@ class PTQConfig(object):
         assert isinstance(activation_quantizer, BaseQuantizer)
         assert isinstance(weight_quantizer, BaseQuantizer)
 
-        self.in_act_quantizer = copy.deepcopy(activation_quantizer)
+        assert activation_quantizer.quant_bits == weight_quantizer.quant_bits
+
         self.out_act_quantizer = copy.deepcopy(activation_quantizer)
         self.wt_quantizer = copy.deepcopy(weight_quantizer)
 
