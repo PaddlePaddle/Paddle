@@ -29,7 +29,6 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include "glog/logging.h"
-#include "io/fs.h"
 #include "paddle/fluid/framework/op_def.pb.h"
 
 /*
@@ -67,6 +66,10 @@ const proto::OpDef& GetOpDef(const std::string& op_name) {
     }
   }
   return ops_definition.at(op_name);
+}
+
+bool HasOpDef(const std::string& op_name) {
+  return op_def_map.find(op_name) != op_def_map.end();
 }
 }  // namespace framework
 }  // namespace paddle

@@ -35,13 +35,7 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
-__all__ = [
-    "BaseTransform", "Compose", "Resize", "RandomResizedCrop", "CenterCrop",
-    "RandomHorizontalFlip", "RandomVerticalFlip", "Transpose", "Normalize",
-    "BrightnessTransform", "SaturationTransform", "ContrastTransform",
-    "HueTransform", "ColorJitter", "RandomCrop", "Pad", "RandomRotation",
-    "Grayscale", "ToTensor"
-]
+__all__ = []
 
 
 def _get_image_size(img):
@@ -561,6 +555,7 @@ class RandomHorizontalFlip(BaseTransform):
 
     def __init__(self, prob=0.5, keys=None):
         super(RandomHorizontalFlip, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
     def _apply_image(self, img):
@@ -595,6 +590,7 @@ class RandomVerticalFlip(BaseTransform):
 
     def __init__(self, prob=0.5, keys=None):
         super(RandomVerticalFlip, self).__init__(keys)
+        assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
     def _apply_image(self, img):
