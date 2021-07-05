@@ -47,6 +47,7 @@ BLACK_LIST = {
     'sigmoid_cross_entropy_with_logits',
     'cross_entropy',
     'cross_entropy2',
+    'reduce_sum',
 }
 
 AMP_RELATED_FLAGS = [
