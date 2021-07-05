@@ -286,6 +286,10 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     delete HeterPs_;
     HeterPs_ = nullptr;
   }
+  if (size_max <= 0) {
+    VLOG(1) << "Skip build gpu ps cause feasign nums = " << size_max;
+    return;
+  }
   std::vector<std::thread> threads(device_num);
   HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
   HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
@@ -294,7 +298,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
-    HeterPs_->show_one_table(i);
+    if (feature_keys_count[i] > 0) {
+      HeterPs_->show_one_table(i);
+    }
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(build_func, i);
@@ -396,7 +402,14 @@ void PSGPUWrapper::EndPass() {
   }
   platform::Timer timer;
   timer.Start();
-  HeterPs_->end_pass();
+  size_t keysize_max = 0;
+  // in case of feasign_num = 0, skip dump_to_cpu
+  for (size_t i = 0; i < heter_devices_.size(); i++) {
+    keysize_max = std::max(keysize_max, current_task_->device_keys_[i].size());
+  }
+  if (keysize_max != 0) {
+    HeterPs_->end_pass();
+  }
   current_task_ = nullptr;
   gpu_free_channel_->Put(current_task_);
   timer.Pause();
