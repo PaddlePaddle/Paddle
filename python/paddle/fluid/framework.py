@@ -6273,6 +6273,7 @@ def device_guard(device=None):
 def set_flags(flags):
     """
     This function sets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
 
     Args:
         flags (dict): A dict contains flags and its value.
@@ -6280,8 +6281,8 @@ def set_flags(flags):
     Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                fluid.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+                import paddle
+                paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
     """
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
@@ -6296,6 +6297,7 @@ def set_flags(flags):
 def get_flags(flags):
     """
     This function gets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
 
     Args:
         flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
@@ -6306,10 +6308,10 @@ def get_flags(flags):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
             flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
-            res = fluid.get_flags(flags)
+            res = paddle.get_flags(flags)
             print(res)
             # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
     """
