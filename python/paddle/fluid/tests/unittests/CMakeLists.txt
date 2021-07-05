@@ -270,6 +270,12 @@ function(py_test_modules TARGET_NAME)
                 COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
                 ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    elseif(WITH_ASCEND_CL)
+        # AscendCL need to include ascend toolkit python path, or ACL error will be thrown when running ctest
+        add_test(NAME ${TARGET_NAME}
+                COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH} ${py_test_modules_ENVS}
+                ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
         add_test(NAME ${TARGET_NAME}
                 COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
