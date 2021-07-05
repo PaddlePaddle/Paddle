@@ -16,8 +16,12 @@ import math
 import numpy as np
 
 import paddle
+import paddle.nn.quant.quant_layers as quant_layers
 
-from . import quant_nn
+from ..quantization_pass import _get_op_input_var_names
+from ..quantization_pass import _get_op_output_var_names
+from ..quantization_pass import _get_output_name_index
+from ..quantization_pass import _get_input_name_index
 
 layer_name_map = {
     'Conv2D': paddle.nn.Conv2D,
@@ -54,13 +58,15 @@ fake_quant_output_layers = [
 ]
 
 fake_quant_leaf_layers = [
-    quant_nn.FakeQuantAbsMax,
-    quant_nn.FakeQuantChannelWiseAbsMax,
-    quant_nn.FakeQuantMovingAverageAbsMax,
-    quant_nn.MovingAverageAbsMaxScale,
+    quant_layers.FakeQuantAbsMax,
+    quant_layers.FakeQuantChannelWiseAbsMax,
+    quant_layers.FakeQuantMovingAverageAbsMax,
+    quant_layers.MovingAverageAbsMaxScale,
 ]
 
-fake_quant_wrap_layers = [quant_nn.QuantizedConv2D, quant_nn.QuantizedLinear]
+fake_quant_wrap_layers = [
+    quant_layers.QuantizedConv2D, quant_layers.QuantizedLinear
+]
 
 # The weight format of these layers is Cin * Cout * H * W 
 spec_channel_axis_layers = [paddle.nn.Conv2D, paddle.nn.Conv2DTranspose]
@@ -94,6 +100,7 @@ def find_previous_op(block, var_name):
     for op in block.ops:
         if var_name in op.output_arg_names:
             return op
+    return None
 
 
 def find_next_ops(block, var_name):
@@ -244,3 +251,10 @@ def cal_kl_scaling_factor(hist, abs_max, bits):
                 break
         min_kl_index = starting_iter
     return (min_kl_index + 0.5) * bin_width
+
+
+def fp_numpy_to_naive(x_np):
+    if x_np.size == 1:
+        return float(x_np)
+    else:
+        return x_np.tolist()
