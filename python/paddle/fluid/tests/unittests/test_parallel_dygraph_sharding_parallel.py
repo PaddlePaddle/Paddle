@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,24 +14,18 @@
 
 from __future__ import print_function
 
-from . import qat
-from .qat import *
+import unittest
+import paddle.fluid as fluid
 
-from . import ptq
-from .ptq import *
+from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
-from . import ptq_config
-from .ptq_config import *
 
-from . import ptq_quantizer
-from .ptq_quantizer import *
+class TestHybridParallel(TestMultipleGpus):
 
-from . import ptq_registry
-from .ptq_registry import *
+    # check sharding logic as well as the accuracy with single mode
+    def test_hybrid_parallel_sharding_logic(self):
+        self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
 
-__all__ = []
-__all__ += qat.__all__
-__all__ += ptq.__all__
-__all__ += ptq_config.__all__
-__all__ += ptq_quantizer.__all__
-__all__ += ptq_registry.__all__
+
+if __name__ == "__main__":
+    unittest.main()

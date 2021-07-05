@@ -12,15 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .functional_layers import FloatFunctionalLayer  # noqa: F401
-from .functional_layers import add  # noqa: F401
-from .functional_layers import subtract  # noqa: F401
-from .functional_layers import multiply  # noqa: F401
-from .functional_layers import divide  # noqa: F401
-from .functional_layers import reshape  # noqa: F401
-from .functional_layers import transpose  # noqa: F401
-from .functional_layers import concat  # noqa: F401
-from .functional_layers import flatten  # noqa: F401
-from .quant_layers import QuantStub  # noqa: F401
+from paddle.fluid.dygraph.layers import Layer
+from .meta_parallel_base import MetaParallelBase
+from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
+from ..utils.log_util import logger
 
 __all__ = []
+
+
+class ShardingParallel(MetaParallelBase):
+    def __init__(self, layers, hcg, **kwargs):
+        super(ShardingParallel, self).__init__(layers, hcg, **kwargs)
+
+    def _prepare_for_model(self):
+        logger.info("start broadcast sharding parameters")
+        broadcast_sharding_parameters(self._layers, self._hcg)
+
+        # TODO (JZ-LIANG) to support Sharding-DP
+
+        logger.info("sharding's parameters is ready")
