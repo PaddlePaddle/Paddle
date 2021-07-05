@@ -162,6 +162,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
                               start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add, eltwise_add, start_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_out, eltwise_add_out, start_pattern);
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "Pass(Embedding2Eltwise1Pattern) in op compat failed.";
+      return;
+    }
     std::vector<std::pair<Node*, Node*>> ins;
     ins.push_back(std::make_pair(lookup_table1_x, lookup_table1_w));
     ins.push_back(std::make_pair(lookup_table2_x, lookup_table2_w));
@@ -194,6 +198,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_in, eltwise_add_in, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add, eltwise_add, second_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_add_out, eltwise_add_out, second_pattern);
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "Pass(Embedding1Eltwise1Pattern) in op compat failed.";
+      return;
+    }
     auto in = std::make_pair(lookup_table1_x, lookup_table1_w);
     inner_pattern_ins.push_back(in);
     inner_pattern_tmp_in.push_back(eltwise_add_in);
@@ -232,6 +240,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
                               skip_layernorm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
                               skip_layernorm_pattern);
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "Pass(SkipLayerNorm) in op compat failed.";
+      return;
+    }
     end_pattern_elt_out.push_back(eltwise_add_out);
     std::unordered_set<Node*> rm_nodes;
     rm_nodes.insert({layer_norm, layer_norm_mean, layer_norm_variance});
@@ -350,6 +362,49 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
 }
 
 }  // namespace patterns
+
+EmbeddingEltwiseLayerNormFusePass::EmbeddingEltwiseLayerNormFusePass() {
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({0, -1})
+      .End();
+
+  AddOpCompat(OpCompat("layer_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Mean")
+      .IsTensor()
+      .End()
+      .AddOutput("Variance")
+      .IsTensor()
+      .End()
+      .AddAttr("epsilon")
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
+      .End()
+      .AddAttr("begin_norm_axis")
+      .IsNumGT(0)
+      .End();
+}
 
 void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
