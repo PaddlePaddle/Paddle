@@ -254,7 +254,7 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
 
   detector(graph, [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* graph) {
-    if (!IsCompat(subgraph, g)) {
+    if (!IsCompat(subgraph, graph)) {
       LOG(WARNING) << "seq_concat_fc_fuse_pass in op compat failed.";
       return;
     }
